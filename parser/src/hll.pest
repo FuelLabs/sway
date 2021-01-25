@@ -1,0 +1,67 @@
+// tweakable things
+var_decl_keyword    = _{"let"}
+fn_decl_keyword     = _{"fn"}
+trait_decl_keyword  = _{"trait"}
+return_keyword      = _{"return"}
+assign              = _{"="}
+line_comment_open   =  {"//"}
+block_comment_open  =  {"/*"}
+block_comment_close =  {"*/"}
+fn_returns          =  {":"}
+
+
+// top level
+program =  {SOI ~ (declaration)* ~ EOI}
+
+// expressions
+expr_inner =  {literal_value|if_exp|"(" ~ expr ~ ")"|func_app|var_exp}
+// // op exps built in to expr to prevent left recursion
+expr       =  {expr_inner ~ (op ~ expr_inner)*}
+func_app   =  { ident ~ "(" ~ (expr ~ ("," ~ expr)* ) ~ ")" }
+var_exp    =  { ident } 
+
+if_exp =  {"if" ~ expr ~ "then" ~ code_block ~ ("else" ~ code_block)?}
+
+op =  {"+"|"-"|"/"|"*"|"=="|"!="}
+
+// expressions: literals
+// // note that decimal/float exprs might be removed since vm doesn't support them
+literal_value =  {integer|decimal|string|boolean}
+
+boolean =  {"true"|"false"}
+string  = ${"\"" ~ char* ~ "\""}
+integer = @{ASCII_DIGIT+}
+decimal = @{ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*}
+
+code_block =  {"{" ~ (expr|declaration|statement)* ~ "}"}
+
+// declarations 
+declaration =  {var_decl|fn_decl}
+var_decl    =  {var_decl_keyword ~ ident ~ assign ~ expr}
+fn_decl     =  {fn_decl_keyword ~ fn_name ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ code_block}
+
+// // fn declaration
+fn_decl_params =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
+fn_decl_param  =  {ident ~ ":" ~ type_name}
+return_type    =  {ident}
+fn_name        =  {ident}
+type_name      =  {ident}
+
+// statements
+// // statements are basically non-expressions that don't alter the namespace like declarations do
+statement        =  {return_statement}
+return_statement =  {return_keyword ~ expr?}
+
+// boilerplate
+WHITESPACE    = _{(" "|"\t"|"\r"|"\n")+}
+COMMENT       = _{block_comment|line_comment}
+block_comment = @{block_comment_open ~ (!block_comment_close ~ ANY)* ~ block_comment_close}
+line_comment  = @{line_comment_open ~ (!("\r"|"\n") ~ ANY)*}
+char          =  {
+    !("\""|"\\") ~ ANY
+  | "\\" ~ ("\""|"\\"|"/"|"b"|"f"|"n"|"r"|"t")
+  | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+ident         = @{!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*}
+reserved_words = { var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
+
