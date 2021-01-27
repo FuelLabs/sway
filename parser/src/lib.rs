@@ -15,3 +15,19 @@ pub fn parse(input: &str) -> Result<AST, CompileError> {
     dbg!(parsed);
     todo!()
 }
+
+#[test]
+fn test_basic_prog() {
+    let prog = parse(
+        r#"
+    use stdlib::println
+
+    fn prints_number_five() {
+        let x = 5
+        println(x)
+x.to_string()
+    }"#,
+    );
+    dbg!(&prog);
+    prog.unwrap()
+}
