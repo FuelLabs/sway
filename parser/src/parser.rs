@@ -191,4 +191,43 @@ mod test {
             Ok(_) => (),
         }
     }
+    #[test]
+    fn trait_decl_unimplemented_method() {
+        let parsed = HllParser::parse(
+            Rule::program,
+            r#"trait MyTrait {
+                fn some_method_you_need_to_implement(x: i32): i32
+            }"#,
+        );
+        // this parse should fail since parens are wrong
+        match parsed {
+            Err(e) => {
+                println!("{:#?}", e);
+                panic!()
+            }
+            Ok(_) => (),
+        }
+    }
+    #[test]
+    fn trait_decl_unimplemented_and_implemented() {
+        let parsed = HllParser::parse(
+            Rule::program,
+            r#"trait MyTrait {
+                fn some_method_you_need_to_implement(x: i32): i32
+            } {
+                fn some_method_that_the_trait_implements(x: i32): i32 {
+                    let x = 5
+                }
+            }
+            "#,
+        );
+        // this parse should fail since parens are wrong
+        match parsed {
+            Err(e) => {
+                println!("{:#?}", e);
+                panic!()
+            }
+            Ok(_) => (),
+        }
+    }
 }

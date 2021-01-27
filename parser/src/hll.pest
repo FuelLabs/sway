@@ -36,9 +36,10 @@ decimal = @{ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*}
 code_block =  {"{" ~ (expr|declaration|statement)* ~ "}"}
 
 // declarations 
-declaration =  {var_decl|fn_decl}
+declaration =  {var_decl|fn_decl|trait_decl}
 var_decl    =  {var_decl_keyword ~ ident ~ assign ~ expr}
-fn_decl     =  {fn_decl_keyword ~ fn_name ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ code_block}
+fn_decl     =  {fn_signature ~ code_block}
+fn_signature = { fn_decl_keyword ~ fn_name ~ fn_decl_params ~ (fn_returns ~ return_type)?}
 
 // // fn declaration
 fn_decl_params =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
@@ -51,6 +52,16 @@ type_name      =  {ident}
 // // statements are basically non-expressions that don't alter the namespace like declarations do
 statement        =  {return_statement}
 return_statement =  {return_keyword ~ expr?}
+
+// traits
+trait_decl = { trait_decl_keyword ~ trait_name ~  trait_methods  }
+// // just a fn signature denotes a fn something must implement in order for it to be part of the trait
+// // i like the idea of separating the interface points from the actual
+// // functional implementations the trait provides, so i have them
+// // parsed as two separate blocks here.
+// // this can of course be changed if others dislike it.
+trait_methods = { "{" ~ fn_signature* ~ "}" ~ ("{"~ fn_decl* ~ "}")* }
+trait_name = { ident } 
 
 // boilerplate
 WHITESPACE    = _{(" "|"\t"|"\r"|"\n")+}
