@@ -230,4 +230,40 @@ mod test {
             Ok(_) => (),
         }
     }
+    #[test]
+    fn import_statement() {
+        let parsed = HllParser::parse(
+            Rule::use_statement,
+            r#"use otherlibrary::packagename
+            "#,
+        );
+        // this parse should fail since parens are wrong
+        match parsed {
+            Err(e) => {
+                println!("{:#?}", e);
+                panic!()
+            }
+            Ok(_) => (),
+        }
+    }
+    #[test]
+    fn import_statement_2() {
+        let parsed = HllParser::parse(
+            Rule::program,
+            r#"use otherlibrary::packagename
+            fn main(){
+            let x = 5
+            return x
+            }
+            "#,
+        );
+        // this parse should fail since parens are wrong
+        match parsed {
+            Err(e) => {
+                println!("{:#?}", e);
+                panic!()
+            }
+            Ok(_) => (),
+        }
+    }
 }

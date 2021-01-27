@@ -1,17 +1,19 @@
 // tweakable things
-var_decl_keyword    = _{"let"}
-fn_decl_keyword     = _{"fn"}
-trait_decl_keyword  = _{"trait"}
-return_keyword      = _{"return"}
+var_decl_keyword    =  {"let"}
+fn_decl_keyword     =  {"fn"}
+trait_decl_keyword  =  {"trait"}
+return_keyword      =  {"return"}
+use_keyword         =  {"use"}
 assign              = _{"="}
 line_comment_open   =  {"//"}
 block_comment_open  =  {"/*"}
 block_comment_close =  {"*/"}
 fn_returns          =  {":"}
+path_separator      =  {"::"}
 
 
 // top level
-program =  {SOI ~ (declaration)* ~ EOI}
+program =  {SOI ~ (declaration|use_statement)* ~ EOI}
 
 // expressions
 expr_inner =  {literal_value|if_exp|"(" ~ expr ~ ")"|func_app|var_exp}
@@ -63,6 +65,10 @@ trait_decl = { trait_decl_keyword ~ trait_name ~  trait_methods  }
 trait_methods = { "{" ~ fn_signature* ~ "}" ~ ("{"~ fn_decl* ~ "}")* }
 trait_name = { ident } 
 
+// imports
+use_statement = { use_keyword ~ import_path }
+import_path = { ident ~ (path_separator ~ ident)* }
+
 // boilerplate
 WHITESPACE    = _{(" "|"\t"|"\r"|"\n")+}
 COMMENT       = _{block_comment|line_comment}
@@ -74,5 +80,5 @@ char          =  {
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 ident         = @{!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*}
-reserved_words = { var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
+reserved_words = { use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
 
