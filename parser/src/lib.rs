@@ -2,6 +2,7 @@
 extern crate pest_derive;
 
 mod error;
+mod ast;
 mod parser;
 pub use error::CompileError;
 use parser::HllParser;
