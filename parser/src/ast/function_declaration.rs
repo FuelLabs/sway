@@ -2,14 +2,14 @@ use crate::ast::Expression;
 use either::Either;
 use std::collections::HashMap;
 
-struct FunctionDeclaration<'sc> {
+pub(crate) struct FunctionDeclaration<'sc> {
     name: &'sc str,
     body: CodeBlock<'sc>,
     parameters: Vec<FunctionParameter<'sc>>,
     span: pest::Span<'sc>,
 }
 
-struct FunctionParameter<'sc> {
+pub(crate) struct FunctionParameter<'sc> {
     name: &'sc str,
     r#type: TypeInfo,
 }

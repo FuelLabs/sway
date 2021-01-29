@@ -1,4 +1,5 @@
-pub(crate) struct Expression<'sc> {
-    // tmp field for compilation
-    tmp: &'sc str,
+use crate::ast::Literal;
+
+pub(crate) enum Expression<'sc> {
+    Literal(Literal<'sc>),
 }

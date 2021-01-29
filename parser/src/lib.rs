@@ -5,10 +5,10 @@ mod ast;
 mod error;
 mod parser;
 pub use error::CompileError;
-use parser::HllParser;
-use parser::Rule;
+use parser::{HllParser, Rule};
 use pest::{Parser, Span};
 
+use crate::ast::{Expression, FunctionDeclaration, Literal};
 use pest::iterators::Pair;
 
 #[derive(Debug)]
@@ -34,6 +34,24 @@ enum AstNodeContent<'sc> {
 #[derive(Debug)]
 struct CodeBlock<'sc> {
     contents: Vec<AstNode<'sc>>,
+}
+
+impl CodeBlock<'_> {
+    fn parse_from_pair<'sc>(block: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+        let block_inner = block.into_inner();
+        let mut block_contents = Vec::new();
+        for pair in block_inner {
+            match pair.as_rule() {
+                Rule::declaration => {
+                    let decl = parse_decl_from_pair(pair)?;
+                    block_contents.push(decl);
+                }
+                a => println!("In code block parsing: {:?} {:?}", a, pair.as_str()),
+            }
+        }
+
+        todo!()
+    }
 }
 
 impl Ast<'_> {
@@ -78,54 +96,58 @@ fn parse_root_from_pairs<'sc>(
 
 struct VariableDeclaration<'sc> {
     name: &'sc str,
-    body: AstNode<'sc>, // will be codeblock variant
+    body: Expression<'sc>, // will be codeblock variant
 }
 
-fn parse_decl_from_pair<'sc>(decl: Pair<'sc, Rule>) -> Result<AstNode<'sc>, CompileError<'sc>> {
+struct TraitDeclaration<'sc> {
+    tmp: &'sc str,
+}
+
+enum Declaration<'sc> {
+    VariableDeclaration(VariableDeclaration<'sc>),
+    FunctionDeclaration(FunctionDeclaration<'sc>),
+    TraitDeclaration(TraitDeclaration<'sc>),
+}
+
+fn parse_decl_from_pair<'sc>(decl: Pair<'sc, Rule>) -> Result<Declaration<'sc>, CompileError<'sc>> {
     let mut pair = decl.into_inner();
     let decl_inner = pair.next().unwrap();
-    match decl_inner.as_rule() {
+    let parsed_declaration = match decl_inner.as_rule() {
         Rule::fn_decl => {
             let mut fn_parts = decl_inner.into_inner();
             let fn_signature = fn_parts.next().unwrap();
             let fn_body = fn_parts.next().unwrap();
 
-            let fn_body = parse_code_block(fn_body)?;
+            let fn_body = CodeBlock::parse_from_pair(fn_body)?;
+            Declaration::FunctionDeclaration(todo!())
         }
         Rule::var_decl => {
             let mut var_decl_parts = decl_inner.into_inner();
             let _let_keyword = var_decl_parts.next();
-            let var_name: &'sc str = var_decl_parts.next().unwrap().as_str().trim();
-            let var_body = var_decl_parts.next().unwrap();
-            let var_body = parse_expr_from_pair(var_body)?;
-            todo!("return AstNode for VarDecl");
+            let name: &'sc str = var_decl_parts.next().unwrap().as_str().trim();
+            let body = var_decl_parts.next().unwrap();
+            let body = parse_expr_from_pair(body)?;
+            Declaration::VariableDeclaration(VariableDeclaration { name, body })
         }
-        Rule::trait_decl => (),
+        Rule::trait_decl => Declaration::TraitDeclaration(todo!()),
         _ => unreachable!("declarations don't have any other sub-types"),
-    }
-    todo!()
+    };
+    Ok(parsed_declaration)
 }
 
-fn parse_expr_from_pair<'sc>(
-    expr: Pair<'sc, Rule>,
-) -> Result<AstNodeContent<'sc>, CompileError<'sc>> {
-    todo!()
-}
-
-fn parse_code_block<'sc>(block: Pair<'sc, Rule>) -> Result<CodeBlock<'sc>, CompileError<'sc>> {
-    let block_inner = block.into_inner();
-    let mut block_contents = Vec::new();
-    for pair in block_inner {
-        match pair.as_rule() {
-            Rule::declaration => {
-                let decl = parse_decl_from_pair(pair)?;
-                block_contents.push(decl);
-            }
-            a => println!("In code block parsing: {:?} {:?}", a, pair.as_str()),
-        }
+fn parse_expr_from_pair<'sc>(expr: Pair<'sc, Rule>) -> Result<Expression<'sc>, CompileError<'sc>> {
+    let mut expr_iter = expr.into_inner();
+    let expr = expr_iter.next().unwrap();
+    if expr_iter.next().is_some() {
+        return Err(CompileError::Internal(
+            "Expression parsed with non-unary cardinality.",
+        ));
     }
-
-    todo!()
+    let parsed = match expr.as_rule() {
+        Rule::literal_value => Expression::Literal(Literal::parse_from_pair(expr)?),
+        _ => todo!(),
+    };
+    Ok(parsed)
 }
 
 #[test]
