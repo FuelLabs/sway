@@ -9,5 +9,5 @@ pub enum CompileError<'sc> {
     #[error("Invalid top-level item: {0:?}")]
     InvalidTopLevelItem(Rule, Span<'sc>),
     #[error("Internal compiler error: {0}. Please file an issue on the repository and include the code that triggered this error.")]
-    Internal(&'static str),
+    Internal(&'static str, Span<'sc>),
 }

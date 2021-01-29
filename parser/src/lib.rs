@@ -7,6 +7,7 @@ mod parser;
 pub use error::CompileError;
 use parser::{HllParser, Rule};
 use pest::{Parser, Span};
+use std::collections::HashMap;
 
 use crate::ast::{Expression, FunctionDeclaration, Literal};
 use pest::iterators::Pair;
@@ -29,28 +30,35 @@ struct AstNode<'sc> {
 enum AstNodeContent<'sc> {
     ImportStatement(&'sc str),
     CodeBlock(CodeBlock<'sc>),
+    Declaration(Declaration<'sc>),
 }
 
 #[derive(Debug)]
-struct CodeBlock<'sc> {
+pub(crate) struct CodeBlock<'sc> {
     contents: Vec<AstNode<'sc>>,
+    scope: HashMap<&'sc str, Declaration<'sc>>,
 }
 
-impl CodeBlock<'_> {
-    fn parse_from_pair<'sc>(block: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+impl<'sc> CodeBlock<'sc> {
+    fn parse_from_pair(block: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
         let block_inner = block.into_inner();
-        let mut block_contents = Vec::new();
+        let mut contents = Vec::new();
         for pair in block_inner {
-            match pair.as_rule() {
-                Rule::declaration => {
-                    let decl = parse_decl_from_pair(pair)?;
-                    block_contents.push(decl);
+            contents.push(match pair.as_rule() {
+                Rule::declaration => AstNode {
+                    content: AstNodeContent::Declaration(Declaration::parse_from_pair(
+                        pair.clone(),
+                    )?),
+                    span: pair.into_span(),
+                },
+                a => {
+                    println!("In code block parsing: {:?} {:?}", a, pair.as_str());
+                    todo!()
                 }
-                a => println!("In code block parsing: {:?} {:?}", a, pair.as_str()),
-            }
+            })
         }
 
-        todo!()
+        Ok(CodeBlock {  contents, scope: /* TODO */ HashMap::default()  })
     }
 }
 
@@ -83,7 +91,7 @@ fn parse_root_from_pairs<'sc>(
     for pair in input {
         match pair.as_rule() {
             Rule::declaration => {
-                let decl = parse_decl_from_pair(pair);
+                let decl = Declaration::parse_from_pair(pair);
             }
             Rule::use_statement => {}
             a => return Err(CompileError::InvalidTopLevelItem(a, pair.into_span())),
@@ -94,45 +102,50 @@ fn parse_root_from_pairs<'sc>(
     Ok(ast)
 }
 
+#[derive(Debug)]
 struct VariableDeclaration<'sc> {
     name: &'sc str,
     body: Expression<'sc>, // will be codeblock variant
 }
 
+#[derive(Debug)]
 struct TraitDeclaration<'sc> {
     tmp: &'sc str,
 }
 
+#[derive(Debug)]
 enum Declaration<'sc> {
     VariableDeclaration(VariableDeclaration<'sc>),
     FunctionDeclaration(FunctionDeclaration<'sc>),
     TraitDeclaration(TraitDeclaration<'sc>),
 }
 
-fn parse_decl_from_pair<'sc>(decl: Pair<'sc, Rule>) -> Result<Declaration<'sc>, CompileError<'sc>> {
-    let mut pair = decl.into_inner();
-    let decl_inner = pair.next().unwrap();
-    let parsed_declaration = match decl_inner.as_rule() {
-        Rule::fn_decl => {
-            let mut fn_parts = decl_inner.into_inner();
-            let fn_signature = fn_parts.next().unwrap();
-            let fn_body = fn_parts.next().unwrap();
+impl<'sc> Declaration<'sc> {
+    fn parse_from_pair(decl: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+        let mut pair = decl.into_inner();
+        let decl_inner = pair.next().unwrap();
+        let parsed_declaration = match decl_inner.as_rule() {
+            Rule::fn_decl => {
+                let mut fn_parts = decl_inner.into_inner();
+                let fn_signature = fn_parts.next().unwrap();
+                let fn_body = fn_parts.next().unwrap();
 
-            let fn_body = CodeBlock::parse_from_pair(fn_body)?;
-            Declaration::FunctionDeclaration(todo!())
-        }
-        Rule::var_decl => {
-            let mut var_decl_parts = decl_inner.into_inner();
-            let _let_keyword = var_decl_parts.next();
-            let name: &'sc str = var_decl_parts.next().unwrap().as_str().trim();
-            let body = var_decl_parts.next().unwrap();
-            let body = parse_expr_from_pair(body)?;
-            Declaration::VariableDeclaration(VariableDeclaration { name, body })
-        }
-        Rule::trait_decl => Declaration::TraitDeclaration(todo!()),
-        _ => unreachable!("declarations don't have any other sub-types"),
-    };
-    Ok(parsed_declaration)
+                let fn_body = CodeBlock::parse_from_pair(fn_body)?;
+                Declaration::FunctionDeclaration(todo!())
+            }
+            Rule::var_decl => {
+                let mut var_decl_parts = decl_inner.into_inner();
+                let _let_keyword = var_decl_parts.next();
+                let name: &'sc str = var_decl_parts.next().unwrap().as_str().trim();
+                let body = var_decl_parts.next().unwrap();
+                let body = parse_expr_from_pair(body)?;
+                Declaration::VariableDeclaration(VariableDeclaration { name, body })
+            }
+            Rule::trait_decl => Declaration::TraitDeclaration(todo!()),
+            _ => unreachable!("declarations don't have any other sub-types"),
+        };
+        Ok(parsed_declaration)
+    }
 }
 
 fn parse_expr_from_pair<'sc>(expr: Pair<'sc, Rule>) -> Result<Expression<'sc>, CompileError<'sc>> {
@@ -141,6 +154,7 @@ fn parse_expr_from_pair<'sc>(expr: Pair<'sc, Rule>) -> Result<Expression<'sc>, C
     if expr_iter.next().is_some() {
         return Err(CompileError::Internal(
             "Expression parsed with non-unary cardinality.",
+            expr.into_span(),
         ));
     }
     let parsed = match expr.as_rule() {

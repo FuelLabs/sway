@@ -1,7 +1,8 @@
 use crate::ast::Expression;
+use crate::CodeBlock;
 use either::Either;
-use std::collections::HashMap;
 
+#[derive(Debug)]
 pub(crate) struct FunctionDeclaration<'sc> {
     name: &'sc str,
     body: CodeBlock<'sc>,
@@ -9,28 +10,16 @@ pub(crate) struct FunctionDeclaration<'sc> {
     span: pest::Span<'sc>,
 }
 
+#[derive(Debug)]
 pub(crate) struct FunctionParameter<'sc> {
     name: &'sc str,
     r#type: TypeInfo,
 }
 
 /// Type information without an associated value, used for type inferencing and definition.
+#[derive(Debug)]
 enum TypeInfo {
     String,
     Integer,
     Boolean,
 }
-
-struct CodeBlock<'sc> {
-    scope: HashMap<&'sc str, Declaration<'sc>>,
-    body: Vec<Box<dyn Assemblable>>,
-}
-
-type Declaration<'sc> = ();
-
-/// Represents a type's ability to be rendered into the target ASM
-trait Assemblable {
-    fn to_asm(&self) -> Asm;
-}
-
-type Asm = String; // TODO
