@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use either::Either;
 use crate::ast::Expression;
+use either::Either;
+use std::collections::HashMap;
 
 struct FunctionDeclaration<'sc> {
     name: &'sc str,
@@ -18,12 +18,12 @@ struct FunctionParameter<'sc> {
 enum TypeInfo {
     String,
     Integer,
-    Boolean
+    Boolean,
 }
 
 struct CodeBlock<'sc> {
     scope: HashMap<&'sc str, Declaration<'sc>>,
-    body: Vec<Box<dyn Assemblable>>
+    body: Vec<Box<dyn Assemblable>>,
 }
 
 type Declaration<'sc> = ();
@@ -32,6 +32,5 @@ type Declaration<'sc> = ();
 trait Assemblable {
     fn to_asm(&self) -> Asm;
 }
-
 
 type Asm = String; // TODO
