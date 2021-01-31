@@ -9,7 +9,7 @@ use parser::{HllParser, Rule};
 use pest::{Parser, Span};
 use std::collections::HashMap;
 
-use crate::ast::{Expression, FunctionDeclaration, Literal};
+use crate::ast::{Expression, FunctionDeclaration, FunctionParameter, Literal};
 use pest::iterators::Pair;
 
 #[derive(Debug)]
@@ -31,6 +31,7 @@ enum AstNodeContent<'sc> {
     ImportStatement(&'sc str),
     CodeBlock(CodeBlock<'sc>),
     Declaration(Declaration<'sc>),
+    Expression(Expression<'sc>),
 }
 
 #[derive(Debug)]
@@ -49,6 +50,10 @@ impl<'sc> CodeBlock<'sc> {
                     content: AstNodeContent::Declaration(Declaration::parse_from_pair(
                         pair.clone(),
                     )?),
+                    span: pair.into_span(),
+                },
+                Rule::expr => AstNode {
+                    content: AstNodeContent::Expression(parse_expr_from_pair(pair.clone())?),
                     span: pair.into_span(),
                 },
                 a => {
@@ -93,11 +98,11 @@ fn parse_root_from_pairs<'sc>(
             Rule::declaration => {
                 let decl = Declaration::parse_from_pair(pair);
             }
-            Rule::use_statement => {}
+            Rule::use_statement => todo!("implement imports in ast"),
+            Rule::EOI => (),
             a => return Err(CompileError::InvalidTopLevelItem(a, pair.into_span())),
         }
     }
-    todo!();
 
     Ok(ast)
 }
@@ -126,12 +131,20 @@ impl<'sc> Declaration<'sc> {
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
             Rule::fn_decl => {
-                let mut fn_parts = decl_inner.into_inner();
-                let fn_signature = fn_parts.next().unwrap();
-                let fn_body = fn_parts.next().unwrap();
-
-                let fn_body = CodeBlock::parse_from_pair(fn_body)?;
-                Declaration::FunctionDeclaration(todo!())
+                let mut parts = decl_inner.clone().into_inner();
+                let mut signature = parts.next().unwrap().into_inner();
+                let _fn_keyword = signature.next().unwrap();
+                let name = signature.next().unwrap().as_str();
+                let parameters = signature.next().unwrap();
+                let parameters = FunctionParameter::list_from_pairs(parameters.into_inner());
+                let body = parts.next().unwrap();
+                let body = CodeBlock::parse_from_pair(body)?;
+                Declaration::FunctionDeclaration(FunctionDeclaration {
+                    name,
+                    parameters,
+                    body,
+                    span: decl_inner.as_span(),
+                })
             }
             Rule::var_decl => {
                 let mut var_decl_parts = decl_inner.into_inner();
@@ -148,6 +161,40 @@ impl<'sc> Declaration<'sc> {
     }
 }
 
+fn parse_expr_without_getting_inner<'sc>(
+    expr: Pair<'sc, Rule>,
+) -> Result<Expression<'sc>, CompileError<'sc>> {
+    let parsed = match expr.as_rule() {
+        Rule::literal_value => Expression::Literal(Literal::parse_from_pair(expr)?),
+        Rule::func_app => {
+            let mut func_app_parts = expr.into_inner();
+            let name = func_app_parts.next().unwrap().as_str();
+            let arguments = func_app_parts.next();
+            let arguments = arguments.map(|x| {
+                x.into_inner()
+                    .map(|x| parse_expr_without_getting_inner(x))
+                    .collect::<Result<Vec<_>, _>>()
+            });
+            let arguments = arguments.unwrap_or_else(|| Ok(Vec::new()))?;
+
+            Expression::FunctionApplication { name, arguments }
+        }
+        Rule::var_exp => {
+            let mut var_exp_parts = expr.into_inner();
+            Expression::VariableExpression {
+                name: var_exp_parts.next().unwrap().as_str(),
+            }
+        }
+        a => todo!(
+            "Unimplemented expr: {:?} ({:?}) ({:?})",
+            a,
+            expr.as_str(),
+            expr.as_span()
+        ),
+    };
+    Ok(parsed)
+}
+
 fn parse_expr_from_pair<'sc>(expr: Pair<'sc, Rule>) -> Result<Expression<'sc>, CompileError<'sc>> {
     let mut expr_iter = expr.into_inner();
     let expr = expr_iter.next().unwrap();
@@ -157,11 +204,7 @@ fn parse_expr_from_pair<'sc>(expr: Pair<'sc, Rule>) -> Result<Expression<'sc>, C
             expr.into_span(),
         ));
     }
-    let parsed = match expr.as_rule() {
-        Rule::literal_value => Expression::Literal(Literal::parse_from_pair(expr)?),
-        _ => todo!(),
-    };
-    Ok(parsed)
+    parse_expr_without_getting_inner(expr)
 }
 
 #[test]
