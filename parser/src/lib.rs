@@ -250,10 +250,7 @@ fn parse_expr_from_pair<'sc>(expr: Pair<'sc, Rule>) -> Result<Expression<'sc>, C
     let mut expr_iter = expr.into_inner();
     let expr = expr_iter.next().unwrap();
     if expr_iter.next().is_some() {
-        return Err(CompileError::Internal(
-            "Expression parsed with non-unary cardinality.",
-            expr.into_span(),
-        ));
+        return Err(CompileError::Unimplemented(Rule::op, expr.into_span()));
     }
     parse_expr_without_getting_inner(expr)
 }
