@@ -1,7 +1,7 @@
 [package]
 name = "hllc"
 version = "0.1.0"
-authors = ["Alex Hansen <alex@42layers.io>"]
+authors = ["Alex Hansen <alex@fuel.sh>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
