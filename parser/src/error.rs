@@ -18,7 +18,7 @@ impl<'sc> CompileError<'sc> {
     pub fn span(&self) -> (usize, usize) {
         use CompileError::*;
         match self {
-            ParseFailure(err) => match err.location{
+            ParseFailure(err) => match err.location {
                 pest::error::InputLocation::Pos(num) => (num, num + 1),
                 pest::error::InputLocation::Span((start, end)) => (start, end),
             },

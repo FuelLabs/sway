@@ -4,12 +4,12 @@ extern crate pest_derive;
 mod ast;
 mod error;
 mod parser;
+use crate::parser::{HllParser, Rule};
 pub use error::CompileError;
-use parser::{HllParser, Rule};
 use pest::{Parser, Span};
 use std::collections::HashMap;
 
-use crate::ast::{Expression, FunctionDeclaration, FunctionParameter, ImportStatement, Literal};
+use crate::ast::{Expression, FunctionDeclaration, FunctionParameter, Literal, UseStatement};
 use pest::iterators::Pair;
 
 #[derive(Debug)]
@@ -28,10 +28,32 @@ struct AstNode<'sc> {
 
 #[derive(Debug)]
 enum AstNodeContent<'sc> {
-    ImportStatement(ImportStatement<'sc>),
+    UseStatement(UseStatement<'sc>),
     CodeBlock(CodeBlock<'sc>),
+    ReturnStatement(ReturnStatement<'sc>),
     Declaration(Declaration<'sc>),
     Expression(Expression<'sc>),
+}
+
+#[derive(Debug)]
+struct ReturnStatement<'sc> {
+    expr: Expression<'sc>,
+}
+
+impl<'sc> ReturnStatement<'sc> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError> {
+        let mut inner = pair.into_inner();
+        let _ret_keyword = inner.next();
+        let expr = inner.next();
+        Ok(match expr {
+            None => ReturnStatement {
+                expr: Expression::Unit,
+            },
+            Some(expr_pair) => ReturnStatement {
+                expr: parse_expr_from_pair(expr_pair)?,
+            },
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -56,14 +78,21 @@ impl<'sc> CodeBlock<'sc> {
                     content: AstNodeContent::Expression(parse_expr_from_pair(pair.clone())?),
                     span: pair.into_span(),
                 },
+                Rule::return_statement => {
+                    println!("parsing ret statement");
+                    AstNode {
+                        content: AstNodeContent::ReturnStatement(ReturnStatement::parse_from_pair(
+                            pair.clone(),
+                        )?),
+                        span: pair.into_span(),
+                    }
+                }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
                     return Err(CompileError::Unimplemented(a, pair.as_span()));
                 }
             })
         }
-
-        println!("contents are {:?}", contents);
 
         Ok(CodeBlock {  contents, scope: /* TODO */ HashMap::default()  })
     }
@@ -99,13 +128,17 @@ fn parse_root_from_pairs<'sc>(
         match pair.as_rule() {
             Rule::declaration => {
                 let decl = Declaration::parse_from_pair(pair.clone())?;
-                ast.push(AstNode { content: AstNodeContent::Declaration(decl), span: pair.as_span()});
+                ast.push(AstNode {
+                    content: AstNodeContent::Declaration(decl),
+                    span: pair.as_span(),
+                });
             }
             Rule::use_statement => {
-                return Err(CompileError::Unimplemented(
-                    Rule::use_statement,
-                    pair.as_span(),
-                ))
+                let stmt = UseStatement::parse_from_pair(pair.clone())?;
+                ast.push(AstNode {
+                    content: AstNodeContent::UseStatement(stmt),
+                    span: pair.as_span(),
+                });
             }
             Rule::EOI => (),
             a => return Err(CompileError::InvalidTopLevelItem(a, pair.into_span())),
@@ -234,8 +267,10 @@ fn test_basic_prog() {
     fn prints_number_five() {
         let x = 5
         println(x)
-x.to_string()
+        x.to_string()
+        return 5
     }"#,
     );
     dbg!(&prog);
+    prog.unwrap();
 }

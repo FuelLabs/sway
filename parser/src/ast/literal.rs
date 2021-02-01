@@ -22,7 +22,7 @@ impl<'sc> Literal<'sc> {
             Rule::string => {
                 // remove opening and closing quotes
                 let lit_str = lit_inner.as_str();
-                Literal::String(&lit_str[1..lit_str.len() - 2])
+                Literal::String(&lit_str[1..lit_str.len() - 1])
             }
             a => {
                 eprintln!(

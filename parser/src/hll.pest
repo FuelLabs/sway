@@ -36,7 +36,7 @@ string  = ${"\"" ~ char* ~ "\""}
 integer = @{ASCII_DIGIT+}
 decimal = @{ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*}
 
-code_block =  {"{" ~ (expr|declaration|statement)* ~ "}"}
+code_block =  {"{" ~ (expr|declaration|return_statement)* ~ "}"}
 
 // declarations 
 declaration =  {var_decl|fn_decl|trait_decl}
@@ -54,7 +54,6 @@ type_name      =  @{ident}
 
 // statements
 // // statements are basically non-expressions that don't alter the namespace like declarations do
-statement        =  {return_statement}
 return_statement =  {return_keyword ~ expr?}
 
 // traits

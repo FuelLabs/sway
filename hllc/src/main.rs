@@ -1,5 +1,5 @@
-use parser::parse;
 use line_col::LineColLookup;
+use parser::parse;
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, SourceBuffer, Span, DEFAULT_METRICS,
@@ -76,6 +76,7 @@ fn format_err(input: &str, err: parser::CompileError) {
     );
 
     println!("{}", formatted);
+    write_red("Aborting due to previous error.").unwrap();
 }
 
 fn write_red(txt: &str) -> io::Result<()> {

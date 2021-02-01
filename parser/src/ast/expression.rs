@@ -10,4 +10,5 @@ pub(crate) enum Expression<'sc> {
     VariableExpression {
         name: &'sc str,
     },
+    Unit,
 }
