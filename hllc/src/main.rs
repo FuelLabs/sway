@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use line_col::LineColLookup;
 use parser::parse;
 use source_span::{
@@ -66,7 +67,7 @@ fn format_err(input: &str, err: parser::CompileError) {
     let err_start = Position::new(start_line - 1, start_col - 1);
     let err_end = Position::new(end_line - 1, end_col - 1);
     let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(err_span, Some(format!("{}", err)), Style::Error);
+    fmt.add(err_span, Some(err.to_friendly_error_string()), Style::Error);
 
     let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
     fmt.add(
