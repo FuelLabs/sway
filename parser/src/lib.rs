@@ -1,3 +1,4 @@
+#![allow(warnings)]
 #[macro_use]
 extern crate pest_derive;
 
@@ -5,11 +6,14 @@ mod ast;
 mod error;
 mod parser;
 use crate::parser::{HllParser, Rule};
+use either::{Either, Left, Right};
 pub use error::CompileError;
 use pest::{Parser, Span};
 use std::collections::HashMap;
 
-use crate::ast::{Expression, FunctionDeclaration, FunctionParameter, Literal, UseStatement};
+use crate::ast::{
+    Expression, FunctionDeclaration, FunctionParameter, Literal, TypeInfo, UseStatement,
+};
 use pest::iterators::Pair;
 
 #[derive(Debug)]
@@ -33,6 +37,87 @@ enum AstNodeContent<'sc> {
     ReturnStatement(ReturnStatement<'sc>),
     Declaration(Declaration<'sc>),
     Expression(Expression<'sc>),
+    TraitDeclaration(TraitDeclaration<'sc>),
+}
+
+#[derive(Debug)]
+struct TraitDeclaration<'sc> {
+    name: &'sc str,
+    interface_surface: Vec<TraitFn<'sc>>,
+    methods: Vec<FunctionDeclaration<'sc>>,
+}
+
+impl<'sc> TraitDeclaration<'sc> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+        let mut trait_parts = pair.into_inner();
+        let _trait_keyword = trait_parts.next();
+        let name = trait_parts.next().unwrap().as_str();
+        let methods_and_interface = trait_parts
+            .next()
+            .map(|if_some: Pair<'sc, Rule>| -> Result<_, CompileError> {
+                if_some
+                    .into_inner()
+                    .map(
+                        |fn_sig_or_decl| -> Result<
+                            Either<TraitFn<'sc>, FunctionDeclaration<'sc>>,
+                            CompileError,
+                        > {
+                            Ok(match fn_sig_or_decl.as_rule() {
+                                Rule::fn_signature => {
+                                    Left(TraitFn::parse_from_pair(fn_sig_or_decl)?)
+                                }
+                                Rule::fn_decl => {
+                                    Right(FunctionDeclaration::parse_from_pair(fn_sig_or_decl)?)
+                                }
+                                _ => unreachable!(),
+                            })
+                        },
+                    )
+                    .collect::<Result<Vec<_>, CompileError>>()
+            })
+            .unwrap_or_else(|| Ok(Vec::new()))?;
+
+        let mut interface_surface = Vec::new();
+        let mut methods = Vec::new();
+        methods_and_interface.into_iter().for_each(|x| match x {
+            Left(x) => interface_surface.push(x),
+            Right(x) => methods.push(x),
+        });
+
+        Ok(TraitDeclaration {
+            name,
+            interface_surface,
+            methods,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct TraitFn<'sc> {
+    pub(crate) name: &'sc str,
+    pub(crate) parameters: Vec<FunctionParameter<'sc>>,
+    pub(crate) return_type: TypeInfo<'sc>,
+}
+
+impl<'sc> TraitFn<'sc> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+        let mut signature = pair.clone().into_inner();
+        let _fn_keyword = signature.next().unwrap();
+        let name = signature.next().unwrap().as_str();
+        let parameters = signature.next().unwrap();
+        let parameters = FunctionParameter::list_from_pairs(parameters.into_inner())?;
+        let return_type_signal = signature.next();
+        let return_type = match return_type_signal {
+            Some(_) => TypeInfo::parse_from_pair(signature.next().unwrap())?,
+            None => TypeInfo::Unit,
+        };
+
+        Ok(TraitFn {
+            name,
+            parameters,
+            return_type,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -155,11 +240,6 @@ struct VariableDeclaration<'sc> {
 }
 
 #[derive(Debug)]
-struct TraitDeclaration<'sc> {
-    tmp: &'sc str,
-}
-
-#[derive(Debug)]
 enum Declaration<'sc> {
     VariableDeclaration(VariableDeclaration<'sc>),
     FunctionDeclaration(FunctionDeclaration<'sc>),
@@ -172,20 +252,7 @@ impl<'sc> Declaration<'sc> {
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
             Rule::fn_decl => {
-                let mut parts = decl_inner.clone().into_inner();
-                let mut signature = parts.next().unwrap().into_inner();
-                let _fn_keyword = signature.next().unwrap();
-                let name = signature.next().unwrap().as_str();
-                let parameters = signature.next().unwrap();
-                let parameters = FunctionParameter::list_from_pairs(parameters.into_inner())?;
-                let body = parts.next().unwrap();
-                let body = CodeBlock::parse_from_pair(body)?;
-                Declaration::FunctionDeclaration(FunctionDeclaration {
-                    name,
-                    parameters,
-                    body,
-                    span: decl_inner.as_span(),
-                })
+                Declaration::FunctionDeclaration(FunctionDeclaration::parse_from_pair(decl_inner)?)
             }
             Rule::var_decl => {
                 let mut var_decl_parts = decl_inner.into_inner();
@@ -196,12 +263,7 @@ impl<'sc> Declaration<'sc> {
                 Declaration::VariableDeclaration(VariableDeclaration { name, body })
             }
             Rule::trait_decl => {
-                eprintln!("Unimplemented feature: trait decl");
-                return Err(CompileError::Unimplemented(
-                    Rule::trait_decl,
-                    decl.as_span(),
-                ));
-                //Declaration::TraitDeclaration(todo!()),
+                Declaration::TraitDeclaration(TraitDeclaration::parse_from_pair(decl_inner)?)
             }
             _ => unreachable!("declarations don't have any other sub-types"),
         };
@@ -234,13 +296,13 @@ fn parse_expr_without_getting_inner<'sc>(
             }
         }
         a => {
-            return Err(CompileError::Unimplemented(a, expr.as_span()));
             eprintln!(
                 "Unimplemented expr: {:?} ({:?}) ({:?})",
                 a,
                 expr.as_str(),
                 expr.as_span()
             );
+            return Err(CompileError::Unimplemented(a, expr.as_span()));
         }
     };
     Ok(parsed)
@@ -260,8 +322,17 @@ fn test_basic_prog() {
     let prog = parse(
         r#"
     use stdlib::println
+    trait MyTrait {
+        // interface points
+        fn myfunc(x: int): unit
+    } {
+        // methods
+        fn calls_interface_fn(x: int): unit {
+            self.interface_fn(x)
+        }
+    }
 
-    fn prints_number_five() {
+    fn prints_number_five(): int {
         let x = 5
         println(x)
         x.to_string()

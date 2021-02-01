@@ -47,8 +47,8 @@ var_name = @{ident}
 
 // // fn declaration
 fn_decl_params =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
-fn_decl_param  =  {ident ~ ":" ~ type_name}
-return_type    =  @{ident}
+fn_decl_param  =  {("self")? ~ ident ~ ":" ~ type_name}
+return_type    =  {ident}
 fn_decl_name   =  @{ident}
 type_name      =  @{ident}
 
@@ -64,7 +64,7 @@ trait_decl = { trait_decl_keyword ~ trait_name ~  trait_methods  }
 // // parsed as two separate blocks here.
 // // this can of course be changed if others dislike it.
 trait_methods = { "{" ~ fn_signature* ~ "}" ~ ("{"~ fn_decl* ~ "}")* }
-trait_name = { ident } 
+trait_name = @{ ident } 
 
 // imports
 use_statement = { use_keyword ~ import_path }
