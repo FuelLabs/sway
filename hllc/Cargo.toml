@@ -1,0 +1,14 @@
+[package]
+name = "hllc"
+version = "0.1.0"
+authors = ["Alex Hansen <alex@42layers.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+parser = { path = "../parser" }
+structopt = "0.3"
+source-span = "2.2"
+termcolor = "1.1"
+line-col = "0.2"

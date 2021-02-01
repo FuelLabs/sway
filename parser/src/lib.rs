@@ -9,7 +9,7 @@ use parser::{HllParser, Rule};
 use pest::{Parser, Span};
 use std::collections::HashMap;
 
-use crate::ast::{Expression, FunctionDeclaration, FunctionParameter, Literal};
+use crate::ast::{Expression, FunctionDeclaration, FunctionParameter, ImportStatement, Literal};
 use pest::iterators::Pair;
 
 #[derive(Debug)]
@@ -28,7 +28,7 @@ struct AstNode<'sc> {
 
 #[derive(Debug)]
 enum AstNodeContent<'sc> {
-    ImportStatement(&'sc str),
+    ImportStatement(ImportStatement<'sc>),
     CodeBlock(CodeBlock<'sc>),
     Declaration(Declaration<'sc>),
     Expression(Expression<'sc>),
@@ -58,10 +58,12 @@ impl<'sc> CodeBlock<'sc> {
                 },
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
-                    todo!()
+                    return Err(CompileError::Unimplemented(a, pair.as_span()));
                 }
             })
         }
+
+        println!("contents are {:?}", contents);
 
         Ok(CodeBlock {  contents, scope: /* TODO */ HashMap::default()  })
     }
@@ -96,9 +98,15 @@ fn parse_root_from_pairs<'sc>(
     for pair in input {
         match pair.as_rule() {
             Rule::declaration => {
-                let decl = Declaration::parse_from_pair(pair);
+                let decl = Declaration::parse_from_pair(pair.clone())?;
+                ast.push(AstNode { content: AstNodeContent::Declaration(decl), span: pair.as_span()});
             }
-            Rule::use_statement => todo!("implement imports in ast"),
+            Rule::use_statement => {
+                return Err(CompileError::Unimplemented(
+                    Rule::use_statement,
+                    pair.as_span(),
+                ))
+            }
             Rule::EOI => (),
             a => return Err(CompileError::InvalidTopLevelItem(a, pair.into_span())),
         }
@@ -127,7 +135,7 @@ enum Declaration<'sc> {
 
 impl<'sc> Declaration<'sc> {
     fn parse_from_pair(decl: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
-        let mut pair = decl.into_inner();
+        let mut pair = decl.clone().into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
             Rule::fn_decl => {
@@ -136,7 +144,7 @@ impl<'sc> Declaration<'sc> {
                 let _fn_keyword = signature.next().unwrap();
                 let name = signature.next().unwrap().as_str();
                 let parameters = signature.next().unwrap();
-                let parameters = FunctionParameter::list_from_pairs(parameters.into_inner());
+                let parameters = FunctionParameter::list_from_pairs(parameters.into_inner())?;
                 let body = parts.next().unwrap();
                 let body = CodeBlock::parse_from_pair(body)?;
                 Declaration::FunctionDeclaration(FunctionDeclaration {
@@ -154,7 +162,14 @@ impl<'sc> Declaration<'sc> {
                 let body = parse_expr_from_pair(body)?;
                 Declaration::VariableDeclaration(VariableDeclaration { name, body })
             }
-            Rule::trait_decl => Declaration::TraitDeclaration(todo!()),
+            Rule::trait_decl => {
+                eprintln!("Unimplemented feature: trait decl");
+                return Err(CompileError::Unimplemented(
+                    Rule::trait_decl,
+                    decl.as_span(),
+                ));
+                //Declaration::TraitDeclaration(todo!()),
+            }
             _ => unreachable!("declarations don't have any other sub-types"),
         };
         Ok(parsed_declaration)
@@ -185,12 +200,15 @@ fn parse_expr_without_getting_inner<'sc>(
                 name: var_exp_parts.next().unwrap().as_str(),
             }
         }
-        a => todo!(
-            "Unimplemented expr: {:?} ({:?}) ({:?})",
-            a,
-            expr.as_str(),
-            expr.as_span()
-        ),
+        a => {
+            return Err(CompileError::Unimplemented(a, expr.as_span()));
+            eprintln!(
+                "Unimplemented expr: {:?} ({:?}) ({:?})",
+                a,
+                expr.as_str(),
+                expr.as_span()
+            );
+        }
     };
     Ok(parsed)
 }

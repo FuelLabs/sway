@@ -1,5 +1,5 @@
 use crate::ast::Expression;
-use crate::{CodeBlock, Rule};
+use crate::{CodeBlock, CompileError, Rule};
 use either::Either;
 use pest::iterators::Pair;
 
@@ -20,7 +20,7 @@ pub(crate) struct FunctionParameter<'sc> {
 impl<'sc> FunctionParameter<'sc> {
     pub(crate) fn list_from_pairs(
         pairs: impl Iterator<Item = Pair<'sc, Rule>>,
-    ) -> Vec<FunctionParameter<'sc>> {
+    ) -> Result<Vec<FunctionParameter<'sc>>, CompileError<'sc>> {
         pairs
             .map(|pair: Pair<'sc, Rule>| {
                 println!(
@@ -28,7 +28,10 @@ impl<'sc> FunctionParameter<'sc> {
                     pair.as_str(),
                     pair.as_rule()
                 );
-                todo!("parse params!")
+                return Err(CompileError::Unimplemented(
+                    Rule::fn_decl_params,
+                    pair.as_span(),
+                ));
             })
             .collect()
     }
