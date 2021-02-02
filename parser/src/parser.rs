@@ -9,7 +9,7 @@ mod test {
     // basic parser tests
     #[test]
     fn test_var_decl() {
-        let parsed = HllParser::parse(Rule::var_decl, r#"let x = 2"#);
+        let parsed = HllParser::parse(Rule::var_decl, r#"let x = 2;"#);
         match parsed {
             Err(e) => {
                 println!("{:#?}", e);
@@ -23,7 +23,7 @@ mod test {
     fn test_comment() {
         let parsed = HllParser::parse(
             Rule::var_decl,
-            r#"let x = 2 // and a comment
+            r#"let x = 2; // and a comment
 
         /* and a multiline comment
          * second line */"#,
@@ -43,9 +43,9 @@ mod test {
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32): i32 {
             // a function body
-            let x = 5
-            let y = 10
-            return 10
+            let x = 5;
+            let y = 10;
+            return 10;
         }"#,
         );
         match parsed {
@@ -63,9 +63,9 @@ mod test {
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32): i32 {
             // a function body
-            let x = if true then { 5 } else { 6 }
-            let y = 10
-            return 10
+            let x = if true then { 5 } else { 6 };
+            let y = 10;
+            return 10;
         }"#,
         );
         match parsed {
@@ -83,7 +83,7 @@ mod test {
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32): i32 {
             // a function body
-            if true then { /* comment */ 5 /*comment test*/ }
+            if true then { /* comment */ 5 /*comment test*/ };
             /* some comments */
         }"#,
         );
@@ -102,7 +102,7 @@ mod test {
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32): i32 {
             // a function body
-            if ((true)) then { /* comment */ (((5))) /*comment test*/ }
+            if ((true)) then { /* comment */ (((5))) /*comment test*/ };
             /* some comments */
         }"#,
         );
@@ -120,7 +120,7 @@ mod test {
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32): i32 {
             // a function body
-            if ((true)) then { /* comment */ (((5)) }
+            if ((true)) then { /* comment */ (((5)) };
         }"#,
         );
         // this parse should fail since parens are wrong
@@ -138,7 +138,7 @@ mod test {
         let parsed = HllParser::parse(
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32): i32 {
-        let x = 5 + 10
+        let x = 5 + 10;
         }"#,
         );
         // this parse should fail since parens are wrong
@@ -156,10 +156,10 @@ mod test {
         let parsed = HllParser::parse(
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32): i32 {
-        let x = 5 + 10
-        let foo = 20
-        let y = (x + foo) - x 
-        return y
+        let x = 5 + 10;
+        let foo = 20;
+        let y = (x + foo) - x ;
+        return y;
         }"#,
         );
         // this parse should fail since parens are wrong
@@ -176,10 +176,10 @@ mod test {
         let parsed = HllParser::parse(
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32): i32 {
-        let x = 5 + 10
-        let foo = 20
-        let y = (x + foo + 3) - x 
-        return y
+        let x = 5 + 10;
+        let foo = 20;
+        let y = (x + foo + 3) - x ;
+        return y;
         }"#,
         );
         // this parse should fail since parens are wrong
@@ -216,7 +216,8 @@ mod test {
                 fn some_method_you_need_to_implement(x: i32): i32
             } {
                 fn some_method_that_the_trait_implements(x: i32): i32 {
-                    let x = 5
+                    let x = 5;
+                    return x;
                 }
             }
             "#,
@@ -234,7 +235,7 @@ mod test {
     fn import_statement() {
         let parsed = HllParser::parse(
             Rule::use_statement,
-            r#"use otherlibrary::packagename
+            r#"use otherlibrary::packagename;
             "#,
         );
         // this parse should fail since parens are wrong
@@ -250,14 +251,58 @@ mod test {
     fn import_statement_2() {
         let parsed = HllParser::parse(
             Rule::program,
-            r#"use otherlibrary::packagename
+            r#"use otherlibrary::packagename;
             fn main(){
-            let x = 5
-            return x
+            let x = 5;
+            return x;
             }
             "#,
         );
         // this parse should fail since parens are wrong
+        match parsed {
+            Err(e) => {
+                println!("{:#?}", e);
+                panic!()
+            }
+            Ok(_) => (),
+        }
+    }
+    #[test]
+    fn byte_literals() {
+        let parsed = HllParser::parse(
+            Rule::program,
+            r#"
+            fn main(){
+                let x = 0b01011010;
+                let y = 0xAF;
+                return 0;
+            }"#,
+        );
+        // this parse should fail since parens are wrong
+        dbg!(&parsed);
+        match parsed {
+            Err(e) => {
+                println!("{:#?}", e);
+                panic!()
+            }
+            Ok(_) => (),
+        }
+    }
+    #[test]
+    fn bytes_literals() {
+        let parsed = HllParser::parse(
+            Rule::program,
+            r#"
+            fn main(){
+                let x = 0b01011010;
+                // 32 bytes in a bytes32
+                let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
+                return x;
+            }
+            "#,
+        );
+        // this parse should fail since parens are wrong
+        dbg!(&parsed);
         match parsed {
             Err(e) => {
                 println!("{:#?}", e);

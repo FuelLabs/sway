@@ -321,22 +321,22 @@ fn parse_expr_from_pair<'sc>(expr: Pair<'sc, Rule>) -> Result<Expression<'sc>, C
 fn test_basic_prog() {
     let prog = parse(
         r#"
-    use stdlib::println
+    use stdlib::println;
     trait MyTrait {
         // interface points
         fn myfunc(x: int): unit
     } {
         // methods
         fn calls_interface_fn(x: int): unit {
-            self.interface_fn(x)
+            self.interface_fn(x);
         }
     }
 
     fn prints_number_five(): int {
-        let x = 5
-        println(x)
-        x.to_string()
-        return 5
+        let x = 5;
+        println(x);
+        x.to_string();
+        return 5;
     }"#,
     );
     dbg!(&prog);

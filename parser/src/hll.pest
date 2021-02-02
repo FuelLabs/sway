@@ -29,17 +29,21 @@ op =  {"+"|"-"|"/"|"*"|"=="|"!="}
 
 // expressions: literals
 // // note that decimal/float exprs might be removed since vm doesn't support them
-literal_value =  {integer|decimal|string|boolean}
+literal_value =  {integer|byte|string|boolean}
 
 boolean =  {"true"|"false"}
 string  = ${"\"" ~ char* ~ "\""}
 integer = @{ASCII_DIGIT+}
-decimal = @{ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*}
+byte = { binary_byte | hex_byte }
+binary_byte = { "0b" ~ ("1" | "0")*}
+hex_byte    = { "0x" ~ hex_digit* }
 
-code_block =  {"{" ~ (expr|declaration|return_statement)* ~ "}"}
+hex_digit = { "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" | ASCII_DIGIT } 
+
+code_block =  {"{" ~ (declaration|return_statement|expr_statement)* ~ "}"}
 
 // declarations 
-declaration =  {var_decl|fn_decl|trait_decl}
+declaration =  {((var_decl ~ ";")|fn_decl|trait_decl)}
 var_decl    =  {var_decl_keyword ~ var_name ~ assign ~ expr}
 fn_decl     =  {fn_signature ~ code_block}
 fn_signature = { fn_decl_keyword ~ fn_decl_name ~ fn_decl_params ~ (fn_returns ~ return_type)?}
@@ -54,7 +58,8 @@ type_name      =  @{ident}
 
 // statements
 // // statements are basically non-expressions that don't alter the namespace like declarations do
-return_statement =  {return_keyword ~ expr?}
+return_statement =  {return_keyword ~ expr? ~ ";"}
+expr_statement  = { expr ~ ";" }
 
 // traits
 trait_decl = { trait_decl_keyword ~ trait_name ~  trait_methods  }
@@ -67,7 +72,7 @@ trait_methods = { "{" ~ fn_signature* ~ "}" ~ ("{"~ fn_decl* ~ "}")* }
 trait_name = @{ ident } 
 
 // imports
-use_statement = { use_keyword ~ import_path }
+use_statement = { use_keyword ~ import_path ~ ";"}
 import_path = { ident ~ (path_separator ~ ident)* }
 
 // boilerplate

@@ -7,6 +7,7 @@ pub(crate) enum Literal<'sc> {
     Integer(i64),
     String(&'sc str),
     Boolean(bool),
+    Byte(u8),
 }
 
 impl<'sc> Literal<'sc> {
