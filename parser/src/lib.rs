@@ -159,8 +159,10 @@ impl<'sc> CodeBlock<'sc> {
                     )?),
                     span: pair.into_span(),
                 },
-                Rule::expr => AstNode {
-                    content: AstNodeContent::Expression(parse_expr_from_pair(pair.clone())?),
+                Rule::expr_statement => AstNode {
+                    content: AstNodeContent::Expression(parse_expr_from_pair(
+                        pair.clone().into_inner().next().unwrap().clone(),
+                    )?),
                     span: pair.into_span(),
                 },
                 Rule::return_statement => {

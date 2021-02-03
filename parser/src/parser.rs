@@ -63,7 +63,10 @@ mod test {
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32): i32 {
             // a function body
-            let x = if true then { 5 } else { 6 };
+            let x = if 
+                true
+                then { 5 }
+                else { 6 };
             let y = 10;
             return 10;
         }"#,
@@ -296,7 +299,7 @@ mod test {
             fn main(){
                 let x = 0b01011010;
                 // 32 bytes in a bytes32
-                let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
+                //let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
                 return x;
             }
             "#,

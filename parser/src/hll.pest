@@ -33,18 +33,18 @@ literal_value =  {integer|byte|string|boolean}
 
 boolean =  {"true"|"false"}
 string  = ${"\"" ~ char* ~ "\""}
-integer = @{ASCII_DIGIT+}
+integer = @{!("0b" | "0x") ~ ASCII_DIGIT+}
 byte = { binary_byte | hex_byte }
-binary_byte = { "0b" ~ ("1" | "0")*}
-hex_byte    = { "0x" ~ hex_digit* }
+binary_byte = @{ "0b" ~ ("1" | "0")*}
+hex_byte    = @{ "0x" ~ hex_digit* }
 
 hex_digit = { "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" | ASCII_DIGIT } 
 
-code_block =  {"{" ~ (declaration|return_statement|expr_statement)* ~ "}"}
+code_block =  {"{" ~ (declaration|return_statement|expr_statement)* ~ (expr)? ~ "}"}
 
 // declarations 
-declaration =  {((var_decl ~ ";")|fn_decl|trait_decl)}
-var_decl    =  {var_decl_keyword ~ var_name ~ assign ~ expr}
+declaration =  {(var_decl|fn_decl|trait_decl)}
+var_decl    =  {var_decl_keyword ~ var_name ~ assign ~ expr ~ ";"}
 fn_decl     =  {fn_signature ~ code_block}
 fn_signature = { fn_decl_keyword ~ fn_decl_name ~ fn_decl_params ~ (fn_returns ~ return_type)?}
 var_name = @{ident}
