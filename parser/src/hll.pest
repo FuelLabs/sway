@@ -25,7 +25,7 @@ var_exp    =  { ident ~ ("." ~ ident)* }
 
 if_exp =  {"if" ~ expr ~ "then" ~ code_block ~ ("else" ~ code_block)?}
 
-op =  {"+"|"-"|"/"|"*"|"=="|"!="}
+op =  {"+"|"-"|"/"|"*"|"=="|"!="|"|"|"||"|"&"|"&&"|"^"|"%"}
 
 // expressions: literals
 // // note that decimal/float exprs might be removed since vm doesn't support them

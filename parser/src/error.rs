@@ -14,6 +14,10 @@ pub enum CompileError<'sc> {
     Unimplemented(Rule, Span<'sc>),
     #[error("Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)")]
     InvalidByteLiteralLength { byte_length: usize, span: Span<'sc> },
+    #[error("Expected an expression to follow operator \"{op}\"")]
+    ExpectedExprAfterOp { op: &'sc str, span: Span<'sc> },
+    #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
+    ExpectedOp { op: &'sc str, span: Span<'sc> },
 }
 
 impl<'sc> CompileError<'sc> {
@@ -28,6 +32,8 @@ impl<'sc> CompileError<'sc> {
             Internal(_, sp) => (sp.start(), sp.end()),
             Unimplemented(_, sp) => (sp.start(), sp.end()),
             InvalidByteLiteralLength { span, .. } => (span.start(), span.end()),
+            ExpectedExprAfterOp { span, .. } => (span.start(), span.end()),
+            ExpectedOp { span, .. } => (span.start(), span.end()),
         }
     }
 
