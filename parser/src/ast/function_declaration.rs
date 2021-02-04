@@ -66,11 +66,18 @@ impl<'sc> FunctionParameter<'sc> {
 #[derive(Debug)]
 pub(crate) enum TypeInfo<'sc> {
     String,
-    Integer,
+    UnsignedInteger(IntegerBits),
     Boolean,
     Generic { name: &'sc str },
     Unit,
     SelfType,
+}
+#[derive(Debug)]
+pub(crate) enum IntegerBits {
+    Eight,
+    Sixteen,
+    ThirtyTwo,
+    SixtyFour,
 }
 
 impl<'sc> TypeInfo<'sc> {
@@ -80,7 +87,10 @@ impl<'sc> TypeInfo<'sc> {
     }
     pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
         Ok(match input.as_str() {
-            "int" => TypeInfo::Integer,
+            "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
+            "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+            "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+            "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             "bool" => TypeInfo::Boolean,
             "string" => TypeInfo::String,
             "unit" => TypeInfo::Unit,

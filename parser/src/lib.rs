@@ -135,7 +135,7 @@ impl<'sc> ReturnStatement<'sc> {
                 expr: Expression::Unit,
             },
             Some(expr_pair) => ReturnStatement {
-                expr: parse_expr_from_pair(expr_pair)?,
+                expr: Expression::parse_from_pair(expr_pair)?,
             },
         })
     }
@@ -160,7 +160,7 @@ impl<'sc> CodeBlock<'sc> {
                     span: pair.into_span(),
                 },
                 Rule::expr_statement => AstNode {
-                    content: AstNodeContent::Expression(parse_expr_from_pair(
+                    content: AstNodeContent::Expression(Expression::parse_from_pair(
                         pair.clone().into_inner().next().unwrap().clone(),
                     )?),
                     span: pair.into_span(),
@@ -261,7 +261,7 @@ impl<'sc> Declaration<'sc> {
                 let _let_keyword = var_decl_parts.next();
                 let name: &'sc str = var_decl_parts.next().unwrap().as_str().trim();
                 let body = var_decl_parts.next().unwrap();
-                let body = parse_expr_from_pair(body)?;
+                let body = Expression::parse_from_pair(body)?;
                 Declaration::VariableDeclaration(VariableDeclaration { name, body })
             }
             Rule::trait_decl => {
@@ -271,52 +271,6 @@ impl<'sc> Declaration<'sc> {
         };
         Ok(parsed_declaration)
     }
-}
-
-fn parse_expr_without_getting_inner<'sc>(
-    expr: Pair<'sc, Rule>,
-) -> Result<Expression<'sc>, CompileError<'sc>> {
-    let parsed = match expr.as_rule() {
-        Rule::literal_value => Expression::Literal(Literal::parse_from_pair(expr)?),
-        Rule::func_app => {
-            let mut func_app_parts = expr.into_inner();
-            let name = func_app_parts.next().unwrap().as_str();
-            let arguments = func_app_parts.next();
-            let arguments = arguments.map(|x| {
-                x.into_inner()
-                    .map(|x| parse_expr_without_getting_inner(x))
-                    .collect::<Result<Vec<_>, _>>()
-            });
-            let arguments = arguments.unwrap_or_else(|| Ok(Vec::new()))?;
-
-            Expression::FunctionApplication { name, arguments }
-        }
-        Rule::var_exp => {
-            let mut var_exp_parts = expr.into_inner();
-            Expression::VariableExpression {
-                name: var_exp_parts.next().unwrap().as_str(),
-            }
-        }
-        a => {
-            eprintln!(
-                "Unimplemented expr: {:?} ({:?}) ({:?})",
-                a,
-                expr.as_str(),
-                expr.as_span()
-            );
-            return Err(CompileError::Unimplemented(a, expr.as_span()));
-        }
-    };
-    Ok(parsed)
-}
-
-fn parse_expr_from_pair<'sc>(expr: Pair<'sc, Rule>) -> Result<Expression<'sc>, CompileError<'sc>> {
-    let mut expr_iter = expr.into_inner();
-    let expr = expr_iter.next().unwrap();
-    if expr_iter.next().is_some() {
-        return Err(CompileError::Unimplemented(Rule::op, expr.into_span()));
-    }
-    parse_expr_without_getting_inner(expr)
 }
 
 #[test]
@@ -336,7 +290,7 @@ fn test_basic_prog() {
         }
     }
 
-    fn prints_number_five(): int {
+    fn prints_number_five(): u8 {
         let x = 5;
         println(x);
         x.to_string();

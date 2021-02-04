@@ -66,22 +66,28 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
                 .map(|two_hex_digits| -> Result<u8, CompileError> {
                     let mut str_buf = String::new();
                     two_hex_digits.iter().for_each(|x| str_buf.push(*x));
-                    Ok(u8::from_str_radix(&str_buf, 16).map_err(|_| CompileError::Internal(
-                        "Attempted to parse individual byte from invalid hex string.", pair.as_span()    
-                    ))?)
+                    Ok(u8::from_str_radix(&str_buf, 16).map_err(|_| {
+                        CompileError::Internal(
+                            "Attempted to parse individual byte from invalid hex string.",
+                            pair.as_span(),
+                        )
+                    })?)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-                let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|e| CompileError::Internal(
+            let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|e| {
+                CompileError::Internal(
                     "Attempted to parse bytes32 from hex literal of incorrect length. ",
                     pair.as_span(),
-
-                        ))?;
+                )
+            })?;
             Literal::Byte32(arr)
-            }
-        a => return Err(CompileError::InvalidByteLiteralLength {
-            span: pair.as_span(),
-            byte_length: a
-        })
+        }
+        a => {
+            return Err(CompileError::InvalidByteLiteralLength {
+                span: pair.as_span(),
+                byte_length: a,
+            })
+        }
     })
 }
 
@@ -103,21 +109,27 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Co
                 .map(|eight_bin_digits| -> Result<u8, CompileError> {
                     let mut str_buf = String::new();
                     eight_bin_digits.iter().for_each(|x| str_buf.push(*x));
-                    Ok(u8::from_str_radix(&str_buf, 2).map_err(|_| CompileError::Internal(
-                        "Attempted to parse individual byte from invalid bin.", pair.as_span()    
-                    ))?)
+                    Ok(u8::from_str_radix(&str_buf, 2).map_err(|_| {
+                        CompileError::Internal(
+                            "Attempted to parse individual byte from invalid bin.",
+                            pair.as_span(),
+                        )
+                    })?)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-                let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|e| CompileError::Internal(
+            let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|e| {
+                CompileError::Internal(
                     "Attempted to parse bytes32 from bin literal of incorrect length. ",
                     pair.as_span(),
-
-                        ))?;
+                )
+            })?;
             Literal::Byte32(arr)
-            }
-        a => return Err(CompileError::InvalidByteLiteralLength {
-            span: pair.as_span(),
-            byte_length: a
-        })
+        }
+        a => {
+            return Err(CompileError::InvalidByteLiteralLength {
+                span: pair.as_span(),
+                byte_length: a,
+            })
+        }
     })
 }
