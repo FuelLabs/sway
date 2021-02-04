@@ -16,7 +16,7 @@ path_separator      =  {"::"}
 program =  {SOI ~ (declaration|use_statement)* ~ EOI}
 
 // expressions
-expr_inner =  _{literal_value|if_exp|"(" ~ expr ~ ")"|func_app|var_exp}
+expr_inner =  _{literal_value|if_exp|"(" ~ expr ~ ")"|func_app|var_exp|array_exp}
 // // op exps built in to expr to prevent left recursion
 expr       =  {expr_inner ~ (op ~ expr_inner)*}
 func_app   =  { fn_name ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
@@ -33,7 +33,13 @@ literal_value =  {integer|byte|string|boolean}
 
 boolean =  {"true"|"false"}
 string  = ${"\"" ~ char* ~ "\""}
-integer = @{!("0b" | "0x") ~ ASCII_DIGIT+}
+integer = { (u8_integer | u16_integer | u32_integer | u64_integer) }
+basic_integer = @{!("0b" | "0x") ~ ASCII_DIGIT+}
+u8_integer = {  basic_integer ~ "u8" }
+u16_integer = { basic_integer ~ "u16" }
+// default is u32
+u32_integer = { basic_integer ~ "u32"? }
+u64_integer = { basic_integer ~ "u64" }
 byte = { binary_byte | hex_byte }
 binary_byte = @{ "0b" ~ ("1" | "0")*}
 hex_byte    = @{ "0x" ~ hex_digit* }
@@ -41,6 +47,9 @@ hex_byte    = @{ "0x" ~ hex_digit* }
 hex_digit = { "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" | ASCII_DIGIT } 
 
 code_block =  {"{" ~ (declaration|return_statement|expr_statement)* ~ (expr)? ~ "}"}
+
+// // expressions: arrays
+array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
 // declarations 
 declaration =  {(var_decl|fn_decl|trait_decl)}

@@ -14,6 +14,9 @@ pub(crate) enum Expression<'sc> {
         name: &'sc str,
     },
     Unit,
+    Array {
+        contents: Vec<Expression<'sc>>,
+    }
 }
 
 impl<'sc> Expression<'sc> {
@@ -47,6 +50,10 @@ impl<'sc> Expression<'sc> {
                 Expression::VariableExpression {
                     name: var_exp_parts.next().unwrap().as_str(),
                 }
+            }
+            Rule::array_exp => {
+                let mut array_exps = expr.into_inner();
+                Expression::Array { contents: array_exps.into_iter().map(|expr| Expression::parse_from_pair(expr)).collect::<Result<_, _>>()? }
             }
             a => {
                 eprintln!(

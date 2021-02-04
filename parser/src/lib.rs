@@ -293,7 +293,11 @@ fn test_basic_prog() {
     fn prints_number_five(): u8 {
         let x = 5;
         println(x);
-        x.to_string();
+         x.to_string();
+         let some_list = [
+         5,
+         10 + 3,
+         func_app(my_args, (so_many_args))];
         return 5;
     }"#,
     );
