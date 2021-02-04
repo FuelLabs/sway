@@ -12,6 +12,8 @@ pub enum CompileError<'sc> {
     Internal(&'static str, Span<'sc>),
     #[error("Unimplemented feature: {0:?}")]
     Unimplemented(Rule, Span<'sc>),
+    #[error("Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)")]
+    InvalidByteLiteralLength { byte_length: usize, span: Span<'sc> }
 }
 
 impl<'sc> CompileError<'sc> {
@@ -25,6 +27,7 @@ impl<'sc> CompileError<'sc> {
             InvalidTopLevelItem(_, sp) => (sp.start(), sp.end()),
             Internal(_, sp) => (sp.start(), sp.end()),
             Unimplemented(_, sp) => (sp.start(), sp.end()),
+            InvalidByteLiteralLength{ span, .. } => (span.start(), span.end())
         }
     }
 

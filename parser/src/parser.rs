@@ -299,7 +299,7 @@ mod test {
             fn main(){
                 let x = 0b01011010;
                 // 32 bytes in a bytes32
-                //let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
+                let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
                 return x;
             }
             "#,

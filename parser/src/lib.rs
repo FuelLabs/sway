@@ -330,6 +330,8 @@ fn test_basic_prog() {
     } {
         // methods
         fn calls_interface_fn(x: int): unit {
+            // declare a byte
+            let x = 0b10101111;
             self.interface_fn(x);
         }
     }
