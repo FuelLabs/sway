@@ -292,7 +292,21 @@ impl<'sc> Declaration<'sc> {
 fn test_basic_prog() {
     let prog = parse(
         r#"
+
+
+    fn generic_function
+    <T>
+    (arg1: u64,
+    arg2: T) 
+    :
+    T 
+    where T: Display,
+          T: Debug {
+        return arg2;
+    }
+
     use stdlib::println;
+
     trait MyTrait {
         // interface points
         fn myfunc(x: int): unit
@@ -305,6 +319,7 @@ fn test_basic_prog() {
         }
     }
 
+
     fn prints_number_five(): u8 {
         let x: u8 = 5;
         println(x);
@@ -314,7 +329,10 @@ fn test_basic_prog() {
          10 + 3 / 2,
          func_app(my_args, (so_many_args))];
         return 5;
-    }"#,
+    }
+    
+    
+    "#,
     );
     dbg!(&prog);
     prog.unwrap();

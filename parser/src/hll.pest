@@ -56,15 +56,18 @@ declaration =  {(var_decl|fn_decl|trait_decl)}
 var_decl    =  {var_decl_keyword ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription = { ":" ~ type_name}
 fn_decl     =  {fn_signature ~ code_block}
-fn_signature = { fn_decl_keyword ~ fn_decl_name ~ fn_decl_params ~ (fn_returns ~ return_type)?}
+fn_signature = { fn_decl_keyword ~ fn_decl_name ~ fn_decl_type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds? }
 var_name = @{ident}
 
 // // fn declaration
 fn_decl_params =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
+fn_decl_type_params = { "<" ~ generic_type_param ~ (", " ~ generic_type_param)* ~ ">" }
 fn_decl_param  =  {("self")? ~ ident ~ ":" ~ type_name}
 return_type    =  {ident}
 fn_decl_name   =  @{ident}
 type_name      =  @{ident}
+trait_bounds   =  { "where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)* }
+generic_type_param = @{ident}
 
 // statements
 // // statements are basically non-expressions that don't alter the namespace like declarations do

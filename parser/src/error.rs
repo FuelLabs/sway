@@ -18,6 +18,13 @@ pub enum CompileError<'sc> {
     ExpectedExprAfterOp { op: &'sc str, span: Span<'sc> },
     #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
     ExpectedOp { op: &'sc str, span: Span<'sc> },
+    #[error("Where clause was specified but there are no generic type parameters. Where clauses can only be applied to generic type parameters.")]
+    UnexpectedWhereClause(Span<'sc>),
+    #[error("Specified generic type in where clause \"{type_name}\" not found in generic type arguments of function.")]
+    UndeclaredGenericTypeInWhereClause {
+        type_name: &'sc str,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> CompileError<'sc> {
@@ -34,6 +41,8 @@ impl<'sc> CompileError<'sc> {
             InvalidByteLiteralLength { span, .. } => (span.start(), span.end()),
             ExpectedExprAfterOp { span, .. } => (span.start(), span.end()),
             ExpectedOp { span, .. } => (span.start(), span.end()),
+            UnexpectedWhereClause(sp) => (sp.start(), sp.end()),
+            UndeclaredGenericTypeInWhereClause { span, .. } => (span.start(), span.end()),
         }
     }
 
