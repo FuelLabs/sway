@@ -238,6 +238,7 @@ fn parse_root_from_pairs<'sc>(
 #[derive(Debug)]
 struct VariableDeclaration<'sc> {
     name: &'sc str,
+    type_ascription: Option<TypeInfo<'sc>>,
     body: Expression<'sc>, // will be codeblock variant
 }
 
@@ -260,9 +261,23 @@ impl<'sc> Declaration<'sc> {
                 let mut var_decl_parts = decl_inner.into_inner();
                 let _let_keyword = var_decl_parts.next();
                 let name: &'sc str = var_decl_parts.next().unwrap().as_str().trim();
-                let body = var_decl_parts.next().unwrap();
-                let body = Expression::parse_from_pair(body)?;
-                Declaration::VariableDeclaration(VariableDeclaration { name, body })
+                let mut maybe_body = var_decl_parts.next().unwrap();
+                let type_ascription = match maybe_body.as_rule() {
+                    Rule::type_ascription => {
+                        let type_asc = maybe_body.clone();
+                        maybe_body = var_decl_parts.next().unwrap();
+                        Some(type_asc)
+                    }
+                    _ => None,
+                };
+                let type_ascription =
+                    invert(type_ascription.map(|x| TypeInfo::parse_from_pair(x)))?;
+                let body = Expression::parse_from_pair(maybe_body)?;
+                Declaration::VariableDeclaration(VariableDeclaration {
+                    name,
+                    body,
+                    type_ascription,
+                })
             }
             Rule::trait_decl => {
                 Declaration::TraitDeclaration(TraitDeclaration::parse_from_pair(decl_inner)?)
@@ -291,7 +306,7 @@ fn test_basic_prog() {
     }
 
     fn prints_number_five(): u8 {
-        let x = 5;
+        let x: u8 = 5;
         println(x);
          x.to_string();
          let some_list = [
@@ -303,4 +318,8 @@ fn test_basic_prog() {
     );
     dbg!(&prog);
     prog.unwrap();
+}
+// option res to res option helper
+fn invert<T, E>(x: Option<Result<T, E>>) -> Result<Option<T>, E> {
+    x.map_or(Ok(None), |v| v.map(Some))
 }

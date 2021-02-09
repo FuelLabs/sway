@@ -53,7 +53,8 @@ array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
 // declarations 
 declaration =  {(var_decl|fn_decl|trait_decl)}
-var_decl    =  {var_decl_keyword ~ var_name ~ assign ~ expr ~ ";"}
+var_decl    =  {var_decl_keyword ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
+type_ascription = { ":" ~ type_name}
 fn_decl     =  {fn_signature ~ code_block}
 fn_signature = { fn_decl_keyword ~ fn_decl_name ~ fn_decl_params ~ (fn_returns ~ return_type)?}
 var_name = @{ident}
