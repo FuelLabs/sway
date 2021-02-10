@@ -37,9 +37,9 @@ integer = { (u8_integer | u16_integer | u32_integer | u64_integer) }
 basic_integer = @{!("0b" | "0x") ~ ASCII_DIGIT+}
 u8_integer = {  basic_integer ~ "u8" }
 u16_integer = { basic_integer ~ "u16" }
-// default is u32
-u32_integer = { basic_integer ~ "u32"? }
-u64_integer = { basic_integer ~ "u64" }
+u32_integer = { basic_integer ~ "u32" }
+// default is u64
+u64_integer = { basic_integer ~ "u64"? }
 byte = { binary_byte | hex_byte }
 binary_byte = @{ "0b" ~ ("1" | "0")*}
 hex_byte    = @{ "0x" ~ hex_digit* }
