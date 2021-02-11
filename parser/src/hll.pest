@@ -21,11 +21,14 @@ expr_inner =  _{literal_value|if_exp|"(" ~ expr ~ ")"|func_app|var_exp|array_exp
 expr       =  {expr_inner ~ (op ~ expr_inner)*}
 func_app   =  { fn_name ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 fn_name    = @{var_exp}
-var_exp    =  { ident ~ ("." ~ ident)* } 
+var_exp    =  { unary_op? ~ var_name_ident } 
+
+var_name_ident = { ident ~ ("." ~ ident)* }
 
 if_exp =  {"if" ~ expr ~ "then" ~ code_block ~ ("else" ~ code_block)?}
 
 op =  {"+"|"-"|"/"|"*"|"=="|"!="|"|"|"||"|"&"|"&&"|"^"|"%"}
+unary_op = { "!" | "ref" | "deref" }
 
 // expressions: literals
 // // note that decimal/float exprs might be removed since vm doesn't support them

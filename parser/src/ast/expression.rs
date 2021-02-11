@@ -12,7 +12,8 @@ pub(crate) enum Expression<'sc> {
         arguments: Vec<Expression<'sc>>,
     },
     VariableExpression {
-        name: &'sc str,
+        unary_op: Option<UnaryOp>,
+        name: VarName<'sc>,
     },
     Unit,
     Array {
@@ -82,9 +83,24 @@ impl<'sc> Expression<'sc> {
             }
             Rule::var_exp => {
                 let mut var_exp_parts = expr.into_inner();
-                Expression::VariableExpression {
-                    name: var_exp_parts.next().unwrap().as_str(),
+                // this means that this is something like `!`, `ref`, or `deref` and the next
+                // token is the actual expr value
+                let mut unary_op = None;
+                let mut name = None;
+                while let Some(pair) = var_exp_parts.next() {
+                    match pair.as_rule() {
+                        Rule::unary_op => {
+                            unary_op = Some(UnaryOp::parse_from_pair(pair)?);
+                        }
+                        Rule::var_name_ident => {
+                            name = Some(VarName::parse_from_pair(pair)?);
+                        }
+                        a => unreachable!("what is this? {:?} {}", a, pair.as_str()),
+                    }
                 }
+                // this is non-optional and part of the parse rule so it won't fail
+                let name = name.unwrap();
+                Expression::VariableExpression { name, unary_op }
             }
             Rule::array_exp => {
                 let mut array_exps = expr.into_inner();
@@ -106,6 +122,47 @@ impl<'sc> Expression<'sc> {
             }
         };
         Ok(parsed)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum UnaryOp {
+    Not,
+    Ref,
+    Deref,
+}
+
+impl UnaryOp {
+    fn parse_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+        use UnaryOp::*;
+        match pair.as_str() {
+            "!" => Ok(Not),
+            "ref" => Ok(Ref),
+            "deref" => Ok(Deref),
+            _ => Err(CompileError::Internal(
+                "Attempted to parse unary op from invalid op string.",
+                pair.as_span(),
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct VarName<'sc> {
+    primary_name: &'sc str,
+    // sub-names are the stuff after periods
+    // like x.test.thing.method()
+    // `test`, `thing`, and `method` are sub-names
+    // the primary name is `x`
+    sub_names: Vec<&'sc str>,
+}
+
+impl<'sc> VarName<'sc> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<VarName<'sc>, CompileError<'sc>> {
+        let mut names = pair.into_inner();
+        let primary_name = names.next().unwrap().as_str();
+        let sub_names = names.map(|x| x.as_str()).collect();
+        Ok(VarName { primary_name, sub_names })
     }
 }
 
