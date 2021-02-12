@@ -4,6 +4,7 @@ fn_decl_keyword     =  {"fn"}
 trait_decl_keyword  =  {"trait"}
 return_keyword      =  {"return"}
 use_keyword         =  {"use"}
+match_keyword =    {"match"}
 assign              = _{"="}
 line_comment_open   =  {"//"}
 block_comment_open  =  {"/*"}
@@ -16,7 +17,7 @@ path_separator      =  {"::"}
 program =  {SOI ~ (declaration|use_statement)* ~ EOI}
 
 // expressions
-expr_inner =  _{literal_value|if_exp|"(" ~ expr ~ ")"|func_app|var_exp|array_exp}
+expr_inner =  _{literal_value|if_exp|"(" ~ expr ~ ")"|func_app|var_exp|array_exp|match_expression}
 // // op exps built in to expr to prevent left recursion
 expr       =  {expr_inner ~ (op ~ expr_inner)*}
 func_app   =  { fn_name ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
@@ -46,8 +47,10 @@ u64_integer = { basic_integer ~ "u64"? }
 byte = { binary_byte | hex_byte }
 binary_byte = @{ "0b" ~ ("1" | "0")*}
 hex_byte    = @{ "0x" ~ hex_digit* }
-
 hex_digit = { "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" | ASCII_DIGIT } 
+match_expression = { "match"  ~ expr ~ "{" ~ match_branch+ ~ "}" }
+match_branch = { match_condition ~ "=>" ~ code_block ~ "," }
+match_condition = { expr | "_" } // TODO this doesn't support pattern matching
 
 code_block =  {"{" ~ (declaration|return_statement|expr_statement)* ~ (expr)? ~ "}"}
 
@@ -55,12 +58,17 @@ code_block =  {"{" ~ (declaration|return_statement|expr_statement)* ~ (expr)? ~ 
 array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
 // declarations 
-declaration =  {(var_decl|fn_decl|trait_decl)}
+declaration =  {(var_decl|fn_decl|trait_decl|struct_decl)}
 var_decl    =  {var_decl_keyword ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription = { ":" ~ type_name}
 fn_decl     =  {fn_signature ~ code_block}
 fn_signature = { fn_decl_keyword ~ fn_decl_name ~ fn_decl_type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds? }
 var_name = @{ident}
+
+struct_decl = { "struct" ~ struct_name ~ "{" ~ struct_fields ~ "}" }
+struct_name = @{ident}
+struct_fields = { struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* }
+struct_field_name = @{ident}
 
 // // fn declaration
 fn_decl_params =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
@@ -102,5 +110,5 @@ char          =  @{
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 ident          = @{!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*}
-reserved_words = { use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
+reserved_words = { match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
 

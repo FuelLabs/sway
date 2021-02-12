@@ -247,6 +247,45 @@ enum Declaration<'sc> {
     VariableDeclaration(VariableDeclaration<'sc>),
     FunctionDeclaration(FunctionDeclaration<'sc>),
     TraitDeclaration(TraitDeclaration<'sc>),
+    StructDeclaration(StructDeclaration<'sc>),
+}
+
+#[derive(Debug)] 
+struct StructDeclaration<'sc> {
+    name: &'sc str,
+    fields: Vec<StructField<'sc>>
+}
+
+impl <'sc> StructDeclaration<'sc> {
+    fn parse_from_pair(decl: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+        let mut decl = decl.into_inner();
+                let name = decl.next().unwrap().as_str();
+                let fields = decl.next();
+                let fields = if let Some(fields) = fields { StructField::parse_from_pairs(fields)? } else { Vec::new() };
+                Ok(StructDeclaration {
+                name, fields
+                    })
+    }
+}
+
+#[derive(Debug)] 
+struct StructField<'sc> {
+    name: &'sc str,
+    r#type: TypeInfo<'sc>
+}
+
+impl <'sc> StructField<'sc> {
+    fn parse_from_pairs(pair: Pair<'sc, Rule> ) -> Result<Vec<Self>, CompileError<'sc>> {
+        let mut fields = pair.into_inner().collect::<Vec<_>>();
+        let mut fields_buf = Vec::new();
+        for i in (0..fields.len()).step_by(2) {
+            let name = fields[i].as_str();
+            let r#type = TypeInfo::parse_from_pair(fields[2].clone())?;
+            fields_buf.push(StructField { name, r#type });
+        }
+        Ok(fields_buf)
+    }
+
 }
 
 impl<'sc> Declaration<'sc> {
@@ -282,6 +321,9 @@ impl<'sc> Declaration<'sc> {
             Rule::trait_decl => {
                 Declaration::TraitDeclaration(TraitDeclaration::parse_from_pair(decl_inner)?)
             }
+            Rule::struct_decl => {
+                Declaration::StructDeclaration(StructDeclaration::parse_from_pair(decl_inner)?)
+            }
             _ => unreachable!("declarations don't have any other sub-types"),
         };
         Ok(parsed_declaration)
@@ -292,6 +334,9 @@ impl<'sc> Declaration<'sc> {
 fn test_basic_prog() {
     let prog = parse(
         r#"
+        struct MyStruct {
+            field_name: u64
+        }
 
 
     fn generic_function
@@ -302,10 +347,16 @@ fn test_basic_prog() {
     T 
     where T: Display,
           T: Debug {
-          return match arg1 {
-               1 => true,
-               _ => false,
-          }
+          return 
+          match 
+            arg1
+          {
+               1 
+               => {
+               true
+               },
+               _ => { false },
+          };
     }
 
     use stdlib::println;
