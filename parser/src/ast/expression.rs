@@ -162,7 +162,10 @@ impl<'sc> VarName<'sc> {
         let mut names = pair.into_inner();
         let primary_name = names.next().unwrap().as_str();
         let sub_names = names.map(|x| x.as_str()).collect();
-        Ok(VarName { primary_name, sub_names })
+        Ok(VarName {
+            primary_name,
+            sub_names,
+        })
     }
 }
 

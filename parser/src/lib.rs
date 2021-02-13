@@ -5,6 +5,7 @@ extern crate pest_derive;
 mod ast;
 mod error;
 mod parser;
+use crate::ast::*;
 use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
 pub use error::CompileError;
@@ -38,86 +39,6 @@ enum AstNodeContent<'sc> {
     Declaration(Declaration<'sc>),
     Expression(Expression<'sc>),
     TraitDeclaration(TraitDeclaration<'sc>),
-}
-
-#[derive(Debug)]
-struct TraitDeclaration<'sc> {
-    name: &'sc str,
-    interface_surface: Vec<TraitFn<'sc>>,
-    methods: Vec<FunctionDeclaration<'sc>>,
-}
-
-impl<'sc> TraitDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
-        let mut trait_parts = pair.into_inner();
-        let _trait_keyword = trait_parts.next();
-        let name = trait_parts.next().unwrap().as_str();
-        let methods_and_interface = trait_parts
-            .next()
-            .map(|if_some: Pair<'sc, Rule>| -> Result<_, CompileError> {
-                if_some
-                    .into_inner()
-                    .map(
-                        |fn_sig_or_decl| -> Result<
-                            Either<TraitFn<'sc>, FunctionDeclaration<'sc>>,
-                            CompileError,
-                        > {
-                            Ok(match fn_sig_or_decl.as_rule() {
-                                Rule::fn_signature => {
-                                    Left(TraitFn::parse_from_pair(fn_sig_or_decl)?)
-                                }
-                                Rule::fn_decl => {
-                                    Right(FunctionDeclaration::parse_from_pair(fn_sig_or_decl)?)
-                                }
-                                _ => unreachable!(),
-                            })
-                        },
-                    )
-                    .collect::<Result<Vec<_>, CompileError>>()
-            })
-            .unwrap_or_else(|| Ok(Vec::new()))?;
-
-        let mut interface_surface = Vec::new();
-        let mut methods = Vec::new();
-        methods_and_interface.into_iter().for_each(|x| match x {
-            Left(x) => interface_surface.push(x),
-            Right(x) => methods.push(x),
-        });
-
-        Ok(TraitDeclaration {
-            name,
-            interface_surface,
-            methods,
-        })
-    }
-}
-
-#[derive(Debug)]
-struct TraitFn<'sc> {
-    pub(crate) name: &'sc str,
-    pub(crate) parameters: Vec<FunctionParameter<'sc>>,
-    pub(crate) return_type: TypeInfo<'sc>,
-}
-
-impl<'sc> TraitFn<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
-        let mut signature = pair.clone().into_inner();
-        let _fn_keyword = signature.next().unwrap();
-        let name = signature.next().unwrap().as_str();
-        let parameters = signature.next().unwrap();
-        let parameters = FunctionParameter::list_from_pairs(parameters.into_inner())?;
-        let return_type_signal = signature.next();
-        let return_type = match return_type_signal {
-            Some(_) => TypeInfo::parse_from_pair(signature.next().unwrap())?,
-            None => TypeInfo::Unit,
-        };
-
-        Ok(TraitFn {
-            name,
-            parameters,
-            return_type,
-        })
-    }
 }
 
 #[derive(Debug)]
@@ -235,101 +156,6 @@ fn parse_root_from_pairs<'sc>(
     Ok(ast)
 }
 
-#[derive(Debug)]
-struct VariableDeclaration<'sc> {
-    name: &'sc str,
-    type_ascription: Option<TypeInfo<'sc>>,
-    body: Expression<'sc>, // will be codeblock variant
-}
-
-#[derive(Debug)]
-enum Declaration<'sc> {
-    VariableDeclaration(VariableDeclaration<'sc>),
-    FunctionDeclaration(FunctionDeclaration<'sc>),
-    TraitDeclaration(TraitDeclaration<'sc>),
-    StructDeclaration(StructDeclaration<'sc>),
-}
-
-#[derive(Debug)] 
-struct StructDeclaration<'sc> {
-    name: &'sc str,
-    fields: Vec<StructField<'sc>>
-}
-
-impl <'sc> StructDeclaration<'sc> {
-    fn parse_from_pair(decl: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
-        let mut decl = decl.into_inner();
-                let name = decl.next().unwrap().as_str();
-                let fields = decl.next();
-                let fields = if let Some(fields) = fields { StructField::parse_from_pairs(fields)? } else { Vec::new() };
-                Ok(StructDeclaration {
-                name, fields
-                    })
-    }
-}
-
-#[derive(Debug)] 
-struct StructField<'sc> {
-    name: &'sc str,
-    r#type: TypeInfo<'sc>
-}
-
-impl <'sc> StructField<'sc> {
-    fn parse_from_pairs(pair: Pair<'sc, Rule> ) -> Result<Vec<Self>, CompileError<'sc>> {
-        let mut fields = pair.into_inner().collect::<Vec<_>>();
-        let mut fields_buf = Vec::new();
-        for i in (0..fields.len()).step_by(2) {
-            let name = fields[i].as_str();
-            let r#type = TypeInfo::parse_from_pair(fields[2].clone())?;
-            fields_buf.push(StructField { name, r#type });
-        }
-        Ok(fields_buf)
-    }
-
-}
-
-impl<'sc> Declaration<'sc> {
-    fn parse_from_pair(decl: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
-        let mut pair = decl.clone().into_inner();
-        let decl_inner = pair.next().unwrap();
-        let parsed_declaration = match decl_inner.as_rule() {
-            Rule::fn_decl => {
-                Declaration::FunctionDeclaration(FunctionDeclaration::parse_from_pair(decl_inner)?)
-            }
-            Rule::var_decl => {
-                let mut var_decl_parts = decl_inner.into_inner();
-                let _let_keyword = var_decl_parts.next();
-                let name: &'sc str = var_decl_parts.next().unwrap().as_str().trim();
-                let mut maybe_body = var_decl_parts.next().unwrap();
-                let type_ascription = match maybe_body.as_rule() {
-                    Rule::type_ascription => {
-                        let type_asc = maybe_body.clone();
-                        maybe_body = var_decl_parts.next().unwrap();
-                        Some(type_asc)
-                    }
-                    _ => None,
-                };
-                let type_ascription =
-                    invert(type_ascription.map(|x| TypeInfo::parse_from_pair(x)))?;
-                let body = Expression::parse_from_pair(maybe_body)?;
-                Declaration::VariableDeclaration(VariableDeclaration {
-                    name,
-                    body,
-                    type_ascription,
-                })
-            }
-            Rule::trait_decl => {
-                Declaration::TraitDeclaration(TraitDeclaration::parse_from_pair(decl_inner)?)
-            }
-            Rule::struct_decl => {
-                Declaration::StructDeclaration(StructDeclaration::parse_from_pair(decl_inner)?)
-            }
-            _ => unreachable!("declarations don't have any other sub-types"),
-        };
-        Ok(parsed_declaration)
-    }
-}
-
 #[test]
 fn test_basic_prog() {
     let prog = parse(
@@ -391,8 +217,4 @@ fn test_basic_prog() {
     );
     dbg!(&prog);
     prog.unwrap();
-}
-// option res to res option helper
-fn invert<T, E>(x: Option<Result<T, E>>) -> Result<Option<T>, E> {
-    x.map_or(Ok(None), |v| v.map(Some))
 }
