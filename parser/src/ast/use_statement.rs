@@ -2,7 +2,7 @@ use crate::error::CompileError;
 use crate::Rule;
 use pest::iterators::Pair;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct UseStatement<'sc> {
     root: &'sc str,
     path: Vec<&'sc str>,

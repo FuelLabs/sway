@@ -27,7 +27,7 @@ struct Opt {
 
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let opt = Opt::from_args();
-    let content = fs::read_to_string(opt.input)?;
+    let content = fs::read_to_string(opt.input.clone())?;
 
     let res = parse(&content);
 
@@ -38,6 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 file.write_all(content.as_bytes())?;
             } else {
                 println!("{:#?}", output);
+                write_green(&format!("Successfully compiled \"{:?}\"", opt.input));
             }
         }
         Err(e) => format_err(&content, e),
@@ -84,6 +85,14 @@ fn write_red(txt: &str) -> io::Result<()> {
     let bufwtr = BufferWriter::stderr(ColorChoice::Always);
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Red)))?;
+    writeln!(&mut buffer, "{}", txt)?;
+    bufwtr.print(&buffer)
+}
+
+fn write_green(txt: &str) -> io::Result<()> {
+    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let mut buffer = bufwtr.buffer();
+    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Green)))?;
     writeln!(&mut buffer, "{}", txt)?;
     bufwtr.print(&buffer)
 }

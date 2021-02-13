@@ -35,6 +35,11 @@ impl<'sc> Literal<'sc> {
                     _ => unreachable!(),
                 }
             }
+            Rule::boolean => match lit_inner.as_str() {
+                "true" => Literal::Boolean(true),
+                "false" => Literal::Boolean(false),
+                _ => unreachable!(),
+            },
             a => {
                 eprintln!(
                     "not yet able to parse literal rule {:?} ({:?})",

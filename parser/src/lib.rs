@@ -25,13 +25,13 @@ pub struct Ast<'sc> {
     root_nodes: Vec<AstNode<'sc>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct AstNode<'sc> {
     content: AstNodeContent<'sc>,
     span: Span<'sc>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum AstNodeContent<'sc> {
     UseStatement(UseStatement<'sc>),
     CodeBlock(CodeBlock<'sc>),
@@ -41,7 +41,7 @@ enum AstNodeContent<'sc> {
     TraitDeclaration(TraitDeclaration<'sc>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ReturnStatement<'sc> {
     expr: Expression<'sc>,
 }
@@ -62,7 +62,7 @@ impl<'sc> ReturnStatement<'sc> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct CodeBlock<'sc> {
     contents: Vec<AstNode<'sc>>,
     scope: HashMap<&'sc str, Declaration<'sc>>,
@@ -86,15 +86,12 @@ impl<'sc> CodeBlock<'sc> {
                     )?),
                     span: pair.into_span(),
                 },
-                Rule::return_statement => {
-                    println!("parsing ret statement");
-                    AstNode {
-                        content: AstNodeContent::ReturnStatement(ReturnStatement::parse_from_pair(
-                            pair.clone(),
-                        )?),
-                        span: pair.into_span(),
-                    }
-                }
+                Rule::return_statement => AstNode {
+                    content: AstNodeContent::ReturnStatement(ReturnStatement::parse_from_pair(
+                        pair.clone(),
+                    )?),
+                    span: pair.into_span(),
+                },
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
                     return Err(CompileError::Unimplemented(a, pair.as_span()));
@@ -178,10 +175,8 @@ fn test_basic_prog() {
             arg1
           {
                1 
-               => {
-               true
-               },
-               _ => { false },
+               => true,
+               _ => { return false; },
           };
     }
 

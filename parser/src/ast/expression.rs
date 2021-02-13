@@ -1,6 +1,7 @@
 use crate::ast::Literal;
 use crate::error::CompileError;
 use crate::parser::{HllParser, Rule};
+use crate::CodeBlock;
 use either::Either;
 use pest::iterators::Pair;
 
@@ -18,6 +19,10 @@ pub(crate) enum Expression<'sc> {
     Unit,
     Array {
         contents: Vec<Expression<'sc>>,
+    },
+    MatchExpression {
+        primary_expression: Box<Expression<'sc>>,
+        branches: Vec<MatchBranch<'sc>>,
     },
 }
 
@@ -111,6 +116,18 @@ impl<'sc> Expression<'sc> {
                         .collect::<Result<_, _>>()?,
                 }
             }
+            Rule::match_expression => {
+                let mut expr_iter = expr.into_inner();
+                let primary_expression = expr_iter.next().unwrap();
+                let primary_expression = Box::new(Expression::parse_from_pair(primary_expression)?);
+                let branches = expr_iter
+                    .map(|x| MatchBranch::parse_from_pair(x))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Expression::MatchExpression {
+                    primary_expression,
+                    branches,
+                }
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -122,6 +139,53 @@ impl<'sc> Expression<'sc> {
             }
         };
         Ok(parsed)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct MatchBranch<'sc> {
+    condition: MatchCondition<'sc>,
+    result: Either<CodeBlock<'sc>, Expression<'sc>>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum MatchCondition<'sc> {
+    CatchAll,
+    Expression(Expression<'sc>),
+}
+
+impl<'sc> MatchBranch<'sc> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+        let mut branch = pair.clone().into_inner();
+        let condition = match branch.next() {
+            Some(o) => o,
+            None => {
+                return Err(CompileError::Internal(
+                    "Unexpected empty iterator in match branch parsing.",
+                    pair.as_span(),
+                ))
+            }
+        };
+        let condition = match condition.into_inner().next() {
+            Some(e) => MatchCondition::Expression(Expression::parse_from_pair(e)?),
+            // the "_" case
+            None => MatchCondition::CatchAll,
+        };
+        let result = match branch.next() {
+            Some(o) => o,
+            None => {
+                return Err(CompileError::Internal(
+                    "Unexpected empty iterator in match branch parsing.",
+                    pair.as_span(),
+                ))
+            }
+        };
+        let result = match result.as_rule() {
+            Rule::expr => Either::Right(Expression::parse_from_pair(result)?),
+            Rule::code_block => Either::Left(CodeBlock::parse_from_pair(result)?),
+            _ => unreachable!(),
+        };
+        Ok(MatchBranch { condition, result })
     }
 }
 

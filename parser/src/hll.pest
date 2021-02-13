@@ -49,7 +49,7 @@ binary_byte = @{ "0b" ~ ("1" | "0")*}
 hex_byte    = @{ "0x" ~ hex_digit* }
 hex_digit = { "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" | ASCII_DIGIT } 
 match_expression = { "match"  ~ expr ~ "{" ~ match_branch+ ~ "}" }
-match_branch = { match_condition ~ "=>" ~ code_block ~ "," }
+match_branch = { match_condition ~ "=>" ~ (code_block | expr) ~ "," }
 match_condition = { expr | "_" } // TODO this doesn't support pattern matching
 
 code_block =  {"{" ~ (declaration|return_statement|expr_statement)* ~ (expr)? ~ "}"}
