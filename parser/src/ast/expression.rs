@@ -24,6 +24,17 @@ pub(crate) enum Expression<'sc> {
         primary_expression: Box<Expression<'sc>>,
         branches: Vec<MatchBranch<'sc>>,
     },
+    StructExpression {
+        struct_name: &'sc str,
+        fields: Vec<StructExpressionField<'sc>>
+    }
+}
+
+
+#[derive(Debug, Clone)]
+pub(crate) struct StructExpressionField<'sc> {
+    name: &'sc str,
+    value: Expression<'sc>
 }
 
 impl<'sc> Expression<'sc> {
@@ -126,6 +137,22 @@ impl<'sc> Expression<'sc> {
                 Expression::MatchExpression {
                     primary_expression,
                     branches,
+                }
+            }
+            Rule::struct_expression => {
+                let mut expr_iter = expr.into_inner();
+                let struct_name = expr_iter.next().unwrap().as_str();
+                let fields = expr_iter.next().unwrap().into_inner().collect::<Vec<_>>();
+                let mut fields_buf = Vec::new();
+                for i in (0..fields.len()).step_by(2) {
+                    let name = fields[i].as_str();
+                    let value = Expression::parse_from_pair(fields[i + 1].clone())?;
+                    fields_buf.push(StructExpressionField { name, value });
+                }
+                // TODO add warning for capitalization on struct name
+                Expression::StructExpression {
+                    struct_name,
+                    fields: fields_buf
                 }
             }
             a => {
