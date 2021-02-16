@@ -1,5 +1,6 @@
 use crate::ast::Literal;
-use crate::error::CompileError;
+#[macro_use]
+use crate::error::{CompileError, CompileResult};
 use crate::parser::{HllParser, Rule};
 use crate::CodeBlock;
 use either::Either;
@@ -26,24 +27,24 @@ pub(crate) enum Expression<'sc> {
     },
     StructExpression {
         struct_name: &'sc str,
-        fields: Vec<StructExpressionField<'sc>>
-    }
+        fields: Vec<StructExpressionField<'sc>>,
+    },
 }
-
 
 #[derive(Debug, Clone)]
 pub(crate) struct StructExpressionField<'sc> {
     name: &'sc str,
-    value: Expression<'sc>
+    value: Expression<'sc>,
 }
 
 impl<'sc> Expression<'sc> {
-    pub(crate) fn parse_from_pair(expr: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn parse_from_pair(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        let mut warnings = Vec::new();
         let expr_for_debug = expr.clone();
         let mut expr_iter = expr.into_inner();
         // first expr is always here
         let first_expr = expr_iter.next().unwrap();
-        let first_expr = Expression::parse_from_pair_inner(first_expr)?;
+        let first_expr = eval!(Expression::parse_from_pair_inner, warnings, first_expr);
         let mut expr_or_op_buf: Vec<Either<Op, Expression>> =
             vec![Either::Right(first_expr.clone())];
         // sometimes exprs are followed by ops in the same expr
@@ -52,7 +53,7 @@ impl<'sc> Expression<'sc> {
             let op = parse_op(op)?;
             // an op is necessarily followed by an expression
             let next_expr = match expr_iter.next() {
-                Some(o) => Expression::parse_from_pair_inner(o)?,
+                Some(o) => eval!(Expression::parse_from_pair_inner, warnings, o),
                 None => {
                     return Err(CompileError::ExpectedExprAfterOp {
                         op: op_str,
@@ -71,7 +72,7 @@ impl<'sc> Expression<'sc> {
              */
         }
         if expr_or_op_buf.len() == 1 {
-            Ok(first_expr)
+            Ok((first_expr, warnings))
         } else {
             eprintln!("Haven't yet implemented operator precedence");
             Err(CompileError::Unimplemented(
@@ -81,7 +82,8 @@ impl<'sc> Expression<'sc> {
         }
     }
 
-    pub(crate) fn parse_from_pair_inner(expr: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn parse_from_pair_inner(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        let mut warnings = Vec::new();
         let parsed = match expr.as_rule() {
             Rule::literal_value => Expression::Literal(Literal::parse_from_pair(expr)?),
             Rule::func_app => {
@@ -93,7 +95,16 @@ impl<'sc> Expression<'sc> {
                         .map(|x| Expression::parse_from_pair_inner(x))
                         .collect::<Result<Vec<_>, _>>()
                 });
-                let arguments = arguments.unwrap_or_else(|| Ok(Vec::new()))?;
+
+                let mut arguments = arguments.unwrap_or_else(|| Ok(Vec::new()))?;
+                let mut local_warnings = arguments.iter_mut().map(|(_, x)| x.clone());
+                let mut warn_buf = Vec::new();
+                for mut warning in local_warnings {
+                    warn_buf.append(&mut warning);
+                }
+                warnings.append(&mut warn_buf);
+
+                let arguments = arguments.into_iter().map(|(x, _)| x).collect();
 
                 Expression::FunctionApplication { name, arguments }
             }
@@ -120,20 +131,25 @@ impl<'sc> Expression<'sc> {
             }
             Rule::array_exp => {
                 let mut array_exps = expr.into_inner();
-                Expression::Array {
-                    contents: array_exps
-                        .into_iter()
-                        .map(|expr| Expression::parse_from_pair(expr))
-                        .collect::<Result<_, _>>()?,
+                let mut contents = Vec::new();
+                for expr in array_exps {
+                    contents.push(eval!(Expression::parse_from_pair, warnings, expr));
                 }
+                Expression::Array { contents }
             }
             Rule::match_expression => {
                 let mut expr_iter = expr.into_inner();
-                let primary_expression = expr_iter.next().unwrap();
-                let primary_expression = Box::new(Expression::parse_from_pair(primary_expression)?);
-                let branches = expr_iter
-                    .map(|x| MatchBranch::parse_from_pair(x))
-                    .collect::<Result<Vec<_>, _>>()?;
+                let primary_expression = eval!(
+                    Expression::parse_from_pair,
+                    warnings,
+                    expr_iter.next().unwrap()
+                );
+                let primary_expression = Box::new(primary_expression);
+                let mut branches = Vec::new();
+                for exp in expr_iter {
+                    let res = eval!(MatchBranch::parse_from_pair, warnings, exp);
+                    branches.push(res);
+                }
                 Expression::MatchExpression {
                     primary_expression,
                     branches,
@@ -146,13 +162,13 @@ impl<'sc> Expression<'sc> {
                 let mut fields_buf = Vec::new();
                 for i in (0..fields.len()).step_by(2) {
                     let name = fields[i].as_str();
-                    let value = Expression::parse_from_pair(fields[i + 1].clone())?;
+                    let value = eval!(Expression::parse_from_pair, warnings, fields[i + 1].clone());
                     fields_buf.push(StructExpressionField { name, value });
                 }
                 // TODO add warning for capitalization on struct name
                 Expression::StructExpression {
                     struct_name,
-                    fields: fields_buf
+                    fields: fields_buf,
                 }
             }
             a => {
@@ -165,7 +181,7 @@ impl<'sc> Expression<'sc> {
                 return Err(CompileError::Unimplemented(a, expr.as_span()));
             }
         };
-        Ok(parsed)
+        Ok((parsed, warnings))
     }
 }
 
@@ -182,7 +198,8 @@ pub(crate) enum MatchCondition<'sc> {
 }
 
 impl<'sc> MatchBranch<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        let mut warnings = Vec::new();
         let mut branch = pair.clone().into_inner();
         let condition = match branch.next() {
             Some(o) => o,
@@ -194,7 +211,10 @@ impl<'sc> MatchBranch<'sc> {
             }
         };
         let condition = match condition.into_inner().next() {
-            Some(e) => MatchCondition::Expression(Expression::parse_from_pair(e)?),
+            Some(e) => {
+                let expr = eval!(Expression::parse_from_pair, warnings, e);
+                MatchCondition::Expression(expr)
+            }
             // the "_" case
             None => MatchCondition::CatchAll,
         };
@@ -208,11 +228,14 @@ impl<'sc> MatchBranch<'sc> {
             }
         };
         let result = match result.as_rule() {
-            Rule::expr => Either::Right(Expression::parse_from_pair(result)?),
+            Rule::expr => {
+                let expr = eval!(Expression::parse_from_pair, warnings, result);
+                Either::Right(expr)
+            }
             Rule::code_block => Either::Left(CodeBlock::parse_from_pair(result)?),
             _ => unreachable!(),
         };
-        Ok(MatchBranch { condition, result })
+        Ok((MatchBranch { condition, result }, warnings))
     }
 }
 

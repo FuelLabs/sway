@@ -6,6 +6,10 @@ trait MyTrait {
   }
 }
 
+struct my_struct {
+    FieldName: u64
+}
+
 fn contract_func_1(x: u32, y: u32): bool {
   println("Test function.");
   let x: byte = 0b11110000;

@@ -9,7 +9,7 @@ pub(crate) use trait_declaration::*;
 pub(crate) use variable_declaration::*;
 
 use crate::ast::Expression;
-use crate::error::CompileError;
+use crate::error::{CompileError, CompileResult};
 use crate::parser::{HllParser, Rule};
 use pest::iterators::Pair;
 
@@ -21,7 +21,8 @@ pub(crate) enum Declaration<'sc> {
     StructDeclaration(StructDeclaration<'sc>),
 }
 impl<'sc> Declaration<'sc> {
-    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        let mut warnings = Vec::new();
         let mut pair = decl.clone().into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
@@ -43,7 +44,7 @@ impl<'sc> Declaration<'sc> {
                 };
                 let type_ascription =
                     invert(type_ascription.map(|x| TypeInfo::parse_from_pair(x)))?;
-                let body = Expression::parse_from_pair(maybe_body)?;
+                let body = eval!(Expression::parse_from_pair, warnings, maybe_body);
                 Declaration::VariableDeclaration(VariableDeclaration {
                     name,
                     body,
@@ -53,12 +54,14 @@ impl<'sc> Declaration<'sc> {
             Rule::trait_decl => {
                 Declaration::TraitDeclaration(TraitDeclaration::parse_from_pair(decl_inner)?)
             }
-            Rule::struct_decl => {
-                Declaration::StructDeclaration(StructDeclaration::parse_from_pair(decl_inner)?)
-            }
+            Rule::struct_decl => Declaration::StructDeclaration(eval!(
+                StructDeclaration::parse_from_pair,
+                warnings,
+                decl_inner
+            )),
             _ => unreachable!("declarations don't have any other sub-types"),
         };
-        Ok(parsed_declaration)
+        Ok((parsed_declaration, warnings))
     }
 }
 

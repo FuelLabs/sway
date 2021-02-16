@@ -1,21 +1,21 @@
 #![allow(warnings)]
 #[macro_use]
 extern crate pest_derive;
+#[macro_use]
+mod error;
 
 mod ast;
-mod error;
 mod parser;
 use crate::ast::*;
-use crate::parser::{HllParser, Rule};
-use either::{Either, Left, Right};
-pub use error::CompileError;
-use pest::{Parser, Span};
-use std::collections::HashMap;
-
 use crate::ast::{
     Expression, FunctionDeclaration, FunctionParameter, Literal, TypeInfo, UseStatement,
 };
+use crate::parser::{HllParser, Rule};
+use either::{Either, Left, Right};
+pub use error::{CompileError, CompileResult, CompileWarning};
 use pest::iterators::Pair;
+use pest::{Parser, Span};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Ast<'sc> {
@@ -47,18 +47,21 @@ struct ReturnStatement<'sc> {
 }
 
 impl<'sc> ReturnStatement<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        let mut warnings = Vec::new();
         let mut inner = pair.into_inner();
         let _ret_keyword = inner.next();
         let expr = inner.next();
-        Ok(match expr {
+        let res = match expr {
             None => ReturnStatement {
                 expr: Expression::Unit,
             },
-            Some(expr_pair) => ReturnStatement {
-                expr: Expression::parse_from_pair(expr_pair)?,
-            },
-        })
+            Some(expr_pair) => {
+                let expr = eval!(Expression::parse_from_pair, warnings, expr_pair);
+                ReturnStatement { expr }
+            }
+        };
+        Ok((res, warnings))
     }
 }
 
@@ -70,33 +73,46 @@ pub(crate) struct CodeBlock<'sc> {
 
 impl<'sc> CodeBlock<'sc> {
     fn parse_from_pair(block: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+        let mut warnings = Vec::new();
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
         for pair in block_inner {
             contents.push(match pair.as_rule() {
                 Rule::declaration => AstNode {
-                    content: AstNodeContent::Declaration(Declaration::parse_from_pair(
-                        pair.clone(),
-                    )?),
+                    content: AstNodeContent::Declaration(eval!(
+                        Declaration::parse_from_pair,
+                        warnings,
+                        pair.clone()
+                    )),
                     span: pair.into_span(),
                 },
-                Rule::expr_statement => AstNode {
-                    content: AstNodeContent::Expression(Expression::parse_from_pair(
-                        pair.clone().into_inner().next().unwrap().clone(),
-                    )?),
-                    span: pair.into_span(),
-                },
-                Rule::return_statement => AstNode {
-                    content: AstNodeContent::ReturnStatement(ReturnStatement::parse_from_pair(
-                        pair.clone(),
-                    )?),
-                    span: pair.into_span(),
-                },
+                Rule::expr_statement => {
+                    let evaluated_node = eval!(
+                        Expression::parse_from_pair,
+                        warnings,
+                        pair.clone().into_inner().next().unwrap().clone()
+                    );
+                    AstNode {
+                        content: AstNodeContent::Expression(evaluated_node),
+                        span: pair.into_span(),
+                    }
+                }
+                Rule::return_statement => {
+                    let evaluated_node =
+                        eval!(ReturnStatement::parse_from_pair, warnings, pair.clone());
+                    AstNode {
+                        content: AstNodeContent::ReturnStatement(evaluated_node),
+                        span: pair.into_span(),
+                    }
+                }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
                     return Err(CompileError::Unimplemented(a, pair.as_span()));
                 }
             })
+        }
+        if !warnings.is_empty() {
+            todo!("This func needs to return warnings");
         }
 
         Ok(CodeBlock {  contents, scope: /* TODO */ HashMap::default()  })
@@ -117,9 +133,15 @@ impl<'sc> Ast<'sc> {
     }
 }
 
-pub fn parse(input: &str) -> Result<Ast, CompileError> {
+pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, Ast<'sc>> {
     let mut parsed = HllParser::parse(Rule::program, input)?;
-    parse_root_from_pairs(parsed.next().unwrap().into_inner())
+    let mut warnings: Vec<CompileWarning> = Vec::new();
+    let res = eval!(
+        parse_root_from_pairs,
+        warnings,
+        (parsed.next().unwrap().into_inner())
+    );
+    Ok((res, warnings))
 }
 
 // strategy: parse top level things
@@ -127,12 +149,13 @@ pub fn parse(input: &str) -> Result<Ast, CompileError> {
 // sub-nodes
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
-) -> Result<Ast<'sc>, CompileError<'sc>> {
+) -> CompileResult<'sc, Ast<'sc>> {
+    let mut warnings = Vec::new();
     let mut ast = Ast::new();
     for pair in input {
         match pair.as_rule() {
             Rule::declaration => {
-                let decl = Declaration::parse_from_pair(pair.clone())?;
+                let decl = eval!(Declaration::parse_from_pair, warnings, pair.clone());
                 ast.push(AstNode {
                     content: AstNodeContent::Declaration(decl),
                     span: pair.as_span(),
@@ -150,7 +173,7 @@ fn parse_root_from_pairs<'sc>(
         }
     }
 
-    Ok(ast)
+    Ok((ast, warnings))
 }
 
 #[test]

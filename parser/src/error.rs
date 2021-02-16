@@ -1,6 +1,50 @@
 use crate::parser::Rule;
+use inflector::cases::classcase::to_class_case;
 use pest::Span;
 use thiserror::Error;
+
+use inflector::cases::snakecase::to_snake_case;
+macro_rules! eval {
+    ($fn: expr, $warnings: ident, $arg: expr) => {{
+        let (res, mut warns) = $fn($arg)?;
+        $warnings.append(&mut warns);
+        res
+    }};
+}
+
+pub type CompileResult<'sc, T> = Result<(T, Vec<CompileWarning<'sc>>), CompileError<'sc>>;
+
+#[derive(Debug, Clone)]
+pub struct CompileWarning<'sc> {
+    pub span: Span<'sc>,
+    pub warning_content: Warning<'sc>,
+}
+
+impl<'sc> CompileWarning<'sc> {
+    pub fn to_friendly_warning_string(&self) -> String {
+        self.warning_content.to_string()
+    }
+
+    pub fn span(&self) -> (usize, usize) {
+        (self.span.start(), self.span.end())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Warning<'sc> {
+    NonClassCaseStructName { struct_name: &'sc str },
+    NonSnakeCaseStructFieldName { field_name: &'sc str },
+}
+
+impl<'sc> Warning<'sc> {
+    fn to_string(&self) -> String {
+        use Warning::*;
+        match self {
+            NonClassCaseStructName{ struct_name } => format!("Struct \"{}\"'s capitalization is not idiomatic. Structs should have a ClassCase name, like \"{}\".", struct_name, to_class_case(struct_name)),
+            NonSnakeCaseStructFieldName { field_name } => format!("Struct field name {} is not idiomatic. Struct field names should have a snake_case name, like \"{}\".", field_name, to_snake_case(field_name)),
+        }
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum CompileError<'sc> {

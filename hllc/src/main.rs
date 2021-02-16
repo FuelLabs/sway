@@ -32,19 +32,62 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let res = parse(&content);
 
     match res {
-        Ok(output) => {
+        Ok((compiled, warnings)) => {
             if let Some(output) = opt.output {
                 let mut file = File::create(output)?;
-                file.write_all(content.as_bytes())?;
+                file.write_all(format!("{:#?}", compiled).as_bytes())?;
             } else {
-                println!("{:#?}", output);
-                write_green(&format!("Successfully compiled \"{:?}\"", opt.input));
+                println!("{:#?}", compiled);
+            }
+            for ref warning in warnings.iter() {
+                format_warning(&content, warning);
+            }
+            if warnings.is_empty() {
+                write_green(&format!("Successfully compiled {:?}", opt.input));
+            } else {
+                write_yellow(&format!("Compiled {:?} with warnings.", opt.input));
             }
         }
         Err(e) => format_err(&content, e),
     }
 
     Ok(())
+}
+fn format_warning(input: &str, err: &parser::CompileWarning) {
+    let metrics = DEFAULT_METRICS;
+    let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+
+    let metrics = source_span::DEFAULT_METRICS;
+    let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+
+    for c in buffer.iter() {
+        let c = c.unwrap(); // report eventual errors.
+    }
+
+    let (start_pos, end_pos) = err.span();
+    let lookup = LineColLookup::new(input);
+    let (start_line, start_col) = lookup.get(start_pos);
+    let (end_line, end_col) = lookup.get(end_pos - 1);
+
+    let err_start = Position::new(start_line - 1, start_col - 1);
+    let err_end = Position::new(end_line - 1, end_col - 1);
+    let err_span = Span::new(err_start, err_end, err_end.next_column());
+    fmt.add(
+        err_span,
+        Some(err.to_friendly_warning_string()),
+        Style::Warning,
+    );
+
+    let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
+    fmt.add(
+        buffer.span(),
+        Some("this is the whole program\nwhat a nice program!".to_string()),
+        Style::Error,
+    );
+
+    println!("{}", formatted);
 }
 
 fn format_err(input: &str, err: parser::CompileError) {
@@ -93,6 +136,14 @@ fn write_green(txt: &str) -> io::Result<()> {
     let bufwtr = BufferWriter::stderr(ColorChoice::Always);
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Green)))?;
+    writeln!(&mut buffer, "{}", txt)?;
+    bufwtr.print(&buffer)
+}
+
+fn write_yellow(txt: &str) -> io::Result<()> {
+    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
+    let mut buffer = bufwtr.buffer();
+    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Yellow)))?;
     writeln!(&mut buffer, "{}", txt)?;
     bufwtr.print(&buffer)
 }
