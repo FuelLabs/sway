@@ -170,6 +170,12 @@ fn test_basic_prog() {
     T 
     where T: Display,
           T: Debug {
+          let x: MyStruct = 
+          MyStruct
+          {
+              field_name:
+              5 
+          };
           return 
           match 
             arg1

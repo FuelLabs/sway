@@ -17,7 +17,7 @@ path_separator      =  {"::"}
 program =  {SOI ~ (declaration|use_statement)* ~ EOI}
 
 // expressions
-expr_inner =  _{literal_value|if_exp|"(" ~ expr ~ ")"|func_app|var_exp|array_exp|match_expression}
+expr_inner =  _{literal_value|if_exp|"(" ~ expr ~ ")"|func_app|struct_expression|var_exp|array_exp|match_expression}
 // // op exps built in to expr to prevent left recursion
 expr       =  {expr_inner ~ (op ~ expr_inner)*}
 func_app   =  { fn_name ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
@@ -31,7 +31,6 @@ if_exp =  {"if" ~ expr ~ "then" ~ code_block ~ ("else" ~ code_block)?}
 op =  {"+"|"-"|"/"|"*"|"=="|"!="|"|"|"||"|"&"|"&&"|"^"|"%"}
 unary_op = { "!" | "ref" | "deref" }
 
-// expressions: literals
 // // note that decimal/float exprs might be removed since vm doesn't support them
 literal_value =  {integer|byte|string|boolean}
 
@@ -54,7 +53,8 @@ match_condition = { expr | "_" } // TODO this doesn't support pattern matching
 
 code_block =  {"{" ~ (declaration|return_statement|expr_statement)* ~ (expr)? ~ "}"}
 
-// // expressions: arrays
+struct_expression = { struct_name ~ "{" ~ struct_expr_fields ~ "}" }
+struct_expr_fields = { struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","? }
 array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
 // declarations 
@@ -67,7 +67,7 @@ var_name = @{ident}
 
 struct_decl = { "struct" ~ struct_name ~ "{" ~ struct_fields ~ "}" }
 struct_name = @{ident}
-struct_fields = { struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* }
+struct_fields = { struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","? }
 struct_field_name = @{ident}
 
 // // fn declaration
