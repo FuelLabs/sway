@@ -1,15 +1,25 @@
 use crate::parser::Rule;
 use inflector::cases::classcase::to_class_case;
+use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
 use thiserror::Error;
 
-use inflector::cases::snakecase::to_snake_case;
 macro_rules! eval {
     ($fn: expr, $warnings: ident, $arg: expr) => {{
         let (res, mut warns) = $fn($arg)?;
         $warnings.append(&mut warns);
         res
     }};
+}
+macro_rules! assert_or_warn {
+    ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr) => {
+        if !$bool_expr {
+            $warnings.push(CompileWarning {
+                warning_content: $warning,
+                span: $span,
+            });
+        }
+    };
 }
 
 pub type CompileResult<'sc, T> = Result<(T, Vec<CompileWarning<'sc>>), CompileError<'sc>>;

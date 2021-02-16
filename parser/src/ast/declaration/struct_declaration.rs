@@ -31,12 +31,12 @@ impl<'sc> StructDeclaration<'sc> {
 
         let span = name.as_span();
         let name = name.as_str();
-        if !is_class_case(name) {
-            warnings.push(CompileWarning {
-                span,
-                warning_content: Warning::NonClassCaseStructName { struct_name: name },
-            });
-        }
+        assert_or_warn!(
+            is_class_case(name),
+            warnings,
+            span,
+            Warning::NonClassCaseStructName { struct_name: name }
+        );
         Ok((StructDeclaration { name, fields }, warnings))
     }
 }
@@ -49,12 +49,12 @@ impl<'sc> StructField<'sc> {
         for i in (0..fields.len()).step_by(2) {
             let span = fields[i].as_span();
             let name = fields[i].as_str();
-            if !is_snake_case(name) {
-                warnings.push(CompileWarning {
-                    span,
-                    warning_content: Warning::NonSnakeCaseStructFieldName { field_name: name },
-                });
-            }
+            assert_or_warn!(
+                is_snake_case(name),
+                warnings,
+                span,
+                Warning::NonSnakeCaseStructFieldName { field_name: name }
+            );
             let r#type = TypeInfo::parse_from_pair_inner(fields[i + 1].clone())?;
             fields_buf.push(StructField { name, r#type });
         }
