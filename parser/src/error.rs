@@ -4,6 +4,7 @@ use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
 use thiserror::Error;
 
+/// evaluates `$fn` with argument `$arg`, and pushes any warnings to the `$warnings` buffer.
 macro_rules! eval {
     ($fn: expr, $warnings: ident, $arg: expr) => {{
         let (res, mut warns) = $fn($arg)?;
@@ -11,6 +12,7 @@ macro_rules! eval {
         res
     }};
 }
+
 macro_rules! assert_or_warn {
     ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr) => {
         if !$bool_expr {
@@ -51,7 +53,7 @@ impl<'sc> Warning<'sc> {
         use Warning::*;
         match self {
             NonClassCaseStructName{ struct_name } => format!("Struct \"{}\"'s capitalization is not idiomatic. Structs should have a ClassCase name, like \"{}\".", struct_name, to_class_case(struct_name)),
-            NonSnakeCaseStructFieldName { field_name } => format!("Struct field name {} is not idiomatic. Struct field names should have a snake_case name, like \"{}\".", field_name, to_snake_case(field_name)),
+            NonSnakeCaseStructFieldName { field_name } => format!("Struct field name \"{}\" is not idiomatic. Struct field names should have a snake_case name, like \"{}\".", field_name, to_snake_case(field_name)),
         }
     }
 }

@@ -180,8 +180,9 @@ fn parse_root_from_pairs<'sc>(
 fn test_basic_prog() {
     let prog = parse(
         r#"
-        struct MyStruct {
-            field_name: u64
+        struct MyStruct<T> {
+            field_name: u64,
+            other_field: T,
         }
 
 
@@ -219,6 +220,7 @@ fn test_basic_prog() {
         fn calls_interface_fn(x: int): unit {
             // declare a byte
             let x = 0b10101111;
+            let mut y = 0b11111111; 
             self.interface_fn(x);
         }
     }

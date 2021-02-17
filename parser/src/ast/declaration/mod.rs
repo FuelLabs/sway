@@ -1,11 +1,13 @@
 mod function_declaration;
 mod struct_declaration;
 mod trait_declaration;
+mod type_parameter;
 mod variable_declaration;
 
 pub(crate) use function_declaration::*;
 pub(crate) use struct_declaration::*;
 pub(crate) use trait_declaration::*;
+pub(crate) use type_parameter::*;
 pub(crate) use variable_declaration::*;
 
 use crate::ast::Expression;
@@ -32,7 +34,13 @@ impl<'sc> Declaration<'sc> {
             Rule::var_decl => {
                 let mut var_decl_parts = decl_inner.into_inner();
                 let _let_keyword = var_decl_parts.next();
-                let name: &'sc str = var_decl_parts.next().unwrap().as_str().trim();
+                let maybe_mut_keyword = var_decl_parts.next().unwrap();
+                let is_mutable = maybe_mut_keyword.as_rule() == Rule::mut_keyword;
+                let name: &'sc str = if is_mutable {
+                    var_decl_parts.next().unwrap().as_str().trim()
+                } else {
+                    maybe_mut_keyword.as_str().trim()
+                };
                 let mut maybe_body = var_decl_parts.next().unwrap();
                 let type_ascription = match maybe_body.as_rule() {
                     Rule::type_ascription => {
@@ -48,6 +56,7 @@ impl<'sc> Declaration<'sc> {
                 Declaration::VariableDeclaration(VariableDeclaration {
                     name,
                     body,
+                    is_mutable,
                     type_ascription,
                 })
             }
