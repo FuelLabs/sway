@@ -9,7 +9,7 @@ use pest::iterators::Pair;
 pub(crate) struct StructDeclaration<'sc> {
     name: &'sc str,
     fields: Vec<StructField<'sc>>,
-    type_parameters: Vec<TypeParameter<'sc>>
+    type_parameters: Vec<TypeParameter<'sc>>,
 }
 
 #[derive(Debug, Clone)]
@@ -60,7 +60,14 @@ impl<'sc> StructDeclaration<'sc> {
             span,
             Warning::NonClassCaseStructName { struct_name: name }
         );
-        Ok((StructDeclaration { name, fields, type_parameters }, warnings))
+        Ok((
+            StructDeclaration {
+                name,
+                fields,
+                type_parameters,
+            },
+            warnings,
+        ))
     }
 }
 

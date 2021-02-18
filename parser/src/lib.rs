@@ -17,6 +17,14 @@ use pest::iterators::Pair;
 use pest::{Parser, Span};
 use std::collections::HashMap;
 
+// todo rename to language name
+#[derive(Debug)]
+pub struct FuelAst<'sc> {
+    pub contract_ast: Option<Ast<'sc>>,
+    pub script_ast: Option<Ast<'sc>>,
+    pub predicate_ast: Option<Ast<'sc>>,
+}
+
 #[derive(Debug)]
 pub struct Ast<'sc> {
     /// In a typical program, you might have a single root node for your syntax tree.
@@ -133,7 +141,7 @@ impl<'sc> Ast<'sc> {
     }
 }
 
-pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, Ast<'sc>> {
+pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, FuelAst<'sc>> {
     let mut parsed = HllParser::parse(Rule::program, input)?;
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let res = eval!(
@@ -149,37 +157,53 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, Ast<'sc>> {
 // sub-nodes
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
-) -> CompileResult<'sc, Ast<'sc>> {
+) -> CompileResult<'sc, FuelAst<'sc>> {
     let mut warnings = Vec::new();
-    let mut ast = Ast::new();
-    for pair in input {
-        match pair.as_rule() {
-            Rule::declaration => {
-                let decl = eval!(Declaration::parse_from_pair, warnings, pair.clone());
-                ast.push(AstNode {
-                    content: AstNodeContent::Declaration(decl),
-                    span: pair.as_span(),
-                });
+    let mut fuel_ast = FuelAst {
+        contract_ast: None,
+        script_ast: None,
+        predicate_ast: None,
+    };
+    for block in input {
+        let mut ast = Ast::new();
+        let rule = block.as_rule();
+        let input = block.clone().into_inner();
+        for pair in input {
+            match pair.as_rule() {
+                Rule::declaration => {
+                    let decl = eval!(Declaration::parse_from_pair, warnings, pair.clone());
+                    ast.push(AstNode {
+                        content: AstNodeContent::Declaration(decl),
+                        span: pair.as_span(),
+                    });
+                }
+                Rule::use_statement => {
+                    let stmt = UseStatement::parse_from_pair(pair.clone())?;
+                    ast.push(AstNode {
+                        content: AstNodeContent::UseStatement(stmt),
+                        span: pair.as_span(),
+                    });
+                }
+                _ => unreachable!(),
             }
-            Rule::use_statement => {
-                let stmt = UseStatement::parse_from_pair(pair.clone())?;
-                ast.push(AstNode {
-                    content: AstNodeContent::UseStatement(stmt),
-                    span: pair.as_span(),
-                });
-            }
+        }
+        match rule {
+            Rule::contract => fuel_ast.contract_ast = Some(ast),
+            Rule::script => fuel_ast.script_ast = Some(ast),
+            Rule::predicate => fuel_ast.predicate_ast = Some(ast),
             Rule::EOI => (),
-            a => return Err(CompileError::InvalidTopLevelItem(a, pair.into_span())),
+            a => return Err(CompileError::InvalidTopLevelItem(a, block.into_span())),
         }
     }
 
-    Ok((ast, warnings))
+    Ok((fuel_ast, warnings))
 }
 
 #[test]
 fn test_basic_prog() {
     let prog = parse(
         r#"
+        contract {
         struct MyStruct<T> {
             field_name: u64,
             other_field: T,
@@ -238,6 +262,7 @@ fn test_basic_prog() {
         return 5;
     }
     
+    }
     
     "#,
     );

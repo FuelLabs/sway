@@ -15,7 +15,11 @@ path_separator      =  {"::"}
 
 
 // top level
-program =  {SOI ~ (declaration|use_statement)* ~ EOI}
+program =  {SOI ~ (contract|script|predicate)* ~ EOI}
+
+contract = { "contract" ~ "{" ~ (declaration|use_statement)* ~ "}" }
+script = { "script" ~ "{" ~ (declaration|use_statement)* ~ "}" }
+predicate = { "predicate" ~ "{" ~ (declaration|use_statement)* ~ "}" }
 
 // expressions
 expr_inner =  _{literal_value|if_exp|"(" ~ expr ~ ")"|func_app|struct_expression|var_exp|array_exp|match_expression}
