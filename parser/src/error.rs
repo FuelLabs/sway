@@ -62,7 +62,7 @@ impl<'sc> Warning<'sc> {
 pub enum CompileError<'sc> {
     #[error("Error parsing input: expected {0:?}")]
     ParseFailure(#[from] pest::error::Error<Rule>),
-    #[error("Invalid top-level item: {0:?}")]
+    #[error("Invalid top-level item: {0:?}. A program should consist of a contract, script, or predicate at the top level.")]
     InvalidTopLevelItem(Rule, Span<'sc>),
     #[error("Internal compiler error: {0}. Please file an issue on the repository and include the code that triggered this error.")]
     Internal(&'static str, Span<'sc>),
