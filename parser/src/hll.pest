@@ -4,7 +4,7 @@ fn_decl_keyword     =  {"fn"}
 trait_decl_keyword  =  {"trait"}
 return_keyword      =  {"return"}
 use_keyword         =  {"use"}
-enum_keyword        = {"enum"}
+enum_keyword        = @{"enum"}
 match_keyword =    {"match"}
 mut_keyword = { "mut" }
 assign              = _{"="}
@@ -121,5 +121,5 @@ char          =  @{
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 ident          = @{!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*}
-reserved_words = { "ref" | "deref" | "struct" | enum_keyword |  match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
+reserved_words = {  "struct" | enum_keyword |  match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
 

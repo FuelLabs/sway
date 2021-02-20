@@ -1,9 +1,11 @@
+mod enum_declaration;
 mod function_declaration;
 mod struct_declaration;
 mod trait_declaration;
 mod type_parameter;
 mod variable_declaration;
 
+pub(crate) use enum_declaration::*;
 pub(crate) use function_declaration::*;
 pub(crate) use struct_declaration::*;
 pub(crate) use trait_declaration::*;
@@ -21,6 +23,7 @@ pub(crate) enum Declaration<'sc> {
     FunctionDeclaration(FunctionDeclaration<'sc>),
     TraitDeclaration(TraitDeclaration<'sc>),
     StructDeclaration(StructDeclaration<'sc>),
+    EnumDeclaration(EnumDeclaration<'sc>),
 }
 impl<'sc> Declaration<'sc> {
     pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
@@ -68,7 +71,12 @@ impl<'sc> Declaration<'sc> {
                 warnings,
                 decl_inner
             )),
-            _ => unreachable!("declarations don't have any other sub-types"),
+            Rule::enum_decl => Declaration::EnumDeclaration(eval!(
+                EnumDeclaration::parse_from_pair,
+                warnings,
+                decl_inner
+            )),
+            a => unreachable!("declarations don't have any other sub-types: {:?}", a),
         };
         Ok((parsed_declaration, warnings))
     }

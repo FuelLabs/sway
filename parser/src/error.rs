@@ -45,7 +45,9 @@ impl<'sc> CompileWarning<'sc> {
 #[derive(Debug, Clone)]
 pub enum Warning<'sc> {
     NonClassCaseStructName { struct_name: &'sc str },
+    NonClassCaseEnumName { enum_name: &'sc str },
     NonSnakeCaseStructFieldName { field_name: &'sc str },
+    NonSnakeCaseEnumVariantName { variant_name: &'sc str },
 }
 
 impl<'sc> Warning<'sc> {
@@ -53,7 +55,9 @@ impl<'sc> Warning<'sc> {
         use Warning::*;
         match self {
             NonClassCaseStructName{ struct_name } => format!("Struct \"{}\"'s capitalization is not idiomatic. Structs should have a ClassCase name, like \"{}\".", struct_name, to_class_case(struct_name)),
+            NonClassCaseEnumName{ enum_name} => format!("Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase name, like \"{}\".", enum_name, to_class_case(enum_name)),
             NonSnakeCaseStructFieldName { field_name } => format!("Struct field name \"{}\" is not idiomatic. Struct field names should have a snake_case name, like \"{}\".", field_name, to_snake_case(field_name)),
+            NonSnakeCaseEnumVariantName { variant_name } => format!("Enum variant name \"{}\" is not idiomatic. Enum variant names should have a snake_case name, like \"{}\".", variant_name, to_snake_case(variant_name)),
         }
     }
 }
