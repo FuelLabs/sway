@@ -12,7 +12,7 @@ pub(crate) use trait_declaration::*;
 pub(crate) use type_parameter::*;
 pub(crate) use variable_declaration::*;
 
-use crate::error::{CompileError, CompileResult};
+use crate::error::{ParseError, ParseResult};
 use crate::parse_tree::Expression;
 use crate::parser::{HllParser, Rule};
 use pest::iterators::Pair;
@@ -26,7 +26,7 @@ pub(crate) enum Declaration<'sc> {
     EnumDeclaration(EnumDeclaration<'sc>),
 }
 impl<'sc> Declaration<'sc> {
-    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut pair = decl.clone().into_inner();
         let decl_inner = pair.next().unwrap();

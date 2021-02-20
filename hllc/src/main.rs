@@ -90,7 +90,7 @@ fn format_warning(input: &str, err: &parser::CompileWarning) {
     println!("{}", formatted);
 }
 
-fn format_err(input: &str, err: parser::CompileError) {
+fn format_err(input: &str, err: parser::ParseError) {
     let metrics = DEFAULT_METRICS;
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 

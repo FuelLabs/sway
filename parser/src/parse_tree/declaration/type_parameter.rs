@@ -1,5 +1,5 @@
 use crate::parse_tree::Expression;
-use crate::{CodeBlock, CompileError, Rule};
+use crate::{CodeBlock, ParseError, Rule};
 use either::Either;
 use pest::iterators::Pair;
 #[derive(Debug, Clone)]
@@ -12,7 +12,7 @@ impl<'sc> TypeParameter<'sc> {
     pub(crate) fn parse_from_type_params_and_where_clause(
         type_params_pair: Option<Pair<'sc, Rule>>,
         where_clause_pair: Option<Pair<'sc, Rule>>,
-    ) -> Result<Vec<TypeParameter<'sc>>, CompileError<'sc>> {
+    ) -> Result<Vec<TypeParameter<'sc>>, ParseError<'sc>> {
         let mut params: Vec<TypeParameter> = match type_params_pair {
             Some(type_params_pair) => type_params_pair
                 .into_inner()
@@ -24,7 +24,7 @@ impl<'sc> TypeParameter<'sc> {
             None => {
                 // no type params specified, ensure where clause is empty
                 if let Some(where_clause_pair) = where_clause_pair {
-                    return Err(CompileError::UnexpectedWhereClause(
+                    return Err(ParseError::UnexpectedWhereClause(
                         where_clause_pair.as_span(),
                     ));
                 }
@@ -52,7 +52,7 @@ fn find_and_update_param<'sc>(
     mut params: Vec<TypeParameter<'sc>>,
     param_to_update: Pair<'sc, Rule>,
     trait_name_to_add: &'sc str,
-) -> Result<(), CompileError<'sc>> {
+) -> Result<(), ParseError<'sc>> {
     let mut found = false;
     for mut param in params {
         if param.name == param_to_update.as_str() {
@@ -63,7 +63,7 @@ fn find_and_update_param<'sc>(
         }
     }
     if !found {
-        return Err(CompileError::UndeclaredGenericTypeInWhereClause {
+        return Err(ParseError::UndeclaredGenericTypeInWhereClause {
             span: param_to_update.as_span(),
             type_name: param_to_update.as_str(),
         });

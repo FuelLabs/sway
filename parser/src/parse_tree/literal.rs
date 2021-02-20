@@ -1,5 +1,5 @@
 use crate::parser::Rule;
-use crate::CompileError;
+use crate::ParseError;
 use pest::iterators::Pair;
 use std::convert::TryInto;
 
@@ -13,11 +13,11 @@ pub(crate) enum Literal<'sc> {
 }
 
 impl<'sc> Literal<'sc> {
-    pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
         let lit_inner = lit.into_inner().next().unwrap();
         let parsed = match lit_inner.as_rule() {
             Rule::integer => Literal::Integer(lit_inner.as_str().trim().parse().map_err(|e| {
-                CompileError::Internal(
+                ParseError::Internal(
                     "Called incorrect internal parser on literal type.",
                     lit_inner.into_span(),
                 )
@@ -46,7 +46,7 @@ impl<'sc> Literal<'sc> {
                     a,
                     lit_inner.as_str()
                 );
-                return Err(CompileError::Unimplemented(a, lit_inner.as_span()));
+                return Err(ParseError::Unimplemented(a, lit_inner.as_span()));
             }
         };
 
@@ -54,11 +54,11 @@ impl<'sc> Literal<'sc> {
     }
 }
 
-fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, CompileError<'sc>> {
+fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, ParseError<'sc>> {
     let hex = &pair.as_str()[2..];
     Ok(match hex.len() {
         2 => Literal::Byte(u8::from_str_radix(hex, 16).map_err(|e| {
-            CompileError::Internal(
+            ParseError::Internal(
                 "Attempted to parse hex string from invalid hex",
                 pair.as_span(),
             )
@@ -68,11 +68,11 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
                 .chars()
                 .collect::<Vec<_>>()
                 .chunks(2)
-                .map(|two_hex_digits| -> Result<u8, CompileError> {
+                .map(|two_hex_digits| -> Result<u8, ParseError> {
                     let mut str_buf = String::new();
                     two_hex_digits.iter().for_each(|x| str_buf.push(*x));
                     Ok(u8::from_str_radix(&str_buf, 16).map_err(|_| {
-                        CompileError::Internal(
+                        ParseError::Internal(
                             "Attempted to parse individual byte from invalid hex string.",
                             pair.as_span(),
                         )
@@ -80,7 +80,7 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|e| {
-                CompileError::Internal(
+                ParseError::Internal(
                     "Attempted to parse bytes32 from hex literal of incorrect length. ",
                     pair.as_span(),
                 )
@@ -88,7 +88,7 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
             Literal::Byte32(arr)
         }
         a => {
-            return Err(CompileError::InvalidByteLiteralLength {
+            return Err(ParseError::InvalidByteLiteralLength {
                 span: pair.as_span(),
                 byte_length: a,
             })
@@ -96,12 +96,12 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
     })
 }
 
-fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, CompileError<'sc>> {
+fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, ParseError<'sc>> {
     let bin = &pair.as_str()[2..];
 
     Ok(match bin.len() {
         8 => Literal::Byte(u8::from_str_radix(bin, 2).map_err(|e| {
-            CompileError::Internal(
+            ParseError::Internal(
                 "Attempted to parse bin string from invalid bin string.",
                 pair.as_span(),
             )
@@ -111,11 +111,11 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Co
                 .chars()
                 .collect::<Vec<_>>()
                 .chunks(8)
-                .map(|eight_bin_digits| -> Result<u8, CompileError> {
+                .map(|eight_bin_digits| -> Result<u8, ParseError> {
                     let mut str_buf = String::new();
                     eight_bin_digits.iter().for_each(|x| str_buf.push(*x));
                     Ok(u8::from_str_radix(&str_buf, 2).map_err(|_| {
-                        CompileError::Internal(
+                        ParseError::Internal(
                             "Attempted to parse individual byte from invalid bin.",
                             pair.as_span(),
                         )
@@ -123,7 +123,7 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Co
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|e| {
-                CompileError::Internal(
+                ParseError::Internal(
                     "Attempted to parse bytes32 from bin literal of incorrect length. ",
                     pair.as_span(),
                 )
@@ -131,7 +131,7 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Co
             Literal::Byte32(arr)
         }
         a => {
-            return Err(CompileError::InvalidByteLiteralLength {
+            return Err(ParseError::InvalidByteLiteralLength {
                 span: pair.as_span(),
                 byte_length: a,
             })

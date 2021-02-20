@@ -1,5 +1,5 @@
 use crate::parse_tree::{declaration::TypeParameter, Expression};
-use crate::{CodeBlock, CompileError, Rule};
+use crate::{CodeBlock, ParseError, Rule};
 use either::Either;
 use pest::iterators::Pair;
 
@@ -14,7 +14,7 @@ pub(crate) struct FunctionDeclaration<'sc> {
 }
 
 impl<'sc> FunctionDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
         let mut parts = pair.clone().into_inner();
         let mut signature = parts.next().unwrap().into_inner();
         let _fn_keyword = signature.next().unwrap();
@@ -76,7 +76,7 @@ pub(crate) struct FunctionParameter<'sc> {
 impl<'sc> FunctionParameter<'sc> {
     pub(crate) fn list_from_pairs(
         pairs: impl Iterator<Item = Pair<'sc, Rule>>,
-    ) -> Result<Vec<FunctionParameter<'sc>>, CompileError<'sc>> {
+    ) -> Result<Vec<FunctionParameter<'sc>>, ParseError<'sc>> {
         pairs
             .map(|pair: Pair<'sc, Rule>| {
                 let mut parts = pair.clone().into_inner();
@@ -111,11 +111,11 @@ pub(crate) enum IntegerBits {
 }
 
 impl<'sc> TypeInfo<'sc> {
-    pub(crate) fn parse_from_pair(input: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn parse_from_pair(input: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
         let mut r#type = input.into_inner();
         Self::parse_from_pair_inner(r#type.next().unwrap())
     }
-    pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
         Ok(match input.as_str() {
             "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),

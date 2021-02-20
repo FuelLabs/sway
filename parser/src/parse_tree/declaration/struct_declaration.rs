@@ -1,4 +1,4 @@
-use crate::error::{CompileError, CompileResult, CompileWarning, Warning};
+use crate::error::{ParseError, ParseResult, CompileWarning, Warning};
 use crate::parse_tree::declaration::{TypeInfo, TypeParameter};
 use crate::parser::{HllParser, Rule};
 use inflector::cases::classcase::is_class_case;
@@ -19,7 +19,7 @@ pub(crate) struct StructField<'sc> {
 }
 
 impl<'sc> StructDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut decl = decl.into_inner();
         let name = decl.next().unwrap();
@@ -72,7 +72,7 @@ impl<'sc> StructDeclaration<'sc> {
 }
 
 impl<'sc> StructField<'sc> {
-    pub(crate) fn parse_from_pairs(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Vec<Self>> {
+    pub(crate) fn parse_from_pairs(pair: Pair<'sc, Rule>) -> ParseResult<'sc, Vec<Self>> {
         let mut warnings = Vec::new();
         let mut fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();

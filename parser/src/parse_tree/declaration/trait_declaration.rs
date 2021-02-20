@@ -1,5 +1,5 @@
 use super::{FunctionDeclaration, FunctionParameter, TypeInfo};
-use crate::error::CompileError;
+use crate::error::ParseError;
 use crate::parser::{HllParser, Rule};
 use either::*;
 use pest::iterators::Pair;
@@ -12,19 +12,19 @@ pub(crate) struct TraitDeclaration<'sc> {
 }
 
 impl<'sc> TraitDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
         let mut trait_parts = pair.into_inner();
         let _trait_keyword = trait_parts.next();
         let name = trait_parts.next().unwrap().as_str();
         let methods_and_interface = trait_parts
             .next()
-            .map(|if_some: Pair<'sc, Rule>| -> Result<_, CompileError> {
+            .map(|if_some: Pair<'sc, Rule>| -> Result<_, ParseError> {
                 if_some
                     .into_inner()
                     .map(
                         |fn_sig_or_decl| -> Result<
                             Either<TraitFn<'sc>, FunctionDeclaration<'sc>>,
-                            CompileError,
+                            ParseError,
                         > {
                             Ok(match fn_sig_or_decl.as_rule() {
                                 Rule::fn_signature => {
@@ -37,7 +37,7 @@ impl<'sc> TraitDeclaration<'sc> {
                             })
                         },
                     )
-                    .collect::<Result<Vec<_>, CompileError>>()
+                    .collect::<Result<Vec<_>, ParseError>>()
             })
             .unwrap_or_else(|| Ok(Vec::new()))?;
 
@@ -64,7 +64,7 @@ struct TraitFn<'sc> {
 }
 
 impl<'sc> TraitFn<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
         let mut signature = pair.clone().into_inner();
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap().as_str();

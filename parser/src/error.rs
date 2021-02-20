@@ -24,7 +24,7 @@ macro_rules! assert_or_warn {
     };
 }
 
-pub type CompileResult<'sc, T> = Result<(T, Vec<CompileWarning<'sc>>), CompileError<'sc>>;
+pub type ParseResult<'sc, T> = Result<(T, Vec<CompileWarning<'sc>>), ParseError<'sc>>;
 
 #[derive(Debug, Clone)]
 pub struct CompileWarning<'sc> {
@@ -63,7 +63,7 @@ impl<'sc> Warning<'sc> {
 }
 
 #[derive(Debug, Error)]
-pub enum CompileError<'sc> {
+pub enum ParseError<'sc> {
     #[error("Error parsing input: expected {0:?}")]
     ParseFailure(#[from] pest::error::Error<Rule>),
     #[error("Invalid top-level item: {0:?}. A program should consist of a contract, script, or predicate at the top level.")]
@@ -87,9 +87,9 @@ pub enum CompileError<'sc> {
     },
 }
 
-impl<'sc> CompileError<'sc> {
+impl<'sc> ParseError<'sc> {
     pub fn span(&self) -> (usize, usize) {
-        use CompileError::*;
+        use ParseError::*;
         match self {
             ParseFailure(err) => match err.location {
                 pest::error::InputLocation::Pos(num) => (num, num + 1),
@@ -108,7 +108,7 @@ impl<'sc> CompileError<'sc> {
 
     pub fn to_friendly_error_string(&self) -> String {
         match self {
-            CompileError::ParseFailure(err) => format!(
+            ParseError::ParseFailure(err) => format!(
                 "Error parsing input: {}",
                 match &err.variant {
                     pest::error::ErrorVariant::ParsingError {

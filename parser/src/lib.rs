@@ -12,14 +12,16 @@ use crate::parse_tree::{
 };
 use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
-pub use error::{CompileError, CompileResult, CompileWarning};
 use pest::iterators::Pair;
-use pest::{Parser, Span};
+use pest::Parser;
 use std::collections::HashMap;
+
+pub use error::{ParseError, ParseResult, CompileWarning};
+pub use pest::Span;
 
 // todo rename to language name
 #[derive(Debug)]
-pub struct FuelAst<'sc> {
+pub struct HllParseTree<'sc> {
     pub contract_ast: Option<ParseTree<'sc>>,
     pub script_ast: Option<ParseTree<'sc>>,
     pub predicate_ast: Option<ParseTree<'sc>>,
@@ -55,7 +57,7 @@ struct ReturnStatement<'sc> {
 }
 
 impl<'sc> ReturnStatement<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut inner = pair.into_inner();
         let _ret_keyword = inner.next();
@@ -80,7 +82,7 @@ pub(crate) struct CodeBlock<'sc> {
 }
 
 impl<'sc> CodeBlock<'sc> {
-    fn parse_from_pair(block: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    fn parse_from_pair(block: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
         let mut warnings = Vec::new();
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
@@ -115,7 +117,7 @@ impl<'sc> CodeBlock<'sc> {
                 }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
-                    return Err(CompileError::Unimplemented(a, pair.as_span()));
+                    return Err(ParseError::Unimplemented(a, pair.as_span()));
                 }
             })
         }
@@ -141,7 +143,7 @@ impl<'sc> ParseTree<'sc> {
     }
 }
 
-pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, FuelAst<'sc>> {
+pub fn parse<'sc>(input: &'sc str) -> ParseResult<'sc, HllParseTree<'sc>> {
     let mut parsed = HllParser::parse(Rule::program, input)?;
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let res = eval!(
@@ -157,9 +159,9 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, FuelAst<'sc>> {
 // sub-nodes
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
-) -> CompileResult<'sc, FuelAst<'sc>> {
+) -> ParseResult<'sc, HllParseTree<'sc>> {
     let mut warnings = Vec::new();
-    let mut fuel_ast = FuelAst {
+    let mut fuel_ast = HllParseTree {
         contract_ast: None,
         script_ast: None,
         predicate_ast: None,
@@ -192,7 +194,7 @@ fn parse_root_from_pairs<'sc>(
             Rule::script => fuel_ast.script_ast = Some(parse_tree),
             Rule::predicate => fuel_ast.predicate_ast = Some(parse_tree),
             Rule::EOI => (),
-            a => return Err(CompileError::InvalidTopLevelItem(a, block.into_span())),
+            a => return Err(ParseError::InvalidTopLevelItem(a, block.into_span())),
         }
     }
 

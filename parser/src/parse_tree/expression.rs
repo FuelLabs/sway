@@ -1,6 +1,6 @@
 use crate::parse_tree::Literal;
 #[macro_use]
-use crate::error::{CompileError, CompileResult};
+use crate::error::{ParseError, ParseResult};
 use crate::parser::{HllParser, Rule};
 use crate::CodeBlock;
 use either::Either;
@@ -38,7 +38,7 @@ pub(crate) struct StructExpressionField<'sc> {
 }
 
 impl<'sc> Expression<'sc> {
-    pub(crate) fn parse_from_pair(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(expr: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut warnings = Vec::new();
         let expr_for_debug = expr.clone();
         let mut expr_iter = expr.into_inner();
@@ -55,7 +55,7 @@ impl<'sc> Expression<'sc> {
             let next_expr = match expr_iter.next() {
                 Some(o) => eval!(Expression::parse_from_pair_inner, warnings, o),
                 None => {
-                    return Err(CompileError::ExpectedExprAfterOp {
+                    return Err(ParseError::ExpectedExprAfterOp {
                         op: op_str,
                         span: expr_for_debug.as_span(),
                     })
@@ -75,14 +75,14 @@ impl<'sc> Expression<'sc> {
             Ok((first_expr, warnings))
         } else {
             eprintln!("Haven't yet implemented operator precedence");
-            Err(CompileError::Unimplemented(
+            Err(ParseError::Unimplemented(
                 Rule::op,
                 expr_for_debug.into_span(),
             ))
         }
     }
 
-    pub(crate) fn parse_from_pair_inner(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair_inner(expr: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut warnings = Vec::new();
         let parsed = match expr.as_rule() {
             Rule::literal_value => Expression::Literal(Literal::parse_from_pair(expr)?),
@@ -178,7 +178,7 @@ impl<'sc> Expression<'sc> {
                     expr.as_str(),
                     expr.as_span()
                 );
-                return Err(CompileError::Unimplemented(a, expr.as_span()));
+                return Err(ParseError::Unimplemented(a, expr.as_span()));
             }
         };
         Ok((parsed, warnings))
@@ -198,13 +198,13 @@ pub(crate) enum MatchCondition<'sc> {
 }
 
 impl<'sc> MatchBranch<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut branch = pair.clone().into_inner();
         let condition = match branch.next() {
             Some(o) => o,
             None => {
-                return Err(CompileError::Internal(
+                return Err(ParseError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
                     pair.as_span(),
                 ))
@@ -221,7 +221,7 @@ impl<'sc> MatchBranch<'sc> {
         let result = match branch.next() {
             Some(o) => o,
             None => {
-                return Err(CompileError::Internal(
+                return Err(ParseError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
                     pair.as_span(),
                 ))
@@ -247,13 +247,13 @@ pub(crate) enum UnaryOp {
 }
 
 impl UnaryOp {
-    fn parse_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Self, CompileError<'sc>> {
+    fn parse_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
         use UnaryOp::*;
         match pair.as_str() {
             "!" => Ok(Not),
             "ref" => Ok(Ref),
             "deref" => Ok(Deref),
-            _ => Err(CompileError::Internal(
+            _ => Err(ParseError::Internal(
                 "Attempted to parse unary op from invalid op string.",
                 pair.as_span(),
             )),
@@ -272,7 +272,7 @@ pub(crate) struct VarName<'sc> {
 }
 
 impl<'sc> VarName<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<VarName<'sc>, CompileError<'sc>> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<VarName<'sc>, ParseError<'sc>> {
         let mut names = pair.into_inner();
         let primary_name = names.next().unwrap().as_str();
         let sub_names = names.map(|x| x.as_str()).collect();
@@ -283,7 +283,7 @@ impl<'sc> VarName<'sc> {
     }
 }
 
-fn parse_op<'sc>(op: Pair<'sc, Rule>) -> Result<Op, CompileError<'sc>> {
+fn parse_op<'sc>(op: Pair<'sc, Rule>) -> Result<Op, ParseError<'sc>> {
     use Op::*;
     Ok(match op.as_str() {
         "+" => Add,
@@ -299,7 +299,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>) -> Result<Op, CompileError<'sc>> {
         "|" => BinaryOr,
         "&" => BinaryAnd,
         a => {
-            return Err(CompileError::ExpectedOp {
+            return Err(ParseError::ExpectedOp {
                 op: a,
                 span: op.as_span(),
             })
