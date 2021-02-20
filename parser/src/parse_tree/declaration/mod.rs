@@ -10,8 +10,8 @@ pub(crate) use trait_declaration::*;
 pub(crate) use type_parameter::*;
 pub(crate) use variable_declaration::*;
 
-use crate::ast::Expression;
 use crate::error::{CompileError, CompileResult};
+use crate::parse_tree::Expression;
 use crate::parser::{HllParser, Rule};
 use pest::iterators::Pair;
 

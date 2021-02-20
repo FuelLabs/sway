@@ -1,4 +1,4 @@
-use crate::ast::{declaration::TypeParameter, Expression};
+use crate::parse_tree::{declaration::TypeParameter, Expression};
 use crate::{CodeBlock, CompileError, Rule};
 use either::Either;
 use pest::iterators::Pair;

@@ -1,5 +1,5 @@
-use crate::ast::declaration::{TypeInfo, TypeParameter};
 use crate::error::{CompileError, CompileResult, CompileWarning, Warning};
+use crate::parse_tree::declaration::{TypeInfo, TypeParameter};
 use crate::parser::{HllParser, Rule};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;

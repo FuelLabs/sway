@@ -1,4 +1,4 @@
-use crate::ast::Literal;
+use crate::parse_tree::Literal;
 #[macro_use]
 use crate::error::{CompileError, CompileResult};
 use crate::parser::{HllParser, Rule};

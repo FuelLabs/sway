@@ -4,10 +4,10 @@ extern crate pest_derive;
 #[macro_use]
 mod error;
 
-mod ast;
+mod parse_tree;
 mod parser;
-use crate::ast::*;
-use crate::ast::{
+use crate::parse_tree::*;
+use crate::parse_tree::{
     Expression, FunctionDeclaration, FunctionParameter, Literal, TypeInfo, UseStatement,
 };
 use crate::parser::{HllParser, Rule};
@@ -20,13 +20,13 @@ use std::collections::HashMap;
 // todo rename to language name
 #[derive(Debug)]
 pub struct FuelAst<'sc> {
-    pub contract_ast: Option<Ast<'sc>>,
-    pub script_ast: Option<Ast<'sc>>,
-    pub predicate_ast: Option<Ast<'sc>>,
+    pub contract_ast: Option<ParseTree<'sc>>,
+    pub script_ast: Option<ParseTree<'sc>>,
+    pub predicate_ast: Option<ParseTree<'sc>>,
 }
 
 #[derive(Debug)]
-pub struct Ast<'sc> {
+pub struct ParseTree<'sc> {
     /// In a typical program, you might have a single root node for your syntax tree.
     /// In this language however, we want to expose multiple public functions at the root
     /// level so the tree is multi-root.
@@ -127,15 +127,15 @@ impl<'sc> CodeBlock<'sc> {
     }
 }
 
-impl Ast<'_> {
+impl ParseTree<'_> {
     pub(crate) fn new() -> Self {
-        Ast {
+        ParseTree {
             root_nodes: Vec::new(),
         }
     }
 }
 
-impl<'sc> Ast<'sc> {
+impl<'sc> ParseTree<'sc> {
     pub(crate) fn push(&mut self, new_node: AstNode<'sc>) {
         self.root_nodes.push(new_node);
     }
@@ -165,21 +165,21 @@ fn parse_root_from_pairs<'sc>(
         predicate_ast: None,
     };
     for block in input {
-        let mut ast = Ast::new();
+        let mut parse_tree = ParseTree::new();
         let rule = block.as_rule();
         let input = block.clone().into_inner();
         for pair in input {
             match pair.as_rule() {
                 Rule::declaration => {
                     let decl = eval!(Declaration::parse_from_pair, warnings, pair.clone());
-                    ast.push(AstNode {
+                    parse_tree.push(AstNode {
                         content: AstNodeContent::Declaration(decl),
                         span: pair.as_span(),
                     });
                 }
                 Rule::use_statement => {
                     let stmt = UseStatement::parse_from_pair(pair.clone())?;
-                    ast.push(AstNode {
+                    parse_tree.push(AstNode {
                         content: AstNodeContent::UseStatement(stmt),
                         span: pair.as_span(),
                     });
@@ -188,9 +188,9 @@ fn parse_root_from_pairs<'sc>(
             }
         }
         match rule {
-            Rule::contract => fuel_ast.contract_ast = Some(ast),
-            Rule::script => fuel_ast.script_ast = Some(ast),
-            Rule::predicate => fuel_ast.predicate_ast = Some(ast),
+            Rule::contract => fuel_ast.contract_ast = Some(parse_tree),
+            Rule::script => fuel_ast.script_ast = Some(parse_tree),
+            Rule::predicate => fuel_ast.predicate_ast = Some(parse_tree),
             Rule::EOI => (),
             a => return Err(CompileError::InvalidTopLevelItem(a, block.into_span())),
         }
@@ -204,6 +204,21 @@ fn test_basic_prog() {
     let prog = parse(
         r#"
         contract {
+
+    enum yo
+    <T> 
+    where 
+    T: IsAThing
+    {
+        x: u32,
+        y: MyStruct<u32>
+    }
+
+    enum  MyOtherSumType 
+    {
+        x: u32,
+        y: MyStruct<u32>
+    }
         struct MyStruct<T> {
             field_name: u64,
             other_field: T,
@@ -233,6 +248,12 @@ fn test_basic_prog() {
                _ => { return false; },
           };
     }
+
+    struct MyStruct {
+        test: string,
+    }
+
+
 
     use stdlib::println;
 

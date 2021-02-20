@@ -4,6 +4,7 @@ fn_decl_keyword     =  {"fn"}
 trait_decl_keyword  =  {"trait"}
 return_keyword      =  {"return"}
 use_keyword         =  {"use"}
+enum_keyword        = {"enum"}
 match_keyword =    {"match"}
 mut_keyword = { "mut" }
 assign              = _{"="}
@@ -17,7 +18,7 @@ path_separator      =  {"::"}
 // top level
 program =  {SOI ~ (contract|script|predicate)* ~ EOI}
 
-contract = { "contract" ~ "{" ~ (declaration|use_statement)* ~ "}" }
+contract = { "contract" ~ "{" ~ (declaration|use_statement|expr)* ~ "}" }
 script = { "script" ~ "{" ~ (declaration|use_statement)* ~ "}" }
 predicate = { "predicate" ~ "{" ~ (declaration|use_statement)* ~ "}" }
 
@@ -63,7 +64,7 @@ struct_expr_fields = { struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name
 array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
 // declarations 
-declaration =  {(var_decl|fn_decl|trait_decl|struct_decl)}
+declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl)}
 var_decl    =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription = { ":" ~ type_name}
 fn_decl     =  {fn_signature ~ code_block}
@@ -74,6 +75,11 @@ struct_decl = { "struct" ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ st
 struct_name = @{ident}
 struct_fields = { struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","? }
 struct_field_name = @{ident}
+// // enum declaration
+enum_decl = { enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}" }
+enum_fields = { enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","? }
+enum_name = @{ident} 
+enum_field_name = @{ident}
 
 // // fn declaration
 fn_decl_params =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
@@ -81,7 +87,7 @@ type_params = { "<" ~ generic_type_param ~ (", " ~ generic_type_param)* ~ ">" }
 fn_decl_param  =  {("self")? ~ ident ~ ":" ~ type_name}
 return_type    =  {ident}
 fn_decl_name   =  @{ident}
-type_name      =  @{ident}
+type_name      =  @{ident ~ type_params?}
 trait_bounds   =  { "where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)* }
 generic_type_param = @{ident}
 
@@ -115,5 +121,5 @@ char          =  @{
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 ident          = @{!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*}
-reserved_words = { match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
+reserved_words = { "ref" | "deref" | "struct" | enum_keyword |  match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
 
