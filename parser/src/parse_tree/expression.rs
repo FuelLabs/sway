@@ -5,17 +5,19 @@ use crate::parser::{HllParser, Rule};
 use crate::CodeBlock;
 use either::Either;
 use pest::iterators::Pair;
+use pest::Span;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Expression<'sc> {
     Literal(Literal<'sc>),
     FunctionApplication {
-        name: &'sc str,
+        name: VarName<'sc>,
         arguments: Vec<Expression<'sc>>,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,
         name: VarName<'sc>,
+        name_span: Span<'sc>,
     },
     Unit,
     Array {
@@ -88,7 +90,7 @@ impl<'sc> Expression<'sc> {
             Rule::literal_value => Expression::Literal(Literal::parse_from_pair(expr)?),
             Rule::func_app => {
                 let mut func_app_parts = expr.into_inner();
-                let name = func_app_parts.next().unwrap().as_str();
+                let name = VarName::parse_from_pair(func_app_parts.next().unwrap())?;
                 let arguments = func_app_parts.next();
                 let arguments = arguments.map(|x| {
                     x.into_inner()
@@ -114,12 +116,14 @@ impl<'sc> Expression<'sc> {
                 // token is the actual expr value
                 let mut unary_op = None;
                 let mut name = None;
+                let mut name_span = None;
                 while let Some(pair) = var_exp_parts.next() {
                     match pair.as_rule() {
                         Rule::unary_op => {
                             unary_op = Some(UnaryOp::parse_from_pair(pair)?);
                         }
                         Rule::var_name_ident => {
+                            name_span = Some(pair.as_span());
                             name = Some(VarName::parse_from_pair(pair)?);
                         }
                         a => unreachable!("what is this? {:?} {}", a, pair.as_str()),
@@ -127,7 +131,12 @@ impl<'sc> Expression<'sc> {
                 }
                 // this is non-optional and part of the parse rule so it won't fail
                 let name = name.unwrap();
-                Expression::VariableExpression { name, unary_op }
+                let name_span = name_span.unwrap();
+                Expression::VariableExpression {
+                    name,
+                    unary_op,
+                    name_span,
+                }
             }
             Rule::array_exp => {
                 let mut array_exps = expr.into_inner();
@@ -261,24 +270,27 @@ impl UnaryOp {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct VarName<'sc> {
-    primary_name: &'sc str,
+    pub(crate) primary_name: &'sc str,
     // sub-names are the stuff after periods
     // like x.test.thing.method()
     // `test`, `thing`, and `method` are sub-names
     // the primary name is `x`
-    sub_names: Vec<&'sc str>,
+    pub(crate) sub_names: Vec<&'sc str>,
+    pub(crate) span: Span<'sc>,
 }
 
 impl<'sc> VarName<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<VarName<'sc>, ParseError<'sc>> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<VarName<'sc>, ParseError<'sc>> {
+        let span = pair.as_span();
         let mut names = pair.into_inner();
         let primary_name = names.next().unwrap().as_str();
         let sub_names = names.map(|x| x.as_str()).collect();
         Ok(VarName {
             primary_name,
             sub_names,
+            span,
         })
     }
 }

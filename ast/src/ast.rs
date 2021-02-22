@@ -1,11 +1,11 @@
 use parser::{HllParseTree, Span};
 
-/// The initial typed syntax tree generated from source code. 
+/// The initial typed syntax tree generated from source code.
 pub(crate) struct Ast<'sc> {
-    abi: Vec<Function<'sc>>
+    abi: Vec<Function<'sc>>,
 }
 
-pub(crate) struct Function <'sc> {
+pub(crate) struct Function<'sc> {
     visibility: FunctionVisibility,
     name: &'sc str,
     type_parameters: Vec<TypeParameter<'sc>>,
@@ -21,11 +21,11 @@ enum FunctionVisibility {
     Private,
 }
 
-struct Type <'sc> {
+struct Type<'sc> {
     todo: &'sc str,
 }
 
-pub struct TypeParameter <'sc> { 
+pub struct TypeParameter<'sc> {
     todo: &'sc str,
 }
 
@@ -37,8 +37,7 @@ pub struct Expression<'sc> {
     todo: &'sc str,
 }
 
-
-impl <'sc> std::convert::From<HllParseTree<'sc>> for Ast <'sc> {
+impl<'sc> std::convert::From<HllParseTree<'sc>> for Ast<'sc> {
     fn from(ptree: HllParseTree<'sc>) -> Self {
         todo!()
     }

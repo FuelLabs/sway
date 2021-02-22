@@ -85,6 +85,12 @@ pub enum ParseError<'sc> {
         type_name: &'sc str,
         span: Span<'sc>,
     },
+    #[error("Program contains multiple contracts. A valid program should only contain at most one contract.")]
+    MultipleContracts(Span<'sc>),
+    #[error("Program contains multiple scripts. A valid program should only contain at most one script.")]
+    MultipleScripts(Span<'sc>),
+    #[error("Program contains multiple predicates. A valid program should only contain at most one predicate.")]
+    MultiplePredicates(Span<'sc>),
 }
 
 impl<'sc> ParseError<'sc> {
@@ -103,6 +109,9 @@ impl<'sc> ParseError<'sc> {
             ExpectedOp { span, .. } => (span.start(), span.end()),
             UnexpectedWhereClause(sp) => (sp.start(), sp.end()),
             UndeclaredGenericTypeInWhereClause { span, .. } => (span.start(), span.end()),
+            MultiplePredicates(sp) => (sp.start(), sp.end()),
+            MultipleScripts(sp) => (sp.start(), sp.end()),
+            MultipleContracts(sp) => (sp.start(), sp.end()),
         }
     }
 

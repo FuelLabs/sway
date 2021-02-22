@@ -1,4 +1,4 @@
-use crate::parse_tree::{declaration::TypeParameter, Expression};
+use crate::parse_tree::{declaration::TypeParameter, Expression, VarName};
 use crate::{CodeBlock, ParseError, Rule};
 use either::Either;
 use pest::iterators::Pair;
@@ -69,8 +69,8 @@ impl<'sc> FunctionDeclaration<'sc> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct FunctionParameter<'sc> {
-    name: &'sc str,
-    r#type: TypeInfo<'sc>,
+    pub(crate) name: &'sc str,
+    pub(crate) r#type: TypeInfo<'sc>,
 }
 
 impl<'sc> FunctionParameter<'sc> {
@@ -101,6 +101,8 @@ pub(crate) enum TypeInfo<'sc> {
     Generic { name: &'sc str },
     Unit,
     SelfType,
+    Byte,
+    Byte32,
 }
 #[derive(Debug, Clone)]
 pub(crate) enum IntegerBits {
@@ -108,6 +110,7 @@ pub(crate) enum IntegerBits {
     Sixteen,
     ThirtyTwo,
     SixtyFour,
+    OneTwentyEight,
 }
 
 impl<'sc> TypeInfo<'sc> {
@@ -121,10 +124,16 @@ impl<'sc> TypeInfo<'sc> {
             "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
             "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
             "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            "u128" => TypeInfo::UnsignedInteger(IntegerBits::OneTwentyEight),
             "bool" => TypeInfo::Boolean,
             "string" => TypeInfo::String,
             "unit" => TypeInfo::Unit,
             other => TypeInfo::Generic { name: other },
         })
+    }
+
+    pub(crate) fn is_convertable(&self, other: &Option<&'sc TypeInfo<'sc>> ) -> bool {
+        // TODO check if self can be cast to other
+        return true;
     }
 }

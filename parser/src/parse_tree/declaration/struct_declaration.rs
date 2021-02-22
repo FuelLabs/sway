@@ -1,4 +1,4 @@
-use crate::error::{ParseError, ParseResult, CompileWarning, Warning};
+use crate::error::{CompileWarning, ParseError, ParseResult, Warning};
 use crate::parse_tree::declaration::{TypeInfo, TypeParameter};
 use crate::parser::{HllParser, Rule};
 use inflector::cases::classcase::is_class_case;

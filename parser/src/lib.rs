@@ -6,8 +6,9 @@ mod error;
 
 mod parse_tree;
 mod parser;
+mod semantics;
 use crate::parse_tree::*;
-use crate::parse_tree::{
+pub(crate) use crate::parse_tree::{
     Expression, FunctionDeclaration, FunctionParameter, Literal, TypeInfo, UseStatement,
 };
 use crate::parser::{HllParser, Rule};
@@ -16,7 +17,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use std::collections::HashMap;
 
-pub use error::{ParseError, ParseResult, CompileWarning};
+pub use error::{CompileWarning, ParseError, ParseResult};
 pub use pest::Span;
 
 // todo rename to language name
@@ -42,7 +43,7 @@ struct AstNode<'sc> {
 }
 
 #[derive(Debug, Clone)]
-enum AstNodeContent<'sc> {
+pub(crate) enum AstNodeContent<'sc> {
     UseStatement(UseStatement<'sc>),
     CodeBlock(CodeBlock<'sc>),
     ReturnStatement(ReturnStatement<'sc>),
@@ -190,9 +191,24 @@ fn parse_root_from_pairs<'sc>(
             }
         }
         match rule {
-            Rule::contract => fuel_ast.contract_ast = Some(parse_tree),
-            Rule::script => fuel_ast.script_ast = Some(parse_tree),
-            Rule::predicate => fuel_ast.predicate_ast = Some(parse_tree),
+            Rule::contract => {
+                if fuel_ast.contract_ast.is_some() {
+                    return Err(ParseError::MultipleContracts(block.as_span()));
+                }
+                fuel_ast.contract_ast = Some(parse_tree);
+            }
+            Rule::script => {
+                if fuel_ast.script_ast.is_some() {
+                    return Err(ParseError::MultipleScripts(block.as_span()));
+                }
+                fuel_ast.script_ast = Some(parse_tree);
+            }
+            Rule::predicate => {
+                if fuel_ast.predicate_ast.is_some() {
+                    return Err(ParseError::MultiplePredicates(block.as_span()));
+                }
+                fuel_ast.predicate_ast = Some(parse_tree);
+            }
             Rule::EOI => (),
             a => return Err(ParseError::InvalidTopLevelItem(a, block.into_span())),
         }
