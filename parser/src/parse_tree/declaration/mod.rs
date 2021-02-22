@@ -13,7 +13,7 @@ pub(crate) use type_parameter::*;
 pub(crate) use variable_declaration::*;
 
 use crate::error::{ParseError, ParseResult};
-use crate::parse_tree::Expression;
+use crate::parse_tree::{Expression, VarName};
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
 use pest::iterators::Pair;
@@ -42,10 +42,10 @@ impl<'sc> Declaration<'sc> {
                 let _let_keyword = var_decl_parts.next();
                 let maybe_mut_keyword = var_decl_parts.next().unwrap();
                 let is_mutable = maybe_mut_keyword.as_rule() == Rule::mut_keyword;
-                let name: &'sc str = if is_mutable {
-                    var_decl_parts.next().unwrap().as_str().trim()
+                let name_pair = if is_mutable {
+                    var_decl_parts.next().unwrap()
                 } else {
-                    maybe_mut_keyword.as_str().trim()
+                    maybe_mut_keyword
                 };
                 let mut maybe_body = var_decl_parts.next().unwrap();
                 let type_ascription = match maybe_body.as_rule() {
@@ -60,7 +60,7 @@ impl<'sc> Declaration<'sc> {
                     invert(type_ascription.map(|x| TypeInfo::parse_from_pair(x)))?;
                 let body = eval!(Expression::parse_from_pair, warnings, maybe_body);
                 Declaration::VariableDeclaration(VariableDeclaration {
-                    name,
+                    name: VarName::parse_from_pair(name_pair)?,
                     body,
                     is_mutable,
                     type_ascription,

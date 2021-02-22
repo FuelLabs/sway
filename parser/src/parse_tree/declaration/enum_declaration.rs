@@ -5,11 +5,13 @@ use crate::types::TypeInfo;
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
+use pest::Span;
 #[derive(Debug, Clone)]
 pub(crate) struct EnumDeclaration<'sc> {
     pub(crate) name: &'sc str,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) variants: Vec<EnumVariant<'sc>>,
+    pub(crate) span: Span<'sc>,
 }
 
 #[derive(Debug, Clone)]
@@ -20,6 +22,7 @@ pub(crate) struct EnumVariant<'sc> {
 
 impl<'sc> EnumDeclaration<'sc> {
     pub(crate) fn parse_from_pair(decl_inner: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
+        let whole_enum_span = decl_inner.as_span();
         let mut warnings = Vec::new();
         let mut inner = decl_inner.into_inner();
         let _enum_keyword = inner.next().unwrap();
@@ -66,6 +69,7 @@ impl<'sc> EnumDeclaration<'sc> {
                 name,
                 type_parameters,
                 variants,
+                span: whole_enum_span,
             },
             warnings,
         ))

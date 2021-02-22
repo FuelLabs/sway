@@ -21,7 +21,7 @@ pub(crate) struct TypedAstNode<'sc> {
 #[derive(Clone)]
 pub(crate) enum TypedAstNodeContent<'sc> {
     UseStatement(UseStatement<'sc>),
-    CodeBlock(TypedCodeBlock<'sc>),
+    //    CodeBlock(TypedCodeBlock<'sc>),
     ReturnStatement(ReturnStatement<'sc>),
     Declaration(Declaration<'sc>),
     Expression(TypedExpression<'sc>),
@@ -39,7 +39,7 @@ enum IsConstant {
 #[derive(Clone)]
 pub(crate) enum TypedDeclaration<'sc> {
     VariableDeclaration(TypedVariableDeclaration<'sc>),
-    FunctionDeclaration(FunctionDeclaration<'sc>),
+    FunctionDeclaration(TypedFunctionDeclaration<'sc>),
     TraitDeclaration(TraitDeclaration<'sc>),
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
@@ -61,9 +61,19 @@ impl<'sc> TypedDeclaration<'sc> {
 
 #[derive(Clone)]
 pub(crate) struct TypedVariableDeclaration<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: VarName<'sc>,
     pub(crate) body: TypedExpression<'sc>, // will be codeblock variant
     pub(crate) is_mutable: bool,
+}
+
+#[derive(Clone)]
+pub(crate) struct TypedFunctionDeclaration<'sc> {
+    pub(crate) name: &'sc str,
+    pub(crate) body: TypedCodeBlock<'sc>,
+    pub(crate) parameters: Vec<FunctionParameter<'sc>>,
+    pub(crate) span: pest::Span<'sc>,
+    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
 }
 
 #[derive(Clone)]
@@ -191,7 +201,7 @@ impl<'sc> TypedExpression<'sc> {
             Expression::FunctionApplication { name, arguments } => {
                 let function_declaration = namespace.get(&name);
                 match function_declaration {
-                    Some(TypedDeclaration::FunctionDeclaration(FunctionDeclaration {
+                    Some(TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                         parameters,
                         return_type,
                         ..
@@ -335,7 +345,76 @@ fn type_check_node<'sc>(
                 AstNodeContent::UseStatement(a) => {
                     todo!("Insert things from use statement into namespace")
                 }
-                AstNodeContent::Declaration(a) => todo!("Insert into namespace"),
+                AstNodeContent::Declaration(a) => {
+                    let typed_decl = match a {
+                        Declaration::VariableDeclaration(VariableDeclaration {
+                            name,
+                            type_ascription,
+                            body,
+                            is_mutable,
+                        }) => {
+                            let (body, mut l_warnings) = TypedExpression::type_check(
+                                body,
+                                namespace.clone(),
+                                type_ascription,
+                            )?;
+                            warnings.append(&mut l_warnings);
+                            let body =
+                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                                    name: name.clone(),
+                                    body,
+                                    is_mutable,
+                                });
+                            namespace.insert(name, body);
+                        }
+                        Declaration::EnumDeclaration(e) => {
+                            namespace.insert(
+                                VarName {
+                                    primary_name: e.name,
+                                    sub_names: Vec::new(),
+                                    span: e.span.clone(),
+                                },
+                                TypedDeclaration::EnumDeclaration(e),
+                            );
+                        }
+                        Declaration::FunctionDeclaration(FunctionDeclaration {
+                            name,
+                            body,
+                            parameters,
+                            span,
+                            return_type,
+                            type_parameters,
+                        }) => {
+                            // TODO write below fn
+                            let (body, mut l_warnings) = TypedCodeBlock::type_check(
+                                body,
+                                namespace.clone(),
+                                None, /* TODO is there an annotation i can do here? */
+                            )?;
+                            warnings.append(&mut l_warnings);
+                            namespace.insert(
+                                VarName {
+                                    primary_name: name,
+                                    sub_names: Vec::new(),
+                                    span,
+                                },
+                                TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
+                                    name,
+                                    body,
+                                    parameters,
+                                    span,
+                                    return_type,
+                                    type_parameters,
+                                }),
+                            );
+                            todo!()
+                        }
+
+                        _ => todo!(),
+                    };
+
+                    todo!()
+                }
                 AstNodeContent::TraitDeclaration(a) => TypedAstNodeContent::TraitDeclaration(a),
                 AstNodeContent::Expression(a) => {
                     let (inner, mut l_warnings) =
