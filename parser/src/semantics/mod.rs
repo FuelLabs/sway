@@ -1,6 +1,6 @@
 use crate::parse_tree::*;
-use either::Either;
 use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement};
+use either::Either;
 use std::collections::HashMap;
 mod error;
 use error::CompileError;
@@ -96,23 +96,23 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         fields: Vec<TypedStructExpressionField<'sc>>,
     },
 }
-#[derive( Clone)]
+#[derive(Clone)]
 pub(crate) struct TypedStructExpressionField<'sc> {
     name: &'sc str,
     value: TypedExpression<'sc>,
 }
-#[derive( Clone)]
+#[derive(Clone)]
 pub(crate) struct TypedMatchBranch<'sc> {
     condition: TypedMatchCondition<'sc>,
     result: Either<TypedCodeBlock<'sc>, TypedExpression<'sc>>,
 }
 
-#[derive( Clone)]
+#[derive(Clone)]
 pub(crate) enum TypedMatchCondition<'sc> {
     CatchAll,
     Expression(TypedExpression<'sc>),
 }
-#[derive( Clone)]
+#[derive(Clone)]
 pub(crate) struct TypedCodeBlock<'sc> {
     contents: Vec<TypedAstNode<'sc>>,
     scope: HashMap<&'sc str, TypedDeclaration<'sc>>,
@@ -122,10 +122,10 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check(
         other: Expression<'sc>,
         namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
-        type_annotation: Option<&TypeInfo>
+        type_annotation: Option<&TypeInfo>,
     ) -> Result<Self, CompileError<'sc>> {
-        let typed_expression =  match other.clone() {
-            Expression::Literal(lit) =>{ 
+        let typed_expression = match other.clone() {
+            Expression::Literal(lit) => {
                 let return_type = match lit {
                     Literal::String(_) => TypeInfo::String,
                     Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
@@ -140,25 +140,36 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression {
                     expression: TypedExpressionVariant::Literal(lit),
                     return_type,
-                    is_constant: IsConstant::Yes
+                    is_constant: IsConstant::Yes,
                 }
-            },
+            }
             Expression::VariableExpression {
-                name, name_span, unary_op
+                name,
+                name_span,
+                unary_op,
             } => match namespace.get(&name) {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body:
                         TypedExpression {
                             return_type,
                             is_constant,
-                            expression: TypedExpressionVariant::VariableExpression { unary_op, name, name_span }
+                            expression:
+                                TypedExpressionVariant::VariableExpression {
+                                    unary_op,
+                                    name,
+                                    name_span,
+                                },
                         },
                     ..
                 })) => TypedExpression {
-                            return_type: return_type.clone(),
-                            is_constant: *is_constant,
-                            expression: TypedExpressionVariant::VariableExpression { unary_op: unary_op.clone(), name: name.clone(), name_span: name_span.clone() }
-                        },
+                    return_type: return_type.clone(),
+                    is_constant: *is_constant,
+                    expression: TypedExpressionVariant::VariableExpression {
+                        unary_op: unary_op.clone(),
+                        name: name.clone(),
+                        name_span: name_span.clone(),
+                    },
+                },
                 Some(a) => {
                     return Err(CompileError::NotAVariable {
                         name: name_span.as_str(),
@@ -187,7 +198,17 @@ impl<'sc> TypedExpression<'sc> {
                         //
                         // namespace clone is necessary so interior mutations to namespace scope
                         // don't impact outer scope
-                        let typed_call_arguments = arguments.into_iter().zip(parameters.iter()).map(|(arg, param)| TypedExpression::type_check(arg, namespace.clone(), Some(&param.r#type))).collect::<Result<Vec<_>, _>>()?;
+                        let typed_call_arguments = arguments
+                            .into_iter()
+                            .zip(parameters.iter())
+                            .map(|(arg, param)| {
+                                TypedExpression::type_check(
+                                    arg,
+                                    namespace.clone(),
+                                    Some(&param.r#type),
+                                )
+                            })
+                            .collect::<Result<Vec<_>, _>>()?;
 
                         TypedExpression {
                             return_type: return_type.clone(),
@@ -198,8 +219,8 @@ impl<'sc> TypedExpression<'sc> {
                             is_constant: IsConstant::No,
                             expression: TypedExpressionVariant::FunctionApplication {
                                 arguments: typed_call_arguments,
-                                name: name.clone()
-                            }
+                                name: name.clone(),
+                            },
                         }
                     }
                     Some(a) => {
@@ -221,8 +242,11 @@ impl<'sc> TypedExpression<'sc> {
             _ => todo!(),
         };
         // if the return type cannot be cast into the annotation type then it is a type error
-        if !typed_expression.return_type.is_convertable(&type_annotation) {
-            return Err(todo!("type error"))
+        if !typed_expression
+            .return_type
+            .is_convertable(&type_annotation)
+        {
+            return Err(todo!("type error"));
         }
         Ok(typed_expression)
     }

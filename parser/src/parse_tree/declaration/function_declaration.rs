@@ -132,7 +132,7 @@ impl<'sc> TypeInfo<'sc> {
         })
     }
 
-    pub(crate) fn is_convertable(&self, other: &Option<&'sc TypeInfo<'sc>> ) -> bool {
+    pub(crate) fn is_convertable(&self, other: &Option<&'sc TypeInfo<'sc>>) -> bool {
         // TODO check if self can be cast to other
         return true;
     }
