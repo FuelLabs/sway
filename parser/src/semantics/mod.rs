@@ -121,7 +121,7 @@ pub(crate) struct TypedCodeBlock<'sc> {
 impl<'sc> TypedExpression<'sc> {
     fn type_check(
         other: Expression<'sc>,
-        namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+        namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
         type_annotation: Option<&TypeInfo>,
     ) -> Result<Self, CompileError<'sc>> {
         let typed_expression = match other.clone() {
@@ -195,18 +195,11 @@ impl<'sc> TypedExpression<'sc> {
                         // type check arguments in function application vs arguments in function
                         // declaration. Use parameter type annotations as annotations for the
                         // arguments
-                        //
-                        // namespace clone is necessary so interior mutations to namespace scope
-                        // don't impact outer scope
                         let typed_call_arguments = arguments
                             .into_iter()
                             .zip(parameters.iter())
                             .map(|(arg, param)| {
-                                TypedExpression::type_check(
-                                    arg,
-                                    namespace.clone(),
-                                    Some(&param.r#type),
-                                )
+                                TypedExpression::type_check(arg, namespace, Some(&param.r#type))
                             })
                             .collect::<Result<Vec<_>, _>>()?;
 
@@ -238,7 +231,25 @@ impl<'sc> TypedExpression<'sc> {
                     }
                 }
             }
+            Expression::MatchExpression {
+                primary_expression,
+                branches,
+            } => {
+                let typed_primary_expression =
+                    TypedExpression::type_check(*primary_expression, namespace, None)?;
 
+                // TODO handle pattern matching on LHS 
+                let first_branch_result = vec![TypedExpression::type_check(branches[0].result, namespace, type_annotation)]; 
+                // use type of first branch for annotation on the rest of the branches
+                let rest_of_branches = branches.into_iter().skip(1).map(|MatchBranch { condition, result }| TypedExpression::type_check(result, namespace, Some(first_branch_result.return_type))).collect::<Result<Vec<_>, _>()?;
+                let mut all_branches = first_branch_result;
+                all_branches.append(&mut rest_of_branches);
+
+
+
+
+                todo!()
+            }
             _ => todo!(),
         };
         // if the return type cannot be cast into the annotation type then it is a type error
@@ -271,7 +282,7 @@ fn type_check_node<'sc>(node: AstNode<'sc>) -> Result<TypedAstNode<'sc>, Compile
             AstNodeContent::Declaration(a) => todo!("Insert into namespace"),
             AstNodeContent::TraitDeclaration(a) => TypedAstNodeContent::TraitDeclaration(a),
             AstNodeContent::Expression(a) => {
-                TypedAstNodeContent::Expression(TypedExpression::type_check(a, namespace, None)?)
+                TypedAstNodeContent::Expression(TypedExpression::type_check(a, &namespace, None)?)
             }
             _ => todo!(),
         },

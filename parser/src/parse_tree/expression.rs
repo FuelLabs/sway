@@ -31,6 +31,7 @@ pub(crate) enum Expression<'sc> {
         struct_name: &'sc str,
         fields: Vec<StructExpressionField<'sc>>,
     },
+    CodeBlock(CodeBlock<'sc>),
 }
 
 #[derive(Debug, Clone)]
@@ -197,7 +198,7 @@ impl<'sc> Expression<'sc> {
 #[derive(Debug, Clone)]
 pub(crate) struct MatchBranch<'sc> {
     condition: MatchCondition<'sc>,
-    result: Either<CodeBlock<'sc>, Expression<'sc>>,
+    result: Expression<'sc>,
 }
 
 #[derive(Debug, Clone)]
@@ -237,11 +238,10 @@ impl<'sc> MatchBranch<'sc> {
             }
         };
         let result = match result.as_rule() {
-            Rule::expr => {
-                let expr = eval!(Expression::parse_from_pair, warnings, result);
-                Either::Right(expr)
+            Rule::expr => eval!(Expression::parse_from_pair, warnings, result),
+            Rule::code_block => {
+                Expression::CodeBlock(eval!(CodeBlock::parse_from_pair, warnings, result))
             }
-            Rule::code_block => Either::Left(CodeBlock::parse_from_pair(result)?),
             _ => unreachable!(),
         };
         Ok((MatchBranch { condition, result }, warnings))
