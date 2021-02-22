@@ -1,6 +1,9 @@
+use crate::error::{ParseResult, Warning};
 use crate::parse_tree::{declaration::TypeParameter, Expression, VarName};
+use crate::types::TypeInfo;
 use crate::{CodeBlock, ParseError, Rule};
 use either::Either;
+use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -14,11 +17,20 @@ pub(crate) struct FunctionDeclaration<'sc> {
 }
 
 impl<'sc> FunctionDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut parts = pair.clone().into_inner();
+        let mut warnings = Vec::new();
         let mut signature = parts.next().unwrap().into_inner();
         let _fn_keyword = signature.next().unwrap();
-        let name = signature.next().unwrap().as_str();
+        let name = signature.next().unwrap();
+        let name_span = name.as_span();
+        let name = name.as_str();
+        assert_or_warn!(
+            is_snake_case(name),
+            warnings,
+            name_span,
+            Warning::NonSnakeCaseFunctionName { name }
+        );
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
         let mut parameters_pair = None;
@@ -55,15 +67,18 @@ impl<'sc> FunctionDeclaration<'sc> {
             where_clause_pair,
         )?;
         let body = parts.next().unwrap();
-        let body = CodeBlock::parse_from_pair(body)?;
-        Ok(FunctionDeclaration {
-            name,
-            parameters,
-            body,
-            span: pair.as_span(),
-            return_type,
-            type_parameters,
-        })
+        let body = eval!(CodeBlock::parse_from_pair, warnings, body);
+        Ok((
+            FunctionDeclaration {
+                name,
+                parameters,
+                body,
+                span: pair.as_span(),
+                return_type,
+                type_parameters,
+            },
+            warnings,
+        ))
     }
 }
 
@@ -89,51 +104,5 @@ impl<'sc> FunctionParameter<'sc> {
                 Ok(FunctionParameter { name, r#type })
             })
             .collect()
-    }
-}
-
-/// Type information without an associated value, used for type inferencing and definition.
-#[derive(Debug, Clone)]
-pub(crate) enum TypeInfo<'sc> {
-    String,
-    UnsignedInteger(IntegerBits),
-    Boolean,
-    Generic { name: &'sc str },
-    Unit,
-    SelfType,
-    Byte,
-    Byte32,
-}
-#[derive(Debug, Clone)]
-pub(crate) enum IntegerBits {
-    Eight,
-    Sixteen,
-    ThirtyTwo,
-    SixtyFour,
-    OneTwentyEight,
-}
-
-impl<'sc> TypeInfo<'sc> {
-    pub(crate) fn parse_from_pair(input: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
-        let mut r#type = input.into_inner();
-        Self::parse_from_pair_inner(r#type.next().unwrap())
-    }
-    pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
-        Ok(match input.as_str() {
-            "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
-            "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-            "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-            "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            "u128" => TypeInfo::UnsignedInteger(IntegerBits::OneTwentyEight),
-            "bool" => TypeInfo::Boolean,
-            "string" => TypeInfo::String,
-            "unit" => TypeInfo::Unit,
-            other => TypeInfo::Generic { name: other },
-        })
-    }
-
-    pub(crate) fn is_convertable(&self, other: &Option<&'sc TypeInfo<'sc>>) -> bool {
-        // TODO check if self can be cast to other
-        return true;
     }
 }

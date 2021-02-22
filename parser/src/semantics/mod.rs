@@ -1,8 +1,10 @@
+use crate::error::CompileWarning;
 use crate::parse_tree::*;
+use crate::types::{IntegerBits, TypeInfo};
 use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement};
 use either::Either;
 use std::collections::HashMap;
-mod error;
+pub(crate) mod error;
 use error::CompileError;
 use pest::Span;
 pub(crate) struct TypedParseTree<'sc> {
@@ -13,6 +15,7 @@ pub(crate) struct TypedParseTree<'sc> {
 pub(crate) struct TypedAstNode<'sc> {
     content: TypedAstNodeContent<'sc>,
     span: Span<'sc>,
+    scope: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
 }
 
 #[derive(Clone)]
@@ -121,9 +124,10 @@ pub(crate) struct TypedCodeBlock<'sc> {
 impl<'sc> TypedExpression<'sc> {
     fn type_check(
         other: Expression<'sc>,
-        namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
-        type_annotation: Option<&TypeInfo>,
-    ) -> Result<Self, CompileError<'sc>> {
+        namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+        type_annotation: Option<TypeInfo<'sc>>,
+    ) -> Result<(Self, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
+        let mut warnings = Vec::new();
         let typed_expression = match other.clone() {
             Expression::Literal(lit) => {
                 let return_type = match lit {
@@ -199,9 +203,23 @@ impl<'sc> TypedExpression<'sc> {
                             .into_iter()
                             .zip(parameters.iter())
                             .map(|(arg, param)| {
-                                TypedExpression::type_check(arg, namespace, Some(&param.r#type))
+                                TypedExpression::type_check(
+                                    arg,
+                                    namespace.clone(),
+                                    Some(param.r#type.clone()),
+                                )
                             })
                             .collect::<Result<Vec<_>, _>>()?;
+                        let (typed_call_arguments, mut l_warnings): (
+                            _,
+                            Vec<Vec<CompileWarning<'_>>>,
+                        ) = typed_call_arguments.into_iter().unzip();
+                        let mut warn_buf = Vec::new();
+                        for mut l_warning in l_warnings {
+                            warn_buf.append(&mut l_warning);
+                        }
+
+                        warnings.append(&mut warn_buf);
 
                         TypedExpression {
                             return_type: return_type.clone(),
@@ -235,31 +253,65 @@ impl<'sc> TypedExpression<'sc> {
                 primary_expression,
                 branches,
             } => {
-                let typed_primary_expression =
-                    TypedExpression::type_check(*primary_expression, namespace, None)?;
+                let (typed_primary_expression, mut l_warnings) =
+                    TypedExpression::type_check(*primary_expression, namespace.clone(), None)?;
+                warnings.append(&mut l_warnings);
 
-                // TODO handle pattern matching on LHS 
-                let first_branch_result = vec![TypedExpression::type_check(branches[0].result, namespace, type_annotation)]; 
+                // TODO handle pattern matching on LHS
+                let (first_branch_result, mut l_warnings) = TypedExpression::type_check(
+                    branches[0].result.clone(),
+                    namespace.clone(),
+                    type_annotation.clone(),
+                )?;
+                warnings.append(&mut l_warnings);
+                let first_branch_result = vec![first_branch_result];
                 // use type of first branch for annotation on the rest of the branches
-                let rest_of_branches = branches.into_iter().skip(1).map(|MatchBranch { condition, result }| TypedExpression::type_check(result, namespace, Some(first_branch_result.return_type))).collect::<Result<Vec<_>, _>()?;
+                let rest_of_branches = branches
+                    .into_iter()
+                    .skip(1)
+                    .map(|MatchBranch { condition, result }| {
+                        TypedExpression::type_check(
+                            result,
+                            namespace.clone(),
+                            Some(first_branch_result[0].return_type.clone()),
+                        )
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                let (mut rest_of_branches, mut l_warnings): (_, Vec<Vec<CompileWarning<'_>>>) =
+                    rest_of_branches.into_iter().unzip();
+                let mut warn_buf = Vec::new();
+                for mut l_warning in l_warnings {
+                    warn_buf.append(&mut l_warning);
+                }
+
+                warnings.append(&mut warn_buf);
                 let mut all_branches = first_branch_result;
                 all_branches.append(&mut rest_of_branches);
-
-
-
 
                 todo!()
             }
             _ => todo!(),
         };
+        let expr_span = todo!("all expressions need an associated span ");
         // if the return type cannot be cast into the annotation type then it is a type error
-        if !typed_expression
-            .return_type
-            .is_convertable(&type_annotation)
-        {
-            return Err(todo!("type error"));
+        if let Some(type_annotation) = type_annotation {
+            let convertability = typed_expression
+                .return_type
+                .is_convertable(&type_annotation);
+            match convertability {
+                Ok(warning) => {
+                    if let Some(warning) = warning {
+                        warnings.push(CompileWarning {
+                            warning_content: warning,
+                            span: expr_span,
+                        });
+                    }
+                }
+                Err(err) => Err(err)?,
+            }
         }
-        Ok(typed_expression)
+        Ok((typed_expression, warnings))
     }
 }
 
@@ -272,20 +324,30 @@ fn type_check_tree<'sc>(parsed: ParseTree<'sc>) -> TypedParseTree<'sc> {
     todo!()
 }
 
-fn type_check_node<'sc>(node: AstNode<'sc>) -> Result<TypedAstNode<'sc>, CompileError> {
+fn type_check_node<'sc>(
+    node: AstNode<'sc>,
+) -> Result<(TypedAstNode<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
+    let mut warnings = Vec::new();
     let mut namespace = HashMap::default();
-    Ok(TypedAstNode {
-        content: match node.content {
-            AstNodeContent::UseStatement(a) => {
-                todo!("Insert things from use statement into namespace")
-            }
-            AstNodeContent::Declaration(a) => todo!("Insert into namespace"),
-            AstNodeContent::TraitDeclaration(a) => TypedAstNodeContent::TraitDeclaration(a),
-            AstNodeContent::Expression(a) => {
-                TypedAstNodeContent::Expression(TypedExpression::type_check(a, &namespace, None)?)
-            }
-            _ => todo!(),
+    Ok((
+        TypedAstNode {
+            content: match node.content {
+                AstNodeContent::UseStatement(a) => {
+                    todo!("Insert things from use statement into namespace")
+                }
+                AstNodeContent::Declaration(a) => todo!("Insert into namespace"),
+                AstNodeContent::TraitDeclaration(a) => TypedAstNodeContent::TraitDeclaration(a),
+                AstNodeContent::Expression(a) => {
+                    let (inner, mut l_warnings) =
+                        TypedExpression::type_check(a, namespace.clone(), None)?;
+                    warnings.append(&mut l_warnings);
+                    TypedAstNodeContent::Expression(inner)
+                }
+                _ => todo!(),
+            },
+            span: node.span,
+            scope: namespace,
         },
-        span: node.span,
-    })
+        warnings,
+    ))
 }

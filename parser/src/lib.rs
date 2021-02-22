@@ -7,15 +7,17 @@ mod error;
 mod parse_tree;
 mod parser;
 mod semantics;
+pub(crate) mod types;
 use crate::parse_tree::*;
 pub(crate) use crate::parse_tree::{
-    Expression, FunctionDeclaration, FunctionParameter, Literal, TypeInfo, UseStatement,
+    Expression, FunctionDeclaration, FunctionParameter, Literal, UseStatement,
 };
 use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
 use pest::iterators::Pair;
 use pest::Parser;
 use std::collections::HashMap;
+use types::TypeInfo;
 
 pub use error::{CompileWarning, ParseError, ParseResult};
 pub use pest::Span;
@@ -83,7 +85,7 @@ pub(crate) struct CodeBlock<'sc> {
 }
 
 impl<'sc> CodeBlock<'sc> {
-    fn parse_from_pair(block: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
+    fn parse_from_pair(block: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut warnings = Vec::new();
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
@@ -122,11 +124,11 @@ impl<'sc> CodeBlock<'sc> {
                 }
             })
         }
-        if !warnings.is_empty() {
-            todo!("This func needs to return warnings");
-        }
 
-        Ok(CodeBlock {  contents, scope: /* TODO */ HashMap::default()  })
+        Ok((
+            CodeBlock {  contents, scope: /* TODO */ HashMap::default()  },
+            warnings,
+        ))
     }
 }
 

@@ -1,4 +1,5 @@
-use crate::parse_tree::{Expression, TypeInfo};
+use crate::parse_tree::Expression;
+use crate::types::TypeInfo;
 
 #[derive(Debug, Clone)]
 pub(crate) struct VariableDeclaration<'sc> {

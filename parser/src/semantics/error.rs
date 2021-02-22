@@ -24,4 +24,7 @@ pub(crate) enum CompileError<'sc> {
 }
 
 #[derive(Error, Debug)]
-pub(crate) enum TypeError {}
+pub(crate) enum TypeError {
+    #[error("Mismatched types: Expected type {expected} but received type {received}. Type {received} is not castable to type {expected}")]
+    MismatchedType { expected: String, received: String },
+}

@@ -197,8 +197,8 @@ impl<'sc> Expression<'sc> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct MatchBranch<'sc> {
-    condition: MatchCondition<'sc>,
-    result: Expression<'sc>,
+    pub(crate) condition: MatchCondition<'sc>,
+    pub(crate) result: Expression<'sc>,
 }
 
 #[derive(Debug, Clone)]

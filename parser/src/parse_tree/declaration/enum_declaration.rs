@@ -1,6 +1,7 @@
 use crate::error::{CompileWarning, ParseResult, Warning};
-use crate::parse_tree::declaration::{TypeInfo, TypeParameter};
+use crate::parse_tree::declaration::TypeParameter;
 use crate::parser::{HllParser, Rule};
+use crate::types::TypeInfo;
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
@@ -83,10 +84,10 @@ impl<'sc> EnumVariant<'sc> {
                 let span = fields[i].as_span();
                 let name = fields[i].as_str();
                 assert_or_warn!(
-                    is_snake_case(name),
+                    is_class_case(name),
                     warnings,
                     span,
-                    Warning::NonSnakeCaseEnumVariantName { variant_name: name }
+                    Warning::NonClassCaseEnumVariantName { variant_name: name }
                 );
                 let r#type = TypeInfo::parse_from_pair_inner(fields[i + 1].clone())?;
                 fields_buf.push(EnumVariant { name, r#type });
