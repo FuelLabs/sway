@@ -310,3 +310,18 @@ fn test_basic_prog() {
     dbg!(&prog);
     prog.unwrap();
 }
+#[test]
+fn test_parenthesized() {
+    let prog = parse(
+        r#"
+        contract {
+        fn abi_func(): unit {
+            let x = (5 + 6 / (1 + (2 / 1) + 4));
+            return;
+        }
+   } 
+    "#,
+    );
+    dbg!(&prog);
+    prog.unwrap();
+}

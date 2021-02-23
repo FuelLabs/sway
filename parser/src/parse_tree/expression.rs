@@ -32,6 +32,7 @@ pub(crate) enum Expression<'sc> {
         fields: Vec<StructExpressionField<'sc>>,
     },
     CodeBlock(CodeBlock<'sc>),
+    ParenthesizedExpression(Box<Expression<'sc>>),
 }
 
 #[derive(Debug, Clone)]
@@ -77,15 +78,15 @@ impl<'sc> Expression<'sc> {
         if expr_or_op_buf.len() == 1 {
             Ok((first_expr, warnings))
         } else {
-            eprintln!("Haven't yet implemented operator precedence");
-            Err(ParseError::Unimplemented(
-                Rule::op,
-                expr_for_debug.into_span(),
-            ))
+            let (expr, mut l_warnings) =
+                arrange_by_order_of_operations(expr_or_op_buf, expr_for_debug.as_span())?;
+            warnings.append(&mut l_warnings);
+            Ok((expr, warnings))
         }
     }
 
     pub(crate) fn parse_from_pair_inner(expr: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
+        dbg!(&expr);
         let mut warnings = Vec::new();
         let parsed = match expr.as_rule() {
             Rule::literal_value => Expression::Literal(Literal::parse_from_pair(expr)?),
@@ -181,12 +182,20 @@ impl<'sc> Expression<'sc> {
                     fields: fields_buf,
                 }
             }
+            Rule::parenthesized_expression => {
+                let expr = eval!(
+                    Expression::parse_from_pair,
+                    warnings,
+                    expr.into_inner().next().unwrap()
+                );
+                Expression::ParenthesizedExpression(Box::new(expr))
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
                     a,
                     expr.as_str(),
-                    expr.as_span()
+                    expr.as_rule()
                 );
                 return Err(ParseError::Unimplemented(a, expr.as_span()));
             }
@@ -296,8 +305,8 @@ impl<'sc> VarName<'sc> {
 }
 
 fn parse_op<'sc>(op: Pair<'sc, Rule>) -> Result<Op, ParseError<'sc>> {
-    use Op::*;
-    Ok(match op.as_str() {
+    use OpVariant::*;
+    let op_variant = match op.as_str() {
         "+" => Add,
         "-" => Subtract,
         "/" => Divide,
@@ -316,11 +325,31 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>) -> Result<Op, ParseError<'sc>> {
                 span: op.as_span(),
             })
         }
+    };
+    dbg!(&op_variant, op.as_span());
+    Ok(Op {
+        span: op.as_span(),
+        op_variant,
     })
 }
 
 #[derive(Debug)]
-enum Op {
+struct Op<'sc> {
+    span: Span<'sc>,
+    op_variant: OpVariant,
+}
+
+impl<'sc> Op<'sc> {
+    fn to_var_name(&self) -> VarName<'sc> {
+        VarName {
+            primary_name: self.op_variant.as_str(),
+            span: self.span.clone(),
+            sub_names: vec!["std".into(), "ops".into()],
+        }
+    }
+}
+#[derive(Debug)]
+enum OpVariant {
     Add,
     Subtract,
     Divide,
@@ -333,4 +362,77 @@ enum Op {
     Xor,
     BinaryOr,
     BinaryAnd,
+}
+
+impl OpVariant {
+    fn as_str(&self) -> &'static str {
+        use OpVariant::*;
+        match self {
+            Add => "add",
+            Subtract => "subtract",
+            Divide => "divide",
+            Multiply => "multiply",
+            Modulo => "modulo",
+            Or => "or",
+            And => "and",
+            Equals => "equals",
+            NotEquals => "not_equals",
+            Xor => "xor",
+            BinaryOr => "binary_or",
+            BinaryAnd => "binary_and",
+        }
+    }
+}
+
+fn arrange_by_order_of_operations<'sc>(
+    expressions: Vec<Either<Op<'sc>, Expression<'sc>>>,
+    debug_span: Span<'sc>,
+) -> ParseResult<'sc, Expression<'sc>> {
+    let warnings = Vec::new();
+    let mut expression_stack = Vec::new();
+    let mut op_stack = Vec::new();
+
+    for expr_or_op in expressions {
+        match expr_or_op {
+            Either::Left(op) => op_stack.push(op),
+            Either::Right(expr) => expression_stack.push(expr),
+        }
+    }
+
+    // TODO precedence
+    while let Some(op) = op_stack.pop() {
+        let rhs = expression_stack.pop();
+        let lhs = expression_stack.pop();
+
+        if lhs.is_none() {
+            return Err(ParseError::Internal(
+                "Prematurely empty expression stack for left hand side.",
+                debug_span,
+            ));
+        }
+        if rhs.is_none() {
+            return Err(ParseError::Internal(
+                "Prematurely empty expression stack for right hand side.",
+                debug_span,
+            ));
+        }
+
+        let lhs = lhs.unwrap();
+        let rhs = rhs.unwrap();
+
+        expression_stack.push(Expression::FunctionApplication {
+            name: op.to_var_name(),
+            arguments: vec![lhs, rhs],
+        });
+    }
+
+    if expression_stack.len() != 1 {
+        return Err(ParseError::Internal(
+            "Invalid expression stack length",
+            debug_span,
+        ));
+    }
+
+    dbg!(&expression_stack[0]);
+    Ok((expression_stack[0].clone(), warnings))
 }
