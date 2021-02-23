@@ -325,6 +325,16 @@ impl<'sc> TypedExpression<'sc> {
     }
 }
 
+impl<'sc> TypedCodeBlock<'sc> {
+    fn type_check(
+        other: CodeBlock<'sc>,
+        namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+        type_annotation: Option<TypeInfo<'sc>>,
+    ) -> Result<(Self, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
+        todo!()
+    }
+}
+
 fn type_check_tree<'sc>(parsed: ParseTree<'sc>) -> TypedParseTree<'sc> {
     let typed_tree = parsed
         .root_nodes
@@ -396,7 +406,7 @@ fn type_check_node<'sc>(
                                 VarName {
                                     primary_name: name,
                                     sub_names: Vec::new(),
-                                    span,
+                                    span: span.clone(),
                                 },
                                 TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                                     name,

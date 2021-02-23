@@ -18,11 +18,10 @@ impl<'sc> TraitDeclaration<'sc> {
         let mut trait_parts = pair.into_inner();
         let _trait_keyword = trait_parts.next();
         let name = trait_parts.next().unwrap().as_str();
-        let methods_and_interface =
-            trait_parts
-                .next()
-                .map(|if_some: Pair<'sc, Rule>| -> Result<_, ParseError> {
-                    if_some
+        let methods_and_interface = trait_parts
+            .next()
+            .map(|if_some: Pair<'sc, Rule>| -> Result<_, ParseError> {
+                if_some
                         .into_inner()
                         .map(
                             |fn_sig_or_decl| -> Result<
@@ -43,8 +42,8 @@ impl<'sc> TraitDeclaration<'sc> {
                             },
                         )
                         .collect::<Result<Vec<_>, ParseError>>()
-                })
-                .unwrap_or_else(|| Ok(Vec::new()))?;
+            })
+            .unwrap_or_else(|| Ok(Vec::new()))?;
 
         let mut interface_surface = Vec::new();
         let mut methods = Vec::new();
