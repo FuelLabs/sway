@@ -335,7 +335,7 @@ impl<'sc> TypedCodeBlock<'sc> {
     }
 }
 
-fn type_check_tree<'sc>(parsed: ParseTree<'sc>) -> TypedParseTree<'sc> {
+pub(crate) fn type_check_tree<'sc>(parsed: ParseTree<'sc>) -> Result<(TypedParseTree<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
     let typed_tree = parsed
         .root_nodes
         .into_iter()

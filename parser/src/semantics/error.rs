@@ -1,4 +1,5 @@
 use pest::Span;
+use crate::error::ParseError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -21,6 +22,14 @@ pub(crate) enum CompileError<'sc> {
     },
     #[error(transparent)]
     TypeError(#[from] TypeError),
+    #[error("Parse error: {0}")]
+    ParseError(ParseError<'sc>),
+}
+
+impl <'sc> std::convert::From<ParseError<'sc>> for CompileError<'sc> {
+    fn from(other: ParseError<'sc>) -> CompileError<'sc> {
+        CompileError::ParseError(other)
+    }
 }
 
 #[derive(Error, Debug)]

@@ -15,6 +15,8 @@ pub(crate) use crate::parse_tree::{
 use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
 use pest::iterators::Pair;
+use semantics::error::CompileError;
+use semantics::TypedParseTree;
 use pest::Parser;
 use std::collections::HashMap;
 use types::TypeInfo;
@@ -155,6 +157,26 @@ pub fn parse<'sc>(input: &'sc str) -> ParseResult<'sc, HllParseTree<'sc>> {
         (parsed.next().unwrap().into_inner())
     );
     Ok((res, warnings))
+}
+
+// TODO compile result and not parse result
+pub fn compile<'sc>(input: &'sc str) -> Result<(TypedParseTree<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>>{
+    let mut warnings = Vec::new();
+    
+    // TODO 
+    // handle the optionality of all three 
+    // hook into HLC
+    let (parse_tree, l_warnings) = parse(input)?;
+    warnings.append(&mut l_warnings);
+    let opt = if let Some(tree) =parse_tree.contract_ast { semantics::type_check_tree(tree)? } else { None };
+    warnings.append(&mut l_warnings);
+    let (typed_script_parse_tree, l_warnings) = semantics::type_check_tree(parse_tree.script_ast)?;
+    warnings.append(&mut l_warnings);
+    let (typed_script_parse_tree, l_warnings) = semantics::type_check_tree(parse_tree.predicate_ast)?;
+    warnings.append(&mut l_warnings);
+    
+    Ok((typed_parse_tree, warnings))
+
 }
 
 // strategy: parse top level things
