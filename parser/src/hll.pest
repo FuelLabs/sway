@@ -28,7 +28,7 @@ parenthesized_expression = { "(" ~ expr ~ ")" }
 // // op exps built in to expr to prevent left recursion
 expr       =  {expr_inner ~ (op ~ expr_inner)*}
 func_app   =  { fn_name ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
-fn_name    = @{var_exp}
+fn_name    =  {var_exp}
 var_exp    =  { unary_op? ~ var_name_ident } 
 
 var_name_ident = { ident ~ ("." ~ ident)* }
@@ -71,7 +71,7 @@ var_decl    =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ 
 type_ascription = { ":" ~ type_name}
 fn_decl     =  {fn_signature ~ code_block}
 fn_signature = { fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds? }
-var_name = @{ident}
+var_name = {ident}
 
 struct_decl = { "struct" ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}" }
 struct_name = @{ident}

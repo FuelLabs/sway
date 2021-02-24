@@ -7,18 +7,19 @@ use std::collections::HashMap;
 pub(crate) mod error;
 use error::CompileError;
 use pest::Span;
+#[derive(Debug)]
 pub(crate) struct TypedParseTree<'sc> {
     root_nodes: Vec<TypedAstNode<'sc>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct TypedAstNode<'sc> {
     content: TypedAstNodeContent<'sc>,
     span: Span<'sc>,
     scope: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum TypedAstNodeContent<'sc> {
     UseStatement(UseStatement<'sc>),
     //    CodeBlock(TypedCodeBlock<'sc>),
@@ -30,13 +31,13 @@ pub(crate) enum TypedAstNodeContent<'sc> {
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum IsConstant {
     Yes,
     No,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum TypedDeclaration<'sc> {
     VariableDeclaration(TypedVariableDeclaration<'sc>),
     FunctionDeclaration(TypedFunctionDeclaration<'sc>),
@@ -59,14 +60,14 @@ impl<'sc> TypedDeclaration<'sc> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct TypedVariableDeclaration<'sc> {
     pub(crate) name: VarName<'sc>,
     pub(crate) body: TypedExpression<'sc>, // will be codeblock variant
     pub(crate) is_mutable: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct TypedFunctionDeclaration<'sc> {
     pub(crate) name: &'sc str,
     pub(crate) body: TypedCodeBlock<'sc>,
@@ -76,7 +77,7 @@ pub(crate) struct TypedFunctionDeclaration<'sc> {
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct TypedExpression<'sc> {
     expression: TypedExpressionVariant<'sc>,
     return_type: TypeInfo<'sc>,
@@ -84,7 +85,7 @@ pub(crate) struct TypedExpression<'sc> {
     /// time)
     is_constant: IsConstant,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum TypedExpressionVariant<'sc> {
     Literal(Literal<'sc>),
     FunctionApplication {
@@ -109,23 +110,23 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         fields: Vec<TypedStructExpressionField<'sc>>,
     },
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct TypedStructExpressionField<'sc> {
     name: &'sc str,
     value: TypedExpression<'sc>,
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct TypedMatchBranch<'sc> {
     condition: TypedMatchCondition<'sc>,
     result: Either<TypedCodeBlock<'sc>, TypedExpression<'sc>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum TypedMatchCondition<'sc> {
     CatchAll,
     Expression(TypedExpression<'sc>),
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct TypedCodeBlock<'sc> {
     contents: Vec<TypedAstNode<'sc>>,
     scope: HashMap<&'sc str, TypedDeclaration<'sc>>,
@@ -308,7 +309,7 @@ impl<'sc> TypedExpression<'sc> {
         if let Some(type_annotation) = type_annotation {
             let convertability = typed_expression
                 .return_type
-                .is_convertable(&type_annotation);
+                .is_convertable(&type_annotation, expr_span);
             match convertability {
                 Ok(warning) => {
                     if let Some(warning) = warning {
@@ -335,7 +336,9 @@ impl<'sc> TypedCodeBlock<'sc> {
     }
 }
 
-pub(crate) fn type_check_tree<'sc>(parsed: ParseTree<'sc>) -> Result<(TypedParseTree<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
+pub(crate) fn type_check_tree<'sc>(
+    parsed: ParseTree<'sc>,
+) -> Result<(TypedParseTree<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
     let typed_tree = parsed
         .root_nodes
         .into_iter()

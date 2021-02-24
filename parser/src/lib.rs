@@ -15,9 +15,9 @@ pub(crate) use crate::parse_tree::{
 use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
 use pest::iterators::Pair;
-use semantics::error::CompileError;
-use semantics::TypedParseTree;
 use pest::Parser;
+pub use semantics::error::CompileError;
+use semantics::TypedParseTree;
 use std::collections::HashMap;
 use types::TypeInfo;
 
@@ -30,6 +30,13 @@ pub struct HllParseTree<'sc> {
     pub contract_ast: Option<ParseTree<'sc>>,
     pub script_ast: Option<ParseTree<'sc>>,
     pub predicate_ast: Option<ParseTree<'sc>>,
+}
+
+#[derive(Debug)]
+pub struct HllTypedParseTree<'sc> {
+    contract_ast: Option<TypedParseTree<'sc>>,
+    script_ast: Option<TypedParseTree<'sc>>,
+    predicate_ast: Option<TypedParseTree<'sc>>,
 }
 
 #[derive(Debug)]
@@ -160,23 +167,53 @@ pub fn parse<'sc>(input: &'sc str) -> ParseResult<'sc, HllParseTree<'sc>> {
 }
 
 // TODO compile result and not parse result
-pub fn compile<'sc>(input: &'sc str) -> Result<(TypedParseTree<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>>{
+pub fn compile<'sc>(
+    input: &'sc str,
+) -> Result<(HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
     let mut warnings = Vec::new();
-    
-    // TODO 
-    // handle the optionality of all three 
-    // hook into HLC
-    let (parse_tree, l_warnings) = parse(input)?;
+    let (parse_tree, mut l_warnings) = parse(input)?;
     warnings.append(&mut l_warnings);
-    let opt = if let Some(tree) =parse_tree.contract_ast { semantics::type_check_tree(tree)? } else { None };
-    warnings.append(&mut l_warnings);
-    let (typed_script_parse_tree, l_warnings) = semantics::type_check_tree(parse_tree.script_ast)?;
-    warnings.append(&mut l_warnings);
-    let (typed_script_parse_tree, l_warnings) = semantics::type_check_tree(parse_tree.predicate_ast)?;
-    warnings.append(&mut l_warnings);
-    
-    Ok((typed_parse_tree, warnings))
 
+    let maybe_contract_tree: Option<Result<_, _>> = parse_tree
+        .contract_ast
+        .map(|tree| semantics::type_check_tree(tree));
+    let maybe_predicate_tree: Option<Result<_, _>> = parse_tree
+        .predicate_ast
+        .map(|tree| semantics::type_check_tree(tree));
+    let maybe_script_tree: Option<Result<_, _>> = parse_tree
+        .script_ast
+        .map(|tree| semantics::type_check_tree(tree));
+
+    let contract_ast = if let Some(x) = maybe_contract_tree {
+        let mut x = x?;
+        warnings.append(&mut x.1);
+        Some(x.0)
+    } else {
+        None
+    };
+    let predicate_ast = if let Some(x) = maybe_predicate_tree {
+        let mut x = x?;
+        warnings.append(&mut x.1);
+        Some(x.0)
+    } else {
+        None
+    };
+    let script_ast = if let Some(x) = maybe_script_tree {
+        let mut x = x?;
+        warnings.append(&mut x.1);
+        Some(x.0)
+    } else {
+        None
+    };
+
+    Ok((
+        HllTypedParseTree {
+            contract_ast,
+            script_ast,
+            predicate_ast,
+        },
+        warnings,
+    ))
 }
 
 // strategy: parse top level things

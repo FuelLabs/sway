@@ -3,6 +3,7 @@ use crate::{CodeBlock, ParseError, Rule};
 use either::Either;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
+use pest::Span;
 /// Type information without an associated value, used for type inferencing and definition.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeInfo<'sc> {
@@ -46,6 +47,7 @@ impl<'sc> TypeInfo<'sc> {
     pub(crate) fn is_convertable(
         &self,
         other: &'sc TypeInfo<'sc>,
+        debug_span: Span<'sc>,
     ) -> Result<Option<Warning>, crate::semantics::error::TypeError> {
         use crate::semantics::error::TypeError;
         // TODO  actually check more advanced conversion rules like upcasting vs downcasting
@@ -62,6 +64,7 @@ impl<'sc> TypeInfo<'sc> {
             Err(TypeError::MismatchedType {
                 expected: self.friendly_type_str(),
                 received: other.friendly_type_str(),
+                span: debug_span,
             })
         }
     }

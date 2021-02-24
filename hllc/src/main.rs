@@ -1,6 +1,6 @@
 #![allow(warnings)]
 use line_col::LineColLookup;
-use parser::parse;
+use parser::compile;
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, SourceBuffer, Span, DEFAULT_METRICS,
@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let opt = Opt::from_args();
     let content = fs::read_to_string(opt.input.clone())?;
 
-    let res = parse(&content);
+    let res = compile(&content);
 
     match res {
         Ok((compiled, warnings)) => {
@@ -90,7 +90,7 @@ fn format_warning(input: &str, err: &parser::CompileWarning) {
     println!("{}", formatted);
 }
 
-fn format_err(input: &str, err: parser::ParseError) {
+fn format_err(input: &str, err: parser::CompileError) {
     let metrics = DEFAULT_METRICS;
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
