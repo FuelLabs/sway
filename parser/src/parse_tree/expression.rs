@@ -190,6 +190,10 @@ impl<'sc> Expression<'sc> {
                 );
                 Expression::ParenthesizedExpression(Box::new(expr))
             }
+            Rule::code_block => {
+                let expr = eval!(crate::CodeBlock::parse_from_pair, warnings, expr);
+                Expression::CodeBlock(expr)
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",

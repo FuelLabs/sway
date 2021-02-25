@@ -23,7 +23,7 @@ script = { "script" ~ "{" ~ (declaration|use_statement)* ~ "}" }
 predicate = { "predicate" ~ "{" ~ (declaration|use_statement)* ~ "}" }
 
 // expressions
-expr_inner =  _{literal_value|if_exp|parenthesized_expression|func_app|struct_expression|var_exp|array_exp|match_expression}
+expr_inner =  _{literal_value|if_exp|parenthesized_expression|code_block|func_app|struct_expression|var_exp|array_exp|match_expression}
 parenthesized_expression = { "(" ~ expr ~ ")" }
 // // op exps built in to expr to prevent left recursion
 expr       =  {expr_inner ~ (op ~ expr_inner)*}

@@ -14,7 +14,11 @@ contract {
     fn contract_func_1(x: u32, y: u32): bool {
       println("Test function.");
       let z = x.a.b.c;
-      let x: byte = 0b11110000;
+      let x: byte = {
+          // a code block w/ implicit return
+          let x = 0b11110000;
+          x
+      };
       let example_variable_decl = 5;
       return example_variable_decl;
     }

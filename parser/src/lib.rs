@@ -124,7 +124,14 @@ impl<'sc> CodeBlock<'sc> {
                         eval!(ReturnStatement::parse_from_pair, warnings, pair.clone());
                     AstNode {
                         content: AstNodeContent::ReturnStatement(evaluated_node),
-                        span: pair.into_span(),
+                        span: pair.as_span(),
+                    }
+                }
+                Rule::expr => {
+                    let res = eval!(Expression::parse_from_pair, warnings, pair.clone());
+                    AstNode {
+                        content: AstNodeContent::Expression(res),
+                        span: pair.as_span(),
                     }
                 }
                 a => {
