@@ -1,5 +1,6 @@
 use super::{FunctionDeclaration, FunctionParameter};
 use crate::error::{ParseError, ParseResult};
+use crate::parse_tree::VarName;
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
 use either::*;
@@ -7,9 +8,9 @@ use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub(crate) struct TraitDeclaration<'sc> {
-    name: &'sc str,
-    interface_surface: Vec<TraitFn<'sc>>,
-    methods: Vec<FunctionDeclaration<'sc>>,
+    pub(crate) name: VarName<'sc>,
+    pub(crate) interface_surface: Vec<TraitFn<'sc>>,
+    pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
 }
 
 impl<'sc> TraitDeclaration<'sc> {
@@ -17,7 +18,12 @@ impl<'sc> TraitDeclaration<'sc> {
         let mut warnings = Vec::new();
         let mut trait_parts = pair.into_inner();
         let _trait_keyword = trait_parts.next();
-        let name = trait_parts.next().unwrap().as_str();
+        let name_pair = trait_parts.next().unwrap();
+        let name = VarName {
+            primary_name: name_pair.as_str(),
+            sub_names: vec![],
+            span: name_pair.as_span(),
+        };
         let methods_and_interface = trait_parts
             .next()
             .map(|if_some: Pair<'sc, Rule>| -> Result<_, ParseError> {
@@ -64,7 +70,7 @@ impl<'sc> TraitDeclaration<'sc> {
 }
 
 #[derive(Debug, Clone)]
-struct TraitFn<'sc> {
+pub(crate) struct TraitFn<'sc> {
     pub(crate) name: &'sc str,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub(crate) return_type: TypeInfo<'sc>,

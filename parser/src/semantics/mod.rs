@@ -23,7 +23,7 @@ pub(crate) struct TypedAstNode<'sc> {
 pub(crate) enum TypedAstNodeContent<'sc> {
     UseStatement(UseStatement<'sc>),
     //    CodeBlock(TypedCodeBlock<'sc>),
-    ReturnStatement(ReturnStatement<'sc>),
+    ReturnStatement(TypedReturnStatement<'sc>),
     Declaration(Declaration<'sc>),
     Expression(TypedExpression<'sc>),
     TraitDeclaration(TraitDeclaration<'sc>),
@@ -60,6 +60,10 @@ impl<'sc> TypedDeclaration<'sc> {
     }
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct TypedReturnStatement<'sc> {
+    expr: TypedExpression<'sc>,
+}
 #[derive(Clone, Debug)]
 pub(crate) struct TypedVariableDeclaration<'sc> {
     pub(crate) name: VarName<'sc>,
@@ -137,7 +141,7 @@ pub(crate) enum TypedMatchCondition<'sc> {
 #[derive(Clone, Debug)]
 pub(crate) struct TypedCodeBlock<'sc> {
     contents: Vec<TypedAstNode<'sc>>,
-    scope: HashMap<&'sc str, TypedDeclaration<'sc>>,
+    return_type: TypeInfo<'sc>,
 }
 
 impl<'sc> TypedExpression<'sc> {
@@ -340,7 +344,23 @@ impl<'sc> TypedCodeBlock<'sc> {
         namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
         type_annotation: Option<TypeInfo<'sc>>,
     ) -> Result<(Self, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
-        todo!()
+        // TODO implicit returns from blocks
+        let mut warnings = Vec::new();
+        let mut evaluated_contents = Vec::new();
+        let mut local_namespace = namespace.clone();
+        for node in other.contents {
+            let (res, mut l_warnings) = type_check_node(node, &mut local_namespace, None)?;
+            warnings.append(&mut l_warnings);
+            evaluated_contents.push(res);
+            // TODO handle last one, if no semicolon, as implicit return w/ type annotation
+        }
+        Ok((
+            TypedCodeBlock {
+                contents: evaluated_contents,
+                return_type: TypeInfo::Unit, // TODO return type of code block
+            },
+            warnings,
+        ))
     }
 }
 
@@ -350,13 +370,21 @@ pub(crate) fn type_check_tree<'sc>(
     let typed_tree = parsed
         .root_nodes
         .into_iter()
-        .map(|node| type_check_node(node))
+        // this is the initialization of the global namespace
+        // when we have actual default imports and stuff
+        // this will be a clone of the initialized namespace
+        // for now it is empty, i.e. `HashMap::default()`
+        //
+        // Top level functions are expected to return the Unit type, hence the annotation here
+        .map(|node| type_check_node(node, &mut HashMap::default(), Some(TypeInfo::Unit)))
         .collect::<Vec<_>>();
     todo!()
 }
 
 fn type_check_node<'sc>(
     node: AstNode<'sc>,
+    namespace: &mut HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+    return_type_annotation: Option<TypeInfo<'sc>>,
 ) -> Result<(TypedAstNode<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
     let mut warnings = Vec::new();
     let mut namespace = HashMap::default();
@@ -445,8 +473,7 @@ fn type_check_node<'sc>(
                                                 TypedCodeBlock::type_check(
                                                     x.body,
                                                     namespace.clone(),
-                                                    /* TODO maybe return type of function? */
-                                                    None,
+                                                    return_type_annotation.clone(),
                                                 )?;
                                             warnings.append(&mut l_warnings);
                                             block
@@ -480,10 +507,23 @@ fn type_check_node<'sc>(
                     warnings.append(&mut l_warnings);
                     TypedAstNodeContent::Expression(inner)
                 }
-                _ => todo!(),
+                AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
+                    if return_type_annotation.is_none() {
+                        return Err(CompileError::Internal("Parsed a return type without an annotation. All returns should be typed. ", node.span));
+                    }
+                    let (res, mut l_warnings) = TypedExpression::type_check(
+                        expr,
+                        namespace.clone(),
+                        return_type_annotation,
+                    )?;
+                    warnings.append(&mut l_warnings);
+
+                    TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr: res })
+                }
+                a => todo!("{:?}", a),
             },
             span: node.span,
-            scope: namespace,
+            scope: namespace.clone(),
         },
         warnings,
     ))
