@@ -20,7 +20,7 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
         what_it_is: &'static str,
     },
-    #[error("Internal compiler error: {0}. Please file an issue on the repository and include the code that triggered this error.")]
+    #[error("Internal compiler error: {0}\nPlease file an issue on the repository and include the code that triggered this error.")]
     Internal(&'static str, Span<'sc>),
     #[error("Type error: {0}")]
     TypeError(TypeError<'sc>),

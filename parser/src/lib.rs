@@ -71,13 +71,14 @@ struct ReturnStatement<'sc> {
 
 impl<'sc> ReturnStatement<'sc> {
     fn parse_from_pair(pair: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
+        let span = pair.as_span();
         let mut warnings = Vec::new();
         let mut inner = pair.into_inner();
         let _ret_keyword = inner.next();
         let expr = inner.next();
         let res = match expr {
             None => ReturnStatement {
-                expr: Expression::Unit,
+                expr: Expression::Unit { span },
             },
             Some(expr_pair) => {
                 let expr = eval!(Expression::parse_from_pair, warnings, expr_pair);

@@ -21,8 +21,12 @@ impl<'sc> Literal<'sc> {
         let lit_inner = lit.into_inner().next().unwrap();
         let parsed = match lit_inner.as_rule() {
             Rule::integer => {
-                let int_inner = lit_inner.into_inner().next().unwrap();
-                match int_inner.as_rule() {
+                let mut int_inner = lit_inner.into_inner().next().unwrap();
+                let rule = int_inner.as_rule();
+                if int_inner.as_rule() != Rule::basic_integer {
+                    int_inner = int_inner.into_inner().next().unwrap()
+                }
+                match rule {
                     Rule::u8_integer => {
                         Literal::U8(int_inner.as_str().trim().parse().map_err(|e| {
                             ParseError::Internal(

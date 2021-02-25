@@ -3,7 +3,7 @@ contract {
       fn some_fn_thing(): u32
     } {
       fn some_other_trait_thing(): bool {
-         return true;
+         return 5u32;
       }
     }
 

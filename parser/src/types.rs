@@ -45,10 +45,10 @@ impl<'sc> TypeInfo<'sc> {
     }
 
     pub(crate) fn is_convertable(
-        &self,
-        other: &'sc TypeInfo<'sc>,
+        self,
+        other: TypeInfo<'sc>,
         debug_span: Span<'sc>,
-    ) -> Result<Option<Warning>, crate::semantics::error::TypeError> {
+    ) -> Result<Option<Warning<'sc>>, crate::semantics::error::TypeError<'sc>> {
         use crate::semantics::error::TypeError;
         // TODO  actually check more advanced conversion rules like upcasting vs downcasting
         // numbers, emit warnings for loss of precision
@@ -62,14 +62,14 @@ impl<'sc> TypeInfo<'sc> {
             }
         } else {
             Err(TypeError::MismatchedType {
-                expected: self.friendly_type_str(),
-                received: other.friendly_type_str(),
+                expected: other.friendly_type_str(),
+                received: self.friendly_type_str(),
                 span: debug_span,
             })
         }
     }
 
-    fn numeric_cast_compat(&self, other: &'sc TypeInfo<'sc>) -> Result<(), Warning<'sc>> {
+    fn numeric_cast_compat(self, other: TypeInfo<'sc>) -> Result<(), Warning<'sc>> {
         assert!(self.is_numeric(), other.is_numeric());
         use TypeInfo::*;
         // if this is a downcast, warn for loss of precision. if upcast, then no warning.

@@ -9,30 +9,46 @@ use pest::Span;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Expression<'sc> {
-    Literal(Literal<'sc>),
+    Literal {
+        value: Literal<'sc>,
+        span: Span<'sc>,
+    },
     FunctionApplication {
         name: VarName<'sc>,
         arguments: Vec<Expression<'sc>>,
+        span: Span<'sc>,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,
         name: VarName<'sc>,
         name_span: Span<'sc>,
+        span: Span<'sc>,
     },
-    Unit,
+    Unit {
+        span: Span<'sc>,
+    },
     Array {
         contents: Vec<Expression<'sc>>,
+        span: Span<'sc>,
     },
     MatchExpression {
         primary_expression: Box<Expression<'sc>>,
         branches: Vec<MatchBranch<'sc>>,
+        span: Span<'sc>,
     },
     StructExpression {
         struct_name: &'sc str,
         fields: Vec<StructExpressionField<'sc>>,
+        span: Span<'sc>,
     },
-    CodeBlock(CodeBlock<'sc>),
-    ParenthesizedExpression(Box<Expression<'sc>>),
+    CodeBlock {
+        contents: CodeBlock<'sc>,
+        span: Span<'sc>,
+    },
+    ParenthesizedExpression {
+        inner: Box<Expression<'sc>>,
+        span: Span<'sc>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -42,6 +58,21 @@ pub(crate) struct StructExpressionField<'sc> {
 }
 
 impl<'sc> Expression<'sc> {
+    pub(crate) fn span(&self) -> Span<'sc> {
+        use Expression::*;
+        (match self {
+            Literal { span, .. } => span,
+            FunctionApplication { span, .. } => span,
+            VariableExpression { span, .. } => span,
+            Unit { span } => span,
+            Array { span, .. } => span,
+            MatchExpression { span, .. } => span,
+            StructExpression { span, .. } => span,
+            CodeBlock { span, .. } => span,
+            ParenthesizedExpression { span, .. } => span,
+        })
+        .clone()
+    }
     pub(crate) fn parse_from_pair(expr: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut warnings = Vec::new();
         let expr_for_debug = expr.clone();
@@ -86,11 +117,15 @@ impl<'sc> Expression<'sc> {
     }
 
     pub(crate) fn parse_from_pair_inner(expr: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
-        dbg!(&expr);
         let mut warnings = Vec::new();
+        let span = expr.as_span();
         let parsed = match expr.as_rule() {
-            Rule::literal_value => Expression::Literal(Literal::parse_from_pair(expr)?),
+            Rule::literal_value => Expression::Literal {
+                value: Literal::parse_from_pair(expr.clone())?,
+                span: expr.as_span(),
+            },
             Rule::func_app => {
+                let span = expr.as_span();
                 let mut func_app_parts = expr.into_inner();
                 let name = VarName::parse_from_pair(func_app_parts.next().unwrap())?;
                 let arguments = func_app_parts.next();
@@ -110,7 +145,11 @@ impl<'sc> Expression<'sc> {
 
                 let arguments = arguments.into_iter().map(|(x, _)| x).collect();
 
-                Expression::FunctionApplication { name, arguments }
+                Expression::FunctionApplication {
+                    name,
+                    arguments,
+                    span,
+                }
             }
             Rule::var_exp => {
                 let mut var_exp_parts = expr.into_inner();
@@ -138,6 +177,7 @@ impl<'sc> Expression<'sc> {
                     name,
                     unary_op,
                     name_span,
+                    span,
                 }
             }
             Rule::array_exp => {
@@ -146,7 +186,7 @@ impl<'sc> Expression<'sc> {
                 for expr in array_exps {
                     contents.push(eval!(Expression::parse_from_pair, warnings, expr));
                 }
-                Expression::Array { contents }
+                Expression::Array { contents, span }
             }
             Rule::match_expression => {
                 let mut expr_iter = expr.into_inner();
@@ -164,6 +204,7 @@ impl<'sc> Expression<'sc> {
                 Expression::MatchExpression {
                     primary_expression,
                     branches,
+                    span,
                 }
             }
             Rule::struct_expression => {
@@ -180,6 +221,7 @@ impl<'sc> Expression<'sc> {
                 Expression::StructExpression {
                     struct_name,
                     fields: fields_buf,
+                    span,
                 }
             }
             Rule::parenthesized_expression => {
@@ -188,11 +230,17 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     expr.into_inner().next().unwrap()
                 );
-                Expression::ParenthesizedExpression(Box::new(expr))
+                Expression::ParenthesizedExpression {
+                    inner: Box::new(expr),
+                    span,
+                }
             }
             Rule::code_block => {
                 let expr = eval!(crate::CodeBlock::parse_from_pair, warnings, expr);
-                Expression::CodeBlock(expr)
+                Expression::CodeBlock {
+                    contents: expr,
+                    span,
+                }
             }
             a => {
                 eprintln!(
@@ -212,6 +260,7 @@ impl<'sc> Expression<'sc> {
 pub(crate) struct MatchBranch<'sc> {
     pub(crate) condition: MatchCondition<'sc>,
     pub(crate) result: Expression<'sc>,
+    pub(crate) span: Span<'sc>,
 }
 
 #[derive(Debug, Clone)]
@@ -223,6 +272,7 @@ pub(crate) enum MatchCondition<'sc> {
 impl<'sc> MatchBranch<'sc> {
     fn parse_from_pair(pair: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
         let mut warnings = Vec::new();
+        let span = pair.as_span();
         let mut branch = pair.clone().into_inner();
         let condition = match branch.next() {
             Some(o) => o,
@@ -253,11 +303,22 @@ impl<'sc> MatchBranch<'sc> {
         let result = match result.as_rule() {
             Rule::expr => eval!(Expression::parse_from_pair, warnings, result),
             Rule::code_block => {
-                Expression::CodeBlock(eval!(CodeBlock::parse_from_pair, warnings, result))
+                let span = result.as_span();
+                Expression::CodeBlock {
+                    contents: eval!(CodeBlock::parse_from_pair, warnings, result),
+                    span,
+                }
             }
             _ => unreachable!(),
         };
-        Ok((MatchBranch { condition, result }, warnings))
+        Ok((
+            MatchBranch {
+                condition,
+                result,
+                span,
+            },
+            warnings,
+        ))
     }
 }
 
@@ -427,6 +488,7 @@ fn arrange_by_order_of_operations<'sc>(
         expression_stack.push(Expression::FunctionApplication {
             name: op.to_var_name(),
             arguments: vec![lhs, rhs],
+            span: debug_span.clone(),
         });
     }
 
