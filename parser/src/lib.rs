@@ -61,6 +61,7 @@ pub(crate) enum AstNodeContent<'sc> {
     Declaration(Declaration<'sc>),
     Expression(Expression<'sc>),
     TraitDeclaration(TraitDeclaration<'sc>),
+    ImplicitReturnExpression(Expression<'sc>),
 }
 
 #[derive(Debug, Clone)]
@@ -130,7 +131,7 @@ impl<'sc> CodeBlock<'sc> {
                 Rule::expr => {
                     let res = eval!(Expression::parse_from_pair, warnings, pair.clone());
                     AstNode {
-                        content: AstNodeContent::Expression(res),
+                        content: AstNodeContent::ImplicitReturnExpression(res),
                         span: pair.as_span(),
                     }
                 }
