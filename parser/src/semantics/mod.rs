@@ -1,7 +1,7 @@
 use crate::error::CompileWarning;
 use crate::parse_tree::*;
 use crate::types::{IntegerBits, TypeInfo};
-use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement};
+use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
 use either::Either;
 use std::collections::HashMap;
 pub(crate) mod error;
@@ -41,7 +41,7 @@ enum IsConstant {
 pub(crate) enum TypedDeclaration<'sc> {
     VariableDeclaration(TypedVariableDeclaration<'sc>),
     FunctionDeclaration(TypedFunctionDeclaration<'sc>),
-    TraitDeclaration(TraitDeclaration<'sc>),
+    TraitDeclaration(TypedTraitDeclaration<'sc>),
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
 }
@@ -67,6 +67,7 @@ pub(crate) struct TypedVariableDeclaration<'sc> {
     pub(crate) is_mutable: bool,
 }
 
+// TODO: type check generic type args and their usage
 #[derive(Clone, Debug)]
 pub(crate) struct TypedFunctionDeclaration<'sc> {
     pub(crate) name: &'sc str,
@@ -75,6 +76,13 @@ pub(crate) struct TypedFunctionDeclaration<'sc> {
     pub(crate) span: pest::Span<'sc>,
     pub(crate) return_type: TypeInfo<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct TypedTraitDeclaration<'sc> {
+    name: &'sc str,
+    interface_surface: Vec<TraitFn<'sc>>, // TODO typed TraitFn which checks geneerics
+    methods: Vec<TypedFunctionDeclaration<'sc>>,
 }
 
 #[derive(Clone, Debug)]
@@ -402,7 +410,7 @@ fn type_check_node<'sc>(
                             let (body, mut l_warnings) = TypedCodeBlock::type_check(
                                 body,
                                 namespace.clone(),
-                                None, /* TODO is there an annotation i can do here? */
+                                None, /* TODO is there an annotation i can do here? return type maybe*/
                             )?;
                             warnings.append(&mut l_warnings);
                             namespace.insert(
@@ -422,8 +430,45 @@ fn type_check_node<'sc>(
                             );
                             todo!()
                         }
-
-                        _ => todo!(),
+                        Declaration::TraitDeclaration(TraitDeclaration {
+                            name,
+                            interface_surface,
+                            methods,
+                        }) => {
+                            let methods = methods
+                                .into_iter()
+                                .map(|x| {
+                                    Ok(TypedFunctionDeclaration {
+                                        name: x.name,
+                                        body: {
+                                            let (block, mut l_warnings) =
+                                                TypedCodeBlock::type_check(
+                                                    x.body,
+                                                    namespace.clone(),
+                                                    /* TODO maybe return type of function? */
+                                                    None,
+                                                )?;
+                                            warnings.append(&mut l_warnings);
+                                            block
+                                        },
+                                        parameters: x.parameters,
+                                        span: x.span,
+                                        return_type: x.return_type,
+                                        type_parameters: x.type_parameters,
+                                    })
+                                })
+                                .collect::<Result<Vec<_>, CompileError>>()?;
+                            namespace.insert(
+                                todo!("use VarName for trait name"),
+                                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
+                                    name: todo!("use VarName for trait name"),
+                                    interface_surface,
+                                    methods,
+                                }),
+                            );
+                            todo!()
+                        }
+                        a => todo!("{:?}", a),
                     };
 
                     todo!()
