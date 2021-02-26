@@ -1,4 +1,5 @@
 use crate::parse_tree::Literal;
+use std::hash::{Hash, Hasher};
 #[macro_use]
 use crate::error::{ParseError, ParseResult};
 use crate::parser::{HllParser, Rule};
@@ -21,7 +22,6 @@ pub(crate) enum Expression<'sc> {
     VariableExpression {
         unary_op: Option<UnaryOp>,
         name: VarName<'sc>,
-        name_span: Span<'sc>,
         span: Span<'sc>,
     },
     Unit {
@@ -157,14 +157,12 @@ impl<'sc> Expression<'sc> {
                 // token is the actual expr value
                 let mut unary_op = None;
                 let mut name = None;
-                let mut name_span = None;
                 while let Some(pair) = var_exp_parts.next() {
                     match pair.as_rule() {
                         Rule::unary_op => {
                             unary_op = Some(UnaryOp::parse_from_pair(pair)?);
                         }
                         Rule::var_name_ident => {
-                            name_span = Some(pair.as_span());
                             name = Some(VarName::parse_from_pair(pair)?);
                         }
                         a => unreachable!("what is this? {:?} {}", a, pair.as_str()),
@@ -172,11 +170,9 @@ impl<'sc> Expression<'sc> {
                 }
                 // this is non-optional and part of the parse rule so it won't fail
                 let name = name.unwrap();
-                let name_span = name_span.unwrap();
                 Expression::VariableExpression {
                     name,
                     unary_op,
-                    name_span,
                     span,
                 }
             }
@@ -344,7 +340,7 @@ impl UnaryOp {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) struct VarName<'sc> {
     pub(crate) primary_name: &'sc str,
     // sub-names are the stuff after periods
@@ -355,9 +351,32 @@ pub(crate) struct VarName<'sc> {
     pub(crate) span: Span<'sc>,
 }
 
+// custom implementation of Hash so that namespacing isn't reliant on the span itself, which will
+// always be different.
+impl Hash for VarName<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.primary_name.hash(state);
+        self.sub_names.hash(state);
+    }
+}
+impl PartialEq for VarName<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.primary_name == other.primary_name && self.sub_names == other.sub_names
+    }
+}
+
+impl Eq for VarName<'_> {}
+
 impl<'sc> VarName<'sc> {
     pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<VarName<'sc>, ParseError<'sc>> {
-        let span = pair.as_span();
+        let span = {
+            let pair = pair.clone();
+            if pair.as_rule() != Rule::ident {
+                pair.into_inner().next().unwrap().as_span()
+            } else {
+                pair.as_span()
+            }
+        };
         let mut names = pair.into_inner();
         let primary_name = names.next().unwrap().as_str();
         let sub_names = names.map(|x| x.as_str()).collect();

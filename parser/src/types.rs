@@ -40,6 +40,7 @@ impl<'sc> TypeInfo<'sc> {
             "bool" => TypeInfo::Boolean,
             "string" => TypeInfo::String,
             "unit" => TypeInfo::Unit,
+            "byte" => TypeInfo::Byte,
             other => TypeInfo::Generic { name: other },
         })
     }

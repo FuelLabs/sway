@@ -4,9 +4,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CompileError<'sc> {
-    #[error("Variable \"{var_name}\" does not exist in this scope.\"")]
+    #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: &'sc str, span: Span<'sc> },
-    #[error("Function \"{name}\" does not exist in this scope.\"")]
+    #[error("Function \"{name}\" does not exist in this scope.")]
     UnknownFunction { name: &'sc str, span: Span<'sc> },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
     NotAVariable {
@@ -41,7 +41,7 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
 
 #[derive(Error, Debug)]
 pub enum TypeError<'sc> {
-    #[error("Mismatched types: Expected type {expected} but received type {received}. Type {received} is not castable to type {expected}")]
+    #[error("Mismatched types: Expected type {expected} but received type {received}. Type {received} is not castable to type {expected}.")]
     MismatchedType {
         expected: String,
         received: String,
