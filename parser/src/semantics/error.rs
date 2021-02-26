@@ -20,6 +20,8 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
         what_it_is: &'static str,
     },
+    #[error("Unimplemented feature: {0}")]
+    Unimplemented(&'static str, Span<'sc>),
     #[error("Internal compiler error: {0}\nPlease file an issue on the repository and include the code that triggered this error.")]
     Internal(&'static str, Span<'sc>),
     #[error("Type error: {0}")]
@@ -76,6 +78,7 @@ impl<'sc> CompileError<'sc> {
             NotAVariable { span, .. } => (span.start(), span.end()),
             NotAFunction { span, .. } => (span.start(), span.end()),
             Internal(_, span) => (span.start(), span.end()),
+            Unimplemented(_, span) => (span.start(), span.end()),
             TypeError(err) => err.span(),
         }
     }

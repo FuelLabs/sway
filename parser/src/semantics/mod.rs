@@ -7,6 +7,16 @@ use std::collections::HashMap;
 pub(crate) mod error;
 use error::CompileError;
 use pest::Span;
+
+const ERROR_RECOVERY_EXPR: TypedExpression = TypedExpression {
+    expression: TypedExpressionVariant::Unit,
+    return_type: TypeInfo::Unit,
+    is_constant: IsConstant::No,
+};
+
+const ERROR_RECOVERY_NODE_CONTENT: TypedAstNodeContent =
+    TypedAstNodeContent::Expression(ERROR_RECOVERY_EXPR);
+
 #[derive(Debug)]
 pub(crate) struct TypedParseTree<'sc> {
     root_nodes: Vec<TypedAstNode<'sc>>,
@@ -162,8 +172,9 @@ impl<'sc> TypedExpression<'sc> {
         other: Expression<'sc>,
         namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
         type_annotation: Option<TypeInfo<'sc>>,
-    ) -> Result<(Self, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
+    ) -> Result<(Self, Vec<CompileWarning<'sc>>), Vec<CompileError<'sc>>> {
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let expr_span = other.span();
         let typed_expression = match other {
             Expression::Literal { value: lit, .. } => {
@@ -197,17 +208,19 @@ impl<'sc> TypedExpression<'sc> {
                     },
                 },
                 Some(a) => {
-                    return Err(CompileError::NotAVariable {
+                    errors.push(CompileError::NotAVariable {
                         name: name.span.as_str(),
                         span: name.span,
                         what_it_is: a.friendly_name(),
                     });
+                    ERROR_RECOVERY_EXPR.clone()
                 }
                 None => {
-                    return Err(CompileError::UnknownVariable {
+                    errors.push(CompileError::UnknownVariable {
                         var_name: name.span.as_str().trim(),
                         span: name.span,
-                    })
+                    });
+                    ERROR_RECOVERY_EXPR.clone()
                 }
             },
             Expression::FunctionApplication {
@@ -259,23 +272,26 @@ impl<'sc> TypedExpression<'sc> {
                         }
                     }
                     Some(a) => {
-                        return Err(CompileError::NotAFunction {
+                        errors.push(CompileError::NotAFunction {
                             name: name.span.as_str(),
                             span: name.span,
                             what_it_is: a.friendly_name(),
-                        })
+                        });
+                        ERROR_RECOVERY_EXPR.clone()
                     }
                     None => {
-                        return Err(CompileError::UnknownFunction {
+                        errors.push(CompileError::UnknownFunction {
                             name: name.span.as_str(),
                             span: name.span,
-                        })
+                        });
+                        ERROR_RECOVERY_EXPR.clone()
                     }
                 }
             }
             Expression::MatchExpression {
                 primary_expression,
                 branches,
+                span,
                 ..
             } => {
                 let (typed_primary_expression, mut l_warnings) =
@@ -318,21 +334,33 @@ impl<'sc> TypedExpression<'sc> {
                 let mut all_branches = first_branch_result;
                 all_branches.append(&mut rest_of_branches);
 
-                todo!()
+                errors.push(CompileError::Unimplemented(
+                    "Match expressions and pattern matching",
+                    span,
+                ));
+                ERROR_RECOVERY_EXPR.clone()
             }
             Expression::CodeBlock { contents, .. } => {
-                let (typed_block, return_type, mut l_warnings) = TypedCodeBlock::type_check(
+                let res = TypedCodeBlock::type_check(
                     contents.clone(),
                     namespace.clone(),
                     type_annotation.clone(),
-                )?;
-                warnings.append(&mut l_warnings);
-                TypedExpression {
-                    expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
-                        contents: typed_block.contents,
-                    }),
-                    return_type,
-                    is_constant: IsConstant::No, // TODO if all elements of block are constant then this is constant
+                );
+                match res {
+                    Ok((typed_block, return_type, mut l_warnings)) => {
+                        warnings.append(&mut l_warnings);
+                        TypedExpression {
+                            expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
+                                contents: typed_block.contents,
+                            }),
+                            return_type,
+                            is_constant: IsConstant::No, // TODO if all elements of block are constant then this is constant
+                        }
+                    }
+                    Err(mut errs) => {
+                        errors.append(&mut errs);
+                        ERROR_RECOVERY_EXPR.clone()
+                    }
                 }
             }
             a => todo!("{:?}", a),
@@ -352,10 +380,16 @@ impl<'sc> TypedExpression<'sc> {
                         });
                     }
                 }
-                Err(err) => Err(err)?,
+                Err(err) => {
+                    errors.push(err.into());
+                }
             }
         }
-        Ok((typed_expression, warnings))
+        if errors.is_empty() {
+            Ok((typed_expression, warnings))
+        } else {
+            Err(errors)
+        }
     }
 }
 
@@ -365,9 +399,10 @@ impl<'sc> TypedCodeBlock<'sc> {
         namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
         // this is for the return or implicit return
         type_annotation: Option<TypeInfo<'sc>>,
-    ) -> Result<(Self, TypeInfo<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
+    ) -> Result<(Self, TypeInfo<'sc>, Vec<CompileWarning<'sc>>), Vec<CompileError<'sc>>> {
         // TODO implicit returns from blocks
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let mut evaluated_contents = Vec::new();
         let mut local_namespace = namespace.clone();
         let last_node = other
@@ -376,7 +411,21 @@ impl<'sc> TypedCodeBlock<'sc> {
             .expect("empty code block? TODO check if this is handled earlier")
             .clone();
         for node in &other.contents[0..other.contents.len() - 1] {
-            let (res, mut l_warnings) = type_check_node(node.clone(), &mut local_namespace, None)?;
+            let (res, mut l_warnings) =
+                match type_check_node(node.clone(), &mut local_namespace, None) {
+                    Ok(o) => o,
+                    Err(mut errs) => {
+                        errors.append(&mut errs);
+                        (
+                            TypedAstNode {
+                                content: ERROR_RECOVERY_NODE_CONTENT.clone(),
+                                scope: HashMap::default(),
+                                span: node.span.clone(),
+                            },
+                            Vec::new(),
+                        )
+                    }
+                };
             warnings.append(&mut l_warnings);
             evaluated_contents.push(res);
         }
@@ -398,23 +447,29 @@ impl<'sc> TypedCodeBlock<'sc> {
                         });
                     }
                 }
-                Err(err) => Err(err)?,
+                Err(err) => {
+                    errors.push(err.into());
+                }
             }
         }
 
-        Ok((
-            TypedCodeBlock {
-                contents: evaluated_contents,
-            },
-            res.type_info(),
-            warnings,
-        ))
+        if errors.is_empty() {
+            Ok((
+                TypedCodeBlock {
+                    contents: evaluated_contents,
+                },
+                res.type_info(),
+                warnings,
+            ))
+        } else {
+            Err(errors)
+        }
     }
 }
 
 pub(crate) fn type_check_tree<'sc>(
     parsed: ParseTree<'sc>,
-) -> Result<(TypedParseTree<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
+) -> Result<(TypedParseTree<'sc>, Vec<CompileWarning<'sc>>), Vec<CompileError<'sc>>> {
     let typed_tree = parsed
         .root_nodes
         .into_iter()
@@ -425,32 +480,49 @@ pub(crate) fn type_check_tree<'sc>(
         //
         // Top level functions are expected to return the Unit type, hence the annotation here
         .map(|node| type_check_node(node, &mut HashMap::default(), None))
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Vec<Result<_, _>>>();
     let mut typed_tree_nodes = Vec::new();
     let mut warnings = Vec::new();
-    for (node, mut l_warnings) in typed_tree {
-        warnings.append(&mut l_warnings);
-        typed_tree_nodes.push(node);
+    let mut errors = Vec::new();
+    for res in typed_tree {
+        match res {
+            Ok((node, mut l_warnings)) => {
+                warnings.append(&mut l_warnings);
+                typed_tree_nodes.push(node);
+            }
+            Err(mut errs) => {
+                errors.append(&mut errs);
+            }
+        }
     }
-    Ok((
-        TypedParseTree {
-            root_nodes: typed_tree_nodes,
-        },
-        warnings,
-    ))
+    if errors.is_empty() {
+        Ok((
+            TypedParseTree {
+                root_nodes: typed_tree_nodes,
+            },
+            warnings,
+        ))
+    } else {
+        Err(errors)
+    }
 }
 
 fn type_check_node<'sc>(
     node: AstNode<'sc>,
     namespace: &mut HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
     return_type_annotation: Option<TypeInfo<'sc>>,
-) -> Result<(TypedAstNode<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
+) -> Result<(TypedAstNode<'sc>, Vec<CompileWarning<'sc>>), Vec<CompileError<'sc>>> {
     let mut warnings = Vec::new();
+    let mut errors = Vec::new();
     Ok((
         TypedAstNode {
             content: match node.content {
                 AstNodeContent::UseStatement(a) => {
-                    todo!("Insert things from use statement into namespace")
+                    errors.push(CompileError::Unimplemented(
+                        "Use statements are unimplemented.",
+                        node.span.clone(),
+                    ));
+                    ERROR_RECOVERY_NODE_CONTENT.clone()
                 }
                 AstNodeContent::Declaration(a) => TypedAstNodeContent::Declaration(match a {
                     Declaration::VariableDeclaration(VariableDeclaration {
@@ -545,12 +617,19 @@ fn type_check_node<'sc>(
                                     type_parameters: x.type_parameters,
                                 })
                             })
-                            .collect::<Result<Vec<_>, CompileError>>()?;
+                            .collect::<Vec<Result<_, Vec<CompileError>>>>();
+                        let mut methods_buf = Vec::new();
+                        for method_res in methods {
+                            match method_res {
+                                Ok(method) => methods_buf.push(method),
+                                Err(mut errs) => errors.append(&mut errs),
+                            }
+                        }
                         let trait_decl =
                             TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
                                 name: name.clone(),
                                 interface_surface,
-                                methods,
+                                methods: methods_buf,
                             });
                         namespace.insert(name, trait_decl.clone());
                         trait_decl
@@ -566,16 +645,27 @@ fn type_check_node<'sc>(
                 }
                 AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
                     if return_type_annotation.is_none() {
-                        return Err(CompileError::Internal("Parsed a return type without an annotation. All returns should be typed. ", node.span));
-                    }
-                    let (res, mut l_warnings) = TypedExpression::type_check(
-                        expr,
-                        namespace.clone(),
-                        return_type_annotation,
-                    )?;
-                    warnings.append(&mut l_warnings);
+                        errors.push(CompileError::Internal("Parsed a return type without an annotation. All returns should be typed. ", node.span.clone()));
+                        ERROR_RECOVERY_NODE_CONTENT.clone()
+                    } else {
+                        match TypedExpression::type_check(
+                            expr,
+                            namespace.clone(),
+                            return_type_annotation,
+                        ) {
+                            Ok((res, mut l_warnings)) => {
+                                warnings.append(&mut l_warnings);
 
-                    TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr: res })
+                                TypedAstNodeContent::ReturnStatement(TypedReturnStatement {
+                                    expr: res,
+                                })
+                            }
+                            Err(mut errs) => {
+                                errors.append(&mut errs);
+                                ERROR_RECOVERY_NODE_CONTENT.clone()
+                            }
+                        }
+                    }
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let (typed_expr, mut l_warnings) = TypedExpression::type_check(

@@ -178,9 +178,11 @@ pub fn parse<'sc>(input: &'sc str) -> ParseResult<'sc, HllParseTree<'sc>> {
 // TODO compile result and not parse result
 pub fn compile<'sc>(
     input: &'sc str,
-) -> Result<(HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>), CompileError<'sc>> {
+) -> Result<(HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>), Vec<CompileError<'sc>>> {
     let mut warnings = Vec::new();
-    let (parse_tree, mut l_warnings) = parse(input)?;
+    let mut errors = Vec::new();
+    // TODO handle multiple errors from the parse stage
+    let (parse_tree, mut l_warnings) = parse(input).map_err(|e| vec![e.into()])?;
     warnings.append(&mut l_warnings);
 
     let maybe_contract_tree: Option<Result<_, _>> = parse_tree
@@ -193,36 +195,51 @@ pub fn compile<'sc>(
         .script_ast
         .map(|tree| semantics::type_check_tree(tree));
 
-    let contract_ast = if let Some(x) = maybe_contract_tree {
-        let mut x = x?;
-        warnings.append(&mut x.1);
-        Some(x.0)
-    } else {
-        None
+    let contract_ast = match maybe_contract_tree {
+        Some(Ok((tree, mut l_warnings))) => {
+            warnings.append(&mut l_warnings);
+            Some(tree)
+        }
+        Some(Err(mut errs)) => {
+            errors.append(&mut errs);
+            None
+        }
+        None => None,
     };
-    let predicate_ast = if let Some(x) = maybe_predicate_tree {
-        let mut x = x?;
-        warnings.append(&mut x.1);
-        Some(x.0)
-    } else {
-        None
+    let predicate_ast = match maybe_predicate_tree {
+        Some(Ok((tree, mut l_warnings))) => {
+            warnings.append(&mut l_warnings);
+            Some(tree)
+        }
+        Some(Err(mut errs)) => {
+            errors.append(&mut errs);
+            None
+        }
+        None => None,
     };
-    let script_ast = if let Some(x) = maybe_script_tree {
-        let mut x = x?;
-        warnings.append(&mut x.1);
-        Some(x.0)
-    } else {
-        None
+    let script_ast = match maybe_script_tree {
+        Some(Ok((tree, mut l_warnings))) => {
+            warnings.append(&mut l_warnings);
+            Some(tree)
+        }
+        Some(Err(mut errs)) => {
+            errors.append(&mut errs);
+            None
+        }
+        None => None,
     };
-
-    Ok((
-        HllTypedParseTree {
-            contract_ast,
-            script_ast,
-            predicate_ast,
-        },
-        warnings,
-    ))
+    if errors.is_empty() {
+        Ok((
+            HllTypedParseTree {
+                contract_ast,
+                script_ast,
+                predicate_ast,
+            },
+            warnings,
+        ))
+    } else {
+        Err(errors)
+    }
 }
 
 // strategy: parse top level things

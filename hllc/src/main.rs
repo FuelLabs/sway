@@ -48,7 +48,17 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 write_yellow(&format!("Compiled {:?} with warnings.", opt.input));
             }
         }
-        Err(e) => format_err(&content, e),
+        Err(e) => {
+            let e_len = e.len();
+            e.into_iter().for_each(|e| format_err(&content, e));
+
+            write_red(format!(
+                "Aborting due to {} {}.",
+                e_len,
+                if e_len > 1 { "errors" } else { "error" }
+            ))
+            .unwrap();
+        }
     }
 
     Ok(())
@@ -121,10 +131,10 @@ fn format_err(input: &str, err: parser::CompileError) {
     );
 
     println!("{}", formatted);
-    write_red("Aborting due to previous error.").unwrap();
 }
 
-fn write_red(txt: &str) -> io::Result<()> {
+fn write_red(txt: String) -> io::Result<()> {
+    let txt = txt.as_str();
     let bufwtr = BufferWriter::stderr(ColorChoice::Always);
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Red)))?;

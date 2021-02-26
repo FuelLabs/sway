@@ -21,7 +21,9 @@ contract {
       return example_variable_decl;
     }
 
+    /*
     struct my_struct {
         FieldName: u64
     }
+    */
 }
