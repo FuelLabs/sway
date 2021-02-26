@@ -5,7 +5,11 @@ use std::convert::TryInto;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Literal<'sc> {
-    Integer(i64),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
     String(&'sc str),
     Boolean(bool),
     Byte(u8),
@@ -16,12 +20,56 @@ impl<'sc> Literal<'sc> {
     pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
         let lit_inner = lit.into_inner().next().unwrap();
         let parsed = match lit_inner.as_rule() {
-            Rule::integer => Literal::Integer(lit_inner.as_str().trim().parse().map_err(|e| {
-                ParseError::Internal(
-                    "Called incorrect internal parser on literal type.",
-                    lit_inner.into_span(),
-                )
-            })?),
+            Rule::integer => {
+                let mut int_inner = lit_inner.into_inner().next().unwrap();
+                let rule = int_inner.as_rule();
+                if int_inner.as_rule() != Rule::basic_integer {
+                    int_inner = int_inner.into_inner().next().unwrap()
+                }
+                match rule {
+                    Rule::u8_integer => {
+                        Literal::U8(int_inner.as_str().trim().parse().map_err(|e| {
+                            ParseError::Internal(
+                                "Called incorrect internal parser on literal type.",
+                                int_inner.into_span(),
+                            )
+                        })?)
+                    }
+                    Rule::u16_integer => {
+                        Literal::U16(int_inner.as_str().trim().parse().map_err(|e| {
+                            ParseError::Internal(
+                                "Called incorrect internal parser on literal type.",
+                                int_inner.into_span(),
+                            )
+                        })?)
+                    }
+                    Rule::u32_integer => {
+                        Literal::U32(int_inner.as_str().trim().parse().map_err(|e| {
+                            ParseError::Internal(
+                                "Called incorrect internal parser on literal type.",
+                                int_inner.into_span(),
+                            )
+                        })?)
+                    }
+                    Rule::u64_integer => {
+                        Literal::U64(int_inner.as_str().trim().parse().map_err(|e| {
+                            ParseError::Internal(
+                                "Called incorrect internal parser on literal type.",
+                                int_inner.into_span(),
+                            )
+                        })?)
+                    }
+                    Rule::u128_integer => {
+                        Literal::U128(int_inner.as_str().trim().parse().map_err(|e| {
+                            ParseError::Internal(
+                                "Called incorrect internal parser on literal type.",
+                                int_inner.into_span(),
+                            )
+                        })?)
+                    }
+                    _ => unreachable!(),
+                }
+            }
             Rule::string => {
                 // remove opening and closing quotes
                 let lit_str = lit_inner.as_str();

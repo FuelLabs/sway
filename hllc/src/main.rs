@@ -1,6 +1,6 @@
 #![allow(warnings)]
 use line_col::LineColLookup;
-use parser::parse;
+use parser::compile;
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, SourceBuffer, Span, DEFAULT_METRICS,
@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let opt = Opt::from_args();
     let content = fs::read_to_string(opt.input.clone())?;
 
-    let res = parse(&content);
+    let res = compile(&content);
 
     match res {
         Ok((compiled, warnings)) => {
@@ -37,18 +37,37 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 let mut file = File::create(output)?;
                 file.write_all(format!("{:#?}", compiled).as_bytes())?;
             } else {
-                println!("{:#?}", compiled);
+                //println!("{:#?}", compiled);
             }
             for ref warning in warnings.iter() {
                 format_warning(&content, warning);
             }
             if warnings.is_empty() {
-                write_green(&format!("Successfully compiled {:?}", opt.input));
+                write_green(&format!("Successfully compiled {:?}.", opt.input));
             } else {
-                write_yellow(&format!("Compiled {:?} with warnings.", opt.input));
+                write_yellow(&format!(
+                    "Compiled {:?} with {} {}.",
+                    opt.input,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
             }
         }
-        Err(e) => format_err(&content, e),
+        Err(e) => {
+            let e_len = e.len();
+            e.into_iter().for_each(|e| format_err(&content, e));
+
+            write_red(format!(
+                "Aborting due to {} {}.",
+                e_len,
+                if e_len > 1 { "errors" } else { "error" }
+            ))
+            .unwrap();
+        }
     }
 
     Ok(())
@@ -90,7 +109,7 @@ fn format_warning(input: &str, err: &parser::CompileWarning) {
     println!("{}", formatted);
 }
 
-fn format_err(input: &str, err: parser::ParseError) {
+fn format_err(input: &str, err: parser::CompileError) {
     let metrics = DEFAULT_METRICS;
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
@@ -121,10 +140,10 @@ fn format_err(input: &str, err: parser::ParseError) {
     );
 
     println!("{}", formatted);
-    write_red("Aborting due to previous error.").unwrap();
 }
 
-fn write_red(txt: &str) -> io::Result<()> {
+fn write_red(txt: String) -> io::Result<()> {
+    let txt = txt.as_str();
     let bufwtr = BufferWriter::stderr(ColorChoice::Always);
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Red)))?;

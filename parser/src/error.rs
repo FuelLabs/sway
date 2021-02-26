@@ -1,4 +1,5 @@
 use crate::parser::Rule;
+use crate::types::TypeInfo;
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
@@ -16,6 +17,7 @@ macro_rules! eval {
 macro_rules! assert_or_warn {
     ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr) => {
         if !$bool_expr {
+            use crate::error::CompileWarning;
             $warnings.push(CompileWarning {
                 warning_content: $warning,
                 span: $span,
@@ -44,20 +46,37 @@ impl<'sc> CompileWarning<'sc> {
 
 #[derive(Debug, Clone)]
 pub enum Warning<'sc> {
-    NonClassCaseStructName { struct_name: &'sc str },
-    NonClassCaseEnumName { enum_name: &'sc str },
-    NonSnakeCaseStructFieldName { field_name: &'sc str },
-    NonSnakeCaseEnumVariantName { variant_name: &'sc str },
+    NonClassCaseStructName {
+        struct_name: &'sc str,
+    },
+    NonClassCaseEnumName {
+        enum_name: &'sc str,
+    },
+    NonClassCaseEnumVariantName {
+        variant_name: &'sc str,
+    },
+    NonSnakeCaseStructFieldName {
+        field_name: &'sc str,
+    },
+    NonSnakeCaseFunctionName {
+        name: &'sc str,
+    },
+    LossOfPrecision {
+        initial_type: TypeInfo<'sc>,
+        cast_to: TypeInfo<'sc>,
+    },
 }
 
 impl<'sc> Warning<'sc> {
     fn to_string(&self) -> String {
         use Warning::*;
         match self {
-            NonClassCaseStructName{ struct_name } => format!("Struct \"{}\"'s capitalization is not idiomatic. Structs should have a ClassCase name, like \"{}\".", struct_name, to_class_case(struct_name)),
+            NonClassCaseStructName{ struct_name } => format!("Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \"{}\".", struct_name, to_class_case(struct_name)),
             NonClassCaseEnumName{ enum_name} => format!("Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase name, like \"{}\".", enum_name, to_class_case(enum_name)),
             NonSnakeCaseStructFieldName { field_name } => format!("Struct field name \"{}\" is not idiomatic. Struct field names should have a snake_case name, like \"{}\".", field_name, to_snake_case(field_name)),
-            NonSnakeCaseEnumVariantName { variant_name } => format!("Enum variant name \"{}\" is not idiomatic. Enum variant names should have a snake_case name, like \"{}\".", variant_name, to_snake_case(variant_name)),
+            NonClassCaseEnumVariantName { variant_name } => format!("Enum variant name \"{}\" is not idiomatic. Enum variant names should be ClassCase, like \"{}\".", variant_name, to_class_case(variant_name)),
+            NonSnakeCaseFunctionName { name } => format!("Function name \"{}\" is not idiomatic. Function names should be snake_case, like \"{}\".", name, to_snake_case(name)),
+            LossOfPrecision { initial_type, cast_to } => format!("This cast, from type {} to type {}, will lose precision.", initial_type.friendly_type_str(), cast_to.friendly_type_str()),
         }
     }
 }
@@ -68,7 +87,7 @@ pub enum ParseError<'sc> {
     ParseFailure(#[from] pest::error::Error<Rule>),
     #[error("Invalid top-level item: {0:?}. A program should consist of a contract, script, or predicate at the top level.")]
     InvalidTopLevelItem(Rule, Span<'sc>),
-    #[error("Internal compiler error: {0}. Please file an issue on the repository and include the code that triggered this error.")]
+    #[error("Internal compiler error: {0}\nPlease file an issue on the repository and include the code that triggered this error.")]
     Internal(&'static str, Span<'sc>),
     #[error("Unimplemented feature: {0:?}")]
     Unimplemented(Rule, Span<'sc>),
@@ -85,6 +104,12 @@ pub enum ParseError<'sc> {
         type_name: &'sc str,
         span: Span<'sc>,
     },
+    #[error("Program contains multiple contracts. A valid program should only contain at most one contract.")]
+    MultipleContracts(Span<'sc>),
+    #[error("Program contains multiple scripts. A valid program should only contain at most one script.")]
+    MultipleScripts(Span<'sc>),
+    #[error("Program contains multiple predicates. A valid program should only contain at most one predicate.")]
+    MultiplePredicates(Span<'sc>),
 }
 
 impl<'sc> ParseError<'sc> {
@@ -103,6 +128,9 @@ impl<'sc> ParseError<'sc> {
             ExpectedOp { span, .. } => (span.start(), span.end()),
             UnexpectedWhereClause(sp) => (sp.start(), sp.end()),
             UndeclaredGenericTypeInWhereClause { span, .. } => (span.start(), span.end()),
+            MultiplePredicates(sp) => (sp.start(), sp.end()),
+            MultipleScripts(sp) => (sp.start(), sp.end()),
+            MultipleContracts(sp) => (sp.start(), sp.end()),
         }
     }
 
