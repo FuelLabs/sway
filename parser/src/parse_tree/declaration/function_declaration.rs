@@ -84,7 +84,7 @@ impl<'sc> FunctionDeclaration<'sc> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct FunctionParameter<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: VarName<'sc>,
     pub(crate) r#type: TypeInfo<'sc>,
 }
 
@@ -95,8 +95,10 @@ impl<'sc> FunctionParameter<'sc> {
         pairs
             .map(|pair: Pair<'sc, Rule>| {
                 let mut parts = pair.clone().into_inner();
-                let name = parts.next().unwrap().as_str();
-                let r#type = if name == "self" {
+                let name_pair = parts.next().unwrap();
+                let name_str = name_pair.as_str();
+                let name = VarName::parse_from_pair(name_pair)?;
+                let r#type = if name_str == "self" {
                     TypeInfo::SelfType
                 } else {
                     TypeInfo::parse_from_pair_inner(parts.next().unwrap())?

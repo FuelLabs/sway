@@ -17,6 +17,7 @@ const ERROR_RECOVERY_EXPR: TypedExpression = TypedExpression {
 const ERROR_RECOVERY_NODE_CONTENT: TypedAstNodeContent =
     TypedAstNodeContent::Expression(ERROR_RECOVERY_EXPR);
 
+const ERROR_RECOVERY_DECLARATION: TypedDeclaration = TypedDeclaration::ErrorRecovery;
 #[derive(Debug)]
 pub(crate) struct TypedParseTree<'sc> {
     root_nodes: Vec<TypedAstNode<'sc>>,
@@ -68,6 +69,7 @@ pub(crate) enum TypedDeclaration<'sc> {
     TraitDeclaration(TypedTraitDeclaration<'sc>),
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
+    ErrorRecovery,
 }
 
 impl<'sc> TypedDeclaration<'sc> {
@@ -80,6 +82,7 @@ impl<'sc> TypedDeclaration<'sc> {
             TraitDeclaration(_) => "trait",
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
+            ErrorRecovery => "invalid declaration",
         }
     }
 }
@@ -145,6 +148,8 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         fields: Vec<TypedStructExpressionField<'sc>>,
     },
     CodeBlock(TypedCodeBlock<'sc>),
+    // a flag that this value will later be provided as a parameter, but is currently unknown
+    FunctionParameter,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct TypedStructExpressionField<'sc> {
@@ -531,17 +536,26 @@ fn type_check_node<'sc>(
                         body,
                         is_mutable,
                     }) => {
-                        let (body, mut l_warnings) =
-                            TypedExpression::type_check(body, namespace.clone(), type_ascription)?;
-                        warnings.append(&mut l_warnings);
-                        let body =
-                            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                                name: name.clone(),
-                                body,
-                                is_mutable,
-                            });
-                        namespace.insert(name, body.clone());
-                        body
+                        let res =
+                            TypedExpression::type_check(body, namespace.clone(), type_ascription);
+                        match res {
+                            Ok((body, mut l_warnings)) => {
+                                warnings.append(&mut l_warnings);
+                                let body = TypedDeclaration::VariableDeclaration(
+                                    TypedVariableDeclaration {
+                                        name: name.clone(),
+                                        body,
+                                        is_mutable,
+                                    },
+                                );
+                                namespace.insert(name, body.clone());
+                                body
+                            }
+                            Err(mut errs) => {
+                                errors.append(&mut errs);
+                                ERROR_RECOVERY_DECLARATION.clone()
+                            }
+                        }
                     }
                     Declaration::EnumDeclaration(e) => {
                         let span = e.span.clone();
@@ -565,31 +579,60 @@ fn type_check_node<'sc>(
                         return_type,
                         type_parameters,
                     }) => {
-                        let (body, _block_implicit_return_type, mut l_warnings) =
-                            TypedCodeBlock::type_check(
-                                body,
-                                namespace.clone(),
-                                Some(return_type.clone()),
-                            )?;
-                        warnings.append(&mut l_warnings);
-                        let decl =
-                            TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-                                name,
-                                body,
-                                parameters,
-                                span: span.clone(),
-                                return_type,
-                                type_parameters,
-                            });
-                        namespace.insert(
-                            VarName {
-                                primary_name: name,
-                                sub_names: Vec::new(),
-                                span: span,
+                        // insert parameters into namespace
+                        let mut namespace = namespace.clone();
+                        parameters.clone().into_iter().for_each(
+                            |FunctionParameter { name, r#type }| {
+                                namespace.insert(
+                                    name.clone(),
+                                    TypedDeclaration::VariableDeclaration(
+                                        TypedVariableDeclaration {
+                                            name: name.clone(),
+                                            body: TypedExpression {
+                                                expression:
+                                                    TypedExpressionVariant::FunctionParameter,
+                                                return_type: r#type,
+                                                is_constant: IsConstant::No,
+                                            },
+                                            is_mutable: false, // TODO allow mutable function params?
+                                        },
+                                    ),
+                                );
                             },
-                            decl.clone(),
                         );
-                        decl
+                        let res = TypedCodeBlock::type_check(
+                            body,
+                            namespace.clone(),
+                            Some(return_type.clone()),
+                        );
+                        match res {
+                            Ok((body, _block_implicit_return_type, mut l_warnings)) => {
+                                warnings.append(&mut l_warnings);
+                                let decl = TypedDeclaration::FunctionDeclaration(
+                                    TypedFunctionDeclaration {
+                                        name,
+                                        body,
+                                        parameters,
+                                        span: span.clone(),
+                                        return_type,
+                                        type_parameters,
+                                    },
+                                );
+                                namespace.insert(
+                                    VarName {
+                                        primary_name: name,
+                                        sub_names: Vec::new(),
+                                        span: span,
+                                    },
+                                    decl.clone(),
+                                );
+                                decl
+                            }
+                            Err(mut errs) => {
+                                errors.append(&mut errs);
+                                ERROR_RECOVERY_DECLARATION.clone()
+                            }
+                        }
                     }
                     Declaration::TraitDeclaration(TraitDeclaration {
                         name,
