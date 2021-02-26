@@ -49,6 +49,12 @@ pub(crate) enum Expression<'sc> {
         inner: Box<Expression<'sc>>,
         span: Span<'sc>,
     },
+    IfExp {
+        condition: Box<Expression<'sc>>,
+        then: Box<Expression<'sc>>,
+        r#else: Option<Box<Expression<'sc>>>,
+        span: Span<'sc>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +76,7 @@ impl<'sc> Expression<'sc> {
             StructExpression { span, .. } => span,
             CodeBlock { span, .. } => span,
             ParenthesizedExpression { span, .. } => span,
+            IfExp { span, .. } => span,
         })
         .clone()
     }
@@ -235,6 +242,34 @@ impl<'sc> Expression<'sc> {
                 let expr = eval!(crate::CodeBlock::parse_from_pair, warnings, expr);
                 Expression::CodeBlock {
                     contents: expr,
+                    span,
+                }
+            }
+            Rule::if_exp => {
+                let span = expr.as_span();
+                let mut if_exp_pairs = expr.into_inner();
+                let condition_pair = if_exp_pairs.next().unwrap();
+                let then_pair = if_exp_pairs.next().unwrap();
+                let else_pair = if_exp_pairs.next();
+                let condition =
+                    Box::new(eval!(Expression::parse_from_pair, warnings, condition_pair));
+                let then = Box::new(eval!(
+                    Expression::parse_from_pair_inner,
+                    warnings,
+                    then_pair
+                ));
+                let r#else = match else_pair {
+                    Some(else_pair) => Some(Box::new(eval!(
+                        Expression::parse_from_pair_inner,
+                        warnings,
+                        else_pair
+                    ))),
+                    None => None,
+                };
+                Expression::IfExp {
+                    condition,
+                    then,
+                    r#else,
                     span,
                 }
             }

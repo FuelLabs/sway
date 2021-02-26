@@ -33,7 +33,7 @@ var_exp    =  { unary_op? ~ var_name_ident }
 
 var_name_ident = { ident ~ ("." ~ ident)* }
 
-if_exp =  {"if" ~ expr ~ "then" ~ code_block ~ ("else" ~ code_block)?}
+if_exp =  {"if" ~ expr ~  code_block ~ ("else" ~ code_block)?}
 
 op =  {"+"|"-"|"/"|"*"|"=="|"!="|"|"|"||"|"&"|"&&"|"^"|"%"}
 unary_op = { "!" | "ref" | "deref" }

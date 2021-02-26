@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 let mut file = File::create(output)?;
                 file.write_all(format!("{:#?}", compiled).as_bytes())?;
             } else {
-                println!("{:#?}", compiled);
+                //println!("{:#?}", compiled);
             }
             for ref warning in warnings.iter() {
                 format_warning(&content, warning);

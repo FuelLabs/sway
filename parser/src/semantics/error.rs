@@ -43,10 +43,11 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
 
 #[derive(Error, Debug)]
 pub enum TypeError<'sc> {
-    #[error("Mismatched types: Expected type {expected} but received type {received}. Type {received} is not castable to type {expected}.")]
+    #[error("Mismatched types: Expected type {expected} but received type {received}. Type {received} is not castable to type {expected}. {help_text}")]
     MismatchedType {
         expected: String,
         received: String,
+        help_text: String,
         span: Span<'sc>,
     },
 }

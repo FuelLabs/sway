@@ -1,4 +1,5 @@
 contract {
+    /*
     trait my_trait { 
       fn someFnThing(): u32
     } {
@@ -7,6 +8,7 @@ contract {
       }
     }
 
+*/
     fn contract_func_1(a: T, y: u32): T {
       println("Test function.");
       let z = x.a.b.c;
@@ -16,7 +18,13 @@ contract {
           y
       };
       let example_variable_decl = 5;
-      return a;
+      let y = if true { 
+            let x = 5;
+            let z = 2;
+            a
+      } else { 10 };
+
+      a
     }
 
     /*

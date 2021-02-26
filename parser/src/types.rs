@@ -15,6 +15,8 @@ pub enum TypeInfo<'sc> {
     SelfType,
     Byte,
     Byte32,
+    // used for recovering from errors in the ast
+    ErrorRecovery,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum IntegerBits {
@@ -49,7 +51,12 @@ impl<'sc> TypeInfo<'sc> {
         self,
         other: TypeInfo<'sc>,
         debug_span: Span<'sc>,
+        help_text: impl Into<String>,
     ) -> Result<Option<Warning<'sc>>, crate::semantics::error::TypeError<'sc>> {
+        let help_text = help_text.into();
+        if self == TypeInfo::ErrorRecovery || other == TypeInfo::ErrorRecovery {
+            return Ok(None);
+        }
         use crate::semantics::error::TypeError;
         // TODO  actually check more advanced conversion rules like upcasting vs downcasting
         // numbers, emit warnings for loss of precision
@@ -65,6 +72,7 @@ impl<'sc> TypeInfo<'sc> {
             Err(TypeError::MismatchedType {
                 expected: other.friendly_type_str(),
                 received: self.friendly_type_str(),
+                help_text,
                 span: debug_span,
             })
         }
@@ -135,6 +143,7 @@ impl<'sc> TypeInfo<'sc> {
             SelfType => "Self".into(),
             Byte => "byte".into(),
             Byte32 => "byte32".into(),
+            ErrorRecovery => "error type".into(),
         }
     }
     fn is_numeric(&self) -> bool {
