@@ -43,9 +43,18 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 format_warning(&content, warning);
             }
             if warnings.is_empty() {
-                write_green(&format!("Successfully compiled {:?}", opt.input));
+                write_green(&format!("Successfully compiled {:?}.", opt.input));
             } else {
-                write_yellow(&format!("Compiled {:?} with warnings.", opt.input));
+                write_yellow(&format!(
+                    "Compiled {:?} with {} {}.",
+                    opt.input,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
             }
         }
         Err(e) => {

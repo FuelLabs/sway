@@ -410,7 +410,6 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>) -> Result<Op, ParseError<'sc>> {
             })
         }
     };
-    dbg!(&op_variant, op.as_span());
     Ok(Op {
         span: op.as_span(),
         op_variant,
@@ -466,6 +465,23 @@ impl OpVariant {
             BinaryAnd => "binary_and",
         }
     }
+    fn precedence(&self) -> usize {
+        use OpVariant::*;
+        match self {
+            Add => 1,
+            Subtract => 1,
+            Divide => 2,
+            Multiply => 2,
+            Modulo => 2,
+            Or => 0,
+            And => 0,
+            Equals => 0,
+            NotEquals => 0,
+            Xor => 0,
+            BinaryOr => 0,
+            BinaryAnd => 0,
+        }
+    }
 }
 
 fn arrange_by_order_of_operations<'sc>(
@@ -478,7 +494,38 @@ fn arrange_by_order_of_operations<'sc>(
 
     for expr_or_op in expressions {
         match expr_or_op {
-            Either::Left(op) => op_stack.push(op),
+            Either::Left(op) => {
+                if op.op_variant.precedence()
+                    < op_stack
+                        .last()
+                        .map(|x: &Op| x.op_variant.precedence())
+                        .unwrap_or(0)
+                {
+                    let rhs = expression_stack.pop();
+                    let lhs = expression_stack.pop();
+                    let new_op = op_stack.pop().unwrap();
+                    if lhs.is_none() {
+                        return Err(ParseError::Internal(
+                            "Prematurely empty expression stack for left hand side.",
+                            debug_span,
+                        ));
+                    }
+                    if rhs.is_none() {
+                        return Err(ParseError::Internal(
+                            "Prematurely empty expression stack for right hand side.",
+                            debug_span,
+                        ));
+                    }
+                    let lhs = lhs.unwrap();
+                    let rhs = rhs.unwrap();
+                    expression_stack.push(Expression::FunctionApplication {
+                        name: new_op.to_var_name(),
+                        arguments: vec![lhs, rhs],
+                        span: debug_span.clone(),
+                    });
+                }
+                op_stack.push(op)
+            }
             Either::Right(expr) => expression_stack.push(expr),
         }
     }
@@ -518,6 +565,5 @@ fn arrange_by_order_of_operations<'sc>(
         ));
     }
 
-    dbg!(&expression_stack[0]);
     Ok((expression_stack[0].clone(), warnings))
 }
