@@ -24,7 +24,7 @@ pub enum CompileError<'sc> {
     Unimplemented(&'static str, Span<'sc>),
     #[error("Internal compiler error: {0}\nPlease file an issue on the repository and include the code that triggered this error.")]
     Internal(&'static str, Span<'sc>),
-    #[error("Type error: {0}")]
+    #[error("{0}")]
     TypeError(TypeError<'sc>),
     #[error("Parse error: {0}")]
     ParseError(ParseError<'sc>),
@@ -43,7 +43,7 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
 
 #[derive(Error, Debug)]
 pub enum TypeError<'sc> {
-    #[error("Mismatched types: Expected type {expected} but received type {received}. Type {received} is not castable to type {expected}. {help_text}")]
+    #[error("Mismatched types: Expected type {expected} but found type {received}. Type {received} is not castable to type {expected}.\n help: {help_text}")]
     MismatchedType {
         expected: String,
         received: String,
