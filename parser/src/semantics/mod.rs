@@ -473,7 +473,15 @@ impl<'sc> TypedExpression<'sc> {
                     return_type: then.return_type,
                 }
             }
-            a => todo!("{:?}", a),
+            a => {
+                println!("Unimplemented: {:?}", a);
+                errors.push(CompileError::Unimplemented(
+                    "Unimplemented expression",
+                    a.span(),
+                ));
+
+                ERROR_RECOVERY_EXPR
+            }
         };
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
@@ -798,7 +806,15 @@ fn type_check_node<'sc>(
                     namespace.insert(name, trait_decl.clone());
                     trait_decl
                 }
-                a => todo!("{:?}", a),
+                a => {
+                    println!("Unimplemented: {:?}", a);
+                    errors.push(CompileError::Unimplemented(
+                        "Unimplemented declaration variant",
+                        node.span.clone(),
+                    ));
+
+                    ERROR_RECOVERY_DECLARATION
+                }
             }),
             AstNodeContent::TraitDeclaration(a) => TypedAstNodeContent::TraitDeclaration(a),
             AstNodeContent::Expression(a) => {
@@ -858,7 +874,15 @@ fn type_check_node<'sc>(
                 warnings.append(&mut l_warnings);
                 TypedAstNodeContent::ImplicitReturnExpression(typed_expr)
             }
-            a => todo!("{:?}", a),
+            a => {
+                println!("Unimplemented: {:?}", a);
+                errors.push(CompileError::Unimplemented(
+                    "Unimplemented AST Node",
+                    node.span.clone(),
+                ));
+
+                ERROR_RECOVERY_NODE_CONTENT
+            }
         },
         span: node.span,
         scope: namespace.clone(),
