@@ -1,35 +1,35 @@
 contract {
-    /*
     trait my_trait { 
-      fn someFnThing(): u32
+      fn someFnThing(): T  
     } {
       fn some_other_trait_thing(): bool {
-         return true;
+         true
       }
     }
 
-*/
-    fn contract_func_1(a: T, y: u32): T {
-      println("Test function.");
-      let z = x.a.b.c;
+
+    pub fn contract_func_1<T>(a: T, y: u32): T {
+      println("Test function.", "other str", 3);
+      let mut z: u8 = y;
       let x: byte = {
           // a code block w/ implicit return
           let y = 0b11110000;
           y
       };
+
+
       let example_variable_decl = 5;
       let y = if true { 
             let x = 5;
             let z = 2;
             a
-      } else { 10 };
+      } else { a };
 
-      a
+      // should be an error since ther3's no return here
     }
 
-    /*
     struct my_struct {
         FieldName: u64
     }
-    */
 }
+

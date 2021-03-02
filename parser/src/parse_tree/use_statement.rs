@@ -1,4 +1,5 @@
-use crate::error::ParseError;
+use crate::error::CompileError;
+use crate::error::*;
 use crate::Rule;
 use pest::iterators::Pair;
 
@@ -9,7 +10,7 @@ pub(crate) struct UseStatement<'sc> {
 }
 
 impl<'sc> UseStatement<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut stmt = pair.into_inner();
         let _use_keyword = stmt.next();
         let import_path = stmt.next().unwrap();
@@ -19,6 +20,6 @@ impl<'sc> UseStatement<'sc> {
             .map(|x| x.as_str());
         let root = path_iter.next().unwrap();
         let path = path_iter.collect();
-        Ok(UseStatement { root, path })
+        ok(UseStatement { root, path }, Vec::new(), Vec::new())
     }
 }

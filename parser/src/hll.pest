@@ -69,9 +69,11 @@ array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl)}
 var_decl    =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription = { ":" ~ type_name}
-fn_decl     =  {fn_signature ~ code_block}
+fn_decl     =  {visibility ~ fn_signature ~ code_block}
 fn_signature = { fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds? }
 var_name = {ident}
+
+visibility = { "pub"? }
 
 struct_decl = { "struct" ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}" }
 struct_name = @{ident}

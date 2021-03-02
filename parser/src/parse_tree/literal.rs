@@ -1,5 +1,6 @@
+use crate::error::*;
 use crate::parser::Rule;
-use crate::ParseError;
+use crate::CompileError;
 use pest::iterators::Pair;
 use std::convert::TryInto;
 
@@ -17,96 +18,115 @@ pub(crate) enum Literal<'sc> {
 }
 
 impl<'sc> Literal<'sc> {
-    pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
+    pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let lit_inner = lit.into_inner().next().unwrap();
-        let parsed = match lit_inner.as_rule() {
-            Rule::integer => {
-                let mut int_inner = lit_inner.into_inner().next().unwrap();
-                let rule = int_inner.as_rule();
-                if int_inner.as_rule() != Rule::basic_integer {
-                    int_inner = int_inner.into_inner().next().unwrap()
+        let parsed: Result<Literal, CompileError> =
+            match lit_inner.as_rule() {
+                Rule::integer => {
+                    let mut int_inner = lit_inner.into_inner().next().unwrap();
+                    let rule = int_inner.as_rule();
+                    if int_inner.as_rule() != Rule::basic_integer {
+                        int_inner = int_inner.into_inner().next().unwrap()
+                    }
+                    match rule {
+                        Rule::u8_integer => int_inner
+                            .as_str()
+                            .trim()
+                            .parse()
+                            .map(Literal::U8)
+                            .map_err(|e| {
+                                CompileError::Internal(
+                                    "Called incorrect internal parser on literal type.",
+                                    int_inner.into_span(),
+                                )
+                            }),
+                        Rule::u16_integer => int_inner
+                            .as_str()
+                            .trim()
+                            .parse()
+                            .map(Literal::U16)
+                            .map_err(|e| {
+                                CompileError::Internal(
+                                    "Called incorrect internal parser on literal type.",
+                                    int_inner.into_span(),
+                                )
+                            }),
+                        Rule::u32_integer => int_inner
+                            .as_str()
+                            .trim()
+                            .parse()
+                            .map(Literal::U32)
+                            .map_err(|e| {
+                                CompileError::Internal(
+                                    "Called incorrect internal parser on literal type.",
+                                    int_inner.into_span(),
+                                )
+                            }),
+                        Rule::u64_integer => int_inner
+                            .as_str()
+                            .trim()
+                            .parse()
+                            .map(Literal::U64)
+                            .map_err(|e| {
+                                CompileError::Internal(
+                                    "Called incorrect internal parser on literal type.",
+                                    int_inner.into_span(),
+                                )
+                            }),
+                        Rule::u128_integer => int_inner
+                            .as_str()
+                            .trim()
+                            .parse()
+                            .map(Literal::U128)
+                            .map_err(|e| {
+                                CompileError::Internal(
+                                    "Called incorrect internal parser on literal type.",
+                                    int_inner.into_span(),
+                                )
+                            }),
+                        _ => unreachable!(),
+                    }
                 }
-                match rule {
-                    Rule::u8_integer => {
-                        Literal::U8(int_inner.as_str().trim().parse().map_err(|e| {
-                            ParseError::Internal(
-                                "Called incorrect internal parser on literal type.",
-                                int_inner.into_span(),
-                            )
-                        })?)
+                Rule::string => {
+                    // remove opening and closing quotes
+                    let lit_str = lit_inner.as_str();
+                    Ok(Literal::String(&lit_str[1..lit_str.len() - 1]))
+                }
+                Rule::byte => {
+                    let inner_byte = lit_inner.into_inner().next().unwrap();
+                    match inner_byte.as_rule() {
+                        Rule::binary_byte => parse_binary_from_pair(inner_byte),
+                        Rule::hex_byte => parse_hex_from_pair(inner_byte),
+                        _ => unreachable!(),
                     }
-                    Rule::u16_integer => {
-                        Literal::U16(int_inner.as_str().trim().parse().map_err(|e| {
-                            ParseError::Internal(
-                                "Called incorrect internal parser on literal type.",
-                                int_inner.into_span(),
-                            )
-                        })?)
-                    }
-                    Rule::u32_integer => {
-                        Literal::U32(int_inner.as_str().trim().parse().map_err(|e| {
-                            ParseError::Internal(
-                                "Called incorrect internal parser on literal type.",
-                                int_inner.into_span(),
-                            )
-                        })?)
-                    }
-                    Rule::u64_integer => {
-                        Literal::U64(int_inner.as_str().trim().parse().map_err(|e| {
-                            ParseError::Internal(
-                                "Called incorrect internal parser on literal type.",
-                                int_inner.into_span(),
-                            )
-                        })?)
-                    }
-                    Rule::u128_integer => {
-                        Literal::U128(int_inner.as_str().trim().parse().map_err(|e| {
-                            ParseError::Internal(
-                                "Called incorrect internal parser on literal type.",
-                                int_inner.into_span(),
-                            )
-                        })?)
-                    }
+                }
+                Rule::boolean => Ok(match lit_inner.as_str() {
+                    "true" => Literal::Boolean(true),
+                    "false" => Literal::Boolean(false),
                     _ => unreachable!(),
+                }),
+                a => {
+                    eprintln!(
+                        "not yet able to parse literal rule {:?} ({:?})",
+                        a,
+                        lit_inner.as_str()
+                    );
+                    Err(CompileError::UnimplementedRule(a, lit_inner.as_span()))
                 }
-            }
-            Rule::string => {
-                // remove opening and closing quotes
-                let lit_str = lit_inner.as_str();
-                Literal::String(&lit_str[1..lit_str.len() - 1])
-            }
-            Rule::byte => {
-                let inner_byte = lit_inner.into_inner().next().unwrap();
-                match inner_byte.as_rule() {
-                    Rule::binary_byte => parse_binary_from_pair(inner_byte)?,
-                    Rule::hex_byte => parse_hex_from_pair(inner_byte)?,
-                    _ => unreachable!(),
-                }
-            }
-            Rule::boolean => match lit_inner.as_str() {
-                "true" => Literal::Boolean(true),
-                "false" => Literal::Boolean(false),
-                _ => unreachable!(),
-            },
-            a => {
-                eprintln!(
-                    "not yet able to parse literal rule {:?} ({:?})",
-                    a,
-                    lit_inner.as_str()
-                );
-                return Err(ParseError::Unimplemented(a, lit_inner.as_span()));
-            }
-        };
+            };
 
-        Ok(parsed)
+        match parsed {
+            Ok(lit) => ok(lit, Vec::new(), Vec::new()),
+            Err(compile_err) => err(Vec::new(), vec![compile_err]),
+        }
     }
 }
 
-fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, ParseError<'sc>> {
+fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, CompileError<'sc>> {
     let hex = &pair.as_str()[2..];
     Ok(match hex.len() {
         2 => Literal::Byte(u8::from_str_radix(hex, 16).map_err(|e| {
-            ParseError::Internal(
+            CompileError::Internal(
                 "Attempted to parse hex string from invalid hex",
                 pair.as_span(),
             )
@@ -116,11 +136,11 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Parse
                 .chars()
                 .collect::<Vec<_>>()
                 .chunks(2)
-                .map(|two_hex_digits| -> Result<u8, ParseError> {
+                .map(|two_hex_digits| -> Result<u8, CompileError> {
                     let mut str_buf = String::new();
                     two_hex_digits.iter().for_each(|x| str_buf.push(*x));
                     Ok(u8::from_str_radix(&str_buf, 16).map_err(|_| {
-                        ParseError::Internal(
+                        CompileError::Internal(
                             "Attempted to parse individual byte from invalid hex string.",
                             pair.as_span(),
                         )
@@ -128,7 +148,7 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Parse
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|e| {
-                ParseError::Internal(
+                CompileError::Internal(
                     "Attempted to parse bytes32 from hex literal of incorrect length. ",
                     pair.as_span(),
                 )
@@ -136,7 +156,7 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Parse
             Literal::Byte32(arr)
         }
         a => {
-            return Err(ParseError::InvalidByteLiteralLength {
+            return Err(CompileError::InvalidByteLiteralLength {
                 span: pair.as_span(),
                 byte_length: a,
             })
@@ -144,12 +164,12 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Parse
     })
 }
 
-fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, ParseError<'sc>> {
+fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, CompileError<'sc>> {
     let bin = &pair.as_str()[2..];
 
     Ok(match bin.len() {
         8 => Literal::Byte(u8::from_str_radix(bin, 2).map_err(|e| {
-            ParseError::Internal(
+            CompileError::Internal(
                 "Attempted to parse bin string from invalid bin string.",
                 pair.as_span(),
             )
@@ -159,11 +179,11 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Pa
                 .chars()
                 .collect::<Vec<_>>()
                 .chunks(8)
-                .map(|eight_bin_digits| -> Result<u8, ParseError> {
+                .map(|eight_bin_digits| -> Result<u8, CompileError> {
                     let mut str_buf = String::new();
                     eight_bin_digits.iter().for_each(|x| str_buf.push(*x));
                     Ok(u8::from_str_radix(&str_buf, 2).map_err(|_| {
-                        ParseError::Internal(
+                        CompileError::Internal(
                             "Attempted to parse individual byte from invalid bin.",
                             pair.as_span(),
                         )
@@ -171,7 +191,7 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Pa
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|e| {
-                ParseError::Internal(
+                CompileError::Internal(
                     "Attempted to parse bytes32 from bin literal of incorrect length. ",
                     pair.as_span(),
                 )
@@ -179,7 +199,7 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Pa
             Literal::Byte32(arr)
         }
         a => {
-            return Err(ParseError::InvalidByteLiteralLength {
+            return Err(CompileError::InvalidByteLiteralLength {
                 span: pair.as_span(),
                 byte_length: a,
             })

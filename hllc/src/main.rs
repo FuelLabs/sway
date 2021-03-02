@@ -1,6 +1,6 @@
 #![allow(warnings)]
 use line_col::LineColLookup;
-use parser::compile;
+use parser::{compile, CompileError, CompileResult, CompileWarning};
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, SourceBuffer, Span, DEFAULT_METRICS,
@@ -57,9 +57,9 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 ));
             }
         }
-        Err(e) => {
-            let e_len = e.len();
-            e.into_iter().for_each(|e| format_err(&content, e));
+        Err((errors, warnings)) => {
+            let e_len = errors.len();
+            errors.into_iter().for_each(|e| format_err(&content, e));
 
             write_red(format!(
                 "Aborting due to {} {}.",

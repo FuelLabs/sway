@@ -8,6 +8,7 @@ mod parse_tree;
 mod parser;
 mod semantics;
 pub(crate) mod types;
+use crate::error::*;
 use crate::parse_tree::*;
 pub(crate) use crate::parse_tree::{
     Expression, FunctionDeclaration, FunctionParameter, Literal, UseStatement,
@@ -16,12 +17,11 @@ use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
 use pest::iterators::Pair;
 use pest::Parser;
-pub use semantics::error::CompileError;
 use semantics::TypedParseTree;
 use std::collections::HashMap;
 use types::TypeInfo;
 
-pub use error::{CompileWarning, ParseError, ParseResult};
+pub use error::{CompileError, CompileResult, CompileWarning};
 pub use pest::Span;
 
 // todo rename to language name
@@ -70,9 +70,10 @@ struct ReturnStatement<'sc> {
 }
 
 impl<'sc> ReturnStatement<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let span = pair.as_span();
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let mut inner = pair.into_inner();
         let _ret_keyword = inner.next();
         let expr = inner.next();
@@ -81,11 +82,17 @@ impl<'sc> ReturnStatement<'sc> {
                 expr: Expression::Unit { span },
             },
             Some(expr_pair) => {
-                let expr = eval!(Expression::parse_from_pair, warnings, expr_pair);
+                let expr = eval!(
+                    Expression::parse_from_pair,
+                    warnings,
+                    errors,
+                    expr_pair,
+                    Expression::Unit { span }
+                );
                 ReturnStatement { expr }
             }
         };
-        Ok((res, warnings))
+        ok(res, warnings, errors)
     }
 }
 
@@ -96,8 +103,9 @@ pub(crate) struct CodeBlock<'sc> {
 }
 
 impl<'sc> CodeBlock<'sc> {
-    fn parse_from_pair(block: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
+    fn parse_from_pair(block: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
         for pair in block_inner {
@@ -106,7 +114,9 @@ impl<'sc> CodeBlock<'sc> {
                     content: AstNodeContent::Declaration(eval!(
                         Declaration::parse_from_pair,
                         warnings,
-                        pair.clone()
+                        errors,
+                        pair.clone(),
+                        continue
                     )),
                     span: pair.into_span(),
                 },
@@ -114,7 +124,9 @@ impl<'sc> CodeBlock<'sc> {
                     let evaluated_node = eval!(
                         Expression::parse_from_pair,
                         warnings,
-                        pair.clone().into_inner().next().unwrap().clone()
+                        errors,
+                        pair.clone().into_inner().next().unwrap().clone(),
+                        continue
                     );
                     AstNode {
                         content: AstNodeContent::Expression(evaluated_node),
@@ -122,15 +134,26 @@ impl<'sc> CodeBlock<'sc> {
                     }
                 }
                 Rule::return_statement => {
-                    let evaluated_node =
-                        eval!(ReturnStatement::parse_from_pair, warnings, pair.clone());
+                    let evaluated_node = eval!(
+                        ReturnStatement::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair.clone(),
+                        continue
+                    );
                     AstNode {
                         content: AstNodeContent::ReturnStatement(evaluated_node),
                         span: pair.as_span(),
                     }
                 }
                 Rule::expr => {
-                    let res = eval!(Expression::parse_from_pair, warnings, pair.clone());
+                    let res = eval!(
+                        Expression::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair.clone(),
+                        continue
+                    );
                     AstNode {
                         content: AstNodeContent::ImplicitReturnExpression(res),
                         span: pair.as_span(),
@@ -138,15 +161,17 @@ impl<'sc> CodeBlock<'sc> {
                 }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
-                    return Err(ParseError::Unimplemented(a, pair.as_span()));
+                    errors.push(CompileError::UnimplementedRule(a, pair.as_span()));
+                    continue;
                 }
             })
         }
 
-        Ok((
+        ok(
             CodeBlock {  contents, scope: /* TODO */ HashMap::default()  },
             warnings,
-        ))
+            errors,
+        )
     }
 }
 
@@ -164,26 +189,38 @@ impl<'sc> ParseTree<'sc> {
     }
 }
 
-pub fn parse<'sc>(input: &'sc str) -> ParseResult<'sc, HllParseTree<'sc>> {
-    let mut parsed = HllParser::parse(Rule::program, input)?;
+pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
+    let mut errors: Vec<CompileError> = Vec::new();
+    let mut parsed = match HllParser::parse(Rule::program, input) {
+        Ok(o) => o,
+        Err(e) => return err(Vec::new(), vec![e.into()]),
+    };
     let res = eval!(
         parse_root_from_pairs,
         warnings,
-        (parsed.next().unwrap().into_inner())
+        errors,
+        (parsed.next().unwrap().into_inner()),
+        return err(warnings, errors)
     );
-    Ok((res, warnings))
+    ok(res, warnings, errors)
 }
 
-// TODO compile result and not parse result
 pub fn compile<'sc>(
     input: &'sc str,
-) -> Result<(HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>), Vec<CompileError<'sc>>> {
+) -> Result<
+    (HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>),
+    (Vec<CompileError<'sc>>, Vec<CompileWarning<'sc>>),
+> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    // TODO handle multiple errors from the parse stage
-    let (parse_tree, mut l_warnings) = parse(input).map_err(|e| vec![e.into()])?;
-    warnings.append(&mut l_warnings);
+    let parse_tree = eval!(
+        parse,
+        warnings,
+        errors,
+        input,
+        return Err((errors, warnings))
+    );
 
     let maybe_contract_tree: Option<Result<_, _>> = parse_tree
         .contract_ast
@@ -238,7 +275,7 @@ pub fn compile<'sc>(
             warnings,
         ))
     } else {
-        Err(errors)
+        Err((errors, warnings))
     }
 }
 
@@ -247,8 +284,9 @@ pub fn compile<'sc>(
 // sub-nodes
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
-) -> ParseResult<'sc, HllParseTree<'sc>> {
+) -> CompileResult<'sc, HllParseTree<'sc>> {
     let mut warnings = Vec::new();
+    let mut errors = Vec::new();
     let mut fuel_ast = HllParseTree {
         contract_ast: None,
         script_ast: None,
@@ -261,47 +299,62 @@ fn parse_root_from_pairs<'sc>(
         for pair in input {
             match pair.as_rule() {
                 Rule::declaration => {
-                    let decl = eval!(Declaration::parse_from_pair, warnings, pair.clone());
+                    let decl = eval!(
+                        Declaration::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair.clone(),
+                        continue
+                    );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::Declaration(decl),
                         span: pair.as_span(),
                     });
                 }
                 Rule::use_statement => {
-                    let stmt = UseStatement::parse_from_pair(pair.clone())?;
+                    let stmt = eval!(
+                        UseStatement::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair.clone(),
+                        continue
+                    );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::UseStatement(stmt),
                         span: pair.as_span(),
                     });
                 }
-                _ => unreachable!(),
+                a => unreachable!("{:?}", pair.as_str()),
             }
         }
         match rule {
             Rule::contract => {
                 if fuel_ast.contract_ast.is_some() {
-                    return Err(ParseError::MultipleContracts(block.as_span()));
+                    errors.push(CompileError::MultipleContracts(block.as_span()));
+                } else {
+                    fuel_ast.contract_ast = Some(parse_tree);
                 }
-                fuel_ast.contract_ast = Some(parse_tree);
             }
             Rule::script => {
                 if fuel_ast.script_ast.is_some() {
-                    return Err(ParseError::MultipleScripts(block.as_span()));
+                    errors.push(CompileError::MultipleScripts(block.as_span()));
+                } else {
+                    fuel_ast.script_ast = Some(parse_tree);
                 }
-                fuel_ast.script_ast = Some(parse_tree);
             }
             Rule::predicate => {
                 if fuel_ast.predicate_ast.is_some() {
-                    return Err(ParseError::MultiplePredicates(block.as_span()));
+                    errors.push(CompileError::MultiplePredicates(block.as_span()));
+                } else {
+                    fuel_ast.predicate_ast = Some(parse_tree);
                 }
-                fuel_ast.predicate_ast = Some(parse_tree);
             }
             Rule::EOI => (),
-            a => return Err(ParseError::InvalidTopLevelItem(a, block.into_span())),
+            a => errors.push(CompileError::InvalidTopLevelItem(a, block.into_span())),
         }
     }
 
-    Ok((fuel_ast, warnings))
+    ok(fuel_ast, warnings, errors)
 }
 
 #[test]
@@ -375,7 +428,7 @@ fn test_basic_prog() {
         }
     }
 
-    fn prints_number_five(): u8 {
+    pub fn prints_number_five(): u8 {
         let x: u8 = 5;
         let reference_to_x = ref x;
         let second_value_of_x = deref x; // u8 is `Copy` so this clones
