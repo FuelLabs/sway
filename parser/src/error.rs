@@ -5,11 +5,42 @@ use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
 use thiserror::Error;
 
+macro_rules! type_check {
+    ($name: ident, $val: expr, $namespace: expr, $type_annotation: expr, $help_text: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
+        use crate::CompileResult;
+        let res = $name::type_check($val.clone(), $namespace, $type_annotation, $help_text);
+        match res {
+            CompileResult::Ok { value, warnings: mut l_w } => {
+                $warnings.append(&mut l_w);
+                value
+            },
+            CompileResult::Err {
+                warnings: mut l_w, errors: mut l_e
+            } => {
+                $warnings.append(&mut l_w);
+                $errors.append(&mut l_e);
+                $err_recov
+            }
+        }
+    }}
+}
+
 /// evaluates `$fn` with argument `$arg`, and pushes any warnings to the `$warnings` buffer.
 macro_rules! eval {
-    ($fn: expr, $warnings: ident, $arg: expr) => {{
-        let (res, mut warns) = $fn($arg)?;
-        $warnings.append(&mut warns);
+    ($fn: expr, $warnings: ident, $errors: ident, $arg: expr, $error_recovery: expr) => {{
+        use crate::CompileResult;
+        let  res = match $fn($arg.clone()) {
+            CompileResult::Ok { value, warnings: mut l_w, errors: mut l_e } => {
+                $warnings.append(&mut l_w);
+                $errors.append(&mut l_e);
+                value
+            },
+            CompileResult::Err {  warnings: mut l_w,  errors: mut l_e }   => {
+                $errors.append(&mut l_e);
+                $warnings.append(&mut l_w);
+                $error_recovery
+            }
+        };
         res
     }};
 }
@@ -26,7 +57,27 @@ macro_rules! assert_or_warn {
     };
 }
 
-pub type ParseResult<'sc, T> = Result<(T, Vec<CompileWarning<'sc>>), ParseError<'sc>>;
+/// Denotes a non-recoverable state
+pub(crate) fn err<'sc, T>(warnings: Vec<CompileWarning<'sc>>, errors: Vec<CompileError<'sc>>) -> CompileResult<'sc, T> {
+    CompileResult::Err { warnings, errors }
+}
+
+/// Denotes a recovered or non-error state
+pub(crate) fn ok<T>(value: T, warnings: Vec<CompileWarning>, errors: Vec<CompileError<'sc>>) -> CompileResult<T> {
+    CompileResult::Ok { warnings, value, errors }
+}
+
+#[derive(Debug)]
+pub enum CompileResult<'sc, T> {
+    Ok {
+        value: T,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Err {
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+    },
+}
 
 #[derive(Debug, Clone)]
 pub struct CompileWarning<'sc> {
@@ -81,8 +132,28 @@ impl<'sc> Warning<'sc> {
     }
 }
 
-#[derive(Debug, Error)]
-pub enum ParseError<'sc> {
+#[derive(Error, Debug)]
+pub enum CompileError<'sc> {
+    #[error("Variable \"{var_name}\" does not exist in this scope.")]
+    UnknownVariable { var_name: &'sc str, span: Span<'sc> },
+    #[error("Function \"{name}\" does not exist in this scope.")]
+    UnknownFunction { name: &'sc str, span: Span<'sc> },
+    #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
+    NotAVariable {
+        name: &'sc str,
+        span: Span<'sc>,
+        what_it_is: &'static str,
+    },
+    #[error("Identifier \"{name}\" was called as if it was a function, but it is actually a {what_it_is}.")]
+    NotAFunction {
+        name: &'sc str,
+        span: Span<'sc>,
+        what_it_is: &'static str,
+    },
+    #[error("Unimplemented feature: {0}")]
+    Unimplemented(&'static str, Span<'sc>),
+    #[error("{0}")]
+    TypeError(TypeError<'sc>),
     #[error("Error parsing input: expected {0:?}")]
     ParseFailure(#[from] pest::error::Error<Rule>),
     #[error("Invalid top-level item: {0:?}. A program should consist of a contract, script, or predicate at the top level.")]
@@ -90,7 +161,7 @@ pub enum ParseError<'sc> {
     #[error("Internal compiler error: {0}\nPlease file an issue on the repository and include the code that triggered this error.")]
     Internal(&'static str, Span<'sc>),
     #[error("Unimplemented feature: {0:?}")]
-    Unimplemented(Rule, Span<'sc>),
+    UnimplementedRule(Rule, Span<'sc>),
     #[error("Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)")]
     InvalidByteLiteralLength { byte_length: usize, span: Span<'sc> },
     #[error("Expected an expression to follow operator \"{op}\"")]
@@ -110,33 +181,41 @@ pub enum ParseError<'sc> {
     MultipleScripts(Span<'sc>),
     #[error("Program contains multiple predicates. A valid program should only contain at most one predicate.")]
     MultiplePredicates(Span<'sc>),
+    #[error("Trait constraint was applied to generic type that is not in scope. Trait \"{trait_name}\" cannot constrain type \"{type_name}\" because that type does not exist in this scope.")]
+    ConstrainedNonExistentType{ trait_name: &'sc str, type_name: &'sc str, span: Span<'sc> }
 }
 
-impl<'sc> ParseError<'sc> {
-    pub fn span(&self) -> (usize, usize) {
-        use ParseError::*;
+impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
+    fn from(other: TypeError<'sc>) -> CompileError<'sc> {
+        CompileError::TypeError(other)
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum TypeError<'sc> {
+    #[error("Mismatched types: Expected type {expected} but found type {received}. Type {received} is not castable to type {expected}.\n help: {help_text}")]
+    MismatchedType {
+        expected: String,
+        received: String,
+        help_text: String,
+        span: Span<'sc>,
+    },
+}
+
+impl<'sc> TypeError<'sc> {
+    pub(crate) fn span(&self) -> (usize, usize) {
+        use TypeError::*;
         match self {
-            ParseFailure(err) => match err.location {
-                pest::error::InputLocation::Pos(num) => (num, num + 1),
-                pest::error::InputLocation::Span((start, end)) => (start, end),
-            },
-            InvalidTopLevelItem(_, sp) => (sp.start(), sp.end()),
-            Internal(_, sp) => (sp.start(), sp.end()),
-            Unimplemented(_, sp) => (sp.start(), sp.end()),
-            InvalidByteLiteralLength { span, .. } => (span.start(), span.end()),
-            ExpectedExprAfterOp { span, .. } => (span.start(), span.end()),
-            ExpectedOp { span, .. } => (span.start(), span.end()),
-            UnexpectedWhereClause(sp) => (sp.start(), sp.end()),
-            UndeclaredGenericTypeInWhereClause { span, .. } => (span.start(), span.end()),
-            MultiplePredicates(sp) => (sp.start(), sp.end()),
-            MultipleScripts(sp) => (sp.start(), sp.end()),
-            MultipleContracts(sp) => (sp.start(), sp.end()),
+            MismatchedType { span, .. } => (span.start(), span.end()),
         }
     }
+}
 
+impl<'sc> CompileError<'sc> {
     pub fn to_friendly_error_string(&self) -> String {
+        use CompileError::*;
         match self {
-            ParseError::ParseFailure(err) => format!(
+            CompileError::ParseFailure(err) => format!(
                 "Error parsing input: {}",
                 match &err.variant {
                     pest::error::ErrorVariant::ParsingError {
@@ -169,7 +248,35 @@ impl<'sc> ParseError<'sc> {
                     pest::error::ErrorVariant::CustomError { message } => message.to_string(),
                 }
             ),
-            o => format!("{}", o),
+            a => format!("{}", a),
+        }
+    }
+
+    pub fn span(&self) -> (usize, usize) {
+        use CompileError::*;
+        match self {
+            UnknownVariable { span, .. } => (span.start(), span.end()),
+            UnknownFunction { span, .. } => (span.start(), span.end()),
+            NotAVariable { span, .. } => (span.start(), span.end()),
+            NotAFunction { span, .. } => (span.start(), span.end()),
+            Unimplemented(_, span) => (span.start(), span.end()),
+            TypeError(err) => err.span(),
+            ParseFailure(err) => match err.location {
+                pest::error::InputLocation::Pos(num) => (num, num + 1),
+                pest::error::InputLocation::Span((start, end)) => (start, end),
+            },
+            InvalidTopLevelItem(_, sp) => (sp.start(), sp.end()),
+            Internal(_, sp) => (sp.start(), sp.end()),
+            UnimplementedRule(_, sp) => (sp.start(), sp.end()),
+            InvalidByteLiteralLength { span, .. } => (span.start(), span.end()),
+            ExpectedExprAfterOp { span, .. } => (span.start(), span.end()),
+            ExpectedOp { span, .. } => (span.start(), span.end()),
+            UnexpectedWhereClause(sp) => (sp.start(), sp.end()),
+            UndeclaredGenericTypeInWhereClause { span, .. } => (span.start(), span.end()),
+            MultiplePredicates(sp) => (sp.start(), sp.end()),
+            MultipleScripts(sp) => (sp.start(), sp.end()),
+            MultipleContracts(sp) => (sp.start(), sp.end()),
+            ConstrainedNonExistentType { span, .. } => (span.start(), span.end())
         }
     }
 }

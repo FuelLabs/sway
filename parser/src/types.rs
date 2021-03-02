@@ -1,9 +1,10 @@
-use crate::error::{ParseResult, Warning};
-use crate::{CodeBlock, ParseError, Rule};
+use crate::error::*;
+use crate::{CodeBlock, CompileError, Rule};
 use either::Either;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 use pest::Span;
+
 /// Type information without an associated value, used for type inferencing and definition.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeInfo<'sc> {
@@ -28,12 +29,12 @@ pub enum IntegerBits {
 }
 
 impl<'sc> TypeInfo<'sc> {
-    pub(crate) fn parse_from_pair(input: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
+    pub(crate) fn parse_from_pair(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut r#type = input.into_inner();
         Self::parse_from_pair_inner(r#type.next().unwrap())
     }
-    pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> Result<Self, ParseError<'sc>> {
-        Ok(match input.as_str() {
+    pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        ok(match input.as_str() {
             "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
             "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
@@ -44,7 +45,7 @@ impl<'sc> TypeInfo<'sc> {
             "unit" => TypeInfo::Unit,
             "byte" => TypeInfo::Byte,
             other => TypeInfo::Generic { name: other },
-        })
+        }, Vec::new())
     }
 
     pub(crate) fn is_convertable(
@@ -52,12 +53,11 @@ impl<'sc> TypeInfo<'sc> {
         other: TypeInfo<'sc>,
         debug_span: Span<'sc>,
         help_text: impl Into<String>,
-    ) -> Result<Option<Warning<'sc>>, crate::semantics::error::TypeError<'sc>> {
+    ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
         let help_text = help_text.into();
         if self == TypeInfo::ErrorRecovery || other == TypeInfo::ErrorRecovery {
             return Ok(None);
         }
-        use crate::semantics::error::TypeError;
         // TODO  actually check more advanced conversion rules like upcasting vs downcasting
         // numbers, emit warnings for loss of precision
         if self == other {

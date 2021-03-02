@@ -1,11 +1,9 @@
-use crate::error::CompileWarning;
+use crate::error::*;
 use crate::parse_tree::*;
 use crate::types::{IntegerBits, TypeInfo};
 use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
 use either::Either;
 use std::collections::HashMap;
-pub(crate) mod error;
-use error::CompileError;
 use pest::Span;
 
 const ERROR_RECOVERY_EXPR: TypedExpression = TypedExpression {
@@ -184,7 +182,7 @@ impl<'sc> TypedExpression<'sc> {
         namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
         type_annotation: Option<TypeInfo<'sc>>,
         help_text: impl Into<String> + Clone,
-    ) -> Result<(Self, Vec<CompileWarning<'sc>>), Vec<CompileError<'sc>>> {
+    ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let expr_span = other.span();
@@ -249,30 +247,31 @@ impl<'sc> TypedExpression<'sc> {
                         // declaration. Use parameter type annotations as annotations for the
                         // arguments
                         //
-                        let typed_call_arguments_res = arguments
-                            .into_iter()
-                            .zip(parameters.iter())
-                            .map(|(arg, param)| {
-                                TypedExpression::type_check(
-                                    arg,
-                                    namespace.clone(),
-                                    Some(param.r#type.clone()),
+                        let mut typed_call_arguments= Vec::new();
+                        for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
+                            let res = TypedExpression::type_check(
+                                arg,
+                                namespace.clone(),
+                                Some(param.r#type.clone()),
                                     "The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration."
-                                )
-                            })
-                            .collect::<Vec<Result<_, _>>>();
-                        let mut typed_call_arguments = Vec::new();
-                        for arg in typed_call_arguments_res {
-                            typed_call_arguments.push(match arg {
-                                Ok((o, mut l_warn)) => {
-                                    warnings.append(&mut l_warn);
-                                    o
-                                }
-                                Err(mut errs) => {
-                                    errors.append(&mut errs);
+                            );
+                            let arg = match res {
+                                CompileResult::Ok {
+                                    value, warnings: mut l_w
+                                } => {
+                                    warnings.append(&mut l_w);
+                                    value
+                                },
+                                CompileResult::Err {
+                                    warnings: mut l_w,
+                                    errors: mut l_e
+                                } => {
+                                    warnings.append(&mut l_w);
+                                    errors.append(&mut l_e);
                                     ERROR_RECOVERY_EXPR.clone()
                                 }
-                            })
+                            };
+                            typed_call_arguments.push(arg);
                         }
 
                         TypedExpression {
@@ -311,69 +310,34 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 ..
             } => {
-                let (typed_primary_expression, mut l_warnings) = match TypedExpression::type_check(
-                    *primary_expression,
-                    namespace.clone(),
-                    None,
-                    "",
-                ) {
-                    Ok(tup) => tup,
-                    Err(mut errs) => {
-                        errors.append(&mut errs);
-                        (ERROR_RECOVERY_EXPR.clone(), Vec::new())
-                    }
-                };
-                warnings.append(&mut l_warnings);
+                let typed_primary_expression = type_check!(TypedExpression, *primary_expression, namespace.clone(), None, "", ERROR_RECOVERY_EXPR.clone(), warnings, errors);
+                let first_branch_result = type_check!(TypedExpression, branches[0].result.clone(), namespace.clone(), type_annotation.clone(), help_text.clone(), ERROR_RECOVERY_EXPR.clone(), warnings, errors);
 
-                // TODO handle pattern matching on LHS
-                let (first_branch_result, mut l_warnings) = match TypedExpression::type_check(
-                    branches[0].result.clone(),
-                    namespace.clone(),
-                    type_annotation.clone(),
-                    help_text.clone(),
-                ) {
-                    Ok(tup) => tup,
-                    Err(mut errs) => {
-                        errors.append(&mut errs);
-                        (ERROR_RECOVERY_EXPR.clone(), Vec::new())
-                    }
-                };
-                warnings.append(&mut l_warnings);
                 let first_branch_result = vec![first_branch_result];
                 // use type of first branch for annotation on the rest of the branches
-                let rest_of_branches = branches
+                // we checked the first branch separately just to get its return type for inferencing the rest
+                let mut rest_of_branches = branches
                     .into_iter()
                     .skip(1)
                     .map(
                         |MatchBranch {
                              condition, result, ..
                          }| {
-                            TypedExpression::type_check(
+                            type_check!(TypedExpression,
                                 result,
                                 namespace.clone(),
                                 Some(first_branch_result[0].return_type.clone()),
                                 "All branches of a match expression must be of the same type.",
+                                ERROR_RECOVERY_EXPR.clone(),
+                                warnings,
+                                errors
                             )
                         },
                     )
-                    .collect::<Vec<Result<_, _>>>();
-
-                let mut branches_buf = Vec::new();
-                for branch in rest_of_branches {
-                    match branch {
-                        Ok((br, mut l_warnings)) => {
-                            warnings.append(&mut l_warnings);
-                            branches_buf.push(br);
-                        }
-                        Err(mut e) => {
-                            errors.append(&mut e);
-                            branches_buf.push(ERROR_RECOVERY_EXPR.clone());
-                        }
-                    }
-                }
+                    .collect::<Vec<_>>();
 
                 let mut all_branches = first_branch_result;
-                all_branches.append(&mut branches_buf);
+                all_branches.append(&mut rest_of_branches);
 
                 errors.push(CompileError::Unimplemented(
                     "Match expressions and pattern matching",
@@ -413,55 +377,11 @@ impl<'sc> TypedExpression<'sc> {
                 r#else,
                 span,
             } => {
-                let condition = Box::new(
-                    match TypedExpression::type_check(
-                        *condition,
-                        namespace.clone(),
-                        Some(TypeInfo::Boolean),
-                        "The condition of an if expression must be a boolean expression.",
-                    ) {
-                        Ok((condition, mut l_warnings)) => {
-                            warnings.append(&mut l_warnings);
-                            condition
-                        }
-                        Err(mut errs) => {
-                            errors.append(&mut errs);
-                            ERROR_RECOVERY_EXPR.clone()
-                        }
-                    },
-                );
-                let then = Box::new(
-                    match TypedExpression::type_check(*then, namespace.clone(), None, "") {
-                        Ok((then, mut l_warnings)) => {
-                            warnings.append(&mut l_warnings);
-                            then
-                        }
-                        Err(mut errs) => {
-                            errors.append(&mut errs);
-                            ERROR_RECOVERY_EXPR.clone()
-                        }
-                    },
-                );
-                let r#else = match r#else {
-                    Some(expr) => Some(Box::new(
-                        match TypedExpression::type_check(
-                            *expr,
-                            namespace,
-                            Some(then.return_type.clone()),
-                            "If expression branches must return the same type.",
-                        ) {
-                            Ok((r#else, mut l_warnings)) => {
-                                warnings.append(&mut l_warnings);
-                                r#else
-                            }
-                            Err(mut errs) => {
-                                errors.append(&mut errs);
-                                ERROR_RECOVERY_EXPR.clone()
-                            }
-                        },
-                    )),
-                    None => None,
-                };
+                let condition = Box::new(type_check!(TypedExpression, *condition, namespace.clone(), Some(TypeInfo::Boolean),"The condition of an if expression must be a boolean expression.", ERROR_RECOVERY_EXPR.clone(), warnings, errors));
+                let then= Box::new(type_check!(TypedExpression, *then, namespace.clone(), None, "", ERROR_RECOVERY_EXPR.clone(), warnings, errors));
+                let r#else = if let Some(expr) = r#else {
+                    Some(Box::new(type_check!(TypedExpression, *expr, namespace, Some(then.return_type.clone()), "", ERROR_RECOVERY_EXPR.clone(), warnings, errors)))
+                } else { None };
 
                 TypedExpression {
                     expression: TypedExpressionVariant::IfExp {
@@ -504,11 +424,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
         }
-        if errors.is_empty() {
-            Ok((typed_expression, warnings))
-        } else {
-            Err(errors)
-        }
+        ok(typed_expression, warnings)
     }
 }
 
@@ -670,10 +586,8 @@ fn type_check_node<'sc>(
                     body,
                     is_mutable,
                 }) => {
-                    let res = TypedExpression::type_check(body, namespace.clone(), type_ascription.clone(), format!("Variable declaration's type annotation (type {}) does not match up with the assigned expression's type.", type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())));
-                    match res {
-                        Ok((body, mut l_warnings)) => {
-                            warnings.append(&mut l_warnings);
+                    let body = type_check!(TypedExpression, body, namespace.clone(), type_ascription.clone(), 
+                    format!("Variable declaration's type annotation (type {}) does not match up with the assigned expression's type.", type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())), ERROR_RECOVERY_EXPR.clone(), warnings, errors);
                             let body =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
@@ -682,12 +596,6 @@ fn type_check_node<'sc>(
                                 });
                             namespace.insert(name, body.clone());
                             body
-                        }
-                        Err(mut errs) => {
-                            errors.append(&mut errs);
-                            ERROR_RECOVERY_DECLARATION.clone()
-                        }
-                    }
                 }
                 Declaration::EnumDeclaration(e) => {
                     let span = e.span.clone();
@@ -818,15 +726,7 @@ fn type_check_node<'sc>(
             }),
             AstNodeContent::TraitDeclaration(a) => TypedAstNodeContent::TraitDeclaration(a),
             AstNodeContent::Expression(a) => {
-                let (inner, mut l_warnings) =
-                    match TypedExpression::type_check(a, namespace.clone(), None, "") {
-                        Ok(tup) => tup,
-                        Err(mut errs) => {
-                            errors.append(&mut errs);
-                            (ERROR_RECOVERY_EXPR.clone(), Vec::new())
-                        }
-                    };
-                warnings.append(&mut l_warnings);
+                let inner = type_check!(TypedExpression, a, namespace.clone(), None, "", ERROR_RECOVERY_EXPR.clone(), warnings, errors);
                 TypedAstNodeContent::Expression(inner)
             }
             AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
@@ -837,41 +737,19 @@ fn type_check_node<'sc>(
                     ));
                     ERROR_RECOVERY_NODE_CONTENT.clone()
                 } else {
-                    match TypedExpression::type_check(
-                        expr,
-                        namespace.clone(),
-                        return_type_annotation,
+                    TypedAstNodeContent::ReturnStatement (TypedReturnStatement {
+                        expr: type_check!(TypedExpression, expr, namespace.clone(), return_type_annotation, 
                         "Returned value must match up with the function return type annotation.",
-                    ) {
-                        Ok((res, mut l_warnings)) => {
-                            warnings.append(&mut l_warnings);
-
-                            TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr: res })
-                        }
-                        Err(mut errs) => {
-                            errors.append(&mut errs);
-                            ERROR_RECOVERY_NODE_CONTENT.clone()
-                        }
-                    }
+                        ERROR_RECOVERY_EXPR.clone(), warnings, errors)
+                    })
                 }
             }
             AstNodeContent::ImplicitReturnExpression(expr) => {
-                let (typed_expr, mut l_warnings) = match TypedExpression::type_check(
-                    expr,
-                    namespace.clone(),
-                    return_type_annotation,
+                let typed_expr = type_check!(TypedExpression, expr, namespace.clone(), return_type_annotation, 
                     format!(
                         "Implicit return must match up with block's type. {}",
                         help_text.into()
-                    ),
-                ) {
-                    Ok(tup) => tup,
-                    Err(mut errs) => {
-                        errors.append(&mut errs);
-                        (ERROR_RECOVERY_EXPR.clone(), Vec::new())
-                    }
-                };
-                warnings.append(&mut l_warnings);
+                    ), ERROR_RECOVERY_EXPR.clone(), warnings, errors);
                 TypedAstNodeContent::ImplicitReturnExpression(typed_expr)
             }
             a => {

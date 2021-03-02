@@ -1,4 +1,4 @@
-use crate::error::{CompileWarning, ParseResult, Warning};
+use crate::error::*;
 use crate::parse_tree::declaration::TypeParameter;
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
@@ -21,9 +21,10 @@ pub(crate) struct EnumVariant<'sc> {
 }
 
 impl<'sc> EnumDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(decl_inner: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(decl_inner: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let whole_enum_span = decl_inner.as_span();
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let mut inner = decl_inner.into_inner();
         let _enum_keyword = inner.next().unwrap();
         let mut enum_name = None;
@@ -48,8 +49,20 @@ impl<'sc> EnumDeclaration<'sc> {
             }
         }
 
-        let type_parameters =
-            TypeParameter::parse_from_type_params_and_where_clause(type_params, where_clause)?;
+        let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
+            type_params,
+            where_clause,
+        ) {
+            CompileResult::Ok{ value, warnings: mut l_w} => {
+                        warnings.append(&mut l_w);
+                        value
+            },
+            CompileResult::Err{ warnings: mut l_w, errors: mut l_e} => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                Vec::new()
+            }
+        };
 
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();
@@ -62,9 +75,9 @@ impl<'sc> EnumDeclaration<'sc> {
             Warning::NonClassCaseEnumName { enum_name: name }
         );
 
-        let variants = eval!(EnumVariant::parse_from_pairs, warnings, variants);
+        let variants = eval!(EnumVariant::parse_from_pairs, warnings, errors, variants, Vec::new());
 
-        Ok((
+        ok(
             EnumDeclaration {
                 name,
                 type_parameters,
@@ -72,15 +85,16 @@ impl<'sc> EnumDeclaration<'sc> {
                 span: whole_enum_span,
             },
             warnings,
-        ))
+        )
     }
 }
 
 impl<'sc> EnumVariant<'sc> {
     pub(crate) fn parse_from_pairs(
         decl_inner: Option<Pair<'sc, Rule>>,
-    ) -> ParseResult<'sc, Vec<Self>> {
+    ) -> CompileResult<'sc, Vec<Self>> {
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let mut fields_buf = Vec::new();
         if let Some(decl_inner) = decl_inner {
             let mut fields = decl_inner.into_inner().collect::<Vec<_>>();
@@ -93,10 +107,10 @@ impl<'sc> EnumVariant<'sc> {
                     span,
                     Warning::NonClassCaseEnumVariantName { variant_name: name }
                 );
-                let r#type = TypeInfo::parse_from_pair_inner(fields[i + 1].clone())?;
+                let r#type = eval!(TypeInfo::parse_from_pair_inner, warnings, errors, fields[i + 1].clone(), TypeInfo::Unit);
                 fields_buf.push(EnumVariant { name, r#type });
             }
         }
-        Ok((fields_buf, warnings))
+ ok(fields_buf, warnings)
     }
 }

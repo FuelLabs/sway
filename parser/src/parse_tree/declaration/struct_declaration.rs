@@ -1,4 +1,4 @@
-use crate::error::{CompileWarning, ParseError, ParseResult, Warning};
+use crate::error::*;
 use crate::parse_tree::declaration::TypeParameter;
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
@@ -20,8 +20,9 @@ pub(crate) struct StructField<'sc> {
 }
 
 impl<'sc> StructDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let mut decl = decl.into_inner();
         let name = decl.next().unwrap();
         let mut type_params_pair = None;
@@ -42,13 +43,23 @@ impl<'sc> StructDeclaration<'sc> {
             }
         }
 
-        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
+        let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        )?;
+        ) {
+            CompileResult::Ok{ value, warnings: mut l_w} => {
+                        warnings.append(&mut l_w);
+                        value
+            },
+            CompileResult::Err{ warnings: mut l_w, errors: mut l_e} => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                Vec::new()
+            }
+        };
 
         let fields = if let Some(fields) = fields_pair {
-            eval!(StructField::parse_from_pairs, warnings, fields)
+            eval!(StructField::parse_from_pairs, warnings, errors,  fields, Vec::new())
         } else {
             Vec::new()
         };
@@ -61,20 +72,21 @@ impl<'sc> StructDeclaration<'sc> {
             span,
             Warning::NonClassCaseStructName { struct_name: name }
         );
-        Ok((
+        ok(
             StructDeclaration {
                 name,
                 fields,
                 type_parameters,
             },
             warnings,
-        ))
+        )
     }
 }
 
 impl<'sc> StructField<'sc> {
-    pub(crate) fn parse_from_pairs(pair: Pair<'sc, Rule>) -> ParseResult<'sc, Vec<Self>> {
+    pub(crate) fn parse_from_pairs(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Vec<Self>> {
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let mut fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
         for i in (0..fields.len()).step_by(2) {
@@ -86,9 +98,9 @@ impl<'sc> StructField<'sc> {
                 span,
                 Warning::NonSnakeCaseStructFieldName { field_name: name }
             );
-            let r#type = TypeInfo::parse_from_pair_inner(fields[i + 1].clone())?;
+            let r#type = eval!(TypeInfo::parse_from_pair_inner, warnings, errors, fields[i + 1].clone(), TypeInfo::Unit);
             fields_buf.push(StructField { name, r#type });
         }
-        Ok((fields_buf, warnings))
+        ok(fields_buf, warnings)
     }
 }

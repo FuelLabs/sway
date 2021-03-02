@@ -1,7 +1,7 @@
-use crate::error::{ParseResult, Warning};
+use crate::error::*;
 use crate::parse_tree::{declaration::TypeParameter, Expression, VarName};
 use crate::types::TypeInfo;
-use crate::{CodeBlock, ParseError, Rule};
+use crate::{CodeBlock, CompileError, Rule};
 use either::Either;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
@@ -17,9 +17,10 @@ pub(crate) struct FunctionDeclaration<'sc> {
 }
 
 impl<'sc> FunctionDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut parts = pair.clone().into_inner();
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let mut signature = parts.next().unwrap().into_inner();
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
@@ -57,18 +58,28 @@ impl<'sc> FunctionDeclaration<'sc> {
         // these are non-optional in a func decl
         let parameters_pair = parameters_pair.unwrap();
 
-        let parameters = FunctionParameter::list_from_pairs(parameters_pair.into_inner())?;
+        let parameters = eval!(FunctionParameter::list_from_pairs, warnings, errors, parameters_pair.into_inner(), Vec::new());
         let return_type = match return_type_pair {
-            Some(pair) => TypeInfo::parse_from_pair(pair)?,
+            Some(pair) => eval!(TypeInfo::parse_from_pair, warnings, errors, pair, TypeInfo::Unit ),
             None => TypeInfo::Unit,
         };
-        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
+        let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        )?;
+        ) {
+            CompileResult::Ok{ value, warnings: mut l_w} => {
+                        warnings.append(&mut l_w);
+                        value
+            },
+            CompileResult::Err{ warnings: mut l_w, errors: mut l_e} => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                Vec::new()
+            }
+        };
         let body = parts.next().unwrap();
-        let body = eval!(CodeBlock::parse_from_pair, warnings, body);
-        Ok((
+        let body = eval!(CodeBlock::parse_from_pair, warnings, errors, body, crate::CodeBlock { contents: Vec::new(), scope: Default::default()});
+        ok(
             FunctionDeclaration {
                 name,
                 parameters,
@@ -78,7 +89,7 @@ impl<'sc> FunctionDeclaration<'sc> {
                 type_parameters,
             },
             warnings,
-        ))
+        )
     }
 }
 
@@ -91,20 +102,26 @@ pub(crate) struct FunctionParameter<'sc> {
 impl<'sc> FunctionParameter<'sc> {
     pub(crate) fn list_from_pairs(
         pairs: impl Iterator<Item = Pair<'sc, Rule>>,
-    ) -> Result<Vec<FunctionParameter<'sc>>, ParseError<'sc>> {
-        pairs
-            .map(|pair: Pair<'sc, Rule>| {
+    ) -> CompileResult<'sc,Vec<FunctionParameter<'sc>>> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        let mut pairs_buf = Vec::new();
+        for pair in pairs {
                 let mut parts = pair.clone().into_inner();
                 let name_pair = parts.next().unwrap();
                 let name_str = name_pair.as_str();
-                let name = VarName::parse_from_pair(name_pair)?;
+                let name = eval!(VarName::parse_from_pair, warnings, errors, name_pair, VarName {
+                    primary_name: "error parsing var name",
+                    sub_names: Vec::new(),
+                    span: name_pair.as_span()
+                });
                 let r#type = if name_str == "self" {
                     TypeInfo::SelfType
                 } else {
-                    TypeInfo::parse_from_pair_inner(parts.next().unwrap())?
+                    eval!(TypeInfo::parse_from_pair_inner, warnings, errors, parts.next().unwrap(), TypeInfo::ErrorRecovery)
                 };
-                Ok(FunctionParameter { name, r#type })
-            })
-            .collect()
+                pairs_buf.push(FunctionParameter { name, r#type });
+            }
+            ok(pairs_buf, warnings)
     }
 }

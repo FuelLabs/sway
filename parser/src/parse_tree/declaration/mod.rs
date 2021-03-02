@@ -12,7 +12,7 @@ pub(crate) use trait_declaration::*;
 pub(crate) use type_parameter::*;
 pub(crate) use variable_declaration::*;
 
-use crate::error::{ParseError, ParseResult};
+use crate::error::*;
 use crate::parse_tree::{Expression, VarName};
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
@@ -25,17 +25,28 @@ pub(crate) enum Declaration<'sc> {
     TraitDeclaration(TraitDeclaration<'sc>),
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
+    ErrorRecovery,
 }
 impl<'sc> Declaration<'sc> {
-    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> ParseResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let mut pair = decl.clone().into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
             Rule::fn_decl => Declaration::FunctionDeclaration(eval!(
                 FunctionDeclaration::parse_from_pair,
                 warnings,
-                decl_inner
+                errors,
+                decl_inner,
+                FunctionDeclaration {
+                                name: "failed to parse fn decl",
+                                body: crate::CodeBlock { contents: Vec::new(), scope: Default::default() },
+                                parameters: Vec::new(),
+                                span: decl_inner.as_span(),
+                                return_type: TypeInfo::Unit,
+                                type_parameters: Vec::new()
+                }
             )),
             Rule::var_decl => {
                 let mut var_decl_parts = decl_inner.into_inner();
@@ -56,11 +67,10 @@ impl<'sc> Declaration<'sc> {
                     }
                     _ => None,
                 };
-                let type_ascription =
-                    invert(type_ascription.map(|x| TypeInfo::parse_from_pair(x)))?;
-                let body = eval!(Expression::parse_from_pair, warnings, maybe_body);
+                let type_ascription = if let Some(ascription) = type_ascription { Some(eval!(TypeInfo::parse_from_pair, warnings, errors, ascription, TypeInfo::Unit))} else { None };
+                let body = eval!(Expression::parse_from_pair, warnings, errors, maybe_body, return err(warnings, errors));
                 Declaration::VariableDeclaration(VariableDeclaration {
-                    name: VarName::parse_from_pair(name_pair)?,
+                    name: eval!(VarName::parse_from_pair, warnings, errors, name_pair, VarName { primary_name: "parse failure", sub_names : Vec::new(), span: name_pair.as_span() }),
                     body,
                     is_mutable,
                     type_ascription,
@@ -69,25 +79,26 @@ impl<'sc> Declaration<'sc> {
             Rule::trait_decl => Declaration::TraitDeclaration(eval!(
                 TraitDeclaration::parse_from_pair,
                 warnings,
-                decl_inner
+                errors,
+                decl_inner,
+                return err(warnings, errors)
             )),
             Rule::struct_decl => Declaration::StructDeclaration(eval!(
                 StructDeclaration::parse_from_pair,
                 warnings,
-                decl_inner
+                errors,
+                decl_inner,
+                return err(warnings, errors)
             )),
             Rule::enum_decl => Declaration::EnumDeclaration(eval!(
                 EnumDeclaration::parse_from_pair,
                 warnings,
-                decl_inner
+                errors,
+                decl_inner,
+                return err(warnings, errors)
             )),
             a => unreachable!("declarations don't have any other sub-types: {:?}", a),
         };
-        Ok((parsed_declaration, warnings))
+        ok(parsed_declaration, warnings)
     }
-}
-
-// option res to res option helper
-fn invert<T, E>(x: Option<Result<T, E>>) -> Result<Option<T>, E> {
-    x.map_or(Ok(None), |v| v.map(Some))
 }
