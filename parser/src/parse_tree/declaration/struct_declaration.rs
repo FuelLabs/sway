@@ -47,11 +47,19 @@ impl<'sc> StructDeclaration<'sc> {
             type_params_pair,
             where_clause_pair,
         ) {
-            CompileResult::Ok{ value, warnings: mut l_w} => {
-                        warnings.append(&mut l_w);
-                        value
-            },
-            CompileResult::Err{ warnings: mut l_w, errors: mut l_e} => {
+            CompileResult::Ok {
+                value,
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                value
+            }
+            CompileResult::Err {
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
                 warnings.append(&mut l_w);
                 errors.append(&mut l_e);
                 Vec::new()
@@ -59,7 +67,13 @@ impl<'sc> StructDeclaration<'sc> {
         };
 
         let fields = if let Some(fields) = fields_pair {
-            eval!(StructField::parse_from_pairs, warnings, errors,  fields, Vec::new())
+            eval!(
+                StructField::parse_from_pairs,
+                warnings,
+                errors,
+                fields,
+                Vec::new()
+            )
         } else {
             Vec::new()
         };
@@ -79,6 +93,7 @@ impl<'sc> StructDeclaration<'sc> {
                 type_parameters,
             },
             warnings,
+            errors,
         )
     }
 }
@@ -98,9 +113,15 @@ impl<'sc> StructField<'sc> {
                 span,
                 Warning::NonSnakeCaseStructFieldName { field_name: name }
             );
-            let r#type = eval!(TypeInfo::parse_from_pair_inner, warnings, errors, fields[i + 1].clone(), TypeInfo::Unit);
+            let r#type = eval!(
+                TypeInfo::parse_from_pair_inner,
+                warnings,
+                errors,
+                fields[i + 1].clone(),
+                TypeInfo::Unit
+            );
             fields_buf.push(StructField { name, r#type });
         }
-        ok(fields_buf, warnings)
+        ok(fields_buf, warnings, errors)
     }
 }

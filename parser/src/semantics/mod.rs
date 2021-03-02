@@ -3,8 +3,8 @@ use crate::parse_tree::*;
 use crate::types::{IntegerBits, TypeInfo};
 use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
 use either::Either;
-use std::collections::HashMap;
 use pest::Span;
+use std::collections::HashMap;
 
 const ERROR_RECOVERY_EXPR: TypedExpression = TypedExpression {
     expression: TypedExpressionVariant::Unit,
@@ -247,7 +247,7 @@ impl<'sc> TypedExpression<'sc> {
                         // declaration. Use parameter type annotations as annotations for the
                         // arguments
                         //
-                        let mut typed_call_arguments= Vec::new();
+                        let mut typed_call_arguments = Vec::new();
                         for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
                             let res = TypedExpression::type_check(
                                 arg,
@@ -257,14 +257,17 @@ impl<'sc> TypedExpression<'sc> {
                             );
                             let arg = match res {
                                 CompileResult::Ok {
-                                    value, warnings: mut l_w
+                                    value,
+                                    warnings: mut l_w,
+                                    errors: mut l_e,
                                 } => {
                                     warnings.append(&mut l_w);
+                                    errors.append(&mut l_e);
                                     value
-                                },
+                                }
                                 CompileResult::Err {
                                     warnings: mut l_w,
-                                    errors: mut l_e
+                                    errors: mut l_e,
                                 } => {
                                     warnings.append(&mut l_w);
                                     errors.append(&mut l_e);
@@ -310,8 +313,26 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 ..
             } => {
-                let typed_primary_expression = type_check!(TypedExpression, *primary_expression, namespace.clone(), None, "", ERROR_RECOVERY_EXPR.clone(), warnings, errors);
-                let first_branch_result = type_check!(TypedExpression, branches[0].result.clone(), namespace.clone(), type_annotation.clone(), help_text.clone(), ERROR_RECOVERY_EXPR.clone(), warnings, errors);
+                let typed_primary_expression = type_check!(
+                    TypedExpression,
+                    *primary_expression,
+                    namespace.clone(),
+                    None,
+                    "",
+                    ERROR_RECOVERY_EXPR.clone(),
+                    warnings,
+                    errors
+                );
+                let first_branch_result = type_check!(
+                    TypedExpression,
+                    branches[0].result.clone(),
+                    namespace.clone(),
+                    type_annotation.clone(),
+                    help_text.clone(),
+                    ERROR_RECOVERY_EXPR.clone(),
+                    warnings,
+                    errors
+                );
 
                 let first_branch_result = vec![first_branch_result];
                 // use type of first branch for annotation on the rest of the branches
@@ -323,7 +344,8 @@ impl<'sc> TypedExpression<'sc> {
                         |MatchBranch {
                              condition, result, ..
                          }| {
-                            type_check!(TypedExpression,
+                            type_check!(
+                                TypedExpression,
                                 result,
                                 namespace.clone(),
                                 Some(first_branch_result[0].return_type.clone()),
@@ -377,11 +399,40 @@ impl<'sc> TypedExpression<'sc> {
                 r#else,
                 span,
             } => {
-                let condition = Box::new(type_check!(TypedExpression, *condition, namespace.clone(), Some(TypeInfo::Boolean),"The condition of an if expression must be a boolean expression.", ERROR_RECOVERY_EXPR.clone(), warnings, errors));
-                let then= Box::new(type_check!(TypedExpression, *then, namespace.clone(), None, "", ERROR_RECOVERY_EXPR.clone(), warnings, errors));
+                let condition = Box::new(type_check!(
+                    TypedExpression,
+                    *condition,
+                    namespace.clone(),
+                    Some(TypeInfo::Boolean),
+                    "The condition of an if expression must be a boolean expression.",
+                    ERROR_RECOVERY_EXPR.clone(),
+                    warnings,
+                    errors
+                ));
+                let then = Box::new(type_check!(
+                    TypedExpression,
+                    *then,
+                    namespace.clone(),
+                    None,
+                    "",
+                    ERROR_RECOVERY_EXPR.clone(),
+                    warnings,
+                    errors
+                ));
                 let r#else = if let Some(expr) = r#else {
-                    Some(Box::new(type_check!(TypedExpression, *expr, namespace, Some(then.return_type.clone()), "", ERROR_RECOVERY_EXPR.clone(), warnings, errors)))
-                } else { None };
+                    Some(Box::new(type_check!(
+                        TypedExpression,
+                        *expr,
+                        namespace,
+                        Some(then.return_type.clone()),
+                        "",
+                        ERROR_RECOVERY_EXPR.clone(),
+                        warnings,
+                        errors
+                    )))
+                } else {
+                    None
+                };
 
                 TypedExpression {
                     expression: TypedExpressionVariant::IfExp {
@@ -424,7 +475,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
         }
-        ok(typed_expression, warnings)
+        ok(typed_expression, warnings, errors)
     }
 }
 
@@ -588,14 +639,13 @@ fn type_check_node<'sc>(
                 }) => {
                     let body = type_check!(TypedExpression, body, namespace.clone(), type_ascription.clone(), 
                     format!("Variable declaration's type annotation (type {}) does not match up with the assigned expression's type.", type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())), ERROR_RECOVERY_EXPR.clone(), warnings, errors);
-                            let body =
-                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                                    name: name.clone(),
-                                    body,
-                                    is_mutable,
-                                });
-                            namespace.insert(name, body.clone());
-                            body
+                    let body = TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                        name: name.clone(),
+                        body,
+                        is_mutable,
+                    });
+                    namespace.insert(name, body.clone());
+                    body
                 }
                 Declaration::EnumDeclaration(e) => {
                     let span = e.span.clone();
@@ -618,6 +668,7 @@ fn type_check_node<'sc>(
                     span,
                     return_type,
                     type_parameters,
+                    ..
                 }) => {
                     // insert parameters into namespace
                     let mut namespace = namespace.clone();
@@ -726,7 +777,16 @@ fn type_check_node<'sc>(
             }),
             AstNodeContent::TraitDeclaration(a) => TypedAstNodeContent::TraitDeclaration(a),
             AstNodeContent::Expression(a) => {
-                let inner = type_check!(TypedExpression, a, namespace.clone(), None, "", ERROR_RECOVERY_EXPR.clone(), warnings, errors);
+                let inner = type_check!(
+                    TypedExpression,
+                    a,
+                    namespace.clone(),
+                    None,
+                    "",
+                    ERROR_RECOVERY_EXPR.clone(),
+                    warnings,
+                    errors
+                );
                 TypedAstNodeContent::Expression(inner)
             }
             AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
@@ -745,11 +805,19 @@ fn type_check_node<'sc>(
                 }
             }
             AstNodeContent::ImplicitReturnExpression(expr) => {
-                let typed_expr = type_check!(TypedExpression, expr, namespace.clone(), return_type_annotation, 
+                let typed_expr = type_check!(
+                    TypedExpression,
+                    expr,
+                    namespace.clone(),
+                    return_type_annotation,
                     format!(
                         "Implicit return must match up with block's type. {}",
                         help_text.into()
-                    ), ERROR_RECOVERY_EXPR.clone(), warnings, errors);
+                    ),
+                    ERROR_RECOVERY_EXPR.clone(),
+                    warnings,
+                    errors
+                );
                 TypedAstNodeContent::ImplicitReturnExpression(typed_expr)
             }
             a => {

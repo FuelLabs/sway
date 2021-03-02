@@ -1,5 +1,5 @@
-use crate::parse_tree::Expression;
 use crate::error::*;
+use crate::parse_tree::Expression;
 use crate::{CodeBlock, CompileError, Rule};
 use either::Either;
 use pest::iterators::Pair;
@@ -26,9 +26,12 @@ impl<'sc> TypeParameter<'sc> {
             None => {
                 // no type params specified, ensure where clause is empty
                 if let Some(where_clause_pair) = where_clause_pair {
-                    return err(Vec::new(), vec![CompileError::UnexpectedWhereClause(
-                        where_clause_pair.as_span(),
-                    )]);
+                    return err(
+                        Vec::new(),
+                        vec![CompileError::UnexpectedWhereClause(
+                            where_clause_pair.as_span(),
+                        )],
+                    );
                 }
                 Vec::new()
             }
@@ -43,23 +46,28 @@ impl<'sc> TypeParameter<'sc> {
                     assert_eq!(trait_constraint.as_rule(), Rule::trait_name);
                     // assign trait constraints to above parsed type params
                     // find associated type name
-                    let mut param_to_edit = match params.iter_mut().find(|TypeParameter { name, .. } | *name == type_param.as_str()) {
+                    let mut param_to_edit = match params
+                        .iter_mut()
+                        .find(|TypeParameter { name, .. }| *name == type_param.as_str())
+                    {
                         Some(o) => o,
                         None => {
-                            errors.push(CompileError::ConstrainedNonExistentType { type_name: type_param.as_str(), trait_name: trait_constraint.as_str(), span: trait_constraint.as_span() });
+                            errors.push(CompileError::ConstrainedNonExistentType {
+                                type_name: type_param.as_str(),
+                                trait_name: trait_constraint.as_str(),
+                                span: trait_constraint.as_span(),
+                            });
                             continue;
                         }
                     };
-                    param_to_edit.trait_constraint.push(
-
-                        TraitConstraint { name: trait_constraint.as_str() }
-                    );
-
+                    param_to_edit.trait_constraint.push(TraitConstraint {
+                        name: trait_constraint.as_str(),
+                    });
                 }
             }
             None => (),
         }
-        ok(params, Vec::new())
+        ok(params, Vec::new(), errors)
     }
 }
 

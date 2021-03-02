@@ -1,6 +1,9 @@
-use crate::parse_tree::Literal;
 use crate::error::*;
-use std::{collections::HashMap, hash::{Hash, Hasher}};
+use crate::parse_tree::Literal;
+use std::{
+    collections::HashMap,
+    hash::{Hash, Hasher},
+};
 #[macro_use]
 use crate::parser::{HllParser, Rule};
 use crate::CodeBlock;
@@ -87,7 +90,15 @@ impl<'sc> Expression<'sc> {
         let mut expr_iter = expr.into_inner();
         // first expr is always here
         let first_expr = expr_iter.next().unwrap();
-        let first_expr = eval!(Expression::parse_from_pair_inner, warnings, errors, first_expr, Expression::Unit { span: first_expr.as_span() });
+        let first_expr = eval!(
+            Expression::parse_from_pair_inner,
+            warnings,
+            errors,
+            first_expr,
+            Expression::Unit {
+                span: first_expr.as_span()
+            }
+        );
         let mut expr_or_op_buf: Vec<Either<Op, Expression>> =
             vec![Either::Right(first_expr.clone())];
         // sometimes exprs are followed by ops in the same expr
@@ -95,11 +106,19 @@ impl<'sc> Expression<'sc> {
             let op_str = op.as_str();
             let op_span = op.as_span();
             let op = match parse_op(op) {
-                CompileResult::Ok { warnings: mut l_w, value  } => {
+                CompileResult::Ok {
+                    warnings: mut l_w,
+                    value,
+                    errors: mut l_e,
+                } => {
                     warnings.append(&mut l_w);
+                    errors.append(&mut l_e);
                     value
-                },
-                CompileResult::Err { warnings: mut l_w, errors: mut l_e} => {
+                }
+                CompileResult::Err {
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
                     warnings.append(&mut l_w);
                     errors.append(&mut l_e);
                     return err(warnings, errors);
@@ -107,14 +126,19 @@ impl<'sc> Expression<'sc> {
             };
             // an op is necessarily followed by an expression
             let next_expr = match expr_iter.next() {
-                Some(o) => eval!(Expression::parse_from_pair_inner, warnings, errors, o, Expression::Unit { span: o.as_span() }),
+                Some(o) => eval!(
+                    Expression::parse_from_pair_inner,
+                    warnings,
+                    errors,
+                    o,
+                    Expression::Unit { span: o.as_span() }
+                ),
                 None => {
-                    errors.push(
-                    CompileError::ExpectedExprAfterOp {
+                    errors.push(CompileError::ExpectedExprAfterOp {
                         op: op_str,
                         span: expr_for_debug.as_span(),
                     });
-                    Expression::Unit { span: op_span}
+                    Expression::Unit { span: op_span }
                 }
             };
             // pushing these into a vec in this manner so we can re-associate according to order of
@@ -128,21 +152,31 @@ impl<'sc> Expression<'sc> {
              */
         }
         if expr_or_op_buf.len() == 1 {
-            ok(first_expr, warnings)
+            ok(first_expr, warnings, errors)
         } else {
-            let expr = match 
-                arrange_by_order_of_operations(expr_or_op_buf, expr_for_debug.as_span()) {
-                    CompileResult::Ok { value, warnings: mut l_w} => {
-                        warnings.append(&mut l_w);
-                        value
-                    },
-                    CompileResult::Err { warnings: mut l_w, errors: mut l_e} => {
+            let expr =
+                match arrange_by_order_of_operations(expr_or_op_buf, expr_for_debug.as_span()) {
+                    CompileResult::Ok {
+                        value,
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                    } => {
                         warnings.append(&mut l_w);
                         errors.append(&mut l_e);
-                        Expression::Unit {  span: expr_for_debug.as_span() }
+                        value
+                    }
+                    CompileResult::Err {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                        Expression::Unit {
+                            span: expr_for_debug.as_span(),
+                        }
                     }
                 };
-            ok(expr, warnings)
+            ok(expr, warnings, errors)
         }
     }
 
@@ -151,34 +185,53 @@ impl<'sc> Expression<'sc> {
         let mut warnings = Vec::new();
         let span = expr.as_span();
         let parsed = match expr.as_rule() {
-            Rule::literal_value => 
-match Literal::parse_from_pair(expr.clone()) {
-                    CompileResult::Ok { value, warnings: mut l_w } => {
-                        warnings.append(&mut l_w);
-                        Expression::Literal{value, span}
-                    },
-                    CompileResult::Err {
-                        warnings: mut l_w,
-                        errors: mut l_e
-                    } => {
-
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                        Expression::Unit { span }
-
-                    }
+            Rule::literal_value => match Literal::parse_from_pair(expr.clone()) {
+                CompileResult::Ok {
+                    value,
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
+                    warnings.append(&mut l_w);
+                    errors.append(&mut l_e);
+                    Expression::Literal { value, span }
+                }
+                CompileResult::Err {
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
+                    warnings.append(&mut l_w);
+                    errors.append(&mut l_e);
+                    Expression::Unit { span }
+                }
             },
             Rule::func_app => {
                 let span = expr.as_span();
                 let mut func_app_parts = expr.into_inner();
-                let name = eval!(VarName::parse_from_pair, warnings, errors, func_app_parts.next().unwrap(), VarName { primary_name: "error parsing var name", sub_names: Vec::new(), span: span.clone()});
+                let name = eval!(
+                    VarName::parse_from_pair,
+                    warnings,
+                    errors,
+                    func_app_parts.next().unwrap(),
+                    VarName {
+                        primary_name: "error parsing var name",
+                        sub_names: Vec::new(),
+                        span: span.clone()
+                    }
+                );
                 let arguments = func_app_parts.next();
                 let mut arguments_buf = Vec::new();
                 for argument in arguments {
-                    let arg = eval!(Expression::parse_from_pair_inner, warnings, errors, argument, Expression::Unit { span: argument.as_span() } );
+                    let arg = eval!(
+                        Expression::parse_from_pair,
+                        warnings,
+                        errors,
+                        argument,
+                        Expression::Unit {
+                            span: argument.as_span()
+                        }
+                    );
                     arguments_buf.push(arg);
                 }
-
 
                 Expression::FunctionApplication {
                     name,
@@ -195,14 +248,21 @@ match Literal::parse_from_pair(expr.clone()) {
                 while let Some(pair) = var_exp_parts.next() {
                     match pair.as_rule() {
                         Rule::unary_op => {
-                            unary_op = eval!(UnaryOp::parse_from_pair, warnings, errors, pair, None);
+                            unary_op =
+                                eval!(UnaryOp::parse_from_pair, warnings, errors, pair, None);
                         }
                         Rule::var_name_ident => {
-                            name = Some(eval!(VarName::parse_from_pair, warnings, errors, pair, VarName {
-                                primary_name: "error parsing var name",
-                                sub_names: Vec::new(),
-                                span: span.clone()
-                            }));
+                            name = Some(eval!(
+                                VarName::parse_from_pair,
+                                warnings,
+                                errors,
+                                pair,
+                                VarName {
+                                    primary_name: "error parsing var name",
+                                    sub_names: Vec::new(),
+                                    span: span.clone()
+                                }
+                            ));
                         }
                         a => unreachable!("what is this? {:?} {}", a, pair.as_str()),
                     }
@@ -219,7 +279,13 @@ match Literal::parse_from_pair(expr.clone()) {
                 let mut array_exps = expr.into_inner();
                 let mut contents = Vec::new();
                 for expr in array_exps {
-                    contents.push(eval!(Expression::parse_from_pair, warnings, errors, expr, Expression::Unit { span: span.clone() }));
+                    contents.push(eval!(
+                        Expression::parse_from_pair,
+                        warnings,
+                        errors,
+                        expr,
+                        Expression::Unit { span: span.clone() }
+                    ));
                 }
                 Expression::Array { contents, span }
             }
@@ -235,11 +301,17 @@ match Literal::parse_from_pair(expr.clone()) {
                 let primary_expression = Box::new(primary_expression);
                 let mut branches = Vec::new();
                 for exp in expr_iter {
-                    let res = eval!(MatchBranch::parse_from_pair, warnings, errors, exp, MatchBranch {
-                        condition: MatchCondition::CatchAll,
-                        result: Expression::Unit { span: span.clone() },
-                        span: span.clone()
-                    });
+                    let res = eval!(
+                        MatchBranch::parse_from_pair,
+                        warnings,
+                        errors,
+                        exp,
+                        MatchBranch {
+                            condition: MatchCondition::CatchAll,
+                            result: Expression::Unit { span: span.clone() },
+                            span: span.clone()
+                        }
+                    );
                     branches.push(res);
                 }
                 Expression::MatchExpression {
@@ -255,7 +327,13 @@ match Literal::parse_from_pair(expr.clone()) {
                 let mut fields_buf = Vec::new();
                 for i in (0..fields.len()).step_by(2) {
                     let name = fields[i].as_str();
-                    let value = eval!(Expression::parse_from_pair, warnings,  errors, fields[i + 1].clone(), Expression::Unit {span : span.clone()});
+                    let value = eval!(
+                        Expression::parse_from_pair,
+                        warnings,
+                        errors,
+                        fields[i + 1].clone(),
+                        Expression::Unit { span: span.clone() }
+                    );
                     fields_buf.push(StructExpressionField { name, value });
                 }
                 // TODO add warning for capitalization on struct name
@@ -269,9 +347,11 @@ match Literal::parse_from_pair(expr.clone()) {
                 let expr = eval!(
                     Expression::parse_from_pair,
                     warnings,
-                    errors, 
+                    errors,
                     expr.clone().into_inner().next().unwrap(),
-                    Expression::Unit { span: expr.as_span() }
+                    Expression::Unit {
+                        span: expr.as_span()
+                    }
                 );
                 Expression::ParenthesizedExpression {
                     inner: Box::new(expr),
@@ -279,7 +359,16 @@ match Literal::parse_from_pair(expr.clone()) {
                 }
             }
             Rule::code_block => {
-                let expr = eval!(crate::CodeBlock::parse_from_pair, warnings, errors, expr, crate::CodeBlock { contents: Vec::new() , scope: Default::default()});
+                let expr = eval!(
+                    crate::CodeBlock::parse_from_pair,
+                    warnings,
+                    errors,
+                    expr,
+                    crate::CodeBlock {
+                        contents: Vec::new(),
+                        scope: Default::default()
+                    }
+                );
                 Expression::CodeBlock {
                     contents: expr,
                     span,
@@ -291,14 +380,19 @@ match Literal::parse_from_pair(expr.clone()) {
                 let condition_pair = if_exp_pairs.next().unwrap();
                 let then_pair = if_exp_pairs.next().unwrap();
                 let else_pair = if_exp_pairs.next();
-                let condition =
-                    Box::new(eval!(Expression::parse_from_pair, warnings, errors, condition_pair, Expression::Unit { span : span.clone()}));
+                let condition = Box::new(eval!(
+                    Expression::parse_from_pair,
+                    warnings,
+                    errors,
+                    condition_pair,
+                    Expression::Unit { span: span.clone() }
+                ));
                 let then = Box::new(eval!(
                     Expression::parse_from_pair_inner,
                     warnings,
                     errors,
                     then_pair,
-                    Expression::Unit { span : span.clone()}
+                    Expression::Unit { span: span.clone() }
                 ));
                 let r#else = match else_pair {
                     Some(else_pair) => Some(Box::new(eval!(
@@ -306,7 +400,7 @@ match Literal::parse_from_pair(expr.clone()) {
                         warnings,
                         errors,
                         else_pair,
-                        Expression::Unit { span : span.clone()}
+                        Expression::Unit { span: span.clone() }
                     ))),
                     None => None,
                 };
@@ -326,11 +420,12 @@ match Literal::parse_from_pair(expr.clone()) {
                 );
                 errors.push(CompileError::UnimplementedRule(a, expr.as_span()));
                 // construct unit expression for error recovery
-                Expression::Unit { span: expr.as_span() }
-
+                Expression::Unit {
+                    span: expr.as_span(),
+                }
             }
         };
-        ok(parsed, warnings)
+        ok(parsed, warnings, errors)
     }
 }
 
@@ -365,7 +460,13 @@ impl<'sc> MatchBranch<'sc> {
         };
         let condition = match condition.into_inner().next() {
             Some(e) => {
-                let expr = eval!(Expression::parse_from_pair, warnings, errors, e, Expression::Unit { span: e.as_span() });
+                let expr = eval!(
+                    Expression::parse_from_pair,
+                    warnings,
+                    errors,
+                    e,
+                    Expression::Unit { span: e.as_span() }
+                );
                 MatchCondition::Expression(expr)
             }
             // the "_" case
@@ -382,11 +483,28 @@ impl<'sc> MatchBranch<'sc> {
             }
         };
         let result = match result.as_rule() {
-            Rule::expr => eval!(Expression::parse_from_pair, warnings, errors, result, Expression::Unit { span: result.as_span() }),
+            Rule::expr => eval!(
+                Expression::parse_from_pair,
+                warnings,
+                errors,
+                result,
+                Expression::Unit {
+                    span: result.as_span()
+                }
+            ),
             Rule::code_block => {
                 let span = result.as_span();
                 Expression::CodeBlock {
-                    contents: eval!(CodeBlock::parse_from_pair, warnings, errors, result, CodeBlock { contents: Vec::new(), scope: HashMap::default() }),
+                    contents: eval!(
+                        CodeBlock::parse_from_pair,
+                        warnings,
+                        errors,
+                        result,
+                        CodeBlock {
+                            contents: Vec::new(),
+                            scope: HashMap::default()
+                        }
+                    ),
                     span,
                 }
             }
@@ -399,6 +517,7 @@ impl<'sc> MatchBranch<'sc> {
                 span,
             },
             warnings,
+            errors,
         )
     }
 }
@@ -414,11 +533,11 @@ impl UnaryOp {
     fn parse_from_pair<'sc>(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Option<Self>> {
         use UnaryOp::*;
         match pair.as_str() {
-            "!" => ok(Some(Not), Vec::new()),
-            "ref" => ok(Some(Ref), Vec::new()),
-            "deref" => ok(Some(Deref), Vec::new()),
-            _ => {             
-                   let errors = vec![CompileError::Internal(
+            "!" => ok(Some(Not), Vec::new(), Vec::new()),
+            "ref" => ok(Some(Ref), Vec::new(), Vec::new()),
+            "deref" => ok(Some(Deref), Vec::new(), Vec::new()),
+            _ => {
+                let errors = vec![CompileError::Internal(
                     "Attempted to parse unary op from invalid op string.",
                     pair.as_span(),
                 )];
@@ -468,11 +587,15 @@ impl<'sc> VarName<'sc> {
         let mut names = pair.into_inner();
         let primary_name = names.next().unwrap().as_str();
         let sub_names = names.map(|x| x.as_str()).collect();
-        ok(VarName {
-            primary_name,
-            sub_names,
-            span,
-        }, Vec::new())
+        ok(
+            VarName {
+                primary_name,
+                sub_names,
+                span,
+            },
+            Vec::new(),
+            Vec::new(),
+        )
     }
 }
 
@@ -500,10 +623,14 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>) -> CompileResult<'sc, Op> {
             return err(Vec::new(), errors);
         }
     };
-    ok(Op {
-        span: op.as_span(),
-        op_variant,
-    }, Vec::new())
+    ok(
+        Op {
+            span: op.as_span(),
+            op_variant,
+        },
+        Vec::new(),
+        errors,
+    )
 }
 
 #[derive(Debug)]
@@ -654,13 +781,12 @@ fn arrange_by_order_of_operations<'sc>(
     }
 
     if expression_stack.len() != 1 {
-        errors.push(
-            CompileError::Internal("Invalid expression stack length", debug_span)
-        ); 
-        return err(warnings,  errors
-        );
-        
+        errors.push(CompileError::Internal(
+            "Invalid expression stack length",
+            debug_span,
+        ));
+        return err(warnings, errors);
     }
 
-    ok(expression_stack[0].clone(), warnings)
+    ok(expression_stack[0].clone(), warnings, errors)
 }

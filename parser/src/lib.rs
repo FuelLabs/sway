@@ -8,12 +8,12 @@ mod parse_tree;
 mod parser;
 mod semantics;
 pub(crate) mod types;
+use crate::error::*;
 use crate::parse_tree::*;
 pub(crate) use crate::parse_tree::{
     Expression, FunctionDeclaration, FunctionParameter, Literal, UseStatement,
 };
 use crate::parser::{HllParser, Rule};
-use crate::error::*;
 use either::{Either, Left, Right};
 use pest::iterators::Pair;
 use pest::Parser;
@@ -21,7 +21,7 @@ use semantics::TypedParseTree;
 use std::collections::HashMap;
 use types::TypeInfo;
 
-pub use error::{CompileWarning, CompileError, CompileResult};
+pub use error::{CompileError, CompileResult, CompileWarning};
 pub use pest::Span;
 
 // todo rename to language name
@@ -82,11 +82,17 @@ impl<'sc> ReturnStatement<'sc> {
                 expr: Expression::Unit { span },
             },
             Some(expr_pair) => {
-                let expr = eval!(Expression::parse_from_pair, warnings, errors, expr_pair, Expression::Unit { span });
+                let expr = eval!(
+                    Expression::parse_from_pair,
+                    warnings,
+                    errors,
+                    expr_pair,
+                    Expression::Unit { span }
+                );
                 ReturnStatement { expr }
             }
         };
-        ok(res, warnings)
+        ok(res, warnings, errors)
     }
 }
 
@@ -128,15 +134,26 @@ impl<'sc> CodeBlock<'sc> {
                     }
                 }
                 Rule::return_statement => {
-                    let evaluated_node =
-                        eval!(ReturnStatement::parse_from_pair, warnings, errors, pair.clone(), continue);
+                    let evaluated_node = eval!(
+                        ReturnStatement::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair.clone(),
+                        continue
+                    );
                     AstNode {
                         content: AstNodeContent::ReturnStatement(evaluated_node),
                         span: pair.as_span(),
                     }
                 }
                 Rule::expr => {
-                    let res = eval!(Expression::parse_from_pair, warnings, errors, pair.clone(), continue);
+                    let res = eval!(
+                        Expression::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair.clone(),
+                        continue
+                    );
                     AstNode {
                         content: AstNodeContent::ImplicitReturnExpression(res),
                         span: pair.as_span(),
@@ -153,6 +170,7 @@ impl<'sc> CodeBlock<'sc> {
         ok(
             CodeBlock {  contents, scope: /* TODO */ HashMap::default()  },
             warnings,
+            errors,
         )
     }
 }
@@ -176,7 +194,7 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
     let mut errors: Vec<CompileError> = Vec::new();
     let mut parsed = match HllParser::parse(Rule::program, input) {
         Ok(o) => o,
-        Err(e) => return err(Vec::new(), vec![e.into()])
+        Err(e) => return err(Vec::new(), vec![e.into()]),
     };
     let res = eval!(
         parse_root_from_pairs,
@@ -185,16 +203,24 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
         (parsed.next().unwrap().into_inner()),
         return err(warnings, errors)
     );
-    ok(res, warnings)
+    ok(res, warnings, errors)
 }
 
-// TODO compile result and not parse result
 pub fn compile<'sc>(
     input: &'sc str,
-) -> CompileResult<HllTypedParseTree<'sc>>{
+) -> Result<
+    (HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>),
+    (Vec<CompileError<'sc>>, Vec<CompileWarning<'sc>>),
+> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let parse_tree = eval!(parse, warnings, errors, input, return err(warnings, errors));
+    let parse_tree = eval!(
+        parse,
+        warnings,
+        errors,
+        input,
+        return Err((errors, warnings))
+    );
 
     let maybe_contract_tree: Option<Result<_, _>> = parse_tree
         .contract_ast
@@ -240,16 +266,16 @@ pub fn compile<'sc>(
         None => None,
     };
     if errors.is_empty() {
-        ok(
+        Ok((
             HllTypedParseTree {
                 contract_ast,
                 script_ast,
                 predicate_ast,
             },
             warnings,
-        )
+        ))
     } else {
-        err(warnings, errors)
+        Err((errors, warnings))
     }
 }
 
@@ -273,20 +299,32 @@ fn parse_root_from_pairs<'sc>(
         for pair in input {
             match pair.as_rule() {
                 Rule::declaration => {
-                    let decl = eval!(Declaration::parse_from_pair, warnings, errors, pair.clone(), continue);
+                    let decl = eval!(
+                        Declaration::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair.clone(),
+                        continue
+                    );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::Declaration(decl),
                         span: pair.as_span(),
                     });
                 }
                 Rule::use_statement => {
-                    let stmt = eval!(UseStatement::parse_from_pair, warnings, errors, pair.clone(), continue);
+                    let stmt = eval!(
+                        UseStatement::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair.clone(),
+                        continue
+                    );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::UseStatement(stmt),
                         span: pair.as_span(),
                     });
                 }
-                _ => unreachable!(),
+                a => unreachable!("{:?}", pair.as_str()),
             }
         }
         match rule {
@@ -301,14 +339,14 @@ fn parse_root_from_pairs<'sc>(
                 if fuel_ast.script_ast.is_some() {
                     errors.push(CompileError::MultipleScripts(block.as_span()));
                 } else {
-                fuel_ast.script_ast = Some(parse_tree);
+                    fuel_ast.script_ast = Some(parse_tree);
                 }
             }
             Rule::predicate => {
                 if fuel_ast.predicate_ast.is_some() {
                     errors.push(CompileError::MultiplePredicates(block.as_span()));
                 } else {
-                fuel_ast.predicate_ast = Some(parse_tree);
+                    fuel_ast.predicate_ast = Some(parse_tree);
                 }
             }
             Rule::EOI => (),
@@ -316,7 +354,7 @@ fn parse_root_from_pairs<'sc>(
         }
     }
 
-    ok(fuel_ast, warnings)
+    ok(fuel_ast, warnings, errors)
 }
 
 #[test]
@@ -390,7 +428,7 @@ fn test_basic_prog() {
         }
     }
 
-    fn prints_number_five(): u8 {
+    pub fn prints_number_five(): u8 {
         let x: u8 = 5;
         let reference_to_x = ref x;
         let second_value_of_x = deref x; // u8 is `Copy` so this clones

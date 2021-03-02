@@ -1,6 +1,6 @@
 #![allow(warnings)]
 use line_col::LineColLookup;
-use parser::{compile, CompileResult, CompileError, CompileWarning};
+use parser::{compile, CompileError, CompileResult, CompileWarning};
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, SourceBuffer, Span, DEFAULT_METRICS,
@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let res = compile(&content);
 
     match res {
-        CompileResult::Ok{ value: compiled, warnings} => {
+        Ok((compiled, warnings)) => {
             if let Some(output) = opt.output {
                 let mut file = File::create(output)?;
                 file.write_all(format!("{:#?}", compiled).as_bytes())?;
@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
                 ));
             }
         }
-        CompileResult::Err{ errors, warnings } => {
+        Err((errors, warnings)) => {
             let e_len = errors.len();
             errors.into_iter().for_each(|e| format_err(&content, e));
 

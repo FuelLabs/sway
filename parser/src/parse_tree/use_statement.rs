@@ -1,6 +1,6 @@
 use crate::error::CompileError;
-use crate::Rule;
 use crate::error::*;
+use crate::Rule;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -20,6 +20,6 @@ impl<'sc> UseStatement<'sc> {
             .map(|x| x.as_str());
         let root = path_iter.next().unwrap();
         let path = path_iter.collect();
-        ok(UseStatement { root, path }, Vec::new())
+        ok(UseStatement { root, path }, Vec::new(), Vec::new())
     }
 }

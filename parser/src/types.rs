@@ -34,18 +34,22 @@ impl<'sc> TypeInfo<'sc> {
         Self::parse_from_pair_inner(r#type.next().unwrap())
     }
     pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        ok(match input.as_str() {
-            "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
-            "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-            "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-            "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-            "u128" => TypeInfo::UnsignedInteger(IntegerBits::OneTwentyEight),
-            "bool" => TypeInfo::Boolean,
-            "string" => TypeInfo::String,
-            "unit" => TypeInfo::Unit,
-            "byte" => TypeInfo::Byte,
-            other => TypeInfo::Generic { name: other },
-        }, Vec::new())
+        ok(
+            match input.as_str() {
+                "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
+                "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+                "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                "u128" => TypeInfo::UnsignedInteger(IntegerBits::OneTwentyEight),
+                "bool" => TypeInfo::Boolean,
+                "string" => TypeInfo::String,
+                "unit" => TypeInfo::Unit,
+                "byte" => TypeInfo::Byte,
+                other => TypeInfo::Generic { name: other },
+            },
+            Vec::new(),
+            Vec::new(),
+        )
     }
 
     pub(crate) fn is_convertable(

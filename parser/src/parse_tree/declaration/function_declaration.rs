@@ -7,8 +7,24 @@ use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
+pub(crate) enum Visibility {
+    Public,
+    Private,
+}
+
+impl Visibility {
+    pub(crate) fn parse_from_pair<'sc>(input: Pair<'sc, Rule>) -> Self {
+        match input.as_str().trim() {
+            "pub" => Visibility::Public,
+            _ => Visibility::Private,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct FunctionDeclaration<'sc> {
     pub(crate) name: &'sc str,
+    pub(crate) visibility: Visibility,
     pub(crate) body: CodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub(crate) span: pest::Span<'sc>,
@@ -21,7 +37,15 @@ impl<'sc> FunctionDeclaration<'sc> {
         let mut parts = pair.clone().into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut signature = parts.next().unwrap().into_inner();
+        let mut signature_or_visibility = parts.next().unwrap();
+        let (visibility, mut signature) = if signature_or_visibility.as_rule() == Rule::visibility {
+            (
+                Visibility::parse_from_pair(signature_or_visibility),
+                parts.next().unwrap().into_inner(),
+            )
+        } else {
+            (Visibility::Private, signature_or_visibility.into_inner())
+        };
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
         let name_span = name.as_span();
@@ -58,37 +82,68 @@ impl<'sc> FunctionDeclaration<'sc> {
         // these are non-optional in a func decl
         let parameters_pair = parameters_pair.unwrap();
 
-        let parameters = eval!(FunctionParameter::list_from_pairs, warnings, errors, parameters_pair.into_inner(), Vec::new());
+        let parameters = eval!(
+            FunctionParameter::list_from_pairs,
+            warnings,
+            errors,
+            parameters_pair.into_inner(),
+            Vec::new()
+        );
         let return_type = match return_type_pair {
-            Some(pair) => eval!(TypeInfo::parse_from_pair, warnings, errors, pair, TypeInfo::Unit ),
+            Some(pair) => eval!(
+                TypeInfo::parse_from_pair,
+                warnings,
+                errors,
+                pair,
+                TypeInfo::Unit
+            ),
             None => TypeInfo::Unit,
         };
         let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
         ) {
-            CompileResult::Ok{ value, warnings: mut l_w} => {
-                        warnings.append(&mut l_w);
-                        value
-            },
-            CompileResult::Err{ warnings: mut l_w, errors: mut l_e} => {
+            CompileResult::Ok {
+                value,
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                value
+            }
+            CompileResult::Err {
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
                 warnings.append(&mut l_w);
                 errors.append(&mut l_e);
                 Vec::new()
             }
         };
         let body = parts.next().unwrap();
-        let body = eval!(CodeBlock::parse_from_pair, warnings, errors, body, crate::CodeBlock { contents: Vec::new(), scope: Default::default()});
+        let body = eval!(
+            CodeBlock::parse_from_pair,
+            warnings,
+            errors,
+            body,
+            crate::CodeBlock {
+                contents: Vec::new(),
+                scope: Default::default()
+            }
+        );
         ok(
             FunctionDeclaration {
                 name,
                 parameters,
+                visibility,
                 body,
                 span: pair.as_span(),
                 return_type,
                 type_parameters,
             },
             warnings,
+            errors,
         )
     }
 }
@@ -102,26 +157,38 @@ pub(crate) struct FunctionParameter<'sc> {
 impl<'sc> FunctionParameter<'sc> {
     pub(crate) fn list_from_pairs(
         pairs: impl Iterator<Item = Pair<'sc, Rule>>,
-    ) -> CompileResult<'sc,Vec<FunctionParameter<'sc>>> {
+    ) -> CompileResult<'sc, Vec<FunctionParameter<'sc>>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut pairs_buf = Vec::new();
         for pair in pairs {
-                let mut parts = pair.clone().into_inner();
-                let name_pair = parts.next().unwrap();
-                let name_str = name_pair.as_str();
-                let name = eval!(VarName::parse_from_pair, warnings, errors, name_pair, VarName {
+            let mut parts = pair.clone().into_inner();
+            let name_pair = parts.next().unwrap();
+            let name_str = name_pair.as_str();
+            let name = eval!(
+                VarName::parse_from_pair,
+                warnings,
+                errors,
+                name_pair,
+                VarName {
                     primary_name: "error parsing var name",
                     sub_names: Vec::new(),
                     span: name_pair.as_span()
-                });
-                let r#type = if name_str == "self" {
-                    TypeInfo::SelfType
-                } else {
-                    eval!(TypeInfo::parse_from_pair_inner, warnings, errors, parts.next().unwrap(), TypeInfo::ErrorRecovery)
-                };
-                pairs_buf.push(FunctionParameter { name, r#type });
-            }
-            ok(pairs_buf, warnings)
+                }
+            );
+            let r#type = if name_str == "self" {
+                TypeInfo::SelfType
+            } else {
+                eval!(
+                    TypeInfo::parse_from_pair_inner,
+                    warnings,
+                    errors,
+                    parts.next().unwrap(),
+                    TypeInfo::ErrorRecovery
+                )
+            };
+            pairs_buf.push(FunctionParameter { name, r#type });
+        }
+        ok(pairs_buf, warnings, errors)
     }
 }

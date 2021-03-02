@@ -39,14 +39,7 @@ impl<'sc> Declaration<'sc> {
                 warnings,
                 errors,
                 decl_inner,
-                FunctionDeclaration {
-                                name: "failed to parse fn decl",
-                                body: crate::CodeBlock { contents: Vec::new(), scope: Default::default() },
-                                parameters: Vec::new(),
-                                span: decl_inner.as_span(),
-                                return_type: TypeInfo::Unit,
-                                type_parameters: Vec::new()
-                }
+                return err(warnings, errors)
             )),
             Rule::var_decl => {
                 let mut var_decl_parts = decl_inner.into_inner();
@@ -67,10 +60,36 @@ impl<'sc> Declaration<'sc> {
                     }
                     _ => None,
                 };
-                let type_ascription = if let Some(ascription) = type_ascription { Some(eval!(TypeInfo::parse_from_pair, warnings, errors, ascription, TypeInfo::Unit))} else { None };
-                let body = eval!(Expression::parse_from_pair, warnings, errors, maybe_body, return err(warnings, errors));
+                let type_ascription = if let Some(ascription) = type_ascription {
+                    Some(eval!(
+                        TypeInfo::parse_from_pair,
+                        warnings,
+                        errors,
+                        ascription,
+                        TypeInfo::Unit
+                    ))
+                } else {
+                    None
+                };
+                let body = eval!(
+                    Expression::parse_from_pair,
+                    warnings,
+                    errors,
+                    maybe_body,
+                    return err(warnings, errors)
+                );
                 Declaration::VariableDeclaration(VariableDeclaration {
-                    name: eval!(VarName::parse_from_pair, warnings, errors, name_pair, VarName { primary_name: "parse failure", sub_names : Vec::new(), span: name_pair.as_span() }),
+                    name: eval!(
+                        VarName::parse_from_pair,
+                        warnings,
+                        errors,
+                        name_pair,
+                        VarName {
+                            primary_name: "parse failure",
+                            sub_names: Vec::new(),
+                            span: name_pair.as_span()
+                        }
+                    ),
                     body,
                     is_mutable,
                     type_ascription,
@@ -99,6 +118,6 @@ impl<'sc> Declaration<'sc> {
             )),
             a => unreachable!("declarations don't have any other sub-types: {:?}", a),
         };
-        ok(parsed_declaration, warnings)
+        ok(parsed_declaration, warnings, errors)
     }
 }

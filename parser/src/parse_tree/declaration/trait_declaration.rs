@@ -27,30 +27,30 @@ impl<'sc> TraitDeclaration<'sc> {
             span: name_pair.as_span(),
         };
         let mut methods = Vec::new();
-        let mut interface = Vec::new( );
+        let mut interface = Vec::new();
 
         if let Some(methods_and_interface) = trait_parts.next() {
             for fn_sig_or_decl in methods_and_interface.into_inner() {
                 match fn_sig_or_decl.as_rule() {
-                    Rule::fn_signature =>{ 
-                        interface.push(eval!(TraitFn::parse_from_pair, warnings, errors, fn_sig_or_decl, TraitFn {
-                            name: "failed to parse trait fn",
-                            parameters: Vec::new(),
-                            return_type: TypeInfo::Unit
-                        }));
-                    },
-                    Rule::fn_decl => {
-                        methods.push(
-                            eval!(FunctionDeclaration::parse_from_pair, warnings, errors, fn_sig_or_decl, FunctionDeclaration {
-                                name: "failed to parse fn decl",
-                                body: crate::CodeBlock { contents: Vec::new(), scope: Default::default() },
-                                parameters: Vec::new(),
-                                span: fn_sig_or_decl.as_span(),
-                                return_type: TypeInfo::Unit,
-                                type_parameters: Vec::new()
-                            }));
+                    Rule::fn_signature => {
+                        interface.push(eval!(
+                            TraitFn::parse_from_pair,
+                            warnings,
+                            errors,
+                            fn_sig_or_decl,
+                            continue
+                        ));
                     }
-                    _ => unreachable!()
+                    Rule::fn_decl => {
+                        methods.push(eval!(
+                            FunctionDeclaration::parse_from_pair,
+                            warnings,
+                            errors,
+                            fn_sig_or_decl,
+                            continue
+                        ));
+                    }
+                    _ => unreachable!(),
                 }
             }
         }
@@ -61,6 +61,7 @@ impl<'sc> TraitDeclaration<'sc> {
                 methods,
             },
             warnings,
+            errors,
         )
     }
 }
@@ -81,19 +82,40 @@ impl<'sc> TraitFn<'sc> {
         let name = signature.next().unwrap();
         let mut name_span = name.as_span();
         let name = name.as_str();
-        assert_or_warn!(is_snake_case(name), warnings, name_span, Warning::NonSnakeCaseFunctionName {name});
+        assert_or_warn!(
+            is_snake_case(name),
+            warnings,
+            name_span,
+            Warning::NonSnakeCaseFunctionName { name }
+        );
         let parameters = signature.next().unwrap();
-        let parameters = eval!(FunctionParameter::list_from_pairs, warnings, errors, parameters.into_inner(), Vec::new());
+        let parameters = eval!(
+            FunctionParameter::list_from_pairs,
+            warnings,
+            errors,
+            parameters.into_inner(),
+            Vec::new()
+        );
         let return_type_signal = signature.next();
         let return_type = match return_type_signal {
-            Some(_) => eval!(TypeInfo::parse_from_pair, warnings, errors, signature.next().unwrap(), TypeInfo::ErrorRecovery),
+            Some(_) => eval!(
+                TypeInfo::parse_from_pair,
+                warnings,
+                errors,
+                signature.next().unwrap(),
+                TypeInfo::ErrorRecovery
+            ),
             None => TypeInfo::Unit,
         };
 
-        ok(TraitFn {
-            name,
-            parameters,
-            return_type,
-        }, warnings)
+        ok(
+            TraitFn {
+                name,
+                parameters,
+                return_type,
+            },
+            warnings,
+            errors,
+        )
     }
 }

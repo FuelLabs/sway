@@ -49,20 +49,27 @@ impl<'sc> EnumDeclaration<'sc> {
             }
         }
 
-        let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
-            type_params,
-            where_clause,
-        ) {
-            CompileResult::Ok{ value, warnings: mut l_w} => {
-                        warnings.append(&mut l_w);
-                        value
-            },
-            CompileResult::Err{ warnings: mut l_w, errors: mut l_e} => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                Vec::new()
-            }
-        };
+        let type_parameters =
+            match TypeParameter::parse_from_type_params_and_where_clause(type_params, where_clause)
+            {
+                CompileResult::Ok {
+                    value,
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
+                    warnings.append(&mut l_w);
+                    errors.append(&mut l_e);
+                    value
+                }
+                CompileResult::Err {
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
+                    warnings.append(&mut l_w);
+                    errors.append(&mut l_e);
+                    Vec::new()
+                }
+            };
 
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();
@@ -75,7 +82,13 @@ impl<'sc> EnumDeclaration<'sc> {
             Warning::NonClassCaseEnumName { enum_name: name }
         );
 
-        let variants = eval!(EnumVariant::parse_from_pairs, warnings, errors, variants, Vec::new());
+        let variants = eval!(
+            EnumVariant::parse_from_pairs,
+            warnings,
+            errors,
+            variants,
+            Vec::new()
+        );
 
         ok(
             EnumDeclaration {
@@ -85,6 +98,7 @@ impl<'sc> EnumDeclaration<'sc> {
                 span: whole_enum_span,
             },
             warnings,
+            errors,
         )
     }
 }
@@ -107,10 +121,16 @@ impl<'sc> EnumVariant<'sc> {
                     span,
                     Warning::NonClassCaseEnumVariantName { variant_name: name }
                 );
-                let r#type = eval!(TypeInfo::parse_from_pair_inner, warnings, errors, fields[i + 1].clone(), TypeInfo::Unit);
+                let r#type = eval!(
+                    TypeInfo::parse_from_pair_inner,
+                    warnings,
+                    errors,
+                    fields[i + 1].clone(),
+                    TypeInfo::Unit
+                );
                 fields_buf.push(EnumVariant { name, r#type });
             }
         }
- ok(fields_buf, warnings)
+        ok(fields_buf, warnings, errors)
     }
 }

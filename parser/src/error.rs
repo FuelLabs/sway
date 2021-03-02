@@ -10,32 +10,45 @@ macro_rules! type_check {
         use crate::CompileResult;
         let res = $name::type_check($val.clone(), $namespace, $type_annotation, $help_text);
         match res {
-            CompileResult::Ok { value, warnings: mut l_w } => {
+            CompileResult::Ok {
+                value,
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
                 $warnings.append(&mut l_w);
+                $errors.append(&mut l_e);
                 value
-            },
+            }
             CompileResult::Err {
-                warnings: mut l_w, errors: mut l_e
+                warnings: mut l_w,
+                errors: mut l_e,
             } => {
                 $warnings.append(&mut l_w);
                 $errors.append(&mut l_e);
                 $err_recov
             }
         }
-    }}
+    }};
 }
 
 /// evaluates `$fn` with argument `$arg`, and pushes any warnings to the `$warnings` buffer.
 macro_rules! eval {
     ($fn: expr, $warnings: ident, $errors: ident, $arg: expr, $error_recovery: expr) => {{
         use crate::CompileResult;
-        let  res = match $fn($arg.clone()) {
-            CompileResult::Ok { value, warnings: mut l_w, errors: mut l_e } => {
+        let res = match $fn($arg.clone()) {
+            CompileResult::Ok {
+                value,
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
                 $warnings.append(&mut l_w);
                 $errors.append(&mut l_e);
                 value
-            },
-            CompileResult::Err {  warnings: mut l_w,  errors: mut l_e }   => {
+            }
+            CompileResult::Err {
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
                 $errors.append(&mut l_e);
                 $warnings.append(&mut l_w);
                 $error_recovery
@@ -58,13 +71,24 @@ macro_rules! assert_or_warn {
 }
 
 /// Denotes a non-recoverable state
-pub(crate) fn err<'sc, T>(warnings: Vec<CompileWarning<'sc>>, errors: Vec<CompileError<'sc>>) -> CompileResult<'sc, T> {
+pub(crate) fn err<'sc, T>(
+    warnings: Vec<CompileWarning<'sc>>,
+    errors: Vec<CompileError<'sc>>,
+) -> CompileResult<'sc, T> {
     CompileResult::Err { warnings, errors }
 }
 
 /// Denotes a recovered or non-error state
-pub(crate) fn ok<T>(value: T, warnings: Vec<CompileWarning>, errors: Vec<CompileError<'sc>>) -> CompileResult<T> {
-    CompileResult::Ok { warnings, value, errors }
+pub(crate) fn ok<'sc, T>(
+    value: T,
+    warnings: Vec<CompileWarning<'sc>>,
+    errors: Vec<CompileError<'sc>>,
+) -> CompileResult<'sc, T> {
+    CompileResult::Ok {
+        warnings,
+        value,
+        errors,
+    }
 }
 
 #[derive(Debug)]
@@ -72,11 +96,23 @@ pub enum CompileResult<'sc, T> {
     Ok {
         value: T,
         warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
     },
     Err {
         warnings: Vec<CompileWarning<'sc>>,
         errors: Vec<CompileError<'sc>>,
     },
+}
+
+impl<'sc, T> CompileResult<'sc, T> {
+    pub fn unwrap(&self) -> &T {
+        match self {
+            CompileResult::Ok { value, .. } => value,
+            CompileResult::Err { errors, .. } => {
+                panic!("Unwrapped an err {:?}", errors);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -182,7 +218,11 @@ pub enum CompileError<'sc> {
     #[error("Program contains multiple predicates. A valid program should only contain at most one predicate.")]
     MultiplePredicates(Span<'sc>),
     #[error("Trait constraint was applied to generic type that is not in scope. Trait \"{trait_name}\" cannot constrain type \"{type_name}\" because that type does not exist in this scope.")]
-    ConstrainedNonExistentType{ trait_name: &'sc str, type_name: &'sc str, span: Span<'sc> }
+    ConstrainedNonExistentType {
+        trait_name: &'sc str,
+        type_name: &'sc str,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -276,7 +316,7 @@ impl<'sc> CompileError<'sc> {
             MultiplePredicates(sp) => (sp.start(), sp.end()),
             MultipleScripts(sp) => (sp.start(), sp.end()),
             MultipleContracts(sp) => (sp.start(), sp.end()),
-            ConstrainedNonExistentType { span, .. } => (span.start(), span.end())
+            ConstrainedNonExistentType { span, .. } => (span.start(), span.end()),
         }
     }
 }
