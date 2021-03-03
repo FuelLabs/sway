@@ -223,6 +223,14 @@ pub enum CompileError<'sc> {
         type_name: &'sc str,
         span: Span<'sc>,
     },
+    #[error("Predicate definition contains multiple main functions. Multiple functions in the same scope cannot have the same name.")]
+    MultiplePredicateMainFunctions(Span<'sc>),
+    #[error(
+        "Predicate declaration contains no main function. Predicates require a main function."
+    )]
+    NoPredicateMainFunction(Span<'sc>),
+    #[error("A predicate's main function must return a boolean.")]
+    PredicateMainDoesNotReturnBool(Span<'sc>),
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -317,6 +325,9 @@ impl<'sc> CompileError<'sc> {
             MultipleScripts(sp) => (sp.start(), sp.end()),
             MultipleContracts(sp) => (sp.start(), sp.end()),
             ConstrainedNonExistentType { span, .. } => (span.start(), span.end()),
+            MultiplePredicateMainFunctions(sp) => (sp.start(), sp.end()),
+            NoPredicateMainFunction(sp) => (sp.start(), sp.end()),
+            PredicateMainDoesNotReturnBool(sp) => (sp.start(), sp.end()),
         }
     }
 }

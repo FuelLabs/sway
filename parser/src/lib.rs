@@ -17,7 +17,7 @@ use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
 use pest::iterators::Pair;
 use pest::Parser;
-use semantics::TypedParseTree;
+use semantics::{TreeType, TypedParseTree};
 use std::collections::HashMap;
 use types::TypeInfo;
 
@@ -45,6 +45,7 @@ pub struct ParseTree<'sc> {
     /// In this language however, we want to expose multiple public functions at the root
     /// level so the tree is multi-root.
     root_nodes: Vec<AstNode<'sc>>,
+    span: Span<'sc>,
 }
 
 #[derive(Debug, Clone)]
@@ -175,10 +176,11 @@ impl<'sc> CodeBlock<'sc> {
     }
 }
 
-impl ParseTree<'_> {
-    pub(crate) fn new() -> Self {
+impl<'sc> ParseTree<'sc> {
+    pub(crate) fn new(span: Span<'sc>) -> Self {
         ParseTree {
             root_nodes: Vec::new(),
+            span,
         }
     }
 }
@@ -222,48 +224,74 @@ pub fn compile<'sc>(
         return Err((errors, warnings))
     );
 
-    let maybe_contract_tree: Option<Result<_, _>> = parse_tree
-        .contract_ast
-        .map(|tree| semantics::type_check_tree(tree));
-    let maybe_predicate_tree: Option<Result<_, _>> = parse_tree
-        .predicate_ast
-        .map(|tree| semantics::type_check_tree(tree));
-    let maybe_script_tree: Option<Result<_, _>> = parse_tree
-        .script_ast
-        .map(|tree| semantics::type_check_tree(tree));
-
-    let contract_ast = match maybe_contract_tree {
-        Some(Ok((tree, mut l_warnings))) => {
-            warnings.append(&mut l_warnings);
-            Some(tree)
+    let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
+        match semantics::type_check_tree(tree, TreeType::Contract) {
+            CompileResult::Ok {
+                warnings: mut l_w,
+                errors: mut l_e,
+                value,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                Some(value)
+            }
+            CompileResult::Err {
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                None
+            }
         }
-        Some(Err(mut errs)) => {
-            errors.append(&mut errs);
-            None
-        }
-        None => None,
+    } else {
+        None
     };
-    let predicate_ast = match maybe_predicate_tree {
-        Some(Ok((tree, mut l_warnings))) => {
-            warnings.append(&mut l_warnings);
-            Some(tree)
+    let predicate_ast: Option<_> = if let Some(tree) = parse_tree.predicate_ast {
+        match semantics::type_check_tree(tree, TreeType::Predicate) {
+            CompileResult::Ok {
+                warnings: mut l_w,
+                errors: mut l_e,
+                value,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                Some(value)
+            }
+            CompileResult::Err {
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                None
+            }
         }
-        Some(Err(mut errs)) => {
-            errors.append(&mut errs);
-            None
-        }
-        None => None,
+    } else {
+        None
     };
-    let script_ast = match maybe_script_tree {
-        Some(Ok((tree, mut l_warnings))) => {
-            warnings.append(&mut l_warnings);
-            Some(tree)
+    let script_ast: Option<_> = if let Some(tree) = parse_tree.script_ast {
+        match semantics::type_check_tree(tree, TreeType::Script) {
+            CompileResult::Ok {
+                warnings: mut l_w,
+                errors: mut l_e,
+                value,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                Some(value)
+            }
+            CompileResult::Err {
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                None
+            }
         }
-        Some(Err(mut errs)) => {
-            errors.append(&mut errs);
-            None
-        }
-        None => None,
+    } else {
+        None
     };
     if errors.is_empty() {
         Ok((
@@ -293,7 +321,7 @@ fn parse_root_from_pairs<'sc>(
         predicate_ast: None,
     };
     for block in input {
-        let mut parse_tree = ParseTree::new();
+        let mut parse_tree = ParseTree::new(block.as_span());
         let rule = block.as_rule();
         let input = block.clone().into_inner();
         for pair in input {
