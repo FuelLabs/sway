@@ -661,6 +661,39 @@ pub(crate) fn type_check_tree<'sc>(
                     errors.push(CompileError::PredicateMainDoesNotReturnBool(span.clone()))
                 }
             }
+        },
+        TreeType::Script =>  {
+            // a script must have exactly one main function
+            let main_func_vec = typed_tree_nodes
+                .iter()
+                .filter_map(|TypedAstNode { content, .. }| match content {
+                    TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                        TypedFunctionDeclaration {
+                            name,
+                            return_type,
+                            span,
+                            ..
+                        },
+                    )) => {
+                        if name == &"main" {
+                            Some(span)
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+
+            if main_func_vec.len() > 1 {
+                errors.push(CompileError::MultipleScriptMainFunctions(
+                    main_func_vec.into_iter().last().unwrap().clone()
+                ));
+            } else if main_func_vec.is_empty() {
+                errors.push(CompileError::NoScriptMainFunction(parsed.span));
+                return err(warnings, errors);
+            }
+
         }
         _ => (),
     }

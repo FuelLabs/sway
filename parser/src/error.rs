@@ -231,6 +231,10 @@ pub enum CompileError<'sc> {
     NoPredicateMainFunction(Span<'sc>),
     #[error("A predicate's main function must return a boolean.")]
     PredicateMainDoesNotReturnBool(Span<'sc>),
+    #[error("Script declaration contains no main function. Scripts require a main function.")]
+    NoScriptMainFunction(Span<'sc>),
+    #[error("Script definition contains multiple main functions. Multiple functions in the same scope cannot have the same name.")]
+    MultipleScriptMainFunctions(Span<'sc>),
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -328,6 +332,8 @@ impl<'sc> CompileError<'sc> {
             MultiplePredicateMainFunctions(sp) => (sp.start(), sp.end()),
             NoPredicateMainFunction(sp) => (sp.start(), sp.end()),
             PredicateMainDoesNotReturnBool(sp) => (sp.start(), sp.end()),
+            NoScriptMainFunction(sp) => (sp.start(), sp.end()),
+            MultipleScriptMainFunctions(sp) => (sp.start(), sp.end()),
         }
     }
 }
