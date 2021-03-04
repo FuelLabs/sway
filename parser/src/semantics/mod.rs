@@ -866,9 +866,8 @@ fn type_check_node<'sc>(
                     trait_decl
                 }
                 Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
-                    dbg!(&namespace);
                     // check that the reassigned name exists
-                    let thing_to_reassign = match namespace.get(dbg!(&lhs)) {
+                    let thing_to_reassign = match namespace.get(&lhs) {
                         Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                             body,
                             is_mutable,

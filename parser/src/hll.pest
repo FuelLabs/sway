@@ -12,7 +12,7 @@ assign              = _{"="}
 line_comment_open   =  {"//"}
 block_comment_open  =  {"/*"}
 block_comment_close =  {"*/"}
-fn_returns          =  {":"}
+fn_returns          =  {"->"}
 path_separator      =  {"::"}
 
 

@@ -5,7 +5,7 @@ use either::Either;
 use pest::iterators::Pair;
 #[derive(Debug, Clone)]
 pub(crate) struct TypeParameter<'sc> {
-    name: &'sc str,
+    pub(crate) name: &'sc str,
     trait_constraint: Vec<TraitConstraint<'sc>>,
 }
 

@@ -243,6 +243,15 @@ pub enum CompileError<'sc> {
     },
     #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
     AssignmentToNonMutable(&'sc str, Span<'sc>),
+    #[error("Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in the function signature? For example: `fn {fn_name}<{comma_separated_generic_params}>{args} -> {return_type}`")]
+    TypeParameterNotInTypeScope {
+        name: &'sc str,
+        span: Span<'sc>,
+        comma_separated_generic_params: String,
+        fn_name: &'sc str,
+        args: &'sc str,
+        return_type: String,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -344,6 +353,7 @@ impl<'sc> CompileError<'sc> {
             MultipleScriptMainFunctions(sp) => (sp.start(), sp.end()),
             ReassignmentToNonVariable { span, .. } => (span.start(), span.end()),
             AssignmentToNonMutable(_, sp) => (sp.start(), sp.end()),
+            TypeParameterNotInTypeScope { span, .. } => (span.start(), span.end()),
         }
     }
 }

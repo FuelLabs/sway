@@ -1,14 +1,14 @@
 contract {
     trait my_trait { 
-      fn someFnThing(): T  
+      fn someFnThing() -> T  
     } {
-      fn some_other_trait_thing(): bool {
+      fn some_other_trait_thing() -> bool {
          true
       }
     }
 
 
-    pub fn contract_func_1<T>(a: T, y: u32): T {
+    pub fn contract_func_1<T>(a: T, y: u32) ->T {
       println("Test function.", "other str", 3);
       let mut z: u8 = y;
       let x: u8 = {
