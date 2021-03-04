@@ -1,6 +1,6 @@
 use super::{FunctionDeclaration, FunctionParameter};
 use crate::error::*;
-use crate::parse_tree::VarName;
+use crate::parse_tree::{TypeParameter, VarName};
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
 use either::*;
@@ -12,13 +12,14 @@ pub(crate) struct TraitDeclaration<'sc> {
     pub(crate) name: VarName<'sc>,
     pub(crate) interface_surface: Vec<TraitFn<'sc>>,
     pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
+    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
 }
 
 impl<'sc> TraitDeclaration<'sc> {
     pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut trait_parts = pair.into_inner();
+        let mut trait_parts = pair.into_inner().peekable();
         let _trait_keyword = trait_parts.next();
         let name_pair = trait_parts.next().unwrap();
         let name = VarName {
@@ -26,8 +27,22 @@ impl<'sc> TraitDeclaration<'sc> {
             sub_names: vec![],
             span: name_pair.as_span(),
         };
+        let mut type_params_pair = None;
+        let mut where_clause_pair = None;
         let mut methods = Vec::new();
         let mut interface = Vec::new();
+
+        for _ in 0..2 {
+            match trait_parts.peek().map(|x| x.as_rule()) {
+                Some(Rule::trait_bounds) => {
+                    where_clause_pair = Some(trait_parts.next().unwrap());
+                }
+                Some(Rule::type_params) => {
+                    type_params_pair = Some(trait_parts.next().unwrap());
+                }
+                _ => (),
+            }
+        }
 
         if let Some(methods_and_interface) = trait_parts.next() {
             for fn_sig_or_decl in methods_and_interface.into_inner() {
@@ -50,12 +65,35 @@ impl<'sc> TraitDeclaration<'sc> {
                             continue
                         ));
                     }
-                    _ => unreachable!(),
+                    a => unreachable!("{:?}", a),
                 }
             }
         }
+        let type_parameters = match crate::parse_tree::declaration::TypeParameter::parse_from_type_params_and_where_clause(
+            type_params_pair,
+            where_clause_pair,
+        ) {
+            CompileResult::Ok {
+                value,
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                value
+            }
+            CompileResult::Err {
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
+                warnings.append(&mut l_w);
+                errors.append(&mut l_e);
+                Vec::new()
+            }
+        };
         ok(
             TraitDeclaration {
+                type_parameters,
                 name,
                 interface_surface: interface,
                 methods,

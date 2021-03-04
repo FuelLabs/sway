@@ -810,6 +810,7 @@ fn type_check_node<'sc>(
                     name,
                     interface_surface,
                     methods,
+                    type_parameters: _type_parameters
                 }) => {
                     let mut methods_buf = Vec::new();
                     for FunctionDeclaration {

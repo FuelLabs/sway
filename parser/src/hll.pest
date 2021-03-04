@@ -102,13 +102,13 @@ return_statement =  {return_keyword ~ expr? ~ ";"}
 expr_statement  = { expr ~ ";" }
 
 // traits
-trait_decl = { trait_decl_keyword ~ trait_name ~  trait_methods  }
+trait_decl = { trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ trait_methods  }
 // // just a fn signature denotes a fn something must implement in order for it to be part of the trait
 // // i like the idea of separating the interface points from the actual
 // // functional implementations the trait provides, so i have them
 // // parsed as two separate blocks here.
 // // this can of course be changed if others dislike it.
-trait_methods = { "{" ~ fn_signature* ~ "}" ~ ("{"~ fn_decl* ~ "}")* }
+trait_methods = { "{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{"~ fn_decl* ~ "}")* }
 trait_name = @{ ident } 
 
 // imports
