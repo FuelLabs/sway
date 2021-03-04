@@ -5,6 +5,7 @@ trait_decl_keyword  =  {"trait"}
 return_keyword      =  {"return"}
 use_keyword         =  {"use"}
 enum_keyword        = @{"enum"}
+while_keyword = {"while"}
 match_keyword =    {"match"}
 mut_keyword = { "mut" }
 assign              = _{"="}
@@ -18,9 +19,9 @@ path_separator      =  {"::"}
 // top level
 program =  {SOI ~ (contract|script|predicate)* ~ EOI}
 
-contract = { "contract" ~ "{" ~ (declaration|use_statement|expr)* ~ "}" }
-script = { "script" ~ "{" ~ (declaration|use_statement)* ~ "}" }
-predicate = { "predicate" ~ "{" ~ (declaration|use_statement)* ~ "}" }
+contract = { "contract" ~ "{" ~ (control_flow|declaration|use_statement|expr)* ~ "}" }
+script = { "script" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
+predicate = { "predicate" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 
 // expressions
 expr_inner =  _{literal_value|if_exp|parenthesized_expression|code_block|func_app|struct_expression|var_exp|array_exp|match_expression}
@@ -35,7 +36,7 @@ var_name_ident = { ident ~ ("." ~ ident)* }
 
 if_exp =  {"if" ~ expr ~  code_block ~ ("else" ~ code_block)?}
 
-op =  {"+"|"-"|"/"|"*"|"=="|"!="|"|"|"||"|"&"|"&&"|"^"|"%"}
+op =  {"+"|"-"|"/"|"*"|"=="|"!="|"|"|"||"|"&"|"&&"|"^"|"%"|"<"|">"}
 unary_op = { "!" | "ref" | "deref" }
 
 // // note that decimal/float exprs might be removed since vm doesn't support them
@@ -59,19 +60,20 @@ match_expression = { "match"  ~ expr ~ "{" ~ match_branch+ ~ "}" }
 match_branch = { match_condition ~ "=>" ~ (code_block | expr) ~ "," }
 match_condition = { expr | "_" } // TODO this doesn't support pattern matching
 
-code_block =  {"{" ~ (declaration|return_statement|expr_statement)* ~ (expr)? ~ "}"}
+code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
 struct_expression = { struct_name ~ "{" ~ struct_expr_fields ~ "}" }
 struct_expr_fields = { struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","? }
 array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
 // declarations 
-declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl)}
+declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment)}
 var_decl    =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription = { ":" ~ type_name}
 fn_decl     =  {visibility ~ fn_signature ~ code_block}
 fn_signature = { fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds? }
 var_name = {ident}
+reassignment = { var_exp ~ assign ~ expr ~ ";" } 
 
 visibility = { "pub"? }
 
@@ -115,6 +117,12 @@ trait_name = @{ ident }
 use_statement = { use_keyword ~ import_path ~ ";"}
 import_path = { ident ~ (path_separator ~ ident)* }
 
+// loops
+while_loop = { while_keyword ~ expr ~ code_block }
+
+// control flow
+control_flow = _{while_loop|return_statement}
+
 // boilerplate
 WHITESPACE    = _{(" "|"\t"|"\r"|"\n")+}
 COMMENT       = _{block_comment|line_comment}
@@ -126,5 +134,5 @@ char          =  @{
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 ident          = @{!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*}
-reserved_words = {  "struct" | enum_keyword |  match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
+reserved_words = {  while_keyword | "struct" | enum_keyword |  match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
 
