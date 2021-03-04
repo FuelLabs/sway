@@ -235,6 +235,14 @@ pub enum CompileError<'sc> {
     NoScriptMainFunction(Span<'sc>),
     #[error("Script definition contains multiple main functions. Multiple functions in the same scope cannot have the same name.")]
     MultipleScriptMainFunctions(Span<'sc>),
+    #[error("Attempted to reassign to a symbol that is not a variable. Symbol {name} is not a mutable variable, it is a {kind}.")]
+    ReassignmentToNonVariable {
+        name: &'sc str,
+        kind: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
+    AssignmentToNonMutable(&'sc str, Span<'sc>),
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -334,6 +342,8 @@ impl<'sc> CompileError<'sc> {
             PredicateMainDoesNotReturnBool(sp) => (sp.start(), sp.end()),
             NoScriptMainFunction(sp) => (sp.start(), sp.end()),
             MultipleScriptMainFunctions(sp) => (sp.start(), sp.end()),
+            ReassignmentToNonVariable { span, .. } => (span.start(), span.end()),
+            AssignmentToNonMutable(_, sp) => (sp.start(), sp.end()),
         }
     }
 }

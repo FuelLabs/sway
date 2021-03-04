@@ -39,6 +39,7 @@ impl<'sc> TypedAstNode<'sc> {
             }
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
+            WhileLoop(_) => TypeInfo::Unit,
         }
     }
 }
@@ -51,6 +52,12 @@ pub(crate) enum TypedAstNodeContent<'sc> {
     Expression(TypedExpression<'sc>),
     TraitDeclaration(TraitDeclaration<'sc>),
     ImplicitReturnExpression(TypedExpression<'sc>),
+    WhileLoop(TypedWhileLoop<'sc>),
+}
+#[derive(Clone, Debug)]
+pub(crate) struct TypedWhileLoop<'sc> {
+    condition: TypedExpression<'sc>,
+    body: TypedCodeBlock<'sc>,
 }
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
@@ -68,7 +75,14 @@ pub(crate) enum TypedDeclaration<'sc> {
     TraitDeclaration(TypedTraitDeclaration<'sc>),
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
+    Reassignment(TypedReassignment<'sc>),
     ErrorRecovery,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct TypedReassignment<'sc> {
+    lhs: VarName<'sc>,
+    rhs: TypedExpression<'sc>,
 }
 
 impl<'sc> TypedDeclaration<'sc> {
@@ -81,6 +95,7 @@ impl<'sc> TypedDeclaration<'sc> {
             TraitDeclaration(_) => "trait",
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
+            Reassignment(_) => "reassignment",
             ErrorRecovery => "invalid declaration",
         }
     }
@@ -661,8 +676,8 @@ pub(crate) fn type_check_tree<'sc>(
                     errors.push(CompileError::PredicateMainDoesNotReturnBool(span.clone()))
                 }
             }
-        },
-        TreeType::Script =>  {
+        }
+        TreeType::Script => {
             // a script must have exactly one main function
             let main_func_vec = typed_tree_nodes
                 .iter()
@@ -687,13 +702,12 @@ pub(crate) fn type_check_tree<'sc>(
 
             if main_func_vec.len() > 1 {
                 errors.push(CompileError::MultipleScriptMainFunctions(
-                    main_func_vec.into_iter().last().unwrap().clone()
+                    main_func_vec.into_iter().last().unwrap().clone(),
                 ));
             } else if main_func_vec.is_empty() {
                 errors.push(CompileError::NoScriptMainFunction(parsed.span));
                 return err(warnings, errors);
             }
-
         }
         _ => (),
     }
@@ -810,7 +824,7 @@ fn type_check_node<'sc>(
                     name,
                     interface_surface,
                     methods,
-                    type_parameters: _type_parameters
+                    type_parameters: _type_parameters,
                 }) => {
                     let mut methods_buf = Vec::new();
                     for FunctionDeclaration {
@@ -851,8 +865,60 @@ fn type_check_node<'sc>(
                     namespace.insert(name, trait_decl.clone());
                     trait_decl
                 }
+                Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
+                    dbg!(&namespace);
+                    // check that the reassigned name exists
+                    let thing_to_reassign = match namespace.get(dbg!(&lhs)) {
+                        Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                            body,
+                            is_mutable,
+                            ..
+                        })) => {
+                            // allow the type checking to continue unhindered even though this is
+                            // an error
+                            // basically pretending that this isn't an error by not
+                            // early-returning, for the sake of better error reporting
+                            if !is_mutable {
+                                errors.push(CompileError::AssignmentToNonMutable(
+                                    lhs.primary_name,
+                                    span,
+                                ));
+                            }
+
+                            body
+                        }
+                        Some(o) => {
+                            errors.push(CompileError::ReassignmentToNonVariable {
+                                name: lhs.primary_name,
+                                kind: o.friendly_name(),
+                                span,
+                            });
+                            return err(warnings, errors);
+                        }
+                        None => {
+                            errors.push(CompileError::UnknownVariable {
+                                var_name: lhs.primary_name,
+                                span: lhs.span,
+                            });
+                            return err(warnings, errors);
+                        }
+                    };
+                    // type check the reassignment
+                    let rhs = type_check!(
+                        TypedExpression,
+                        rhs,
+                        namespace.clone(),
+                        Some(thing_to_reassign.return_type.clone()),
+                        "You can only reassign a value of the same type to a variable.",
+                        ERROR_RECOVERY_EXPR.clone(),
+                        warnings,
+                        errors
+                    );
+
+                    TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs })
+                }
                 a => {
-                    println!("Unimplemented: {:?}", a);
+                    dbg!("Unimplemented", &a);
                     errors.push(CompileError::Unimplemented(
                         "Unimplemented declaration variant",
                         node.span.clone(),
@@ -906,8 +972,34 @@ fn type_check_node<'sc>(
                 );
                 TypedAstNodeContent::ImplicitReturnExpression(typed_expr)
             }
+            AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
+                let typed_condition = type_check!(
+                    TypedExpression,
+                    condition,
+                    namespace.clone(),
+                    Some(TypeInfo::Boolean),
+                    "A while loop's loop condition must be a boolean expression.",
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let (typed_body, _block_implicit_return) = type_check!(
+                    TypedCodeBlock,
+                    body,
+                    namespace.clone(),
+                    Some(TypeInfo::Unit),
+                    "A while loop's loop body cannot implicitly return a value. Try assigning it to a mutable variable declared outside of the loop instead.",
+                    (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
+                    warnings,
+                    errors
+                );
+                TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                    condition: typed_condition,
+                    body: typed_body,
+                })
+            }
             a => {
-                println!("Unimplemented: {:?}", a);
+                dbg!("Unimplemented", &a);
                 errors.push(CompileError::Unimplemented(
                     "Unimplemented AST Node",
                     node.span.clone(),

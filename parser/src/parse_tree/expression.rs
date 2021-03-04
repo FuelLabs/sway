@@ -585,7 +585,7 @@ impl<'sc> VarName<'sc> {
             }
         };
         let mut names = pair.into_inner();
-        let primary_name = names.next().unwrap().as_str();
+        let primary_name = names.next().unwrap().as_str().trim();
         let sub_names = names.map(|x| x.as_str()).collect();
         ok(
             VarName {
@@ -615,6 +615,8 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>) -> CompileResult<'sc, Op> {
         "^" => Xor,
         "|" => BinaryOr,
         "&" => BinaryAnd,
+        ">" => GreaterThan,
+        "<" => LessThan,
         a => {
             errors.push(CompileError::ExpectedOp {
                 op: a,
@@ -662,6 +664,8 @@ enum OpVariant {
     Xor,
     BinaryOr,
     BinaryAnd,
+    GreaterThan,
+    LessThan,
 }
 
 impl OpVariant {
@@ -680,10 +684,13 @@ impl OpVariant {
             Xor => "xor",
             BinaryOr => "binary_or",
             BinaryAnd => "binary_and",
+            GreaterThan => "greater_than",
+            LessThan => "less_than",
         }
     }
     fn precedence(&self) -> usize {
         use OpVariant::*;
+        // a higher number means the operation has higher precedence
         match self {
             Add => 1,
             Subtract => 1,
@@ -697,6 +704,8 @@ impl OpVariant {
             Xor => 0,
             BinaryOr => 0,
             BinaryAnd => 0,
+            GreaterThan => 0,
+            LessThan => 0,
         }
     }
 }

@@ -1,5 +1,6 @@
 mod enum_declaration;
 mod function_declaration;
+mod reassignment;
 mod struct_declaration;
 mod trait_declaration;
 mod type_parameter;
@@ -7,6 +8,8 @@ mod variable_declaration;
 
 pub(crate) use enum_declaration::*;
 pub(crate) use function_declaration::*;
+pub(crate) use reassignment::*;
+pub(crate) use reassignment::*;
 pub(crate) use struct_declaration::*;
 pub(crate) use trait_declaration::*;
 pub(crate) use type_parameter::*;
@@ -25,6 +28,7 @@ pub(crate) enum Declaration<'sc> {
     TraitDeclaration(TraitDeclaration<'sc>),
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
+    Reassignment(Reassignment<'sc>),
     ErrorRecovery,
 }
 impl<'sc> Declaration<'sc> {
@@ -84,11 +88,7 @@ impl<'sc> Declaration<'sc> {
                         warnings,
                         errors,
                         name_pair,
-                        VarName {
-                            primary_name: "parse failure",
-                            sub_names: Vec::new(),
-                            span: name_pair.as_span()
-                        }
+                        return err(warnings, errors)
                     ),
                     body,
                     is_mutable,
@@ -111,6 +111,13 @@ impl<'sc> Declaration<'sc> {
             )),
             Rule::enum_decl => Declaration::EnumDeclaration(eval!(
                 EnumDeclaration::parse_from_pair,
+                warnings,
+                errors,
+                decl_inner,
+                return err(warnings, errors)
+            )),
+            Rule::reassignment => Declaration::Reassignment(eval!(
+                Reassignment::parse_from_pair,
                 warnings,
                 errors,
                 decl_inner,
