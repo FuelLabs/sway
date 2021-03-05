@@ -5,6 +5,7 @@ trait_decl_keyword  =  {"trait"}
 return_keyword      =  {"return"}
 use_keyword         =  {"use"}
 enum_keyword        = @{"enum"}
+asm_keyword = {"asm"}
 while_keyword = {"while"}
 match_keyword =    {"match"}
 mut_keyword = { "mut" }
@@ -119,6 +120,16 @@ import_path = { ident ~ (path_separator ~ ident)* }
 
 // loops
 while_loop = { while_keyword ~ expr ~ code_block }
+
+// asm inlining
+asm_expression = { asm_keyword ~ asm_registers ~ "{" ~ asm_op* ~ asm_register? ~  "}" }
+asm_registers = { "(" ~ asm_register_declaration ~ ("," ~ asm_register_declaration)* ~ ")" }
+// should we allow expressions to be directly assigned to registers, or only 
+// already declared variables? i'm unsure
+asm_register_declaration = { ident ~ (":" ~ var_name)? }
+asm_op = { opcode ~ asm_register* ~ ";" }
+asm_register = { ident }
+opcode = { ident } 
 
 // control flow
 control_flow = _{while_loop|return_statement}
