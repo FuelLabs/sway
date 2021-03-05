@@ -337,7 +337,7 @@ fn test_basic_prog() {
     <T>
     (arg1: u64,
     arg2: T) 
-    :
+    ->
     T 
     where T: Display,
           T: Debug {
@@ -367,10 +367,10 @@ fn test_basic_prog() {
 
     trait MyTrait {
         // interface points
-        fn myfunc(x: int): unit
-    } {
+        fn myfunc(x: int) -> unit;
+        } {
         // methods
-        fn calls_interface_fn(x: int): unit {
+        fn calls_interface_fn(x: int) -> unit {
             // declare a byte
             let x = 0b10101111;
             let mut y = 0b11111111; 
@@ -378,7 +378,7 @@ fn test_basic_prog() {
         }
     }
 
-    pub fn prints_number_five(): u8 {
+    pub fn prints_number_five() -> u8 {
         let x: u8 = 5;
         let reference_to_x = ref x;
         let second_value_of_x = deref x; // u8 is `Copy` so this clones
@@ -403,7 +403,7 @@ fn test_parenthesized() {
     let prog = parse(
         r#"
         contract {
-        fn abi_func(): unit {
+        pub fn abi_func() -> unit {
             let x = (5 + 6 / (1 + (2 / 1) + 4));
             return;
         }

@@ -41,7 +41,7 @@ mod test {
     fn test_fn_decl() {
         let parsed = HllParser::parse(
             Rule::fn_decl,
-            r#"fn myfunc(x: i32, y: i32): i32 {
+            r#"fn myfunc(x: i32, y: i32) -> i32 {
             // a function body
             let x = 5;
             let y = 10;
@@ -61,11 +61,11 @@ mod test {
     fn test_if_else_expr() {
         let parsed = HllParser::parse(
             Rule::fn_decl,
-            r#"fn myfunc(x: i32, y: i32): i32 {
+            r#"fn myfunc(x: i32, y: i32) -> i32 {
             // a function body
             let x = if 
                 true
-                then { 5 }
+                { 5 }
                 else { 6 };
             let y = 10;
             return 10;
@@ -84,9 +84,9 @@ mod test {
     fn test_if_expr() {
         let parsed = HllParser::parse(
             Rule::fn_decl,
-            r#"fn myfunc(x: i32, y: i32): i32 {
+            r#"fn myfunc(x: i32, y: i32) -> i32 {
             // a function body
-            if true then { /* comment */ 5 /*comment test*/ };
+            if true { /* comment */ 5 /*comment test*/ };
             /* some comments */
         }"#,
         );
@@ -103,9 +103,9 @@ mod test {
     fn test_if_else_expr_2() {
         let parsed = HllParser::parse(
             Rule::fn_decl,
-            r#"fn myfunc(x: i32, y: i32): i32 {
+            r#"fn myfunc(x: i32, y: i32) -> i32 {
             // a function body
-            if ((true)) then { /* comment */ (((5))) /*comment test*/ };
+            if ((true)) { /* comment */ (((5))) /*comment test*/ };
             /* some comments */
         }"#,
         );
@@ -121,9 +121,9 @@ mod test {
     fn mismatched_parens() {
         let parsed = HllParser::parse(
             Rule::fn_decl,
-            r#"fn myfunc(x: i32, y: i32): i32 {
+            r#"fn myfunc(x: i32, y: i32) -> i32 {
             // a function body
-            if ((true)) then { /* comment */ (((5)) };
+            if ((true)) { /* comment */ (((5)) };
         }"#,
         );
         // this parse should fail since parens are wrong
@@ -140,7 +140,7 @@ mod test {
     fn parse_infix_op() {
         let parsed = HllParser::parse(
             Rule::fn_decl,
-            r#"fn myfunc(x: i32, y: i32): i32 {
+            r#"fn myfunc(x: i32, y: i32) -> i32 {
         let x = 5 + 10;
         }"#,
         );
@@ -158,7 +158,7 @@ mod test {
     fn var_exp() {
         let parsed = HllParser::parse(
             Rule::fn_decl,
-            r#"fn myfunc(x: i32, y: i32): i32 {
+            r#"fn myfunc(x: i32, y: i32) -> i32 {
         let x = 5 + 10;
         let foo = 20;
         let y = (x + foo) - x ;
@@ -178,7 +178,7 @@ mod test {
     fn var_exp_triple_op() {
         let parsed = HllParser::parse(
             Rule::fn_decl,
-            r#"fn myfunc(x: i32, y: i32): i32 {
+            r#"fn myfunc(x: i32, y: i32) -> i32 {
         let x = 5 + 10;
         let foo = 20;
         let y = (x + foo + 3) - x ;
@@ -200,7 +200,7 @@ mod test {
             Rule::program,
             r#"script {
                 trait MyTrait {
-                    fn some_method_you_need_to_implement(x: i32): i32
+                    fn some_method_you_need_to_implement(x: i32) -> i32;
                 }
             }"#,
         );
@@ -220,9 +220,9 @@ mod test {
             r#"
            predicate { 
             trait MyTrait {
-                fn some_method_you_need_to_implement(x: i32): i32
+                fn some_method_you_need_to_implement(x: i32) -> i32;
             } {
-                fn some_method_that_the_trait_implements(x: i32): i32 {
+                fn some_method_that_the_trait_implements(x: i32) -> i32 {
                     let x = 5;
                     return x;
                 }
