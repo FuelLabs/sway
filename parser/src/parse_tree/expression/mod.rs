@@ -11,6 +11,9 @@ use either::Either;
 use pest::iterators::Pair;
 use pest::Span;
 
+mod asm;
+pub(crate) use asm::AsmExpression;
+
 #[derive(Debug, Clone)]
 pub(crate) enum Expression<'sc> {
     Literal {
@@ -411,6 +414,12 @@ impl<'sc> Expression<'sc> {
                     span,
                 }
             }
+            Rule::asm_expression => {
+                let whole_block_span = expr.as_span();
+                let asm = AsmExpression::parse_from_pair(expr);
+                todo!()
+            }
+
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
