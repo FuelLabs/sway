@@ -127,7 +127,7 @@ asm_registers = { "(" ~ asm_register_declaration ~ ("," ~ asm_register_declarati
 // should we allow expressions to be directly assigned to registers, or only 
 // already declared variables? i'm unsure
 asm_register_declaration = { ident ~ (":" ~ var_name)? }
-asm_op = { opcode ~ (asm_register | asm_immediate)* ~ ";" }
+asm_op = { opcode ~ (asm_immediate | asm_register)* ~ ";" }
 asm_register = { ident }
 asm_immediate = {"i" ~ u64_integer}
 opcode = { ident } 
