@@ -147,7 +147,7 @@ impl<'sc> TypeInfo<'sc> {
             SelfType => "Self".into(),
             Byte => "byte".into(),
             Byte32 => "byte32".into(),
-            ErrorRecovery => "error type".into(),
+            ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
     fn is_numeric(&self) -> bool {

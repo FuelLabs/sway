@@ -8,7 +8,7 @@ mod while_loop;
 
 pub(crate) use code_block::*;
 pub(crate) use declaration::*;
-pub(crate) use expression::{Expression, MatchBranch, UnaryOp, VarName};
+pub(crate) use expression::{AsmExpression, Expression, MatchBranch, UnaryOp, VarName};
 pub(crate) use literal::Literal;
 pub(crate) use use_statement::UseStatement;
 pub(crate) use while_loop::WhileLoop;

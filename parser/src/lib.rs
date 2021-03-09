@@ -8,6 +8,7 @@ mod parse_tree;
 mod parser;
 mod semantics;
 pub(crate) mod types;
+pub(crate) mod utils;
 use crate::error::*;
 use crate::parse_tree::*;
 pub(crate) use crate::parse_tree::{

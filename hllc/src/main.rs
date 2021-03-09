@@ -59,6 +59,11 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         }
         Err((errors, warnings)) => {
             let e_len = errors.len();
+
+            for ref warning in warnings.iter() {
+                format_warning(&content, warning);
+            }
+
             errors.into_iter().for_each(|e| format_err(&content, e));
 
             write_red(format!(

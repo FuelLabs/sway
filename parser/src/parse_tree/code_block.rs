@@ -65,8 +65,8 @@ impl<'sc> CodeBlock<'sc> {
                         continue
                     );
                     AstNode {
-                        content: AstNodeContent::ImplicitReturnExpression(res),
-                        span: pair.as_span(),
+                        content: AstNodeContent::ImplicitReturnExpression(res.clone()),
+                        span: res.span(),
                     }
                 }
                 Rule::while_loop => {

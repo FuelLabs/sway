@@ -152,6 +152,9 @@ pub enum Warning<'sc> {
         initial_type: TypeInfo<'sc>,
         cast_to: TypeInfo<'sc>,
     },
+    UnusedReturnValue {
+        r#type: TypeInfo<'sc>,
+    },
 }
 
 impl<'sc> Warning<'sc> {
@@ -164,6 +167,7 @@ impl<'sc> Warning<'sc> {
             NonClassCaseEnumVariantName { variant_name } => format!("Enum variant name \"{}\" is not idiomatic. Enum variant names should be ClassCase, like \"{}\".", variant_name, to_class_case(variant_name)),
             NonSnakeCaseFunctionName { name } => format!("Function name \"{}\" is not idiomatic. Function names should be snake_case, like \"{}\".", name, to_snake_case(name)),
             LossOfPrecision { initial_type, cast_to } => format!("This cast, from type {} to type {}, will lose precision.", initial_type.friendly_type_str(), cast_to.friendly_type_str()),
+            UnusedReturnValue { r#type } => format!("This returns a value of type {}, which is not assigned to anything and is ignored.", r#type.friendly_type_str())
         }
     }
 }
@@ -252,6 +256,10 @@ pub enum CompileError<'sc> {
         args: &'sc str,
         return_type: String,
     },
+    #[error(
+        "Asm opcode has multiple immediates specified, when any opcode has at most one immediate."
+    )]
+    MultipleImmediates(Span<'sc>),
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -354,6 +362,7 @@ impl<'sc> CompileError<'sc> {
             ReassignmentToNonVariable { span, .. } => (span.start(), span.end()),
             AssignmentToNonMutable(_, sp) => (sp.start(), sp.end()),
             TypeParameterNotInTypeScope { span, .. } => (span.start(), span.end()),
+            MultipleImmediates(sp) => (sp.start(), sp.end()),
         }
     }
 }

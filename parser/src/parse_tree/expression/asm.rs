@@ -4,10 +4,11 @@ use crate::parser::Rule;
 use pest::iterators::Pair;
 use pest::Span;
 
+#[derive(Debug, Clone)]
 pub(crate) struct AsmExpression<'sc> {
-    registers: Vec<AsmRegisterDeclaration<'sc>>,
-    body: Vec<AsmOp<'sc>>,
-    returns: AsmRegister<'sc>,
+    pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
+    pub(crate) body: Vec<AsmOp<'sc>>,
+    pub(crate) returns: Option<AsmRegister<'sc>>,
 }
 
 impl<'sc> AsmExpression<'sc> {
@@ -33,17 +34,30 @@ impl<'sc> AsmExpression<'sc> {
                     asm_op_buf.push(op);
                 }
                 Rule::asm_register => {
-                    // implicit register return
-                    todo!()
+                    implicit_op_return = Some(eval!(
+                        AsmRegister::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair,
+                        continue
+                    ));
                 }
+                a => unreachable!("{:?}", a),
             }
         }
-        dbg!(&iter.next());
-        //        let ops = AsmOp::parse_from)air
-        todo!()
+        ok(
+            AsmExpression {
+                registers: asm_registers,
+                body: asm_op_buf,
+                returns: implicit_op_return,
+            },
+            warnings,
+            errors,
+        )
     }
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct AsmOp<'sc> {
     opcode: &'sc str,
     registers: Vec<AsmRegister<'sc>>,
@@ -51,14 +65,27 @@ pub(crate) struct AsmOp<'sc> {
     span: Span<'sc>,
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct AsmRegister<'sc> {
     name: &'sc str,
 }
 
+impl<'sc> AsmRegister<'sc> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        ok(
+            AsmRegister {
+                name: pair.as_str(),
+            },
+            vec![],
+            vec![],
+        )
+    }
+}
+
 impl<'sc> AsmOp<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<Self> {
+    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let warnings = Vec::new();
-        let errors = Vec::new();
+        let mut errors = Vec::new();
         let span = pair.as_span();
         let mut iter = pair.into_inner();
         // TODO map to the actual enum from the VM
@@ -73,7 +100,21 @@ impl<'sc> AsmOp<'sc> {
                     });
                 }
                 Rule::asm_immediate => {
-                    todo!()
+                    let span = pair.as_span();
+                    let num = pair.into_inner().next().unwrap();
+                    if immediate.is_some() {
+                        errors.push(CompileError::MultipleImmediates(span.clone()));
+                    }
+                    immediate = Some(match num.as_str().parse() {
+                        Ok(o) => o,
+                        Err(_) => {
+                            errors.push(CompileError::Internal(
+                                "Attempted to parse u64 from invalid number",
+                                span,
+                            ));
+                            0
+                        }
+                    });
                 }
                 _ => unreachable!(),
             }
@@ -91,6 +132,7 @@ impl<'sc> AsmOp<'sc> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct AsmRegisterDeclaration<'sc> {
     name: &'sc str,
     initializer: Option<VarName<'sc>>,

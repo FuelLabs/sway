@@ -1,5 +1,6 @@
 use crate::error::*;
 use crate::parse_tree::Literal;
+use crate::utils::join_spans;
 use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
@@ -61,6 +62,11 @@ pub(crate) enum Expression<'sc> {
         r#else: Option<Box<Expression<'sc>>>,
         span: Span<'sc>,
     },
+    // separated into other struct for parsing reasons
+    AsmExpression {
+        span: Span<'sc>,
+        asm: AsmExpression<'sc>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +89,7 @@ impl<'sc> Expression<'sc> {
             CodeBlock { span, .. } => span,
             ParenthesizedExpression { span, .. } => span,
             IfExp { span, .. } => span,
+            AsmExpression { span, .. } => span,
         })
         .clone()
     }
@@ -190,7 +197,7 @@ impl<'sc> Expression<'sc> {
         let parsed = match expr.as_rule() {
             Rule::literal_value => match Literal::parse_from_pair(expr.clone()) {
                 CompileResult::Ok {
-                    value,
+                    value: (value, span),
                     warnings: mut l_w,
                     errors: mut l_e,
                 } => {
@@ -416,8 +423,17 @@ impl<'sc> Expression<'sc> {
             }
             Rule::asm_expression => {
                 let whole_block_span = expr.as_span();
-                let asm = AsmExpression::parse_from_pair(expr);
-                todo!()
+                let asm = eval!(
+                    AsmExpression::parse_from_pair,
+                    warnings,
+                    errors,
+                    expr,
+                    return err(warnings, errors)
+                );
+                Expression::AsmExpression {
+                    asm,
+                    span: whole_block_span,
+                }
             }
 
             a => {
@@ -790,11 +806,13 @@ fn arrange_by_order_of_operations<'sc>(
 
         let lhs = lhs.unwrap();
         let rhs = rhs.unwrap();
+        let lhs_span = lhs.span();
+        let rhs_span = rhs.span();
 
         expression_stack.push(Expression::FunctionApplication {
             name: op.to_var_name(),
             arguments: vec![lhs, rhs],
-            span: debug_span.clone(),
+            span: join_spans(lhs_span, rhs_span),
         });
     }
 

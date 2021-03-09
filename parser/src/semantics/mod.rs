@@ -169,6 +169,9 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         then: Box<TypedExpression<'sc>>,
         r#else: Option<Box<TypedExpression<'sc>>>,
     },
+    AsmExpression {
+        asm: AsmExpression<'sc>,
+    },
 }
 #[derive(Clone, Debug)]
 pub(crate) struct TypedStructExpressionField<'sc> {
@@ -452,6 +455,18 @@ impl<'sc> TypedExpression<'sc> {
                     },
                     is_constant: IsConstant::No, // TODO
                     return_type: then.return_type,
+                }
+            }
+            Expression::AsmExpression { span, asm } => {
+                let return_type = if asm.returns.is_some() {
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+                } else {
+                    TypeInfo::Unit
+                };
+                TypedExpression {
+                    expression: TypedExpressionVariant::AsmExpression { asm },
+                    return_type,
+                    is_constant: IsConstant::No,
                 }
             }
             a => {
@@ -837,11 +852,31 @@ fn type_check_node<'sc>(
                         ..
                     } in methods
                     {
+                        let mut namespace = namespace.clone();
+                        parameters.clone().into_iter().for_each(
+                            |FunctionParameter { name, r#type }| {
+                                namespace.insert(
+                                    name.clone(),
+                                    TypedDeclaration::VariableDeclaration(
+                                        TypedVariableDeclaration {
+                                            name: name.clone(),
+                                            body: TypedExpression {
+                                                expression:
+                                                    TypedExpressionVariant::FunctionParameter,
+                                                return_type: r#type,
+                                                is_constant: IsConstant::No,
+                                            },
+                                            is_mutable: false, // TODO allow mutable function params?
+                                        },
+                                    ),
+                                );
+                            },
+                        );
                         // TODO check code block implicit return
                         let (body, _code_block_implicit_return) = 
                                         type_check!(
                                             TypedCodeBlock,
-                                           body,
+                                            body,
                                             namespace.clone(),
                                             Some(return_type.clone()),
                                             "Trait method body's return type does not match up with its return type annotation.",
@@ -1010,6 +1045,23 @@ fn type_check_node<'sc>(
         span: node.span.clone(),
         scope: namespace.clone(),
     };
+    match node {
+        TypedAstNode {
+            content: TypedAstNodeContent::Expression(TypedExpression { .. }),
+            ..
+        } => {
+            let warning = Warning::UnusedReturnValue {
+                r#type: node.type_info(),
+            };
+            assert_or_warn!(
+                node.type_info() == TypeInfo::Unit,
+                warnings,
+                node.span.clone(),
+                warning
+            );
+        }
+        _ => (),
+    }
 
     ok(node, warnings, errors)
 }
