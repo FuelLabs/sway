@@ -3,7 +3,7 @@ use crate::parse_tree::Expression;
 use crate::{CodeBlock, CompileError, Rule};
 use either::Either;
 use pest::iterators::Pair;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TypeParameter<'sc> {
     pub(crate) name: &'sc str,
     trait_constraint: Vec<TraitConstraint<'sc>>,
@@ -94,7 +94,7 @@ fn find_and_update_param<'sc>(
     Ok(())
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct TraitConstraint<'sc> {
     name: &'sc str,
 }

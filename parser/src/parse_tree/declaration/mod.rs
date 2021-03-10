@@ -1,5 +1,6 @@
 mod enum_declaration;
 mod function_declaration;
+mod impl_trait;
 mod reassignment;
 mod struct_declaration;
 mod trait_declaration;
@@ -8,6 +9,7 @@ mod variable_declaration;
 
 pub(crate) use enum_declaration::*;
 pub(crate) use function_declaration::*;
+pub(crate) use impl_trait::*;
 pub(crate) use reassignment::*;
 pub(crate) use reassignment::*;
 pub(crate) use struct_declaration::*;
@@ -29,6 +31,7 @@ pub(crate) enum Declaration<'sc> {
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
     Reassignment(Reassignment<'sc>),
+    ImplTrait(ImplTrait<'sc>),
     ErrorRecovery,
 }
 impl<'sc> Declaration<'sc> {
@@ -118,6 +121,13 @@ impl<'sc> Declaration<'sc> {
             )),
             Rule::reassignment => Declaration::Reassignment(eval!(
                 Reassignment::parse_from_pair,
+                warnings,
+                errors,
+                decl_inner,
+                return err(warnings, errors)
+            )),
+            Rule::impl_trait => Declaration::ImplTrait(eval!(
+                ImplTrait::parse_from_pair,
                 warnings,
                 errors,
                 decl_inner,

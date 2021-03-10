@@ -31,6 +31,7 @@ pub struct HllParseTree<'sc> {
     pub contract_ast: Option<ParseTree<'sc>>,
     pub script_ast: Option<ParseTree<'sc>>,
     pub predicate_ast: Option<ParseTree<'sc>>,
+    pub library_exports: Vec<(&'sc str, ParseTree<'sc>)>,
 }
 
 #[derive(Debug)]
@@ -38,6 +39,7 @@ pub struct HllTypedParseTree<'sc> {
     contract_ast: Option<TypedParseTree<'sc>>,
     script_ast: Option<TypedParseTree<'sc>>,
     predicate_ast: Option<TypedParseTree<'sc>>,
+    library_exports: Vec<(&'sc str, TypedParseTree<'sc>)>,
 }
 
 #[derive(Debug)]
@@ -216,12 +218,38 @@ pub fn compile<'sc>(
     } else {
         None
     };
+    let library_exports: Vec<_> = parse_tree
+        .library_exports
+        .into_iter()
+        .filter_map(
+            |(name, tree)| match semantics::type_check_tree(tree, TreeType::Library) {
+                CompileResult::Ok {
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                    value,
+                } => {
+                    warnings.append(&mut l_w);
+                    errors.append(&mut l_e);
+                    Some((name, value))
+                }
+                CompileResult::Err {
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
+                    warnings.append(&mut l_w);
+                    errors.append(&mut l_e);
+                    None
+                }
+            },
+        )
+        .collect();
     if errors.is_empty() {
         Ok((
             HllTypedParseTree {
                 contract_ast,
                 script_ast,
                 predicate_ast,
+                library_exports,
             },
             warnings,
         ))
@@ -242,11 +270,13 @@ fn parse_root_from_pairs<'sc>(
         contract_ast: None,
         script_ast: None,
         predicate_ast: None,
+        library_exports: vec![],
     };
     for block in input {
         let mut parse_tree = ParseTree::new(block.as_span());
         let rule = block.as_rule();
         let input = block.clone().into_inner();
+        let mut library_name = None;
         for pair in input {
             match pair.as_rule() {
                 Rule::declaration => {
@@ -275,6 +305,9 @@ fn parse_root_from_pairs<'sc>(
                         span: pair.as_span(),
                     });
                 }
+                Rule::library_name => {
+                    library_name = Some(pair.into_inner().next().unwrap().as_str());
+                }
                 a => unreachable!("{:?}", pair.as_str()),
             }
         }
@@ -299,6 +332,9 @@ fn parse_root_from_pairs<'sc>(
                 } else {
                     fuel_ast.predicate_ast = Some(parse_tree);
                 }
+            }
+            Rule::library => {
+                fuel_ast.library_exports.push((library_name.expect("Safe unwrap, because the parser enforces the library keyword is followed by a name. This is an invariant"), parse_tree));
             }
             Rule::EOI => (),
             a => errors.push(CompileError::InvalidTopLevelItem(a, block.into_span())),

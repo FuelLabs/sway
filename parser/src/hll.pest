@@ -4,12 +4,13 @@ fn_decl_keyword     =  {"fn"}
 trait_decl_keyword  =  {"trait"}
 return_keyword      =  {"return"}
 use_keyword         =  {"use"}
-enum_keyword        = @{"enum"}
-asm_keyword = {"asm"}
-while_keyword = {"while"}
-match_keyword =    {"match"}
-mut_keyword = { "mut" }
-assign              = _{"="}
+enum_keyword        =  @{"enum"}
+impl_keyword        =  {"impl"}
+asm_keyword         =  {"asm"}
+while_keyword       =  {"while"}
+match_keyword       =  {"match"}
+mut_keyword         =  { "mut" }
+assign              =  _{"="}
 line_comment_open   =  {"//"}
 block_comment_open  =  {"/*"}
 block_comment_close =  {"*/"}
@@ -18,9 +19,11 @@ path_separator      =  {"::"}
 
 
 // top level
-program =  {SOI ~ (contract|script|predicate)* ~ EOI}
+program =  {SOI ~ (library|contract|script|predicate)* ~ EOI}
 
-contract = { "contract" ~ "{" ~ (control_flow|declaration|use_statement|expr)* ~ "}" }
+library =  { "library" ~ library_name ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
+library_name = { ident }
+contract = { "contract" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 script = { "script" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 predicate = { "predicate" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 
@@ -68,7 +71,7 @@ struct_expr_fields = { struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name
 array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
 // declarations 
-declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment)}
+declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment|impl_trait)}
 var_decl    =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription = { ":" ~ type_name}
 fn_decl     =  {visibility ~ fn_signature ~ code_block}
@@ -91,11 +94,11 @@ enum_field_name = @{ident}
 // // fn declaration
 fn_decl_params =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
 type_params = { "<" ~ generic_type_param ~ (", " ~ generic_type_param)* ~ ">" }
-fn_decl_param  =  {("self")? ~ fn_decl_param_name ~ ":" ~ type_name}
+fn_decl_param  =  {("self") | (fn_decl_param_name ~ ":" ~ type_name)}
 fn_decl_param_name = {ident}
 return_type    =  {ident}
-fn_decl_name   =  @{ident}
-type_name      =  @{ident ~ type_params?}
+fn_decl_name   =  {ident}
+type_name      =  {ident ~ type_params?}
 trait_bounds   =  { "where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)* }
 generic_type_param = @{ident}
 
@@ -112,7 +115,8 @@ trait_decl = { trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ 
 // // parsed as two separate blocks here.
 // // this can of course be changed if others dislike it.
 trait_methods = { "{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{"~ fn_decl* ~ "}")* }
-trait_name = @{ ident } 
+trait_name = { ident } 
+impl_trait = { impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{"~ fn_decl* ~ "}") }
 
 // imports
 use_statement = { use_keyword ~ import_path ~ ";"}

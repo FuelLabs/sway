@@ -23,7 +23,7 @@ impl Visibility {
 
 #[derive(Debug, Clone)]
 pub(crate) struct FunctionDeclaration<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: VarName<'sc>,
     pub(crate) visibility: Visibility,
     pub(crate) body: CodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
@@ -49,12 +49,20 @@ impl<'sc> FunctionDeclaration<'sc> {
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
         let name_span = name.as_span();
-        let name = name.as_str();
+        let name = eval!(
+            VarName::parse_from_pair,
+            warnings,
+            errors,
+            name,
+            return err(warnings, errors)
+        );
         assert_or_warn!(
-            is_snake_case(name),
+            is_snake_case(name.primary_name),
             warnings,
             name_span,
-            Warning::NonSnakeCaseFunctionName { name }
+            Warning::NonSnakeCaseFunctionName {
+                name: name.primary_name
+            }
         );
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
@@ -123,6 +131,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         };
         // check that all generic types used in function parameters are a part of the type
         // parameters
+        /*
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
             if let TypeInfo::Generic { name } = param.r#type {
@@ -151,6 +160,7 @@ impl<'sc> FunctionDeclaration<'sc> {
                 }
             }
         }
+        */
         let body = parts.next().unwrap();
         let body = eval!(
             CodeBlock::parse_from_pair,
@@ -192,6 +202,16 @@ impl<'sc> FunctionParameter<'sc> {
         let mut errors = Vec::new();
         let mut pairs_buf = Vec::new();
         for pair in pairs {
+            if pair.as_str().trim() == "self" {
+                let r#type = TypeInfo::SelfType;
+                let name = VarName {
+                    span: pair.as_span(),
+                    primary_name: "self",
+                    sub_names: vec![],
+                };
+                pairs_buf.push(FunctionParameter { name, r#type });
+                continue;
+            }
             let mut parts = pair.clone().into_inner();
             let name_pair = parts.next().unwrap();
             let name_str = name_pair.as_str();
@@ -206,17 +226,13 @@ impl<'sc> FunctionParameter<'sc> {
                     span: name_pair.as_span()
                 }
             );
-            let r#type = if name_str == "self" {
-                TypeInfo::SelfType
-            } else {
-                eval!(
-                    TypeInfo::parse_from_pair_inner,
-                    warnings,
-                    errors,
-                    parts.next().unwrap(),
-                    TypeInfo::ErrorRecovery
-                )
-            };
+            let r#type = eval!(
+                TypeInfo::parse_from_pair_inner,
+                warnings,
+                errors,
+                parts.next().unwrap(),
+                TypeInfo::ErrorRecovery
+            );
             pairs_buf.push(FunctionParameter { name, r#type });
         }
         ok(pairs_buf, warnings, errors)

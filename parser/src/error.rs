@@ -6,9 +6,15 @@ use pest::Span;
 use thiserror::Error;
 
 macro_rules! type_check {
-    ($name: ident, $val: expr, $namespace: expr, $type_annotation: expr, $help_text: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
+    ($name: ident, $val: expr, $namespace: expr, $methods: expr, $type_annotation: expr, $help_text: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
         use crate::CompileResult;
-        let res = $name::type_check($val.clone(), $namespace, $type_annotation, $help_text);
+        let res = $name::type_check(
+            $val.clone(),
+            $namespace,
+            $methods,
+            $type_annotation,
+            $help_text,
+        );
         match res {
             CompileResult::Ok {
                 value,
@@ -136,6 +142,9 @@ pub enum Warning<'sc> {
     NonClassCaseStructName {
         struct_name: &'sc str,
     },
+    NonClassCaseTraitName {
+        name: &'sc str,
+    },
     NonClassCaseEnumName {
         enum_name: &'sc str,
     },
@@ -162,6 +171,7 @@ impl<'sc> Warning<'sc> {
         use Warning::*;
         match self {
             NonClassCaseStructName{ struct_name } => format!("Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \"{}\".", struct_name, to_class_case(struct_name)),
+            NonClassCaseTraitName{ name } => format!("Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \"{}\".", name, to_class_case(name)),
             NonClassCaseEnumName{ enum_name} => format!("Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase name, like \"{}\".", enum_name, to_class_case(enum_name)),
             NonSnakeCaseStructFieldName { field_name } => format!("Struct field name \"{}\" is not idiomatic. Struct field names should have a snake_case name, like \"{}\".", field_name, to_snake_case(field_name)),
             NonClassCaseEnumVariantName { variant_name } => format!("Enum variant name \"{}\" is not idiomatic. Enum variant names should be ClassCase, like \"{}\".", variant_name, to_class_case(variant_name)),

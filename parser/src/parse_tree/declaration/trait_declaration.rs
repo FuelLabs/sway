@@ -4,6 +4,7 @@ use crate::parse_tree::{TypeParameter, VarName};
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
 use either::*;
+use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 
@@ -22,11 +23,22 @@ impl<'sc> TraitDeclaration<'sc> {
         let mut trait_parts = pair.into_inner().peekable();
         let _trait_keyword = trait_parts.next();
         let name_pair = trait_parts.next().unwrap();
-        let name = VarName {
-            primary_name: name_pair.as_str(),
-            sub_names: vec![],
-            span: name_pair.as_span(),
-        };
+        let name = eval!(
+            VarName::parse_from_pair,
+            warnings,
+            errors,
+            name_pair,
+            return err(warnings, errors)
+        );
+        let span = name.span.clone();
+        assert_or_warn!(
+            is_class_case(name_pair.as_str()),
+            warnings,
+            span,
+            Warning::NonClassCaseTraitName {
+                name: name_pair.as_str()
+            }
+        );
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
         let mut methods = Vec::new();
