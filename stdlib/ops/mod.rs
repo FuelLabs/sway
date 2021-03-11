@@ -4,13 +4,18 @@ library ops {
     }
 
     // there should be an error here for excess type params
-    impl Add<T> for u64 {
+    impl Add for u64 {
          fn add(self, other: Self) -> Self {
             asm(r1: self, r2: other, r3) {
-                add r3 r2 r1;
+                add r3 r2 r1 i10;
                 r3
             }
          }
+    }
+
+    fn test() {
+        // now, need to work out methods and using the self type on them
+        let z = a.add(b);
     }
 }
 /*

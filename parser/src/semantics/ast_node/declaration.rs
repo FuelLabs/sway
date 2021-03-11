@@ -59,6 +59,7 @@ pub(crate) struct TypedTraitDeclaration<'sc> {
     pub(crate) name: VarName<'sc>,
     pub(crate) interface_surface: Vec<TraitFn<'sc>>, // TODO typed TraitFn which checks geneerics
     pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
+    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
 }
 
 #[derive(Clone, Debug)]

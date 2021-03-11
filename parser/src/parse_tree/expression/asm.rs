@@ -105,7 +105,7 @@ impl<'sc> AsmOp<'sc> {
                     if immediate.is_some() {
                         errors.push(CompileError::MultipleImmediates(span.clone()));
                     }
-                    immediate = Some(match num.as_str().parse() {
+                    immediate = Some(match num.into_inner().next().unwrap().as_str().parse() {
                         Ok(o) => o,
                         Err(_) => {
                             errors.push(CompileError::Internal(

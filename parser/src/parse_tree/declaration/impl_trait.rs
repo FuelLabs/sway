@@ -11,6 +11,7 @@ pub(crate) struct ImplTrait<'sc> {
     pub(crate) functions: Vec<FunctionDeclaration<'sc>>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span<'sc>,
+    pub(crate) type_arguments_span: Span<'sc>,
 }
 
 impl<'sc> ImplTrait<'sc> {
@@ -49,6 +50,10 @@ impl<'sc> ImplTrait<'sc> {
             iter.next()
         } else {
             None
+        };
+        let type_arguments_span = match type_params_pair {
+            Some(ref x) => x.as_span(),
+            None => trait_name.span.clone(),
         };
         let type_arguments = match TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
@@ -89,6 +94,7 @@ impl<'sc> ImplTrait<'sc> {
             ImplTrait {
                 trait_name,
                 type_arguments,
+                type_arguments_span,
                 type_implementing_for,
                 functions: fn_decls_buf,
                 block_span,

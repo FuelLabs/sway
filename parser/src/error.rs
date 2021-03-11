@@ -293,6 +293,12 @@ pub enum CompileError<'sc> {
         missing_functions: String,
         span: Span<'sc>,
     },
+    #[error("Expected {expected} type arguments, but instead found {given}.")]
+    IncorrectNumberOfTypeArguments {
+        given: usize,
+        expected: usize,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -401,6 +407,7 @@ impl<'sc> CompileError<'sc> {
             UnknownTrait { span, .. } => (span.start(), span.end()),
             FunctionNotAPartOfInterfaceSurface { span, .. } => (span.start(), span.end()),
             MissingInterfaceSurfaceMethods { span, .. } => (span.start(), span.end()),
+            IncorrectNumberOfTypeArguments { span, .. } => (span.start(), span.end()),
         }
     }
 }
