@@ -6,7 +6,7 @@ use pest::iterators::Pair;
 use pest::Span;
 
 /// Type information without an associated value, used for type inferencing and definition.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeInfo<'sc> {
     String,
     UnsignedInteger(IntegerBits),
@@ -19,7 +19,7 @@ pub enum TypeInfo<'sc> {
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IntegerBits {
     Eight,
     Sixteen,
@@ -45,6 +45,7 @@ impl<'sc> TypeInfo<'sc> {
                 "string" => TypeInfo::String,
                 "unit" => TypeInfo::Unit,
                 "byte" => TypeInfo::Byte,
+                "Self" => TypeInfo::SelfType,
                 other => TypeInfo::Generic { name: other },
             },
             Vec::new(),

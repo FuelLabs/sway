@@ -3,18 +3,14 @@ library ops {
         fn add(self, other: Self) -> Self;
     }
 
-    impl 
-        Add<T>
-            for u64 {
-        fn add(self, other: T) -> T{
-            other
-                /*
+    // there should be an error here for excess type params
+    impl Add<T> for u64 {
+         fn add(self, other: Self) -> Self {
             asm(r1: self, r2: other, r3) {
                 add r3 r2 r1;
                 r3
             }
-                */
-        }
+         }
     }
 }
 /*

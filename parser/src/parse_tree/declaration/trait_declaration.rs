@@ -116,9 +116,9 @@ impl<'sc> TraitDeclaration<'sc> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct TraitFn<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: VarName<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub(crate) return_type: TypeInfo<'sc>,
 }
@@ -131,12 +131,20 @@ impl<'sc> TraitFn<'sc> {
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
         let mut name_span = name.as_span();
-        let name = name.as_str();
+        let name = eval!(
+            VarName::parse_from_pair,
+            warnings,
+            errors,
+            name,
+            return err(warnings, errors)
+        );
         assert_or_warn!(
-            is_snake_case(name),
+            is_snake_case(name.primary_name),
             warnings,
             name_span,
-            Warning::NonSnakeCaseFunctionName { name }
+            Warning::NonSnakeCaseFunctionName {
+                name: name.primary_name
+            }
         );
         let parameters = signature.next().unwrap();
         let parameters = eval!(

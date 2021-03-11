@@ -270,6 +270,29 @@ pub enum CompileError<'sc> {
         "Asm opcode has multiple immediates specified, when any opcode has at most one immediate."
     )]
     MultipleImmediates(Span<'sc>),
+    #[error(
+        "Type mismatch in parameters of trait function. The trait was defined to have a different signature than the implementation provided here. Expected type {expected}, but found type {given}."
+    )]
+    MismatchedTypeInTrait {
+        span: Span<'sc>,
+        given: String,
+        expected: String,
+    },
+    #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\". ")]
+    NotATrait { span: Span<'sc>, name: &'sc str },
+    #[error("Trait \"{name}\" cannot be found in the current scope.")]
+    UnknownTrait { span: Span<'sc>, name: &'sc str },
+    #[error("Function \"{name}\" is not a part of trait \"{trait_name}\"'s interface surface.")]
+    FunctionNotAPartOfInterfaceSurface {
+        name: &'sc str,
+        trait_name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Functions are missing from this trait implementation: {missing_functions}")]
+    MissingInterfaceSurfaceMethods {
+        missing_functions: String,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -373,6 +396,11 @@ impl<'sc> CompileError<'sc> {
             AssignmentToNonMutable(_, sp) => (sp.start(), sp.end()),
             TypeParameterNotInTypeScope { span, .. } => (span.start(), span.end()),
             MultipleImmediates(sp) => (sp.start(), sp.end()),
+            MismatchedTypeInTrait { span, .. } => (span.start(), span.end()),
+            NotATrait { span, .. } => (span.start(), span.end()),
+            UnknownTrait { span, .. } => (span.start(), span.end()),
+            FunctionNotAPartOfInterfaceSurface { span, .. } => (span.start(), span.end()),
+            MissingInterfaceSurfaceMethods { span, .. } => (span.start(), span.end()),
         }
     }
 }

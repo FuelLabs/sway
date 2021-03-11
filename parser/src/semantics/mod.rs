@@ -76,6 +76,8 @@ pub(crate) enum TypedDeclaration<'sc> {
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
     Reassignment(TypedReassignment<'sc>),
+    // no contents since it is a side-effectful declaration, i.e it populates the methods namespace
+    ImplTraitDeclaration,
     ErrorRecovery,
 }
 
@@ -96,6 +98,7 @@ impl<'sc> TypedDeclaration<'sc> {
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
             Reassignment(_) => "reassignment",
+            ImplTraitDeclaration => "impl trait",
             ErrorRecovery => "invalid declaration",
         }
     }
@@ -198,7 +201,7 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check(
         other: Expression<'sc>,
         namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
-        methods_namespace: &HashMap<VarName<'sc>, Vec<FunctionDeclaration<'sc>>>,
+        methods_namespace: &HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
         type_annotation: Option<TypeInfo<'sc>>,
         help_text: impl Into<String> + Clone,
     ) -> CompileResult<'sc, Self> {
@@ -445,7 +448,7 @@ impl<'sc> TypedExpression<'sc> {
                         TypedExpression,
                         *expr,
                         namespace,
-                    &methods_namespace,
+                        &methods_namespace,
                         Some(then.return_type.clone()),
                         "",
                         ERROR_RECOVERY_EXPR.clone(),
@@ -517,7 +520,7 @@ impl<'sc> TypedCodeBlock<'sc> {
     fn type_check(
         other: CodeBlock<'sc>,
         namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
-        methods_namespace: &HashMap<VarName<'sc>, Vec<FunctionDeclaration<'sc>>>,
+        methods_namespace: &HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
         // this is for the return or implicit return
         type_annotation: Option<TypeInfo<'sc>>,
         help_text: impl Into<String> + Clone,
@@ -527,8 +530,8 @@ impl<'sc> TypedCodeBlock<'sc> {
         let mut errors = Vec::new();
         let mut evaluated_contents = Vec::new();
         let mut local_namespace = namespace.clone();
-            // mutable clone, because the interior of a code block can not change the surrounding
-            // method namespace
+        // mutable clone, because the interior of a code block can not change the surrounding
+        // method namespace
         let mut methods_namespace = methods_namespace.clone();
         let last_node = other
             .contents
@@ -536,7 +539,13 @@ impl<'sc> TypedCodeBlock<'sc> {
             .expect("empty code block? TODO check if this is handled earlier")
             .clone();
         for node in &other.contents[0..other.contents.len() - 1] {
-            match type_check_node(node.clone(), &mut local_namespace, &mut methods_namespace, None, "") {
+            match type_check_node(
+                node.clone(),
+                &mut local_namespace,
+                &mut methods_namespace,
+                None,
+                "",
+            ) {
                 CompileResult::Ok {
                     value,
                     warnings: mut l_w,
@@ -633,7 +642,7 @@ pub(crate) fn type_check_tree<'sc>(
 ) -> CompileResult<'sc, TypedParseTree> {
     let mut global_namespace = Default::default();
     // a mapping from types to the methods that are available for them
-    let mut methods_namespace: HashMap<VarName, Vec<FunctionDeclaration>> = Default::default();
+    let mut methods_namespace=  Default::default();
     let typed_tree = parsed
         .root_nodes
         .into_iter()
@@ -643,7 +652,15 @@ pub(crate) fn type_check_tree<'sc>(
         // for now it is empty, i.e. `HashMap::default()`
         //
         // Top level functions are expected to return the Unit type, hence the annotation here
-        .map(|node| type_check_node(node, &mut global_namespace, &mut methods_namespace, None, ""))
+        .map(|node| {
+            type_check_node(
+                node,
+                &mut global_namespace,
+                &mut methods_namespace,
+                None,
+                "",
+            )
+        })
         .collect::<Vec<CompileResult<_>>>();
 
     let mut typed_tree_nodes = Vec::new();
@@ -753,95 +770,111 @@ pub(crate) fn type_check_tree<'sc>(
     )
 }
 
-impl <'sc> TypedFunctionDeclaration <'sc> {
+impl<'sc> TypedFunctionDeclaration<'sc> {
     fn type_check(
-    fn_decl: FunctionDeclaration<'sc>,
-    namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
-    methods_namespace: &HashMap<VarName<'sc>, Vec<FunctionDeclaration<'sc>>>,
-    return_type_annotation: Option<TypeInfo<'sc>>,
-    help_text: impl Into<String>,
+        fn_decl: FunctionDeclaration<'sc>,
+        namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+        methods_namespace: &HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
+        return_type_annotation: Option<TypeInfo<'sc>>,
+        help_text: impl Into<String>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
-
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-                    let FunctionDeclaration {
-                    name,
-                    body,
-                    parameters,
-                    span,
-                    return_type,
-                    type_parameters,
-                    ..
-                }  = fn_decl;
-                    // insert parameters into namespace
-                    let mut namespace = namespace.clone();
-                    parameters.clone().into_iter().for_each(
-                        |FunctionParameter { name, r#type }| {
-                            namespace.insert(
-                                name.clone(),
-                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                                    name: name.clone(),
-                                    body: TypedExpression {
-                                        expression: TypedExpressionVariant::FunctionParameter,
-                                        return_type: r#type,
-                                        is_constant: IsConstant::No,
-                                    },
-                                    is_mutable: false, // TODO allow mutable function params?
-                                }),
-                            );
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        let FunctionDeclaration {
+            name,
+            body,
+            parameters,
+            span,
+            return_type,
+            type_parameters,
+            ..
+        } = fn_decl;
+        // insert parameters into namespace
+        let mut namespace = namespace.clone();
+        parameters
+            .clone()
+            .into_iter()
+            .for_each(|FunctionParameter { name, r#type, .. }| {
+                namespace.insert(
+                    name.clone(),
+                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                        name: name.clone(),
+                        body: TypedExpression {
+                            expression: TypedExpressionVariant::FunctionParameter,
+                            return_type: r#type,
+                            is_constant: IsConstant::No,
                         },
-                    );
-                    let (body, _implicit_block_return) = type_check!(TypedCodeBlock,
-                        body,
-                        &namespace,
-                        methods_namespace,
-                        Some(return_type.clone()),
-                        "Function body's return type does not match up with its return type annotation.",
-                        (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit), warnings ,errors
-                    );
+                        is_mutable: false, // TODO allow mutable function params?
+                    }),
+                );
+            });
+        let (body, _implicit_block_return) = type_check!(
+            TypedCodeBlock,
+            body,
+            &namespace,
+            methods_namespace,
+            Some(return_type.clone()),
+            "Function body's return type does not match up with its return type annotation.",
+            (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
+            warnings,
+            errors
+        );
 
-                    // check the generic types in the arguments, make sure they are in the type
-                    // scope 
-                    let mut generic_params_buf_for_error_message = Vec::new();
-                    for param in parameters.iter() {
-                        if let TypeInfo::Generic { name } = param.r#type {
-                            generic_params_buf_for_error_message.push(name);
-                        }
-                    }
-                    let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-                    for FunctionParameter { ref r#type, name, .. } in parameters.iter() {
-                        let span = name.span.clone();
-                        if let  TypeInfo::Generic { name , .. } = r#type {
-                            let args_span = parameters.iter().fold(parameters[0].name.span.clone(), |acc, FunctionParameter { name: VarName { span, .. }, .. }| crate::utils::join_spans(acc, span.clone()));
-                            if type_parameters.iter().find(|x| x.name == *name ).is_none() {
-                                errors.push(CompileError::TypeParameterNotInTypeScope {
-                                    name,
-                                    span: span.clone(),
-                                    comma_separated_generic_params: comma_separated_generic_params.clone(),
-                                    fn_name: name,
-                                    args: args_span.as_str(),
-                                    return_type: return_type.friendly_type_str()
-                                });
-                            }
-
-                        }
-                    }
-                        
-                     ok(TypedFunctionDeclaration {
+        // check the generic types in the arguments, make sure they are in the type
+        // scope
+        let mut generic_params_buf_for_error_message = Vec::new();
+        for param in parameters.iter() {
+            if let TypeInfo::Generic { name } = param.r#type {
+                generic_params_buf_for_error_message.push(name);
+            }
+        }
+        let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
+        for FunctionParameter {
+            ref r#type, name, ..
+        } in parameters.iter()
+        {
+            let span = name.span.clone();
+            if let TypeInfo::Generic { name, .. } = r#type {
+                let args_span = parameters.iter().fold(
+                    parameters[0].name.span.clone(),
+                    |acc,
+                     FunctionParameter {
+                         name: VarName { span, .. },
+                         ..
+                     }| crate::utils::join_spans(acc, span.clone()),
+                );
+                if type_parameters.iter().find(|x| x.name == *name).is_none() {
+                    errors.push(CompileError::TypeParameterNotInTypeScope {
                         name,
-                        body,
-                        parameters,
                         span: span.clone(),
-                        return_type,
-                        type_parameters,
-                    }, warnings, errors)
+                        comma_separated_generic_params: comma_separated_generic_params.clone(),
+                        fn_name: name,
+                        args: args_span.as_str(),
+                        return_type: return_type.friendly_type_str(),
+                    });
+                }
+            }
+        }
+
+        ok(
+            TypedFunctionDeclaration {
+                name,
+                body,
+                parameters,
+                span: span.clone(),
+                return_type,
+                type_parameters,
+            },
+            warnings,
+            errors,
+        )
     }
 }
 
 fn type_check_node<'sc>(
     node: AstNode<'sc>,
     namespace: &mut HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
-    methods_namespace: &mut HashMap<VarName<'sc>, Vec<FunctionDeclaration<'sc>>>,
+    methods_namespace: &mut HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
     return_type_annotation: Option<TypeInfo<'sc>>,
     help_text: impl Into<String>,
 ) -> CompileResult<'sc, TypedAstNode<'sc>> {
@@ -863,8 +896,17 @@ fn type_check_node<'sc>(
                     body,
                     is_mutable,
                 }) => {
-                    let body = type_check!(TypedExpression, body, &namespace, &methods_namespace, type_ascription.clone(), 
-                    format!("Variable declaration's type annotation (type {}) does not match up with the assigned expression's type.", type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())), ERROR_RECOVERY_EXPR.clone(), warnings, errors);
+                    let body = type_check!(
+                        TypedExpression, 
+                        body,
+                        &namespace,
+                        &methods_namespace,
+                        type_ascription.clone(), 
+                        format!("Variable declaration's type annotation (type {}) does not match up with the assigned expression's type.",
+                            type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())),
+                        ERROR_RECOVERY_EXPR.clone(),
+                        warnings,
+                        errors);
                     let body = TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                         name: name.clone(),
                         body,
@@ -888,23 +930,23 @@ fn type_check_node<'sc>(
                     decl
                 }
                 Declaration::FunctionDeclaration(fn_decl) => {
-                    let decl = 
-type_check!(TypedFunctionDeclaration, fn_decl,
-                            &namespace,
-                            &methods_namespace,
-                            None,
-                            "",
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                    let decl = type_check!(
+                        TypedFunctionDeclaration,
+                        fn_decl,
+                        &namespace,
+                        &methods_namespace,
+                        None,
+                        "",
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
 
                     namespace.insert(
                         decl.name.clone(),
                         TypedDeclaration::FunctionDeclaration(decl.clone()),
                     );
                     TypedDeclaration::FunctionDeclaration(decl)
-
                 }
                 Declaration::TraitDeclaration(TraitDeclaration {
                     name,
@@ -925,7 +967,7 @@ type_check!(TypedFunctionDeclaration, fn_decl,
                     {
                         let mut namespace = namespace.clone();
                         parameters.clone().into_iter().for_each(
-                            |FunctionParameter { name, r#type }| {
+                            |FunctionParameter { name, r#type, .. }| {
                                 namespace.insert(
                                     name.clone(),
                                     TypedDeclaration::VariableDeclaration(
@@ -943,32 +985,45 @@ type_check!(TypedFunctionDeclaration, fn_decl,
                                 );
                             },
                         );
-                    // check the generic types in the arguments, make sure they are in the type
-                    // scope 
-                    let mut generic_params_buf_for_error_message = Vec::new();
-                    for param in parameters.iter() {
-                        if let TypeInfo::Generic { name } = param.r#type {
-                            generic_params_buf_for_error_message.push(name);
-                        }
-                    }
-                    let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-                    for FunctionParameter { ref r#type, name, .. } in parameters.iter() {
-                        let span = name.span.clone();
-                        if let  TypeInfo::Generic { name , .. } = r#type {
-                            let args_span = parameters.iter().fold(parameters[0].name.span.clone(), |acc, FunctionParameter { name: VarName { span, .. }, .. }| crate::utils::join_spans(acc, span.clone()));
-                            if type_parameters.iter().find(|x| x.name == *name ).is_none() {
-                                errors.push(CompileError::TypeParameterNotInTypeScope {
-                                    name,
-                                    span: span.clone(),
-                                    comma_separated_generic_params: comma_separated_generic_params.clone(),
-                                    fn_name: name,
-                                    args: args_span.as_str(),
-                                    return_type: return_type.friendly_type_str()
-                                });
+                        // check the generic types in the arguments, make sure they are in the type
+                        // scope
+                        let mut generic_params_buf_for_error_message = Vec::new();
+                        for param in parameters.iter() {
+                            if let TypeInfo::Generic { name } = param.r#type {
+                                generic_params_buf_for_error_message.push(name);
                             }
-
                         }
-                    }
+                        let comma_separated_generic_params =
+                            generic_params_buf_for_error_message.join(", ");
+                        for FunctionParameter {
+                            ref r#type, name, ..
+                        } in parameters.iter()
+                        {
+                            let span = name.span.clone();
+                            if let TypeInfo::Generic { name, .. } = r#type {
+                                let args_span = parameters.iter().fold(
+                                    parameters[0].name.span.clone(),
+                                    |acc,
+                                     FunctionParameter {
+                                         name: VarName { span, .. },
+                                         ..
+                                     }| {
+                                        crate::utils::join_spans(acc, span.clone())
+                                    },
+                                );
+                                if type_parameters.iter().find(|x| x.name == *name).is_none() {
+                                    errors.push(CompileError::TypeParameterNotInTypeScope {
+                                        name,
+                                        span: span.clone(),
+                                        comma_separated_generic_params:
+                                            comma_separated_generic_params.clone(),
+                                        fn_name: name,
+                                        args: args_span.as_str(),
+                                        return_type: return_type.friendly_type_str(),
+                                    });
+                                }
+                            }
+                        }
                         // TODO check code block implicit return
                         let (body, _code_block_implicit_return) = 
                                         type_check!(
@@ -1050,25 +1105,147 @@ type_check!(TypedFunctionDeclaration, fn_decl,
 
                     TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs })
                 }
-                Declaration::ImplTrait(ImplTrait { trait_name, type_arguments, functions } ) => {
-                    // type check all components of the impl trait functions
-                    let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                    for fn_decl in functions.into_iter() {
-                    functions_buf.push(type_check!(TypedFunctionDeclaration, 
-                            fn_decl,
-                            &namespace,
-                            &methods_namespace,
-                            None,
-                            "",
-                            continue,
-                            warnings,
-                            errors
-                        ));
+                Declaration::ImplTrait(ImplTrait {
+                    trait_name,
+                    type_arguments,
+                    functions,
+                    type_implementing_for,
+                    block_span,
+                }) => match namespace.get(&trait_name) {
+                    Some(TypedDeclaration::TraitDeclaration(tr)) => {
+                        // check the length of the type arguments, compare to type parameters
+                        // replace all generic types of that type in the function bodies with the
+                        // provided type arguments
+                        // do the same thing with function declarations that have type arguments
+                        todo!("above comment");
+                        // type check all components of the impl trait functions
+                        let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
+                        // this list keeps track of the remaining functions in the
+                        // interface surface that still need to be implemented for the
+                        // trait to be fully implemented
+                        let mut function_checklist: Vec<&VarName> = tr
+                            .interface_surface
+                            .iter()
+                            .map(|TraitFn { name, .. }| name)
+                            .collect();
+                        for mut fn_decl in functions.into_iter() {
+                            let mut type_arguments = type_arguments.clone();
+                            // add generic params from impl trait into function type params
+                            fn_decl.type_parameters.append(&mut type_arguments);
+                            // ensure this fn decl's parameters and signature lines up with the one
+                            // in the trait
+                            if let Some(mut l_e) = tr.interface_surface.iter().find_map(|TraitFn { name, parameters, return_type }| {
+                                            if fn_decl.name == *name {
+                                            let mut errors = vec![];
+                                        if let Some(mut maybe_err) = parameters.iter().zip(fn_decl.parameters.iter()).find_map(|(fn_decl_param, trait_param)| {
+                                            let mut errors = vec![];
+                                            if let TypeInfo::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
+                                                if let TypeInfo::Generic { .. } = trait_param.r#type {
+                                                    // nothing -- this is ok, no error
+                                                } else 
+                                                {
+                                                    errors.push(CompileError::MismatchedTypeInTrait {
+                                                        span: fn_decl_param.type_span.clone(),
+                                                        given: fn_decl_param.r#type.friendly_type_str(),
+                                                        expected: trait_param.r#type.friendly_type_str()
+                                                    });
+                                                }
+                                            } else {
+                                                if fn_decl_param.r#type == trait_param.r#type  { /* nothing -- this is ok */ } else {
+                                                    errors.push(CompileError::MismatchedTypeInTrait {span: fn_decl_param.type_span.clone(),
+                                                    given: fn_decl_param.r#type.friendly_type_str(),
+                                                    expected: trait_param.r#type.friendly_type_str()});
+                                                }
+                                            }
+                                            if errors.is_empty() { None } else { Some(errors) }
+                                        }) {
+                                            errors.append(&mut maybe_err);
+                                        }
+                                        if fn_decl.return_type == *return_type {
+                                            // nothing -- this is fine, no error
+                                        }
+                                        else {
+                                            errors.push(CompileError::MismatchedTypeInTrait { span: fn_decl.return_type_span.clone(), expected: return_type.friendly_type_str(), given: fn_decl.return_type.friendly_type_str() })
+                                        }
+                                        if errors.is_empty() { None } else { Some(errors) }
+                                            } else { None } 
+                                    })
+                                    {
+                                        errors.append(&mut l_e);
+                                        continue;
+                                    }     
+                                    // remove this function from the "checklist"
+                                    let ix_of_thing_to_remove = match function_checklist.iter().position(|name | **name == fn_decl.name ) {
+                                        Some(ix) => ix,
+                                        None => {
+                                            errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
+                                                name: fn_decl.name.primary_name.clone(),
+                                                trait_name: trait_name.primary_name.clone(),
+                                                span: fn_decl.name.span.clone() 
+                                            });
+                                            return err(warnings, errors);
+                                        }
+                                    };
+                                    function_checklist.remove(ix_of_thing_to_remove);
+
+                                    // replace SelfType with type of implementor
+                            // i.e. fn add(self, other: u64) -> Self becomes fn
+                            // add(self: u64, other: u64) -> u64
+                            if let Some(ix) = fn_decl.parameters.iter().position(
+                                |FunctionParameter { name, r#type, .. }| {
+                                    r#type == &TypeInfo::SelfType
+                                },
+                            ) {
+                                fn_decl.parameters[ix].r#type = type_implementing_for.clone();
+                            }
+                            if fn_decl.return_type == TypeInfo::SelfType {
+                                fn_decl.return_type = type_implementing_for.clone();
+                            }
+                            functions_buf.push(type_check!(
+                                TypedFunctionDeclaration,
+                                fn_decl,
+                                &namespace,
+                                &methods_namespace,
+                                None,
+                                "",
+                                continue,
+                                warnings,
+                                errors
+                            ));
+                        }
+
+                        // check that the implementation checklist is complete
+                        if !function_checklist.is_empty()  {
+                            errors.push(CompileError::MissingInterfaceSurfaceMethods {
+                                span: block_span,
+                                missing_functions: function_checklist.into_iter().map(|VarName { primary_name, .. }| primary_name.to_string()).collect::<Vec<_>>().join("\n")});
+
+                        }
+
+                        let mut methods_namespace = methods_namespace.clone();
+                        if let Some(mutable_vec_pointer) = methods_namespace.get_mut(&type_implementing_for) {
+                            mutable_vec_pointer.append(&mut functions_buf);
+                        } else {
+                           methods_namespace.insert(type_implementing_for, functions_buf); 
+                        }
+                        TypedDeclaration::ImplTraitDeclaration
                     }
-                    let mut methods_namespace = methods_namespace.clone();
-                    todo!("insert validated trait implementation methods into namespace")
-                }
-                
+                    Some(_) => {
+                        errors.push(CompileError::NotATrait {
+                            span: trait_name.span,
+                            name: trait_name.primary_name,
+                        });
+                        ERROR_RECOVERY_DECLARATION.clone()
+                    }
+                    None => {
+                        errors.push(CompileError::UnknownTrait {
+                            name: trait_name.primary_name,
+                            span: trait_name.span,
+                        });
+                        ERROR_RECOVERY_DECLARATION.clone()
+                    }
+                },
+
                 a => {
                     dbg!("Unimplemented", &a);
                     errors.push(CompileError::Unimplemented(

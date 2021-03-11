@@ -1,18 +1,23 @@
 use super::{FunctionDeclaration, TypeParameter, VarName};
 use crate::{error::*, parser::Rule, types::TypeInfo};
 use pest::iterators::Pair;
+use pest::Span;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ImplTrait<'sc> {
     pub(crate) trait_name: VarName<'sc>,
+    pub(crate) type_implementing_for: TypeInfo<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
     pub(crate) functions: Vec<FunctionDeclaration<'sc>>,
+    // the span of the whole impl trait and block
+    pub(crate) block_span: Span<'sc>,
 }
 
 impl<'sc> ImplTrait<'sc> {
     pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+        let block_span = pair.as_span();
         let mut iter = pair.into_inner();
         let impl_keyword = iter.next().unwrap();
         assert_eq!(impl_keyword.as_str(), "impl");
@@ -32,7 +37,7 @@ impl<'sc> ImplTrait<'sc> {
             None
         };
 
-        let type_this_is_implemented_for = eval!(
+        let type_implementing_for = eval!(
             TypeInfo::parse_from_pair,
             warnings,
             errors,
@@ -84,7 +89,9 @@ impl<'sc> ImplTrait<'sc> {
             ImplTrait {
                 trait_name,
                 type_arguments,
+                type_implementing_for,
                 functions: fn_decls_buf,
+                block_span,
             },
             warnings,
             errors,

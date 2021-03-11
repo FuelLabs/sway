@@ -5,6 +5,7 @@ use crate::{CodeBlock, CompileError, Rule};
 use either::Either;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
+use pest::Span;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Visibility {
@@ -30,6 +31,7 @@ pub(crate) struct FunctionDeclaration<'sc> {
     pub(crate) span: pest::Span<'sc>,
     pub(crate) return_type: TypeInfo<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    pub(crate) return_type_span: Span<'sc>,
 }
 
 impl<'sc> FunctionDeclaration<'sc> {
@@ -89,6 +91,7 @@ impl<'sc> FunctionDeclaration<'sc> {
 
         // these are non-optional in a func decl
         let parameters_pair = parameters_pair.unwrap();
+        let parameters_span = parameters_pair.as_span();
 
         let parameters = eval!(
             FunctionParameter::list_from_pairs,
@@ -97,6 +100,12 @@ impl<'sc> FunctionDeclaration<'sc> {
             parameters_pair.clone().into_inner(),
             Vec::new()
         );
+        let return_type_span = if let Some(ref pair) = return_type_pair {
+            pair.as_span()
+        } else {
+            /* if this has no return type, just use the fn params as the span. */
+            parameters_span
+        };
         let return_type = match return_type_pair {
             Some(ref pair) => eval!(
                 TypeInfo::parse_from_pair,
@@ -176,6 +185,7 @@ impl<'sc> FunctionDeclaration<'sc> {
             FunctionDeclaration {
                 name,
                 parameters,
+                return_type_span,
                 visibility,
                 body,
                 span: pair.as_span(),
@@ -188,10 +198,11 @@ impl<'sc> FunctionDeclaration<'sc> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FunctionParameter<'sc> {
     pub(crate) name: VarName<'sc>,
     pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) type_span: Span<'sc>,
 }
 
 impl<'sc> FunctionParameter<'sc> {
@@ -203,13 +214,18 @@ impl<'sc> FunctionParameter<'sc> {
         let mut pairs_buf = Vec::new();
         for pair in pairs {
             if pair.as_str().trim() == "self" {
+                let type_span = pair.as_span();
                 let r#type = TypeInfo::SelfType;
                 let name = VarName {
                     span: pair.as_span(),
                     primary_name: "self",
                     sub_names: vec![],
                 };
-                pairs_buf.push(FunctionParameter { name, r#type });
+                pairs_buf.push(FunctionParameter {
+                    name,
+                    r#type,
+                    type_span,
+                });
                 continue;
             }
             let mut parts = pair.clone().into_inner();
@@ -226,14 +242,20 @@ impl<'sc> FunctionParameter<'sc> {
                     span: name_pair.as_span()
                 }
             );
+            let type_pair = parts.next().unwrap();
+            let type_span = type_pair.as_span();
             let r#type = eval!(
                 TypeInfo::parse_from_pair_inner,
                 warnings,
                 errors,
-                parts.next().unwrap(),
+                type_pair,
                 TypeInfo::ErrorRecovery
             );
-            pairs_buf.push(FunctionParameter { name, r#type });
+            pairs_buf.push(FunctionParameter {
+                name,
+                r#type,
+                type_span,
+            });
         }
         ok(pairs_buf, warnings, errors)
     }
