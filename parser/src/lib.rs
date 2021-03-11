@@ -150,7 +150,7 @@ pub fn compile<'sc>(
     );
 
     let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
-        match semantics::type_check_tree(tree, TreeType::Contract) {
+        match TypedParseTree::type_check(tree, TreeType::Contract) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -173,7 +173,7 @@ pub fn compile<'sc>(
         None
     };
     let predicate_ast: Option<_> = if let Some(tree) = parse_tree.predicate_ast {
-        match semantics::type_check_tree(tree, TreeType::Predicate) {
+        match TypedParseTree::type_check(tree, TreeType::Predicate) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -196,7 +196,7 @@ pub fn compile<'sc>(
         None
     };
     let script_ast: Option<_> = if let Some(tree) = parse_tree.script_ast {
-        match semantics::type_check_tree(tree, TreeType::Script) {
+        match TypedParseTree::type_check(tree, TreeType::Script) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -222,7 +222,7 @@ pub fn compile<'sc>(
         .library_exports
         .into_iter()
         .filter_map(
-            |(name, tree)| match semantics::type_check_tree(tree, TreeType::Library) {
+            |(name, tree)| match TypedParseTree::type_check(tree, TreeType::Library) {
                 CompileResult::Ok {
                     warnings: mut l_w,
                     errors: mut l_e,
