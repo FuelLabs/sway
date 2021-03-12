@@ -219,7 +219,6 @@ impl<'sc> FunctionParameter<'sc> {
                 let name = VarName {
                     span: pair.as_span(),
                     primary_name: "self",
-                    sub_names: vec![],
                 };
                 pairs_buf.push(FunctionParameter {
                     name,
@@ -238,7 +237,6 @@ impl<'sc> FunctionParameter<'sc> {
                 name_pair,
                 VarName {
                     primary_name: "error parsing var name",
-                    sub_names: Vec::new(),
                     span: name_pair.as_span()
                 }
             );

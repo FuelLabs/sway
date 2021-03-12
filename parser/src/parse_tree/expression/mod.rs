@@ -67,6 +67,11 @@ pub(crate) enum Expression<'sc> {
         span: Span<'sc>,
         asm: AsmExpression<'sc>,
     },
+    MethodApplication {
+        name_parts: Vec<VarName<'sc>>,
+        arguments: Vec<Expression<'sc>>,
+        span: Span<'sc>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +95,7 @@ impl<'sc> Expression<'sc> {
             ParenthesizedExpression { span, .. } => span,
             IfExp { span, .. } => span,
             AsmExpression { span, .. } => span,
+            MethodApplication { span, .. } => span,
         })
         .clone()
     }
@@ -224,7 +230,6 @@ impl<'sc> Expression<'sc> {
                     func_app_parts.next().unwrap(),
                     VarName {
                         primary_name: "error parsing var name",
-                        sub_names: Vec::new(),
                         span: span.clone()
                     }
                 );
@@ -269,7 +274,6 @@ impl<'sc> Expression<'sc> {
                                 pair,
                                 VarName {
                                     primary_name: "error parsing var name",
-                                    sub_names: Vec::new(),
                                     span: span.clone()
                                 }
                             ));
@@ -435,6 +439,49 @@ impl<'sc> Expression<'sc> {
                     span: whole_block_span,
                 }
             }
+            Rule::method_exp => {
+                let whole_exp_span = expr.as_span();
+                let mut parts = expr.into_inner();
+                let subfield_exp = parts.next().unwrap();
+                assert_eq!(subfield_exp.as_rule(), Rule::subfield_exp);
+                // the different parts of the exp
+                // e.g.
+                // if the method_exp is a.b.c.add()
+                // then these parts are
+                // ["a", "b", "c", "add"]
+                let name_parts = subfield_exp.into_inner().collect::<Vec<_>>();
+                let function_arguments = parts.next().unwrap().into_inner();
+                let mut arguments_buf = Vec::new();
+                for argument in function_arguments {
+                    let arg = eval!(
+                        Expression::parse_from_pair_inner,
+                        warnings,
+                        errors,
+                        argument,
+                        Expression::Unit {
+                            span: argument.as_span()
+                        }
+                    );
+                    arguments_buf.push(arg);
+                }
+                let mut name_parts_buf = Vec::new();
+                for name_part in name_parts {
+                    let name = eval!(
+                        VarName::parse_from_pair,
+                        warnings,
+                        errors,
+                        name_part,
+                        continue
+                    );
+                    name_parts_buf.push(name);
+                }
+
+                Expression::MethodApplication {
+                    name_parts: name_parts_buf,
+                    arguments: arguments_buf,
+                    span: whole_exp_span,
+                }
+            }
 
             a => {
                 eprintln!(
@@ -579,7 +626,6 @@ pub(crate) struct VarName<'sc> {
     // like x.test.thing.method()
     // `test`, `thing`, and `method` are sub-names
     // the primary name is `x`
-    pub(crate) sub_names: Vec<&'sc str>,
     pub(crate) span: Span<'sc>,
 }
 
@@ -588,12 +634,11 @@ pub(crate) struct VarName<'sc> {
 impl Hash for VarName<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.primary_name.hash(state);
-        self.sub_names.hash(state);
     }
 }
 impl PartialEq for VarName<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.primary_name == other.primary_name && self.sub_names == other.sub_names
+        self.primary_name == other.primary_name
     }
 }
 
@@ -609,13 +654,10 @@ impl<'sc> VarName<'sc> {
                 pair.as_span()
             }
         };
-        let mut names = pair.into_inner();
-        let primary_name = names.next().unwrap().as_str().trim();
-        let sub_names = names.map(|x| x.as_str()).collect();
+        let name = pair.as_str().trim();
         ok(
             VarName {
-                primary_name,
-                sub_names,
+                primary_name: name,
                 span,
             },
             Vec::new(),
@@ -671,7 +713,7 @@ impl<'sc> Op<'sc> {
         VarName {
             primary_name: self.op_variant.as_str(),
             span: self.span.clone(),
-            sub_names: vec!["std".into(), "ops".into()],
+            // TODO this should be a method exp not a var name
         }
     }
 }

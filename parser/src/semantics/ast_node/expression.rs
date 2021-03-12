@@ -358,7 +358,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             a => {
-                println!("Unimplemented: {:?}", a);
+                println!("Unimplemented semantics for expression: {:?}", a);
                 errors.push(CompileError::Unimplemented(
                     "Unimplemented expression",
                     a.span(),

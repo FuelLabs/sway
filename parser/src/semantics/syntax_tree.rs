@@ -85,7 +85,7 @@ impl<'sc> TypedParseTree<'sc> {
                                 ..
                             }),
                         ) => {
-                            if name.primary_name == "main" && name.sub_names.is_empty() {
+                            if name.primary_name == "main" {
                                 Some((return_type, span))
                             } else {
                                 None
@@ -124,7 +124,7 @@ impl<'sc> TypedParseTree<'sc> {
                                 ..
                             }),
                         ) => {
-                            if name.primary_name == "main" && name.sub_names.is_empty() {
+                            if name.primary_name == "main" {
                                 Some(span)
                             } else {
                                 None

@@ -119,7 +119,6 @@ impl<'sc> TypedAstNode<'sc> {
                         namespace.insert(
                             VarName {
                                 primary_name,
-                                sub_names: Vec::new(),
                                 span,
                             },
                             decl.clone(),
@@ -468,9 +467,9 @@ impl<'sc> TypedAstNode<'sc> {
                             ERROR_RECOVERY_DECLARATION.clone()
                         }
                     },
-
+                    
                     a => {
-                        dbg!("Unimplemented", &a);
+                        dbg!("Unimplemented ast node (declaration): ", &a);
                         errors.push(CompileError::Unimplemented(
                             "Unimplemented declaration variant",
                             node.span.clone(),
@@ -561,7 +560,7 @@ impl<'sc> TypedAstNode<'sc> {
                     })
                 }
                 a => {
-                    dbg!("Unimplemented", &a);
+                    dbg!("Unimplemented ast node content: ", &a);
                     errors.push(CompileError::Unimplemented(
                         "Unimplemented AST Node",
                         node.span.clone(),
