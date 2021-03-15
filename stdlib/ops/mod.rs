@@ -13,8 +13,16 @@ library ops {
          }
     }
 
+    struct Test {
+        a: u32,
+        b: u32
+    }
+
     fn test() {
         // now, need to work out methods and using the self type on them
+        let test = Test { a: 5, b: 5 };
+        let y: u32 = test.a;
+
         let z = a.add(b);
     }
 }

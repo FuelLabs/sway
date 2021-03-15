@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::{CodeBlock, CompileError, Rule};
+use crate::{parse_tree::VarName, CodeBlock, CompileError, Rule};
 use either::Either;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
@@ -16,6 +16,7 @@ pub enum TypeInfo<'sc> {
     SelfType,
     Byte,
     Byte32,
+    Struct { name: VarName<'sc> },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -35,7 +36,7 @@ impl<'sc> TypeInfo<'sc> {
     }
     pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         ok(
-            match input.as_str() {
+            match input.as_str().trim() {
                 "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
                 "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
                 "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
@@ -148,6 +149,10 @@ impl<'sc> TypeInfo<'sc> {
             SelfType => "Self".into(),
             Byte => "byte".into(),
             Byte32 => "byte32".into(),
+            Struct {
+                name: VarName { primary_name, .. },
+                ..
+            } => format!("Struct {}", primary_name),
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }

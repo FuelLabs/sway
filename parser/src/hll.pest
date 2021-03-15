@@ -84,7 +84,7 @@ reassignment = { var_exp ~ assign ~ expr ~ ";" }
 visibility = { "pub"? }
 
 struct_decl = { "struct" ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}" }
-struct_name = @{ident}
+struct_name = {ident}
 struct_fields = { struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","? }
 struct_field_name = @{ident}
 // // enum declaration

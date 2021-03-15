@@ -41,7 +41,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         branches: Vec<TypedMatchBranch<'sc>>,
     },
     StructExpression {
-        struct_name: &'sc str,
+        struct_name: VarName<'sc>,
         fields: Vec<TypedStructExpressionField<'sc>>,
     },
     CodeBlock(TypedCodeBlock<'sc>),
@@ -354,6 +354,66 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression {
                     expression: TypedExpressionVariant::AsmExpression { asm },
                     return_type,
+                    is_constant: IsConstant::No,
+                }
+            }
+            Expression::StructExpression {
+                span,
+                struct_name,
+                fields,
+            } => {
+                // find the struct definition in the namespace
+                let definition: &StructDeclaration = match namespace.get(&struct_name) {
+                    Some(TypedDeclaration::StructDeclaration(st)) => st,
+                    Some(_) => {
+                        errors.push(CompileError::DeclaredNonStructAsStruct {
+                            name: struct_name.primary_name,
+                            span: span.clone(),
+                        });
+                        return err(warnings, errors);
+                    }
+                    None => {
+                        errors.push(CompileError::StructNotFound {
+                            name: struct_name.primary_name,
+                            span: span.clone(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                let mut typed_fields_buf = vec![];
+
+                // match up the names with their type annotations from the declaration
+                for field in definition.fields.iter() {
+                    let expr_field = match fields.iter().find(|x| x.name == field.name) {
+                        Some(val) => val,
+                        None => todo!("Push error for missing struct field"),
+                    };
+
+                    let typed_field = type_check!(
+                        TypedExpression,
+                        expr_field.value,
+                        &namespace,
+                        &methods_namespace,
+                        Some(field.r#type.clone()),
+                        "Struct field's type must match up with the type specified in its declaration.",
+                        continue,
+                        warnings,
+                        errors
+                    );
+
+                    typed_fields_buf.push(TypedStructExpressionField {
+                        value: typed_field,
+                        name: expr_field.name,
+                    });
+                }
+                TypedExpression {
+                    expression: TypedExpressionVariant::StructExpression {
+                        struct_name: definition.name.clone(),
+                        fields: typed_fields_buf,
+                    },
+                    return_type: TypeInfo::Struct {
+                        name: definition.name.clone(),
+                    },
                     is_constant: IsConstant::No,
                 }
             }

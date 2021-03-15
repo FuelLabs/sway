@@ -44,7 +44,7 @@ pub(crate) enum Expression<'sc> {
         span: Span<'sc>,
     },
     StructExpression {
-        struct_name: &'sc str,
+        struct_name: VarName<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
         span: Span<'sc>,
     },
@@ -72,12 +72,16 @@ pub(crate) enum Expression<'sc> {
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
+    SubfieldExpression {
+        name_parts: Vec<VarName<'sc>>,
+        span: Span<'sc>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct StructExpressionField<'sc> {
-    name: &'sc str,
-    value: Expression<'sc>,
+    pub(crate) name: &'sc str,
+    pub(crate) value: Expression<'sc>,
 }
 
 impl<'sc> Expression<'sc> {
@@ -96,6 +100,7 @@ impl<'sc> Expression<'sc> {
             IfExp { span, .. } => span,
             AsmExpression { span, .. } => span,
             MethodApplication { span, .. } => span,
+            SubfieldExpression { span, .. } => span,
         })
         .clone()
     }
@@ -336,7 +341,14 @@ impl<'sc> Expression<'sc> {
             }
             Rule::struct_expression => {
                 let mut expr_iter = expr.into_inner();
-                let struct_name = expr_iter.next().unwrap().as_str();
+                let struct_name = expr_iter.next().unwrap();
+                let struct_name = eval!(
+                    VarName::parse_from_pair,
+                    warnings,
+                    errors,
+                    struct_name,
+                    return err(warnings, errors)
+                );
                 let fields = expr_iter.next().unwrap().into_inner().collect::<Vec<_>>();
                 let mut fields_buf = Vec::new();
                 for i in (0..fields.len()).step_by(2) {
@@ -482,7 +494,24 @@ impl<'sc> Expression<'sc> {
                     span: whole_exp_span,
                 }
             }
-
+            Rule::subfield_exp => {
+                let span = expr.as_span();
+                let iter = expr.into_inner();
+                let mut buf = vec![];
+                for part in iter {
+                    buf.push(eval!(
+                        VarName::parse_from_pair,
+                        warnings,
+                        errors,
+                        part,
+                        continue
+                    ));
+                }
+                Expression::SubfieldExpression {
+                    span,
+                    name_parts: buf,
+                }
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -620,7 +649,7 @@ impl UnaryOp {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct VarName<'sc> {
+pub struct VarName<'sc> {
     pub(crate) primary_name: &'sc str,
     // sub-names are the stuff after periods
     // like x.test.thing.method()

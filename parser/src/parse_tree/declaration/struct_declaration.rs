@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::parse_tree::declaration::TypeParameter;
+use crate::parse_tree::{declaration::TypeParameter, VarName};
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
 use inflector::cases::classcase::is_class_case;
@@ -8,15 +8,15 @@ use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub(crate) struct StructDeclaration<'sc> {
-    name: &'sc str,
-    fields: Vec<StructField<'sc>>,
-    type_parameters: Vec<TypeParameter<'sc>>,
+    pub(crate) name: VarName<'sc>,
+    pub(crate) fields: Vec<StructField<'sc>>,
+    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct StructField<'sc> {
-    name: &'sc str,
-    r#type: TypeInfo<'sc>,
+    pub(crate) name: &'sc str,
+    pub(crate) r#type: TypeInfo<'sc>,
 }
 
 impl<'sc> StructDeclaration<'sc> {
@@ -79,12 +79,20 @@ impl<'sc> StructDeclaration<'sc> {
         };
 
         let span = name.as_span();
-        let name = name.as_str();
+        let name = eval!(
+            VarName::parse_from_pair,
+            warnings,
+            errors,
+            name,
+            return err(warnings, errors)
+        );
         assert_or_warn!(
-            is_class_case(name),
+            is_class_case(name.primary_name),
             warnings,
             span,
-            Warning::NonClassCaseStructName { struct_name: name }
+            Warning::NonClassCaseStructName {
+                struct_name: name.primary_name
+            }
         );
         ok(
             StructDeclaration {

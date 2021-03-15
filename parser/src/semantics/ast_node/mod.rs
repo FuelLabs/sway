@@ -467,7 +467,13 @@ impl<'sc> TypedAstNode<'sc> {
                             ERROR_RECOVERY_DECLARATION.clone()
                         }
                     },
-                    
+                    Declaration::StructDeclaration(decl)=> {
+                        // insert struct into namespace
+                        namespace.insert(decl.name.clone(), TypedDeclaration::StructDeclaration(decl.clone()));
+
+                        TypedDeclaration::StructDeclaration(decl)
+                        
+                    }
                     a => {
                         dbg!("Unimplemented ast node (declaration): ", &a);
                         errors.push(CompileError::Unimplemented(

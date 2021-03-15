@@ -299,6 +299,10 @@ pub enum CompileError<'sc> {
         expected: usize,
         span: Span<'sc>,
     },
+    #[error("Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import it?")]
+    StructNotFound { name: &'sc str, span: Span<'sc> },
+    #[error("The name \"{name}\" does not refer to a struct, but this is an attempted struct declaration.")]
+    DeclaredNonStructAsStruct { name: &'sc str, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -408,6 +412,8 @@ impl<'sc> CompileError<'sc> {
             FunctionNotAPartOfInterfaceSurface { span, .. } => (span.start(), span.end()),
             MissingInterfaceSurfaceMethods { span, .. } => (span.start(), span.end()),
             IncorrectNumberOfTypeArguments { span, .. } => (span.start(), span.end()),
+            StructNotFound { span, .. } => (span.start(), span.end()),
+            DeclaredNonStructAsStruct { span, .. } => (span.start(), span.end()),
         }
     }
 }
