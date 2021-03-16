@@ -73,7 +73,7 @@ struct_expr_fields = { struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name
 array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
 // declarations 
-declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment|impl_trait)}
+declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment|impl_trait|impl_self)}
 var_decl    =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription = { ":" ~ type_name}
 fn_decl     =  {visibility ~ fn_signature ~ code_block}
@@ -92,6 +92,8 @@ enum_decl = { enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ en
 enum_fields = { enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","? }
 enum_name = @{ident} 
 enum_field_name = @{ident}
+
+impl_self = { impl_keyword ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}") }
 
 // // fn declaration
 fn_decl_params =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
@@ -120,8 +122,12 @@ trait_methods = { "{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{"~ fn_decl* ~ "}")* }
 trait_name = { ident } 
 impl_trait = { impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{"~ fn_decl* ~ "}") }
 
+
 // imports
-use_statement = { use_keyword ~ import_path ~ ";"}
+
+// for now, use statements are just strings to the file you import. this will be changed to the commented out version later
+use_statement = { use_keyword ~ string ~ ";" }
+//use_statement = { use_keyword ~ import_path ~ ";"}
 import_path = { ident ~ (path_separator ~ ident)* }
 
 // loops

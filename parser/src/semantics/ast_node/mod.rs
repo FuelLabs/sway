@@ -35,7 +35,7 @@ pub(crate) enum IsConstant {
 
 #[derive(Clone, Debug)]
 pub(crate) enum TypedAstNodeContent<'sc> {
-    UseStatement(UseStatement<'sc>),
+    UseStatement(UseStatement),
     //    CodeBlock(TypedCodeBlock<'sc>),
     ReturnStatement(TypedReturnStatement<'sc>),
     Declaration(TypedDeclaration<'sc>),
@@ -116,13 +116,7 @@ impl<'sc> TypedAstNode<'sc> {
                         let span = e.span.clone();
                         let primary_name = e.name;
                         let decl = TypedDeclaration::EnumDeclaration(e);
-                        namespace.insert(
-                            VarName {
-                                primary_name,
-                                span,
-                            },
-                            decl.clone(),
-                        );
+                        namespace.insert(VarName { primary_name, span }, decl.clone());
                         decl
                     }
                     Declaration::FunctionDeclaration(fn_decl) => {
@@ -310,7 +304,8 @@ impl<'sc> TypedAstNode<'sc> {
                         type_implementing_for,
                         type_arguments_span,
                         block_span,
-                    }) => match namespace.get(&trait_name) {
+                    }) => 
+                        match namespace.get(&trait_name) {
                         Some(TypedDeclaration::TraitDeclaration(tr)) => {
                             if type_arguments.len() != tr.type_parameters.len() {
                                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
@@ -466,12 +461,67 @@ impl<'sc> TypedAstNode<'sc> {
                             ERROR_RECOVERY_DECLARATION.clone()
                         }
                     },
-                    Declaration::StructDeclaration(decl)=> {
+
+                    Declaration::ImplSelf(ImplSelf {
+                        type_arguments,
+                        functions,
+                        type_implementing_for,
+                        type_arguments_span,
+                        block_span,
+                    }) => {
+                            let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
+                            for mut fn_decl in functions.into_iter() {
+                                let mut type_arguments = type_arguments.clone();
+                                // add generic params from impl trait into function type params
+                                fn_decl.type_parameters.append(&mut type_arguments);
+                                // ensure this fn decl's parameters and signature lines up with the one
+                                // in the trait
+
+                                // replace SelfType with type of implementor
+                                // i.e. fn add(self, other: u64) -> Self becomes fn
+                                // add(self: u64, other: u64) -> u64
+                                if let Some(ix) = fn_decl.parameters.iter().position(
+                                    |FunctionParameter { name, r#type, .. }| {
+                                        r#type == &TypeInfo::SelfType
+                                    },
+                                ) {
+                                    fn_decl.parameters[ix].r#type = type_implementing_for.clone();
+                                }
+                                if fn_decl.return_type == TypeInfo::SelfType {
+                                    fn_decl.return_type = type_implementing_for.clone();
+                                }
+
+                                functions_buf.push(type_check!(
+                                    TypedFunctionDeclaration,
+                                    fn_decl,
+                                    &namespace,
+                                    &methods_namespace,
+                                    None,
+                                    "",
+                                    continue,
+                                    warnings,
+                                    errors
+                                ));
+                            }
+
+
+                            if let Some(mutable_vec_pointer) =
+                                methods_namespace.get_mut(&type_implementing_for)
+                            {
+                                mutable_vec_pointer.append(&mut functions_buf);
+                            } else {
+                                methods_namespace.insert(type_implementing_for, functions_buf);
+                            }
+                            TypedDeclaration::ImplSelfDeclaration
+                    }
+                    Declaration::StructDeclaration(decl) => {
                         // insert struct into namespace
-                        namespace.insert(decl.name.clone(), TypedDeclaration::StructDeclaration(decl.clone()));
+                        namespace.insert(
+                            decl.name.clone(),
+                            TypedDeclaration::StructDeclaration(decl.clone()),
+                        );
 
                         TypedDeclaration::StructDeclaration(decl)
-                        
                     }
                     a => {
                         dbg!("Unimplemented ast node (declaration): ", &a);
@@ -535,7 +585,7 @@ impl<'sc> TypedAstNode<'sc> {
                         errors
                     );
                     TypedAstNodeContent::ImplicitReturnExpression(typed_expr)
-                }
+                },
                 AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
                     let typed_condition = type_check!(
                         TypedExpression,

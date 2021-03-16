@@ -32,6 +32,7 @@ pub(crate) enum Declaration<'sc> {
     EnumDeclaration(EnumDeclaration<'sc>),
     Reassignment(Reassignment<'sc>),
     ImplTrait(ImplTrait<'sc>),
+    ImplSelf(ImplSelf<'sc>),
     ErrorRecovery,
 }
 impl<'sc> Declaration<'sc> {
@@ -128,6 +129,13 @@ impl<'sc> Declaration<'sc> {
             )),
             Rule::impl_trait => Declaration::ImplTrait(eval!(
                 ImplTrait::parse_from_pair,
+                warnings,
+                errors,
+                decl_inner,
+                return err(warnings, errors)
+            )),
+            Rule::impl_self => Declaration::ImplSelf(eval!(
+                ImplSelf::parse_from_pair,
                 warnings,
                 errors,
                 decl_inner,

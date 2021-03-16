@@ -83,6 +83,7 @@ pub(crate) enum Expression<'sc> {
 pub(crate) struct StructExpressionField<'sc> {
     pub(crate) name: &'sc str,
     pub(crate) value: Expression<'sc>,
+    pub(crate) span: Span<'sc>,
 }
 
 impl<'sc> Expression<'sc> {
@@ -354,6 +355,7 @@ impl<'sc> Expression<'sc> {
                 let mut fields_buf = Vec::new();
                 for i in (0..fields.len()).step_by(2) {
                     let name = fields[i].as_str();
+                    let span = fields[i].as_span();
                     let value = eval!(
                         Expression::parse_from_pair,
                         warnings,
@@ -361,7 +363,7 @@ impl<'sc> Expression<'sc> {
                         fields[i + 1].clone(),
                         Expression::Unit { span: span.clone() }
                     );
-                    fields_buf.push(StructExpressionField { name, value });
+                    fields_buf.push(StructExpressionField { name, value, span });
                 }
 
                 Expression::StructExpression {

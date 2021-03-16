@@ -1,9 +1,9 @@
 library ops {
+    use "stdlib/ops/subtract.rs";
     trait Add {
         fn add(self, other: Self) -> Self;
     }
 
-    // there should be an error here for excess type params
     impl Add for u64 {
          fn add(self, other: Self) -> Self {
             asm(r1: self, r2: other, r3) {
@@ -26,6 +26,7 @@ library ops {
         let z = y.add(test.b);
     }
 }
+
 /*
 // the compiler will rename these to the ops, + - / * etc
 fn add_u64(a: u64, b: u64) -> u64 {

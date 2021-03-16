@@ -362,6 +362,7 @@ impl<'sc> TypedExpression<'sc> {
                 struct_name,
                 fields,
             } => {
+                // TODO in here replace generic types with provided types
                 // find the struct definition in the namespace
                 let definition: &StructDeclaration = match namespace.get(&struct_name) {
                     Some(TypedDeclaration::StructDeclaration(st)) => st,
@@ -383,10 +384,25 @@ impl<'sc> TypedExpression<'sc> {
                 let mut typed_fields_buf = vec![];
 
                 // match up the names with their type annotations from the declaration
-                for field in definition.fields.iter() {
-                    let expr_field = match fields.iter().find(|x| x.name == field.name) {
-                        Some(val) => val,
-                        None => todo!("Push error for missing struct field"),
+                for def_field in definition.fields.iter() {
+                    let expr_field = match fields.iter().find(|x| x.name == def_field.name) {
+                        Some(val) => val.clone(),
+                        None => {
+                            errors.push(CompileError::StructMissingField {
+                                field_name: def_field.name,
+                                struct_name: definition.name.primary_name,
+                                span: span.clone()
+                            });
+                            typed_fields_buf.push(TypedStructExpressionField {
+                                name: def_field.name,
+                                value: TypedExpression {
+                                    expression: TypedExpressionVariant::Unit,
+                                    return_type: TypeInfo::ErrorRecovery,
+                                    is_constant: IsConstant::No
+                                }
+                            });
+                            continue;
+                        }
                     };
 
                     let typed_field = type_check!(
@@ -394,7 +410,7 @@ impl<'sc> TypedExpression<'sc> {
                         expr_field.value,
                         &namespace,
                         &methods_namespace,
-                        Some(field.r#type.clone()),
+                        Some(def_field.r#type.clone()),
                         "Struct field's type must match up with the type specified in its declaration.",
                         continue,
                         warnings,
@@ -405,6 +421,15 @@ impl<'sc> TypedExpression<'sc> {
                         value: typed_field,
                         name: expr_field.name,
                     });
+                }
+
+                // check that there are no extra fields 
+                for field in fields {
+                            if definition.fields.iter().find(|x| x.name == field.name).is_none() {
+                                errors.push(CompileError::StructDoesntHaveThisField { field_name: field.name, struct_name: definition.name.primary_name, span: field.span });
+
+                            }
+
                 }
                 TypedExpression {
                     expression: TypedExpressionVariant::StructExpression {
@@ -422,73 +447,24 @@ impl<'sc> TypedExpression<'sc> {
                 // this must be >= 2, or else the parser would not have matched it. asserting that
                 // invariant here, since it is an assumption that is acted upon later.
                 assert!(name_parts_buf.len() >= 2);
-                let primary_name = name_parts_buf.pop_front().unwrap();
-                let mut struct_fields = Either::Right(match namespace.get(&primary_name) {
-                    Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                        body:
-                            TypedExpression {
-                                expression: TypedExpressionVariant::StructExpression { fields, .. },
-                                ..
-                            },
-                        is_mutable: _is_mutable, // this will be needed for subfield reassignments
-                        ..
-                    })) => fields,
-                    Some(_) => {
-                        errors.push(CompileError::AccessedFieldOfNonStruct {
-                            name: primary_name.primary_name.clone(),
-                            field_name: name_parts_buf.pop_front().unwrap().primary_name,
-                            span,
-                        });
-                        return err(warnings, errors);
+                match get_subfield_result(name_parts_buf, namespace) {
+                    CompileResult::Ok {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                        value,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                        value
                     }
-                    None => {
-                        errors.push(CompileError::UnknownVariable {
-                            var_name: primary_name.primary_name.clone(),
-                            span,
-                        });
-                        return err(warnings, errors);
+                    CompileResult::Err {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                        ERROR_RECOVERY_EXPR.clone()
                     }
-                });
-
-                let mut parent_struct = None;
-                // Ok this code is pretty nuts. We need to keep nesting into struct fields if the
-                // expression is a struct.
-                while let Some(name) = name_parts_buf.pop_front() {
-                    let field = match struct_fields {
-                        Either::Right(fields) => fields,
-                        Either::Left(non_fields) => todo!("error: accessed field of non-struct"),
-                    };
-                    let field = match field.into_iter().find(|x| x.name == name.primary_name) {
-                        Some(x) => x,
-                        None => todo!("field not found on struct error"),
-                    };
-
-                    // if field is a struct, either::Right
-                    // otherwise, either::left
-                    struct_fields = if let TypedStructExpressionField {
-                        name,
-                        value:
-                            a
-                            @
-                            TypedExpression {
-                                expression: TypedExpressionVariant::StructExpression { .. },
-                                ..
-                            },
-                    } = field
-                    {
-                        parent_struct = Some(a);
-                        Either::Right(match a.expression {
-                            TypedExpressionVariant::StructExpression { ref fields, .. } => fields,
-                            _ => unreachable!(),
-                        })
-                    } else {
-                        Either::Left(field)
-                    };
-                }
-
-                match struct_fields {
-                    Either::Left(a) => a.value.clone(),
-                    Either::Right(_) => parent_struct.unwrap().clone(),
                 }
             }
             Expression::MethodApplication {
@@ -505,36 +481,51 @@ impl<'sc> TypedExpression<'sc> {
                             body,
                             is_mutable,
                         })) => body,
-                        Some(_) => todo!("method on non-value error"),
-                        None => todo!("variable not found error"),
+                        Some(x) => {
+                            errors.push(CompileError::MethodOnNonValue {
+                                name: span.as_str(),
+                                thing: x.friendly_name(),
+                                span,
+                            });
+                            return err(warnings, errors);
+                        }
+                        None => {
+                            errors.push(CompileError::UnknownVariable {
+                                var_name: span.as_str(),
+                                span,
+                            });
+                            return err(warnings, errors);
+                        }
                     }
                 } else {
                     todo!() // abstract the above code for subfield exp and use it here
                 };
 
-                let available_methods =
-                    match methods_namespace.get(&value_of_parent.return_type) {
-                        Some(methods) => methods,
-                        None => todo!(
-                            "No method named {} found for type {} error",
-                            method_name.primary_name,
-                            value_of_parent.return_type.friendly_type_str()
-                        ),
-                    };
-
-                // find the method in question
-                let method = match available_methods.into_iter().find(|method| method.name == method_name) {
-                    Some(method) => method, 
-                    None => todo!("method not found error")
+                let available_methods = match methods_namespace.get(&value_of_parent.return_type) {
+                    Some(methods) => methods,
+                    None => todo!(
+                        "No method named {} found for type {} error",
+                        method_name.primary_name,
+                        value_of_parent.return_type.friendly_type_str()
+                    ),
                 };
 
-                // TODO zip type parameters and replace them in the types of the function 
+                // find the method in question
+                let method = match available_methods
+                    .into_iter()
+                    .find(|method| method.name == method_name)
+                {
+                    Some(method) => method,
+                    None => todo!("method not found error"),
+                };
+
+                // TODO zip type parameters and replace them in the types of the function
 
                 // zip parameters to arguments to perform type checking
                 let zipped = method.parameters.iter().zip(arguments.iter());
 
                 let mut typed_arg_buf = vec![];
-                for (FunctionParameter { r#type, .. } , arg) in zipped {
+                for (FunctionParameter { r#type, .. }, arg) in zipped {
                     typed_arg_buf.push(type_check!(
                         TypedExpression,
                         arg,
@@ -551,12 +542,14 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression {
                     expression: TypedExpressionVariant::FunctionApplication {
                         name: method_name, // TODO todo!("put the actual fully-typed function bodies in these applications"),
-                        arguments: typed_arg_buf
+                        arguments: typed_arg_buf,
                     },
                     return_type: method.return_type.clone(),
-                    is_constant: IsConstant::No
+                    is_constant: IsConstant::No,
                 }
-
+            } ,
+            Expression::Unit { span: _span } => {
+                TypedExpression { expression: TypedExpressionVariant::Unit, return_type: TypeInfo::Unit, is_constant: IsConstant::Yes } 
             }
 
             a => {
@@ -595,4 +588,99 @@ impl<'sc> TypedExpression<'sc> {
 
         ok(typed_expression, warnings, errors)
     }
+}
+
+fn get_subfield_result<'sc>(
+    mut name_parts_buf: std::collections::VecDeque<VarName<'sc>>,
+    namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+) -> CompileResult<'sc, TypedExpression<'sc>> {
+    let mut errors = vec![];
+    let mut warnings = vec![];
+    let primary_name = name_parts_buf.pop_front().unwrap();
+    let mut struct_fields = Either::Right(match namespace.get(&primary_name) {
+        Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+            body:
+                TypedExpression {
+                    expression: TypedExpressionVariant::StructExpression { fields, .. },
+                    ..
+                },
+            is_mutable: _is_mutable, // this will be needed for subfield reassignments
+            ..
+        })) => fields,
+        Some(_) => {
+            errors.push(CompileError::AccessedFieldOfNonStruct {
+                name: primary_name.primary_name.clone(),
+                field_name: name_parts_buf.pop_front().unwrap().primary_name,
+                span: primary_name.span,
+            });
+            return err(warnings, errors);
+        }
+        None => {
+            errors.push(CompileError::UnknownVariable {
+                var_name: primary_name.primary_name.clone(),
+                span: primary_name.span,
+            });
+            return err(warnings, errors);
+        }
+    });
+
+    let mut parent_struct = None;
+    // Ok this code is pretty nuts. We need to keep nesting into struct fields if the
+    // expression is a struct.
+    while let Some(name) = name_parts_buf.pop_front() {
+        let field = match struct_fields {
+            Either::Right(fields) => fields,
+            Either::Left(non_fields) => {
+                errors.push(CompileError::AccessedFieldOfNonStruct {
+                    field_name: name.primary_name,
+                    name: primary_name.primary_name.clone(),
+                    span: name.span,
+                });
+                return err(warnings, errors);
+            }
+        };
+        let field = match field.into_iter().find(|x| x.name == name.primary_name) {
+            Some(x) => x,
+            None => {
+                errors.push(CompileError::FieldNotFoundOnStruct  {
+                    field_name: name.primary_name,
+                    struct_name: primary_name.primary_name,
+                    span: name.span,
+            });
+                
+                return err(warnings, errors); 
+            }
+        };
+
+        // if field is a struct, either::Right
+        // otherwise, either::left
+        struct_fields = if let TypedStructExpressionField {
+            name,
+            value:
+                a
+                @
+                TypedExpression {
+                    expression: TypedExpressionVariant::StructExpression { .. },
+                    ..
+                },
+        } = field
+        {
+            parent_struct = Some(a);
+            Either::Right(match a.expression {
+                TypedExpressionVariant::StructExpression { ref fields, .. } => fields,
+                _ => unreachable!(),
+            })
+        } else {
+            Either::Left(field)
+        };
+    }
+
+    ok(
+        match struct_fields {
+            Either::Left(a) => a.value.clone(),
+            Either::Right(_) => parent_struct.unwrap().clone(),
+        },
+        warnings,
+        errors,
+    )
 }

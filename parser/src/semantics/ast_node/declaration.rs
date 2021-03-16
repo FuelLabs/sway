@@ -17,6 +17,7 @@ pub(crate) enum TypedDeclaration<'sc> {
     Reassignment(TypedReassignment<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates the methods namespace
     ImplTraitDeclaration,
+    ImplSelfDeclaration,
     ErrorRecovery,
 }
 
@@ -32,6 +33,7 @@ impl<'sc> TypedDeclaration<'sc> {
             EnumDeclaration(_) => "enum",
             Reassignment(_) => "reassignment",
             ImplTraitDeclaration => "impl trait",
+            ImplSelfDeclaration => "impl self",
             ErrorRecovery => "invalid declaration",
         }
     }

@@ -309,6 +309,30 @@ pub enum CompileError<'sc> {
         name: &'sc str,
         span: Span<'sc>,
     },
+    #[error("Attempted to access a method on something that has no methods. \"{name}\" is a {thing}, not a type with methods.")]
+    MethodOnNonValue {
+        name: &'sc str,
+        thing: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Field \"{field_name}\" not found on struct \"{struct_name}\".")]
+    FieldNotFoundOnStruct {
+        field_name: &'sc str,
+        struct_name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
+    StructMissingField {
+        field_name: &'sc str,
+        struct_name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
+    StructDoesntHaveThisField {
+        field_name: &'sc str,
+        struct_name: &'sc str,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -421,6 +445,10 @@ impl<'sc> CompileError<'sc> {
             StructNotFound { span, .. } => (span.start(), span.end()),
             DeclaredNonStructAsStruct { span, .. } => (span.start(), span.end()),
             AccessedFieldOfNonStruct { span, .. } => (span.start(), span.end()),
+            MethodOnNonValue { span, .. } => (span.start(), span.end()),
+            FieldNotFoundOnStruct { span, .. } => (span.start(), span.end()),
+            StructMissingField { span, .. } => (span.start(), span.end()),
+            StructDoesntHaveThisField { span, .. } => (span.start(), span.end()),
         }
     }
 }
