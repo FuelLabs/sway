@@ -303,6 +303,12 @@ pub enum CompileError<'sc> {
     StructNotFound { name: &'sc str, span: Span<'sc> },
     #[error("The name \"{name}\" does not refer to a struct, but this is an attempted struct declaration.")]
     DeclaredNonStructAsStruct { name: &'sc str, span: Span<'sc> },
+    #[error("Attempted to access field \"{field_name}\" of non-struct \"{name}\". Field accesses are only valid on structs.")]
+    AccessedFieldOfNonStruct {
+        field_name: &'sc str,
+        name: &'sc str,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -414,6 +420,7 @@ impl<'sc> CompileError<'sc> {
             IncorrectNumberOfTypeArguments { span, .. } => (span.start(), span.end()),
             StructNotFound { span, .. } => (span.start(), span.end()),
             DeclaredNonStructAsStruct { span, .. } => (span.start(), span.end()),
+            AccessedFieldOfNonStruct { span, .. } => (span.start(), span.end()),
         }
     }
 }

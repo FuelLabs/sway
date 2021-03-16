@@ -417,6 +417,75 @@ impl<'sc> TypedExpression<'sc> {
                     is_constant: IsConstant::No,
                 }
             }
+            Expression::SubfieldExpression { name_parts, span } => {
+                let mut name_parts_buf = std::collections::VecDeque::from(name_parts);
+                // this must be >= 2, or else the parser would not have matched it. asserting that
+                // invariant here, since it is an assumption that is acted upon later.
+                assert!(name_parts_buf.len() >= 2);
+                let primary_name = name_parts_buf.pop_front().unwrap();
+                let mut struct_fields = Either::Right(match namespace.get(&primary_name) {
+                    Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                        body:
+                            TypedExpression {
+                                expression: TypedExpressionVariant::StructExpression { fields, .. },
+                                ..
+                            },
+                        is_mutable: _is_mutable, // this will be needed for subfield reassignments
+                        ..
+                    })) => fields,
+                    Some(_) => {
+                        errors.push(CompileError::AccessedFieldOfNonStruct {
+                            name: primary_name.primary_name.clone(),
+                            field_name: name_parts_buf.pop_front().unwrap().primary_name,
+                            span,
+                        });
+                        return err(warnings, errors);
+                    }
+                    None => {
+                        errors.push(CompileError::UnknownVariable {
+                            var_name: primary_name.primary_name.clone(),
+                            span,
+                        });
+                        return err(warnings, errors);
+                    }
+                });
+
+                // Ok this code is pretty nuts. We need to keep nesting into struct fields if the
+                // expression is a struct.
+                while let Some(name) = name_parts_buf.pop_front() {
+                    let field = match struct_fields {
+                        Either::Right(fields) => fields,
+                        Either::Left(non_fields) => todo!("error: accessed field of non-struct"),
+                    };
+                    let field = match field.into_iter().find(|x| x.name == name.primary_name) {
+                        Some(x) => x,
+                        None => todo!("field not found on struct error"),
+                    };
+
+                    // if field is a struct, either::Right
+                    // otherwise, either::left
+                    struct_fields = if let TypedStructExpressionField {
+                        name,
+                        value:
+                            TypedExpression {
+                                expression:
+                                    TypedExpressionVariant::StructExpression { ref fields, .. },
+                                ..
+                            },
+                    } = field
+                    {
+                        Either::Right(fields)
+                    } else {
+                        Either::Left(field)
+                    };
+                }
+
+                TypedExpression {
+                    expression: todo!(),
+                    return_type: todo!(),
+                    is_constant: IsConstant::No,
+                }
+            }
             a => {
                 println!("Unimplemented semantics for expression: {:?}", a);
                 errors.push(CompileError::Unimplemented(
