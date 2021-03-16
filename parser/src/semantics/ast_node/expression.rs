@@ -491,6 +491,74 @@ impl<'sc> TypedExpression<'sc> {
                     Either::Right(_) => parent_struct.unwrap().clone(),
                 }
             }
+            Expression::MethodApplication {
+                subfield_exp,
+                method_name,
+                arguments,
+                span,
+            } => {
+                // find the function declaration in the methods namespace
+                let value_of_parent = if subfield_exp.len() == 1 {
+                    match namespace.get(&subfield_exp[0]) {
+                        Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                            name,
+                            body,
+                            is_mutable,
+                        })) => body,
+                        Some(_) => todo!("method on non-value error"),
+                        None => todo!("variable not found error"),
+                    }
+                } else {
+                    todo!() // abstract the above code for subfield exp and use it here
+                };
+
+                let available_methods =
+                    match methods_namespace.get(&value_of_parent.return_type) {
+                        Some(methods) => methods,
+                        None => todo!(
+                            "No method named {} found for type {} error",
+                            method_name.primary_name,
+                            value_of_parent.return_type.friendly_type_str()
+                        ),
+                    };
+
+                // find the method in question
+                let method = match available_methods.into_iter().find(|method| method.name == method_name) {
+                    Some(method) => method, 
+                    None => todo!("method not found error")
+                };
+
+                // TODO zip type parameters and replace them in the types of the function 
+
+                // zip parameters to arguments to perform type checking
+                let zipped = method.parameters.iter().zip(arguments.iter());
+
+                let mut typed_arg_buf = vec![];
+                for (FunctionParameter { r#type, .. } , arg) in zipped {
+                    typed_arg_buf.push(type_check!(
+                        TypedExpression,
+                        arg,
+                        &namespace,
+                        &methods_namespace,
+                        Some(r#type.clone()),
+                        "Function argument must be of the same type declared in the function declaration.",
+                        continue, 
+                        warnings,
+                        errors
+                    ));
+                }
+
+                TypedExpression {
+                    expression: TypedExpressionVariant::FunctionApplication {
+                        name: method_name, // TODO todo!("put the actual fully-typed function bodies in these applications"),
+                        arguments: typed_arg_buf
+                    },
+                    return_type: method.return_type.clone(),
+                    is_constant: IsConstant::No
+                }
+
+            }
+
             a => {
                 println!("Unimplemented semantics for expression: {:?}", a);
                 errors.push(CompileError::Unimplemented(

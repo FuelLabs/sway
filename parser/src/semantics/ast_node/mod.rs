@@ -442,7 +442,6 @@ impl<'sc> TypedAstNode<'sc> {
                                 });
                             }
 
-                            let mut methods_namespace = methods_namespace.clone();
                             if let Some(mutable_vec_pointer) =
                                 methods_namespace.get_mut(&type_implementing_for)
                             {

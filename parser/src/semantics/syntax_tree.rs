@@ -30,12 +30,6 @@ impl<'sc> TypedParseTree<'sc> {
         let typed_tree = parsed
             .root_nodes
             .into_iter()
-            // this is the initialization of the global namespace
-            // when we have actual default imports and stuff
-            // this will be a clone of the initialized namespace
-            // for now it is empty, i.e. `HashMap::default()`
-            //
-            // Top level functions are expected to return the Unit type, hence the annotation here
             .map(|node| {
                 TypedAstNode::type_check(
                     node,

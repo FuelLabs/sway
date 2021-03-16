@@ -68,7 +68,8 @@ pub(crate) enum Expression<'sc> {
         asm: AsmExpression<'sc>,
     },
     MethodApplication {
-        name_parts: Vec<VarName<'sc>>,
+        subfield_exp: Vec<VarName<'sc>>,
+        method_name: VarName<'sc>,
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
@@ -362,7 +363,7 @@ impl<'sc> Expression<'sc> {
                     );
                     fields_buf.push(StructExpressionField { name, value });
                 }
-                // TODO add warning for capitalization on struct name
+
                 Expression::StructExpression {
                     struct_name,
                     fields: fields_buf,
@@ -456,12 +457,20 @@ impl<'sc> Expression<'sc> {
                 let mut parts = expr.into_inner();
                 let subfield_exp = parts.next().unwrap();
                 assert_eq!(subfield_exp.as_rule(), Rule::subfield_exp);
+                // remove the last field from the subfield exp, since it is the method name
                 // the different parts of the exp
                 // e.g.
                 // if the method_exp is a.b.c.add()
                 // then these parts are
                 // ["a", "b", "c", "add"]
-                let name_parts = subfield_exp.into_inner().collect::<Vec<_>>();
+                let mut name_parts = subfield_exp.into_inner().collect::<Vec<_>>();
+                let method_name = eval!(
+                    VarName::parse_from_pair,
+                    warnings,
+                    errors,
+                    name_parts.pop().unwrap(),
+                    return err(warnings, errors)
+                );
                 let function_arguments = parts.next().unwrap().into_inner();
                 let mut arguments_buf = Vec::new();
                 for argument in function_arguments {
@@ -489,29 +498,19 @@ impl<'sc> Expression<'sc> {
                 }
 
                 Expression::MethodApplication {
-                    name_parts: name_parts_buf,
+                    subfield_exp: name_parts_buf,
+                    method_name,
                     arguments: arguments_buf,
                     span: whole_exp_span,
                 }
             }
-            Rule::subfield_exp => {
-                let span = expr.as_span();
-                let iter = expr.into_inner();
-                let mut buf = vec![];
-                for part in iter {
-                    buf.push(eval!(
-                        VarName::parse_from_pair,
-                        warnings,
-                        errors,
-                        part,
-                        continue
-                    ));
-                }
-                Expression::SubfieldExpression {
-                    span,
-                    name_parts: buf,
-                }
-            }
+            Rule::subfield_exp => eval!(
+                subfield_from_pair,
+                warnings,
+                errors,
+                expr,
+                return err(warnings, errors)
+            ),
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -896,4 +895,28 @@ fn arrange_by_order_of_operations<'sc>(
     }
 
     ok(expression_stack[0].clone(), warnings, errors)
+}
+fn subfield_from_pair<'sc>(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Expression> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let span = expr.as_span();
+    let iter = expr.into_inner();
+    let mut buf = vec![];
+    for part in iter {
+        buf.push(eval!(
+            VarName::parse_from_pair,
+            warnings,
+            errors,
+            part,
+            continue
+        ));
+    }
+    ok(
+        Expression::SubfieldExpression {
+            span,
+            name_parts: buf,
+        },
+        warnings,
+        errors,
+    )
 }
