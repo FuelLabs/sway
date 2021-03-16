@@ -84,7 +84,7 @@ impl<'sc> TypedExpression<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let expr_span = other.span();
-        let typed_expression = match other {
+        let mut typed_expression = match other {
             Expression::Literal { value: lit, .. } => {
                 let return_type = match lit {
                     Literal::String(_) => TypeInfo::String,
@@ -450,6 +450,7 @@ impl<'sc> TypedExpression<'sc> {
                     }
                 });
 
+                let mut parent_struct = None;
                 // Ok this code is pretty nuts. We need to keep nesting into struct fields if the
                 // expression is a struct.
                 while let Some(name) = name_parts_buf.pop_front() {
@@ -467,23 +468,27 @@ impl<'sc> TypedExpression<'sc> {
                     struct_fields = if let TypedStructExpressionField {
                         name,
                         value:
+                            a
+                            @
                             TypedExpression {
-                                expression:
-                                    TypedExpressionVariant::StructExpression { ref fields, .. },
+                                expression: TypedExpressionVariant::StructExpression { .. },
                                 ..
                             },
                     } = field
                     {
-                        Either::Right(fields)
+                        parent_struct = Some(a);
+                        Either::Right(match a.expression {
+                            TypedExpressionVariant::StructExpression { ref fields, .. } => fields,
+                            _ => unreachable!(),
+                        })
                     } else {
                         Either::Left(field)
                     };
                 }
 
-                TypedExpression {
-                    expression: todo!(),
-                    return_type: todo!(),
-                    is_constant: IsConstant::No,
+                match struct_fields {
+                    Either::Left(a) => a.value.clone(),
+                    Either::Right(_) => parent_struct.unwrap().clone(),
                 }
             }
             a => {
@@ -516,7 +521,10 @@ impl<'sc> TypedExpression<'sc> {
                     errors.push(err.into());
                 }
             }
+            // The annotation will result in a cast, so set the return type accordingly.
+            typed_expression.return_type = type_annotation
         }
+
         ok(typed_expression, warnings, errors)
     }
 }
