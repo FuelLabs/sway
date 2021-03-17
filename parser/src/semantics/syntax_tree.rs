@@ -17,6 +17,8 @@ pub(crate) enum TreeType {
 #[derive(Debug)]
 pub(crate) struct TypedParseTree<'sc> {
     root_nodes: Vec<TypedAstNode<'sc>>,
+    pub(crate) namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+    pub(crate) methods_namespace: HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
 }
 
 impl<'sc> TypedParseTree<'sc> {
@@ -142,6 +144,8 @@ impl<'sc> TypedParseTree<'sc> {
         ok(
             TypedParseTree {
                 root_nodes: typed_tree_nodes,
+                namespace: global_namespace,
+                methods_namespace,
             },
             warnings,
             errors,

@@ -39,12 +39,21 @@ pub struct HllTypedParseTree<'sc> {
     contract_ast: Option<TypedParseTree<'sc>>,
     script_ast: Option<TypedParseTree<'sc>>,
     predicate_ast: Option<TypedParseTree<'sc>>,
-    library_exports: Vec<(&'sc str, TypedParseTree<'sc>)>,
+    library_exports: LibraryExports<'sc>,
+}
+
+#[derive(Debug)]
+pub struct LibraryExports<'sc> {
+    // a btree map from lib_name => (symbol_name => decl)
+    namespaces: HashMap<&'sc str, HashMap<VarName<'sc>, semantics::TypedDeclaration<'sc>>>,
+    // a bree map from lib_name => (type => methods for that type)
+    methods_namespaces:
+        HashMap<&'sc str, HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>>,
 }
 
 #[derive(Debug)]
 pub struct ParseTree<'sc> {
-    /// In a typical program, you might have a single root node for your syntax tree.
+    /// In a typical programming language, you might have a single root node for your syntax tree.
     /// In this language however, we want to expose multiple public functions at the root
     /// level so the tree is multi-root.
     root_nodes: Vec<AstNode<'sc>>,
@@ -218,31 +227,44 @@ pub fn compile<'sc>(
     } else {
         None
     };
-    let library_exports: Vec<_> = parse_tree
-        .library_exports
-        .into_iter()
-        .filter_map(
-            |(name, tree)| match TypedParseTree::type_check(tree, TreeType::Library) {
-                CompileResult::Ok {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                    value,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    Some((name, value))
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    None
-                }
-            },
-        )
-        .collect();
+    let library_exports: LibraryExports = {
+        let res: Vec<_> = parse_tree
+            .library_exports
+            .into_iter()
+            .filter_map(
+                |(name, tree)| match TypedParseTree::type_check(tree, TreeType::Library) {
+                    CompileResult::Ok {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                        value,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                        Some((name, value))
+                    }
+                    CompileResult::Err {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                        None
+                    }
+                },
+            )
+            .collect();
+        let mut exports = LibraryExports {
+            methods_namespaces: Default::default(),
+            namespaces: Default::default(),
+        };
+        for (name, parse_tree) in res {
+            exports
+                .methods_namespaces
+                .insert(name, parse_tree.methods_namespace);
+            exports.namespaces.insert(name, parse_tree.namespace);
+        }
+        todo!()
+    };
     if errors.is_empty() {
         Ok((
             HllTypedParseTree {

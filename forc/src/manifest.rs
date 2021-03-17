@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 
 // using https://github.com/rust-lang/cargo/blob/master/src/cargo/util/toml/mod.rs as the source of
 // implementation strateby
@@ -34,25 +33,15 @@ pub enum Dependency {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
-    version: Option<String>,
-    path: Option<String>,
-    git: Option<String>,
+    pub(crate) version: Option<String>,
+    pub(crate) path: Option<String>,
+    pub(crate) git: Option<String>,
 }
 
-impl Manifest {}
 #[test]
 fn try_parse() {
     println!(
         "{:#?}",
-        toml::from_str::<Manifest>(
-            r#"
-[project]
-author = "Alex <alex.hansen@fuel.sh>"
-license = "MIT"
-[dependencies]
-stdlib = { path = "../stdlib" }
-            "#
-        )
-        .unwrap()
+        toml::from_str::<Manifest>(&crate::defaults::default_manifest()).unwrap()
     )
 }

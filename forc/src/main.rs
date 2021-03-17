@@ -1,6 +1,12 @@
 mod cli;
+mod constants;
+mod defaults;
 mod manifest;
 
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-    cli::run_cli()
+    match cli::run_cli() {
+        Ok(_) => (),
+        Err(e) => println!("Error: {}", e),
+    };
+    Ok(())
 }

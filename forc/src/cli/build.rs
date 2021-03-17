@@ -1,51 +1,130 @@
 use line_col::LineColLookup;
-use parser::compile;
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
-use std::fs;
 use std::fs::File;
 use std::io::{self, Write};
-use std::path::PathBuf;
-use structopt::StructOpt;
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "example", about = "An example of StructOpt usage.")]
-struct Opt {
-    /// Input file
-    #[structopt(parse(from_os_str))]
-    input: PathBuf,
+use crate::manifest::{Dependency, DependencyDetails, Manifest};
+use std::{fs, path::PathBuf};
 
-    /// Output file, stdout if not present
-    #[structopt(short = "o", parse(from_os_str))]
-    output: Option<PathBuf>,
+pub(crate) fn build() -> Result<(), String> {
+    // find manifest directory, even if in subdirectory
+    let this_dir = std::env::current_dir().unwrap();
+    dbg!(&this_dir);
+    let manifest_dir = match find_manifest_dir(&this_dir) {
+        Some(dir) => dir,
+        None => {
+            return Err(format!(
+                "No manifest file found in this directory or any parent directories of it: {:?}",
+                this_dir
+            ))
+        }
+    };
+
+    Ok(())
 }
 
-pub(crate) fn run_cli() -> Result<(), Box<dyn std::error::Error + 'static>> {
-    let opt = Opt::from_args();
-    let content = fs::read_to_string(opt.input.clone())?;
+/// Continually go up in the file tree until a manifest (Fuel.toml) is found.
+fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
+    let mut path = starter_path.clone();
+    let empty_path = PathBuf::from("/");
+    while path != empty_path {
+        path.push(crate::constants::MANIFEST_FILE_NAME);
+        println!("Checking {:?}", path);
+        if path.exists() {
+            path.pop();
+            return Some(path);
+        } else {
+            path.pop();
+            path.pop();
+        }
+    }
+    None
+}
 
-    let res = compile(&content);
+/// Takes a dependency and returns a namespace of exported things from that dependency
+/// trait implementations are included as well
+fn compile_dependency_lib(dependency_lib: Dependency) -> Result<(), String> {
+    let dep_path = match dependency_lib {
+        Dependency::Simple(..) => {
+            return Err("Simple version-spec dependencies require a registry.".into())
+        }
+        Dependency::Detailed(DependencyDetails { path, .. }) => path,
+    };
 
+    let dep_path = match dep_path {
+        Some(p) => p,
+        None => return Err("Only simple path imports are supported right now. Please supply a path relative to the manifest file.".into())
+    };
+
+    // compile the dependencies of this dependency
+    //this should detect circular dependencies
+    let manifest_dir = match find_manifest_dir(&PathBuf::from(dep_path)) {
+        Some(o) => o,
+        None => return Err("Manifest not found for dependency.".into()),
+    };
+
+    let manifest_of_dep = read_manifest(&manifest_dir)?;
+
+    // The part below here is just a massive shortcut to get the standard library working
+    if let Some(deps) = manifest_of_dep.dependencies {
+        if deps.len() > 0 {
+            return Err("Unimplemented: dependencies that have dependencies".into());
+        }
+    }
+
+    // another shortcut -- ignoring manifest and compiling main file directly
+    let main_path = {
+        let mut code_dir = manifest_dir.clone();
+        code_dir.push("/src/main.fm");
+        code_dir
+    };
+    let compiled = compile(main_path);
+
+    todo!("What to return here? a list of compiled functions?")
+    // i think this is where functions should be copied into the syntax tree with concrete
+    // types
+}
+
+fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
+    let manifest_path = {
+        let mut man = manifest_dir.clone();
+        man.push(crate::constants::MANIFEST_FILE_NAME);
+        man
+    };
+    let manifest_path_str = format!("{:?}", manifest_path);
+    let manifest = match std::fs::read_to_string(manifest_path) {
+        Ok(o) => o,
+        Err(e) => {
+            return Err(format!(
+                "failed to read manifest at {:?}: {}",
+                manifest_path_str, e
+            ))
+        }
+    };
+    match toml::from_str(&manifest) {
+        Ok(o) => Ok(o),
+        Err(e) => Err(format!("Error parsing manifest: {}.", e)),
+    }
+}
+
+fn compile(path: PathBuf) -> Result<LibraryExports, String> {
+    let main_file = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let res = parser::compile(&main_file);
     match res {
         Ok((compiled, warnings)) => {
-            if let Some(output) = opt.output {
-                let mut file = File::create(output)?;
-                file.write_all(format!("{:#?}", compiled).as_bytes())?;
-            } else {
-                //println!("{:#?}", compiled);
-            }
             for ref warning in warnings.iter() {
-                format_warning(&content, warning);
+                format_warning(&main_file, warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Successfully compiled {:?}.", opt.input));
+                let _ = write_green(&format!("Successfully compiled {:?}.", path));
             } else {
                 let _ = write_yellow(&format!(
                     "Compiled {:?} with {} {}.",
-                    opt.input,
+                    path,
                     warnings.len(),
                     if warnings.len() > 1 {
                         "warnings"
@@ -59,10 +138,10 @@ pub(crate) fn run_cli() -> Result<(), Box<dyn std::error::Error + 'static>> {
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {
-                format_warning(&content, warning);
+                format_warning(&main_file, warning);
             }
 
-            errors.into_iter().for_each(|e| format_err(&content, e));
+            errors.into_iter().for_each(|e| format_err(&main_file, e));
 
             write_red(format!(
                 "Aborting due to {} {}.",
@@ -72,9 +151,9 @@ pub(crate) fn run_cli() -> Result<(), Box<dyn std::error::Error + 'static>> {
             .unwrap();
         }
     }
-
-    Ok(())
+    todo!()
 }
+
 fn format_warning(input: &str, err: &parser::CompileWarning) {
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
