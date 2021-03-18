@@ -3,18 +3,17 @@ use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
-use std::{collections::HashMap, fs::File};
 use std::io::{self, Write};
+use std::{collections::HashMap, fs::File};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::manifest::{Dependency, DependencyDetails, Manifest};
-use parser::{TypedDeclaration, TypedFunctionDeclaration, VarName, LibraryExports};
+use parser::{LibraryExports, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, VarName};
 use std::{fs, path::PathBuf};
 
 pub(crate) fn build() -> Result<(), String> {
     // find manifest directory, even if in subdirectory
     let this_dir = std::env::current_dir().unwrap();
-    dbg!(&this_dir);
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -24,17 +23,39 @@ pub(crate) fn build() -> Result<(), String> {
             ))
         }
     };
+    let manifest = read_manifest(&manifest_dir)?;
+
+    let mut namespaces = Default::default();
+    let mut method_namespaces = Default::default();
+    if let Some(ref deps) = manifest.dependencies {
+        for (dependency_name, dependency_details) in deps.iter() {
+            compile_dependency_lib(
+                &dependency_name,
+                &dependency_details,
+                &mut namespaces,
+                &mut method_namespaces,
+            )?;
+        }
+    }
+
+    // now, compile this program with all of its dependencies
+    let main_file = get_main_file(&manifest, &manifest_dir)?;
+    let main = compile(
+        main_file,
+        &manifest.project.name,
+        &namespaces,
+        &method_namespaces,
+    )?;
 
     Ok(())
 }
 
 /// Continually go up in the file tree until a manifest (Fuel.toml) is found.
 fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
-    let mut path = starter_path.clone();
+    let mut path = fs::canonicalize(starter_path.clone()).unwrap();
     let empty_path = PathBuf::from("/");
     while path != empty_path {
         path.push(crate::constants::MANIFEST_FILE_NAME);
-        println!("Checking {:?}", path);
         if path.exists() {
             path.pop();
             return Some(path);
@@ -48,9 +69,20 @@ fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib(dependency_lib: Dependency) -> Result<(), String> {
-    todo!("For tomorrow: This needs to accumulate dependencies over time and build up the dependency namespace. Then, colon delineated paths in the compiler
-    need to look in the imports namespace.");
+fn compile_dependency_lib<'source, 'manifest>(
+    dependency_name: &'manifest str,
+    dependency_lib: &Dependency,
+    namespaces: &mut HashMap<
+        &'manifest str,
+        HashMap<&'source str, HashMap<VarName<'source>, TypedDeclaration<'source>>>,
+    >,
+    method_namespaces: &mut HashMap<
+        &'manifest str,
+        HashMap<&'source str, HashMap<TypeInfo<'source>, Vec<TypedFunctionDeclaration<'source>>>>,
+    >,
+) -> Result<(), String> {
+    //todo!("For tomorrow: This needs to accumulate dependencies over time and build up the dependency namespace. Then, colon delineated paths in the compiler
+    // need to look in the imports namespace.");
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
             return Err("Simple version-spec dependencies require a registry.".into())
@@ -73,24 +105,28 @@ fn compile_dependency_lib(dependency_lib: Dependency) -> Result<(), String> {
     let manifest_of_dep = read_manifest(&manifest_dir)?;
 
     // The part below here is just a massive shortcut to get the standard library working
-    if let Some(deps) = manifest_of_dep.dependencies {
+    if let Some(ref deps) = manifest_of_dep.dependencies {
         if deps.len() > 0 {
+            // to do this properly, iterate over list of dependencies make sure there are no
+            // circular dependencies
             return Err("Unimplemented: dependencies that have dependencies".into());
         }
     }
 
-    // another shortcut -- ignoring manifest and compiling main file directly
-    let main_path = {
-        let mut code_dir = manifest_dir.clone();
-        code_dir.push("/src/main.fm");
-        code_dir
-    };
-    let main_file = fs::read_to_string(&main_path).map_err(|e| e.to_string())?;
-    let compiled = compile(&main_file, &manifest_of_dep.project.name);
+    let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
-    todo!("What to return here? a list of compiled functions?")
-    // i think this is where functions should be copied into the syntax tree with concrete
-    // types
+    let compiled = compile(
+        main_file,
+        &manifest_of_dep.project.name,
+        namespaces,
+        method_namespaces,
+    )?;
+
+    namespaces.insert(&dependency_name, compiled.namespaces);
+    method_namespaces.insert(&dependency_name, compiled.methods_namespaces);
+
+    // nothing is returned from this method since it mutates the hashmaps it was given
+    Ok(())
 }
 
 fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
@@ -115,8 +151,19 @@ fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     }
 }
 
-fn compile<'sc>(source: &'sc str, proj_name: &str, namespaces: HashMap<&'sc str, HashMap<VarName<'sc>, TypedDeclaration<'sc>>>, method_namespaces: HashMap<&'sc str, HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>) -> Result<LibraryExports<'sc>, String> {
-    let res = parser::compile(&source);
+fn compile<'source, 'manifest>(
+    source: &'source str,
+    proj_name: &str,
+    namespaces: &HashMap<
+        &'manifest str,
+        HashMap<&'source str, HashMap<VarName<'source>, TypedDeclaration<'source>>>,
+    >,
+    method_namespaces: &HashMap<
+        &'manifest str,
+        HashMap<&'source str, HashMap<TypeInfo<'source>, Vec<TypedFunctionDeclaration<'source>>>>,
+    >,
+) -> Result<LibraryExports<'source>, String> {
+    let res = parser::compile(&source, namespaces, method_namespaces);
     match res {
         Ok((compiled, warnings)) => {
             for ref warning in warnings.iter() {
@@ -249,4 +296,22 @@ fn write_yellow(txt: &str) -> io::Result<()> {
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Yellow)))?;
     writeln!(&mut buffer, "{}", txt)?;
     bufwtr.print(&buffer)
+}
+
+fn get_main_file(
+    manifest_of_dep: &Manifest,
+    manifest_dir: &PathBuf,
+) -> Result<&'static mut String, String> {
+    let main_path = {
+        let mut code_dir = manifest_dir.clone();
+        code_dir.push("src");
+        code_dir.push(&manifest_of_dep.project.entry);
+        code_dir
+    };
+
+    // some hackery to get around lifetimes for now, until the AST returns a non-lifetime-bound AST
+    let main_file = fs::read_to_string(&main_path).map_err(|e| e.to_string())?;
+    let main_file = Box::new(main_file);
+    let main_file: &'static mut String = Box::leak(main_file);
+    return Ok(main_file);
 }

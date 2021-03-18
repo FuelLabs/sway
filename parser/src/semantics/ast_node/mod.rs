@@ -15,9 +15,9 @@ mod while_loop;
 use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
 pub(crate) use declaration::{
-    TypedDeclaration, TypedFunctionDeclaration, TypedReassignment, TypedTraitDeclaration,
-    TypedVariableDeclaration,
+     TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration,
 };
+pub use declaration::{TypedFunctionDeclaration, TypedDeclaration};
 pub(crate) use expression::{TypedExpression, TypedExpressionVariant, ERROR_RECOVERY_EXPR};
 use return_statement::TypedReturnStatement;
 pub(crate) use while_loop::TypedWhileLoop;

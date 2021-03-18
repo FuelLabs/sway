@@ -7,13 +7,14 @@ pub(crate) fn default_manifest(project_name: &str) -> String {
         r#"[project]
 author  = "{}"
 license = "MIT"
-name = \"{}\"
+name = "{}"
+entry = "main.fm"
 
 
 [dependencies]
 stdlib = {{ path = "../stdlib" }}
 "#,
-        project_name, real_name
+        real_name, project_name,
     )
 }
 

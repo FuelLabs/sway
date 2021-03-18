@@ -10,6 +10,7 @@ mod semantics;
 pub(crate) mod types;
 pub(crate) mod utils;
 use crate::error::*;
+pub use crate::parse_tree::VarName;
 use crate::parse_tree::*;
 pub(crate) use crate::parse_tree::{
     Expression, FunctionDeclaration, FunctionParameter, Literal, UseStatement, WhileLoop,
@@ -18,10 +19,10 @@ use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
 use pest::iterators::Pair;
 use pest::Parser;
-pub use semantics::*;
 use semantics::{TreeType, TypedParseTree};
+pub use semantics::{TypedDeclaration, TypedFunctionDeclaration};
 use std::collections::HashMap;
-use types::TypeInfo;
+pub use types::TypeInfo;
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use pest::Span;
@@ -45,10 +46,10 @@ pub struct HllTypedParseTree<'sc> {
 
 #[derive(Debug)]
 pub struct LibraryExports<'sc> {
-    // a btree map from lib_name => (symbol_name => decl)
-    namespaces: HashMap<&'sc str, HashMap<VarName<'sc>, semantics::TypedDeclaration<'sc>>>,
-    // a bree map from lib_name => (type => methods for that type)
-    methods_namespaces:
+    // a map from export_name => (symbol_name => decl)
+    pub namespaces: HashMap<&'sc str, HashMap<VarName<'sc>, semantics::TypedDeclaration<'sc>>>,
+    // a map from export_name => (type => methods for that type)
+    pub methods_namespaces:
         HashMap<&'sc str, HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>>,
 }
 
@@ -143,12 +144,15 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
     ok(res, warnings, errors)
 }
 
-pub fn compile<'sc>(
+pub fn compile<'sc, 'manifest>(
     input: &'sc str,
-    imported_namespace: HashMap<&'sc str, HashMap<VarName<'sc>, semantics::TypedDeclaration<'sc>>>,
-    imported_method_namespace: HashMap<
-        &'sc str,
-        HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>,
+    imported_namespace: &HashMap<
+        &'manifest str,
+        HashMap<&'sc str, HashMap<VarName<'sc>, semantics::TypedDeclaration<'sc>>>,
+    >,
+    imported_method_namespace: &HashMap<
+        &'manifest str,
+        HashMap<&'sc str, HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>>,
     >,
 ) -> Result<
     (HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>),
@@ -269,7 +273,7 @@ pub fn compile<'sc>(
                 .insert(name, parse_tree.methods_namespace);
             exports.namespaces.insert(name, parse_tree.namespace);
         }
-        todo!()
+        exports
     };
     if errors.is_empty() {
         Ok((

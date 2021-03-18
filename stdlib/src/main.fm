@@ -1,5 +1,4 @@
 library ops {
-    use "stdlib/ops/subtract.rs";
     trait Add {
         fn add(self, other: Self) -> Self;
     }

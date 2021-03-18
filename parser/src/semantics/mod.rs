@@ -9,9 +9,9 @@ use std::collections::HashMap;
 mod ast_node;
 mod syntax_tree;
 pub(crate) use ast_node::{
-    TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
-    TypedVariableDeclaration,
+    TypedAstNode, TypedAstNodeContent, TypedExpression, TypedVariableDeclaration,
 };
+pub use ast_node::{TypedDeclaration, TypedFunctionDeclaration};
 pub(crate) use syntax_tree::{TreeType, TypedParseTree};
 
 const ERROR_RECOVERY_DECLARATION: TypedDeclaration = TypedDeclaration::ErrorRecovery;
