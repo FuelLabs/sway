@@ -8,7 +8,7 @@ use pest::Span;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
-pub(crate) enum TypedDeclaration<'sc> {
+pub enum TypedDeclaration<'sc> {
     VariableDeclaration(TypedVariableDeclaration<'sc>),
     FunctionDeclaration(TypedFunctionDeclaration<'sc>),
     TraitDeclaration(TypedTraitDeclaration<'sc>),
@@ -39,7 +39,7 @@ impl<'sc> TypedDeclaration<'sc> {
     }
 }
 #[derive(Clone, Debug)]
-pub(crate) struct TypedVariableDeclaration<'sc> {
+pub struct TypedVariableDeclaration<'sc> {
     pub(crate) name: VarName<'sc>,
     pub(crate) body: TypedExpression<'sc>, // will be codeblock variant
     pub(crate) is_mutable: bool,
@@ -47,7 +47,7 @@ pub(crate) struct TypedVariableDeclaration<'sc> {
 
 // TODO: type check generic type args and their usage
 #[derive(Clone, Debug)]
-pub(crate) struct TypedFunctionDeclaration<'sc> {
+pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) name: VarName<'sc>,
     pub(crate) body: TypedCodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
@@ -57,7 +57,7 @@ pub(crate) struct TypedFunctionDeclaration<'sc> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypedTraitDeclaration<'sc> {
+pub struct TypedTraitDeclaration<'sc> {
     pub(crate) name: VarName<'sc>,
     pub(crate) interface_surface: Vec<TraitFn<'sc>>, // TODO typed TraitFn which checks geneerics
     pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
@@ -65,7 +65,7 @@ pub(crate) struct TypedTraitDeclaration<'sc> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypedReassignment<'sc> {
+pub struct TypedReassignment<'sc> {
     pub(crate) lhs: VarName<'sc>,
     pub(crate) rhs: TypedExpression<'sc>,
 }

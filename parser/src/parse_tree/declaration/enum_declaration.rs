@@ -7,7 +7,7 @@ use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 use pest::Span;
 #[derive(Debug, Clone)]
-pub(crate) struct EnumDeclaration<'sc> {
+pub struct EnumDeclaration<'sc> {
     pub(crate) name: &'sc str,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) variants: Vec<EnumVariant<'sc>>,

@@ -3,11 +3,12 @@ use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
-use std::fs::File;
+use std::{collections::HashMap, fs::File};
 use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::manifest::{Dependency, DependencyDetails, Manifest};
+use parser::{TypedDeclaration, TypedFunctionDeclaration, VarName, LibraryExports};
 use std::{fs, path::PathBuf};
 
 pub(crate) fn build() -> Result<(), String> {
@@ -48,6 +49,8 @@ fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
 fn compile_dependency_lib(dependency_lib: Dependency) -> Result<(), String> {
+    todo!("For tomorrow: This needs to accumulate dependencies over time and build up the dependency namespace. Then, colon delineated paths in the compiler
+    need to look in the imports namespace.");
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
             return Err("Simple version-spec dependencies require a registry.".into())
@@ -82,7 +85,8 @@ fn compile_dependency_lib(dependency_lib: Dependency) -> Result<(), String> {
         code_dir.push("/src/main.fm");
         code_dir
     };
-    let compiled = compile(main_path);
+    let main_file = fs::read_to_string(&main_path).map_err(|e| e.to_string())?;
+    let compiled = compile(&main_file, &manifest_of_dep.project.name);
 
     todo!("What to return here? a list of compiled functions?")
     // i think this is where functions should be copied into the syntax tree with concrete
@@ -111,20 +115,19 @@ fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     }
 }
 
-fn compile(path: PathBuf) -> Result<LibraryExports, String> {
-    let main_file = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let res = parser::compile(&main_file);
+fn compile<'sc>(source: &'sc str, proj_name: &str, namespaces: HashMap<&'sc str, HashMap<VarName<'sc>, TypedDeclaration<'sc>>>, method_namespaces: HashMap<&'sc str, HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>) -> Result<LibraryExports<'sc>, String> {
+    let res = parser::compile(&source);
     match res {
         Ok((compiled, warnings)) => {
             for ref warning in warnings.iter() {
-                format_warning(&main_file, warning);
+                format_warning(&source, warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Successfully compiled {:?}.", path));
+                let _ = write_green(&format!("Compiled {:?}.", proj_name));
             } else {
                 let _ = write_yellow(&format!(
                     "Compiled {:?} with {} {}.",
-                    path,
+                    proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
                         "warnings"
@@ -133,15 +136,16 @@ fn compile(path: PathBuf) -> Result<LibraryExports, String> {
                     }
                 ));
             }
+            Ok(compiled.library_exports)
         }
         Err((errors, warnings)) => {
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {
-                format_warning(&main_file, warning);
+                format_warning(&source, warning);
             }
 
-            errors.into_iter().for_each(|e| format_err(&main_file, e));
+            errors.into_iter().for_each(|e| format_err(&source, e));
 
             write_red(format!(
                 "Aborting due to {} {}.",
@@ -149,9 +153,9 @@ fn compile(path: PathBuf) -> Result<LibraryExports, String> {
                 if e_len > 1 { "errors" } else { "error" }
             ))
             .unwrap();
+            Err(format!("Failed to compile {}", proj_name))
         }
     }
-    todo!()
 }
 
 fn format_warning(input: &str, err: &parser::CompileWarning) {

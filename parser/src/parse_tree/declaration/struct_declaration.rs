@@ -7,7 +7,7 @@ use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub(crate) struct StructDeclaration<'sc> {
+pub struct StructDeclaration<'sc> {
     pub(crate) name: VarName<'sc>,
     pub(crate) fields: Vec<StructField<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,

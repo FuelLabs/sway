@@ -15,6 +15,7 @@ pub struct Manifest {
 #[serde(rename_all = "kebab-case")]
 pub struct Project {
     pub author: String,
+    pub name: String,
     pub license: String,
 }
 

@@ -7,7 +7,7 @@ pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::
     // insert default manifest file
     fs::write(
         format!("{}/Forc.toml", project_name),
-        crate::defaults::default_manifest(),
+        crate::defaults::default_manifest(&project_name),
     )?;
 
     // insert default main function

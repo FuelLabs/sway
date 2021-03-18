@@ -18,6 +18,7 @@ use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
 use pest::iterators::Pair;
 use pest::Parser;
+pub use semantics::*;
 use semantics::{TreeType, TypedParseTree};
 use std::collections::HashMap;
 use types::TypeInfo;
@@ -39,7 +40,7 @@ pub struct HllTypedParseTree<'sc> {
     contract_ast: Option<TypedParseTree<'sc>>,
     script_ast: Option<TypedParseTree<'sc>>,
     predicate_ast: Option<TypedParseTree<'sc>>,
-    library_exports: LibraryExports<'sc>,
+    pub library_exports: LibraryExports<'sc>,
 }
 
 #[derive(Debug)]
@@ -144,6 +145,11 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
 
 pub fn compile<'sc>(
     input: &'sc str,
+    imported_namespace: HashMap<&'sc str, HashMap<VarName<'sc>, semantics::TypedDeclaration<'sc>>>,
+    imported_method_namespace: HashMap<
+        &'sc str,
+        HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>,
+    >,
 ) -> Result<
     (HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>),
     (Vec<CompileError<'sc>>, Vec<CompileWarning<'sc>>),
