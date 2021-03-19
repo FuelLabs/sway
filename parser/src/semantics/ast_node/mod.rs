@@ -17,7 +17,7 @@ use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{TypedDeclaration, TypedFunctionDeclaration};
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
-pub(crate) use expression::{TypedExpression, TypedExpressionVariant, ERROR_RECOVERY_EXPR};
+pub(crate) use expression::{TypedStructExpressionField, TypedExpression, TypedExpressionVariant, ERROR_RECOVERY_EXPR};
 use return_statement::TypedReturnStatement;
 pub(crate) use while_loop::TypedWhileLoop;
 

@@ -1,4 +1,10 @@
-use super::ast_node::TypedTraitDeclaration;
+use super::{
+    ast_node::{
+        TypedExpressionVariant, TypedStructExpressionField, TypedTraitDeclaration,
+        TypedVariableDeclaration,
+    },
+    TypedExpression,
+};
 use crate::error::*;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
@@ -98,7 +104,7 @@ impl<'sc> Namespace<'sc> {
         module.symbols.get(&path.suffix).cloned()
     }
 
-    fn find_module(&self, path: &Vec<Ident<'sc>>) -> Option<Namespace<'sc>> {
+    pub(crate) fn find_module(&self, path: &Vec<Ident<'sc>>) -> Option<Namespace<'sc>> {
         let mut namespace = self.clone();
         for ident in path {
             let other_namespace = match namespace.modules.get(ident.primary_name) {
@@ -136,5 +142,88 @@ impl<'sc> Namespace<'sc> {
 
     pub fn insert_module(&mut self, module_name: String, module_contents: Namespace<'sc>) {
         self.modules.insert(module_name, module_contents);
+    }
+
+    pub(crate) fn find_subfield(
+        &self,
+        subfield_exp: Vec<Ident<'sc>>,
+    ) -> Option<TypedExpression<'sc>> {
+        dbg!(&subfield_exp);
+        let mut ident_iter = subfield_exp.into_iter();
+        let first_ident = ident_iter.next().unwrap();
+        let mut fields =
+            get_struct_expression_fields(self.symbols.get(&first_ident)?, &first_ident)?;
+        let mut expr = None;
+
+        for ident in ident_iter {
+            let TypedStructExpressionField { value, .. } =
+                match fields.iter().find(|x| x.name == ident.primary_name) {
+                    Some(field) => field.clone(),
+                    None => todo!("field not found error"),
+                };
+            match &value {
+                TypedExpression {
+                    expression:
+                        TypedExpressionVariant::StructExpression {
+                            fields: l_fields, ..
+                        },
+                    ..
+                } => {
+                    fields = l_fields.into_iter().cloned().collect();
+                    expr = Some(value);
+                }
+                a => {
+                    fields = vec![];
+                    expr = Some(value);
+                }
+            }
+        }
+        expr
+    }
+
+    pub(crate) fn get_methods_for_type(
+        &self,
+        r#type: TypeInfo<'sc>,
+    ) -> Option<Vec<TypedFunctionDeclaration<'sc>>> {
+        for ((_trait_name, type_info), methods) in &self.implemented_traits {
+            if *type_info == r#type {
+                return Some(methods.clone());
+            }
+        }
+        None
+    }
+
+    pub(crate) fn find_method_for_type(
+        &self,
+        r#type: TypeInfo<'sc>,
+        method_name: Ident<'sc>,
+    ) -> Option<TypedFunctionDeclaration<'sc>> {
+        let methods = self.get_methods_for_type(r#type)?;
+        methods
+            .into_iter()
+            .find(|TypedFunctionDeclaration { name, .. }| *name == method_name)
+    }
+}
+
+fn get_struct_expression_fields<'sc>(
+    decl: &TypedDeclaration<'sc>,
+    debug_ident: &Ident<'sc>,
+) -> Option<Vec<TypedStructExpressionField<'sc>>> {
+    match decl {
+        TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+            name,
+            body:
+                TypedExpression {
+                    expression: TypedExpressionVariant::StructExpression { fields, .. },
+                    ..
+                },
+            is_mutable: _is_mutable,
+        }) => Some(fields.clone()),
+        TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { .. }) => todo!(),
+        o => todo!(
+            "err: {} is not a struct with field {}",
+            o.friendly_name(),
+            debug_ident.primary_name
+        ),
     }
 }

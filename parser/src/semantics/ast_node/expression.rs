@@ -58,8 +58,8 @@ pub(crate) enum TypedExpressionVariant<'sc> {
 }
 #[derive(Clone, Debug)]
 pub(crate) struct TypedStructExpressionField<'sc> {
-    name: &'sc str,
-    value: TypedExpression<'sc>,
+    pub(crate) name: &'sc str,
+    pub(crate) value: TypedExpression<'sc>,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct TypedMatchBranch<'sc> {
@@ -453,7 +453,79 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span,
             } => {
-                todo!("rework methods with new namespace")
+                let (method, parent_type) = if subfield_exp.is_empty() {
+                    // if subfield exp is empty, then we are calling a method using either ::
+                    // syntax or an operator
+                    let ns = match namespace.find_module(&method_name.prefixes) {
+                        Some(o) => o,
+                        None => todo!("Method not found error"),
+                    };
+                    // a method is defined by the type of the parent, and in this case the parent
+                    // is the first argument
+                    let parent_expr = match TypedExpression::type_check(
+                        arguments[0].clone(),
+                        namespace,
+                        None,
+                        "",
+                    ) {
+                        // throw away warnings and errors since this will be checked again later
+                        CompileResult::Ok { value, .. } => value,
+                        CompileResult::Err {
+                            warnings: mut l_w,
+                            errors: mut l_e,
+                        } => {
+                            warnings.append(&mut l_w);
+                            errors.append(&mut l_e);
+                            return err(warnings, errors);
+                        }
+                    };
+                    (match ns.find_method_for_type(parent_expr.return_type.clone(), method_name.suffix.clone()) {
+                        Some(o) => o,
+                        None => todo!("Method not found error"),
+                    }, parent_expr.return_type)
+                } else {
+                    let parent_expr = match namespace.find_subfield(subfield_exp) {
+                        Some(exp) => exp,
+                        None => todo!("err, couldn't find ident"),
+                    };
+                    (match namespace
+                        .find_method_for_type(parent_expr.return_type.clone(), method_name.suffix.clone())
+                    {
+                        Some(o) => o,
+                        None => todo!("Method not found error"),
+                    }, parent_expr.return_type)
+                };
+
+                // zip parameters to arguments to perform type checking
+                let zipped = method.parameters.iter().zip(arguments.iter());
+
+                let mut typed_arg_buf = vec![];
+                for (FunctionParameter { r#type, .. }, arg) in zipped {
+                    let un_self_type  = if *r#type == TypeInfo::SelfType {
+                        parent_type.clone()
+                    } else { r#type.clone() };
+                    typed_arg_buf.push(type_check!(
+                        TypedExpression::type_check(
+                        arg.clone(),
+                        &namespace,
+                        Some(un_self_type),
+                        "Function argument must be of the same type declared in the function declaration."),
+                        continue, 
+                        warnings,
+                        errors
+                    ));
+                }
+
+                TypedExpression {
+                    expression: TypedExpressionVariant::FunctionApplication {
+                        // TODO the prefix should be a type info maybe? and then the first arg can
+                        // be self?
+                        name: method_name.into(), // TODO todo!("put the actual fully-typed function bodies in these applications"),
+                        arguments: typed_arg_buf,
+                    },
+                    return_type: method.return_type.clone(),
+                    is_constant: IsConstant::No,
+                }
             }
             Expression::Unit { span: _span } => TypedExpression {
                 expression: TypedExpressionVariant::Unit,
