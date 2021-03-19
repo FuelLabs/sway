@@ -481,7 +481,15 @@ impl<'sc> TypedExpression<'sc> {
                     };
                     (match ns.find_method_for_type(parent_expr.return_type.clone(), method_name.suffix.clone()) {
                         Some(o) => o,
-                        None => todo!("Method not found error"),
+                        None => {
+                            errors.push(CompileError::MethodNotFound {
+                                span,
+                                method_name: method_name.suffix.clone().primary_name,
+                                type_name: parent_expr.return_type.friendly_type_str()
+                            });
+                            return err(warnings, errors);
+
+                        }
                     }, parent_expr.return_type)
                 } else {
                     let parent_expr = match namespace.find_subfield(subfield_exp) {

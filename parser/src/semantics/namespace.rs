@@ -26,7 +26,6 @@ impl<'sc> Namespace<'sc> {
         let debug_idents = idents.clone();
         let idents_buf = idents.into_iter();
         let mut namespace = self.clone();
-        dbg!(&namespace);
         for ident in idents_buf {
             let other_namespace = match namespace.modules.get(ident.primary_name) {
                 Some(o) => namespace = o.clone(),
