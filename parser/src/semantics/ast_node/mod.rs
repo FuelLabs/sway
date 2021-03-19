@@ -33,7 +33,7 @@ pub(crate) enum IsConstant {
 
 #[derive(Clone, Debug)]
 pub(crate) enum TypedAstNodeContent<'sc> {
-    UseStatement(UseStatement),
+    UseStatement,
     //    CodeBlock(TypedCodeBlock<'sc>),
     ReturnStatement(TypedReturnStatement<'sc>),
     Declaration(TypedDeclaration<'sc>),
@@ -41,6 +41,8 @@ pub(crate) enum TypedAstNodeContent<'sc> {
     TraitDeclaration(TraitDeclaration<'sc>),
     ImplicitReturnExpression(TypedExpression<'sc>),
     WhileLoop(TypedWhileLoop<'sc>),
+    // a no-op node used for something that just issues a side effect, like an import statement.
+    SideEffect,
 }
 
 #[derive(Clone, Debug)]
@@ -54,12 +56,12 @@ impl<'sc> TypedAstNode<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            UseStatement(_) | ReturnStatement(_) | Declaration(_) | TraitDeclaration(_) => {
+            UseStatement | ReturnStatement(_) | Declaration(_) | TraitDeclaration(_) => {
                 TypeInfo::Unit
             }
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
-            WhileLoop(_) => TypeInfo::Unit,
+            WhileLoop(_) | SideEffect => TypeInfo::Unit,
         }
     }
 }
@@ -86,11 +88,8 @@ impl<'sc> TypedAstNode<'sc> {
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    errors.push(CompileError::Unimplemented(
-                        "Use statements are unimplemented.",
-                        node.span.clone(),
-                    ));
-                    ERROR_RECOVERY_NODE_CONTENT.clone()
+                    todo!();
+                    TypedAstNodeContent::SideEffect
                 }
                 AstNodeContent::Declaration(a) => TypedAstNodeContent::Declaration(match a {
                     Declaration::VariableDeclaration(VariableDeclaration {
@@ -461,7 +460,7 @@ impl<'sc> TypedAstNode<'sc> {
                             } else {
                                 methods_namespace.insert(type_implementing_for, functions_buf);
                             }
-                            TypedDeclaration::ImplTraitDeclaration
+                            TypedDeclaration::SideEffect
                         }
                         Some(_) => {
                             errors.push(CompileError::NotATrait {
@@ -531,7 +530,7 @@ impl<'sc> TypedAstNode<'sc> {
                         } else {
                             methods_namespace.insert(type_implementing_for, functions_buf);
                         }
-                        TypedDeclaration::ImplSelfDeclaration
+                        TypedDeclaration::SideEffect
                     }
                     Declaration::StructDeclaration(decl) => {
                         // insert struct into namespace

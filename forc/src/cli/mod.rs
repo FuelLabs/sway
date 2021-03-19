@@ -16,7 +16,10 @@ enum Command {
     #[structopt(name = "init")]
     Init { project_name: String },
     #[structopt(name = "build")]
-    Build,
+    Build {
+        #[structopt(short = "p")]
+        path: Option<String>,
+    },
 }
 
 pub(crate) fn run_cli() -> Result<(), String> {
@@ -25,7 +28,7 @@ pub(crate) fn run_cli() -> Result<(), String> {
         Command::Init { project_name } => {
             init::init_new_project(project_name).map_err(|e| e.to_string())
         }
-        Command::Build => build::build(),
+        Command::Build { path } => build::build(path),
     }?;
     /*
     let content = fs::read_to_string(opt.input.clone())?;

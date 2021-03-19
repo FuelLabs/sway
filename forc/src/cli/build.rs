@@ -3,17 +3,21 @@ use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
+use std::collections::HashMap;
 use std::io::{self, Write};
-use std::{collections::HashMap, fs::File};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::manifest::{Dependency, DependencyDetails, Manifest};
 use parser::{Ident, LibraryExports, TypeInfo, TypedDeclaration, TypedFunctionDeclaration};
 use std::{fs, path::PathBuf};
 
-pub(crate) fn build() -> Result<(), String> {
+pub(crate) fn build(path: Option<String>) -> Result<(), String> {
     // find manifest directory, even if in subdirectory
-    let this_dir = std::env::current_dir().unwrap();
+    let this_dir = if let Some(path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().unwrap()
+    };
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -30,6 +34,7 @@ pub(crate) fn build() -> Result<(), String> {
     if let Some(ref deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter() {
             compile_dependency_lib(
+                &this_dir,
                 &dependency_name,
                 &dependency_details,
                 &mut namespaces,
@@ -40,7 +45,7 @@ pub(crate) fn build() -> Result<(), String> {
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-    let main = compile(
+    let _main = compile(
         main_file,
         &manifest.project.name,
         &namespaces,
@@ -70,6 +75,7 @@ fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
 fn compile_dependency_lib<'source, 'manifest>(
+    project_path: &PathBuf,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
     namespaces: &mut HashMap<
@@ -95,9 +101,13 @@ fn compile_dependency_lib<'source, 'manifest>(
         None => return Err("Only simple path imports are supported right now. Please supply a path relative to the manifest file.".into())
     };
 
+    // dependency paths are relative to the path of the project being compiled
+    let mut project_path = project_path.clone();
+    project_path.push(dep_path);
+
     // compile the dependencies of this dependency
     //this should detect circular dependencies
-    let manifest_dir = match find_manifest_dir(&PathBuf::from(dep_path)) {
+    let manifest_dir = match find_manifest_dir(&project_path) {
         Some(o) => o,
         None => return Err("Manifest not found for dependency.".into()),
     };

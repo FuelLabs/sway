@@ -125,10 +125,9 @@ impl_trait = { impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ ty
 
 // imports
 
-// for now, use statements are just strings to the file you import. this will be changed to the commented out version later
-use_statement = { use_keyword ~ string ~ ";" }
-//use_statement = { use_keyword ~ import_path ~ ";"}
-import_path = { ident ~ (path_separator ~ ident)* }
+use_statement = { use_keyword ~ import_path ~ ";"}
+import_path = { ident ~ (path_separator ~ ident)* ~ path_separator ~ (ident|star) }
+star = { "*" }
 
 // loops
 while_loop = { while_keyword ~ expr ~ code_block }

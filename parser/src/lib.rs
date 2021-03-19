@@ -70,7 +70,7 @@ struct AstNode<'sc> {
 
 #[derive(Debug, Clone)]
 pub(crate) enum AstNodeContent<'sc> {
-    UseStatement(UseStatement),
+    UseStatement(UseStatement<'sc>),
     CodeBlock(CodeBlock<'sc>),
     ReturnStatement(ReturnStatement<'sc>),
     Declaration(Declaration<'sc>),

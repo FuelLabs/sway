@@ -143,7 +143,8 @@ impl<'sc> TypedExpression<'sc> {
                 name, arguments, ..
             } => {
                 let function_declaration = crate::utils::find_in_namespace(
-                    name.clone(),
+                    name.clone().prefixes,
+                    ImportType::Item(name.suffix.clone()),
                     &namespace,
                     &methods_namespace,
                     &imported_namespace,
@@ -151,11 +152,11 @@ impl<'sc> TypedExpression<'sc> {
                 );
 
                 match function_declaration {
-                    Some(TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
+                    Some(Either::Left(TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                         parameters,
                         return_type,
                         ..
-                    })) => {
+                    }))) => {
                         // type check arguments in function application vs arguments in function
                         // declaration. Use parameter type annotations as annotations for the
                         // arguments
@@ -210,7 +211,10 @@ impl<'sc> TypedExpression<'sc> {
                         errors.push(CompileError::NotAFunction {
                             name: name.span().as_str(),
                             span: name.span(),
-                            what_it_is: a.friendly_name(),
+                            what_it_is: match a {
+                                Either::Left(a) => a.friendly_name(),
+                                Either::Right(_) => "a namespace".into()
+                            }
                         });
                         ERROR_RECOVERY_EXPR.clone()
                     }
