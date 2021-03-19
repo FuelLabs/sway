@@ -15,3 +15,4 @@ line-col    = "0.2"
 toml        = "0.5"
 serde       = { version = "1.0", features = ["derive"] }
 whoami      = "1.1"
+pest        = "2.1"

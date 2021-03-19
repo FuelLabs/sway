@@ -13,7 +13,7 @@ pub(crate) use ast_node::{
     TypedAstNode, TypedAstNodeContent, TypedExpression, TypedVariableDeclaration,
 };
 pub use ast_node::{TypedDeclaration, TypedFunctionDeclaration};
-pub(crate) use namespace::Namespace;
+pub use namespace::Namespace;
 pub(crate) use syntax_tree::{TreeType, TypedParseTree};
 
 const ERROR_RECOVERY_DECLARATION: TypedDeclaration = TypedDeclaration::ErrorRecovery;

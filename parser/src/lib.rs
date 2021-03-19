@@ -19,8 +19,8 @@ use crate::parser::{HllParser, Rule};
 use either::{Either, Left, Right};
 use pest::iterators::Pair;
 use pest::Parser;
+pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use semantics::{TreeType, TypedParseTree};
-pub use semantics::{TypedDeclaration, TypedFunctionDeclaration};
 use std::collections::HashMap;
 pub use types::TypeInfo;
 
@@ -46,11 +46,7 @@ pub struct HllTypedParseTree<'sc> {
 
 #[derive(Debug)]
 pub struct LibraryExports<'sc> {
-    // a map from export_name => (symbol_name => decl)
-    pub namespaces: HashMap<Ident<'sc>, HashMap<Ident<'sc>, semantics::TypedDeclaration<'sc>>>,
-    // a map from export_name => (type => methods for that type)
-    pub methods_namespaces:
-        HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>>,
+    pub namespace: Namespace<'sc>,
 }
 
 #[derive(Debug)]
@@ -146,14 +142,7 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
 
 pub fn compile<'sc, 'manifest>(
     input: &'sc str,
-    imported_namespace: &HashMap<
-        &'manifest str,
-        HashMap<Ident<'sc>, HashMap<Ident<'sc>, semantics::TypedDeclaration<'sc>>>,
-    >,
-    imported_method_namespace: &HashMap<
-        &'manifest str,
-        HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>>,
-    >,
+    initial_namespace: &Namespace<'sc>,
 ) -> Result<
     (HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>),
     (Vec<CompileError<'sc>>, Vec<CompileWarning<'sc>>),
@@ -169,12 +158,7 @@ pub fn compile<'sc, 'manifest>(
     );
 
     let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
-        match TypedParseTree::type_check(
-            tree,
-            imported_namespace,
-            imported_method_namespace,
-            TreeType::Contract,
-        ) {
+        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Contract) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -197,12 +181,7 @@ pub fn compile<'sc, 'manifest>(
         None
     };
     let predicate_ast: Option<_> = if let Some(tree) = parse_tree.predicate_ast {
-        match TypedParseTree::type_check(
-            tree,
-            imported_namespace,
-            imported_method_namespace,
-            TreeType::Predicate,
-        ) {
+        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Predicate) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -225,12 +204,7 @@ pub fn compile<'sc, 'manifest>(
         None
     };
     let script_ast: Option<_> = if let Some(tree) = parse_tree.script_ast {
-        match TypedParseTree::type_check(
-            tree,
-            imported_namespace,
-            imported_method_namespace,
-            TreeType::Script,
-        ) {
+        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Script) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -257,12 +231,8 @@ pub fn compile<'sc, 'manifest>(
             .library_exports
             .into_iter()
             .filter_map(|(name, tree)| {
-                match TypedParseTree::type_check(
-                    tree,
-                    imported_namespace,
-                    imported_method_namespace,
-                    TreeType::Library,
-                ) {
+                match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Library)
+                {
                     CompileResult::Ok {
                         warnings: mut l_w,
                         errors: mut l_e,
@@ -284,16 +254,12 @@ pub fn compile<'sc, 'manifest>(
             })
             .collect();
         let mut exports = LibraryExports {
-            methods_namespaces: Default::default(),
-            namespaces: Default::default(),
+            namespace: Default::default(),
         };
         for (ref name, parse_tree) in res {
             exports
-                .methods_namespaces
-                .insert(name.clone(), parse_tree.methods_namespace);
-            exports
-                .namespaces
-                .insert(name.clone(), parse_tree.namespace);
+                .namespace
+                .insert_module(name.primary_name.to_string(), parse_tree.namespace);
         }
         exports
     };
