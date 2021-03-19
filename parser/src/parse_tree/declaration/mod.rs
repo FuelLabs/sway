@@ -18,7 +18,7 @@ pub(crate) use type_parameter::*;
 pub(crate) use variable_declaration::*;
 
 use crate::error::*;
-use crate::parse_tree::{Expression, VarName};
+use crate::parse_tree::{Expression, Ident};
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
 use pest::iterators::Pair;
@@ -88,7 +88,7 @@ impl<'sc> Declaration<'sc> {
                 );
                 Declaration::VariableDeclaration(VariableDeclaration {
                     name: eval!(
-                        VarName::parse_from_pair,
+                        Ident::parse_from_pair,
                         warnings,
                         errors,
                         name_pair,

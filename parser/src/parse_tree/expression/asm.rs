@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::parse_tree::VarName;
+use crate::parse_tree::Ident;
 use crate::parser::Rule;
 use pest::iterators::Pair;
 use pest::Span;
@@ -135,7 +135,7 @@ impl<'sc> AsmOp<'sc> {
 #[derive(Debug, Clone)]
 pub(crate) struct AsmRegisterDeclaration<'sc> {
     name: &'sc str,
-    initializer: Option<VarName<'sc>>,
+    initializer: Option<Ident<'sc>>,
 }
 
 impl<'sc> AsmRegisterDeclaration<'sc> {
@@ -152,7 +152,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
             // assigned to that register
             let initializer = if let Some(pair) = iter.next() {
                 Some(eval!(
-                    VarName::parse_from_pair,
+                    Ident::parse_from_pair,
                     warnings,
                     errors,
                     pair,

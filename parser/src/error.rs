@@ -6,15 +6,9 @@ use pest::Span;
 use thiserror::Error;
 
 macro_rules! type_check {
-    ($name: ident, $val: expr, $namespace: expr, $methods: expr, $type_annotation: expr, $help_text: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
+    ($fn_expr: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
         use crate::CompileResult;
-        let res = $name::type_check(
-            $val.clone(),
-            $namespace,
-            $methods,
-            $type_annotation,
-            $help_text,
-        );
+        let res = $fn_expr;
         match res {
             CompileResult::Ok {
                 value,
@@ -164,6 +158,11 @@ pub enum Warning<'sc> {
     UnusedReturnValue {
         r#type: TypeInfo<'sc>,
     },
+    SimilarMethodFound {
+        lib: String,
+        module: String,
+        name: String,
+    },
 }
 
 impl<'sc> Warning<'sc> {
@@ -177,7 +176,8 @@ impl<'sc> Warning<'sc> {
             NonClassCaseEnumVariantName { variant_name } => format!("Enum variant name \"{}\" is not idiomatic. Enum variant names should be ClassCase, like \"{}\".", variant_name, to_class_case(variant_name)),
             NonSnakeCaseFunctionName { name } => format!("Function name \"{}\" is not idiomatic. Function names should be snake_case, like \"{}\".", name, to_snake_case(name)),
             LossOfPrecision { initial_type, cast_to } => format!("This cast, from type {} to type {}, will lose precision.", initial_type.friendly_type_str(), cast_to.friendly_type_str()),
-            UnusedReturnValue { r#type } => format!("This returns a value of type {}, which is not assigned to anything and is ignored.", r#type.friendly_type_str())
+            UnusedReturnValue { r#type } => format!("This returns a value of type {}, which is not assigned to anything and is ignored.", r#type.friendly_type_str()),
+                SimilarMethodFound { lib, module, name } => format!("A method with the same name was found for type {} in dependency \"{}::{}\". Traits must be in scope in order to access their methods. ", name, lib, module)
         }
     }
 }
@@ -315,12 +315,6 @@ pub enum CompileError<'sc> {
         thing: &'sc str,
         span: Span<'sc>,
     },
-    #[error("Field \"{field_name}\" not found on struct \"{struct_name}\".")]
-    FieldNotFoundOnStruct {
-        field_name: &'sc str,
-        struct_name: &'sc str,
-        span: Span<'sc>,
-    },
     #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
     StructMissingField {
         field_name: &'sc str,
@@ -332,6 +326,12 @@ pub enum CompileError<'sc> {
         field_name: &'sc str,
         struct_name: &'sc str,
         span: Span<'sc>,
+    },
+    #[error("No method named {method_name} found for type {type_name}.")]
+    MethodNotFound {
+        span: Span<'sc>,
+        method_name: &'sc str,
+        type_name: String,
     },
 }
 
@@ -446,9 +446,9 @@ impl<'sc> CompileError<'sc> {
             DeclaredNonStructAsStruct { span, .. } => (span.start(), span.end()),
             AccessedFieldOfNonStruct { span, .. } => (span.start(), span.end()),
             MethodOnNonValue { span, .. } => (span.start(), span.end()),
-            FieldNotFoundOnStruct { span, .. } => (span.start(), span.end()),
             StructMissingField { span, .. } => (span.start(), span.end()),
             StructDoesntHaveThisField { span, .. } => (span.start(), span.end()),
+            MethodNotFound { span, .. } => (span.start(), span.end()),
         }
     }
 }

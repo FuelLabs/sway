@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::{parse_tree::VarName, CodeBlock, CompileError, Rule};
+use crate::{parse_tree::Ident, CodeBlock, CompileError, Rule};
 use either::Either;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
@@ -16,7 +16,7 @@ pub enum TypeInfo<'sc> {
     SelfType,
     Byte,
     Byte32,
-    Struct { name: VarName<'sc> },
+    Struct { name: Ident<'sc> },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -150,7 +150,7 @@ impl<'sc> TypeInfo<'sc> {
             Byte => "byte".into(),
             Byte32 => "byte32".into(),
             Struct {
-                name: VarName { primary_name, .. },
+                name: Ident { primary_name, .. },
                 ..
             } => format!("Struct {}", primary_name),
             ErrorRecovery => "\"unknown due to error\"".into(),

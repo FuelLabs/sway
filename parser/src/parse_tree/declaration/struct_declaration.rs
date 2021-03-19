@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::parse_tree::{declaration::TypeParameter, VarName};
+use crate::parse_tree::{declaration::TypeParameter, Ident};
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
 use inflector::cases::classcase::is_class_case;
@@ -8,7 +8,7 @@ use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct StructDeclaration<'sc> {
-    pub(crate) name: VarName<'sc>,
+    pub(crate) name: Ident<'sc>,
     pub(crate) fields: Vec<StructField<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
 }
@@ -80,7 +80,7 @@ impl<'sc> StructDeclaration<'sc> {
 
         let span = name.as_span();
         let name = eval!(
-            VarName::parse_from_pair,
+            Ident::parse_from_pair,
             warnings,
             errors,
             name,

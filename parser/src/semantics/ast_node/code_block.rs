@@ -13,10 +13,18 @@ pub(crate) struct TypedCodeBlock<'sc> {
 }
 
 impl<'sc> TypedCodeBlock<'sc> {
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'manifest>(
         other: CodeBlock<'sc>,
-        namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+        namespace: &HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
         methods_namespace: &HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
+        imported_namespace: &HashMap<
+            &'manifest str,
+            HashMap<Ident<'sc>, HashMap<Ident<'sc>, TypedDeclaration<'sc>>>,
+        >,
+        imported_method_namespace: &HashMap<
+            &'manifest str,
+            HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>>,
+        >,
         // this is for the return or implicit return
         type_annotation: Option<TypeInfo<'sc>>,
         help_text: impl Into<String> + Clone,
@@ -25,9 +33,9 @@ impl<'sc> TypedCodeBlock<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut evaluated_contents = Vec::new();
-        let mut local_namespace = namespace.clone();
         // mutable clone, because the interior of a code block can not change the surrounding
-        // method namespace
+        // namespace
+        let mut local_namespace = namespace.clone();
         let mut methods_namespace = methods_namespace.clone();
         let last_node = other
             .contents
@@ -39,6 +47,8 @@ impl<'sc> TypedCodeBlock<'sc> {
                 node.clone(),
                 &mut local_namespace,
                 &mut methods_namespace,
+                imported_namespace,
+                imported_method_namespace,
                 None,
                 "",
             ) {
@@ -65,6 +75,8 @@ impl<'sc> TypedCodeBlock<'sc> {
             last_node.clone(),
             &mut local_namespace,
             &mut methods_namespace,
+            imported_namespace,
+            imported_method_namespace,
             type_annotation.clone(),
             help_text.clone(),
         ) {

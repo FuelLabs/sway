@@ -12,6 +12,7 @@ library ops {
          }
     }
 
+/*
     struct Test {
         a: u64,
         b: u64
@@ -24,6 +25,7 @@ library ops {
 
         let z = y.add(test.b);
     }
+    */
 }
 
 /*

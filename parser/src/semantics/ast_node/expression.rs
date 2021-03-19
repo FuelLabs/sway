@@ -5,7 +5,7 @@ use crate::types::{IntegerBits, TypeInfo};
 use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
 use either::Either;
 use pest::Span;
-use std::collections::HashMap;
+use std::collections::{VecDeque, HashMap};
 
 pub(crate) const ERROR_RECOVERY_EXPR: TypedExpression = TypedExpression {
     expression: TypedExpressionVariant::Unit,
@@ -25,12 +25,12 @@ pub(crate) struct TypedExpression<'sc> {
 pub(crate) enum TypedExpressionVariant<'sc> {
     Literal(Literal<'sc>),
     FunctionApplication {
-        name: VarName<'sc>,
+        name: CallPath<'sc>,
         arguments: Vec<TypedExpression<'sc>>,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,
-        name: VarName<'sc>,
+        name: Ident<'sc>,
     },
     Unit,
     Array {
@@ -41,7 +41,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         branches: Vec<TypedMatchBranch<'sc>>,
     },
     StructExpression {
-        struct_name: VarName<'sc>,
+        struct_name: Ident<'sc>,
         fields: Vec<TypedStructExpressionField<'sc>>,
     },
     CodeBlock(TypedCodeBlock<'sc>),
@@ -74,10 +74,18 @@ pub(crate) enum TypedMatchCondition<'sc> {
 }
 
 impl<'sc> TypedExpression<'sc> {
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'manifest>(
         other: Expression<'sc>,
-        namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+        namespace: &HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
         methods_namespace: &HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
+        imported_namespace: &HashMap<
+            &'manifest str,
+            HashMap<Ident<'sc>, HashMap<Ident<'sc>, TypedDeclaration<'sc>>>,
+        >,
+        imported_method_namespace: &HashMap<
+            &'manifest str,
+            HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>>,
+        >,
         type_annotation: Option<TypeInfo<'sc>>,
         help_text: impl Into<String> + Clone,
     ) -> CompileResult<'sc, Self> {
@@ -134,7 +142,14 @@ impl<'sc> TypedExpression<'sc> {
             Expression::FunctionApplication {
                 name, arguments, ..
             } => {
-                let function_declaration = namespace.get(&name);
+                let function_declaration = crate::utils::find_in_namespace(
+                    name.clone(),
+                    &namespace,
+                    &methods_namespace,
+                    &imported_namespace,
+                    &imported_method_namespace,
+                );
+
                 match function_declaration {
                     Some(TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                         parameters,
@@ -151,6 +166,8 @@ impl<'sc> TypedExpression<'sc> {
                                 arg,
                                 &namespace,
                                 methods_namespace,
+                                imported_namespace,
+                                imported_method_namespace,
                                 Some(param.r#type.clone()),
                                     "The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration."
                             );
@@ -191,16 +208,16 @@ impl<'sc> TypedExpression<'sc> {
                     }
                     Some(a) => {
                         errors.push(CompileError::NotAFunction {
-                            name: name.span.as_str(),
-                            span: name.span,
+                            name: name.span().as_str(),
+                            span: name.span(),
                             what_it_is: a.friendly_name(),
                         });
                         ERROR_RECOVERY_EXPR.clone()
                     }
                     None => {
                         errors.push(CompileError::UnknownFunction {
-                            name: name.span.as_str(),
-                            span: name.span,
+                            name: name.span().as_str(),
+                            span: name.span(),
                         });
                         ERROR_RECOVERY_EXPR.clone()
                     }
@@ -213,23 +230,29 @@ impl<'sc> TypedExpression<'sc> {
                 ..
             } => {
                 let typed_primary_expression = type_check!(
-                    TypedExpression,
-                    *primary_expression,
-                    &namespace,
-                    &methods_namespace,
-                    None,
-                    "",
+                    TypedExpression::type_check(
+                        *primary_expression,
+                        &namespace,
+                        &methods_namespace,
+                        imported_namespace,
+                        imported_method_namespace,
+                        None,
+                        ""
+                    ),
                     ERROR_RECOVERY_EXPR.clone(),
                     warnings,
                     errors
                 );
                 let first_branch_result = type_check!(
-                    TypedExpression,
-                    branches[0].result.clone(),
-                    &namespace,
-                    &methods_namespace,
-                    type_annotation.clone(),
-                    help_text.clone(),
+                    TypedExpression::type_check(
+                        branches[0].result.clone(),
+                        &namespace,
+                        &methods_namespace,
+                        imported_namespace,
+                        imported_method_namespace,
+                        type_annotation.clone(),
+                        help_text.clone()
+                    ),
                     ERROR_RECOVERY_EXPR.clone(),
                     warnings,
                     errors
@@ -246,12 +269,15 @@ impl<'sc> TypedExpression<'sc> {
                              condition, result, ..
                          }| {
                             type_check!(
-                                TypedExpression,
-                                result,
-                                &namespace,
-                                &methods_namespace,
-                                Some(first_branch_result[0].return_type.clone()),
-                                "All branches of a match expression must be of the same type.",
+                                TypedExpression::type_check(
+                                    result,
+                                    &namespace,
+                                    &methods_namespace,
+                                    imported_namespace,
+                                    imported_method_namespace,
+                                    Some(first_branch_result[0].return_type.clone()),
+                                    "All branches of a match expression must be of the same type.",
+                                ),
                                 ERROR_RECOVERY_EXPR.clone(),
                                 warnings,
                                 errors
@@ -271,12 +297,15 @@ impl<'sc> TypedExpression<'sc> {
             }
             Expression::CodeBlock { contents, .. } => {
                 let (typed_block, block_return_type) = type_check!(
-                    TypedCodeBlock,
-                    contents.clone(),
-                    &namespace,
-                    &methods_namespace,
-                    type_annotation.clone(),
-                    help_text.clone(),
+                    TypedCodeBlock::type_check(
+                        contents.clone(),
+                        &namespace,
+                        &methods_namespace,
+                        imported_namespace,
+                        imported_method_namespace,
+                        type_annotation.clone(),
+                        help_text.clone()
+                    ),
                     (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
                     warnings,
                     errors
@@ -298,35 +327,44 @@ impl<'sc> TypedExpression<'sc> {
                 span,
             } => {
                 let condition = Box::new(type_check!(
-                    TypedExpression,
-                    *condition,
-                    &namespace,
-                    &methods_namespace,
-                    Some(TypeInfo::Boolean),
-                    "The condition of an if expression must be a boolean expression.",
+                    TypedExpression::type_check(
+                        *condition,
+                        &namespace,
+                        &methods_namespace,
+                        imported_namespace,
+                        imported_method_namespace,
+                        Some(TypeInfo::Boolean),
+                        "The condition of an if expression must be a boolean expression.",
+                    ),
                     ERROR_RECOVERY_EXPR.clone(),
                     warnings,
                     errors
                 ));
                 let then = Box::new(type_check!(
-                    TypedExpression,
-                    *then,
-                    &namespace,
-                    &methods_namespace,
-                    None,
-                    "",
+                    TypedExpression::type_check(
+                        *then,
+                        &namespace,
+                        &methods_namespace,
+                        imported_namespace,
+                        imported_method_namespace,
+                        None,
+                        ""
+                    ),
                     ERROR_RECOVERY_EXPR.clone(),
                     warnings,
                     errors
                 ));
                 let r#else = if let Some(expr) = r#else {
                     Some(Box::new(type_check!(
-                        TypedExpression,
-                        *expr,
-                        namespace,
-                        &methods_namespace,
-                        Some(then.return_type.clone()),
-                        "",
+                        TypedExpression::type_check(
+                            *expr,
+                            namespace,
+                            &methods_namespace,
+                            imported_namespace,
+                            imported_method_namespace,
+                            Some(then.return_type.clone()),
+                            ""
+                        ),
                         ERROR_RECOVERY_EXPR.clone(),
                         warnings,
                         errors
@@ -391,27 +429,30 @@ impl<'sc> TypedExpression<'sc> {
                             errors.push(CompileError::StructMissingField {
                                 field_name: def_field.name,
                                 struct_name: definition.name.primary_name,
-                                span: span.clone()
+                                span: span.clone(),
                             });
                             typed_fields_buf.push(TypedStructExpressionField {
                                 name: def_field.name,
                                 value: TypedExpression {
                                     expression: TypedExpressionVariant::Unit,
                                     return_type: TypeInfo::ErrorRecovery,
-                                    is_constant: IsConstant::No
-                                }
+                                    is_constant: IsConstant::No,
+                                },
                             });
                             continue;
                         }
                     };
 
                     let typed_field = type_check!(
-                        TypedExpression,
+                        TypedExpression::type_check(
                         expr_field.value,
                         &namespace,
                         &methods_namespace,
+                    imported_namespace,
+                    imported_method_namespace,
                         Some(def_field.r#type.clone()),
                         "Struct field's type must match up with the type specified in its declaration.",
+                        ),
                         continue,
                         warnings,
                         errors
@@ -423,13 +464,20 @@ impl<'sc> TypedExpression<'sc> {
                     });
                 }
 
-                // check that there are no extra fields 
+                // check that there are no extra fields
                 for field in fields {
-                            if definition.fields.iter().find(|x| x.name == field.name).is_none() {
-                                errors.push(CompileError::StructDoesntHaveThisField { field_name: field.name, struct_name: definition.name.primary_name, span: field.span });
-
-                            }
-
+                    if definition
+                        .fields
+                        .iter()
+                        .find(|x| x.name == field.name)
+                        .is_none()
+                    {
+                        errors.push(CompileError::StructDoesntHaveThisField {
+                            field_name: field.name,
+                            struct_name: definition.name.primary_name,
+                            span: field.span,
+                        });
+                    }
                 }
                 TypedExpression {
                     expression: TypedExpressionVariant::StructExpression {
@@ -443,7 +491,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             Expression::SubfieldExpression { name_parts, span } => {
-                let mut name_parts_buf = std::collections::VecDeque::from(name_parts);
+                let mut name_parts_buf = VecDeque::from(name_parts);
                 // this must be >= 2, or else the parser would not have matched it. asserting that
                 // invariant here, since it is an assumption that is acted upon later.
                 assert!(name_parts_buf.len() >= 2);
@@ -474,13 +522,21 @@ impl<'sc> TypedExpression<'sc> {
                 span,
             } => {
                 // find the function declaration in the methods namespace
-                let value_of_parent = if subfield_exp.len() == 1 {
+                let type_of_parent = match subfield_exp.len() {
+                    0 => 
+                        match TypedExpression::type_check(arguments[0].clone(), namespace, methods_namespace, imported_namespace, imported_method_namespace, None, "") {
+                            // intentionally disregard errors here since they will be re-evaluated
+                            // with the args later
+                            CompileResult::Ok { value, .. } => value.return_type,
+                            CompileResult::Err { .. }  => TypeInfo::ErrorRecovery
+                        }
+                    1 => {
                     match namespace.get(&subfield_exp[0]) {
                         Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                             name,
                             body,
                             is_mutable,
-                        })) => body,
+                        })) => body.clone().return_type,
                         Some(x) => {
                             errors.push(CompileError::MethodOnNonValue {
                                 name: span.as_str(),
@@ -497,23 +553,66 @@ impl<'sc> TypedExpression<'sc> {
                             return err(warnings, errors);
                         }
                     }
-                } else {
-                    todo!() // abstract the above code for subfield exp and use it here
+                }, 
+                _ => 
+                    match get_subfield_result(VecDeque::from(subfield_exp), namespace) {
+                        CompileResult::Ok {
+                            warnings: mut l_w,
+                            errors: mut l_e,
+                            value,
+                        } => {
+                            warnings.append(&mut l_w);
+                            errors.append(&mut l_e);
+                            value.return_type
+                        }
+                        CompileResult::Err {
+                            warnings: mut l_w,
+                            errors: mut l_e,
+                        } => {
+                            warnings.append(&mut l_w);
+                            errors.append(&mut l_e);
+                            TypeInfo::ErrorRecovery
+                        }
+                    }
                 };
 
-                let available_methods = match methods_namespace.get(&value_of_parent.return_type) {
+
+                let available_methods = match methods_namespace.get(&type_of_parent) {
                     Some(methods) => methods,
-                    None => todo!(
-                        "No method named {} found for type {} error",
-                        method_name.primary_name,
-                        value_of_parent.return_type.friendly_type_str()
-                    ),
+                    None => {
+                        for (other_lib_name, other_module) in imported_method_namespace.iter() {
+                            for (other_lib_module, other_methods) in other_module.iter() {
+                                match other_methods.get(&type_of_parent) {
+                                    Some(methods) => if let Some(_method) = methods.iter().find(|x| x.name == method_name.suffix) {
+                                        warnings.push(CompileWarning {
+                                            span: span.clone(),
+                                            warning_content: Warning::SimilarMethodFound {
+                                                lib: other_lib_name.to_string(),
+                                                module: other_lib_module.primary_name.to_string(),
+                                                name: type_of_parent.friendly_type_str() 
+                                            }
+                                        });
+
+                                    },
+                                    _ => ()
+                                }
+                            }
+                        }
+
+                        errors.push(CompileError::MethodNotFound{
+                            span,
+                            method_name: method_name.suffix.primary_name,
+                            type_name: type_of_parent.friendly_type_str()
+                        });
+
+                        return err(warnings, errors);
+                    }
                 };
 
                 // find the method in question
                 let method = match available_methods
                     .into_iter()
-                    .find(|method| method.name == method_name)
+                    .find(|method| method.name == method_name.suffix)
                 {
                     Some(method) => method,
                     None => todo!("method not found error"),
@@ -527,12 +626,14 @@ impl<'sc> TypedExpression<'sc> {
                 let mut typed_arg_buf = vec![];
                 for (FunctionParameter { r#type, .. }, arg) in zipped {
                     typed_arg_buf.push(type_check!(
-                        TypedExpression,
-                        arg,
+                        TypedExpression::type_check(
+                        arg.clone(),
                         &namespace,
                         &methods_namespace,
+                        imported_namespace,
+                        imported_method_namespace,
                         Some(r#type.clone()),
-                        "Function argument must be of the same type declared in the function declaration.",
+                        "Function argument must be of the same type declared in the function declaration."),
                         continue, 
                         warnings,
                         errors
@@ -541,16 +642,20 @@ impl<'sc> TypedExpression<'sc> {
 
                 TypedExpression {
                     expression: TypedExpressionVariant::FunctionApplication {
-                        name: method_name, // TODO todo!("put the actual fully-typed function bodies in these applications"),
+                        // TODO the prefix should be a type info maybe? and then the first arg can
+                        // be self?
+                        name: method_name.into(), // TODO todo!("put the actual fully-typed function bodies in these applications"),
                         arguments: typed_arg_buf,
                     },
                     return_type: method.return_type.clone(),
                     is_constant: IsConstant::No,
                 }
-            } ,
-            Expression::Unit { span: _span } => {
-                TypedExpression { expression: TypedExpressionVariant::Unit, return_type: TypeInfo::Unit, is_constant: IsConstant::Yes } 
             }
+            Expression::Unit { span: _span } => TypedExpression {
+                expression: TypedExpressionVariant::Unit,
+                return_type: TypeInfo::Unit,
+                is_constant: IsConstant::Yes,
+            },
 
             a => {
                 println!("Unimplemented semantics for expression: {:?}", a);
@@ -591,8 +696,8 @@ impl<'sc> TypedExpression<'sc> {
 }
 
 fn get_subfield_result<'sc>(
-    mut name_parts_buf: std::collections::VecDeque<VarName<'sc>>,
-    namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+    mut name_parts_buf: std::collections::VecDeque<Ident<'sc>>,
+    namespace: &HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -642,13 +747,13 @@ fn get_subfield_result<'sc>(
         let field = match field.into_iter().find(|x| x.name == name.primary_name) {
             Some(x) => x,
             None => {
-                errors.push(CompileError::FieldNotFoundOnStruct  {
+                errors.push(CompileError::StructDoesntHaveThisField {
                     field_name: name.primary_name,
                     struct_name: primary_name.primary_name,
                     span: name.span,
-            });
-                
-                return err(warnings, errors); 
+                });
+
+                return err(warnings, errors);
             }
         };
 

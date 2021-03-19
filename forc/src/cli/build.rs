@@ -8,7 +8,7 @@ use std::{collections::HashMap, fs::File};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::manifest::{Dependency, DependencyDetails, Manifest};
-use parser::{LibraryExports, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, VarName};
+use parser::{Ident, LibraryExports, TypeInfo, TypedDeclaration, TypedFunctionDeclaration};
 use std::{fs, path::PathBuf};
 
 pub(crate) fn build() -> Result<(), String> {
@@ -74,11 +74,11 @@ fn compile_dependency_lib<'source, 'manifest>(
     dependency_lib: &Dependency,
     namespaces: &mut HashMap<
         &'manifest str,
-        HashMap<&'source str, HashMap<VarName<'source>, TypedDeclaration<'source>>>,
+        HashMap<Ident<'source>, HashMap<Ident<'source>, TypedDeclaration<'source>>>,
     >,
     method_namespaces: &mut HashMap<
         &'manifest str,
-        HashMap<&'source str, HashMap<TypeInfo<'source>, Vec<TypedFunctionDeclaration<'source>>>>,
+        HashMap<Ident<'source>, HashMap<TypeInfo<'source>, Vec<TypedFunctionDeclaration<'source>>>>,
     >,
 ) -> Result<(), String> {
     //todo!("For tomorrow: This needs to accumulate dependencies over time and build up the dependency namespace. Then, colon delineated paths in the compiler
@@ -156,11 +156,11 @@ fn compile<'source, 'manifest>(
     proj_name: &str,
     namespaces: &HashMap<
         &'manifest str,
-        HashMap<&'source str, HashMap<VarName<'source>, TypedDeclaration<'source>>>,
+        HashMap<Ident<'source>, HashMap<Ident<'source>, TypedDeclaration<'source>>>,
     >,
     method_namespaces: &HashMap<
         &'manifest str,
-        HashMap<&'source str, HashMap<TypeInfo<'source>, Vec<TypedFunctionDeclaration<'source>>>>,
+        HashMap<Ident<'source>, HashMap<TypeInfo<'source>, Vec<TypedFunctionDeclaration<'source>>>>,
     >,
 ) -> Result<LibraryExports<'source>, String> {
     let res = parser::compile(&source, namespaces, method_namespaces);

@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::parse_tree::{declaration::TypeParameter, Expression, VarName};
+use crate::parse_tree::{declaration::TypeParameter, Expression, Ident};
 use crate::types::TypeInfo;
 use crate::{CodeBlock, CompileError, Rule};
 use either::Either;
@@ -24,7 +24,7 @@ impl Visibility {
 
 #[derive(Debug, Clone)]
 pub(crate) struct FunctionDeclaration<'sc> {
-    pub(crate) name: VarName<'sc>,
+    pub(crate) name: Ident<'sc>,
     pub(crate) visibility: Visibility,
     pub(crate) body: CodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
@@ -52,7 +52,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         let name = signature.next().unwrap();
         let name_span = name.as_span();
         let name = eval!(
-            VarName::parse_from_pair,
+            Ident::parse_from_pair,
             warnings,
             errors,
             name,
@@ -200,7 +200,7 @@ impl<'sc> FunctionDeclaration<'sc> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FunctionParameter<'sc> {
-    pub(crate) name: VarName<'sc>,
+    pub(crate) name: Ident<'sc>,
     pub(crate) r#type: TypeInfo<'sc>,
     pub(crate) type_span: Span<'sc>,
 }
@@ -216,7 +216,7 @@ impl<'sc> FunctionParameter<'sc> {
             if pair.as_str().trim() == "self" {
                 let type_span = pair.as_span();
                 let r#type = TypeInfo::SelfType;
-                let name = VarName {
+                let name = Ident {
                     span: pair.as_span(),
                     primary_name: "self",
                 };
@@ -231,11 +231,11 @@ impl<'sc> FunctionParameter<'sc> {
             let name_pair = parts.next().unwrap();
             let name_str = name_pair.as_str();
             let name = eval!(
-                VarName::parse_from_pair,
+                Ident::parse_from_pair,
                 warnings,
                 errors,
                 name_pair,
-                VarName {
+                Ident {
                     primary_name: "error parsing var name",
                     span: name_pair.as_span()
                 }

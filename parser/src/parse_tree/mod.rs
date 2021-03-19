@@ -1,3 +1,4 @@
+mod call_path;
 mod code_block;
 mod declaration;
 mod expression;
@@ -6,9 +7,10 @@ mod use_statement;
 mod variable_declaration;
 mod while_loop;
 
+pub(crate) use call_path::*;
 pub(crate) use code_block::*;
 pub(crate) use declaration::*;
-pub use expression::VarName;
+pub use expression::Ident;
 pub(crate) use expression::{
     AsmExpression, Expression, MatchBranch, StructExpressionField, UnaryOp,
 };

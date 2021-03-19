@@ -7,6 +7,7 @@ use std::{
 };
 #[macro_use]
 use crate::parser::{HllParser, Rule};
+use crate::parse_tree::CallPath;
 use crate::CodeBlock;
 use either::Either;
 use pest::iterators::Pair;
@@ -22,13 +23,13 @@ pub(crate) enum Expression<'sc> {
         span: Span<'sc>,
     },
     FunctionApplication {
-        name: VarName<'sc>,
+        name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,
-        name: VarName<'sc>,
+        name: Ident<'sc>,
         span: Span<'sc>,
     },
     Unit {
@@ -44,7 +45,7 @@ pub(crate) enum Expression<'sc> {
         span: Span<'sc>,
     },
     StructExpression {
-        struct_name: VarName<'sc>,
+        struct_name: Ident<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
         span: Span<'sc>,
     },
@@ -68,13 +69,13 @@ pub(crate) enum Expression<'sc> {
         asm: AsmExpression<'sc>,
     },
     MethodApplication {
-        subfield_exp: Vec<VarName<'sc>>,
-        method_name: VarName<'sc>,
+        subfield_exp: Vec<Ident<'sc>>,
+        method_name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
     SubfieldExpression {
-        name_parts: Vec<VarName<'sc>>,
+        name_parts: Vec<Ident<'sc>>,
         span: Span<'sc>,
     },
 }
@@ -231,14 +232,11 @@ impl<'sc> Expression<'sc> {
                 let span = expr.as_span();
                 let mut func_app_parts = expr.into_inner();
                 let name = eval!(
-                    VarName::parse_from_pair,
+                    CallPath::parse_from_pair,
                     warnings,
                     errors,
                     func_app_parts.next().unwrap(),
-                    VarName {
-                        primary_name: "error parsing var name",
-                        span: span.clone()
-                    }
+                    return err(warnings, errors)
                 );
                 let arguments = func_app_parts.next();
                 let mut arguments_buf = Vec::new();
@@ -275,11 +273,11 @@ impl<'sc> Expression<'sc> {
                         }
                         Rule::var_name_ident => {
                             name = Some(eval!(
-                                VarName::parse_from_pair,
+                                Ident::parse_from_pair,
                                 warnings,
                                 errors,
                                 pair,
-                                VarName {
+                                Ident {
                                     primary_name: "error parsing var name",
                                     span: span.clone()
                                 }
@@ -345,7 +343,7 @@ impl<'sc> Expression<'sc> {
                 let mut expr_iter = expr.into_inner();
                 let struct_name = expr_iter.next().unwrap();
                 let struct_name = eval!(
-                    VarName::parse_from_pair,
+                    Ident::parse_from_pair,
                     warnings,
                     errors,
                     struct_name,
@@ -467,7 +465,7 @@ impl<'sc> Expression<'sc> {
                 // ["a", "b", "c", "add"]
                 let mut name_parts = subfield_exp.into_inner().collect::<Vec<_>>();
                 let method_name = eval!(
-                    VarName::parse_from_pair,
+                    CallPath::parse_from_pair,
                     warnings,
                     errors,
                     name_parts.pop().unwrap(),
@@ -490,7 +488,7 @@ impl<'sc> Expression<'sc> {
                 let mut name_parts_buf = Vec::new();
                 for name_part in name_parts {
                     let name = eval!(
-                        VarName::parse_from_pair,
+                        Ident::parse_from_pair,
                         warnings,
                         errors,
                         name_part,
@@ -650,7 +648,7 @@ impl UnaryOp {
 }
 
 #[derive(Debug, Clone)]
-pub struct VarName<'sc> {
+pub struct Ident<'sc> {
     pub(crate) primary_name: &'sc str,
     // sub-names are the stuff after periods
     // like x.test.thing.method()
@@ -661,21 +659,21 @@ pub struct VarName<'sc> {
 
 // custom implementation of Hash so that namespacing isn't reliant on the span itself, which will
 // always be different.
-impl Hash for VarName<'_> {
+impl Hash for Ident<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.primary_name.hash(state);
     }
 }
-impl PartialEq for VarName<'_> {
+impl PartialEq for Ident<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.primary_name == other.primary_name
     }
 }
 
-impl Eq for VarName<'_> {}
+impl Eq for Ident<'_> {}
 
-impl<'sc> VarName<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, VarName> {
+impl<'sc> Ident<'sc> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Ident> {
         let span = {
             let pair = pair.clone();
             if pair.as_rule() != Rule::ident {
@@ -686,7 +684,7 @@ impl<'sc> VarName<'sc> {
         };
         let name = pair.as_str().trim();
         ok(
-            VarName {
+            Ident {
                 primary_name: name,
                 span,
             },
@@ -739,8 +737,8 @@ struct Op<'sc> {
 }
 
 impl<'sc> Op<'sc> {
-    fn to_var_name(&self) -> VarName<'sc> {
-        VarName {
+    fn to_var_name(&self) -> Ident<'sc> {
+        Ident {
             primary_name: self.op_variant.as_str(),
             span: self.span.clone(),
             // TODO this should be a method exp not a var name
@@ -845,7 +843,19 @@ fn arrange_by_order_of_operations<'sc>(
                     let lhs = lhs.unwrap();
                     let rhs = rhs.unwrap();
                     expression_stack.push(Expression::FunctionApplication {
-                        name: new_op.to_var_name(),
+                        name: CallPath {
+                            prefixes: vec![
+                                Ident {
+                                    primary_name: "std".into(),
+                                    span: new_op.span.clone(),
+                                },
+                                Ident {
+                                    primary_name: "ops".into(),
+                                    span: new_op.span.clone(),
+                                },
+                            ],
+                            suffix: new_op.to_var_name(),
+                        },
                         arguments: vec![lhs, rhs],
                         span: debug_span.clone(),
                     });
@@ -856,7 +866,6 @@ fn arrange_by_order_of_operations<'sc>(
         }
     }
 
-    // TODO precedence
     while let Some(op) = op_stack.pop() {
         let rhs = expression_stack.pop();
         let lhs = expression_stack.pop();
@@ -880,11 +889,25 @@ fn arrange_by_order_of_operations<'sc>(
         let rhs = rhs.unwrap();
         let lhs_span = lhs.span();
         let rhs_span = rhs.span();
+        let joint_span = join_spans(lhs_span, rhs_span);
 
-        expression_stack.push(Expression::FunctionApplication {
-            name: op.to_var_name(),
+        expression_stack.push(Expression::MethodApplication {
+            method_name: CallPath {
+                prefixes: vec![
+                    Ident {
+                        primary_name: "std".into(),
+                        span: op.span.clone(),
+                    },
+                    Ident {
+                        primary_name: "ops".into(),
+                        span: op.span.clone(),
+                    },
+                ],
+                suffix: op.to_var_name(),
+            },
+            subfield_exp: vec![],
             arguments: vec![lhs, rhs],
-            span: join_spans(lhs_span, rhs_span),
+            span: op.span.clone(),
         });
     }
 
@@ -906,7 +929,7 @@ fn subfield_from_pair<'sc>(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Expressi
     let mut buf = vec![];
     for part in iter {
         buf.push(eval!(
-            VarName::parse_from_pair,
+            Ident::parse_from_pair,
             warnings,
             errors,
             part,

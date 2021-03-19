@@ -17,13 +17,21 @@ pub(crate) enum TreeType {
 #[derive(Debug)]
 pub(crate) struct TypedParseTree<'sc> {
     root_nodes: Vec<TypedAstNode<'sc>>,
-    pub(crate) namespace: HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+    pub(crate) namespace: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
     pub(crate) methods_namespace: HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
 }
 
 impl<'sc> TypedParseTree<'sc> {
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'manifest>(
         parsed: ParseTree<'sc>,
+        imported_namespace: &HashMap<
+            &'manifest str,
+            HashMap<Ident<'sc>, HashMap<Ident<'sc>, TypedDeclaration<'sc>>>,
+        >,
+        imported_method_namespace: &HashMap<
+            &'manifest str,
+            HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>>,
+        >,
         tree_type: TreeType,
     ) -> CompileResult<'sc, Self> {
         let mut global_namespace = Default::default();
@@ -37,6 +45,8 @@ impl<'sc> TypedParseTree<'sc> {
                     node,
                     &mut global_namespace,
                     &mut methods_namespace,
+                    imported_namespace,
+                    imported_method_namespace,
                     None,
                     "",
                 )

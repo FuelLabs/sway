@@ -40,7 +40,7 @@ impl<'sc> TypedDeclaration<'sc> {
 }
 #[derive(Clone, Debug)]
 pub struct TypedVariableDeclaration<'sc> {
-    pub(crate) name: VarName<'sc>,
+    pub(crate) name: Ident<'sc>,
     pub(crate) body: TypedExpression<'sc>, // will be codeblock variant
     pub(crate) is_mutable: bool,
 }
@@ -48,7 +48,7 @@ pub struct TypedVariableDeclaration<'sc> {
 // TODO: type check generic type args and their usage
 #[derive(Clone, Debug)]
 pub struct TypedFunctionDeclaration<'sc> {
-    pub(crate) name: VarName<'sc>,
+    pub(crate) name: Ident<'sc>,
     pub(crate) body: TypedCodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub(crate) span: pest::Span<'sc>,
@@ -58,7 +58,7 @@ pub struct TypedFunctionDeclaration<'sc> {
 
 #[derive(Clone, Debug)]
 pub struct TypedTraitDeclaration<'sc> {
-    pub(crate) name: VarName<'sc>,
+    pub(crate) name: Ident<'sc>,
     pub(crate) interface_surface: Vec<TraitFn<'sc>>, // TODO typed TraitFn which checks geneerics
     pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
@@ -66,15 +66,23 @@ pub struct TypedTraitDeclaration<'sc> {
 
 #[derive(Clone, Debug)]
 pub struct TypedReassignment<'sc> {
-    pub(crate) lhs: VarName<'sc>,
+    pub(crate) lhs: Ident<'sc>,
     pub(crate) rhs: TypedExpression<'sc>,
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'manifest>(
         fn_decl: FunctionDeclaration<'sc>,
-        namespace: &HashMap<VarName<'sc>, TypedDeclaration<'sc>>,
+        namespace: &HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
         methods_namespace: &HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
+        imported_namespace: &HashMap<
+            &'manifest str,
+            HashMap<Ident<'sc>, HashMap<Ident<'sc>, TypedDeclaration<'sc>>>,
+        >,
+        imported_method_namespace: &HashMap<
+            &'manifest str,
+            HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>>,
+        >,
         return_type_annotation: Option<TypeInfo<'sc>>,
         help_text: impl Into<String>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
@@ -109,12 +117,15 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 );
             });
         let (body, _implicit_block_return) = type_check!(
-            TypedCodeBlock,
-            body,
-            &namespace,
-            methods_namespace,
-            Some(return_type.clone()),
-            "Function body's return type does not match up with its return type annotation.",
+            TypedCodeBlock::type_check(
+                body,
+                &namespace,
+                methods_namespace,
+                imported_namespace,
+                imported_method_namespace,
+                Some(return_type.clone()),
+                "Function body's return type does not match up with its return type annotation."
+            ),
             (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
             warnings,
             errors
@@ -139,7 +150,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     parameters[0].name.span.clone(),
                     |acc,
                      FunctionParameter {
-                         name: VarName { span, .. },
+                         name: Ident { span, .. },
                          ..
                      }| crate::utils::join_spans(acc, span.clone()),
                 );

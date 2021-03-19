@@ -10,7 +10,7 @@ mod semantics;
 pub(crate) mod types;
 pub(crate) mod utils;
 use crate::error::*;
-pub use crate::parse_tree::VarName;
+pub use crate::parse_tree::Ident;
 use crate::parse_tree::*;
 pub(crate) use crate::parse_tree::{
     Expression, FunctionDeclaration, FunctionParameter, Literal, UseStatement, WhileLoop,
@@ -33,7 +33,7 @@ pub struct HllParseTree<'sc> {
     pub contract_ast: Option<ParseTree<'sc>>,
     pub script_ast: Option<ParseTree<'sc>>,
     pub predicate_ast: Option<ParseTree<'sc>>,
-    pub library_exports: Vec<(&'sc str, ParseTree<'sc>)>,
+    pub library_exports: Vec<(Ident<'sc>, ParseTree<'sc>)>,
 }
 
 #[derive(Debug)]
@@ -47,10 +47,10 @@ pub struct HllTypedParseTree<'sc> {
 #[derive(Debug)]
 pub struct LibraryExports<'sc> {
     // a map from export_name => (symbol_name => decl)
-    pub namespaces: HashMap<&'sc str, HashMap<VarName<'sc>, semantics::TypedDeclaration<'sc>>>,
+    pub namespaces: HashMap<Ident<'sc>, HashMap<Ident<'sc>, semantics::TypedDeclaration<'sc>>>,
     // a map from export_name => (type => methods for that type)
     pub methods_namespaces:
-        HashMap<&'sc str, HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>>,
+        HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>>,
 }
 
 #[derive(Debug)]
@@ -148,11 +148,11 @@ pub fn compile<'sc, 'manifest>(
     input: &'sc str,
     imported_namespace: &HashMap<
         &'manifest str,
-        HashMap<&'sc str, HashMap<VarName<'sc>, semantics::TypedDeclaration<'sc>>>,
+        HashMap<Ident<'sc>, HashMap<Ident<'sc>, semantics::TypedDeclaration<'sc>>>,
     >,
     imported_method_namespace: &HashMap<
         &'manifest str,
-        HashMap<&'sc str, HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>>,
+        HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<semantics::TypedFunctionDeclaration<'sc>>>>,
     >,
 ) -> Result<
     (HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>),
@@ -169,7 +169,12 @@ pub fn compile<'sc, 'manifest>(
     );
 
     let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
-        match TypedParseTree::type_check(tree, TreeType::Contract) {
+        match TypedParseTree::type_check(
+            tree,
+            imported_namespace,
+            imported_method_namespace,
+            TreeType::Contract,
+        ) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -192,7 +197,12 @@ pub fn compile<'sc, 'manifest>(
         None
     };
     let predicate_ast: Option<_> = if let Some(tree) = parse_tree.predicate_ast {
-        match TypedParseTree::type_check(tree, TreeType::Predicate) {
+        match TypedParseTree::type_check(
+            tree,
+            imported_namespace,
+            imported_method_namespace,
+            TreeType::Predicate,
+        ) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -215,7 +225,12 @@ pub fn compile<'sc, 'manifest>(
         None
     };
     let script_ast: Option<_> = if let Some(tree) = parse_tree.script_ast {
-        match TypedParseTree::type_check(tree, TreeType::Script) {
+        match TypedParseTree::type_check(
+            tree,
+            imported_namespace,
+            imported_method_namespace,
+            TreeType::Script,
+        ) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -241,8 +256,13 @@ pub fn compile<'sc, 'manifest>(
         let res: Vec<_> = parse_tree
             .library_exports
             .into_iter()
-            .filter_map(
-                |(name, tree)| match TypedParseTree::type_check(tree, TreeType::Library) {
+            .filter_map(|(name, tree)| {
+                match TypedParseTree::type_check(
+                    tree,
+                    imported_namespace,
+                    imported_method_namespace,
+                    TreeType::Library,
+                ) {
                     CompileResult::Ok {
                         warnings: mut l_w,
                         errors: mut l_e,
@@ -260,18 +280,20 @@ pub fn compile<'sc, 'manifest>(
                         errors.append(&mut l_e);
                         None
                     }
-                },
-            )
+                }
+            })
             .collect();
         let mut exports = LibraryExports {
             methods_namespaces: Default::default(),
             namespaces: Default::default(),
         };
-        for (name, parse_tree) in res {
+        for (ref name, parse_tree) in res {
             exports
                 .methods_namespaces
-                .insert(name, parse_tree.methods_namespace);
-            exports.namespaces.insert(name, parse_tree.namespace);
+                .insert(name.clone(), parse_tree.methods_namespace);
+            exports
+                .namespaces
+                .insert(name.clone(), parse_tree.namespace);
         }
         exports
     };
@@ -338,7 +360,14 @@ fn parse_root_from_pairs<'sc>(
                     });
                 }
                 Rule::library_name => {
-                    library_name = Some(pair.into_inner().next().unwrap().as_str());
+                    let lib_pair = pair.into_inner().next().unwrap();
+                    library_name = Some(eval!(
+                        Ident::parse_from_pair,
+                        warnings,
+                        errors,
+                        lib_pair,
+                        continue
+                    ));
                 }
                 a => unreachable!("{:?}", pair.as_str()),
             }

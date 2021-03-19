@@ -1,11 +1,11 @@
-use super::{FunctionDeclaration, TypeParameter, VarName};
+use super::{FunctionDeclaration, Ident, TypeParameter};
 use crate::{error::*, parser::Rule, types::TypeInfo};
 use pest::iterators::Pair;
 use pest::Span;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ImplTrait<'sc> {
-    pub(crate) trait_name: VarName<'sc>,
+    pub(crate) trait_name: Ident<'sc>,
     pub(crate) type_implementing_for: TypeInfo<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
     pub(crate) functions: Vec<FunctionDeclaration<'sc>>,
@@ -37,7 +37,7 @@ impl<'sc> ImplTrait<'sc> {
         let trait_name = iter.next().unwrap();
         assert_eq!(trait_name.as_rule(), Rule::trait_name);
         let trait_name = eval!(
-            VarName::parse_from_pair,
+            Ident::parse_from_pair,
             warnings,
             errors,
             trait_name,

@@ -1,6 +1,6 @@
 use super::{FunctionDeclaration, FunctionParameter};
 use crate::error::*;
-use crate::parse_tree::{TypeParameter, VarName};
+use crate::parse_tree::{Ident, TypeParameter};
 use crate::parser::{HllParser, Rule};
 use crate::types::TypeInfo;
 use either::*;
@@ -10,7 +10,7 @@ use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub(crate) struct TraitDeclaration<'sc> {
-    pub(crate) name: VarName<'sc>,
+    pub(crate) name: Ident<'sc>,
     pub(crate) interface_surface: Vec<TraitFn<'sc>>,
     pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
@@ -24,7 +24,7 @@ impl<'sc> TraitDeclaration<'sc> {
         let _trait_keyword = trait_parts.next();
         let name_pair = trait_parts.next().unwrap();
         let name = eval!(
-            VarName::parse_from_pair,
+            Ident::parse_from_pair,
             warnings,
             errors,
             name_pair,
@@ -118,7 +118,7 @@ impl<'sc> TraitDeclaration<'sc> {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct TraitFn<'sc> {
-    pub(crate) name: VarName<'sc>,
+    pub(crate) name: Ident<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub(crate) return_type: TypeInfo<'sc>,
 }
@@ -132,7 +132,7 @@ impl<'sc> TraitFn<'sc> {
         let name = signature.next().unwrap();
         let mut name_span = name.as_span();
         let name = eval!(
-            VarName::parse_from_pair,
+            Ident::parse_from_pair,
             warnings,
             errors,
             name,
