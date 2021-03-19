@@ -15,5 +15,5 @@ pub(crate) use expression::{
     AsmExpression, Expression, MatchBranch, StructExpressionField, UnaryOp,
 };
 pub(crate) use literal::Literal;
-pub(crate) use use_statement::UseStatement;
+pub(crate) use use_statement::{ImportType, UseStatement};
 pub(crate) use while_loop::WhileLoop;

@@ -1,6 +1,7 @@
 use super::{IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant};
 use crate::error::*;
 use crate::parse_tree::*;
+use crate::semantics::Namespace;
 use crate::types::{IntegerBits, TypeInfo};
 use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
 use either::Either;
@@ -16,8 +17,7 @@ pub enum TypedDeclaration<'sc> {
     EnumDeclaration(EnumDeclaration<'sc>),
     Reassignment(TypedReassignment<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates the methods namespace
-    ImplTraitDeclaration,
-    ImplSelfDeclaration,
+    SideEffect,
     ErrorRecovery,
 }
 
@@ -32,9 +32,8 @@ impl<'sc> TypedDeclaration<'sc> {
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
             Reassignment(_) => "reassignment",
-            ImplTraitDeclaration => "impl trait",
-            ImplSelfDeclaration => "impl self",
-            ErrorRecovery => "invalid declaration",
+            SideEffect => "",
+            ErrorRecovery => "error",
         }
     }
 }
@@ -73,16 +72,7 @@ pub struct TypedReassignment<'sc> {
 impl<'sc> TypedFunctionDeclaration<'sc> {
     pub(crate) fn type_check<'manifest>(
         fn_decl: FunctionDeclaration<'sc>,
-        namespace: &HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-        methods_namespace: &HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
-        imported_namespace: &HashMap<
-            &'manifest str,
-            HashMap<Ident<'sc>, HashMap<Ident<'sc>, TypedDeclaration<'sc>>>,
-        >,
-        imported_method_namespace: &HashMap<
-            &'manifest str,
-            HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>>,
-        >,
+        namespace: &Namespace<'sc>,
         return_type_annotation: Option<TypeInfo<'sc>>,
         help_text: impl Into<String>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
@@ -120,9 +110,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             TypedCodeBlock::type_check(
                 body,
                 &namespace,
-                methods_namespace,
-                imported_namespace,
-                imported_method_namespace,
                 Some(return_type.clone()),
                 "Function body's return type does not match up with its return type annotation."
             ),

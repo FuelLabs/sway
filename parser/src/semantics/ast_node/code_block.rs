@@ -15,16 +15,7 @@ pub(crate) struct TypedCodeBlock<'sc> {
 impl<'sc> TypedCodeBlock<'sc> {
     pub(crate) fn type_check<'manifest>(
         other: CodeBlock<'sc>,
-        namespace: &HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-        methods_namespace: &HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
-        imported_namespace: &HashMap<
-            &'manifest str,
-            HashMap<Ident<'sc>, HashMap<Ident<'sc>, TypedDeclaration<'sc>>>,
-        >,
-        imported_method_namespace: &HashMap<
-            &'manifest str,
-            HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>>,
-        >,
+        namespace: &Namespace<'sc>,
         // this is for the return or implicit return
         type_annotation: Option<TypeInfo<'sc>>,
         help_text: impl Into<String> + Clone,
@@ -36,22 +27,13 @@ impl<'sc> TypedCodeBlock<'sc> {
         // mutable clone, because the interior of a code block can not change the surrounding
         // namespace
         let mut local_namespace = namespace.clone();
-        let mut methods_namespace = methods_namespace.clone();
         let last_node = other
             .contents
             .last()
             .expect("empty code block? TODO check if this is handled earlier")
             .clone();
         for node in &other.contents[0..other.contents.len() - 1] {
-            match TypedAstNode::type_check(
-                node.clone(),
-                &mut local_namespace,
-                &mut methods_namespace,
-                imported_namespace,
-                imported_method_namespace,
-                None,
-                "",
-            ) {
+            match TypedAstNode::type_check(node.clone(), &mut local_namespace, None, "") {
                 CompileResult::Ok {
                     value,
                     warnings: mut l_w,
@@ -74,9 +56,6 @@ impl<'sc> TypedCodeBlock<'sc> {
         let res = match TypedAstNode::type_check(
             last_node.clone(),
             &mut local_namespace,
-            &mut methods_namespace,
-            imported_namespace,
-            imported_method_namespace,
             type_annotation.clone(),
             help_text.clone(),
         ) {

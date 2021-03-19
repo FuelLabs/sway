@@ -3,17 +3,23 @@ use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
+use std::collections::HashMap;
 use std::io::{self, Write};
-use std::{collections::HashMap, fs::File};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::manifest::{Dependency, DependencyDetails, Manifest};
-use parser::{Ident, LibraryExports, TypeInfo, TypedDeclaration, TypedFunctionDeclaration};
+use parser::{
+    Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+};
 use std::{fs, path::PathBuf};
 
-pub(crate) fn build() -> Result<(), String> {
+pub(crate) fn build(path: Option<String>) -> Result<(), String> {
     // find manifest directory, even if in subdirectory
-    let this_dir = std::env::current_dir().unwrap();
+    let this_dir = if let Some(path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().unwrap()
+    };
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -25,27 +31,21 @@ pub(crate) fn build() -> Result<(), String> {
     };
     let manifest = read_manifest(&manifest_dir)?;
 
-    let mut namespaces = Default::default();
-    let mut method_namespaces = Default::default();
+    let mut namespace: Namespace = Default::default();
     if let Some(ref deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter() {
             compile_dependency_lib(
+                &this_dir,
                 &dependency_name,
                 &dependency_details,
-                &mut namespaces,
-                &mut method_namespaces,
+                &mut namespace,
             )?;
         }
     }
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-    let main = compile(
-        main_file,
-        &manifest.project.name,
-        &namespaces,
-        &method_namespaces,
-    )?;
+    let _main = compile(main_file, &manifest.project.name, &namespace)?;
 
     Ok(())
 }
@@ -70,16 +70,10 @@ fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
 fn compile_dependency_lib<'source, 'manifest>(
+    project_path: &PathBuf,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
-    namespaces: &mut HashMap<
-        &'manifest str,
-        HashMap<Ident<'source>, HashMap<Ident<'source>, TypedDeclaration<'source>>>,
-    >,
-    method_namespaces: &mut HashMap<
-        &'manifest str,
-        HashMap<Ident<'source>, HashMap<TypeInfo<'source>, Vec<TypedFunctionDeclaration<'source>>>>,
-    >,
+    namespace: &mut Namespace<'source>,
 ) -> Result<(), String> {
     //todo!("For tomorrow: This needs to accumulate dependencies over time and build up the dependency namespace. Then, colon delineated paths in the compiler
     // need to look in the imports namespace.");
@@ -95,9 +89,13 @@ fn compile_dependency_lib<'source, 'manifest>(
         None => return Err("Only simple path imports are supported right now. Please supply a path relative to the manifest file.".into())
     };
 
+    // dependency paths are relative to the path of the project being compiled
+    let mut project_path = project_path.clone();
+    project_path.push(dep_path);
+
     // compile the dependencies of this dependency
     //this should detect circular dependencies
-    let manifest_dir = match find_manifest_dir(&PathBuf::from(dep_path)) {
+    let manifest_dir = match find_manifest_dir(&project_path) {
         Some(o) => o,
         None => return Err("Manifest not found for dependency.".into()),
     };
@@ -115,15 +113,9 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
-    let compiled = compile(
-        main_file,
-        &manifest_of_dep.project.name,
-        namespaces,
-        method_namespaces,
-    )?;
+    let compiled = compile(main_file, &manifest_of_dep.project.name, namespace)?;
 
-    namespaces.insert(&dependency_name, compiled.namespaces);
-    method_namespaces.insert(&dependency_name, compiled.methods_namespaces);
+    namespace.insert_module(dependency_name.to_string(), compiled.namespace);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())
@@ -154,16 +146,9 @@ fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
 fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
-    namespaces: &HashMap<
-        &'manifest str,
-        HashMap<Ident<'source>, HashMap<Ident<'source>, TypedDeclaration<'source>>>,
-    >,
-    method_namespaces: &HashMap<
-        &'manifest str,
-        HashMap<Ident<'source>, HashMap<TypeInfo<'source>, Vec<TypedFunctionDeclaration<'source>>>>,
-    >,
+    namespace: &Namespace<'source>,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = parser::compile(&source, namespaces, method_namespaces);
+    let res = parser::compile(&source, namespace);
     match res {
         Ok((compiled, warnings)) => {
             for ref warning in warnings.iter() {

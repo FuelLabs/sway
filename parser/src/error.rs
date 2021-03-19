@@ -163,6 +163,10 @@ pub enum Warning<'sc> {
         module: String,
         name: String,
     },
+    OverridesOtherSymbol {
+        name: &'sc str,
+    },
+    OverridingTraitImplementation,
 }
 
 impl<'sc> Warning<'sc> {
@@ -177,7 +181,9 @@ impl<'sc> Warning<'sc> {
             NonSnakeCaseFunctionName { name } => format!("Function name \"{}\" is not idiomatic. Function names should be snake_case, like \"{}\".", name, to_snake_case(name)),
             LossOfPrecision { initial_type, cast_to } => format!("This cast, from type {} to type {}, will lose precision.", initial_type.friendly_type_str(), cast_to.friendly_type_str()),
             UnusedReturnValue { r#type } => format!("This returns a value of type {}, which is not assigned to anything and is ignored.", r#type.friendly_type_str()),
-                SimilarMethodFound { lib, module, name } => format!("A method with the same name was found for type {} in dependency \"{}::{}\". Traits must be in scope in order to access their methods. ", name, lib, module)
+            SimilarMethodFound { lib, module, name } => format!("A method with the same name was found for type {} in dependency \"{}::{}\". Traits must be in scope in order to access their methods. ", name, lib, module),
+            OverridesOtherSymbol { name } => format!("This import would override another symbol with the same name \"{}\" in this namespace.", name),
+            OverridingTraitImplementation  => format!("This trait implementation overrides another one that was previously defined.")
         }
     }
 }

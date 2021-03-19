@@ -1,6 +1,7 @@
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
 use crate::error::*;
 use crate::parse_tree::*;
+use crate::semantics::Namespace;
 use crate::types::{IntegerBits, TypeInfo};
 use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
 use either::Either;
@@ -17,40 +18,20 @@ pub(crate) enum TreeType {
 #[derive(Debug)]
 pub(crate) struct TypedParseTree<'sc> {
     root_nodes: Vec<TypedAstNode<'sc>>,
-    pub(crate) namespace: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    pub(crate) methods_namespace: HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>,
+    pub(crate) namespace: Namespace<'sc>,
 }
 
 impl<'sc> TypedParseTree<'sc> {
     pub(crate) fn type_check<'manifest>(
         parsed: ParseTree<'sc>,
-        imported_namespace: &HashMap<
-            &'manifest str,
-            HashMap<Ident<'sc>, HashMap<Ident<'sc>, TypedDeclaration<'sc>>>,
-        >,
-        imported_method_namespace: &HashMap<
-            &'manifest str,
-            HashMap<Ident<'sc>, HashMap<TypeInfo<'sc>, Vec<TypedFunctionDeclaration<'sc>>>>,
-        >,
+        initial_namespace: Namespace<'sc>,
         tree_type: TreeType,
     ) -> CompileResult<'sc, Self> {
-        let mut global_namespace = Default::default();
-        // a mapping from types to the methods that are available for them
-        let mut methods_namespace = Default::default();
+        let mut initial_namespace = initial_namespace.clone();
         let typed_tree = parsed
             .root_nodes
             .into_iter()
-            .map(|node| {
-                TypedAstNode::type_check(
-                    node,
-                    &mut global_namespace,
-                    &mut methods_namespace,
-                    imported_namespace,
-                    imported_method_namespace,
-                    None,
-                    "",
-                )
-            })
+            .map(|node| TypedAstNode::type_check(node, &mut initial_namespace, None, ""))
             .collect::<Vec<CompileResult<_>>>();
 
         let mut typed_tree_nodes = Vec::new();
@@ -154,8 +135,7 @@ impl<'sc> TypedParseTree<'sc> {
         ok(
             TypedParseTree {
                 root_nodes: typed_tree_nodes,
-                namespace: global_namespace,
-                methods_namespace,
+                namespace: initial_namespace,
             },
             warnings,
             errors,
