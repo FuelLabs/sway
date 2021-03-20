@@ -1,11 +1,7 @@
 use super::*;
-use crate::error::*;
-use crate::parse_tree::*;
 use crate::types::{IntegerBits, TypeInfo};
-use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
 use either::Either;
-use pest::Span;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 pub(crate) const ERROR_RECOVERY_EXPR: TypedExpression = TypedExpression {
     expression: TypedExpressionVariant::Unit,
@@ -33,9 +29,11 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         name: Ident<'sc>,
     },
     Unit,
+    #[allow(dead_code)]
     Array {
         contents: Vec<TypedExpression<'sc>>,
     },
+    #[allow(dead_code)]
     MatchExpression {
         primary_expression: Box<TypedExpression<'sc>>,
         branches: Vec<TypedMatchBranch<'sc>>,
@@ -61,12 +59,15 @@ pub(crate) struct TypedStructExpressionField<'sc> {
     pub(crate) name: &'sc str,
     pub(crate) value: TypedExpression<'sc>,
 }
+
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub(crate) struct TypedMatchBranch<'sc> {
     condition: TypedMatchCondition<'sc>,
     result: Either<TypedCodeBlock<'sc>, TypedExpression<'sc>>,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub(crate) enum TypedMatchCondition<'sc> {
     CatchAll,
@@ -440,8 +441,8 @@ impl<'sc> TypedExpression<'sc> {
                     is_constant: IsConstant::No,
                 }
             }
-            Expression::SubfieldExpression { name_parts, span } => {
-                let mut name_parts_buf = VecDeque::from(name_parts);
+            Expression::SubfieldExpression { name_parts, .. } => {
+                let name_parts_buf = VecDeque::from(name_parts);
                 // this must be >= 2, or else the parser would not have matched it. asserting that
                 // invariant here, since it is an assumption that is acted upon later.
                 assert!(name_parts_buf.len() >= 2);

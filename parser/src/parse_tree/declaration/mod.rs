@@ -33,7 +33,6 @@ pub(crate) enum Declaration<'sc> {
     Reassignment(Reassignment<'sc>),
     ImplTrait(ImplTrait<'sc>),
     ImplSelf(ImplSelf<'sc>),
-    ErrorRecovery,
 }
 impl<'sc> Declaration<'sc> {
     pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {

@@ -1,8 +1,5 @@
 use super::{
-    ast_node::{
-        TypedExpressionVariant, TypedStructExpressionField, TypedTraitDeclaration,
-        TypedVariableDeclaration,
-    },
+    ast_node::{TypedExpressionVariant, TypedStructExpressionField, TypedVariableDeclaration},
     TypedExpression,
 };
 use crate::error::*;
@@ -27,7 +24,7 @@ impl<'sc> Namespace<'sc> {
         let idents_buf = idents.into_iter();
         let mut namespace = self.clone();
         for ident in idents_buf {
-            let other_namespace = match namespace.modules.get(ident.primary_name) {
+            match namespace.modules.get(ident.primary_name) {
                 Some(o) => namespace = o.clone(),
                 None => todo!("library not found: {:?}", debug_idents),
             };
@@ -42,7 +39,7 @@ impl<'sc> Namespace<'sc> {
         item: &Ident<'sc>,
         alias: Option<Ident<'sc>>,
     ) -> CompileResult<()> {
-        let mut warnings = vec![];
+        let warnings = vec![];
         let namespace = match self.find_module(&path) {
             Some(o) => o,
             None => todo!("module not found error"),
@@ -106,7 +103,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn find_module(&self, path: &Vec<Ident<'sc>>) -> Option<Namespace<'sc>> {
         let mut namespace = self.clone();
         for ident in path {
-            let other_namespace = match namespace.modules.get(ident.primary_name) {
+            match namespace.modules.get(ident.primary_name) {
                 Some(o) => namespace = o.clone(),
                 None => todo!("library not found"),
             };
@@ -171,7 +168,7 @@ impl<'sc> Namespace<'sc> {
                     fields = l_fields.into_iter().cloned().collect();
                     expr = Some(value);
                 }
-                a => {
+                _ => {
                     fields = vec![];
                     expr = Some(value);
                 }
@@ -210,13 +207,12 @@ fn get_struct_expression_fields<'sc>(
 ) -> Option<Vec<TypedStructExpressionField<'sc>>> {
     match decl {
         TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-            name,
             body:
                 TypedExpression {
                     expression: TypedExpressionVariant::StructExpression { fields, .. },
                     ..
                 },
-            is_mutable: _is_mutable,
+            ..
         }) => Some(fields.clone()),
         TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { .. }) => todo!(),
         o => todo!(

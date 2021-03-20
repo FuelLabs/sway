@@ -34,12 +34,9 @@ pub(crate) enum IsConstant {
 
 #[derive(Clone, Debug)]
 pub(crate) enum TypedAstNodeContent<'sc> {
-    UseStatement,
-    //    CodeBlock(TypedCodeBlock<'sc>),
     ReturnStatement(TypedReturnStatement<'sc>),
     Declaration(TypedDeclaration<'sc>),
     Expression(TypedExpression<'sc>),
-    TraitDeclaration(TraitDeclaration<'sc>),
     ImplicitReturnExpression(TypedExpression<'sc>),
     WhileLoop(TypedWhileLoop<'sc>),
     // a no-op node used for something that just issues a side effect, like an import statement.
@@ -57,7 +54,7 @@ impl<'sc> TypedAstNode<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            UseStatement | ReturnStatement(_) | Declaration(_) | TraitDeclaration(_) => {
+          ReturnStatement(_) | Declaration(_) => {
                 TypeInfo::Unit
             }
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
@@ -515,7 +512,6 @@ impl<'sc> TypedAstNode<'sc> {
                         ERROR_RECOVERY_DECLARATION
                     }
                 }),
-                AstNodeContent::TraitDeclaration(a) => TypedAstNodeContent::TraitDeclaration(a),
                 AstNodeContent::Expression(a) => {
                     let inner = type_check!(
                         TypedExpression::type_check(

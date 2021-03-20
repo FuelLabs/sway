@@ -1,17 +1,16 @@
 use crate::error::*;
-use crate::parse_tree::Literal;
-use crate::utils::join_spans;
-use std::{
-    collections::HashMap,
-    hash::{Hash, Hasher},
-};
-#[macro_use]
-use crate::parser::{HllParser, Rule};
 use crate::parse_tree::CallPath;
+use crate::parse_tree::Literal;
+use crate::parser::{HllParser, Rule};
+use crate::utils::join_spans;
 use crate::CodeBlock;
 use either::Either;
 use pest::iterators::Pair;
 use pest::Span;
+use std::{
+    collections::HashMap,
+    hash::{Hash, Hasher},
+};
 
 mod asm;
 pub(crate) use asm::AsmExpression;

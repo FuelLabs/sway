@@ -1,4 +1,3 @@
-#![allow(warnings)]
 #[macro_use]
 extern crate pest_derive;
 #[macro_use]
@@ -67,11 +66,9 @@ struct AstNode<'sc> {
 #[derive(Debug, Clone)]
 pub(crate) enum AstNodeContent<'sc> {
     UseStatement(UseStatement<'sc>),
-    CodeBlock(CodeBlock<'sc>),
     ReturnStatement(ReturnStatement<'sc>),
     Declaration(Declaration<'sc>),
     Expression(Expression<'sc>),
-    TraitDeclaration(TraitDeclaration<'sc>),
     ImplicitReturnExpression(Expression<'sc>),
     WhileLoop(WhileLoop<'sc>),
 }

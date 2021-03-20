@@ -71,29 +71,6 @@ impl<'sc> TypeParameter<'sc> {
     }
 }
 
-fn find_and_update_param<'sc>(
-    mut params: Vec<TypeParameter<'sc>>,
-    param_to_update: Pair<'sc, Rule>,
-    trait_name_to_add: &'sc str,
-) -> Result<(), CompileError<'sc>> {
-    let mut found = false;
-    for mut param in params {
-        if param.name == param_to_update.as_str() {
-            param.trait_constraint.push(TraitConstraint {
-                name: trait_name_to_add,
-            });
-            found = true;
-        }
-    }
-    if !found {
-        return Err(CompileError::UndeclaredGenericTypeInWhereClause {
-            span: param_to_update.as_span(),
-            type_name: param_to_update.as_str(),
-        });
-    }
-    Ok(())
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct TraitConstraint<'sc> {
     name: &'sc str,
