@@ -126,7 +126,7 @@ impl_trait = { impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ ty
 // imports
 
 use_statement = { use_keyword ~ import_path ~ ";"}
-import_path = { ident ~ (path_separator ~ ident)* ~ path_separator ~ (ident|star) }
+import_path = { ident ~ (path_separator ~ (ident|star))* }
 star = { "*" }
 
 // loops

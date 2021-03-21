@@ -277,7 +277,7 @@ pub enum CompileError<'sc> {
     )]
     MultipleImmediates(Span<'sc>),
     #[error(
-        "Type mismatch in parameters of trait function. The trait was defined to have a different signature than the implementation provided here. Expected type {expected}, but found type {given}."
+        "Expected type {expected}, but found type {given}. The definition of this function must match the one in the trait declaration."
     )]
     MismatchedTypeInTrait {
         span: Span<'sc>,
@@ -339,6 +339,10 @@ pub enum CompileError<'sc> {
         method_name: &'sc str,
         type_name: String,
     },
+    #[error("The asterisk, if present, must be the last part of a path. E.g., `use foo::bar::*`.")]
+    NonFinalAsteriskInPath { span: Span<'sc> },
+    #[error("Module \"{name}\" could not be found.")]
+    ModuleNotFound { span: Span<'sc>, name: &'sc str },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -455,6 +459,8 @@ impl<'sc> CompileError<'sc> {
             StructMissingField { span, .. } => (span.start(), span.end()),
             StructDoesntHaveThisField { span, .. } => (span.start(), span.end()),
             MethodNotFound { span, .. } => (span.start(), span.end()),
+            NonFinalAsteriskInPath { span, .. } => (span.start(), span.end()),
+            ModuleNotFound { span, .. } => (span.start(), span.end()),
         }
     }
 }

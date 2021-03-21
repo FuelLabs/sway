@@ -52,7 +52,7 @@ pub(crate) fn build(path: Option<String>) -> Result<(), String> {
 
 /// Continually go up in the file tree until a manifest (Fuel.toml) is found.
 fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
-    let mut path = fs::canonicalize(starter_path.clone()).unwrap();
+    let mut path = fs::canonicalize(starter_path.clone()).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
         path.push(crate::constants::MANIFEST_FILE_NAME);
@@ -113,7 +113,7 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
-    let compiled = compile(main_file, &manifest_of_dep.project.name, namespace)?;
+    let compiled = compile(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
 
     namespace.insert_module(dependency_name.to_string(), compiled.namespace);
 

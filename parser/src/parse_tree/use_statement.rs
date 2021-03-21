@@ -40,6 +40,12 @@ impl<'sc> UseStatement<'sc> {
         };
 
         for item in import_path_vec.into_iter() {
+            if item.as_rule() == Rule::star {
+                errors.push(CompileError::NonFinalAsteriskInPath {
+                    span: item.as_span(),
+                });
+                continue;
+            }
             if item.as_rule() == Rule::ident {
                 import_path_buf.push(eval!(
                     Ident::parse_from_pair,

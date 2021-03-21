@@ -480,29 +480,38 @@ impl<'sc> TypedExpression<'sc> {
                             return err(warnings, errors);
                         }
                     };
-                    (match ns.find_method_for_type(parent_expr.return_type.clone(), method_name.suffix.clone()) {
-                        Some(o) => o,
-                        None => {
-                            errors.push(CompileError::MethodNotFound {
-                                span,
-                                method_name: method_name.suffix.clone().primary_name,
-                                type_name: parent_expr.return_type.friendly_type_str()
-                            });
-                            return err(warnings, errors);
-
-                        }
-                    }, parent_expr.return_type)
+                    (
+                        match ns.find_method_for_type(
+                            parent_expr.return_type.clone(),
+                            method_name.suffix.clone(),
+                        ) {
+                            Some(o) => o,
+                            None => {
+                                errors.push(CompileError::MethodNotFound {
+                                    span,
+                                    method_name: method_name.suffix.clone().primary_name,
+                                    type_name: parent_expr.return_type.friendly_type_str(),
+                                });
+                                return err(warnings, errors);
+                            }
+                        },
+                        parent_expr.return_type,
+                    )
                 } else {
                     let parent_expr = match namespace.find_subfield(subfield_exp) {
                         Some(exp) => exp,
                         None => todo!("err, couldn't find ident"),
                     };
-                    (match namespace
-                        .find_method_for_type(parent_expr.return_type.clone(), method_name.suffix.clone())
-                    {
-                        Some(o) => o,
-                        None => todo!("Method not found error"),
-                    }, parent_expr.return_type)
+                    (
+                        match namespace.find_method_for_type(
+                            parent_expr.return_type.clone(),
+                            method_name.suffix.clone(),
+                        ) {
+                            Some(o) => o,
+                            None => todo!("Method not found error"),
+                        },
+                        parent_expr.return_type,
+                    )
                 };
 
                 // zip parameters to arguments to perform type checking
@@ -510,9 +519,11 @@ impl<'sc> TypedExpression<'sc> {
 
                 let mut typed_arg_buf = vec![];
                 for (FunctionParameter { r#type, .. }, arg) in zipped {
-                    let un_self_type  = if *r#type == TypeInfo::SelfType {
+                    let un_self_type = if *r#type == TypeInfo::SelfType {
                         parent_type.clone()
-                    } else { r#type.clone() };
+                    } else {
+                        r#type.clone()
+                    };
                     typed_arg_buf.push(type_check!(
                         TypedExpression::type_check(
                         arg.clone(),

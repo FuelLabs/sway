@@ -1,7 +1,7 @@
 use crate::error::*;
 use crate::parse_tree::*;
-use crate::types::{IntegerBits, TypeInfo};
 use crate::semantics::Namespace;
+use crate::types::{IntegerBits, TypeInfo};
 use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
 use either::Either;
 use pest::Span;
@@ -10,6 +10,7 @@ use std::collections::HashMap;
 mod code_block;
 mod declaration;
 mod expression;
+mod impl_trait;
 mod return_statement;
 mod while_loop;
 
@@ -17,7 +18,10 @@ use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{TypedDeclaration, TypedFunctionDeclaration};
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
-pub(crate) use expression::{TypedStructExpressionField, TypedExpression, TypedExpressionVariant, ERROR_RECOVERY_EXPR};
+pub(crate) use expression::{
+    TypedExpression, TypedExpressionVariant, TypedStructExpressionField, ERROR_RECOVERY_EXPR,
+};
+use impl_trait::implementation_of_trait;
 use return_statement::TypedReturnStatement;
 pub(crate) use while_loop::TypedWhileLoop;
 
@@ -54,9 +58,7 @@ impl<'sc> TypedAstNode<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-          ReturnStatement(_) | Declaration(_) => {
-                TypeInfo::Unit
-            }
+            ReturnStatement(_) | Declaration(_) => TypeInfo::Unit,
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
             WhileLoop(_) | SideEffect => TypeInfo::Unit,
@@ -78,7 +80,11 @@ impl<'sc> TypedAstNode<'sc> {
                 AstNodeContent::UseStatement(a) => {
                     match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path),
-                        ImportType::Item(s) => namespace.item_import(a.call_path, &s, None/*TODO support aliasing in grammar*/)
+                        ImportType::Item(s) => namespace.item_import(
+                            a.call_path,
+                            &s,
+                            None, /*TODO support aliasing in grammar*/
+                        ),
                     };
                     TypedAstNodeContent::SideEffect
                 }
@@ -117,12 +123,7 @@ impl<'sc> TypedAstNode<'sc> {
                     }
                     Declaration::FunctionDeclaration(fn_decl) => {
                         let decl = type_check!(
-                            TypedFunctionDeclaration::type_check(
-                                fn_decl,
-                                &namespace,
-                                None,
-                                ""
-                            ),
+                            TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, ""),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -292,161 +293,12 @@ impl<'sc> TypedAstNode<'sc> {
 
                         TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs })
                     }
-                    Declaration::ImplTrait(ImplTrait {
-                        trait_name,
-                        type_arguments,
-                        functions,
-                        type_implementing_for,
-                        type_arguments_span,
-                        block_span,
-                    }) => match namespace.get_symbol(&trait_name) {
-                        Some(TypedDeclaration::TraitDeclaration(tr)) => {
-                            if type_arguments.len() != tr.type_parameters.len() {
-                                errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                                    given: type_arguments.len(),
-                                    expected: tr.type_parameters.len(),
-                                    span: type_arguments_span,
-                                })
-                            }
-
-                            // type check all components of the impl trait functions
-                            let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            // this list keeps track of the remaining functions in the
-                            // interface surface that still need to be implemented for the
-                            // trait to be fully implemented
-                            let mut function_checklist: Vec<&Ident> = tr
-                                .interface_surface
-                                .iter()
-                                .map(|TraitFn { name, .. }| name)
-                                .collect();
-                            for mut fn_decl in functions.into_iter() {
-                                let mut type_arguments = type_arguments.clone();
-                                // add generic params from impl trait into function type params
-                                fn_decl.type_parameters.append(&mut type_arguments);
-                                // ensure this fn decl's parameters and signature lines up with the one
-                                // in the trait
-                                if let Some(mut l_e) = tr.interface_surface.iter().find_map(|TraitFn { name, parameters, return_type }| {
-                                if fn_decl.name == *name {
-                                    let mut errors = vec![];
-                                    if let Some(mut maybe_err) = parameters.iter().zip(fn_decl.parameters.iter()).find_map(|(fn_decl_param, trait_param)| {
-                                    let mut errors = vec![];
-                                    if let TypeInfo::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
-                                        if let TypeInfo::Generic { .. } = trait_param.r#type {
-                                            // nothing -- this is ok, no error
-                                        } else 
-                                        {
-                                            errors.push(CompileError::MismatchedTypeInTrait {
-                                                span: fn_decl_param.type_span.clone(),
-                                                given: fn_decl_param.r#type.friendly_type_str(),
-                                                expected: trait_param.r#type.friendly_type_str()
-                                            });
-                                        }
-                                    } else {
-                                        if fn_decl_param.r#type == trait_param.r#type  { /* nothing -- this is ok */ } else {
-                                            errors.push(CompileError::MismatchedTypeInTrait {span: fn_decl_param.type_span.clone(),
-                                            given: fn_decl_param.r#type.friendly_type_str(),
-                                            expected: trait_param.r#type.friendly_type_str()});
-                                        }
-                                    }
-                                    if errors.is_empty() { None } else { Some(errors) }
-                                }) {
-                                    errors.append(&mut maybe_err);
-                                }
-                                if fn_decl.return_type == *return_type {
-                                    // nothing -- this is fine, no error
-                                }
-                                else {
-                                    errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: fn_decl.return_type_span.clone(),
-                                        expected: return_type.friendly_type_str(),
-                                        given: fn_decl.return_type.friendly_type_str() 
-                                    });
-                                }
-                                if errors.is_empty() { None } else { Some(errors) }
-                            } else {
-                                None 
-                            } 
-                        })
-                        {
-                            errors.append(&mut l_e);
-                            continue;
-                        }
-                                // remove this function from the "checklist"
-                                let ix_of_thing_to_remove = match function_checklist
-                                    .iter()
-                                    .position(|name| **name == fn_decl.name)
-                                {
-                                    Some(ix) => ix,
-                                    None => {
-                                        errors.push(
-                                            CompileError::FunctionNotAPartOfInterfaceSurface {
-                                                name: fn_decl.name.primary_name.clone(),
-                                                trait_name: trait_name.primary_name.clone(),
-                                                span: fn_decl.name.span.clone(),
-                                            },
-                                        );
-                                        return err(warnings, errors);
-                                    }
-                                };
-                                function_checklist.remove(ix_of_thing_to_remove);
-
-                                // replace SelfType with type of implementor
-                                // i.e. fn add(self, other: u64) -> Self becomes fn
-                                // add(self: u64, other: u64) -> u64
-                                if let Some(ix) = fn_decl.parameters.iter().position(
-                                    |FunctionParameter { name, r#type, .. }| {
-                                        r#type == &TypeInfo::SelfType
-                                    },
-                                ) {
-                                    fn_decl.parameters[ix].r#type = type_implementing_for.clone();
-                                }
-                                if fn_decl.return_type == TypeInfo::SelfType {
-                                    fn_decl.return_type = type_implementing_for.clone();
-                                }
-
-                                functions_buf.push(type_check!(
-                                    TypedFunctionDeclaration::type_check(
-                                        fn_decl,
-                                        &namespace,
-                                        None,
-                                        ""
-                                    ),
-                                    continue,
-                                    warnings,
-                                    errors
-                                ));
-                            }
-
-                            // check that the implementation checklist is complete
-                            if !function_checklist.is_empty() {
-                                errors.push(CompileError::MissingInterfaceSurfaceMethods {
-                                    span: block_span,
-                                    missing_functions: function_checklist
-                                        .into_iter()
-                                        .map(|Ident { primary_name, .. }| primary_name.to_string())
-                                        .collect::<Vec<_>>()
-                                        .join("\n"),
-                                });
-                            }
-
-                            namespace.insert_trait_implementation(trait_name, type_implementing_for, functions_buf);
-                            TypedDeclaration::SideEffect
-                        }
-                        Some(_) => {
-                            errors.push(CompileError::NotATrait {
-                                span: trait_name.span,
-                                name: trait_name.primary_name,
-                            });
-                            ERROR_RECOVERY_DECLARATION.clone()
-                        }
-                        None => {
-                            errors.push(CompileError::UnknownTrait {
-                                name: trait_name.primary_name,
-                                span: trait_name.span,
-                            });
-                            ERROR_RECOVERY_DECLARATION.clone()
-                        }
-                    },
+                    Declaration::ImplTrait(impl_trait) => type_check!(
+                        implementation_of_trait(impl_trait, namespace),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
 
                     Declaration::ImplSelf(ImplSelf {
                         type_arguments,
@@ -478,19 +330,21 @@ impl<'sc> TypedAstNode<'sc> {
                             }
 
                             functions_buf.push(type_check!(
-                                TypedFunctionDeclaration::type_check(
-                                    fn_decl,
-                                    &namespace,
-                                    None,
-                                    ""
-                                ),
+                                TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, ""),
                                 continue,
                                 warnings,
                                 errors
                             ));
                         }
 
-                        namespace.insert_trait_implementation(Ident { primary_name: "r#Self", span: block_span.clone() }, type_implementing_for, functions_buf);
+                        namespace.insert_trait_implementation(
+                            Ident {
+                                primary_name: "r#Self",
+                                span: block_span.clone(),
+                            },
+                            type_implementing_for,
+                            functions_buf,
+                        );
                         TypedDeclaration::SideEffect
                     }
                     Declaration::StructDeclaration(decl) => {
@@ -514,12 +368,7 @@ impl<'sc> TypedAstNode<'sc> {
                 }),
                 AstNodeContent::Expression(a) => {
                     let inner = type_check!(
-                        TypedExpression::type_check(
-                            a,
-                            &namespace,
-                            None,
-                            ""
-                        ),
+                        TypedExpression::type_check(a, &namespace, None, ""),
                         ERROR_RECOVERY_EXPR.clone(),
                         warnings,
                         errors

@@ -20,13 +20,20 @@ pub struct Namespace<'sc> {
 
 impl<'sc> Namespace<'sc> {
     pub(crate) fn star_import(&mut self, idents: Vec<Ident<'sc>>) -> CompileResult<()> {
-        let debug_idents = idents.clone();
         let idents_buf = idents.into_iter();
         let mut namespace = self.clone();
         for ident in idents_buf {
             match namespace.modules.get(ident.primary_name) {
                 Some(o) => namespace = o.clone(),
-                None => todo!("library not found: {:?}", debug_idents),
+                None => {
+                    return err(
+                        vec![],
+                        vec![CompileError::ModuleNotFound {
+                            span: ident.span,
+                            name: ident.primary_name.clone(),
+                        }],
+                    )
+                }
             };
         }
         self.merge_namespaces(&namespace);
@@ -46,6 +53,24 @@ impl<'sc> Namespace<'sc> {
         };
 
         match namespace.symbols.get(item) {
+            Some(TypedDeclaration::TraitDeclaration(tr)) => {
+                let name = match alias {
+                    Some(s) => s.clone(),
+                    None => item.clone(),
+                };
+                // import the trait itself
+                self.insert(name.clone(), TypedDeclaration::TraitDeclaration(tr.clone()));
+
+                // find implementations of this trait and import them
+                namespace
+                    .implemented_traits
+                    .iter()
+                    .filter(|((trait_name, _ty), _)| item == trait_name)
+                    .for_each(|((_trait_name, trait_type), methods)| {
+                        self.implemented_traits
+                            .insert((name.clone(), trait_type.clone()), methods.clone());
+                    });
+            }
             Some(o) => {
                 let name = match alias {
                     Some(s) => s.clone(),
