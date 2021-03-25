@@ -174,8 +174,8 @@ impl<'sc> TypedAstNode<'sc> {
                             // scope
                             let mut generic_params_buf_for_error_message = Vec::new();
                             for param in parameters.iter() {
-                                if let TypeInfo::Generic { name } = param.r#type {
-                                    generic_params_buf_for_error_message.push(name);
+                                if let TypeInfo::Custom { ref name } = param.r#type {
+                                    generic_params_buf_for_error_message.push(name.primary_name);
                                 }
                             }
                             let comma_separated_generic_params =
@@ -185,7 +185,7 @@ impl<'sc> TypedAstNode<'sc> {
                             } in parameters.iter()
                             {
                                 let span = name.span.clone();
-                                if let TypeInfo::Generic { name, .. } = r#type {
+                                if let TypeInfo::Custom { name, .. } = r#type {
                                     let args_span = parameters.iter().fold(
                                         parameters[0].name.span.clone(),
                                         |acc,
@@ -196,9 +196,9 @@ impl<'sc> TypedAstNode<'sc> {
                                             crate::utils::join_spans(acc, span.clone())
                                         },
                                     );
-                                    if type_parameters.iter().find(|x| x.name == *name).is_none() {
+                                    if type_parameters.iter().find(|x| x.name == name.primary_name).is_none() {
                                         errors.push(CompileError::TypeParameterNotInTypeScope {
-                                            name,
+                                            name: name.primary_name,
                                             span: span.clone(),
                                             comma_separated_generic_params:
                                                 comma_separated_generic_params.clone(),
@@ -304,6 +304,13 @@ impl<'sc> TypedAstNode<'sc> {
                         block_span,
                         ..
                     }) => {
+                        // check, if this is a custom type, if it is in scope or a generic.
+                        let type_implementing_for = match type_implementing_for {
+                            TypeInfo::Custom { name } => lookup_in_scope(&name, namespace) ,
+                            o => o,
+                        };
+                        // insert type of "self" into local namespace
+                        let mut namespace = namespace.clone();
                         let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                         for mut fn_decl in functions.into_iter() {
                             let mut type_arguments = type_arguments.clone();
@@ -318,10 +325,6 @@ impl<'sc> TypedAstNode<'sc> {
                             if let Some(ix) = fn_decl.parameters.iter().position(
                                 |FunctionParameter { r#type, .. }| r#type == &TypeInfo::SelfType,
                             ) {
-                                println!(
-                                    "REplacing with {}",
-                                    type_implementing_for.clone().friendly_type_str()
-                                );
                                 fn_decl.parameters[ix].r#type = type_implementing_for.clone();
                             }
                             if fn_decl.return_type == TypeInfo::SelfType {
@@ -347,6 +350,14 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedDeclaration::SideEffect
                     }
                     Declaration::StructDeclaration(decl) => {
+                        // look up any generic or struct types in the namespace
+                        let mut decl = decl.clone();
+                        for ref mut field in decl.fields.iter_mut() {
+                            if let TypeInfo::Custom { ref name } = field.r#type {
+                                field.r#type = lookup_in_scope(name , namespace);
+                            }
+                        }
+                
                         // insert struct into namespace
                         namespace.insert(
                             decl.name.clone(),
@@ -452,5 +463,16 @@ impl<'sc> TypedAstNode<'sc> {
         }
 
         ok(node, warnings, errors)
+    }
+}
+
+
+    /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
+    /// being looked for is actually a generic. 
+fn lookup_in_scope<'sc>(custom_type_name: &Ident<'sc>, namespace: &Namespace<'sc>) -> TypeInfo<'sc> { 
+    match namespace.get_symbol(custom_type_name) {
+       Some(TypedDeclaration::StructDeclaration(StructDeclaration { name, .. })) => TypeInfo::Struct { name: name.clone() },
+       Some(_) => TypeInfo::Generic { name: custom_type_name.clone() },
+       None => TypeInfo::Generic { name: custom_type_name.clone() }
     }
 }

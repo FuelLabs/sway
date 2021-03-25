@@ -24,6 +24,7 @@ pub(crate) struct ImplSelf<'sc> {
     // the span of the whole impl trait and block
     pub(crate) block_span: Span<'sc>,
     pub(crate) type_arguments_span: Span<'sc>,
+    pub(crate) type_name_span: Span<'sc>,
 }
 
 impl<'sc> ImplTrait<'sc> {
@@ -132,7 +133,7 @@ impl<'sc> ImplSelf<'sc> {
             None
         };
         let type_pair = iter.next().unwrap();
-        let backup_span = type_pair.as_span();
+        let type_name_span = type_pair.as_span();
 
         let type_implementing_for = eval!(
             TypeInfo::parse_from_pair,
@@ -149,7 +150,7 @@ impl<'sc> ImplSelf<'sc> {
         };
         let type_arguments_span = match type_params_pair {
             Some(ref x) => x.as_span(),
-            None => backup_span,
+            None => type_name_span.clone(),
         };
         let type_arguments = match TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
@@ -192,6 +193,7 @@ impl<'sc> ImplSelf<'sc> {
                 type_arguments_span,
                 type_implementing_for,
                 functions: fn_decls_buf,
+                type_name_span,
                 block_span,
             },
             warnings,

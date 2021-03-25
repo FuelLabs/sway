@@ -396,10 +396,10 @@ impl<'sc> TypedExpression<'sc> {
 
                     let typed_field = type_check!(
                         TypedExpression::type_check(
-                        expr_field.value,
-                        &namespace,
-                        Some(def_field.r#type.clone()),
-                        "Struct field's type must match up with the type specified in its declaration.",
+                            expr_field.value,
+                            &namespace,
+                            Some(def_field.r#type.clone()),
+                            "Struct field's type must match up with the type specified in its declaration.",
                         ),
                         continue,
                         warnings,

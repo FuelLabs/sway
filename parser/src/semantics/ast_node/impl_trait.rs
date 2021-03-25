@@ -87,9 +87,9 @@ pub(crate) fn implementation_of_trait<'sc>(
                                     let mut errors = vec![];
                                     if let Some(mut maybe_err) = parameters.iter().zip(fn_decl.parameters.iter()).find_map(|(fn_decl_param, trait_param)| {
                                     let mut errors = vec![];
-                                    if let TypeInfo::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
+                                    if let TypeInfo::Custom { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
                                         match trait_param.r#type {
-                                            TypeInfo::Generic { .. } => (),
+                                            TypeInfo::Custom { .. } => (),
                                             _ => 
 
                                             errors.push(CompileError::MismatchedTypeInTrait {

@@ -13,7 +13,7 @@ pub enum TypedDeclaration<'sc> {
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
     Reassignment(TypedReassignment<'sc>),
-    // no contents since it is a side-effectful declaration, i.e it populates the methods namespace
+    // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
     ErrorRecovery,
 }
@@ -67,7 +67,7 @@ pub struct TypedReassignment<'sc> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub(crate) fn type_check<'manifest>(
+    pub(crate) fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
         _return_type_annotation: Option<TypeInfo<'sc>>,
@@ -90,7 +90,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .clone()
             .into_iter()
             .for_each(|FunctionParameter { name, r#type, .. }| {
-                dbg!(&name, &r#type);
                 namespace.insert(
                     name.clone(),
                     TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -120,8 +119,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // scope
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let TypeInfo::Generic { name } = param.r#type {
-                generic_params_buf_for_error_message.push(name);
+            if let TypeInfo::Custom { ref name } = param.r#type {
+                generic_params_buf_for_error_message.push(name.primary_name);
             }
         }
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
@@ -130,7 +129,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         } in parameters.iter()
         {
             let span = name.span.clone();
-            if let TypeInfo::Generic { name, .. } = r#type {
+            if let TypeInfo::Custom { name, .. } = r#type {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span.clone(),
                     |acc,
@@ -139,9 +138,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                          ..
                      }| crate::utils::join_spans(acc, span.clone()),
                 );
-                if type_parameters.iter().find(|x| x.name == *name).is_none() {
+                if type_parameters
+                    .iter()
+                    .find(|x| x.name == name.primary_name)
+                    .is_none()
+                {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name,
+                        name: name.primary_name,
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
                         fn_name: fn_decl.name.primary_name,

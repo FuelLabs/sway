@@ -9,12 +9,23 @@ pub enum TypeInfo<'sc> {
     String,
     UnsignedInteger(IntegerBits),
     Boolean,
-    Generic { name: &'sc str },
+    /// A custom type could be a struct or similar if the name is in scope,
+    /// or just a generic parameter if it is not.
+    /// At parse time, there is no sense of scope, so this determination is not made
+    /// until the semantic analysis stage.
+    Custom {
+        name: Ident<'sc>,
+    },
+    Generic {
+        name: Ident<'sc>,
+    },
     Unit,
     SelfType,
     Byte,
     Byte32,
-    Struct { name: Ident<'sc> },
+    Struct {
+        name: Ident<'sc>,
+    },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -33,6 +44,8 @@ impl<'sc> TypeInfo<'sc> {
         Self::parse_from_pair_inner(r#type.next().unwrap())
     }
     pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         ok(
             match input.as_str().trim() {
                 "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
@@ -45,10 +58,18 @@ impl<'sc> TypeInfo<'sc> {
                 "unit" => TypeInfo::Unit,
                 "byte" => TypeInfo::Byte,
                 "Self" => TypeInfo::SelfType,
-                other => TypeInfo::Generic { name: other },
+                _other => TypeInfo::Custom {
+                    name: eval!(
+                        Ident::parse_from_pair,
+                        warnings,
+                        errors,
+                        input,
+                        return err(warnings, errors)
+                    ),
+                },
             },
-            Vec::new(),
-            Vec::new(),
+            warnings,
+            errors,
         )
     }
 
@@ -142,7 +163,8 @@ impl<'sc> TypeInfo<'sc> {
                 .into()
             }
             Boolean => "bool".into(),
-            Generic { name } => format!("<Generic {}>", name),
+            Generic { name } => format!("generic {}", name.primary_name),
+            Custom { name } => format!("unknown {}", name.primary_name),
             Unit => "()".into(),
             SelfType => "Self".into(),
             Byte => "byte".into(),
@@ -150,7 +172,7 @@ impl<'sc> TypeInfo<'sc> {
             Struct {
                 name: Ident { primary_name, .. },
                 ..
-            } => format!("Struct {}", primary_name),
+            } => format!("struct {}", primary_name),
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
