@@ -28,7 +28,7 @@ impl<'sc> CodeBlock<'sc> {
                         pair.clone(),
                         continue
                     )),
-                    span: pair.into_span(),
+                    span: pair.as_span(),
                 },
                 Rule::expr_statement => {
                     let evaluated_node = eval!(
@@ -40,7 +40,7 @@ impl<'sc> CodeBlock<'sc> {
                     );
                     AstNode {
                         content: AstNodeContent::Expression(evaluated_node),
-                        span: pair.into_span(),
+                        span: pair.as_span(),
                     }
                 }
                 Rule::return_statement => {

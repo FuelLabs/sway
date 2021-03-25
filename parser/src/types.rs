@@ -1,7 +1,5 @@
 use crate::error::*;
-use crate::{parse_tree::Ident, CodeBlock, CompileError, Rule};
-use either::Either;
-use inflector::cases::snakecase::is_snake_case;
+use crate::{parse_tree::Ident, Rule};
 use pest::iterators::Pair;
 use pest::Span;
 

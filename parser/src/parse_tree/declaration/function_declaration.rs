@@ -1,8 +1,7 @@
 use crate::error::*;
-use crate::parse_tree::{declaration::TypeParameter, Expression, Ident};
+use crate::parse_tree::{declaration::TypeParameter, Ident};
 use crate::types::TypeInfo;
-use crate::{CodeBlock, CompileError, Rule};
-use either::Either;
+use crate::{CodeBlock, Rule};
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 use pest::Span;
@@ -39,7 +38,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         let mut parts = pair.clone().into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut signature_or_visibility = parts.next().unwrap();
+        let signature_or_visibility = parts.next().unwrap();
         let (visibility, mut signature) = if signature_or_visibility.as_rule() == Rule::visibility {
             (
                 Visibility::parse_from_pair(signature_or_visibility),
@@ -229,16 +228,12 @@ impl<'sc> FunctionParameter<'sc> {
             }
             let mut parts = pair.clone().into_inner();
             let name_pair = parts.next().unwrap();
-            let name_str = name_pair.as_str();
             let name = eval!(
                 Ident::parse_from_pair,
                 warnings,
                 errors,
                 name_pair,
-                Ident {
-                    primary_name: "error parsing var name",
-                    span: name_pair.as_span()
-                }
+                return err(warnings, errors)
             );
             let type_pair = parts.next().unwrap();
             let type_span = type_pair.as_span();

@@ -192,6 +192,8 @@ impl<'sc> Warning<'sc> {
 pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: &'sc str, span: Span<'sc> },
+    #[error("Variable \"{var_name}\" does not exist in this scope.")]
+    UnknownVariablePath { var_name: String, span: Span<'sc> },
     #[error("Function \"{name}\" does not exist in this scope.")]
     UnknownFunction { name: &'sc str, span: Span<'sc> },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
@@ -263,14 +265,13 @@ pub enum CompileError<'sc> {
     },
     #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
     AssignmentToNonMutable(&'sc str, Span<'sc>),
-    #[error("Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in the function signature? For example: `fn {fn_name}<{comma_separated_generic_params}>{args} -> {return_type}`")]
+    #[error("Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in the function signature? For example: \n`fn {fn_name}<{comma_separated_generic_params}>({args}) -> ... `")]
     TypeParameterNotInTypeScope {
         name: &'sc str,
         span: Span<'sc>,
         comma_separated_generic_params: String,
         fn_name: &'sc str,
         args: &'sc str,
-        return_type: String,
     },
     #[error(
         "Asm opcode has multiple immediates specified, when any opcode has at most one immediate."
@@ -343,6 +344,15 @@ pub enum CompileError<'sc> {
     NonFinalAsteriskInPath { span: Span<'sc> },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span<'sc>, name: &'sc str },
+    #[error("\"{name}\" is not a struct. Fields can only be accessed on structs.")]
+    NotAStruct { name: &'sc str, span: Span<'sc> },
+    #[error("Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n {available_fields}")]
+    FieldNotFound {
+        field_name: &'sc str,
+        available_fields: String,
+        struct_name: &'sc str,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -373,7 +383,6 @@ impl<'sc> TypeError<'sc> {
 
 impl<'sc> CompileError<'sc> {
     pub fn to_friendly_error_string(&self) -> String {
-        use CompileError::*;
         match self {
             CompileError::ParseFailure(err) => format!(
                 "Error parsing input: {}",
@@ -416,6 +425,7 @@ impl<'sc> CompileError<'sc> {
         use CompileError::*;
         match self {
             UnknownVariable { span, .. } => (span.start(), span.end()),
+            UnknownVariablePath { span, .. } => (span.start(), span.end()),
             UnknownFunction { span, .. } => (span.start(), span.end()),
             NotAVariable { span, .. } => (span.start(), span.end()),
             NotAFunction { span, .. } => (span.start(), span.end()),
@@ -461,6 +471,8 @@ impl<'sc> CompileError<'sc> {
             MethodNotFound { span, .. } => (span.start(), span.end()),
             NonFinalAsteriskInPath { span, .. } => (span.start(), span.end()),
             ModuleNotFound { span, .. } => (span.start(), span.end()),
+            NotAStruct { span, .. } => (span.start(), span.end()),
+            FieldNotFound { span, .. } => (span.start(), span.end()),
         }
     }
 }

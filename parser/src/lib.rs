@@ -11,16 +11,12 @@ pub(crate) mod utils;
 use crate::error::*;
 pub use crate::parse_tree::Ident;
 use crate::parse_tree::*;
-pub(crate) use crate::parse_tree::{
-    Expression, FunctionDeclaration, FunctionParameter, Literal, UseStatement, WhileLoop,
-};
+pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 use crate::parser::{HllParser, Rule};
-use either::{Either, Left, Right};
 use pest::iterators::Pair;
 use pest::Parser;
 pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use semantics::{TreeType, TypedParseTree};
-use std::collections::HashMap;
 pub use types::TypeInfo;
 
 pub use error::{CompileError, CompileResult, CompileWarning};
@@ -332,7 +328,7 @@ fn parse_root_from_pairs<'sc>(
                         continue
                     ));
                 }
-                a => unreachable!("{:?}", pair.as_str()),
+                _ => unreachable!("{:?}", pair.as_str()),
             }
         }
         match rule {
@@ -361,7 +357,7 @@ fn parse_root_from_pairs<'sc>(
                 fuel_ast.library_exports.push((library_name.expect("Safe unwrap, because the parser enforces the library keyword is followed by a name. This is an invariant"), parse_tree));
             }
             Rule::EOI => (),
-            a => errors.push(CompileError::InvalidTopLevelItem(a, block.into_span())),
+            a => errors.push(CompileError::InvalidTopLevelItem(a, block.as_span())),
         }
     }
 

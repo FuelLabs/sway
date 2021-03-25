@@ -30,17 +30,23 @@ pub(crate) fn implementation_of_trait<'sc>(
             }
             // replace all references to Self in the interface surface with the
             // concrete type
-            for TraitFn { ref mut parameters, ref mut return_type, .. } in tr.interface_surface.iter_mut() {
-
-                parameters 
-                .iter_mut()
-                .for_each(|FunctionParameter { ref mut r#type, .. }| if r#type == &TypeInfo::SelfType { *r#type = type_implementing_for.clone(); } );
-            if return_type == &TypeInfo::SelfType {
-                *return_type = type_implementing_for.clone();
+            for TraitFn {
+                ref mut parameters,
+                ref mut return_type,
+                ..
+            } in tr.interface_surface.iter_mut()
+            {
+                parameters
+                    .iter_mut()
+                    .for_each(|FunctionParameter { ref mut r#type, .. }| {
+                        if r#type == &TypeInfo::SelfType {
+                            *r#type = type_implementing_for.clone();
+                        }
+                    });
+                if return_type == &TypeInfo::SelfType {
+                    *return_type = type_implementing_for.clone();
+                }
             }
-
-            }
-            
 
             // type check all components of the impl trait functions
             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
@@ -60,7 +66,9 @@ pub(crate) fn implementation_of_trait<'sc>(
                     .parameters
                     .iter_mut()
                     .filter(|FunctionParameter { r#type, .. }| r#type == &TypeInfo::SelfType)
-                    .for_each(|FunctionParameter { ref mut r#type, .. }| *r#type = type_implementing_for.clone());
+                    .for_each(|FunctionParameter { ref mut r#type, .. }| {
+                        *r#type = type_implementing_for.clone()
+                    });
 
                 if fn_decl.return_type == TypeInfo::SelfType {
                     fn_decl.return_type = type_implementing_for.clone();

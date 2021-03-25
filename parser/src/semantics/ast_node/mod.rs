@@ -1,11 +1,9 @@
 use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
-use crate::types::{IntegerBits, TypeInfo};
-use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
-use either::Either;
+use crate::types::TypeInfo;
+use crate::{AstNode, AstNodeContent, ReturnStatement};
 use pest::Span;
-use std::collections::HashMap;
 
 mod code_block;
 mod declaration;
@@ -144,7 +142,7 @@ impl<'sc> TypedAstNode<'sc> {
                         let mut methods_buf = Vec::new();
                         for FunctionDeclaration {
                             body,
-                            name,
+                            name: fn_name,
                             parameters,
                             span,
                             return_type,
@@ -204,9 +202,8 @@ impl<'sc> TypedAstNode<'sc> {
                                             span: span.clone(),
                                             comma_separated_generic_params:
                                                 comma_separated_generic_params.clone(),
-                                            fn_name: name,
+                                            fn_name: fn_name.primary_name,
                                             args: args_span.as_str(),
-                                            return_type: return_type.friendly_type_str(),
                                         });
                                     }
                                 }
@@ -223,7 +220,7 @@ impl<'sc> TypedAstNode<'sc> {
                                             warnings, errors
                                         );
                             methods_buf.push(TypedFunctionDeclaration {
-                                name,
+                                name: fn_name,
                                 body,
                                 parameters,
                                 span,
@@ -304,8 +301,8 @@ impl<'sc> TypedAstNode<'sc> {
                         type_arguments,
                         functions,
                         type_implementing_for,
-                        type_arguments_span,
                         block_span,
+                        ..
                     }) => {
                         let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                         for mut fn_decl in functions.into_iter() {
@@ -319,10 +316,12 @@ impl<'sc> TypedAstNode<'sc> {
                             // i.e. fn add(self, other: u64) -> Self becomes fn
                             // add(self: u64, other: u64) -> u64
                             if let Some(ix) = fn_decl.parameters.iter().position(
-                                |FunctionParameter { name, r#type, .. }| {
-                                    r#type == &TypeInfo::SelfType
-                                },
+                                |FunctionParameter { r#type, .. }| r#type == &TypeInfo::SelfType,
                             ) {
+                                println!(
+                                    "REplacing with {}",
+                                    type_implementing_for.clone().friendly_type_str()
+                                );
                                 fn_decl.parameters[ix].r#type = type_implementing_for.clone();
                             }
                             if fn_decl.return_type == TypeInfo::SelfType {
@@ -355,15 +354,6 @@ impl<'sc> TypedAstNode<'sc> {
                         );
 
                         TypedDeclaration::StructDeclaration(decl)
-                    }
-                    a => {
-                        dbg!("Unimplemented ast node (declaration): ", &a);
-                        errors.push(CompileError::Unimplemented(
-                            "Unimplemented declaration variant",
-                            node.span.clone(),
-                        ));
-
-                        ERROR_RECOVERY_DECLARATION
                     }
                 }),
                 AstNodeContent::Expression(a) => {
@@ -426,27 +416,18 @@ impl<'sc> TypedAstNode<'sc> {
                     );
                     let (typed_body, _block_implicit_return) = type_check!(
                     TypedCodeBlock::type_check(
-                    body,
-                    &namespace,
-                    Some(TypeInfo::Unit),
-                    "A while loop's loop body cannot implicitly return a value. Try assigning it to a mutable variable declared outside of the loop instead."),
-                    (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
-                    warnings,
-                    errors
-                );
+                        body,
+                        &namespace,
+                        Some(TypeInfo::Unit),
+                        "A while loop's loop body cannot implicitly return a value. Try assigning it to a mutable variable declared outside of the loop instead."),
+                        (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
+                        warnings,
+                        errors
+                    );
                     TypedAstNodeContent::WhileLoop(TypedWhileLoop {
                         condition: typed_condition,
                         body: typed_body,
                     })
-                }
-                a => {
-                    dbg!("Unimplemented ast node content: ", &a);
-                    errors.push(CompileError::Unimplemented(
-                        "Unimplemented AST Node",
-                        node.span.clone(),
-                    ));
-
-                    ERROR_RECOVERY_NODE_CONTENT
                 }
             },
             span: node.span.clone(),
@@ -460,7 +441,8 @@ impl<'sc> TypedAstNode<'sc> {
                     r#type: node.type_info(),
                 };
                 assert_or_warn!(
-                    node.type_info() == TypeInfo::Unit,
+                    node.type_info() == TypeInfo::Unit
+                        || node.type_info() == TypeInfo::ErrorRecovery,
                     warnings,
                     node.span.clone(),
                     warning

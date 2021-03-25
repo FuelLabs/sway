@@ -1,12 +1,8 @@
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
 use crate::error::*;
-use crate::parse_tree::*;
 use crate::semantics::Namespace;
-use crate::types::{IntegerBits, TypeInfo};
-use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
-use either::Either;
-use pest::Span;
-use std::collections::HashMap;
+use crate::types::TypeInfo;
+use crate::ParseTree;
 
 pub(crate) enum TreeType {
     Predicate,
@@ -106,7 +102,6 @@ impl<'sc> TypedParseTree<'sc> {
                         TypedAstNodeContent::Declaration(
                             TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                                 name,
-                                return_type,
                                 span,
                                 ..
                             }),

@@ -1,3 +1,4 @@
+#![allow(warnings)]
 mod cli;
 mod constants;
 mod defaults;

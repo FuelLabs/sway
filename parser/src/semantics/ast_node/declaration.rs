@@ -2,11 +2,8 @@ use super::{IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant}
 use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
-use crate::types::{IntegerBits, TypeInfo};
-use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
-use either::Either;
-use pest::Span;
-use std::collections::HashMap;
+use crate::types::TypeInfo;
+use crate::TraitFn;
 
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
@@ -73,8 +70,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub(crate) fn type_check<'manifest>(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
-        return_type_annotation: Option<TypeInfo<'sc>>,
-        help_text: impl Into<String>,
+        _return_type_annotation: Option<TypeInfo<'sc>>,
+        _help_text: impl Into<String>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -86,13 +83,14 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             return_type,
             type_parameters,
             ..
-        } = fn_decl;
+        } = fn_decl.clone();
         // insert parameters into namespace
         let mut namespace = namespace.clone();
         parameters
             .clone()
             .into_iter()
             .for_each(|FunctionParameter { name, r#type, .. }| {
+                dbg!(&name, &r#type);
                 namespace.insert(
                     name.clone(),
                     TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -146,9 +144,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         name,
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: name,
+                        fn_name: fn_decl.name.primary_name,
                         args: args_span.as_str(),
-                        return_type: return_type.friendly_type_str(),
                     });
                 }
             }

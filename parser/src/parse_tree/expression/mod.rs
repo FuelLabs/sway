@@ -1,8 +1,7 @@
 use crate::error::*;
 use crate::parse_tree::CallPath;
 use crate::parse_tree::Literal;
-use crate::parser::{HllParser, Rule};
-use crate::utils::join_spans;
+use crate::parser::Rule;
 use crate::CodeBlock;
 use either::Either;
 use pest::iterators::Pair;
@@ -294,7 +293,7 @@ impl<'sc> Expression<'sc> {
                 }
             }
             Rule::array_exp => {
-                let mut array_exps = expr.into_inner();
+                let array_exps = expr.into_inner();
                 let mut contents = Vec::new();
                 for expr in array_exps {
                     contents.push(eval!(
@@ -452,6 +451,7 @@ impl<'sc> Expression<'sc> {
                 }
             }
             Rule::method_exp => {
+                println!("here?");
                 let whole_exp_span = expr.as_span();
                 let mut parts = expr.into_inner();
                 let subfield_exp = parts.next().unwrap();
@@ -470,7 +470,10 @@ impl<'sc> Expression<'sc> {
                     name_parts.pop().unwrap(),
                     return err(warnings, errors)
                 );
-                let function_arguments = parts.next().unwrap().into_inner();
+                let function_arguments = parts
+                    .next()
+                    .map(|x| x.into_inner().collect::<Vec<_>>())
+                    .unwrap_or_else(|| vec![]);
                 let mut arguments_buf = Vec::new();
                 for argument in function_arguments {
                     let arg = eval!(
@@ -886,9 +889,6 @@ fn arrange_by_order_of_operations<'sc>(
 
         let lhs = lhs.unwrap();
         let rhs = rhs.unwrap();
-        let lhs_span = lhs.span();
-        let rhs_span = rhs.span();
-        let joint_span = join_spans(lhs_span, rhs_span);
 
         expression_stack.push(Expression::MethodApplication {
             method_name: CallPath {

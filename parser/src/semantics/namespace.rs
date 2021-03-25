@@ -116,6 +116,11 @@ impl<'sc> Namespace<'sc> {
         self.symbols.get(symbol)
     }
 
+    /// Used for calls that look like this:
+    /// `foo::bar::function`
+    /// where `foo` and `bar` are the prefixes
+    /// and `function` is the suffix
+    #[allow(dead_code)]
     pub(crate) fn get_call_path(&self, path: &CallPath<'sc>) -> Option<TypedDeclaration<'sc>> {
         let module = match self.find_module(&path.prefixes) {
             Some(o) => o,
@@ -168,29 +173,77 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn find_subfield(
         &self,
         subfield_exp: Vec<Ident<'sc>>,
-    ) -> Option<TypedExpression<'sc>> {
-        dbg!(&subfield_exp);
+    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         let mut ident_iter = subfield_exp.into_iter();
         let first_ident = ident_iter.next().unwrap();
-        let mut fields =
-            get_struct_expression_fields(self.symbols.get(&first_ident)?, &first_ident)?;
+        let symbol = match self.symbols.get(&first_ident) {
+            Some(s) => s,
+            None => {
+                errors.push(CompileError::UnknownVariable {
+                    var_name: first_ident.primary_name,
+                    span: first_ident.span,
+                });
+                return err(warnings, errors);
+            }
+        };
+        let (mut fields, mut struct_name) = match get_struct_expression_fields(symbol, &first_ident)
+        {
+            CompileResult::Ok {
+                value,
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
+                errors.append(&mut l_e);
+                warnings.append(&mut l_w);
+                value
+            }
+            CompileResult::Err {
+                warnings: mut l_w,
+                errors: mut l_e,
+            } => {
+                errors.append(&mut l_e);
+                warnings.append(&mut l_w);
+                // if it is missing, the error message comes from within the above method
+                // so we don't need to re-add it here
+                return err(warnings, errors);
+            }
+        };
+
         let mut expr = None;
 
+        assert!(ident_iter.clone().count() > 0);
         for ident in ident_iter {
             let TypedStructExpressionField { value, .. } =
                 match fields.iter().find(|x| x.name == ident.primary_name) {
                     Some(field) => field.clone(),
-                    None => todo!("field not found error"),
+                    None => {
+                        let field_name = ident.primary_name.clone();
+                        let available_fields =
+                            fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
+
+                        errors.push(CompileError::FieldNotFound {
+                            field_name,
+                            struct_name: struct_name.primary_name.clone(),
+                            available_fields: available_fields.join(", "),
+                            span: ident.span,
+                        });
+                        return err(warnings, errors);
+                    }
                 };
             match &value {
                 TypedExpression {
                     expression:
                         TypedExpressionVariant::StructExpression {
-                            fields: l_fields, ..
+                            fields: l_fields,
+                            struct_name: l_struct_name,
+                            ..
                         },
                     ..
                 } => {
                     fields = l_fields.into_iter().cloned().collect();
+                    struct_name = l_struct_name.clone();
                     expr = Some(value);
                 }
                 _ => {
@@ -199,7 +252,8 @@ impl<'sc> Namespace<'sc> {
                 }
             }
         }
-        expr
+        // unwrap is safe: note that all branches above assign to expr
+        ok(expr.unwrap(), warnings, errors)
     }
 
     pub(crate) fn get_methods_for_type(
@@ -229,17 +283,28 @@ impl<'sc> Namespace<'sc> {
 fn get_struct_expression_fields<'sc>(
     decl: &TypedDeclaration<'sc>,
     debug_ident: &Ident<'sc>,
-) -> Option<Vec<TypedStructExpressionField<'sc>>> {
+) -> CompileResult<'sc, (Vec<TypedStructExpressionField<'sc>>, Ident<'sc>)> {
     match decl {
         TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
             body:
                 TypedExpression {
-                    expression: TypedExpressionVariant::StructExpression { fields, .. },
+                    expression:
+                        TypedExpressionVariant::StructExpression {
+                            fields,
+                            struct_name,
+                            ..
+                        },
                     ..
                 },
             ..
-        }) => Some(fields.clone()),
-        TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { .. }) => todo!(),
+        }) => ok((fields.clone(), struct_name.clone()), vec![], vec![]),
+        TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { .. }) => err(
+            vec![],
+            vec![CompileError::NotAStruct {
+                name: debug_ident.span.as_str(),
+                span: debug_ident.span.clone(),
+            }],
+        ),
         o => todo!(
             "err: {} is not a struct with field {}",
             o.friendly_name(),

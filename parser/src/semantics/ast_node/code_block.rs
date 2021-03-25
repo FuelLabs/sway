@@ -1,11 +1,6 @@
 use super::*;
-use crate::error::*;
-use crate::parse_tree::*;
-use crate::types::{IntegerBits, TypeInfo};
-use crate::{AstNode, AstNodeContent, CodeBlock, ParseTree, ReturnStatement, TraitFn};
-use either::Either;
-use pest::Span;
-use std::collections::HashMap;
+use crate::types::TypeInfo;
+use crate::CodeBlock;
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedCodeBlock<'sc> {

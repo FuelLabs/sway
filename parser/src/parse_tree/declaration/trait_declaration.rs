@@ -1,9 +1,8 @@
 use super::{FunctionDeclaration, FunctionParameter};
 use crate::error::*;
 use crate::parse_tree::{Ident, TypeParameter};
-use crate::parser::{HllParser, Rule};
+use crate::parser::Rule;
 use crate::types::TypeInfo;
-use either::*;
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
@@ -130,7 +129,7 @@ impl<'sc> TraitFn<'sc> {
         let mut signature = pair.clone().into_inner();
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
-        let mut name_span = name.as_span();
+        let name_span = name.as_span();
         let name = eval!(
             Ident::parse_from_pair,
             warnings,

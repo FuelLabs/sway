@@ -11,7 +11,6 @@ pub(crate) use enum_declaration::*;
 pub(crate) use function_declaration::*;
 pub(crate) use impl_trait::*;
 pub(crate) use reassignment::*;
-pub(crate) use reassignment::*;
 pub(crate) use struct_declaration::*;
 pub(crate) use trait_declaration::*;
 pub(crate) use type_parameter::*;
@@ -19,7 +18,7 @@ pub(crate) use variable_declaration::*;
 
 use crate::error::*;
 use crate::parse_tree::{Expression, Ident};
-use crate::parser::{HllParser, Rule};
+use crate::parser::Rule;
 use crate::types::TypeInfo;
 use pest::iterators::Pair;
 

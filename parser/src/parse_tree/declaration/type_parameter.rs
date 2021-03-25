@@ -1,7 +1,5 @@
 use crate::error::*;
-use crate::parse_tree::Expression;
-use crate::{CodeBlock, CompileError, Rule};
-use either::Either;
+use crate::{CompileError, Rule};
 use pest::iterators::Pair;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TypeParameter<'sc> {
@@ -46,7 +44,7 @@ impl<'sc> TypeParameter<'sc> {
                     assert_eq!(trait_constraint.as_rule(), Rule::trait_name);
                     // assign trait constraints to above parsed type params
                     // find associated type name
-                    let mut param_to_edit = match params
+                    let param_to_edit = match params
                         .iter_mut()
                         .find(|TypeParameter { name, .. }| *name == type_param.as_str())
                     {

@@ -3,8 +3,6 @@ use crate::Ident;
 use crate::Rule;
 use pest::iterators::Pair;
 
-use super::CallPath;
-
 #[derive(Debug, Clone)]
 pub(crate) enum ImportType<'sc> {
     Star,

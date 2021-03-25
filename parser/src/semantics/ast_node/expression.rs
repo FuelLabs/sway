@@ -1,7 +1,6 @@
 use super::*;
 use crate::types::{IntegerBits, TypeInfo};
 use either::Either;
-use std::collections::VecDeque;
 
 pub(crate) const ERROR_RECOVERY_EXPR: TypedExpression = TypedExpression {
     expression: TypedExpressionVariant::Unit,
@@ -75,7 +74,7 @@ pub(crate) enum TypedMatchCondition<'sc> {
 }
 
 impl<'sc> TypedExpression<'sc> {
-    pub(crate) fn type_check<'manifest>(
+    pub(crate) fn type_check(
         other: Expression<'sc>,
         namespace: &Namespace<'sc>,
         type_annotation: Option<TypeInfo<'sc>>,
@@ -133,10 +132,9 @@ impl<'sc> TypedExpression<'sc> {
                     }
                 }
             }
-            Expression::FunctionApplication {
-                name, arguments, ..
-            } => {
+            Expression::FunctionApplication { .. } => {
                 todo!("fn app w/ new namespace");
+                /*
                 let function_declaration = namespace.get_call_path(&name);
                 match function_declaration {
                     Some(TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
@@ -207,13 +205,11 @@ impl<'sc> TypedExpression<'sc> {
                         ERROR_RECOVERY_EXPR.clone()
                     }
                 }
+                */
             }
-            Expression::MatchExpression {
-                primary_expression,
-                branches,
-                span,
-                ..
-            } => {
+            Expression::MatchExpression { .. } => {
+                todo!("MAtch expressions");
+                /*
                 let typed_primary_expression = type_check!(
                     TypedExpression::type_check(*primary_expression, &namespace, None, ""),
                     ERROR_RECOVERY_EXPR.clone(),
@@ -265,6 +261,7 @@ impl<'sc> TypedExpression<'sc> {
                     span,
                 ));
                 ERROR_RECOVERY_EXPR.clone()
+                */
             }
             Expression::CodeBlock { contents, .. } => {
                 let (typed_block, block_return_type) = type_check!(
@@ -292,7 +289,7 @@ impl<'sc> TypedExpression<'sc> {
                 condition,
                 then,
                 r#else,
-                span,
+                ..
             } => {
                 let condition = Box::new(type_check!(
                     TypedExpression::type_check(
@@ -337,7 +334,7 @@ impl<'sc> TypedExpression<'sc> {
                     return_type: then.return_type,
                 }
             }
-            Expression::AsmExpression { span, asm } => {
+            Expression::AsmExpression { asm, .. } => {
                 let return_type = if asm.returns.is_some() {
                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 } else {
@@ -441,11 +438,22 @@ impl<'sc> TypedExpression<'sc> {
                     is_constant: IsConstant::No,
                 }
             }
-            Expression::SubfieldExpression { name_parts, .. } => {
-                let name_parts_buf = VecDeque::from(name_parts);
+            Expression::SubfieldExpression {
+                name_parts,
+                span: _span,
+            } => {
+                //                let name_parts = VecDeque::from(name_parts);
                 // this must be >= 2, or else the parser would not have matched it. asserting that
                 // invariant here, since it is an assumption that is acted upon later.
-                assert!(name_parts_buf.len() >= 2);
+                assert!(name_parts.len() >= 2);
+                let subfield_exp = type_check!(
+                    namespace.find_subfield(name_parts),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                dbg!(&subfield_exp);
+
                 todo!("subfield expressions")
             }
             Expression::MethodApplication {
@@ -498,10 +506,12 @@ impl<'sc> TypedExpression<'sc> {
                         parent_expr.return_type,
                     )
                 } else {
-                    let parent_expr = match namespace.find_subfield(subfield_exp) {
-                        Some(exp) => exp,
-                        None => todo!("err, couldn't find ident"),
-                    };
+                    let parent_expr = type_check!(
+                        namespace.find_subfield(subfield_exp.clone()),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
                     (
                         match namespace.find_method_for_type(
                             parent_expr.return_type.clone(),
@@ -526,10 +536,10 @@ impl<'sc> TypedExpression<'sc> {
                     };
                     typed_arg_buf.push(type_check!(
                         TypedExpression::type_check(
-                        arg.clone(),
-                        &namespace,
-                        Some(un_self_type),
-                        "Function argument must be of the same type declared in the function declaration."),
+                            arg.clone(),
+                            &namespace,
+                            Some(un_self_type),
+                            "Function argument must be of the same type declared in the function declaration."),
                         continue, 
                         warnings,
                         errors

@@ -1,6 +1,6 @@
 use crate::error::*;
 use crate::parse_tree::{declaration::TypeParameter, Ident};
-use crate::parser::{HllParser, Rule};
+use crate::parser::Rule;
 use crate::types::TypeInfo;
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
@@ -110,7 +110,7 @@ impl<'sc> StructField<'sc> {
     pub(crate) fn parse_from_pairs(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Vec<Self>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut fields = pair.into_inner().collect::<Vec<_>>();
+        let fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
         for i in (0..fields.len()).step_by(2) {
             let span = fields[i].as_span();

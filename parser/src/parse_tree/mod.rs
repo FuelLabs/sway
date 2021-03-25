@@ -11,9 +11,7 @@ pub(crate) use call_path::*;
 pub(crate) use code_block::*;
 pub(crate) use declaration::*;
 pub use expression::Ident;
-pub(crate) use expression::{
-    AsmExpression, Expression, MatchBranch, StructExpressionField, UnaryOp,
-};
+pub(crate) use expression::{AsmExpression, Expression, UnaryOp};
 pub(crate) use literal::Literal;
 pub(crate) use use_statement::{ImportType, UseStatement};
 pub(crate) use while_loop::WhileLoop;

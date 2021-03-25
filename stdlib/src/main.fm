@@ -12,6 +12,16 @@ library ops {
          }
     }
 
+    impl Add for u32 {
+         fn add(self, other: Self) -> Self {
+            asm(r1: self, r2: other, r3) {
+                add r3 r2 r1 i10;
+                r3
+            }
+         }
+    }
+
+
 /*
     struct Test {
         a: u64,
