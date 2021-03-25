@@ -465,10 +465,7 @@ impl<'sc> TypedExpression<'sc> {
                 let (method, parent_type) = if subfield_exp.is_empty() {
                     // if subfield exp is empty, then we are calling a method using either ::
                     // syntax or an operator
-                    let ns = match namespace.find_module(&method_name.prefixes) {
-                        Some(o) => o,
-                        None => todo!("Method not found error"),
-                    };
+                    let ns = type_check!(namespace.find_module(&method_name.prefixes), return err(warnings, errors), warnings, errors);                    
                     // a method is defined by the type of the parent, and in this case the parent
                     // is the first argument
                     let parent_expr = match TypedExpression::type_check(

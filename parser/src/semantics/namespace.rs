@@ -30,7 +30,7 @@ impl<'sc> Namespace<'sc> {
                         vec![],
                         vec![CompileError::ModuleNotFound {
                             span: ident.span,
-                            name: ident.primary_name.clone(),
+                            name: ident.primary_name.to_string(),
                         }],
                     )
                 }
@@ -46,11 +46,14 @@ impl<'sc> Namespace<'sc> {
         item: &Ident<'sc>,
         alias: Option<Ident<'sc>>,
     ) -> CompileResult<()> {
-        let warnings = vec![];
-        let namespace = match self.find_module(&path) {
-            Some(o) => o,
-            None => todo!("module not found error"),
-        };
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let namespace = type_check!(
+            self.find_module(&path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         match namespace.symbols.get(item) {
             Some(TypedDeclaration::TraitDeclaration(tr)) => {
@@ -78,10 +81,17 @@ impl<'sc> Namespace<'sc> {
                 };
                 self.insert(name, o.clone());
             }
-            None => todo!("item not found"),
+            None => {
+                errors.push(CompileError::SymbolNotFound {
+                    name: item.primary_name,
+                    span: item.span.clone(),
+                });
+
+                return err(warnings, errors);
+            }
         };
 
-        ok((), warnings, vec![])
+        ok((), warnings, errors)
     }
 
     pub(crate) fn merge_namespaces(&mut self, other: &Namespace<'sc>) {
@@ -121,24 +131,54 @@ impl<'sc> Namespace<'sc> {
     /// where `foo` and `bar` are the prefixes
     /// and `function` is the suffix
     #[allow(dead_code)]
-    pub(crate) fn get_call_path(&self, path: &CallPath<'sc>) -> Option<TypedDeclaration<'sc>> {
-        let module = match self.find_module(&path.prefixes) {
-            Some(o) => o,
-            None => todo!("err module not found"),
-        };
+    pub(crate) fn get_call_path(
+        &self,
+        path: &CallPath<'sc>,
+    ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let module = type_check!(
+            self.find_module(&path.prefixes),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
-        module.symbols.get(&path.suffix).cloned()
+        match module.symbols.get(&path.suffix).cloned() {
+            Some(o) => ok(o, warnings, errors),
+            None => {
+                errors.push(CompileError::SymbolNotFound {
+                    name: path.suffix.primary_name,
+                    span: path.suffix.span.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
     }
 
-    pub(crate) fn find_module(&self, path: &Vec<Ident<'sc>>) -> Option<Namespace<'sc>> {
+    pub(crate) fn find_module(&self, path: &Vec<Ident<'sc>>) -> CompileResult<'sc, Namespace<'sc>> {
         let mut namespace = self.clone();
+        let mut errors = vec![];
+        let warnings = vec![];
         for ident in path {
             match namespace.modules.get(ident.primary_name) {
                 Some(o) => namespace = o.clone(),
-                None => todo!("library not found"),
+                None => {
+                    errors.push(CompileError::ModuleNotFound {
+                        span: path.iter().fold(path[0].span.clone(), |acc, this_one| {
+                            crate::utils::join_spans(acc, this_one.span.clone())
+                        }),
+                        name: path
+                            .iter()
+                            .map(|x| x.primary_name)
+                            .collect::<Vec<_>>()
+                            .join("::"),
+                    });
+                    return err(warnings, errors);
+                }
             };
         }
-        Some(namespace)
+        ok(namespace, warnings, errors)
     }
     pub(crate) fn insert_trait_implementation(
         &mut self,

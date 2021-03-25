@@ -343,7 +343,7 @@ pub enum CompileError<'sc> {
     #[error("The asterisk, if present, must be the last part of a path. E.g., `use foo::bar::*`.")]
     NonFinalAsteriskInPath { span: Span<'sc> },
     #[error("Module \"{name}\" could not be found.")]
-    ModuleNotFound { span: Span<'sc>, name: &'sc str },
+    ModuleNotFound { span: Span<'sc>, name: String },
     #[error("\"{name}\" is not a struct. Fields can only be accessed on structs.")]
     NotAStruct { name: &'sc str, span: Span<'sc> },
     #[error("Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n {available_fields}")]
@@ -353,6 +353,8 @@ pub enum CompileError<'sc> {
         struct_name: &'sc str,
         span: Span<'sc>,
     },
+    #[error("Could not find symbol {name} in this scope.")]
+    SymbolNotFound { span: Span<'sc>, name: &'sc str },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -473,6 +475,7 @@ impl<'sc> CompileError<'sc> {
             ModuleNotFound { span, .. } => (span.start(), span.end()),
             NotAStruct { span, .. } => (span.start(), span.end()),
             FieldNotFound { span, .. } => (span.start(), span.end()),
+            SymbolNotFound { span, .. } => (span.start(), span.end()),
         }
     }
 }
