@@ -1,8 +1,6 @@
-use super::{
-    ast_node::{TypedExpressionVariant, TypedStructExpressionField, TypedVariableDeclaration},
-    TypedExpression,
-};
+use super::{ast_node::TypedVariableDeclaration, TypedExpression};
 use crate::error::*;
+use crate::parse_tree::{StructDeclaration, StructField};
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
@@ -213,7 +211,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn find_subfield(
         &self,
         subfield_exp: Vec<Ident<'sc>>,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<'sc, TypeInfo<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ident_iter = subfield_exp.into_iter();
@@ -228,8 +226,7 @@ impl<'sc> Namespace<'sc> {
                 return err(warnings, errors);
             }
         };
-        let (mut fields, mut struct_name) = match get_struct_expression_fields(symbol, &first_ident)
-        {
+        let (mut fields, struct_name) = match self.get_struct_type_fields(symbol, &first_ident) {
             CompileResult::Ok {
                 value,
                 warnings: mut l_w,
@@ -251,14 +248,16 @@ impl<'sc> Namespace<'sc> {
             }
         };
 
-        let mut expr = None;
+        let mut ret_ty = None;
 
         assert!(ident_iter.clone().count() > 0);
         for ident in ident_iter {
-            let TypedStructExpressionField { value, .. } =
+            // find the ident in the currently available fields
+            let StructField { r#type, .. } =
                 match fields.iter().find(|x| x.name == ident.primary_name) {
                     Some(field) => field.clone(),
                     None => {
+                        // gather available fields for the error message
                         let field_name = ident.primary_name.clone();
                         let available_fields =
                             fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
@@ -272,36 +271,32 @@ impl<'sc> Namespace<'sc> {
                         return err(warnings, errors);
                     }
                 };
-            match &value {
-                TypedExpression {
-                    expression:
-                        TypedExpressionVariant::StructExpression {
-                            fields: l_fields,
-                            struct_name: l_struct_name,
-                            ..
-                        },
-                    ..
-                } => {
-                    fields = l_fields.into_iter().cloned().collect();
-                    struct_name = l_struct_name.clone();
-                    expr = Some(value);
+            match r#type {
+                TypeInfo::Struct { .. } => {
+                    let (l_fields, _l_name) = type_check!(
+                        self.find_struct_name_and_fields(&r#type, &ident),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    fields = l_fields;
                 }
                 _ => {
                     fields = vec![];
-                    expr = Some(value);
+                    ret_ty = Some(r#type);
                 }
             }
         }
         // unwrap is safe: note that all branches above assign to expr
-        ok(expr.unwrap(), warnings, errors)
+        ok(ret_ty.unwrap(), warnings, errors)
     }
 
     pub(crate) fn get_methods_for_type(
         &self,
-        r#type: TypeInfo<'sc>,
+        r#type: &TypeInfo<'sc>,
     ) -> Option<Vec<TypedFunctionDeclaration<'sc>>> {
         for ((_trait_name, type_info), methods) in &self.implemented_traits {
-            if *type_info == r#type {
+            if type_info == r#type {
                 return Some(methods.clone());
             }
         }
@@ -310,7 +305,7 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn find_method_for_type(
         &self,
-        r#type: TypeInfo<'sc>,
+        r#type: &TypeInfo<'sc>,
         method_name: Ident<'sc>,
     ) -> Option<TypedFunctionDeclaration<'sc>> {
         let methods = self.get_methods_for_type(r#type)?;
@@ -318,37 +313,66 @@ impl<'sc> Namespace<'sc> {
             .into_iter()
             .find(|TypedFunctionDeclaration { name, .. }| *name == method_name)
     }
-}
-
-fn get_struct_expression_fields<'sc>(
-    decl: &TypedDeclaration<'sc>,
-    debug_ident: &Ident<'sc>,
-) -> CompileResult<'sc, (Vec<TypedStructExpressionField<'sc>>, Ident<'sc>)> {
-    match decl {
-        TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-            body:
-                TypedExpression {
-                    expression:
-                        TypedExpressionVariant::StructExpression {
-                            fields,
-                            struct_name,
-                            ..
-                        },
+    /// given a declaration that may refer to a variable which contains a struct,
+    /// find that struct's fields and name for use in determining if a subfield expression is valid
+    /// e.g. foo.bar.baz
+    /// is foo a struct? does it contain a field bar? is foo.bar a struct? does foo.bar contain a
+    /// field baz? this is the problem this function addresses
+    fn get_struct_type_fields(
+        &self,
+        decl: &TypedDeclaration<'sc>,
+        debug_ident: &Ident<'sc>,
+    ) -> CompileResult<'sc, (Vec<StructField<'sc>>, &Ident<'sc>)> {
+        match decl {
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                body: TypedExpression { return_type, .. },
+                ..
+            }) => self.find_struct_name_and_fields(return_type, debug_ident),
+            o => todo!(
+                "err: {} is not a struct with field {}",
+                o.friendly_name(),
+                debug_ident.primary_name
+            ),
+        }
+    }
+    /// given a type, look that type up in the namespace and:
+    /// 1) assert that it is a struct, return error otherwise
+    /// 2) return its fields and struct name
+    fn find_struct_name_and_fields(
+        &self,
+        return_type: &TypeInfo<'sc>,
+        debug_ident: &Ident<'sc>,
+    ) -> CompileResult<'sc, (Vec<StructField<'sc>>, &Ident<'sc>)> {
+        if let TypeInfo::Struct { name } = return_type {
+            match self.get_symbol(name) {
+                Some(TypedDeclaration::StructDeclaration(StructDeclaration {
+                    fields,
+                    name,
                     ..
-                },
-            ..
-        }) => ok((fields.clone(), struct_name.clone()), vec![], vec![]),
-        TypedDeclaration::VariableDeclaration(TypedVariableDeclaration { .. }) => err(
-            vec![],
-            vec![CompileError::NotAStruct {
-                name: debug_ident.span.as_str(),
-                span: debug_ident.span.clone(),
-            }],
-        ),
-        o => todo!(
-            "err: {} is not a struct with field {}",
-            o.friendly_name(),
-            debug_ident.primary_name
-        ),
+                })) => ok((fields.clone(), name), vec![], vec![]),
+                Some(_) => err(
+                    vec![],
+                    vec![CompileError::NotAStruct {
+                        name: debug_ident.span.as_str(),
+                        span: debug_ident.span.clone(),
+                    }],
+                ),
+                None => err(
+                    vec![],
+                    vec![CompileError::SymbolNotFound {
+                        name: debug_ident.span.as_str(),
+                        span: debug_ident.span.clone(),
+                    }],
+                ),
+            }
+        } else {
+            err(
+                vec![],
+                vec![CompileError::NotAStruct {
+                    name: debug_ident.span.as_str(),
+                    span: debug_ident.span.clone(),
+                }],
+            )
+        }
     }
 }
