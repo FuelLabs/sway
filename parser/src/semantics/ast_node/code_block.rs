@@ -75,19 +75,31 @@ impl<'sc> TypedCodeBlock<'sc> {
                 }
             }
         };
-        evaluated_contents.push(res.clone());
+        // if the last line is an implicit return, then the return type is of that last line's
+        // type.
+        // otherwise, the return type is Unit.
+        let res_span = res.span.clone();
+        let return_type = match res {
+            TypedAstNode {
+                content:
+                    TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
+                        ref return_type,
+                        ..
+                    }),
+                ..
+            } => return_type.clone(),
+            _ => TypeInfo::Unit,
+        };
+        evaluated_contents.push(res);
         if let Some(type_annotation) = type_annotation {
-            let convertability = res.type_info().is_convertable(
-                type_annotation.clone(),
-                res.span.clone(),
-                help_text,
-            );
+            let convertability =
+                return_type.is_convertable(type_annotation.clone(), res_span.clone(), help_text);
             match convertability {
                 Ok(warning) => {
                     if let Some(warning) = warning {
                         warnings.push(CompileWarning {
                             warning_content: warning,
-                            span: res.span.clone(),
+                            span: res_span,
                         });
                     }
                 }
@@ -102,7 +114,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 TypedCodeBlock {
                     contents: evaluated_contents,
                 },
-                res.type_info(),
+                return_type,
             ),
             warnings,
             errors,
