@@ -517,8 +517,8 @@ impl<'sc> TypedExpression<'sc> {
         };
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
-            let convertability = typed_expression.return_type.clone().is_convertable(
-                type_annotation.clone(),
+            let convertability = typed_expression.return_type.is_convertable(
+                &type_annotation,
                 expr_span.clone(),
                 help_text,
             );

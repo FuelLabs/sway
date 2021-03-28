@@ -88,12 +88,23 @@ impl<'sc> TypedCodeBlock<'sc> {
                     }),
                 ..
             } => return_type.clone(),
+            TypedAstNode {
+                content:
+                    TypedAstNodeContent::ReturnStatement(TypedReturnStatement {
+                        expr:
+                            TypedExpression {
+                                ref return_type, ..
+                            },
+                        ..
+                    }),
+                ..
+            } => return_type.clone(),
             _ => TypeInfo::Unit,
         };
         evaluated_contents.push(res);
         if let Some(type_annotation) = type_annotation {
             let convertability =
-                return_type.is_convertable(type_annotation.clone(), res_span.clone(), help_text);
+                return_type.is_convertable(&type_annotation, res_span.clone(), help_text);
             match convertability {
                 Ok(warning) => {
                     if let Some(warning) = warning {

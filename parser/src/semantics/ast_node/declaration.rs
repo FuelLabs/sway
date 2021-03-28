@@ -1,4 +1,6 @@
-use super::{IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant};
+use super::{
+    IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
+};
 use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
@@ -129,7 +131,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 Some(return_type.clone()),
                 "Function body's return type does not match up with its return type annotation."
             ),
-            (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
+            (TypedCodeBlock { contents: vec![] }, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -169,6 +171,45 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         fn_name: fn_decl.name.primary_name,
                         args: args_span.as_str(),
                     });
+                }
+            }
+        }
+        // handle the return statement(s)
+        let return_statements: Vec<(&TypedExpression, &pest::Span<'sc>)> =
+            body.contents
+                .iter()
+                .filter_map(|x| {
+                    if let crate::semantics::TypedAstNode {
+                        content:
+                            crate::semantics::TypedAstNodeContent::ReturnStatement(
+                                TypedReturnStatement { ref expr },
+                            ),
+                        span,
+                    } = x
+                    {
+                        Some((expr, span))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+        for (stmt, span) in return_statements {
+            let convertability = stmt.return_type.is_convertable(
+                &return_type,
+                span.clone(),
+                "Function body's return type does not match up with its return type annotation.",
+            );
+            match convertability {
+                Ok(warning) => {
+                    if let Some(warning) = warning {
+                        warnings.push(CompileWarning {
+                            warning_content: warning,
+                            span: span.clone(),
+                        });
+                    }
+                }
+                Err(err) => {
+                    errors.push(err.into());
                 }
             }
         }

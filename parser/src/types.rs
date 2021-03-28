@@ -75,17 +75,17 @@ impl<'sc> TypeInfo<'sc> {
 
     pub(crate) fn is_convertable(
         &self,
-        other: TypeInfo<'sc>,
+        other: &TypeInfo<'sc>,
         debug_span: Span<'sc>,
         help_text: impl Into<String>,
     ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
         let help_text = help_text.into();
-        if *self == TypeInfo::ErrorRecovery || other == TypeInfo::ErrorRecovery {
+        if *self == TypeInfo::ErrorRecovery || *other == TypeInfo::ErrorRecovery {
             return Ok(None);
         }
         // TODO  actually check more advanced conversion rules like upcasting vs downcasting
         // numbers, emit warnings for loss of precision
-        if *self == other {
+        if self == other {
             Ok(None)
         } else if self.is_numeric() && other.is_numeric() {
             // check numeric castability
@@ -103,7 +103,7 @@ impl<'sc> TypeInfo<'sc> {
         }
     }
 
-    fn numeric_cast_compat(&self, other: TypeInfo<'sc>) -> Result<(), Warning<'sc>> {
+    fn numeric_cast_compat(&self, other: &TypeInfo<'sc>) -> Result<(), Warning<'sc>> {
         assert!(self.is_numeric(), other.is_numeric());
         use TypeInfo::*;
         // if this is a downcast, warn for loss of precision. if upcast, then no warning.
