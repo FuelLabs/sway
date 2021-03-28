@@ -250,6 +250,7 @@ impl<'sc> Namespace<'sc> {
 
         let mut ret_ty = None;
 
+        dbg!(&ident_iter);
         assert!(ident_iter.clone().count() > 0);
         for ident in ident_iter {
             // find the ident in the currently available fields
