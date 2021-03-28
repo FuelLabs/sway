@@ -78,16 +78,14 @@ impl<'sc> TypedExpression<'sc> {
                     }
                 }
             }
-            Expression::FunctionApplication { .. } => {
-                todo!("fn app w/ new namespace");
-                /*
-                let function_declaration = namespace.get_call_path(&name);
+            Expression::FunctionApplication { name, arguments, .. } => {
+                let function_declaration = type_check!(namespace.get_call_path(&name), return err(warnings, errors), warnings, errors);
                 match function_declaration {
-                    Some(TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
+                    TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                         parameters,
                         return_type,
                         ..
-                    })) => {
+                    }) => {
                         // type check arguments in function application vs arguments in function
                         // declaration. Use parameter type annotations as annotations for the
                         // arguments
@@ -135,7 +133,7 @@ impl<'sc> TypedExpression<'sc> {
                             },
                         }
                     }
-                    Some(a) => {
+                    a => {
                         errors.push(CompileError::NotAFunction {
                             name: name.span().as_str(),
                             span: name.span(),
@@ -143,18 +141,10 @@ impl<'sc> TypedExpression<'sc> {
                         });
                         ERROR_RECOVERY_EXPR.clone()
                     }
-                    None => {
-                        errors.push(CompileError::UnknownFunction {
-                            name: name.span().as_str(),
-                            span: name.span(),
-                        });
-                        ERROR_RECOVERY_EXPR.clone()
-                    }
                 }
-                */
             }
             Expression::MatchExpression { .. } => {
-                todo!("MAtch expressions");
+                todo!("Match expressions");
                 /*
                 let typed_primary_expression = type_check!(
                     TypedExpression::type_check(*primary_expression, &namespace, None, ""),
