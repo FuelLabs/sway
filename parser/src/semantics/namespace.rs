@@ -248,10 +248,13 @@ impl<'sc> Namespace<'sc> {
             }
         };
 
-        let mut ret_ty = None;
+        let mut ret_ty = type_check!(
+            symbol.return_type(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
-        dbg!(&ident_iter);
-        assert!(ident_iter.clone().count() > 0);
         for ident in ident_iter {
             // find the ident in the currently available fields
             let StructField { r#type, .. } =
@@ -284,12 +287,11 @@ impl<'sc> Namespace<'sc> {
                 }
                 _ => {
                     fields = vec![];
-                    ret_ty = Some(r#type);
+                    ret_ty = r#type;
                 }
             }
         }
-        // unwrap is safe: note that all branches above assign to expr
-        ok(ret_ty.unwrap(), warnings, errors)
+        ok(ret_ty, warnings, errors)
     }
 
     pub(crate) fn get_methods_for_type(

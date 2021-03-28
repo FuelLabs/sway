@@ -33,6 +33,25 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
+    pub(crate) fn return_type(&self) -> CompileResult<'sc, TypeInfo<'sc>> {
+        ok(
+            match self {
+                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    body, ..
+                }) => body.return_type.clone(),
+                TypedDeclaration::FunctionDeclaration { .. } => todo!("fn pointer type"),
+                TypedDeclaration::StructDeclaration(StructDeclaration { name, .. }) => {
+                    TypeInfo::Struct { name: name.clone() }
+                }
+                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
+                    rhs.return_type.clone()
+                }
+                _ => return err(vec![], vec![todo!("used typeless symbol as type err")]),
+            },
+            vec![],
+            vec![],
+        )
+    }
 }
 #[derive(Clone, Debug)]
 pub struct TypedVariableDeclaration<'sc> {

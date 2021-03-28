@@ -65,7 +65,7 @@ impl<'sc> TypedAstNode<'sc> {
 }
 
 impl<'sc> TypedAstNode<'sc> {
-    pub(crate) fn type_check<'manifest>(
+    pub(crate) fn type_check(
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
         return_type_annotation: Option<TypeInfo<'sc>>,
@@ -309,8 +309,6 @@ impl<'sc> TypedAstNode<'sc> {
                             TypeInfo::Custom { name } => lookup_in_scope(&name, namespace) ,
                             o => o,
                         };
-                        // insert type of "self" into local namespace
-                        let mut namespace = namespace.clone();
                         let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                         for mut fn_decl in functions.into_iter() {
                             let mut type_arguments = type_arguments.clone();
