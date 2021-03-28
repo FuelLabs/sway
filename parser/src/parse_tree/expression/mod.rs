@@ -75,6 +75,7 @@ pub(crate) enum Expression<'sc> {
     SubfieldExpression {
         name_parts: Vec<Ident<'sc>>,
         span: Span<'sc>,
+        unary_op: Option<UnaryOp>,
     },
 }
 
@@ -451,7 +452,6 @@ impl<'sc> Expression<'sc> {
                 }
             }
             Rule::method_exp => {
-                println!("here?");
                 let whole_exp_span = expr.as_span();
                 let mut parts = expr.into_inner();
                 let subfield_exp = parts.next().unwrap();
@@ -939,6 +939,7 @@ fn subfield_from_pair<'sc>(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Expressi
         Expression::SubfieldExpression {
             span,
             name_parts: buf,
+            unary_op: None, // TODO: support unary operators before subfield expressions
         },
         warnings,
         errors,

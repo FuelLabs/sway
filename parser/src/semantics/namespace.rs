@@ -210,7 +210,7 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn find_subfield(
         &self,
-        subfield_exp: Vec<Ident<'sc>>,
+        subfield_exp: &[Ident<'sc>],
     ) -> CompileResult<'sc, TypeInfo<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -221,7 +221,7 @@ impl<'sc> Namespace<'sc> {
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: first_ident.primary_name,
-                    span: first_ident.span,
+                    span: first_ident.span.clone(),
                 });
                 return err(warnings, errors);
             }
@@ -266,7 +266,7 @@ impl<'sc> Namespace<'sc> {
                             field_name,
                             struct_name: struct_name.primary_name.clone(),
                             available_fields: available_fields.join(", "),
-                            span: ident.span,
+                            span: ident.span.clone(),
                         });
                         return err(warnings, errors);
                     }

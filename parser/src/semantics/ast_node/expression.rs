@@ -52,6 +52,13 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     AsmExpression {
         asm: AsmExpression<'sc>,
     },
+    // like a variable expression but it has multiple parts,
+    // like looking up a field in a struct
+    SubfieldExpression {
+        unary_op: Option<UnaryOp>,
+        name: Vec<Ident<'sc>>,
+        span: Span<'sc> ,
+    }
 }
 #[derive(Clone, Debug)]
 pub(crate) struct TypedStructExpressionField<'sc> {
@@ -439,22 +446,31 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             Expression::SubfieldExpression {
+                unary_op,
                 name_parts,
-                span: _span,
+                span,
             } => {
                 //                let name_parts = VecDeque::from(name_parts);
                 // this must be >= 2, or else the parser would not have matched it. asserting that
                 // invariant here, since it is an assumption that is acted upon later.
                 assert!(name_parts.len() >= 2);
-                let subfield_exp = type_check!(
-                    namespace.find_subfield(name_parts),
+                let return_type = type_check!(
+                    namespace.find_subfield(&name_parts),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                dbg!(&subfield_exp);
 
-                todo!("subfield expressions")
+
+                TypedExpression {
+                    return_type,
+                    expression: TypedExpressionVariant::SubfieldExpression {
+                        unary_op, 
+                        name: name_parts,
+                        span,
+                    },
+                    is_constant: IsConstant::No,
+                }
             }
             Expression::MethodApplication {
                 subfield_exp,
@@ -504,7 +520,7 @@ impl<'sc> TypedExpression<'sc> {
                     )
                 } else {
                     let parent_type = type_check!(
-                        namespace.find_subfield(subfield_exp.clone()),
+                        namespace.find_subfield(&subfield_exp.clone()),
                         return err(warnings, errors),
                         warnings,
                         errors

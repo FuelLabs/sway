@@ -17,7 +17,7 @@ pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{TypedDeclaration, TypedFunctionDeclaration};
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
 pub(crate) use expression::{
-    TypedExpression, TypedExpressionVariant, TypedStructExpressionField, ERROR_RECOVERY_EXPR,
+    TypedExpression, TypedExpressionVariant, ERROR_RECOVERY_EXPR,
 };
 use impl_trait::implementation_of_trait;
 use return_statement::TypedReturnStatement;
@@ -322,11 +322,13 @@ impl<'sc> TypedAstNode<'sc> {
                             // replace SelfType with type of implementor
                             // i.e. fn add(self, other: u64) -> Self becomes fn
                             // add(self: u64, other: u64) -> u64
-                            if let Some(ix) = fn_decl.parameters.iter().position(
-                                |FunctionParameter { r#type, .. }| r#type == &TypeInfo::SelfType,
-                            ) {
-                                fn_decl.parameters[ix].r#type = type_implementing_for.clone();
-                            }
+                            fn_decl.parameters
+                                .iter_mut()
+                                .for_each(|FunctionParameter { ref mut r#type, .. }| {
+                                    if r#type == &TypeInfo::SelfType {
+                                        *r#type = type_implementing_for.clone();
+                                    }
+                                });
                             if fn_decl.return_type == TypeInfo::SelfType {
                                 fn_decl.return_type = type_implementing_for.clone();
                             }
