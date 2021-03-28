@@ -6,9 +6,9 @@ use pest::Span;
 use thiserror::Error;
 
 macro_rules! type_check {
-    ($name: ident, $val: expr, $namespace: expr, $type_annotation: expr, $help_text: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
+    ($fn_expr: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
         use crate::CompileResult;
-        let res = $name::type_check($val.clone(), $namespace, $type_annotation, $help_text);
+        let res = $fn_expr;
         match res {
             CompileResult::Ok {
                 value,
@@ -136,6 +136,9 @@ pub enum Warning<'sc> {
     NonClassCaseStructName {
         struct_name: &'sc str,
     },
+    NonClassCaseTraitName {
+        name: &'sc str,
+    },
     NonClassCaseEnumName {
         enum_name: &'sc str,
     },
@@ -152,6 +155,18 @@ pub enum Warning<'sc> {
         initial_type: TypeInfo<'sc>,
         cast_to: TypeInfo<'sc>,
     },
+    UnusedReturnValue {
+        r#type: TypeInfo<'sc>,
+    },
+    SimilarMethodFound {
+        lib: String,
+        module: String,
+        name: String,
+    },
+    OverridesOtherSymbol {
+        name: &'sc str,
+    },
+    OverridingTraitImplementation,
 }
 
 impl<'sc> Warning<'sc> {
@@ -159,11 +174,16 @@ impl<'sc> Warning<'sc> {
         use Warning::*;
         match self {
             NonClassCaseStructName{ struct_name } => format!("Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \"{}\".", struct_name, to_class_case(struct_name)),
+            NonClassCaseTraitName{ name } => format!("Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \"{}\".", name, to_class_case(name)),
             NonClassCaseEnumName{ enum_name} => format!("Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase name, like \"{}\".", enum_name, to_class_case(enum_name)),
             NonSnakeCaseStructFieldName { field_name } => format!("Struct field name \"{}\" is not idiomatic. Struct field names should have a snake_case name, like \"{}\".", field_name, to_snake_case(field_name)),
             NonClassCaseEnumVariantName { variant_name } => format!("Enum variant name \"{}\" is not idiomatic. Enum variant names should be ClassCase, like \"{}\".", variant_name, to_class_case(variant_name)),
             NonSnakeCaseFunctionName { name } => format!("Function name \"{}\" is not idiomatic. Function names should be snake_case, like \"{}\".", name, to_snake_case(name)),
             LossOfPrecision { initial_type, cast_to } => format!("This cast, from type {} to type {}, will lose precision.", initial_type.friendly_type_str(), cast_to.friendly_type_str()),
+            UnusedReturnValue { r#type } => format!("This returns a value of type {}, which is not assigned to anything and is ignored.", r#type.friendly_type_str()),
+            SimilarMethodFound { lib, module, name } => format!("A method with the same name was found for type {} in dependency \"{}::{}\". Traits must be in scope in order to access their methods. ", name, lib, module),
+            OverridesOtherSymbol { name } => format!("This import would override another symbol with the same name \"{}\" in this namespace.", name),
+            OverridingTraitImplementation  => format!("This trait implementation overrides another one that was previously defined.")
         }
     }
 }
@@ -172,6 +192,8 @@ impl<'sc> Warning<'sc> {
 pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: &'sc str, span: Span<'sc> },
+    #[error("Variable \"{var_name}\" does not exist in this scope.")]
+    UnknownVariablePath { var_name: String, span: Span<'sc> },
     #[error("Function \"{name}\" does not exist in this scope.")]
     UnknownFunction { name: &'sc str, span: Span<'sc> },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
@@ -243,15 +265,96 @@ pub enum CompileError<'sc> {
     },
     #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
     AssignmentToNonMutable(&'sc str, Span<'sc>),
-    #[error("Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in the function signature? For example: `fn {fn_name}<{comma_separated_generic_params}>{args} -> {return_type}`")]
+    #[error("Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in the function signature? For example: \n`fn {fn_name}<{comma_separated_generic_params}>({args}) -> ... `")]
     TypeParameterNotInTypeScope {
         name: &'sc str,
         span: Span<'sc>,
         comma_separated_generic_params: String,
         fn_name: &'sc str,
         args: &'sc str,
-        return_type: String,
     },
+    #[error(
+        "Asm opcode has multiple immediates specified, when any opcode has at most one immediate."
+    )]
+    MultipleImmediates(Span<'sc>),
+    #[error(
+        "Expected type {expected}, but found type {given}. The definition of this function must match the one in the trait declaration."
+    )]
+    MismatchedTypeInTrait {
+        span: Span<'sc>,
+        given: String,
+        expected: String,
+    },
+    #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\". ")]
+    NotATrait { span: Span<'sc>, name: &'sc str },
+    #[error("Trait \"{name}\" cannot be found in the current scope.")]
+    UnknownTrait { span: Span<'sc>, name: &'sc str },
+    #[error("Function \"{name}\" is not a part of trait \"{trait_name}\"'s interface surface.")]
+    FunctionNotAPartOfInterfaceSurface {
+        name: &'sc str,
+        trait_name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Functions are missing from this trait implementation: {missing_functions}")]
+    MissingInterfaceSurfaceMethods {
+        missing_functions: String,
+        span: Span<'sc>,
+    },
+    #[error("Expected {expected} type arguments, but instead found {given}.")]
+    IncorrectNumberOfTypeArguments {
+        given: usize,
+        expected: usize,
+        span: Span<'sc>,
+    },
+    #[error("Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import it?")]
+    StructNotFound { name: &'sc str, span: Span<'sc> },
+    #[error("The name \"{name}\" does not refer to a struct, but this is an attempted struct declaration.")]
+    DeclaredNonStructAsStruct { name: &'sc str, span: Span<'sc> },
+    #[error("Attempted to access field \"{field_name}\" of non-struct \"{name}\". Field accesses are only valid on structs.")]
+    AccessedFieldOfNonStruct {
+        field_name: &'sc str,
+        name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Attempted to access a method on something that has no methods. \"{name}\" is a {thing}, not a type with methods.")]
+    MethodOnNonValue {
+        name: &'sc str,
+        thing: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
+    StructMissingField {
+        field_name: &'sc str,
+        struct_name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
+    StructDoesntHaveThisField {
+        field_name: &'sc str,
+        struct_name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("No method named {method_name} found for type {type_name}.")]
+    MethodNotFound {
+        span: Span<'sc>,
+        method_name: &'sc str,
+        type_name: String,
+    },
+    #[error("The asterisk, if present, must be the last part of a path. E.g., `use foo::bar::*`.")]
+    NonFinalAsteriskInPath { span: Span<'sc> },
+    #[error("Module \"{name}\" could not be found.")]
+    ModuleNotFound { span: Span<'sc>, name: String },
+    #[error("\"{name}\" is not a struct. Fields can only be accessed on structs.")]
+    NotAStruct { name: &'sc str, span: Span<'sc> },
+    #[error("Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n {available_fields}")]
+    FieldNotFound {
+        field_name: &'sc str,
+        available_fields: String,
+        struct_name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Could not find symbol {name} in this scope.")]
+    SymbolNotFound { span: Span<'sc>, name: &'sc str },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -282,7 +385,6 @@ impl<'sc> TypeError<'sc> {
 
 impl<'sc> CompileError<'sc> {
     pub fn to_friendly_error_string(&self) -> String {
-        use CompileError::*;
         match self {
             CompileError::ParseFailure(err) => format!(
                 "Error parsing input: {}",
@@ -325,6 +427,7 @@ impl<'sc> CompileError<'sc> {
         use CompileError::*;
         match self {
             UnknownVariable { span, .. } => (span.start(), span.end()),
+            UnknownVariablePath { span, .. } => (span.start(), span.end()),
             UnknownFunction { span, .. } => (span.start(), span.end()),
             NotAVariable { span, .. } => (span.start(), span.end()),
             NotAFunction { span, .. } => (span.start(), span.end()),
@@ -354,6 +457,25 @@ impl<'sc> CompileError<'sc> {
             ReassignmentToNonVariable { span, .. } => (span.start(), span.end()),
             AssignmentToNonMutable(_, sp) => (sp.start(), sp.end()),
             TypeParameterNotInTypeScope { span, .. } => (span.start(), span.end()),
+            MultipleImmediates(sp) => (sp.start(), sp.end()),
+            MismatchedTypeInTrait { span, .. } => (span.start(), span.end()),
+            NotATrait { span, .. } => (span.start(), span.end()),
+            UnknownTrait { span, .. } => (span.start(), span.end()),
+            FunctionNotAPartOfInterfaceSurface { span, .. } => (span.start(), span.end()),
+            MissingInterfaceSurfaceMethods { span, .. } => (span.start(), span.end()),
+            IncorrectNumberOfTypeArguments { span, .. } => (span.start(), span.end()),
+            StructNotFound { span, .. } => (span.start(), span.end()),
+            DeclaredNonStructAsStruct { span, .. } => (span.start(), span.end()),
+            AccessedFieldOfNonStruct { span, .. } => (span.start(), span.end()),
+            MethodOnNonValue { span, .. } => (span.start(), span.end()),
+            StructMissingField { span, .. } => (span.start(), span.end()),
+            StructDoesntHaveThisField { span, .. } => (span.start(), span.end()),
+            MethodNotFound { span, .. } => (span.start(), span.end()),
+            NonFinalAsteriskInPath { span, .. } => (span.start(), span.end()),
+            ModuleNotFound { span, .. } => (span.start(), span.end()),
+            NotAStruct { span, .. } => (span.start(), span.end()),
+            FieldNotFound { span, .. } => (span.start(), span.end()),
+            SymbolNotFound { span, .. } => (span.start(), span.end()),
         }
     }
 }

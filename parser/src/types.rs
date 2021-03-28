@@ -1,25 +1,35 @@
 use crate::error::*;
-use crate::{CodeBlock, CompileError, Rule};
-use either::Either;
-use inflector::cases::snakecase::is_snake_case;
+use crate::{parse_tree::Ident, Rule};
 use pest::iterators::Pair;
 use pest::Span;
 
 /// Type information without an associated value, used for type inferencing and definition.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeInfo<'sc> {
     String,
     UnsignedInteger(IntegerBits),
     Boolean,
-    Generic { name: &'sc str },
+    /// A custom type could be a struct or similar if the name is in scope,
+    /// or just a generic parameter if it is not.
+    /// At parse time, there is no sense of scope, so this determination is not made
+    /// until the semantic analysis stage.
+    Custom {
+        name: Ident<'sc>,
+    },
+    Generic {
+        name: Ident<'sc>,
+    },
     Unit,
     SelfType,
     Byte,
     Byte32,
+    Struct {
+        name: Ident<'sc>,
+    },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IntegerBits {
     Eight,
     Sixteen,
@@ -34,8 +44,10 @@ impl<'sc> TypeInfo<'sc> {
         Self::parse_from_pair_inner(r#type.next().unwrap())
     }
     pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         ok(
-            match input.as_str() {
+            match input.as_str().trim() {
                 "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
                 "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
                 "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
@@ -45,21 +57,30 @@ impl<'sc> TypeInfo<'sc> {
                 "string" => TypeInfo::String,
                 "unit" => TypeInfo::Unit,
                 "byte" => TypeInfo::Byte,
-                other => TypeInfo::Generic { name: other },
+                "Self" => TypeInfo::SelfType,
+                _other => TypeInfo::Custom {
+                    name: eval!(
+                        Ident::parse_from_pair,
+                        warnings,
+                        errors,
+                        input,
+                        return err(warnings, errors)
+                    ),
+                },
             },
-            Vec::new(),
-            Vec::new(),
+            warnings,
+            errors,
         )
     }
 
     pub(crate) fn is_convertable(
-        self,
-        other: TypeInfo<'sc>,
+        &self,
+        other: &TypeInfo<'sc>,
         debug_span: Span<'sc>,
         help_text: impl Into<String>,
     ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
         let help_text = help_text.into();
-        if self == TypeInfo::ErrorRecovery || other == TypeInfo::ErrorRecovery {
+        if *self == TypeInfo::ErrorRecovery || *other == TypeInfo::ErrorRecovery {
             return Ok(None);
         }
         // TODO  actually check more advanced conversion rules like upcasting vs downcasting
@@ -82,7 +103,7 @@ impl<'sc> TypeInfo<'sc> {
         }
     }
 
-    fn numeric_cast_compat(self, other: TypeInfo<'sc>) -> Result<(), Warning<'sc>> {
+    fn numeric_cast_compat(&self, other: &TypeInfo<'sc>) -> Result<(), Warning<'sc>> {
         assert!(self.is_numeric(), other.is_numeric());
         use TypeInfo::*;
         // if this is a downcast, warn for loss of precision. if upcast, then no warning.
@@ -142,12 +163,17 @@ impl<'sc> TypeInfo<'sc> {
                 .into()
             }
             Boolean => "bool".into(),
-            Generic { name } => format!("<Generic {}>", name),
+            Generic { name } => format!("generic {}", name.primary_name),
+            Custom { name } => format!("unknown {}", name.primary_name),
             Unit => "()".into(),
             SelfType => "Self".into(),
             Byte => "byte".into(),
             Byte32 => "byte32".into(),
-            ErrorRecovery => "error type".into(),
+            Struct {
+                name: Ident { primary_name, .. },
+                ..
+            } => format!("struct {}", primary_name),
+            ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
     fn is_numeric(&self) -> bool {

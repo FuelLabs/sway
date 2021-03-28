@@ -1,4 +1,3 @@
-#![allow(warnings)]
 #[macro_use]
 extern crate pest_derive;
 #[macro_use]
@@ -8,18 +7,17 @@ mod parse_tree;
 mod parser;
 mod semantics;
 pub(crate) mod types;
+pub(crate) mod utils;
 use crate::error::*;
+pub use crate::parse_tree::Ident;
 use crate::parse_tree::*;
-pub(crate) use crate::parse_tree::{
-    Expression, FunctionDeclaration, FunctionParameter, Literal, UseStatement, WhileLoop,
-};
+pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 use crate::parser::{HllParser, Rule};
-use either::{Either, Left, Right};
 use pest::iterators::Pair;
 use pest::Parser;
+pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use semantics::{TreeType, TypedParseTree};
-use std::collections::HashMap;
-use types::TypeInfo;
+pub use types::TypeInfo;
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use pest::Span;
@@ -30,6 +28,7 @@ pub struct HllParseTree<'sc> {
     pub contract_ast: Option<ParseTree<'sc>>,
     pub script_ast: Option<ParseTree<'sc>>,
     pub predicate_ast: Option<ParseTree<'sc>>,
+    pub library_exports: Vec<(Ident<'sc>, ParseTree<'sc>)>,
 }
 
 #[derive(Debug)]
@@ -37,11 +36,17 @@ pub struct HllTypedParseTree<'sc> {
     contract_ast: Option<TypedParseTree<'sc>>,
     script_ast: Option<TypedParseTree<'sc>>,
     predicate_ast: Option<TypedParseTree<'sc>>,
+    pub library_exports: LibraryExports<'sc>,
+}
+
+#[derive(Debug)]
+pub struct LibraryExports<'sc> {
+    pub namespace: Namespace<'sc>,
 }
 
 #[derive(Debug)]
 pub struct ParseTree<'sc> {
-    /// In a typical program, you might have a single root node for your syntax tree.
+    /// In a typical programming language, you might have a single root node for your syntax tree.
     /// In this language however, we want to expose multiple public functions at the root
     /// level so the tree is multi-root.
     root_nodes: Vec<AstNode<'sc>>,
@@ -57,11 +62,9 @@ struct AstNode<'sc> {
 #[derive(Debug, Clone)]
 pub(crate) enum AstNodeContent<'sc> {
     UseStatement(UseStatement<'sc>),
-    CodeBlock(CodeBlock<'sc>),
     ReturnStatement(ReturnStatement<'sc>),
     Declaration(Declaration<'sc>),
     Expression(Expression<'sc>),
-    TraitDeclaration(TraitDeclaration<'sc>),
     ImplicitReturnExpression(Expression<'sc>),
     WhileLoop(WhileLoop<'sc>),
 }
@@ -130,8 +133,9 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
     ok(res, warnings, errors)
 }
 
-pub fn compile<'sc>(
+pub fn compile<'sc, 'manifest>(
     input: &'sc str,
+    initial_namespace: &Namespace<'sc>,
 ) -> Result<
     (HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>),
     (Vec<CompileError<'sc>>, Vec<CompileWarning<'sc>>),
@@ -147,7 +151,7 @@ pub fn compile<'sc>(
     );
 
     let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
-        match semantics::type_check_tree(tree, TreeType::Contract) {
+        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Contract) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -170,7 +174,7 @@ pub fn compile<'sc>(
         None
     };
     let predicate_ast: Option<_> = if let Some(tree) = parse_tree.predicate_ast {
-        match semantics::type_check_tree(tree, TreeType::Predicate) {
+        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Predicate) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -193,7 +197,7 @@ pub fn compile<'sc>(
         None
     };
     let script_ast: Option<_> = if let Some(tree) = parse_tree.script_ast {
-        match semantics::type_check_tree(tree, TreeType::Script) {
+        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Script) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -215,12 +219,50 @@ pub fn compile<'sc>(
     } else {
         None
     };
+    let library_exports: LibraryExports = {
+        let res: Vec<_> = parse_tree
+            .library_exports
+            .into_iter()
+            .filter_map(|(name, tree)| {
+                match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Library)
+                {
+                    CompileResult::Ok {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                        value,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                        Some((name, value))
+                    }
+                    CompileResult::Err {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                        None
+                    }
+                }
+            })
+            .collect();
+        let mut exports = LibraryExports {
+            namespace: Default::default(),
+        };
+        for (ref name, parse_tree) in res {
+            exports
+                .namespace
+                .insert_module(name.primary_name.to_string(), parse_tree.namespace);
+        }
+        exports
+    };
     if errors.is_empty() {
         Ok((
             HllTypedParseTree {
                 contract_ast,
                 script_ast,
                 predicate_ast,
+                library_exports,
             },
             warnings,
         ))
@@ -241,11 +283,13 @@ fn parse_root_from_pairs<'sc>(
         contract_ast: None,
         script_ast: None,
         predicate_ast: None,
+        library_exports: vec![],
     };
     for block in input {
         let mut parse_tree = ParseTree::new(block.as_span());
         let rule = block.as_rule();
         let input = block.clone().into_inner();
+        let mut library_name = None;
         for pair in input {
             match pair.as_rule() {
                 Rule::declaration => {
@@ -274,7 +318,17 @@ fn parse_root_from_pairs<'sc>(
                         span: pair.as_span(),
                     });
                 }
-                a => unreachable!("{:?}", pair.as_str()),
+                Rule::library_name => {
+                    let lib_pair = pair.into_inner().next().unwrap();
+                    library_name = Some(eval!(
+                        Ident::parse_from_pair,
+                        warnings,
+                        errors,
+                        lib_pair,
+                        continue
+                    ));
+                }
+                _ => unreachable!("{:?}", pair.as_str()),
             }
         }
         match rule {
@@ -299,8 +353,11 @@ fn parse_root_from_pairs<'sc>(
                     fuel_ast.predicate_ast = Some(parse_tree);
                 }
             }
+            Rule::library => {
+                fuel_ast.library_exports.push((library_name.expect("Safe unwrap, because the parser enforces the library keyword is followed by a name. This is an invariant"), parse_tree));
+            }
             Rule::EOI => (),
-            a => errors.push(CompileError::InvalidTopLevelItem(a, block.into_span())),
+            a => errors.push(CompileError::InvalidTopLevelItem(a, block.as_span())),
         }
     }
 

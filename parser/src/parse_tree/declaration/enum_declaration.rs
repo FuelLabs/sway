@@ -1,13 +1,12 @@
 use crate::error::*;
 use crate::parse_tree::declaration::TypeParameter;
-use crate::parser::{HllParser, Rule};
+use crate::parser::Rule;
 use crate::types::TypeInfo;
 use inflector::cases::classcase::is_class_case;
-use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 use pest::Span;
 #[derive(Debug, Clone)]
-pub(crate) struct EnumDeclaration<'sc> {
+pub struct EnumDeclaration<'sc> {
     pub(crate) name: &'sc str,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) variants: Vec<EnumVariant<'sc>>,
@@ -111,7 +110,7 @@ impl<'sc> EnumVariant<'sc> {
         let mut errors = Vec::new();
         let mut fields_buf = Vec::new();
         if let Some(decl_inner) = decl_inner {
-            let mut fields = decl_inner.into_inner().collect::<Vec<_>>();
+            let fields = decl_inner.into_inner().collect::<Vec<_>>();
             for i in (0..fields.len()).step_by(2) {
                 let span = fields[i].as_span();
                 let name = fields[i].as_str();

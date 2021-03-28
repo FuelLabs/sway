@@ -1,15 +1,15 @@
 use super::{FunctionDeclaration, FunctionParameter};
 use crate::error::*;
-use crate::parse_tree::{TypeParameter, VarName};
-use crate::parser::{HllParser, Rule};
+use crate::parse_tree::{Ident, TypeParameter};
+use crate::parser::Rule;
 use crate::types::TypeInfo;
-use either::*;
+use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub(crate) struct TraitDeclaration<'sc> {
-    pub(crate) name: VarName<'sc>,
+    pub(crate) name: Ident<'sc>,
     pub(crate) interface_surface: Vec<TraitFn<'sc>>,
     pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
@@ -22,11 +22,22 @@ impl<'sc> TraitDeclaration<'sc> {
         let mut trait_parts = pair.into_inner().peekable();
         let _trait_keyword = trait_parts.next();
         let name_pair = trait_parts.next().unwrap();
-        let name = VarName {
-            primary_name: name_pair.as_str(),
-            sub_names: vec![],
-            span: name_pair.as_span(),
-        };
+        let name = eval!(
+            Ident::parse_from_pair,
+            warnings,
+            errors,
+            name_pair,
+            return err(warnings, errors)
+        );
+        let span = name.span.clone();
+        assert_or_warn!(
+            is_class_case(name_pair.as_str()),
+            warnings,
+            span,
+            Warning::NonClassCaseTraitName {
+                name: name_pair.as_str()
+            }
+        );
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
         let mut methods = Vec::new();
@@ -104,9 +115,9 @@ impl<'sc> TraitDeclaration<'sc> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct TraitFn<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: Ident<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub(crate) return_type: TypeInfo<'sc>,
 }
@@ -118,13 +129,21 @@ impl<'sc> TraitFn<'sc> {
         let mut signature = pair.clone().into_inner();
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
-        let mut name_span = name.as_span();
-        let name = name.as_str();
+        let name_span = name.as_span();
+        let name = eval!(
+            Ident::parse_from_pair,
+            warnings,
+            errors,
+            name,
+            return err(warnings, errors)
+        );
         assert_or_warn!(
-            is_snake_case(name),
+            is_snake_case(name.primary_name),
             warnings,
             name_span,
-            Warning::NonSnakeCaseFunctionName { name }
+            Warning::NonSnakeCaseFunctionName {
+                name: name.primary_name
+            }
         );
         let parameters = signature.next().unwrap();
         let parameters = eval!(

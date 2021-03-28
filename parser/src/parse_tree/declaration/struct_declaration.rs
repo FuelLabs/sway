@@ -1,22 +1,22 @@
 use crate::error::*;
-use crate::parse_tree::declaration::TypeParameter;
-use crate::parser::{HllParser, Rule};
+use crate::parse_tree::{declaration::TypeParameter, Ident};
+use crate::parser::Rule;
 use crate::types::TypeInfo;
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub(crate) struct StructDeclaration<'sc> {
-    name: &'sc str,
-    fields: Vec<StructField<'sc>>,
-    type_parameters: Vec<TypeParameter<'sc>>,
+pub struct StructDeclaration<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) fields: Vec<StructField<'sc>>,
+    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct StructField<'sc> {
-    name: &'sc str,
-    r#type: TypeInfo<'sc>,
+    pub(crate) name: &'sc str,
+    pub(crate) r#type: TypeInfo<'sc>,
 }
 
 impl<'sc> StructDeclaration<'sc> {
@@ -79,12 +79,20 @@ impl<'sc> StructDeclaration<'sc> {
         };
 
         let span = name.as_span();
-        let name = name.as_str();
+        let name = eval!(
+            Ident::parse_from_pair,
+            warnings,
+            errors,
+            name,
+            return err(warnings, errors)
+        );
         assert_or_warn!(
-            is_class_case(name),
+            is_class_case(name.primary_name),
             warnings,
             span,
-            Warning::NonClassCaseStructName { struct_name: name }
+            Warning::NonClassCaseStructName {
+                struct_name: name.primary_name
+            }
         );
         ok(
             StructDeclaration {
@@ -102,7 +110,7 @@ impl<'sc> StructField<'sc> {
     pub(crate) fn parse_from_pairs(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Vec<Self>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut fields = pair.into_inner().collect::<Vec<_>>();
+        let fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
         for i in (0..fields.len()).step_by(2) {
             let span = fields[i].as_span();

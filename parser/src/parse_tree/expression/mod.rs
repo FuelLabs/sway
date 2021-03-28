@@ -1,15 +1,18 @@
 use crate::error::*;
+use crate::parse_tree::CallPath;
 use crate::parse_tree::Literal;
-use std::{
-    collections::HashMap,
-    hash::{Hash, Hasher},
-};
-#[macro_use]
-use crate::parser::{HllParser, Rule};
+use crate::parser::Rule;
 use crate::CodeBlock;
 use either::Either;
 use pest::iterators::Pair;
 use pest::Span;
+use std::{
+    collections::HashMap,
+    hash::{Hash, Hasher},
+};
+
+mod asm;
+pub(crate) use asm::AsmExpression;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Expression<'sc> {
@@ -18,13 +21,13 @@ pub(crate) enum Expression<'sc> {
         span: Span<'sc>,
     },
     FunctionApplication {
-        name: VarName<'sc>,
+        name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,
-        name: VarName<'sc>,
+        name: Ident<'sc>,
         span: Span<'sc>,
     },
     Unit {
@@ -40,7 +43,7 @@ pub(crate) enum Expression<'sc> {
         span: Span<'sc>,
     },
     StructExpression {
-        struct_name: &'sc str,
+        struct_name: Ident<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
         span: Span<'sc>,
     },
@@ -58,12 +61,29 @@ pub(crate) enum Expression<'sc> {
         r#else: Option<Box<Expression<'sc>>>,
         span: Span<'sc>,
     },
+    // separated into other struct for parsing reasons
+    AsmExpression {
+        span: Span<'sc>,
+        asm: AsmExpression<'sc>,
+    },
+    MethodApplication {
+        subfield_exp: Vec<Ident<'sc>>,
+        method_name: CallPath<'sc>,
+        arguments: Vec<Expression<'sc>>,
+        span: Span<'sc>,
+    },
+    SubfieldExpression {
+        name_parts: Vec<Ident<'sc>>,
+        span: Span<'sc>,
+        unary_op: Option<UnaryOp>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct StructExpressionField<'sc> {
-    name: &'sc str,
-    value: Expression<'sc>,
+    pub(crate) name: &'sc str,
+    pub(crate) value: Expression<'sc>,
+    pub(crate) span: Span<'sc>,
 }
 
 impl<'sc> Expression<'sc> {
@@ -80,6 +100,9 @@ impl<'sc> Expression<'sc> {
             CodeBlock { span, .. } => span,
             ParenthesizedExpression { span, .. } => span,
             IfExp { span, .. } => span,
+            AsmExpression { span, .. } => span,
+            MethodApplication { span, .. } => span,
+            SubfieldExpression { span, .. } => span,
         })
         .clone()
     }
@@ -187,7 +210,7 @@ impl<'sc> Expression<'sc> {
         let parsed = match expr.as_rule() {
             Rule::literal_value => match Literal::parse_from_pair(expr.clone()) {
                 CompileResult::Ok {
-                    value,
+                    value: (value, span),
                     warnings: mut l_w,
                     errors: mut l_e,
                 } => {
@@ -208,15 +231,11 @@ impl<'sc> Expression<'sc> {
                 let span = expr.as_span();
                 let mut func_app_parts = expr.into_inner();
                 let name = eval!(
-                    VarName::parse_from_pair,
+                    CallPath::parse_from_pair,
                     warnings,
                     errors,
                     func_app_parts.next().unwrap(),
-                    VarName {
-                        primary_name: "error parsing var name",
-                        sub_names: Vec::new(),
-                        span: span.clone()
-                    }
+                    return err(warnings, errors)
                 );
                 let arguments = func_app_parts.next();
                 let mut arguments_buf = Vec::new();
@@ -253,13 +272,12 @@ impl<'sc> Expression<'sc> {
                         }
                         Rule::var_name_ident => {
                             name = Some(eval!(
-                                VarName::parse_from_pair,
+                                Ident::parse_from_pair,
                                 warnings,
                                 errors,
                                 pair,
-                                VarName {
+                                Ident {
                                     primary_name: "error parsing var name",
-                                    sub_names: Vec::new(),
                                     span: span.clone()
                                 }
                             ));
@@ -276,7 +294,7 @@ impl<'sc> Expression<'sc> {
                 }
             }
             Rule::array_exp => {
-                let mut array_exps = expr.into_inner();
+                let array_exps = expr.into_inner();
                 let mut contents = Vec::new();
                 for expr in array_exps {
                     contents.push(eval!(
@@ -322,11 +340,19 @@ impl<'sc> Expression<'sc> {
             }
             Rule::struct_expression => {
                 let mut expr_iter = expr.into_inner();
-                let struct_name = expr_iter.next().unwrap().as_str();
+                let struct_name = expr_iter.next().unwrap();
+                let struct_name = eval!(
+                    Ident::parse_from_pair,
+                    warnings,
+                    errors,
+                    struct_name,
+                    return err(warnings, errors)
+                );
                 let fields = expr_iter.next().unwrap().into_inner().collect::<Vec<_>>();
                 let mut fields_buf = Vec::new();
                 for i in (0..fields.len()).step_by(2) {
                     let name = fields[i].as_str();
+                    let span = fields[i].as_span();
                     let value = eval!(
                         Expression::parse_from_pair,
                         warnings,
@@ -334,9 +360,9 @@ impl<'sc> Expression<'sc> {
                         fields[i + 1].clone(),
                         Expression::Unit { span: span.clone() }
                     );
-                    fields_buf.push(StructExpressionField { name, value });
+                    fields_buf.push(StructExpressionField { name, value, span });
                 }
-                // TODO add warning for capitalization on struct name
+
                 Expression::StructExpression {
                     struct_name,
                     fields: fields_buf,
@@ -411,6 +437,82 @@ impl<'sc> Expression<'sc> {
                     span,
                 }
             }
+            Rule::asm_expression => {
+                let whole_block_span = expr.as_span();
+                let asm = eval!(
+                    AsmExpression::parse_from_pair,
+                    warnings,
+                    errors,
+                    expr,
+                    return err(warnings, errors)
+                );
+                Expression::AsmExpression {
+                    asm,
+                    span: whole_block_span,
+                }
+            }
+            Rule::method_exp => {
+                let whole_exp_span = expr.as_span();
+                let mut parts = expr.into_inner();
+                let subfield_exp = parts.next().unwrap();
+                assert_eq!(subfield_exp.as_rule(), Rule::subfield_exp);
+                // remove the last field from the subfield exp, since it is the method name
+                // the different parts of the exp
+                // e.g.
+                // if the method_exp is a.b.c.add()
+                // then these parts are
+                // ["a", "b", "c", "add"]
+                let mut name_parts = subfield_exp.into_inner().collect::<Vec<_>>();
+                let method_name = eval!(
+                    CallPath::parse_from_pair,
+                    warnings,
+                    errors,
+                    name_parts.pop().unwrap(),
+                    return err(warnings, errors)
+                );
+                let function_arguments = parts
+                    .next()
+                    .map(|x| x.into_inner().collect::<Vec<_>>())
+                    .unwrap_or_else(|| vec![]);
+                let mut arguments_buf = Vec::new();
+                for argument in function_arguments {
+                    let arg = eval!(
+                        Expression::parse_from_pair_inner,
+                        warnings,
+                        errors,
+                        argument,
+                        Expression::Unit {
+                            span: argument.as_span()
+                        }
+                    );
+                    arguments_buf.push(arg);
+                }
+                let mut name_parts_buf = Vec::new();
+                for name_part in name_parts {
+                    let name = eval!(
+                        Ident::parse_from_pair,
+                        warnings,
+                        errors,
+                        name_part,
+                        continue
+                    );
+                    name_parts_buf.push(name);
+                }
+
+                Expression::MethodApplication {
+                    subfield_exp: name_parts_buf,
+                    method_name,
+                    arguments: arguments_buf,
+                    span: whole_exp_span,
+                }
+            }
+            Rule::subfield_exp => eval!(
+                subfield_from_pair,
+                warnings,
+                errors,
+                expr,
+                return err(warnings, errors)
+            ),
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -548,34 +650,32 @@ impl UnaryOp {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct VarName<'sc> {
+pub struct Ident<'sc> {
     pub(crate) primary_name: &'sc str,
     // sub-names are the stuff after periods
     // like x.test.thing.method()
     // `test`, `thing`, and `method` are sub-names
     // the primary name is `x`
-    pub(crate) sub_names: Vec<&'sc str>,
     pub(crate) span: Span<'sc>,
 }
 
 // custom implementation of Hash so that namespacing isn't reliant on the span itself, which will
 // always be different.
-impl Hash for VarName<'_> {
+impl Hash for Ident<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.primary_name.hash(state);
-        self.sub_names.hash(state);
     }
 }
-impl PartialEq for VarName<'_> {
+impl PartialEq for Ident<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.primary_name == other.primary_name && self.sub_names == other.sub_names
+        self.primary_name == other.primary_name
     }
 }
 
-impl Eq for VarName<'_> {}
+impl Eq for Ident<'_> {}
 
-impl<'sc> VarName<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, VarName> {
+impl<'sc> Ident<'sc> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Ident> {
         let span = {
             let pair = pair.clone();
             if pair.as_rule() != Rule::ident {
@@ -584,13 +684,10 @@ impl<'sc> VarName<'sc> {
                 pair.as_span()
             }
         };
-        let mut names = pair.into_inner();
-        let primary_name = names.next().unwrap().as_str().trim();
-        let sub_names = names.map(|x| x.as_str()).collect();
+        let name = pair.as_str().trim();
         ok(
-            VarName {
-                primary_name,
-                sub_names,
+            Ident {
+                primary_name: name,
                 span,
             },
             Vec::new(),
@@ -642,11 +739,11 @@ struct Op<'sc> {
 }
 
 impl<'sc> Op<'sc> {
-    fn to_var_name(&self) -> VarName<'sc> {
-        VarName {
+    fn to_var_name(&self) -> Ident<'sc> {
+        Ident {
             primary_name: self.op_variant.as_str(),
             span: self.span.clone(),
-            sub_names: vec!["std".into(), "ops".into()],
+            // TODO this should be a method exp not a var name
         }
     }
 }
@@ -748,7 +845,19 @@ fn arrange_by_order_of_operations<'sc>(
                     let lhs = lhs.unwrap();
                     let rhs = rhs.unwrap();
                     expression_stack.push(Expression::FunctionApplication {
-                        name: new_op.to_var_name(),
+                        name: CallPath {
+                            prefixes: vec![
+                                Ident {
+                                    primary_name: "std".into(),
+                                    span: new_op.span.clone(),
+                                },
+                                Ident {
+                                    primary_name: "ops".into(),
+                                    span: new_op.span.clone(),
+                                },
+                            ],
+                            suffix: new_op.to_var_name(),
+                        },
                         arguments: vec![lhs, rhs],
                         span: debug_span.clone(),
                     });
@@ -759,7 +868,6 @@ fn arrange_by_order_of_operations<'sc>(
         }
     }
 
-    // TODO precedence
     while let Some(op) = op_stack.pop() {
         let rhs = expression_stack.pop();
         let lhs = expression_stack.pop();
@@ -782,10 +890,23 @@ fn arrange_by_order_of_operations<'sc>(
         let lhs = lhs.unwrap();
         let rhs = rhs.unwrap();
 
-        expression_stack.push(Expression::FunctionApplication {
-            name: op.to_var_name(),
+        expression_stack.push(Expression::MethodApplication {
+            method_name: CallPath {
+                prefixes: vec![
+                    Ident {
+                        primary_name: "std".into(),
+                        span: op.span.clone(),
+                    },
+                    Ident {
+                        primary_name: "ops".into(),
+                        span: op.span.clone(),
+                    },
+                ],
+                suffix: op.to_var_name(),
+            },
+            subfield_exp: vec![],
             arguments: vec![lhs, rhs],
-            span: debug_span.clone(),
+            span: op.span.clone(),
         });
     }
 
@@ -798,4 +919,29 @@ fn arrange_by_order_of_operations<'sc>(
     }
 
     ok(expression_stack[0].clone(), warnings, errors)
+}
+fn subfield_from_pair<'sc>(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Expression> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let span = expr.as_span();
+    let iter = expr.into_inner();
+    let mut buf = vec![];
+    for part in iter {
+        buf.push(eval!(
+            Ident::parse_from_pair,
+            warnings,
+            errors,
+            part,
+            continue
+        ));
+    }
+    ok(
+        Expression::SubfieldExpression {
+            span,
+            name_parts: buf,
+            unary_op: None, // TODO: support unary operators before subfield expressions
+        },
+        warnings,
+        errors,
+    )
 }

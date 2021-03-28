@@ -1,5 +1,6 @@
 mod enum_declaration;
 mod function_declaration;
+mod impl_trait;
 mod reassignment;
 mod struct_declaration;
 mod trait_declaration;
@@ -8,7 +9,7 @@ mod variable_declaration;
 
 pub(crate) use enum_declaration::*;
 pub(crate) use function_declaration::*;
-pub(crate) use reassignment::*;
+pub(crate) use impl_trait::*;
 pub(crate) use reassignment::*;
 pub(crate) use struct_declaration::*;
 pub(crate) use trait_declaration::*;
@@ -16,8 +17,8 @@ pub(crate) use type_parameter::*;
 pub(crate) use variable_declaration::*;
 
 use crate::error::*;
-use crate::parse_tree::{Expression, VarName};
-use crate::parser::{HllParser, Rule};
+use crate::parse_tree::{Expression, Ident};
+use crate::parser::Rule;
 use crate::types::TypeInfo;
 use pest::iterators::Pair;
 
@@ -29,7 +30,8 @@ pub(crate) enum Declaration<'sc> {
     StructDeclaration(StructDeclaration<'sc>),
     EnumDeclaration(EnumDeclaration<'sc>),
     Reassignment(Reassignment<'sc>),
-    ErrorRecovery,
+    ImplTrait(ImplTrait<'sc>),
+    ImplSelf(ImplSelf<'sc>),
 }
 impl<'sc> Declaration<'sc> {
     pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
@@ -84,7 +86,7 @@ impl<'sc> Declaration<'sc> {
                 );
                 Declaration::VariableDeclaration(VariableDeclaration {
                     name: eval!(
-                        VarName::parse_from_pair,
+                        Ident::parse_from_pair,
                         warnings,
                         errors,
                         name_pair,
@@ -118,6 +120,20 @@ impl<'sc> Declaration<'sc> {
             )),
             Rule::reassignment => Declaration::Reassignment(eval!(
                 Reassignment::parse_from_pair,
+                warnings,
+                errors,
+                decl_inner,
+                return err(warnings, errors)
+            )),
+            Rule::impl_trait => Declaration::ImplTrait(eval!(
+                ImplTrait::parse_from_pair,
+                warnings,
+                errors,
+                decl_inner,
+                return err(warnings, errors)
+            )),
+            Rule::impl_self => Declaration::ImplSelf(eval!(
+                ImplSelf::parse_from_pair,
                 warnings,
                 errors,
                 decl_inner,

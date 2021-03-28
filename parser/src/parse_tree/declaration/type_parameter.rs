@@ -1,9 +1,7 @@
 use crate::error::*;
-use crate::parse_tree::Expression;
-use crate::{CodeBlock, CompileError, Rule};
-use either::Either;
+use crate::{CompileError, Rule};
 use pest::iterators::Pair;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TypeParameter<'sc> {
     pub(crate) name: &'sc str,
     trait_constraint: Vec<TraitConstraint<'sc>>,
@@ -46,7 +44,7 @@ impl<'sc> TypeParameter<'sc> {
                     assert_eq!(trait_constraint.as_rule(), Rule::trait_name);
                     // assign trait constraints to above parsed type params
                     // find associated type name
-                    let mut param_to_edit = match params
+                    let param_to_edit = match params
                         .iter_mut()
                         .find(|TypeParameter { name, .. }| *name == type_param.as_str())
                     {
@@ -71,30 +69,7 @@ impl<'sc> TypeParameter<'sc> {
     }
 }
 
-fn find_and_update_param<'sc>(
-    mut params: Vec<TypeParameter<'sc>>,
-    param_to_update: Pair<'sc, Rule>,
-    trait_name_to_add: &'sc str,
-) -> Result<(), CompileError<'sc>> {
-    let mut found = false;
-    for mut param in params {
-        if param.name == param_to_update.as_str() {
-            param.trait_constraint.push(TraitConstraint {
-                name: trait_name_to_add,
-            });
-            found = true;
-        }
-    }
-    if !found {
-        return Err(CompileError::UndeclaredGenericTypeInWhereClause {
-            span: param_to_update.as_span(),
-            type_name: param_to_update.as_str(),
-        });
-    }
-    Ok(())
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct TraitConstraint<'sc> {
     name: &'sc str,
 }

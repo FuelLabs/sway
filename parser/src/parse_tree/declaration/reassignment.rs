@@ -1,5 +1,5 @@
 use crate::error::{err, ok, CompileResult};
-use crate::parse_tree::{Expression, VarName};
+use crate::parse_tree::{Expression, Ident};
 use crate::parser::Rule;
 use pest::iterators::Pair;
 use pest::Span;
@@ -7,7 +7,7 @@ use pest::Span;
 #[derive(Debug, Clone)]
 pub(crate) struct Reassignment<'sc> {
     // the thing being reassigned
-    pub(crate) lhs: VarName<'sc>,
+    pub(crate) lhs: Ident<'sc>,
     // the expression that is being assigned to the lhs
     pub(crate) rhs: Expression<'sc>,
     pub(crate) span: Span<'sc>,
@@ -20,7 +20,7 @@ impl<'sc> Reassignment<'sc> {
         let mut errors = vec![];
         let mut iter = pair.into_inner();
         let name = eval!(
-            VarName::parse_from_pair,
+            Ident::parse_from_pair,
             warnings,
             errors,
             iter.next().unwrap(),
