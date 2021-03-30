@@ -3,6 +3,7 @@ extern crate pest_derive;
 #[macro_use]
 mod error;
 
+mod control_flow_analysis;
 mod parse_tree;
 mod parser;
 mod semantics;
