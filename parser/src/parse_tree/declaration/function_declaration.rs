@@ -170,6 +170,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         }
         */
         let body = parts.next().unwrap();
+        let whole_block_span = body.as_span();
         let body = eval!(
             CodeBlock::parse_from_pair,
             warnings,
@@ -177,6 +178,7 @@ impl<'sc> FunctionDeclaration<'sc> {
             body,
             crate::CodeBlock {
                 contents: Vec::new(),
+                whole_block_span,
                 scope: Default::default()
             }
         );

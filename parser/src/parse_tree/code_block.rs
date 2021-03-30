@@ -4,18 +4,21 @@ use crate::{
     error::*, parse_tree::Expression, AstNode, AstNodeContent, Declaration, ReturnStatement,
 };
 use pest::iterators::Pair;
+use pest::Span;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub(crate) struct CodeBlock<'sc> {
     pub(crate) contents: Vec<AstNode<'sc>>,
     pub(crate) scope: HashMap<&'sc str, Declaration<'sc>>,
+    pub(crate) whole_block_span: Span<'sc>,
 }
 
 impl<'sc> CodeBlock<'sc> {
     pub(crate) fn parse_from_pair(block: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+        let whole_block_span = block.as_span();
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
         for pair in block_inner {
@@ -91,7 +94,7 @@ impl<'sc> CodeBlock<'sc> {
         }
 
         ok(
-            CodeBlock {  contents, scope: /* TODO */ HashMap::default()  },
+            CodeBlock {  whole_block_span, contents, scope: /* TODO */ HashMap::default()  },
             warnings,
             errors,
         )

@@ -23,9 +23,6 @@ use impl_trait::implementation_of_trait;
 use return_statement::TypedReturnStatement;
 pub(crate) use while_loop::TypedWhileLoop;
 
-pub(crate) const ERROR_RECOVERY_NODE_CONTENT: TypedAstNodeContent =
-    TypedAstNodeContent::Expression(expression::ERROR_RECOVERY_EXPR);
-
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
 #[derive(Clone, Copy, Debug)]
@@ -98,7 +95,8 @@ impl<'sc> TypedAstNode<'sc> {
                         body,
                         &namespace,
                         type_ascription.clone(), 
-                        format!("Variable declaration's type annotation (type {}) does not match up with the assigned expression's type.",
+                        format!("Variable declaration's type annotation (type {})\
+                            does not match up with the assigned expression's type.",
                             type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into()))),
                         ERROR_RECOVERY_EXPR.clone(),
                         warnings,
@@ -215,7 +213,8 @@ impl<'sc> TypedAstNode<'sc> {
                                             body,
                                             &namespace,
                                             Some(return_type.clone()),
-                                            "Trait method body's return type does not match up with its return type annotation."),
+                                            "Trait method body's return type does not \
+                                            match up with its return type annotation."),
                                             continue, 
                                             warnings, errors
                                         );
@@ -377,13 +376,6 @@ impl<'sc> TypedAstNode<'sc> {
                     TypedAstNodeContent::Expression(inner)
                 }
                 AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
-                    if return_type_annotation.is_none() {
-                        errors.push(CompileError::Internal(
-                        "Parsed a return type without an annotation. All returns should be typed. ",
-                        node.span.clone(),
-                    ));
-                        ERROR_RECOVERY_NODE_CONTENT.clone()
-                    } else {
                         TypedAstNodeContent::ReturnStatement (TypedReturnStatement {
                         expr: type_check!(TypedExpression::type_check(
                                   expr,
@@ -394,7 +386,7 @@ impl<'sc> TypedAstNode<'sc> {
                                   warnings,
                                   errors)
                     })
-                    }
+                    
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let typed_expr = type_check!(
@@ -430,7 +422,8 @@ impl<'sc> TypedAstNode<'sc> {
                         body,
                         &namespace,
                         Some(TypeInfo::Unit),
-                        "A while loop's loop body cannot implicitly return a value. Try assigning it to a mutable variable declared outside of the loop instead."),
+                        "A while loop's loop body cannot implicitly return a value.\
+                        Try assigning it to a mutable variable declared outside of the loop instead."),
                         (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
                         warnings,
                         errors
@@ -471,7 +464,9 @@ impl<'sc> TypedAstNode<'sc> {
     /// being looked for is actually a generic. 
 fn lookup_in_scope<'sc>(custom_type_name: &Ident<'sc>, namespace: &Namespace<'sc>) -> TypeInfo<'sc> { 
     match namespace.get_symbol(custom_type_name) {
-       Some(TypedDeclaration::StructDeclaration(StructDeclaration { name, .. })) => TypeInfo::Struct { name: name.clone() },
+       Some(TypedDeclaration::StructDeclaration(StructDeclaration {
+           name, .. 
+       })) => TypeInfo::Struct { name: name.clone() },
        Some(_) => TypeInfo::Generic { name: custom_type_name.clone() },
        None => TypeInfo::Generic { name: custom_type_name.clone() }
     }

@@ -225,7 +225,7 @@ impl<'sc> TypedExpression<'sc> {
                 condition,
                 then,
                 r#else,
-                ..
+                span,
             } => {
                 let condition = Box::new(type_check!(
                     TypedExpression::type_check(
@@ -239,7 +239,7 @@ impl<'sc> TypedExpression<'sc> {
                     errors
                 ));
                 let then = Box::new(type_check!(
-                    TypedExpression::type_check(*then, &namespace, None, ""),
+                    TypedExpression::type_check(*then, &namespace, type_annotation.clone(), ""),
                     ERROR_RECOVERY_EXPR.clone(),
                     warnings,
                     errors
@@ -259,6 +259,18 @@ impl<'sc> TypedExpression<'sc> {
                 } else {
                     None
                 };
+
+                // if there is a type annotation, then the else branch must exist
+                if let Some(ref annotation) = type_annotation {
+
+                    if r#else.is_none() {
+                        errors.push(CompileError::NoElseBranch { 
+                            span: span.clone(),
+                            r#type: annotation.friendly_type_str(),
+                        });
+
+                    }
+                }
 
                 TypedExpression {
                     expression: TypedExpressionVariant::IfExp {

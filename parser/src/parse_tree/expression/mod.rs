@@ -385,6 +385,7 @@ impl<'sc> Expression<'sc> {
                 }
             }
             Rule::code_block => {
+                let whole_block_span = expr.as_span();
                 let expr = eval!(
                     crate::CodeBlock::parse_from_pair,
                     warnings,
@@ -392,6 +393,7 @@ impl<'sc> Expression<'sc> {
                     expr,
                     crate::CodeBlock {
                         contents: Vec::new(),
+                        whole_block_span,
                         scope: Default::default()
                     }
                 );
@@ -604,6 +606,7 @@ impl<'sc> MatchBranch<'sc> {
                         result,
                         CodeBlock {
                             contents: Vec::new(),
+                            whole_block_span: span.clone(),
                             scope: HashMap::default()
                         }
                     ),

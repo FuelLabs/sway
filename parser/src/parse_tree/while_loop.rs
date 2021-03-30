@@ -19,6 +19,7 @@ impl<'sc> WhileLoop<'sc> {
         let _while_keyword = iter.next().unwrap();
         let condition = iter.next().unwrap();
         let body = iter.next().unwrap();
+        let whole_block_span = body.as_span();
 
         let condition = eval!(
             Expression::parse_from_pair,
@@ -37,6 +38,7 @@ impl<'sc> WhileLoop<'sc> {
             body,
             CodeBlock {
                 contents: Default::default(),
+                whole_block_span,
                 scope: Default::default()
             }
         );

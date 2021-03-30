@@ -355,6 +355,8 @@ pub enum CompileError<'sc> {
     },
     #[error("Could not find symbol {name} in this scope.")]
     SymbolNotFound { span: Span<'sc>, name: &'sc str },
+    #[error("Because this if expression's value is used, an \"else\" branch is required and it must return type \"{r#type}\"")]
+    NoElseBranch { span: Span<'sc>, r#type: String },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -476,6 +478,7 @@ impl<'sc> CompileError<'sc> {
             NotAStruct { span, .. } => (span.start(), span.end()),
             FieldNotFound { span, .. } => (span.start(), span.end()),
             SymbolNotFound { span, .. } => (span.start(), span.end()),
+            NoElseBranch { span, .. } => (span.start(), span.end()),
         }
     }
 }
