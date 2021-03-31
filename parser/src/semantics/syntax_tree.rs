@@ -13,7 +13,7 @@ pub(crate) enum TreeType {
 
 #[derive(Debug)]
 pub(crate) struct TypedParseTree<'sc> {
-    root_nodes: Vec<TypedAstNode<'sc>>,
+    pub(crate) root_nodes: Vec<TypedAstNode<'sc>>,
     pub(crate) namespace: Namespace<'sc>,
 }
 
