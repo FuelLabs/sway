@@ -3,7 +3,8 @@
 
 use crate::semantics::{
     ast_node::{
-        TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration, TypedWhileLoop,
+        TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
+        TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
     },
     TypedAstNode, TypedAstNodeContent, TypedParseTree,
 };
@@ -133,7 +134,16 @@ fn connect_node<'sc>(
         TypedAstNodeContent::Expression(TypedExpression {
             expression: expr_variant,
             ..
-        }) => connect_expression(&node, expr_variant, graph, &leaves, function_namespace),
+        }) => {
+            let entry = graph.add_node(node.into());
+            // insert organizational dominator node
+            // connected to all current leaves
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry, "".into());
+            }
+
+            connect_expression(expr_variant, graph, &[entry], function_namespace)
+        }
         TypedAstNodeContent::SideEffect => leaves.to_vec(),
         TypedAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf
@@ -153,7 +163,9 @@ fn connect_declaration<'sc>(
 ) -> Vec<NodeIndex> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(_) => todo!(),
+        VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
+            connect_expression(&body.expression, graph, leaves, function_namespace)
+        }
         FunctionDeclaration(fn_decl) => {
             connect_typed_fn_decl(fn_decl, graph, function_namespace, span);
             vec![]
@@ -161,7 +173,9 @@ fn connect_declaration<'sc>(
         TraitDeclaration(_) => todo!(),
         StructDeclaration(_) => todo!(),
         EnumDeclaration(_) => todo!(),
-        Reassignment(_) => todo!(),
+        Reassignment(TypedReassignment { rhs, .. }) => {
+            connect_expression(&rhs.expression, graph, leaves, function_namespace)
+        }
         SideEffect | ErrorRecovery => {
             unreachable!("These are error cases and should be removed in the type checking stage. ")
         }
@@ -217,8 +231,9 @@ fn depth_first_insertion_code_block<'sc>(
     }
 }
 
+/// connects any inner parts of an expression to the graph
+/// note the main expression node has already been inserted
 fn connect_expression<'sc>(
-    node: &TypedAstNode<'sc>,
     expr_variant: &TypedExpressionVariant<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
@@ -227,19 +242,15 @@ fn connect_expression<'sc>(
     use TypedExpressionVariant::*;
     match expr_variant {
         FunctionApplication { name, .. } => {
-            // insert organizational dominator node
-            // connected to all current leaves
-            let entry = graph.add_node(node.into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry, "".into());
-            }
-
             // find the function in the namespace
+            dbg!(&fn_namespace);
+            dbg!(&name);
             let (fn_entrypoint, fn_exit_points) = fn_namespace.get(&name.suffix).expect(
                 "calling nonexistent functions should have been caught in the type checking stage",
             );
-            // the current leaves all get connected to the entry of the function
-            graph.add_edge(entry, *fn_entrypoint, "".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, *fn_entrypoint, "".into());
+            }
             // the exit points get connected to an exit node for the application
             let exit = graph.add_node(format!("\"{}\" fn exit", name.suffix.primary_name).into());
             for exit_point in fn_exit_points {
@@ -248,7 +259,8 @@ fn connect_expression<'sc>(
 
             vec![exit]
         }
-        _ => todo!(),
+        Literal(_lit) => leaves.to_vec(),
+        a => todo!("{:?}", a),
     }
 }
 
