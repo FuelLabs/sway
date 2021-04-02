@@ -257,6 +257,35 @@ pub fn compile<'sc, 'manifest>(
         }
         exports
     };
+    // If there are errors, display them now before performing control flow analysis.
+    // It is necessary that the syntax tree is well-formed for control flow analysis
+    // to be correct.
+    if !errors.is_empty() {
+        return Err((errors, warnings));
+    }
+
+    // perform control flow analysis on each branch
+    let (script_warnings, script_errors) = perform_control_flow_analysis(&script_ast);
+    let (contract_warnings, contract_errors) = perform_control_flow_analysis(&contract_ast);
+    let (predicate_warnings, predicate_errors) = perform_control_flow_analysis(&predicate_ast);
+    let (library_warnings, library_errors) =
+        perform_control_flow_analysis_on_library_exports(&library_exports);
+
+    let l_warnings = [
+        script_warnings,
+        contract_warnings,
+        predicate_warnings,
+        library_warnings,
+    ]
+    .concat();
+    let l_errors = [
+        script_errors,
+        contract_errors,
+        predicate_errors,
+        library_errors,
+    ]
+    .concat();
+
     if errors.is_empty() {
         Ok((
             HllTypedParseTree {
@@ -270,6 +299,24 @@ pub fn compile<'sc, 'manifest>(
     } else {
         Err((errors, warnings))
     }
+}
+
+fn perform_control_flow_analysis<'sc>(
+    tree: &Option<TypedParseTree<'sc>>,
+) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
+    match tree {
+        Some(tree) => {
+            let graph = control_flow_analysis::construct_graph(tree);
+            todo!()
+        }
+        None => (vec![], vec![]),
+    }
+}
+fn perform_control_flow_analysis_on_library_exports<'sc>(
+    tree: &LibraryExports<'sc>,
+) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
+    println!("TODO: control flow analysis on a library");
+    (vec![], vec![])
 }
 
 // strategy: parse top level things

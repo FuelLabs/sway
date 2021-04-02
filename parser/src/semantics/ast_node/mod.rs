@@ -42,12 +42,27 @@ pub(crate) enum TypedAstNodeContent<'sc> {
     SideEffect,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct TypedAstNode<'sc> {
     pub(crate) content: TypedAstNodeContent<'sc>,
     pub(crate) span: Span<'sc>,
 }
 
+impl <'sc> std::fmt::Debug for TypedAstNode<'sc> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use TypedAstNodeContent::*;
+        let text = match &self.content {
+            ReturnStatement(TypedReturnStatement { ref expr }) => format!("return {}", expr.pretty_print()),
+            Declaration(ref typed_decl) => typed_decl.pretty_print(),
+            Expression(exp) => exp.pretty_print(),
+            ImplicitReturnExpression(exp) => exp.pretty_print(),
+            WhileLoop(w_loop) => w_loop.pretty_print(),
+            SideEffect => "".into()
+        };
+        f.write_str(&text)
+    }
+
+}
 impl<'sc> TypedAstNode<'sc> {
     fn type_info(&self) -> TypeInfo<'sc> {
         // return statement should be ()

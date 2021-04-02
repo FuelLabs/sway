@@ -39,3 +39,4 @@
 //! # # # Reachability
 
 mod flow_graph;
+pub(crate) use flow_graph::*;

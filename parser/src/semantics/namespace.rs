@@ -297,13 +297,14 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn get_methods_for_type(
         &self,
         r#type: &TypeInfo<'sc>,
-    ) -> Option<Vec<TypedFunctionDeclaration<'sc>>> {
-        for ((_trait_name, type_info), methods) in &self.implemented_traits {
+    ) -> Vec<TypedFunctionDeclaration<'sc>> {
+        let mut methods = vec![];
+        for ((_trait_name, type_info), l_methods) in &self.implemented_traits {
             if type_info == r#type {
-                return Some(methods.clone());
+                methods.append(&mut l_methods.clone());
             }
         }
-        None
+        methods
     }
 
     pub(crate) fn find_method_for_type(
@@ -311,7 +312,7 @@ impl<'sc> Namespace<'sc> {
         r#type: &TypeInfo<'sc>,
         method_name: Ident<'sc>,
     ) -> Option<TypedFunctionDeclaration<'sc>> {
-        let methods = self.get_methods_for_type(r#type)?;
+        let methods = self.get_methods_for_type(r#type);
         methods
             .into_iter()
             .find(|TypedFunctionDeclaration { name, .. }| *name == method_name)

@@ -553,4 +553,8 @@ impl<'sc> TypedExpression<'sc> {
 
         ok(typed_expression, warnings, errors)
     }
+    pub(crate) fn pretty_print(&self) -> String {
+        format!("{} ({})", self.expression.pretty_print(), self.return_type.friendly_type_str())
+
+    }
 }

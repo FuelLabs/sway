@@ -54,6 +54,37 @@ impl<'sc> TypedDeclaration<'sc> {
             vec![],
         )
     }
+
+    pub(crate) fn pretty_print(&self) -> String {
+        format!(
+            "{} declaration ({})",
+            self.friendly_name(),
+            match self {
+                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    is_mutable,
+                    name,
+                    ..
+                }) => format!(
+                    "{} {}",
+                    if *is_mutable { "mut" } else { "" },
+                    name.primary_name
+                ),
+                TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
+                    name, ..
+                }) => {
+                    name.primary_name.into()
+                }
+                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
+                    name.primary_name.into(),
+                TypedDeclaration::StructDeclaration(StructDeclaration { name, .. }) =>
+                    name.primary_name.into(),
+                TypedDeclaration::EnumDeclaration(EnumDeclaration { name, .. }) => name.to_string(),
+                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) =>
+                    lhs.primary_name.into(),
+                _ => String::new(),
+            }
+        )
+    }
 }
 #[derive(Clone, Debug)]
 pub struct TypedVariableDeclaration<'sc> {

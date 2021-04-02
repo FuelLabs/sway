@@ -188,7 +188,7 @@ impl<'sc> Warning<'sc> {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: &'sc str, span: Span<'sc> },
@@ -365,7 +365,7 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum TypeError<'sc> {
     #[error("Mismatched types: Expected type {expected} but found type {received}. Type {received} is not castable to type {expected}.\n help: {help_text}")]
     MismatchedType {
