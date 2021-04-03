@@ -55,7 +55,7 @@ impl <'sc> std::fmt::Debug for TypedAstNode<'sc> {
             ReturnStatement(TypedReturnStatement { ref expr }) => format!("return {}", expr.pretty_print()),
             Declaration(ref typed_decl) => typed_decl.pretty_print(),
             Expression(exp) => exp.pretty_print(),
-            ImplicitReturnExpression(exp) => exp.pretty_print(),
+            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
             WhileLoop(w_loop) => w_loop.pretty_print(),
             SideEffect => "".into()
         };
