@@ -43,7 +43,7 @@ pub(crate) enum TypedAstNodeContent<'sc> {
 }
 
 #[derive(Clone)]
-pub(crate) struct TypedAstNode<'sc> {
+pub struct TypedAstNode<'sc> {
     pub(crate) content: TypedAstNodeContent<'sc>,
     pub(crate) span: Span<'sc>,
 }
