@@ -18,7 +18,7 @@ use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 use std::collections::HashMap;
 
 pub type EntryPoint = NodeIndex;
-pub type ExitPoints = Vec<NodeIndex>;
+pub type ExitPoint = NodeIndex;
 
 pub struct ControlFlowGraph<'sc> {
     graph: Graph<'sc>,
@@ -27,7 +27,7 @@ pub struct ControlFlowGraph<'sc> {
 
 type Graph<'sc> = petgraph::Graph<ControlFlowGraphNode<'sc>, ControlFlowGraphEdge>;
 
-pub type ControlFlowFunctionNamespace<'sc> = HashMap<Ident<'sc>, (EntryPoint, ExitPoints)>;
+pub type ControlFlowFunctionNamespace<'sc> = HashMap<Ident<'sc>, (EntryPoint, ExitPoint)>;
 
 pub struct ControlFlowGraphEdge(String);
 
@@ -90,8 +90,16 @@ impl<'sc> ControlFlowGraph<'sc> {
         let mut fn_namespace = Default::default();
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
+        let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
         for ast_entrypoint in ast.root_nodes.iter() {
-            let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves, &mut fn_namespace);
+            let (l_leaves, _new_exit_node) = connect_node(
+                ast_entrypoint,
+                &mut graph,
+                &leaves,
+                &mut fn_namespace,
+                exit_node,
+            );
+
             leaves = l_leaves;
         }
 
@@ -141,6 +149,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                         .unwrap()]
                 }
             };
+        graph.visualize();
 
         graph
     }
@@ -191,9 +200,45 @@ impl<'sc> ControlFlowGraph<'sc> {
             .collect();
         dead_nodes
             .into_iter()
-            .map(|dead_node| CompileWarning {
-                span: dead_node.span.clone(),
-                warning_content: Warning::DeadCode,
+            // The distinction between dead code and unreachable code is that dead code is simply a 
+            // declaration that is never utilized, while unreachable code is a node which has no
+            // control flow paths leading to it.
+            .map(|dead_node| match dead_node {
+                // if this is a function, struct, or trait declaration that is never called, then it is dead
+                // code.
+                TypedAstNode {
+                    content:
+                        TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration {
+                            ..
+                        }),
+                    span,
+                } => CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::DeadCode,
+                },
+                TypedAstNode {
+                    content:
+                        TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration {
+                             ..
+                        }),
+                    span,
+                } => CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::DeadCode,
+                },
+                TypedAstNode {
+                    content:
+                        TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration { .. }),
+                    span,
+                } => CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::DeadCode,
+                },
+                // otherwise, this is unreachable. 
+                TypedAstNode { span, .. } => CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::UnreachableCode,
+                },
             })
             .collect()
     }
@@ -211,7 +256,8 @@ fn connect_node<'sc>(
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
     function_namespace: &mut ControlFlowFunctionNamespace<'sc>,
-) -> Vec<NodeIndex> {
+    exit_node: Option<NodeIndex>,
+) -> (Vec<NodeIndex>, Option<NodeIndex>) {
     //    let mut graph = graph.clone();
     let span = node.span.clone();
     match &node.content {
@@ -221,7 +267,13 @@ fn connect_node<'sc>(
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
-            vec![this_index]
+            // connect return to the exit node
+            if let Some(exit_node) = exit_node {
+                graph.add_edge(this_index, exit_node, "return".into());
+                (vec![], None)
+            } else {
+                (vec![], None)
+            }
         }
         TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
             // a while loop can loop back to the beginning,
@@ -242,8 +294,13 @@ fn connect_node<'sc>(
                 "condition is initially false".into(),
             );
             let mut leaves = vec![entry];
-            let CodeBlockInsertionResult { leaves: l_leaves } =
-                depth_first_insertion_code_block(body, graph, &leaves, function_namespace);
+            let (l_leaves, _l_exit_node) = depth_first_insertion_code_block(
+                body,
+                graph,
+                &leaves,
+                function_namespace,
+                exit_node,
+            );
             // insert edges from end of block back to beginning of it
             for leaf in &l_leaves {
                 graph.add_edge(*leaf, entry, "loop repeats".into());
@@ -253,7 +310,7 @@ fn connect_node<'sc>(
             for leaf in leaves {
                 graph.add_edge(leaf, while_loop_exit, "".into());
             }
-            vec![while_loop_exit]
+            (vec![while_loop_exit], exit_node)
         }
         TypedAstNodeContent::Expression(TypedExpression {
             expression: expr_variant,
@@ -266,16 +323,22 @@ fn connect_node<'sc>(
                 graph.add_edge(*leaf, entry, "".into());
             }
 
-            connect_expression(expr_variant, graph, &[entry], function_namespace)
+            (
+                connect_expression(expr_variant, graph, &[entry], function_namespace, exit_node),
+                exit_node,
+            )
         }
-        TypedAstNodeContent::SideEffect => leaves.to_vec(),
+        TypedAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
         TypedAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf
             let decl_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, decl_node, "".into());
             }
-            connect_declaration(&decl, graph, decl_node, function_namespace, span)
+            (
+                connect_declaration(&decl, graph, decl_node, function_namespace, span, exit_node),
+                exit_node,
+            )
         }
     }
 }
@@ -286,22 +349,38 @@ fn connect_declaration<'sc>(
     entry_node: NodeIndex,
     function_namespace: &mut ControlFlowFunctionNamespace<'sc>,
     span: Span<'sc>,
+    exit_node: Option<NodeIndex>,
 ) -> Vec<NodeIndex> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
-            connect_expression(&body.expression, graph, &[entry_node], function_namespace)
-        }
+        VariableDeclaration(TypedVariableDeclaration { body, .. }) => connect_expression(
+            &body.expression,
+            graph,
+            &[entry_node],
+            function_namespace,
+            exit_node,
+        ),
         FunctionDeclaration(fn_decl) => {
-            connect_typed_fn_decl(fn_decl, graph, entry_node, function_namespace, span);
+            connect_typed_fn_decl(
+                fn_decl,
+                graph,
+                entry_node,
+                function_namespace,
+                span,
+                exit_node,
+            );
             vec![]
         }
         TraitDeclaration(_) => todo!(),
         StructDeclaration(_) => todo!(),
         EnumDeclaration(_) => todo!(),
-        Reassignment(TypedReassignment { rhs, .. }) => {
-            connect_expression(&rhs.expression, graph, &[entry_node], function_namespace)
-        }
+        Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
+            &rhs.expression,
+            graph,
+            &[entry_node],
+            function_namespace,
+            exit_node,
+        ),
         SideEffect | ErrorRecovery => {
             unreachable!("These are error cases and should be removed in the type checking stage. ")
         }
@@ -317,12 +396,21 @@ fn connect_typed_fn_decl<'sc>(
     entry_node: NodeIndex,
     function_namespace: &mut ControlFlowFunctionNamespace<'sc>,
     _span: Span<'sc>,
+    exit_node: Option<NodeIndex>,
 ) {
-    let CodeBlockInsertionResult {
-        leaves: exit_nodes, ..
-    } = depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node], function_namespace);
+    let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.primary_name).into());
+    let (exit_nodes, _exit_node) = depth_first_insertion_code_block(
+        &fn_decl.body,
+        graph,
+        &[entry_node],
+        function_namespace,
+        Some(fn_exit_node),
+    );
+    if let Some(exit_node) = exit_node {
+        graph.add_edge(fn_exit_node, exit_node, "".into());
+    }
 
-    function_namespace.insert(fn_decl.name.clone(), (entry_node, exit_nodes));
+    function_namespace.insert(fn_decl.name.clone(), (entry_node, fn_exit_node));
 }
 
 fn depth_first_insertion_code_block<'sc>(
@@ -330,13 +418,16 @@ fn depth_first_insertion_code_block<'sc>(
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
     fn_namespace: &mut ControlFlowFunctionNamespace<'sc>,
-) -> CodeBlockInsertionResult {
+    exit_node: Option<NodeIndex>,
+) -> (Vec<NodeIndex>, Option<NodeIndex>) {
     let mut leaves = leaves.to_vec();
+    let mut exit_node = exit_node.clone();
     for node in node_content.contents.iter() {
-        let this_node = connect_node(node, graph, &leaves, fn_namespace);
+        let (this_node, l_exit_node) = connect_node(node, graph, &leaves, fn_namespace, exit_node);
         leaves = this_node;
+        exit_node = l_exit_node;
     }
-    CodeBlockInsertionResult { leaves }
+    (leaves, exit_node)
 }
 
 /// connects any inner parts of an expression to the graph
@@ -346,18 +437,19 @@ fn connect_expression<'sc>(
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
     fn_namespace: &mut ControlFlowFunctionNamespace<'sc>,
+    exit_node: Option<NodeIndex>,
 ) -> Vec<NodeIndex> {
     use TypedExpressionVariant::*;
     match expr_variant {
         FunctionApplication { name, .. } => {
             let mut is_external = false;
             // find the function in the namespace
-            let (fn_entrypoint, fn_exit_points) =
+            let (fn_entrypoint, fn_exit_point) =
                 fn_namespace.get(&name.suffix).cloned().unwrap_or_else(|| {
                     let node_idx =
                         graph.add_node(format!("extern fn {}()", name.suffix.primary_name).into());
                     is_external = true;
-                    (node_idx, vec![node_idx])
+                    (node_idx, node_idx)
                 });
             for leaf in leaves {
                 graph.add_edge(*leaf, fn_entrypoint, "".into());
@@ -366,13 +458,12 @@ fn connect_expression<'sc>(
             // if this is external, then we don't add the body to the graph so there's no point in
             // an exit organizational dominator
             if !is_external {
-                let exit =
-                    graph.add_node(format!("\"{}\" fn exit", name.suffix.primary_name).into());
-                for exit_point in fn_exit_points {
-                    graph.add_edge(exit_point, exit, "".into());
+                if let Some(exit_node) = exit_node {
+                    graph.add_edge(fn_exit_point, exit_node, "".into());
+                    vec![exit_node]
+                } else {
+                    vec![fn_exit_point]
                 }
-
-                vec![exit]
             } else {
                 vec![fn_entrypoint]
             }
@@ -382,25 +473,3 @@ fn connect_expression<'sc>(
         a => todo!("{:?}", a),
     }
 }
-
-struct CodeBlockInsertionResult {
-    leaves: Vec<NodeIndex>,
-}
-/*
-fn connect_node<'sc>(
-    node_content: TypedAstNodeContent<'sc>,
-    graph: &mut ControlFlowGraph<'sc>,
-    leaves: &[NodeIndex],
-) -> Vec<NodeIndex> {
-    todo!()
-}
-struct FlowGraph<'a> {
-    root_node: FlowGraphNode<'a>
-}
-
-
-struct FlowGraphNode<'a> {
-    syntax_tree_node: &'a TypedAstNode,
-    next_node: Box<FlowGraphNode>
-}
-*/
