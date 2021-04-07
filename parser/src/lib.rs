@@ -14,6 +14,7 @@ pub use crate::parse_tree::Ident;
 use crate::parse_tree::*;
 pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 use crate::parser::{HllParser, Rule};
+use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
 pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
@@ -265,9 +266,12 @@ pub fn compile<'sc, 'manifest>(
     }
 
     // perform control flow analysis on each branch
-    let (script_warnings, script_errors) = perform_control_flow_analysis(&script_ast);
-    let (contract_warnings, contract_errors) = perform_control_flow_analysis(&contract_ast);
-    let (predicate_warnings, predicate_errors) = perform_control_flow_analysis(&predicate_ast);
+    let (script_warnings, script_errors) =
+        perform_control_flow_analysis(&script_ast, TreeType::Script);
+    let (contract_warnings, contract_errors) =
+        perform_control_flow_analysis(&contract_ast, TreeType::Contract);
+    let (predicate_warnings, predicate_errors) =
+        perform_control_flow_analysis(&predicate_ast, TreeType::Predicate);
     let (library_warnings, library_errors) =
         perform_control_flow_analysis_on_library_exports(&library_exports);
 
@@ -303,10 +307,15 @@ pub fn compile<'sc, 'manifest>(
 
 fn perform_control_flow_analysis<'sc>(
     tree: &Option<TypedParseTree<'sc>>,
+    tree_type: TreeType,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     match tree {
         Some(tree) => {
-            let graph = control_flow_analysis::construct_graph(tree);
+            let graph = ControlFlowGraph::from_tree(tree, tree_type);
+            let mut warnings = vec![];
+            let mut dead_code_warnings = graph.find_dead_code();
+            warnings.append(&mut dead_code_warnings);
+
             todo!()
         }
         None => (vec![], vec![]),

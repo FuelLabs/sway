@@ -1,25 +1,35 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use crate::semantics::{
-    ast_node::{
-        TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
-        TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
+use crate::{parse_tree::Ident, semantics::ast_node::TypedExpressionVariant, TreeType};
+use crate::{
+    semantics::{
+        ast_node::{
+            TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
+            TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
+        },
+        TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
-    TypedAstNode, TypedAstNodeContent, TypedParseTree,
+    CompileWarning,
 };
-use crate::{parse_tree::Ident, semantics::ast_node::TypedExpressionVariant};
 use pest::Span;
-use petgraph::prelude::NodeIndex;
-use petgraph::Graph;
+use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 use std::collections::HashMap;
 
 pub type EntryPoint = NodeIndex;
 pub type ExitPoints = Vec<NodeIndex>;
-pub type ControlFlowGraph<'sc> = Graph<ControlFlowGraphNode<'sc>, ControlFlowGraphEdge>;
+
+pub struct ControlFlowGraph<'sc> {
+    graph: Graph<'sc>,
+    entry_points: Vec<NodeIndex>,
+}
+
+type Graph<'sc> = petgraph::Graph<ControlFlowGraphNode<'sc>, ControlFlowGraphEdge>;
+
 pub type ControlFlowFunctionNamespace<'sc> = HashMap<Ident<'sc>, (EntryPoint, ExitPoints)>;
 
 pub struct ControlFlowGraphEdge(String);
+
 impl std::fmt::Debug for ControlFlowGraphEdge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
@@ -59,23 +69,90 @@ impl std::convert::From<String> for ControlFlowGraphNode<'_> {
     }
 }
 
-pub(crate) fn construct_graph<'sc>(ast: &TypedParseTree<'sc>) -> ControlFlowGraph<'sc> {
-    let mut graph = ControlFlowGraph::new();
-    let mut fn_namespace = Default::default();
-    // do a depth first traversal and cover individual inner ast nodes
-    let mut leaves = vec![];
-    for ast_entrypoint in ast.root_nodes.iter() {
-        let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves, &mut fn_namespace);
-        leaves = l_leaves;
+impl<'sc> ControlFlowGraph<'sc> {
+    fn add_node(&mut self, node: ControlFlowGraphNode<'sc>) -> NodeIndex {
+        self.graph.add_node(node)
+    }
+    fn add_edge(
+        &mut self,
+        from: NodeIndex,
+        to: NodeIndex,
+        edge: ControlFlowGraphEdge,
+    ) -> EdgeIndex {
+        self.graph.add_edge(from, to, edge)
+    }
+    pub(crate) fn from_tree(ast: &TypedParseTree<'sc>, tree_type: TreeType) -> Self {
+        let mut graph = ControlFlowGraph {
+            graph: Graph::new(),
+            entry_points: vec![],
+        };
+        let mut fn_namespace = Default::default();
+        // do a depth first traversal and cover individual inner ast nodes
+        let mut leaves = vec![];
+        for ast_entrypoint in ast.root_nodes.iter() {
+            let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves, &mut fn_namespace);
+            leaves = l_leaves;
+        }
+
+        // calculate the entry points based on the tree type
+        graph.entry_points =
+            match tree_type {
+                TreeType::Predicate | TreeType::Script => {
+                    // a predicate or script have a main function as the only entry point
+                    vec![graph
+                        .graph
+                        .node_indices()
+                        .find(|i| match graph.graph[*i] {
+                            ControlFlowGraphNode::OrganizationalDominator(_) => false,
+                            ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                                content:
+                                    TypedAstNodeContent::Declaration(
+                                        TypedDeclaration::FunctionDeclaration(
+                                            TypedFunctionDeclaration { ref name, .. },
+                                        ),
+                                    ),
+                                ..
+                            }) => name.primary_name == "main",
+                            _ => false,
+                        })
+                        .unwrap()]
+                }
+                TreeType::Contract | TreeType::Library => {
+                    // eventually we want to limit this to pub stuff
+                    // TODO issue #17
+                    // only pub things are "real" entry points
+                    // for now, all functions are entry points
+
+                    vec![graph
+                        .graph
+                        .node_indices()
+                        .find(|i| match graph.graph[*i] {
+                            ControlFlowGraphNode::OrganizationalDominator(_) => false,
+                            ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                                content:
+                                    TypedAstNodeContent::Declaration(
+                                        TypedDeclaration::FunctionDeclaration(_),
+                                    ),
+                                ..
+                            }) => true,
+                            _ => false,
+                        })
+                        .unwrap()]
+                }
+            };
+
+        graph
     }
 
-    visualize(&graph);
-    todo!()
-}
-
-fn visualize(graph: &ControlFlowGraph) {
-    use petgraph::dot::Dot;
-    println!("{:?}", Dot::with_config(&graph, &[]));
+    pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning<'sc>> {
+        todo!()
+    }
+    #[allow(dead_code)]
+    /// Prints out graphviz for this graph
+    fn visualize(&self, graph: &ControlFlowGraph) {
+        use petgraph::dot::Dot;
+        println!("{:?}", Dot::with_config(&self.graph, &[]));
+    }
 }
 
 fn connect_node<'sc>(
