@@ -10,9 +10,10 @@ use crate::{
         },
         TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
-    CompileWarning,
+    CompileWarning, Warning,
 };
 use pest::Span;
+use petgraph::algo::has_path_connecting;
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 use std::collections::HashMap;
 
@@ -145,11 +146,61 @@ impl<'sc> ControlFlowGraph<'sc> {
     }
 
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning<'sc>> {
-        todo!()
+        // dead code is code that has no path to the entry point
+        let mut dead_nodes = vec![];
+        for destination in self.graph.node_indices() {
+            let mut is_connected = false;
+            for entry in &self.entry_points {
+                if has_path_connecting(&self.graph, *entry, destination, None) {
+                    is_connected = true;
+                    break;
+                }
+            }
+            if !is_connected {
+                dead_nodes.push(destination);
+            }
+        }
+
+        let mut dead_nodes = dead_nodes
+            .into_iter()
+            .filter_map(|x| match &self.graph[x] {
+                ControlFlowGraphNode::OrganizationalDominator(_) => None,
+                ControlFlowGraphNode::ProgramNode(node) => Some(node),
+            })
+            .collect::<Vec<_>>();
+
+        // filter out any overlapping spans -- if a span is contained within another one,
+        // remove it.
+        dead_nodes = dead_nodes
+            .clone()
+            .into_iter()
+            .filter(|TypedAstNode { span, .. }| {
+                // if any other warnings contain a span which completely covers this one, filter
+                // out this one.
+                dead_nodes
+                    .iter()
+                    .find(
+                        |TypedAstNode {
+                             span: other_span, ..
+                         }| {
+                            other_span.end() > span.end() && other_span.start() < span.start()
+                        },
+                    )
+                    .is_none()
+            })
+            .collect();
+        dead_nodes
+            .into_iter()
+            .map(|dead_node| CompileWarning {
+                span: dead_node.span.clone(),
+                warning_content: Warning::DeadCode,
+            })
+            .collect()
     }
+
     #[allow(dead_code)]
     /// Prints out graphviz for this graph
-    fn visualize(&self, graph: &ControlFlowGraph) {
+    fn visualize(&self) {
         use petgraph::dot::Dot;
         println!("{:?}", Dot::with_config(&self.graph, &[]));
     }

@@ -275,20 +275,23 @@ pub fn compile<'sc, 'manifest>(
     let (library_warnings, library_errors) =
         perform_control_flow_analysis_on_library_exports(&library_exports);
 
-    let l_warnings = [
+    let mut l_warnings = [
         script_warnings,
         contract_warnings,
         predicate_warnings,
         library_warnings,
     ]
     .concat();
-    let l_errors = [
+    let mut l_errors = [
         script_errors,
         contract_errors,
         predicate_errors,
         library_errors,
     ]
     .concat();
+
+    errors.append(&mut l_errors);
+    warnings.append(&mut l_warnings);
 
     if errors.is_empty() {
         Ok((
@@ -315,14 +318,13 @@ fn perform_control_flow_analysis<'sc>(
             let mut warnings = vec![];
             let mut dead_code_warnings = graph.find_dead_code();
             warnings.append(&mut dead_code_warnings);
-
-            todo!()
+            (warnings, vec![])
         }
         None => (vec![], vec![]),
     }
 }
 fn perform_control_flow_analysis_on_library_exports<'sc>(
-    tree: &LibraryExports<'sc>,
+    _tree: &LibraryExports<'sc>,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     println!("TODO: control flow analysis on a library");
     (vec![], vec![])
