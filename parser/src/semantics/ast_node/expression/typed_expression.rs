@@ -516,7 +516,45 @@ impl<'sc> TypedExpression<'sc> {
                 return_type: TypeInfo::Unit,
                 is_constant: IsConstant::Yes,
             },
+            Expression::DelineatedPath { call_path, ..  } => {
+                // The first step is to determine if the call path refers to a module or an enum.
+                // We could rely on the capitalization convention, where modules are lowercase
+                // and enums are uppercase, but this is not robust in the long term.
+                // Instead, we try to resolve both paths.
+                // If only one exists, then we use that one. Otherwise, if both exist, it is
+                // an ambiguous reference error. 
+                let module_result = namespace.find_module(&call_path.prefixes).ok().cloned();
+                let enum_result = {
+                    // an enum could be combined with a module path
+                    // e.g.
+                    // ```
+                    // module1::MyEnum::Variant1
+                    // ```
+                    //
+                    // so, in this case, the suffix is Variant1 and the prefixes are module1 and 
+                    // MyEnum. When looking for an enum, we just want the _last_ prefix entry in the
+                    // namespace of the first 0..len-1 entries' module
+                    let (module_path, enum_name)  = call_path.prefixes.split_at(call_path.prefixes.len() - 1);
+                    let enum_name = enum_name[0].clone();
+                    let namespace = namespace.find_module(module_path);
+                    let namespace = namespace.ok();
+                    namespace.map(|ns| ns.find_enum(&enum_name))
+                };
 
+                // now we can see if this thing is a symbol (typed declaration) or reference to an
+                // enum instantiation
+                let this_thing = match (module_result, enum_result) {
+                    (Some(_module), Some(_enum_res)) => todo!("Ambiguous reference error"),
+                    (Some(module), None) =>  {
+                        module.get_symbol(&call_path.suffix).cloned()
+                    },
+                    (None, Some(enum_decl)) => todo!("get the enum field on the decl"),
+                    (None, None) => todo!("symbol not found error")
+                };
+                // also, check if this is an enum _in_ another module.
+
+                todo!("implement enum expr");
+            }
             a => {
                 println!("Unimplemented semantics for expression: {:?}", a);
                 errors.push(CompileError::Unimplemented(

@@ -113,6 +113,14 @@ impl<'sc, T> CompileResult<'sc, T> {
             }
         }
     }
+    pub fn ok(&self) -> Option<&T> {
+        match self {
+            CompileResult::Ok { value, .. } => Some(value),
+            _ => None
+
+        }
+
+    }
 }
 
 #[derive(Debug, Clone)]

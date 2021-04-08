@@ -1,7 +1,7 @@
 use super::{ast_node::TypedVariableDeclaration, TypedExpression};
-use crate::error::*;
 use crate::parse_tree::{StructDeclaration, StructField};
 use crate::CallPath;
+use crate::{error::*, parse_tree::EnumDeclaration};
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
 use std::collections::HashMap;
@@ -154,7 +154,7 @@ impl<'sc> Namespace<'sc> {
         }
     }
 
-    pub(crate) fn find_module(&self, path: &Vec<Ident<'sc>>) -> CompileResult<'sc, Namespace<'sc>> {
+    pub(crate) fn find_module(&self, path: &[Ident<'sc>]) -> CompileResult<'sc, Namespace<'sc>> {
         let mut namespace = self.clone();
         let mut errors = vec![];
         let warnings = vec![];
@@ -207,7 +207,12 @@ impl<'sc> Namespace<'sc> {
     pub fn insert_module(&mut self, module_name: String, module_contents: Namespace<'sc>) {
         self.modules.insert(module_name, module_contents);
     }
-
+    pub(crate) fn find_enum(&self, enum_name: &Ident<'sc>) -> Option<EnumDeclaration<'sc>> {
+        match self.get_symbol(enum_name) {
+            Some(TypedDeclaration::EnumDeclaration(inner)) => Some(inner.clone()),
+            _ => None,
+        }
+    }
     pub(crate) fn find_subfield(
         &self,
         subfield_exp: &[Ident<'sc>],

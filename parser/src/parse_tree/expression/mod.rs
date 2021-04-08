@@ -72,10 +72,42 @@ pub(crate) enum Expression<'sc> {
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
+    /// A subfield expression is anything of the form:
+    /// ```
+    /// <ident>.<ident>
+    /// ```
+    ///
+    /// Where there are `n >=2` idents. This is typically an access of a structure field.
     SubfieldExpression {
         name_parts: Vec<Ident<'sc>>,
         span: Span<'sc>,
         unary_op: Option<UnaryOp>,
+    },
+    /// A [DelineatedPath] is anything of the form:
+    /// ```
+    /// <ident>::<ident>
+    /// ```
+    /// Where there are `n >= 2` idents.
+    /// These could be either enum variant constructions, or they could be
+    /// references to some sort of module in the module tree.
+    /// For example, a reference to a module:
+    /// ```
+    /// std::ops::add
+    /// ```
+    ///
+    /// And, an enum declaration:
+    /// ```
+    /// enum MyEnum {
+    ///   Variant1,
+    ///   Variant2
+    /// }
+    ///
+    /// MyEnum::Variant1
+    /// ```
+    DelineatedPath {
+        call_path: CallPath<'sc>,
+        instantiator: Option<Box<Expression<'sc>>>,
+        span: Span<'sc>,
     },
 }
 
@@ -103,6 +135,7 @@ impl<'sc> Expression<'sc> {
             AsmExpression { span, .. } => span,
             MethodApplication { span, .. } => span,
             SubfieldExpression { span, .. } => span,
+            DelineatedPath { span, .. } => span,
         })
         .clone()
     }
@@ -515,6 +548,41 @@ impl<'sc> Expression<'sc> {
                 expr,
                 return err(warnings, errors)
             ),
+            Rule::delineated_path => {
+                // this is either an enum expression or looking something
+                // up in libraries
+                let span = expr.as_span();
+                let mut parts = expr.into_inner();
+                let path_component = parts.next().unwrap();
+                let instantiator = parts.next();
+                let path = eval!(
+                    CallPath::parse_from_pair,
+                    warnings,
+                    errors,
+                    path_component,
+                    return err(warnings, errors)
+                );
+
+                let instantiator = if let Some(inst) = instantiator {
+                    Some(Box::new(eval!(
+                        Expression::parse_from_pair,
+                        warnings,
+                        errors,
+                        inst,
+                        return err(warnings, errors)
+                    )))
+                } else {
+                    None
+                };
+
+                // if there is an expression in parenthesis, that is the instantiator.
+
+                Expression::DelineatedPath {
+                    call_path: path,
+                    instantiator,
+                    span,
+                }
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",

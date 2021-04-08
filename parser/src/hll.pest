@@ -28,7 +28,7 @@ script = { "script" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 predicate = { "predicate" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 
 // expressions
-expr_inner =  _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|method_exp|subfield_exp|var_exp|array_exp|match_expression}
+expr_inner =  _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|delineated_path|method_exp|subfield_exp|var_exp|array_exp|match_expression}
 parenthesized_expression = { "(" ~ expr ~ ")" }
 // // op exps built in to expr to prevent left recursion
 expr       =  {expr_inner ~ (op ~ expr_inner)*}
@@ -37,6 +37,9 @@ fn_name    =  {var_exp}
 var_exp    =  { unary_op? ~ var_name_ident } 
 method_exp =  { subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 subfield_exp = { (ident ~ ".")+ ~ ident }
+delineated_path = { path_component  ~ instantiator? }
+path_component = { ident ~ (path_separator ~ ident)+  }
+instantiator = { "(" ~ expr ~ ")" }
 
 var_name_ident = { ident }
 
