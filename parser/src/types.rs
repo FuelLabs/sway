@@ -58,6 +58,7 @@ impl<'sc> TypeInfo<'sc> {
                 "unit" => TypeInfo::Unit,
                 "byte" => TypeInfo::Byte,
                 "Self" => TypeInfo::SelfType,
+                "()" => TypeInfo::Unit,
                 _other => TypeInfo::Custom {
                     name: eval!(
                         Ident::parse_from_pair,
