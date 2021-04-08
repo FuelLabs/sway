@@ -1,4 +1,5 @@
 use super::*;
+use either::Either;
 use crate::error::*;
 use crate::semantics::ast_node::*;
 use crate::types::{IntegerBits, TypeInfo};
@@ -516,7 +517,7 @@ impl<'sc> TypedExpression<'sc> {
                 return_type: TypeInfo::Unit,
                 is_constant: IsConstant::Yes,
             },
-            Expression::DelineatedPath { call_path, ..  } => {
+            Expression::DelineatedPath { call_path, span, instantiator } => {
                 // The first step is to determine if the call path refers to a module or an enum.
                 // We could rely on the capitalization convention, where modules are lowercase
                 // and enums are uppercase, but this is not robust in the long term.
@@ -524,7 +525,8 @@ impl<'sc> TypedExpression<'sc> {
                 // If only one exists, then we use that one. Otherwise, if both exist, it is
                 // an ambiguous reference error. 
                 let module_result = namespace.find_module(&call_path.prefixes).ok().cloned();
-                let enum_result = {
+                /*
+                let enum_result_result = {
                     // an enum could be combined with a module path
                     // e.g.
                     // ```
@@ -534,26 +536,43 @@ impl<'sc> TypedExpression<'sc> {
                     // so, in this case, the suffix is Variant1 and the prefixes are module1 and 
                     // MyEnum. When looking for an enum, we just want the _last_ prefix entry in the
                     // namespace of the first 0..len-1 entries' module
+                    namespace.find_enum(&jall_path.prefixes[0])
+                };
+                */
+                let enum_module_combined_result = {
+                    // also, check if this is an enum _in_ another module.
                     let (module_path, enum_name)  = call_path.prefixes.split_at(call_path.prefixes.len() - 1);
                     let enum_name = enum_name[0].clone();
                     let namespace = namespace.find_module(module_path);
+                    dbg!(&namespace);
                     let namespace = namespace.ok();
-                    namespace.map(|ns| ns.find_enum(&enum_name))
+                    namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
                 };
 
                 // now we can see if this thing is a symbol (typed declaration) or reference to an
                 // enum instantiation
-                let this_thing = match (module_result, enum_result) {
+                let this_thing: Either<TypedDeclaration, TypedExpression> = match (module_result, enum_module_combined_result) {
                     (Some(_module), Some(_enum_res)) => todo!("Ambiguous reference error"),
                     (Some(module), None) =>  {
-                        module.get_symbol(&call_path.suffix).cloned()
+                        match module.get_symbol(&call_path.suffix).cloned() {
+                            Some(decl) => Either::Left(decl),
+                            None => todo!("symbol not found in module error")
+                        }
                     },
-                    (None, Some(enum_decl)) => todo!("get the enum field on the decl"),
+                    (None, Some(enum_decl)) => {
+                        Either::Right(type_check!(instantiate_enum(enum_decl, call_path.suffix, instantiator), return err(warnings, errors), warnings, errors))
+                    },
                     (None, None) => todo!("symbol not found error")
                 };
-                // also, check if this is an enum _in_ another module.
 
-                todo!("implement enum expr");
+
+                match this_thing {
+                    Either::Left(_) => {
+                        errors.push(CompileError::Unimplemented("Unable to refer to declarations in other modules directly. Try importing it instead.", span));
+                        return err(warnings, errors);
+                    }
+                    Either::Right(expr) => expr
+                }
             }
             a => {
                 println!("Unimplemented semantics for expression: {:?}", a);
@@ -595,4 +614,9 @@ impl<'sc> TypedExpression<'sc> {
         format!("{} ({})", self.expression.pretty_print(), self.return_type.friendly_type_str())
 
     }
+}
+
+fn instantiate_enum<'sc>(enum_decl: EnumDeclaration<'sc>, enum_field_name: Ident<'sc>, instantiator: Option<Box<Expression<'sc>>>) -> CompileResult<'sc, TypedExpression<'sc>> {
+    todo!()
+
 }

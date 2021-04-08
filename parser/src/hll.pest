@@ -38,7 +38,8 @@ var_exp    =  { unary_op? ~ var_name_ident }
 method_exp =  { subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 subfield_exp = { (ident ~ ".")+ ~ ident }
 delineated_path = { path_component  ~ instantiator? }
-path_component = { ident ~ (path_separator ~ ident)+  }
+path_component = { path_ident ~ (path_separator ~ path_ident )+  }
+path_ident = { ident }
 instantiator = { "(" ~ expr ~ ")" }
 
 var_name_ident = { ident }
