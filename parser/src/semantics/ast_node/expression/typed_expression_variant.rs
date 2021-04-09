@@ -44,6 +44,14 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         name: Vec<Ident<'sc>>,
         span: Span<'sc>,
     },
+    EnumInstantiation {
+        /// for printing
+        enum_name: Ident<'sc>,
+        /// for printing
+        variant_name: Ident<'sc>,
+        tag: usize,
+        contents: Option<Box<TypedExpression<'sc>>>,
+    },
 }
 
 impl<'sc> TypedExpressionVariant<'sc> {
@@ -85,6 +93,17 @@ impl<'sc> TypedExpressionVariant<'sc> {
             }
             TypedExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.primary_name)
+            }
+            TypedExpressionVariant::EnumInstantiation {
+                tag,
+                enum_name,
+                variant_name,
+                ..
+            } => {
+                format!(
+                    "{}::{} enum instantiation (tag: {})",
+                    enum_name.primary_name, variant_name.primary_name, tag
+                )
             }
         }
     }

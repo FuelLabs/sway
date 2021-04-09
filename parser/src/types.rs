@@ -26,6 +26,9 @@ pub enum TypeInfo<'sc> {
     Struct {
         name: Ident<'sc>,
     },
+    Enum {
+        name: Ident<'sc>,
+    },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -174,6 +177,10 @@ impl<'sc> TypeInfo<'sc> {
                 name: Ident { primary_name, .. },
                 ..
             } => format!("struct {}", primary_name),
+            Enum {
+                name: Ident { primary_name, .. },
+                ..
+            } => format!("enum {}", primary_name),
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }

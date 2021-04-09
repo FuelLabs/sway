@@ -6,6 +6,7 @@ use crate::parse_tree::*;
 use crate::semantics::Namespace;
 use crate::types::TypeInfo;
 use crate::TraitFn;
+use pest::Span;
 
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
@@ -13,7 +14,7 @@ pub enum TypedDeclaration<'sc> {
     FunctionDeclaration(TypedFunctionDeclaration<'sc>),
     TraitDeclaration(TypedTraitDeclaration<'sc>),
     StructDeclaration(StructDeclaration<'sc>),
-    EnumDeclaration(EnumDeclaration<'sc>),
+    EnumDeclaration(TypedEnumDeclaration<'sc>),
     Reassignment(TypedReassignment<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
@@ -78,7 +79,8 @@ impl<'sc> TypedDeclaration<'sc> {
                     name.primary_name.into(),
                 TypedDeclaration::StructDeclaration(StructDeclaration { name, .. }) =>
                     name.primary_name.into(),
-                TypedDeclaration::EnumDeclaration(EnumDeclaration { name, .. }) => name.to_string(),
+                TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
+                    name.primary_name.into(),
                 TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) =>
                     lhs.primary_name.into(),
                 _ => String::new(),
@@ -86,6 +88,41 @@ impl<'sc> TypedDeclaration<'sc> {
         )
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct TypedEnumDeclaration<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    pub(crate) variants: Vec<TypedEnumVariant<'sc>>,
+    pub(crate) span: Span<'sc>,
+}
+impl<'sc> TypedEnumDeclaration<'sc> {
+    /// Given type arguments, match them up with the type parameters and return the result.
+    /// Currently unimplemented as we don't support generic enums yet, but when we do, this will be
+    /// the place to resolve those typed.
+    pub(crate) fn resolve_generic_types(
+        &self,
+        _type_arguments: Vec<TypeInfo<'sc>>,
+    ) -> CompileResult<'sc, Self> {
+        ok(self.clone(), vec![], vec![])
+    }
+    /// Returns the [TypeInfo] corresponding to this enum's type.
+    pub(crate) fn as_type(&self) -> TypeInfo<'sc> {
+        TypeInfo::Enum {
+            name: self.name.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TypedEnumVariant<'sc> {
+    pub(crate) name: Ident<'sc>,
+    // this will eventually become ResolvedTypeInfo
+    // TODO
+    pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) tag: usize,
+}
+
 #[derive(Clone, Debug)]
 pub struct TypedVariableDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
@@ -136,12 +173,14 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             type_parameters,
             ..
         } = fn_decl.clone();
+        let return_type = namespace.resolve_type(&return_type);
         // insert parameters into namespace
         let mut namespace = namespace.clone();
         parameters
             .clone()
             .into_iter()
             .for_each(|FunctionParameter { name, r#type, .. }| {
+                let r#type = namespace.resolve_type(&r#type);
                 namespace.insert(
                     name.clone(),
                     TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {

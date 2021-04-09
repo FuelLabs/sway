@@ -108,6 +108,7 @@ pub(crate) enum Expression<'sc> {
         call_path: CallPath<'sc>,
         instantiator: Option<Box<Expression<'sc>>>,
         span: Span<'sc>,
+        type_arguments: Vec<crate::types::TypeInfo<'sc>>,
     },
 }
 
@@ -565,10 +566,10 @@ impl<'sc> Expression<'sc> {
 
                 let instantiator = if let Some(inst) = instantiator {
                     Some(Box::new(eval!(
-                        Expression::parse_from_pair,
+                        Expression::parse_from_pair_inner,
                         warnings,
                         errors,
-                        inst,
+                        inst.into_inner().next().unwrap(),
                         return err(warnings, errors)
                     )))
                 } else {
@@ -581,6 +582,9 @@ impl<'sc> Expression<'sc> {
                     call_path: path,
                     instantiator,
                     span,
+                    // Eventually, when we support generic enums, we want to be able to parse type
+                    // arguments on the enum name and throw them in here. TODO
+                    type_arguments: vec![],
                 }
             }
             a => {

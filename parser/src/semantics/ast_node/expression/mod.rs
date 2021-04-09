@@ -1,8 +1,10 @@
+mod enum_instantiation;
 mod match_branch;
 mod match_condition;
 mod struct_expr_field;
 mod typed_expression;
 mod typed_expression_variant;
+pub(crate) use enum_instantiation::instantiate_enum;
 pub(super) use match_branch::TypedMatchBranch;
 pub(super) use match_condition::TypedMatchCondition;
 pub(super) use struct_expr_field::TypedStructExpressionField;

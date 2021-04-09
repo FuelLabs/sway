@@ -37,10 +37,9 @@ fn_name    =  {var_exp}
 var_exp    =  { unary_op? ~ var_name_ident } 
 method_exp =  { subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 subfield_exp = { (ident ~ ".")+ ~ ident }
-delineated_path = { path_component  ~ instantiator? }
+delineated_path = { path_component  ~ ( "(" ~ expr ~ ")" )? }
 path_component = { path_ident ~ (path_separator ~ path_ident )+  }
 path_ident = { ident }
-instantiator = { "(" ~ expr ~ ")" }
 
 var_name_ident = { ident }
 
@@ -94,8 +93,8 @@ struct_field_name = @{ident}
 // // enum declaration
 enum_decl = { enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}" }
 enum_fields = { enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","? }
-enum_name = @{ident} 
-enum_field_name = @{ident}
+enum_name = {ident} 
+enum_field_name = {ident}
 
 impl_self = { impl_keyword ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}") }
 

@@ -1,7 +1,10 @@
-use super::{ast_node::TypedVariableDeclaration, TypedExpression};
+use super::{
+    ast_node::{TypedEnumDeclaration, TypedVariableDeclaration},
+    TypedExpression,
+};
+use crate::error::*;
 use crate::parse_tree::{StructDeclaration, StructField};
 use crate::CallPath;
-use crate::{error::*, parse_tree::EnumDeclaration};
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
 use std::collections::HashMap;
@@ -17,6 +20,27 @@ pub struct Namespace<'sc> {
 }
 
 impl<'sc> Namespace<'sc> {
+    /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
+    /// being looked for is actually a generic, not-yet-resolved type.
+    /// Eventually, this should return a [ResolvedType], which currently doesn't exist,
+    /// to further solidify the bounary between the monomorphized AST and the parameterized one.
+    pub(crate) fn resolve_type(&self, ty: &TypeInfo<'sc>) -> TypeInfo<'sc> {
+        match ty {
+            TypeInfo::Custom { name } => match self.get_symbol(name) {
+                Some(TypedDeclaration::StructDeclaration(StructDeclaration { name, .. })) => {
+                    TypeInfo::Struct { name: name.clone() }
+                }
+                Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. })) => {
+                    TypeInfo::Enum { name: name.clone() }
+                }
+                Some(_) => TypeInfo::Generic { name: name.clone() },
+                None => TypeInfo::Generic { name: name.clone() },
+            },
+            o => o.clone(),
+        }
+    }
+    /// Given a path to a module, import everything from it and merge it into this namespace.
+    /// This is used when an import path contains an asterisk.
     pub(crate) fn star_import(&mut self, idents: Vec<Ident<'sc>>) -> CompileResult<()> {
         let idents_buf = idents.into_iter();
         let mut namespace = self.clone();
@@ -38,6 +62,7 @@ impl<'sc> Namespace<'sc> {
         ok((), vec![], vec![])
     }
 
+    /// Pull a single item from a module and import it into this namespace.
     pub(crate) fn item_import(
         &mut self,
         path: Vec<Ident<'sc>>,
@@ -207,7 +232,7 @@ impl<'sc> Namespace<'sc> {
     pub fn insert_module(&mut self, module_name: String, module_contents: Namespace<'sc>) {
         self.modules.insert(module_name, module_contents);
     }
-    pub(crate) fn find_enum(&self, enum_name: &Ident<'sc>) -> Option<EnumDeclaration<'sc>> {
+    pub(crate) fn find_enum(&self, enum_name: &Ident<'sc>) -> Option<TypedEnumDeclaration<'sc>> {
         match self.get_symbol(enum_name) {
             Some(TypedDeclaration::EnumDeclaration(inner)) => Some(inner.clone()),
             _ => None,

@@ -14,7 +14,7 @@ mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
-pub use declaration::{TypedDeclaration, TypedFunctionDeclaration};
+pub use declaration::{TypedDeclaration, TypedFunctionDeclaration, TypedEnumDeclaration, TypedEnumVariant};
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
 pub(crate) use expression::{
     TypedExpression, TypedExpressionVariant, ERROR_RECOVERY_EXPR,
@@ -105,17 +105,22 @@ impl<'sc> TypedAstNode<'sc> {
                         body,
                         is_mutable,
                     }) => {
+                        let type_ascription = type_ascription.map(|type_ascription| namespace.resolve_type(&type_ascription));
                         let body = type_check!(
-                        TypedExpression::type_check(
-                        body,
-                        &namespace,
-                        type_ascription.clone(), 
-                        format!("Variable declaration's type annotation (type {})\
-                            does not match up with the assigned expression's type.",
-                            type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into()))),
-                        ERROR_RECOVERY_EXPR.clone(),
-                        warnings,
-                        errors);
+                            TypedExpression::type_check(
+                                body,
+                                &namespace,
+                                type_ascription.clone(), 
+                                format!("Variable declaration's type annotation (type {}) \
+                                    does not match up with the assigned expression's type.",
+                                    type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())
+                                )
+                            ),
+                            ERROR_RECOVERY_EXPR.clone(),
+                            warnings,
+                            errors
+                            );
+
                         let body =
                             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                 name: name.clone(),
@@ -127,8 +132,9 @@ impl<'sc> TypedAstNode<'sc> {
                     }
                     Declaration::EnumDeclaration(e) => {
                         let span = e.span.clone();
-                        let primary_name = e.name;
-                        let decl = TypedDeclaration::EnumDeclaration(e);
+                        let primary_name = e.name.primary_name;
+                        let decl = TypedDeclaration::EnumDeclaration(e.to_typed_decl(namespace));
+
                         namespace.insert(Ident { primary_name, span }, decl.clone());
                         decl
                     }
@@ -319,10 +325,7 @@ impl<'sc> TypedAstNode<'sc> {
                         ..
                     }) => {
                         // check, if this is a custom type, if it is in scope or a generic.
-                        let type_implementing_for = match type_implementing_for {
-                            TypeInfo::Custom { name } => lookup_in_scope(&name, namespace) ,
-                            o => o,
-                        };
+                        let type_implementing_for = namespace.resolve_type(&type_implementing_for);
                         let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                         for mut fn_decl in functions.into_iter() {
                             let mut type_arguments = type_arguments.clone();
@@ -367,9 +370,7 @@ impl<'sc> TypedAstNode<'sc> {
                         // look up any generic or struct types in the namespace
                         let mut decl = decl.clone();
                         for ref mut field in decl.fields.iter_mut() {
-                            if let TypeInfo::Custom { ref name } = field.r#type {
-                                field.r#type = lookup_in_scope(name , namespace);
-                            }
+                            field.r#type = namespace.resolve_type(&field.r#type);
                         }
                 
                         // insert struct into namespace
@@ -474,15 +475,3 @@ impl<'sc> TypedAstNode<'sc> {
     }
 }
 
-
-    /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
-    /// being looked for is actually a generic. 
-fn lookup_in_scope<'sc>(custom_type_name: &Ident<'sc>, namespace: &Namespace<'sc>) -> TypeInfo<'sc> { 
-    match namespace.get_symbol(custom_type_name) {
-       Some(TypedDeclaration::StructDeclaration(StructDeclaration {
-           name, .. 
-       })) => TypeInfo::Struct { name: name.clone() },
-       Some(_) => TypeInfo::Generic { name: custom_type_name.clone() },
-       None => TypeInfo::Generic { name: custom_type_name.clone() }
-    }
-}

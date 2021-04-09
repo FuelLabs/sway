@@ -517,7 +517,7 @@ impl<'sc> TypedExpression<'sc> {
                 return_type: TypeInfo::Unit,
                 is_constant: IsConstant::Yes,
             },
-            Expression::DelineatedPath { call_path, span, instantiator } => {
+            Expression::DelineatedPath { call_path, span, instantiator, type_arguments } => {
                 // The first step is to determine if the call path refers to a module or an enum.
                 // We could rely on the capitalization convention, where modules are lowercase
                 // and enums are uppercase, but this is not robust in the long term.
@@ -544,7 +544,6 @@ impl<'sc> TypedExpression<'sc> {
                     let (module_path, enum_name)  = call_path.prefixes.split_at(call_path.prefixes.len() - 1);
                     let enum_name = enum_name[0].clone();
                     let namespace = namespace.find_module(module_path);
-                    dbg!(&namespace);
                     let namespace = namespace.ok();
                     namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
                 };
@@ -560,7 +559,8 @@ impl<'sc> TypedExpression<'sc> {
                         }
                     },
                     (None, Some(enum_decl)) => {
-                        Either::Right(type_check!(instantiate_enum(enum_decl, call_path.suffix, instantiator), return err(warnings, errors), warnings, errors))
+
+                        Either::Right(type_check!(instantiate_enum(enum_decl, call_path.suffix, instantiator, type_arguments, namespace), return err(warnings, errors), warnings, errors))
                     },
                     (None, None) => todo!("symbol not found error")
                 };
@@ -616,7 +616,3 @@ impl<'sc> TypedExpression<'sc> {
     }
 }
 
-fn instantiate_enum<'sc>(enum_decl: EnumDeclaration<'sc>, enum_field_name: Ident<'sc>, instantiator: Option<Box<Expression<'sc>>>) -> CompileResult<'sc, TypedExpression<'sc>> {
-    todo!()
-
-}
