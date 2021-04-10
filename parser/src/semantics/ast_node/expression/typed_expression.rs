@@ -1,13 +1,13 @@
 use super::*;
 use either::Either;
-use crate::error::*;
+use crate::{error::*, types::ResolvedType};
 use crate::semantics::ast_node::*;
 use crate::types::{IntegerBits, TypeInfo};
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedExpression<'sc> {
     pub(crate) expression: TypedExpressionVariant<'sc>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type: ResolvedType<'sc>,
     /// whether or not this expression is constantly evaluatable (if the result is known at compile
     /// time)
     pub(crate) is_constant: IsConstant,
@@ -15,7 +15,7 @@ pub(crate) struct TypedExpression<'sc> {
 
 pub(crate) const ERROR_RECOVERY_EXPR: TypedExpression = TypedExpression {
     expression: TypedExpressionVariant::Unit,
-    return_type: TypeInfo::ErrorRecovery,
+    return_type: ResolvedType::ErrorRecovery,
     is_constant: IsConstant::No,
 };
 
@@ -24,7 +24,7 @@ impl<'sc> TypedExpression<'sc> {
     pub(crate) fn type_check(
         other: Expression<'sc>,
         namespace: &Namespace<'sc>,
-        type_annotation: Option<TypeInfo<'sc>>,
+        type_annotation: Option<ResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
@@ -458,7 +458,7 @@ impl<'sc> TypedExpression<'sc> {
                                 return err(warnings, errors);
                             }
                         },
-                        parent_expr.return_type,
+                        parent_expr.return_type
                     )
                 } else {
                     let parent_type = type_check!(
@@ -475,7 +475,7 @@ impl<'sc> TypedExpression<'sc> {
                             Some(o) => o,
                             None => todo!("Method not found error"),
                         },
-                        parent_type
+                        namespace.resolve_type(&parent_type)
                     )
                 };
 
@@ -484,10 +484,11 @@ impl<'sc> TypedExpression<'sc> {
 
                 let mut typed_arg_buf = vec![];
                 for (FunctionParameter { r#type, .. }, arg) in zipped {
-                    let un_self_type = if *r#type == TypeInfo::SelfType {
+                    let r#type = namespace.resolve_type(r#type);
+                    let un_self_type = if r#type == ResolvedType::SelfType {
                         parent_type.clone()
                     } else {
-                        r#type.clone()
+                        r#type
                     };
                     typed_arg_buf.push(type_check!(
                         TypedExpression::type_check(
@@ -508,13 +509,13 @@ impl<'sc> TypedExpression<'sc> {
                         name: method_name.into(), // TODO todo!("put the actual fully-typed function bodies in these applications"),
                         arguments: typed_arg_buf,
                     },
-                    return_type: method.return_type.clone(),
+                    return_type: namespace.resolve_type(method.return_type),
                     is_constant: IsConstant::No,
                 }
             }
             Expression::Unit { span: _span } => TypedExpression {
                 expression: TypedExpressionVariant::Unit,
-                return_type: TypeInfo::Unit,
+                return_type: ResolvedType::Unit,
                 is_constant: IsConstant::Yes,
             },
             Expression::DelineatedPath { call_path, span, instantiator, type_arguments } => {

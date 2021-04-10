@@ -15,7 +15,8 @@ type ModuleName = String;
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
     symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    implemented_traits: HashMap<(Ident<'sc>, TypeInfo<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
+    implemented_traits:
+        HashMap<(Ident<'sc>, ResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     modules: HashMap<ModuleName, Namespace<'sc>>,
 }
@@ -26,8 +27,9 @@ impl<'sc> Namespace<'sc> {
     /// Eventually, this should return a [ResolvedType], which currently doesn't exist,
     /// to further solidify the bounary between the monomorphized AST and the parameterized one.
     pub(crate) fn resolve_type(&self, ty: &TypeInfo<'sc>) -> ResolvedType<'sc> {
+        let ty = ty.clone();
         match ty {
-            TypeInfo::Custom { name } => match self.get_symbol(name) {
+            TypeInfo::Custom { name } => match self.get_symbol(&name) {
                 Some(TypedDeclaration::StructDeclaration(StructDeclaration { name, .. })) => {
                     ResolvedType::Struct { name: name.clone() }
                 }
@@ -207,7 +209,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: Ident<'sc>,
-        type_implementing_for: TypeInfo<'sc>,
+        type_implementing_for: ResolvedType<'sc>,
         functions_buf: Vec<TypedFunctionDeclaration<'sc>>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
@@ -242,7 +244,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn find_subfield(
         &self,
         subfield_exp: &[Ident<'sc>],
-    ) -> CompileResult<'sc, TypeInfo<'sc>> {
+    ) -> CompileResult<'sc, ResolvedType<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ident_iter = subfield_exp.into_iter();
@@ -306,8 +308,9 @@ impl<'sc> Namespace<'sc> {
                         return err(warnings, errors);
                     }
                 };
+            let r#type = self.resolve_type(&r#type);
             match r#type {
-                TypeInfo::Struct { .. } => {
+                ResolvedType::Struct { .. } => {
                     let (l_fields, _l_name) = type_check!(
                         self.find_struct_name_and_fields(&r#type, &ident),
                         return err(warnings, errors),
@@ -327,7 +330,7 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn get_methods_for_type(
         &self,
-        r#type: &TypeInfo<'sc>,
+        r#type: &ResolvedType<'sc>,
     ) -> Vec<TypedFunctionDeclaration<'sc>> {
         let mut methods = vec![];
         for ((_trait_name, type_info), l_methods) in &self.implemented_traits {
@@ -340,7 +343,7 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn find_method_for_type(
         &self,
-        r#type: &TypeInfo<'sc>,
+        r#type: &ResolvedType<'sc>,
         method_name: Ident<'sc>,
     ) -> Option<TypedFunctionDeclaration<'sc>> {
         let methods = self.get_methods_for_type(r#type);
@@ -375,10 +378,10 @@ impl<'sc> Namespace<'sc> {
     /// 2) return its fields and struct name
     fn find_struct_name_and_fields(
         &self,
-        return_type: &TypeInfo<'sc>,
+        return_type: &ResolvedType<'sc>,
         debug_ident: &Ident<'sc>,
     ) -> CompileResult<'sc, (Vec<StructField<'sc>>, &Ident<'sc>)> {
-        if let TypeInfo::Struct { name } = return_type {
+        if let ResolvedType::Struct { name } = return_type {
             match self.get_symbol(name) {
                 Some(TypedDeclaration::StructDeclaration(StructDeclaration {
                     fields,

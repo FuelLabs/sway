@@ -1,4 +1,4 @@
-use crate::parser::Rule;
+use crate::{parser::Rule, types::ResolvedType};
 use crate::types::TypeInfo;
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
@@ -160,11 +160,11 @@ pub enum Warning<'sc> {
         name: &'sc str,
     },
     LossOfPrecision {
-        initial_type: TypeInfo<'sc>,
-        cast_to: TypeInfo<'sc>,
+        initial_type: ResolvedType<'sc>,
+        cast_to: ResolvedType<'sc>,
     },
     UnusedReturnValue {
-        r#type: TypeInfo<'sc>,
+        r#type: ResolvedType<'sc>,
     },
     SimilarMethodFound {
         lib: String,

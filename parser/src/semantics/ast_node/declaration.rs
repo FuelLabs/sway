@@ -1,11 +1,10 @@
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
-use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
-use crate::types::TypeInfo;
 use crate::TraitFn;
+use crate::{error::*, types::ResolvedType};
 use pest::Span;
 
 #[derive(Clone, Debug)]
@@ -36,7 +35,7 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
-    pub(crate) fn return_type(&self) -> CompileResult<'sc, TypeInfo<'sc>> {
+    pub(crate) fn return_type(&self) -> CompileResult<'sc, ResolvedType<'sc>> {
         ok(
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -44,7 +43,7 @@ impl<'sc> TypedDeclaration<'sc> {
                 }) => body.return_type.clone(),
                 TypedDeclaration::FunctionDeclaration { .. } => todo!("fn pointer type"),
                 TypedDeclaration::StructDeclaration(StructDeclaration { name, .. }) => {
-                    TypeInfo::Struct { name: name.clone() }
+                    ResolvedType::Struct { name: name.clone() }
                 }
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
                     rhs.return_type.clone()
@@ -102,11 +101,11 @@ impl<'sc> TypedEnumDeclaration<'sc> {
     /// the place to resolve those typed.
     pub(crate) fn resolve_generic_types(
         &self,
-        _type_arguments: Vec<TypeInfo<'sc>>,
+        _type_arguments: Vec<ResolvedType<'sc>>,
     ) -> CompileResult<'sc, Self> {
         ok(self.clone(), vec![], vec![])
     }
-    /// Returns the [TypeInfo] corresponding to this enum's type.
+    /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
         ResolvedType::Enum {
             name: self.name.clone(),
@@ -117,9 +116,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
 #[derive(Debug, Clone)]
 pub struct TypedEnumVariant<'sc> {
     pub(crate) name: Ident<'sc>,
-    // this will eventually become ResolvedTypeInfo
-    // TODO
-    pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) r#type: ResolvedType<'sc>,
     pub(crate) tag: usize,
 }
 
@@ -135,10 +132,17 @@ pub struct TypedVariableDeclaration<'sc> {
 pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) body: TypedCodeBlock<'sc>,
-    pub(crate) parameters: Vec<FunctionParameter<'sc>>,
+    pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
     pub(crate) span: pest::Span<'sc>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type: ResolvedType<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TypedFunctionParameter<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) r#type: ResolvedType<'sc>,
+    pub(crate) type_span: Span<'sc>,
 }
 
 #[derive(Clone, Debug)]
@@ -159,7 +163,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub(crate) fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
-        _return_type_annotation: Option<TypeInfo<'sc>>,
+        _return_type_annotation: Option<ResolvedType<'sc>>,
         _help_text: impl Into<String>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
@@ -194,14 +198,15 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     }),
                 );
             });
-        let (body, _implicit_block_return) = type_check!(
+        let (body, _implicit_block_return) =
+            type_check!(
             TypedCodeBlock::type_check(
                 body,
                 &namespace,
                 Some(return_type.clone()),
                 "Function body's return type does not match up with its return type annotation."
             ),
-            (TypedCodeBlock { contents: vec![] }, TypeInfo::ErrorRecovery),
+            (TypedCodeBlock { contents: vec![] }, ResolvedType::ErrorRecovery),
             warnings,
             errors
         );
@@ -210,7 +215,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // scope
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let TypeInfo::Custom { ref name } = param.r#type {
+            if let ResolvedType::Generic { ref name } = param.r#type {
                 generic_params_buf_for_error_message.push(name.primary_name);
             }
         }
@@ -220,7 +225,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         } in parameters.iter()
         {
             let span = name.span.clone();
-            if let TypeInfo::Custom { name, .. } = r#type {
+            if let ResolvedType::Generic { name, .. } = r#type {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span.clone(),
                     |acc,
