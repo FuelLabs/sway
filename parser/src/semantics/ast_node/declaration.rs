@@ -148,9 +148,15 @@ pub(crate) struct TypedFunctionParameter<'sc> {
 #[derive(Clone, Debug)]
 pub struct TypedTraitDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) interface_surface: Vec<TraitFn<'sc>>, // TODO typed TraitFn which checks geneerics
+    pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
     pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+}
+#[derive(Clone, Debug)]
+pub struct TypedTraitFn<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
+    pub(crate) return_type: ResolvedType<'sc>,
 }
 
 #[derive(Clone, Debug)]

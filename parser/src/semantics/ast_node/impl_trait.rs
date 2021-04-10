@@ -1,8 +1,7 @@
-use super::ERROR_RECOVERY_DECLARATION;
-use crate::error::*;
+use super::{ERROR_RECOVERY_DECLARATION, declaration::{TypedTraitFn, TypedFunctionParameter}};
+use crate::{types::{ResolvedType, TypeInfo}, error::*};
 use crate::parse_tree::{FunctionParameter, Ident, ImplTrait, TraitFn};
 use crate::semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-use crate::types::TypeInfo;
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
@@ -18,6 +17,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
+    let type_implementing_for = namespace.resolve_type(&type_implementing_for);
     match namespace.get_symbol(&trait_name) {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
             let mut tr = tr.clone();
@@ -30,7 +30,7 @@ pub(crate) fn implementation_of_trait<'sc>(
             }
             // replace all references to Self in the interface surface with the
             // concrete type
-            for TraitFn {
+            for TypedTraitFn {
                 ref mut parameters,
                 ref mut return_type,
                 ..
@@ -38,12 +38,12 @@ pub(crate) fn implementation_of_trait<'sc>(
             {
                 parameters
                     .iter_mut()
-                    .for_each(|FunctionParameter { ref mut r#type, .. }| {
-                        if r#type == &TypeInfo::SelfType {
+                    .for_each(|TypedFunctionParameter { ref mut r#type, .. }| {
+                        if r#type == &ResolvedType::SelfType {
                             *r#type = type_implementing_for.clone();
                         }
                     });
-                if return_type == &TypeInfo::SelfType {
+                if return_type == &ResolvedType::SelfType {
                     *return_type = type_implementing_for.clone();
                 }
             }
@@ -56,7 +56,7 @@ pub(crate) fn implementation_of_trait<'sc>(
             let mut function_checklist: Vec<&Ident> = tr
                 .interface_surface
                 .iter()
-                .map(|TraitFn { name, .. }| name)
+                .map(|TypedTraitFn { name, .. }| name)
                 .collect();
             for mut fn_decl in functions.into_iter() {
                 // replace SelfType with type of implementor
@@ -67,7 +67,8 @@ pub(crate) fn implementation_of_trait<'sc>(
                     .iter_mut()
                     .filter(|FunctionParameter { r#type, .. }| r#type == &TypeInfo::SelfType)
                     .for_each(|FunctionParameter { ref mut r#type, .. }| {
-                        *r#type = type_implementing_for.clone()
+                        let r#type = namespace.resolve_type(r#type);
+                        r#type = type_implementing_for.clone()
                     });
 
                 if fn_decl.return_type == TypeInfo::SelfType {
@@ -82,49 +83,49 @@ pub(crate) fn implementation_of_trait<'sc>(
 
                 // ensure this fn decl's parameters and signature lines up with the one
                 // in the trait
-                if let Some(mut l_e) = tr.interface_surface.iter().find_map(|TraitFn { name, parameters, return_type }| {
-                                if fn_decl.name == *name {
-                                    let mut errors = vec![];
-                                    if let Some(mut maybe_err) = parameters.iter().zip(fn_decl.parameters.iter()).find_map(|(fn_decl_param, trait_param)| {
-                                    let mut errors = vec![];
-                                    if let TypeInfo::Custom { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
-                                        match trait_param.r#type {
-                                            TypeInfo::Custom { .. } => (),
-                                            _ => 
+                if let Some(mut l_e) = tr.interface_surface.iter().find_map(|TypedTraitFn { name, parameters, return_type }| {
+                    if fn_decl.name == *name {
+                        let mut errors = vec![];
+                        if let Some(mut maybe_err) = parameters.iter().zip(fn_decl.parameters.iter()).find_map(|(fn_decl_param, trait_param)| {
+                            let mut errors = vec![];
+                            if let ResolvedType::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
+                                match trait_param.r#type {
+                                    ResolvedType::Generic { .. } => (),
+                                    _ => 
 
-                                            errors.push(CompileError::MismatchedTypeInTrait {
-                                                span: fn_decl_param.type_span.clone(),
-                                                given: fn_decl_param.r#type.friendly_type_str(),
-                                                expected: trait_param.r#type.friendly_type_str()
-                                            })
-                                        }
-                                    } else {
-                                        if fn_decl_param.r#type != trait_param.r#type  {
-                                            errors.push(CompileError::MismatchedTypeInTrait {span: fn_decl_param.type_span.clone(),
-                                            given: fn_decl_param.r#type.friendly_type_str(),
-                                            expected: trait_param.r#type.friendly_type_str()});
-                                        }
-                                    }
-                                    if errors.is_empty() { None } else { Some(errors) }
-                                }) {
-                                    errors.append(&mut maybe_err);
-                                }
-                                if fn_decl.return_type != *return_type {
                                     errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: fn_decl.return_type_span.clone(),
-                                        expected: return_type.friendly_type_str(),
-                                        given: fn_decl.return_type.friendly_type_str() 
-                                    });
+                                        span: fn_decl_param.type_span.clone(),
+                                        given: fn_decl_param.r#type.friendly_type_str(),
+                                        expected: trait_param.r#type.friendly_type_str()
+                                    })
                                 }
-                                if errors.is_empty() { None } else { Some(errors) }
                             } else {
-                                None 
-                            } 
-                        })
-                        {
-                            errors.append(&mut l_e);
-                            continue;
+                                if fn_decl_param.r#type != trait_param.r#type  {
+                                    errors.push(CompileError::MismatchedTypeInTrait {span: fn_decl_param.type_span.clone(),
+                                    given: fn_decl_param.r#type.friendly_type_str(),
+                                    expected: trait_param.r#type.friendly_type_str()});
+                                }
+                            }
+                            if errors.is_empty() { None } else { Some(errors) }
+                        }) {
+                            errors.append(&mut maybe_err);
                         }
+                        if fn_decl.return_type != *return_type {
+                            errors.push(CompileError::MismatchedTypeInTrait {
+                                span: fn_decl.return_type_span.clone(),
+                                expected: return_type.friendly_type_str(),
+                                given: fn_decl.return_type.friendly_type_str() 
+                            });
+                        }
+                        if errors.is_empty() { None } else { Some(errors) }
+                    } else {
+                        None 
+                    } 
+                })
+                {
+                    errors.append(&mut l_e);
+                    continue;
+                }
                 // remove this function from the "checklist"
                 let ix_of_thing_to_remove = match function_checklist
                     .iter()
@@ -142,6 +143,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                 };
                 function_checklist.remove(ix_of_thing_to_remove);
 
+                todo!("This is where you left off -- this needs to happen earlier in the function");
                 functions_buf.push(type_check!(
                     TypedFunctionDeclaration::type_check(fn_decl.clone(), &namespace, None, ""),
                     continue,
