@@ -4,6 +4,7 @@ use super::{
 };
 use crate::error::*;
 use crate::parse_tree::{StructDeclaration, StructField};
+use crate::types::ResolvedType;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
@@ -24,19 +25,19 @@ impl<'sc> Namespace<'sc> {
     /// being looked for is actually a generic, not-yet-resolved type.
     /// Eventually, this should return a [ResolvedType], which currently doesn't exist,
     /// to further solidify the bounary between the monomorphized AST and the parameterized one.
-    pub(crate) fn resolve_type(&self, ty: &TypeInfo<'sc>) -> TypeInfo<'sc> {
+    pub(crate) fn resolve_type(&self, ty: &TypeInfo<'sc>) -> ResolvedType<'sc> {
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol(name) {
                 Some(TypedDeclaration::StructDeclaration(StructDeclaration { name, .. })) => {
-                    TypeInfo::Struct { name: name.clone() }
+                    ResolvedType::Struct { name: name.clone() }
                 }
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. })) => {
-                    TypeInfo::Enum { name: name.clone() }
+                    ResolvedType::Enum { name: name.clone() }
                 }
-                Some(_) => TypeInfo::Generic { name: name.clone() },
-                None => TypeInfo::Generic { name: name.clone() },
+                Some(_) => ResolvedType::Generic { name: name.clone() },
+                None => ResolvedType::Generic { name: name.clone() },
             },
-            o => o.clone(),
+            o => o.to_resolved(),
         }
     }
     /// Given a path to a module, import everything from it and merge it into this namespace.

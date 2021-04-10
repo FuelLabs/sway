@@ -107,8 +107,8 @@ impl<'sc> TypedEnumDeclaration<'sc> {
         ok(self.clone(), vec![], vec![])
     }
     /// Returns the [TypeInfo] corresponding to this enum's type.
-    pub(crate) fn as_type(&self) -> TypeInfo<'sc> {
-        TypeInfo::Enum {
+    pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
+        ResolvedType::Enum {
             name: self.name.clone(),
         }
     }
