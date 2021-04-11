@@ -2,7 +2,7 @@ use super::*;
 use either::Either;
 use crate::{error::*, types::ResolvedType};
 use crate::semantics::ast_node::*;
-use crate::types::{IntegerBits, TypeInfo};
+use crate::types::IntegerBits;
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedExpression<'sc> {
@@ -33,15 +33,15 @@ impl<'sc> TypedExpression<'sc> {
         let mut typed_expression = match other {
             Expression::Literal { value: lit, .. } => {
                 let return_type = match lit {
-                    Literal::String(_) => TypeInfo::String,
-                    Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                    Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                    Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                    Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                    Literal::U128(_) => TypeInfo::UnsignedInteger(IntegerBits::OneTwentyEight),
-                    Literal::Boolean(_) => TypeInfo::Boolean,
-                    Literal::Byte(_) => TypeInfo::Byte,
-                    Literal::Byte32(_) => TypeInfo::Byte32,
+                    Literal::String(_) => ResolvedType::String,
+                    Literal::U8(_) => ResolvedType::UnsignedInteger(IntegerBits::Eight),
+                    Literal::U16(_) => ResolvedType::UnsignedInteger(IntegerBits::Sixteen),
+                    Literal::U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
+                    Literal::U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+                    Literal::U128(_) => ResolvedType::UnsignedInteger(IntegerBits::OneTwentyEight),
+                    Literal::Boolean(_) => ResolvedType::Boolean,
+                    Literal::Byte(_) => ResolvedType::Byte,
+                    Literal::Byte32(_) => ResolvedType::Byte32,
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::Literal(lit),
@@ -208,7 +208,7 @@ impl<'sc> TypedExpression<'sc> {
                         type_annotation.clone(),
                         help_text.clone()
                     ),
-                    (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
+                    (TypedCodeBlock { contents: vec![] }, ResolvedType::Unit),
                     warnings,
                     errors
                 );
@@ -335,7 +335,7 @@ impl<'sc> TypedExpression<'sc> {
                                 name: def_field.name,
                                 value: TypedExpression {
                                     expression: TypedExpressionVariant::Unit,
-                                    return_type: TypeInfo::ErrorRecovery,
+                                    return_type: ResolvedType::ErrorRecovery,
                                     is_constant: IsConstant::No,
                                 },
                             });
@@ -536,7 +536,7 @@ impl<'sc> TypedExpression<'sc> {
                     // so, in this case, the suffix is Variant1 and the prefixes are module1 and 
                     // MyEnum. When looking for an enum, we just want the _last_ prefix entry in the
                     // namespace of the first 0..len-1 entries' module
-                    namespace.find_enum(&jall_path.prefixes[0])
+                    namespace.find_enum(&all_path.prefixes[0])
                 };
                 */
                 let enum_module_combined_result = {
@@ -548,6 +548,7 @@ impl<'sc> TypedExpression<'sc> {
                     namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
                 };
 
+                let type_arguments = type_arguments.iter().map(|x| namespace.resolve_type(x)).collect();
                 // now we can see if this thing is a symbol (typed declaration) or reference to an
                 // enum instantiation
                 let this_thing: Either<TypedDeclaration, TypedExpression> = match (module_result, enum_module_combined_result) {

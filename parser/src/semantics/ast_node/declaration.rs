@@ -236,6 +236,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
         // check the generic types in the arguments, make sure they are in the type
         // scope
+        todo!("Convert params into typed function params");
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
             if let ResolvedType::Generic { ref name } = param.r#type {
