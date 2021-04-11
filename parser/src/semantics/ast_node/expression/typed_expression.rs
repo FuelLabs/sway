@@ -232,7 +232,7 @@ impl<'sc> TypedExpression<'sc> {
                     TypedExpression::type_check(
                         *condition,
                         &namespace,
-                        Some(TypeInfo::Boolean),
+                        Some(ResolvedType::Boolean),
                         "The condition of an if expression must be a boolean expression.",
                     ),
                     ERROR_RECOVERY_EXPR.clone(),
@@ -285,9 +285,9 @@ impl<'sc> TypedExpression<'sc> {
             }
             Expression::AsmExpression { asm, .. } => {
                 let return_type = if asm.returns.is_some() {
-                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+                    ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
                 } else {
-                    TypeInfo::Unit
+                    ResolvedType::Unit
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::AsmExpression { asm },
@@ -302,7 +302,7 @@ impl<'sc> TypedExpression<'sc> {
             } => {
                 // TODO in here replace generic types with provided types
                 // find the struct definition in the namespace
-                let definition: &StructDeclaration = match namespace.get_symbol(&struct_name) {
+                let definition: &TypedStructDeclaration = match namespace.get_symbol(&struct_name) {
                     Some(TypedDeclaration::StructDeclaration(st)) => st,
                     Some(_) => {
                         errors.push(CompileError::DeclaredNonStructAsStruct {
@@ -381,7 +381,7 @@ impl<'sc> TypedExpression<'sc> {
                         struct_name: definition.name.clone(),
                         fields: typed_fields_buf,
                     },
-                    return_type: TypeInfo::Struct {
+                    return_type: ResolvedType::Struct {
                         name: definition.name.clone(),
                     },
                     is_constant: IsConstant::No,
@@ -475,7 +475,7 @@ impl<'sc> TypedExpression<'sc> {
                             Some(o) => o,
                             None => todo!("Method not found error"),
                         },
-                        namespace.resolve_type(&parent_type)
+                        parent_type
                     )
                 };
 
@@ -483,12 +483,11 @@ impl<'sc> TypedExpression<'sc> {
                 let zipped = method.parameters.iter().zip(arguments.iter());
 
                 let mut typed_arg_buf = vec![];
-                for (FunctionParameter { r#type, .. }, arg) in zipped {
-                    let r#type = namespace.resolve_type(r#type);
-                    let un_self_type = if r#type == ResolvedType::SelfType {
+                for (TypedFunctionParameter { r#type, .. }, arg) in zipped {
+                    let un_self_type = if r#type == &ResolvedType::SelfType {
                         parent_type.clone()
                     } else {
-                        r#type
+                        r#type.clone()
                     };
                     typed_arg_buf.push(type_check!(
                         TypedExpression::type_check(
@@ -509,7 +508,7 @@ impl<'sc> TypedExpression<'sc> {
                         name: method_name.into(), // TODO todo!("put the actual fully-typed function bodies in these applications"),
                         arguments: typed_arg_buf,
                     },
-                    return_type: namespace.resolve_type(method.return_type),
+                    return_type: method.return_type,
                     is_constant: IsConstant::No,
                 }
             }

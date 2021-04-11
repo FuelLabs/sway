@@ -62,16 +62,22 @@ pub(crate) fn implementation_of_trait<'sc>(
                 // replace SelfType with type of implementor
                 // i.e. fn add(self, other: u64) -> Self becomes fn
                 // add(self: u64, other: u64) -> u64
+
+                let fn_decl = type_check!(
+                    TypedFunctionDeclaration::type_check(fn_decl.clone(), &namespace, None, ""),
+                    continue,
+                    warnings,
+                    errors
+                );
                 fn_decl
                     .parameters
                     .iter_mut()
-                    .filter(|FunctionParameter { r#type, .. }| r#type == &TypeInfo::SelfType)
-                    .for_each(|FunctionParameter { ref mut r#type, .. }| {
-                        let r#type = namespace.resolve_type(r#type);
-                        r#type = type_implementing_for.clone()
+                    .filter(|TypedFunctionParameter { r#type, .. }| r#type == &ResolvedType::SelfType)
+                    .for_each(|TypedFunctionParameter { ref mut r#type, .. }| {
+                        *r#type = type_implementing_for.clone()
                     });
 
-                if fn_decl.return_type == TypeInfo::SelfType {
+                if fn_decl.return_type == ResolvedType::SelfType {
                     fn_decl.return_type = type_implementing_for.clone();
                 }
 
@@ -143,13 +149,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                 };
                 function_checklist.remove(ix_of_thing_to_remove);
 
-                todo!("This is where you left off -- this needs to happen earlier in the function");
-                functions_buf.push(type_check!(
-                    TypedFunctionDeclaration::type_check(fn_decl.clone(), &namespace, None, ""),
-                    continue,
-                    warnings,
-                    errors
-                ));
+                functions_buf.push(fn_decl);
             }
 
             // check that the implementation checklist is complete

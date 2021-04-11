@@ -12,7 +12,7 @@ pub enum TypedDeclaration<'sc> {
     VariableDeclaration(TypedVariableDeclaration<'sc>),
     FunctionDeclaration(TypedFunctionDeclaration<'sc>),
     TraitDeclaration(TypedTraitDeclaration<'sc>),
-    StructDeclaration(StructDeclaration<'sc>),
+    StructDeclaration(TypedStructDeclaration<'sc>),
     EnumDeclaration(TypedEnumDeclaration<'sc>),
     Reassignment(TypedReassignment<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
@@ -76,7 +76,7 @@ impl<'sc> TypedDeclaration<'sc> {
                 }
                 TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
                     name.primary_name.into(),
-                TypedDeclaration::StructDeclaration(StructDeclaration { name, .. }) =>
+                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
                     name.primary_name.into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
                     name.primary_name.into(),
@@ -86,6 +86,19 @@ impl<'sc> TypedDeclaration<'sc> {
             }
         )
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct TypedStructDeclaration<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) fields: Vec<TypedStructField<'sc>>,
+    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypedStructField<'sc> {
+    pub(crate) name: &'sc str,
+    pub(crate) r#type: ResolvedType<'sc>,
 }
 
 #[derive(Clone, Debug)]
@@ -136,10 +149,13 @@ pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) span: pest::Span<'sc>,
     pub(crate) return_type: ResolvedType<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    /// Used for error messages -- the span pointing to the return type
+    /// annotation of the function
+    pub(crate) return_type_span: Span<'sc>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TypedFunctionParameter<'sc> {
+pub struct TypedFunctionParameter<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) r#type: ResolvedType<'sc>,
     pub(crate) type_span: Span<'sc>,
@@ -181,6 +197,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             span,
             return_type,
             type_parameters,
+            return_type_span,
             ..
         } = fn_decl.clone();
         let return_type = namespace.resolve_type(&return_type);
@@ -303,6 +320,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 span: span.clone(),
                 return_type,
                 type_parameters,
+                return_type_span,
             },
             warnings,
             errors,

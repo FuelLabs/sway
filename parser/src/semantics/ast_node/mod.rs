@@ -1,7 +1,7 @@
 use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
-use crate::types::TypeInfo;
+use crate::types::{ResolvedType, TypeInfo};
 use crate::{AstNode, AstNodeContent, ReturnStatement};
 use pest::Span;
 
@@ -14,7 +14,7 @@ mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
-pub use declaration::{TypedDeclaration, TypedFunctionDeclaration, TypedEnumDeclaration, TypedEnumVariant};
+pub use declaration::{TypedDeclaration, TypedFunctionDeclaration, TypedEnumDeclaration, TypedEnumVariant, TypedFunctionParameter, TypedStructDeclaration, TypedStructField};
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
 pub(crate) use expression::{
     TypedExpression, TypedExpressionVariant, ERROR_RECOVERY_EXPR,
@@ -64,14 +64,14 @@ impl <'sc> std::fmt::Debug for TypedAstNode<'sc> {
 
 }
 impl<'sc> TypedAstNode<'sc> {
-    fn type_info(&self) -> TypeInfo<'sc> {
+    fn type_info(&self) -> ResolvedType<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            ReturnStatement(_) | Declaration(_) => TypeInfo::Unit,
+            ReturnStatement(_) | Declaration(_) => ResolvedType::Unit,
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
-            WhileLoop(_) | SideEffect => TypeInfo::Unit,
+            WhileLoop(_) | SideEffect => ResolvedType::Unit,
         }
     }
 }
@@ -80,7 +80,7 @@ impl<'sc> TypedAstNode<'sc> {
     pub(crate) fn type_check(
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
-        return_type_annotation: Option<TypeInfo<'sc>>,
+        return_type_annotation: Option<ResolvedType<'sc>>,
         help_text: impl Into<String>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();

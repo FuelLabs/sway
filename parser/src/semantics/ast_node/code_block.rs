@@ -1,5 +1,5 @@
 use super::*;
-use crate::types::TypeInfo;
+use crate::types::{ResolvedType, TypeInfo};
 use crate::CodeBlock;
 
 #[derive(Clone, Debug)]
@@ -12,9 +12,9 @@ impl<'sc> TypedCodeBlock<'sc> {
         other: CodeBlock<'sc>,
         namespace: &Namespace<'sc>,
         // this is for the return or implicit return
-        type_annotation: Option<TypeInfo<'sc>>,
+        type_annotation: Option<ResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
-    ) -> CompileResult<'sc, (Self, TypeInfo<'sc>)> {
+    ) -> CompileResult<'sc, (Self, ResolvedType<'sc>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut evaluated_contents = Vec::new();
@@ -70,7 +70,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 } => Some(return_type.clone()),
                 _ => None,
             })
-            .unwrap_or(TypeInfo::Unit);
+            .unwrap_or(ResolvedType::Unit);
         if let Some(type_annotation) = type_annotation {
             let convertability = return_type.is_convertable(
                 &type_annotation,

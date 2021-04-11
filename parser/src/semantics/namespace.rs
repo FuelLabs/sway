@@ -1,9 +1,10 @@
 use super::{
-    ast_node::{TypedEnumDeclaration, TypedVariableDeclaration},
+    ast_node::{
+        TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedVariableDeclaration,
+    },
     TypedExpression,
 };
 use crate::error::*;
-use crate::parse_tree::{StructDeclaration, StructField};
 use crate::types::ResolvedType;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
@@ -30,9 +31,9 @@ impl<'sc> Namespace<'sc> {
         let ty = ty.clone();
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol(&name) {
-                Some(TypedDeclaration::StructDeclaration(StructDeclaration { name, .. })) => {
-                    ResolvedType::Struct { name: name.clone() }
-                }
+                Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
+                    name, ..
+                })) => ResolvedType::Struct { name: name.clone() },
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. })) => {
                     ResolvedType::Enum { name: name.clone() }
                 }
@@ -290,7 +291,7 @@ impl<'sc> Namespace<'sc> {
 
         for ident in ident_iter {
             // find the ident in the currently available fields
-            let StructField { r#type, .. } =
+            let TypedStructField { r#type, .. } =
                 match fields.iter().find(|x| x.name == ident.primary_name) {
                     Some(field) => field.clone(),
                     None => {
@@ -308,7 +309,6 @@ impl<'sc> Namespace<'sc> {
                         return err(warnings, errors);
                     }
                 };
-            let r#type = self.resolve_type(&r#type);
             match r#type {
                 ResolvedType::Struct { .. } => {
                     let (l_fields, _l_name) = type_check!(
@@ -360,7 +360,7 @@ impl<'sc> Namespace<'sc> {
         &self,
         decl: &TypedDeclaration<'sc>,
         debug_ident: &Ident<'sc>,
-    ) -> CompileResult<'sc, (Vec<StructField<'sc>>, &Ident<'sc>)> {
+    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
         match decl {
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body: TypedExpression { return_type, .. },
@@ -380,10 +380,10 @@ impl<'sc> Namespace<'sc> {
         &self,
         return_type: &ResolvedType<'sc>,
         debug_ident: &Ident<'sc>,
-    ) -> CompileResult<'sc, (Vec<StructField<'sc>>, &Ident<'sc>)> {
+    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
         if let ResolvedType::Struct { name } = return_type {
             match self.get_symbol(name) {
-                Some(TypedDeclaration::StructDeclaration(StructDeclaration {
+                Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     fields,
                     name,
                     ..
