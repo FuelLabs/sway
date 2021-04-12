@@ -1,11 +1,14 @@
-use crate::error::*;
-use crate::{parse_tree::Ident, Rule};
-use pest::iterators::Pair;
+use super::IntegerBits;
+use crate::{error::*, Ident};
 use pest::Span;
-
-/// Type information without an associated value, used for type inferencing and definition.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TypeInfo<'sc> {
+/// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
+/// Type symbols are ambiguous in the beginning of compilation, as any custom symbol could be
+/// an enum, struct, or generic type name. This enum is similar to [TypeInfo], except it lacks
+/// the capability to be `TypeInfo::Custom`, i.e., pending this resolution of whether it is generic or a
+/// known type. This allows us to ensure structurally that no unresolved types bleed into the
+/// syntax tree.
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum ResolvedType<'sc> {
     String,
     UnsignedInteger(IntegerBits),
     Boolean,
@@ -13,9 +16,6 @@ pub enum TypeInfo<'sc> {
     /// or just a generic parameter if it is not.
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
-    Custom {
-        name: Ident<'sc>,
-    },
     Generic {
         name: Ident<'sc>,
     },
@@ -32,59 +32,48 @@ pub enum TypeInfo<'sc> {
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum IntegerBits {
-    Eight,
-    Sixteen,
-    ThirtyTwo,
-    SixtyFour,
-    OneTwentyEight,
-}
 
-impl<'sc> TypeInfo<'sc> {
-    pub(crate) fn parse_from_pair(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        let mut r#type = input.into_inner();
-        Self::parse_from_pair_inner(r#type.next().unwrap())
+impl<'sc> ResolvedType<'sc> {
+    pub(crate) fn friendly_type_str(&self) -> String {
+        use ResolvedType::*;
+        match self {
+            String => "String".into(),
+            UnsignedInteger(bits) => {
+                use IntegerBits::*;
+                match bits {
+                    Eight => "u8",
+                    Sixteen => "u16",
+                    ThirtyTwo => "u32",
+                    SixtyFour => "u64",
+                    OneTwentyEight => "u128",
+                }
+                .into()
+            }
+            Boolean => "bool".into(),
+            Generic { name } => format!("generic {}", name.primary_name),
+            Unit => "()".into(),
+            SelfType => "Self".into(),
+            Byte => "byte".into(),
+            Byte32 => "byte32".into(),
+            Struct {
+                name: Ident { primary_name, .. },
+                ..
+            } => format!("struct {}", primary_name),
+            Enum {
+                name: Ident { primary_name, .. },
+                ..
+            } => format!("enum {}", primary_name),
+            ErrorRecovery => "\"unknown due to error\"".into(),
+        }
     }
-    pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        ok(
-            match input.as_str().trim() {
-                "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                "u128" => TypeInfo::UnsignedInteger(IntegerBits::OneTwentyEight),
-                "bool" => TypeInfo::Boolean,
-                "string" => TypeInfo::String,
-                "unit" => TypeInfo::Unit,
-                "byte" => TypeInfo::Byte,
-                "Self" => TypeInfo::SelfType,
-                "()" => TypeInfo::Unit,
-                _other => TypeInfo::Custom {
-                    name: eval!(
-                        Ident::parse_from_pair,
-                        warnings,
-                        errors,
-                        input,
-                        return err(warnings, errors)
-                    ),
-                },
-            },
-            warnings,
-            errors,
-        )
-    }
-
     pub(crate) fn is_convertable(
         &self,
-        other: &TypeInfo<'sc>,
+        other: &ResolvedType<'sc>,
         debug_span: Span<'sc>,
         help_text: impl Into<String>,
     ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
         let help_text = help_text.into();
-        if *self == TypeInfo::ErrorRecovery || *other == TypeInfo::ErrorRecovery {
+        if *self == ResolvedType::ErrorRecovery || *other == ResolvedType::ErrorRecovery {
             return Ok(None);
         }
         // TODO  actually check more advanced conversion rules like upcasting vs downcasting
@@ -106,10 +95,9 @@ impl<'sc> TypeInfo<'sc> {
             })
         }
     }
-
-    fn numeric_cast_compat(&self, other: &TypeInfo<'sc>) -> Result<(), Warning<'sc>> {
+    fn numeric_cast_compat(&self, other: &ResolvedType<'sc>) -> Result<(), Warning<'sc>> {
         assert!(self.is_numeric(), other.is_numeric());
-        use TypeInfo::*;
+        use ResolvedType::*;
         // if this is a downcast, warn for loss of precision. if upcast, then no warning.
         match self {
             UnsignedInteger(IntegerBits::Eight) => Ok(()),
@@ -150,42 +138,8 @@ impl<'sc> TypeInfo<'sc> {
             _ => unreachable!(),
         }
     }
-
-    pub(crate) fn friendly_type_str(&self) -> String {
-        use TypeInfo::*;
-        match self {
-            String => "String".into(),
-            UnsignedInteger(bits) => {
-                use IntegerBits::*;
-                match bits {
-                    Eight => "u8",
-                    Sixteen => "u16",
-                    ThirtyTwo => "u32",
-                    SixtyFour => "u64",
-                    OneTwentyEight => "u128",
-                }
-                .into()
-            }
-            Boolean => "bool".into(),
-            Generic { name } => format!("generic {}", name.primary_name),
-            Custom { name } => format!("unknown {}", name.primary_name),
-            Unit => "()".into(),
-            SelfType => "Self".into(),
-            Byte => "byte".into(),
-            Byte32 => "byte32".into(),
-            Struct {
-                name: Ident { primary_name, .. },
-                ..
-            } => format!("struct {}", primary_name),
-            Enum {
-                name: Ident { primary_name, .. },
-                ..
-            } => format!("enum {}", primary_name),
-            ErrorRecovery => "\"unknown due to error\"".into(),
-        }
-    }
     fn is_numeric(&self) -> bool {
-        if let TypeInfo::UnsignedInteger(_) = self {
+        if let ResolvedType::UnsignedInteger(_) = self {
             true
         } else {
             false

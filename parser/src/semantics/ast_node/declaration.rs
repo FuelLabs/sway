@@ -1,11 +1,10 @@
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
-use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
-use crate::types::TypeInfo;
 use crate::TraitFn;
+use crate::{error::*, types::ResolvedType};
 use pest::Span;
 
 #[derive(Clone, Debug)]
@@ -13,7 +12,7 @@ pub enum TypedDeclaration<'sc> {
     VariableDeclaration(TypedVariableDeclaration<'sc>),
     FunctionDeclaration(TypedFunctionDeclaration<'sc>),
     TraitDeclaration(TypedTraitDeclaration<'sc>),
-    StructDeclaration(StructDeclaration<'sc>),
+    StructDeclaration(TypedStructDeclaration<'sc>),
     EnumDeclaration(TypedEnumDeclaration<'sc>),
     Reassignment(TypedReassignment<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
@@ -36,15 +35,15 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
-    pub(crate) fn return_type(&self) -> CompileResult<'sc, TypeInfo<'sc>> {
+    pub(crate) fn return_type(&self) -> CompileResult<'sc, ResolvedType<'sc>> {
         ok(
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body, ..
                 }) => body.return_type.clone(),
                 TypedDeclaration::FunctionDeclaration { .. } => todo!("fn pointer type"),
-                TypedDeclaration::StructDeclaration(StructDeclaration { name, .. }) => {
-                    TypeInfo::Struct { name: name.clone() }
+                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) => {
+                    ResolvedType::Struct { name: name.clone() }
                 }
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
                     rhs.return_type.clone()
@@ -77,7 +76,7 @@ impl<'sc> TypedDeclaration<'sc> {
                 }
                 TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
                     name.primary_name.into(),
-                TypedDeclaration::StructDeclaration(StructDeclaration { name, .. }) =>
+                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
                     name.primary_name.into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
                     name.primary_name.into(),
@@ -87,6 +86,19 @@ impl<'sc> TypedDeclaration<'sc> {
             }
         )
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct TypedStructDeclaration<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) fields: Vec<TypedStructField<'sc>>,
+    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypedStructField<'sc> {
+    pub(crate) name: &'sc str,
+    pub(crate) r#type: ResolvedType<'sc>,
 }
 
 #[derive(Clone, Debug)]
@@ -102,13 +114,13 @@ impl<'sc> TypedEnumDeclaration<'sc> {
     /// the place to resolve those typed.
     pub(crate) fn resolve_generic_types(
         &self,
-        _type_arguments: Vec<TypeInfo<'sc>>,
+        _type_arguments: Vec<ResolvedType<'sc>>,
     ) -> CompileResult<'sc, Self> {
         ok(self.clone(), vec![], vec![])
     }
-    /// Returns the [TypeInfo] corresponding to this enum's type.
-    pub(crate) fn as_type(&self) -> TypeInfo<'sc> {
-        TypeInfo::Enum {
+    /// Returns the [ResolvedType] corresponding to this enum's type.
+    pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
+        ResolvedType::Enum {
             name: self.name.clone(),
         }
     }
@@ -117,9 +129,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
 #[derive(Debug, Clone)]
 pub struct TypedEnumVariant<'sc> {
     pub(crate) name: Ident<'sc>,
-    // this will eventually become ResolvedTypeInfo
-    // TODO
-    pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) r#type: ResolvedType<'sc>,
     pub(crate) tag: usize,
 }
 
@@ -135,18 +145,34 @@ pub struct TypedVariableDeclaration<'sc> {
 pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) body: TypedCodeBlock<'sc>,
-    pub(crate) parameters: Vec<FunctionParameter<'sc>>,
+    pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
     pub(crate) span: pest::Span<'sc>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type: ResolvedType<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    /// Used for error messages -- the span pointing to the return type
+    /// annotation of the function
+    pub(crate) return_type_span: Span<'sc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypedFunctionParameter<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) r#type: ResolvedType<'sc>,
+    pub(crate) type_span: Span<'sc>,
 }
 
 #[derive(Clone, Debug)]
 pub struct TypedTraitDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) interface_surface: Vec<TraitFn<'sc>>, // TODO typed TraitFn which checks geneerics
+    pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
     pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+}
+#[derive(Clone, Debug)]
+pub struct TypedTraitFn<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
+    pub(crate) return_type: ResolvedType<'sc>,
 }
 
 #[derive(Clone, Debug)]
@@ -159,8 +185,11 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub(crate) fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
-        _return_type_annotation: Option<TypeInfo<'sc>>,
+        _return_type_annotation: Option<ResolvedType<'sc>>,
         _help_text: impl Into<String>,
+        // If there are any `Self` types in this declaration,
+        // resolve them to this type.
+        self_type: Option<ResolvedType<'sc>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -171,60 +200,88 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             span,
             return_type,
             type_parameters,
+            return_type_span,
             ..
         } = fn_decl.clone();
         let return_type = namespace.resolve_type(&return_type);
         // insert parameters into namespace
         let mut namespace = namespace.clone();
-        parameters
-            .clone()
-            .into_iter()
-            .for_each(|FunctionParameter { name, r#type, .. }| {
-                let r#type = namespace.resolve_type(&r#type);
-                namespace.insert(
-                    name.clone(),
-                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                        name: name.clone(),
-                        body: TypedExpression {
-                            expression: TypedExpressionVariant::FunctionParameter,
-                            return_type: r#type,
-                            is_constant: IsConstant::No,
-                        },
-                        is_mutable: false, // TODO allow mutable function params?
-                    }),
-                );
-            });
-        let (body, _implicit_block_return) = type_check!(
+        for FunctionParameter {
+            name, ref r#type, ..
+        } in parameters.clone()
+        {
+            let mut r#type = namespace.resolve_type(r#type);
+            namespace.insert(
+                name.clone(),
+                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    name: name.clone(),
+                    body: TypedExpression {
+                        expression: TypedExpressionVariant::FunctionParameter,
+                        return_type: r#type,
+                        is_constant: IsConstant::No,
+                    },
+                    is_mutable: false, // TODO allow mutable function params?
+                }),
+            );
+        }
+        // check return type for Self types
+        let return_type = if return_type == ResolvedType::SelfType {
+            match self_type {
+                Some(ref ty) => ty.clone(),
+                None => {
+                    errors.push(todo!("Self type unqualified"));
+                    return_type
+                }
+            }
+        } else {
+            return_type
+        };
+        let (body, _implicit_block_return) =
+            type_check!(
             TypedCodeBlock::type_check(
                 body,
                 &namespace,
                 Some(return_type.clone()),
                 "Function body's return type does not match up with its return type annotation."
             ),
-            (TypedCodeBlock { contents: vec![] }, TypeInfo::ErrorRecovery),
+            (TypedCodeBlock { contents: vec![] }, ResolvedType::ErrorRecovery),
             warnings,
             errors
         );
 
         // check the generic types in the arguments, make sure they are in the type
         // scope
+        let mut parameters = parameters
+            .into_iter()
+            .map(
+                |FunctionParameter {
+                     name,
+                     r#type,
+                     type_span,
+                 }| TypedFunctionParameter {
+                    name,
+                    r#type: namespace.resolve_type(&r#type),
+                    type_span,
+                },
+            )
+            .collect::<Vec<_>>();
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let TypeInfo::Custom { ref name } = param.r#type {
+            if let ResolvedType::Generic { ref name } = param.r#type {
                 generic_params_buf_for_error_message.push(name.primary_name);
             }
         }
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-        for FunctionParameter {
+        for TypedFunctionParameter {
             ref r#type, name, ..
         } in parameters.iter()
         {
             let span = name.span.clone();
-            if let TypeInfo::Custom { name, .. } = r#type {
+            if let ResolvedType::Generic { name, .. } = r#type {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span.clone(),
                     |acc,
-                     FunctionParameter {
+                     TypedFunctionParameter {
                          name: Ident { span, .. },
                          ..
                      }| crate::utils::join_spans(acc, span.clone()),
@@ -283,6 +340,18 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 }
             }
         }
+        for TypedFunctionParameter { ref mut r#type, .. } in parameters.iter_mut() {
+            if *r#type == ResolvedType::SelfType {
+                match self_type {
+                    Some(ref ty) => *r#type = ty.clone(),
+                    None => {
+                        errors.push(todo!("Self type unqualified"));
+
+                        continue;
+                    }
+                }
+            }
+        }
 
         ok(
             TypedFunctionDeclaration {
@@ -292,6 +361,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 span: span.clone(),
                 return_type,
                 type_parameters,
+                return_type_span,
             },
             warnings,
             errors,

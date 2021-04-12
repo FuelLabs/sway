@@ -1,9 +1,11 @@
 use super::{
-    ast_node::{TypedEnumDeclaration, TypedVariableDeclaration},
+    ast_node::{
+        TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedVariableDeclaration,
+    },
     TypedExpression,
 };
 use crate::error::*;
-use crate::parse_tree::{StructDeclaration, StructField};
+use crate::types::ResolvedType;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
@@ -14,7 +16,8 @@ type ModuleName = String;
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
     symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    implemented_traits: HashMap<(Ident<'sc>, TypeInfo<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
+    implemented_traits:
+        HashMap<(Ident<'sc>, ResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     modules: HashMap<ModuleName, Namespace<'sc>>,
 }
@@ -24,19 +27,20 @@ impl<'sc> Namespace<'sc> {
     /// being looked for is actually a generic, not-yet-resolved type.
     /// Eventually, this should return a [ResolvedType], which currently doesn't exist,
     /// to further solidify the bounary between the monomorphized AST and the parameterized one.
-    pub(crate) fn resolve_type(&self, ty: &TypeInfo<'sc>) -> TypeInfo<'sc> {
+    pub(crate) fn resolve_type(&self, ty: &TypeInfo<'sc>) -> ResolvedType<'sc> {
+        let ty = ty.clone();
         match ty {
-            TypeInfo::Custom { name } => match self.get_symbol(name) {
-                Some(TypedDeclaration::StructDeclaration(StructDeclaration { name, .. })) => {
-                    TypeInfo::Struct { name: name.clone() }
-                }
+            TypeInfo::Custom { name } => match self.get_symbol(&name) {
+                Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
+                    name, ..
+                })) => ResolvedType::Struct { name: name.clone() },
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. })) => {
-                    TypeInfo::Enum { name: name.clone() }
+                    ResolvedType::Enum { name: name.clone() }
                 }
-                Some(_) => TypeInfo::Generic { name: name.clone() },
-                None => TypeInfo::Generic { name: name.clone() },
+                Some(_) => ResolvedType::Generic { name: name.clone() },
+                None => ResolvedType::Generic { name: name.clone() },
             },
-            o => o.clone(),
+            o => o.to_resolved(),
         }
     }
     /// Given a path to a module, import everything from it and merge it into this namespace.
@@ -206,7 +210,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: Ident<'sc>,
-        type_implementing_for: TypeInfo<'sc>,
+        type_implementing_for: ResolvedType<'sc>,
         functions_buf: Vec<TypedFunctionDeclaration<'sc>>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
@@ -241,7 +245,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn find_subfield(
         &self,
         subfield_exp: &[Ident<'sc>],
-    ) -> CompileResult<'sc, TypeInfo<'sc>> {
+    ) -> CompileResult<'sc, ResolvedType<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ident_iter = subfield_exp.into_iter();
@@ -287,7 +291,7 @@ impl<'sc> Namespace<'sc> {
 
         for ident in ident_iter {
             // find the ident in the currently available fields
-            let StructField { r#type, .. } =
+            let TypedStructField { r#type, .. } =
                 match fields.iter().find(|x| x.name == ident.primary_name) {
                     Some(field) => field.clone(),
                     None => {
@@ -306,7 +310,7 @@ impl<'sc> Namespace<'sc> {
                     }
                 };
             match r#type {
-                TypeInfo::Struct { .. } => {
+                ResolvedType::Struct { .. } => {
                     let (l_fields, _l_name) = type_check!(
                         self.find_struct_name_and_fields(&r#type, &ident),
                         return err(warnings, errors),
@@ -326,7 +330,7 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn get_methods_for_type(
         &self,
-        r#type: &TypeInfo<'sc>,
+        r#type: &ResolvedType<'sc>,
     ) -> Vec<TypedFunctionDeclaration<'sc>> {
         let mut methods = vec![];
         for ((_trait_name, type_info), l_methods) in &self.implemented_traits {
@@ -339,7 +343,7 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn find_method_for_type(
         &self,
-        r#type: &TypeInfo<'sc>,
+        r#type: &ResolvedType<'sc>,
         method_name: Ident<'sc>,
     ) -> Option<TypedFunctionDeclaration<'sc>> {
         let methods = self.get_methods_for_type(r#type);
@@ -356,7 +360,7 @@ impl<'sc> Namespace<'sc> {
         &self,
         decl: &TypedDeclaration<'sc>,
         debug_ident: &Ident<'sc>,
-    ) -> CompileResult<'sc, (Vec<StructField<'sc>>, &Ident<'sc>)> {
+    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
         match decl {
             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body: TypedExpression { return_type, .. },
@@ -374,12 +378,12 @@ impl<'sc> Namespace<'sc> {
     /// 2) return its fields and struct name
     fn find_struct_name_and_fields(
         &self,
-        return_type: &TypeInfo<'sc>,
+        return_type: &ResolvedType<'sc>,
         debug_ident: &Ident<'sc>,
-    ) -> CompileResult<'sc, (Vec<StructField<'sc>>, &Ident<'sc>)> {
-        if let TypeInfo::Struct { name } = return_type {
+    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
+        if let ResolvedType::Struct { name } = return_type {
             match self.get_symbol(name) {
-                Some(TypedDeclaration::StructDeclaration(StructDeclaration {
+                Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     fields,
                     name,
                     ..

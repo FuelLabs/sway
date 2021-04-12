@@ -5,7 +5,7 @@
 //!
 //! The graph construction algorithm is as follows:
 //!
-//! ```
+//! ```ignore
 //! For every node in the syntax tree:
 //!   if it is non-branching:
 //!      push it onto all current not-yet-terminated tree leaves, thus adding it to the end of every path

@@ -1,5 +1,5 @@
-use crate::parser::Rule;
 use crate::types::TypeInfo;
+use crate::{parser::Rule, types::ResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
@@ -116,10 +116,8 @@ impl<'sc, T> CompileResult<'sc, T> {
     pub fn ok(&self) -> Option<&T> {
         match self {
             CompileResult::Ok { value, .. } => Some(value),
-            _ => None
-
+            _ => None,
         }
-
     }
 }
 
@@ -160,11 +158,11 @@ pub enum Warning<'sc> {
         name: &'sc str,
     },
     LossOfPrecision {
-        initial_type: TypeInfo<'sc>,
-        cast_to: TypeInfo<'sc>,
+        initial_type: ResolvedType<'sc>,
+        cast_to: ResolvedType<'sc>,
     },
     UnusedReturnValue {
-        r#type: TypeInfo<'sc>,
+        r#type: ResolvedType<'sc>,
     },
     SimilarMethodFound {
         lib: String,

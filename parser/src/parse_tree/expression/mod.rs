@@ -73,7 +73,7 @@ pub(crate) enum Expression<'sc> {
         span: Span<'sc>,
     },
     /// A subfield expression is anything of the form:
-    /// ```
+    /// ```ignore
     /// <ident>.<ident>
     /// ```
     ///
@@ -84,19 +84,19 @@ pub(crate) enum Expression<'sc> {
         unary_op: Option<UnaryOp>,
     },
     /// A [DelineatedPath] is anything of the form:
-    /// ```
+    /// ```ignore
     /// <ident>::<ident>
     /// ```
     /// Where there are `n >= 2` idents.
     /// These could be either enum variant constructions, or they could be
     /// references to some sort of module in the module tree.
     /// For example, a reference to a module:
-    /// ```
+    /// ```ignore
     /// std::ops::add
     /// ```
     ///
     /// And, an enum declaration:
-    /// ```
+    /// ```ignore
     /// enum MyEnum {
     ///   Variant1,
     ///   Variant2
