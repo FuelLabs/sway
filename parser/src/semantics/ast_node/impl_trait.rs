@@ -1,7 +1,13 @@
-use super::{ERROR_RECOVERY_DECLARATION, declaration::{TypedTraitFn, TypedFunctionParameter}};
-use crate::{types::{ResolvedType, TypeInfo}, error::*};
+use super::{
+    declaration::{TypedFunctionParameter, TypedTraitFn},
+    ERROR_RECOVERY_DECLARATION,
+};
 use crate::parse_tree::{FunctionParameter, Ident, ImplTrait, TraitFn};
 use crate::semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+use crate::{
+    error::*,
+    types::{ResolvedType, TypeInfo},
+};
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
@@ -36,13 +42,13 @@ pub(crate) fn implementation_of_trait<'sc>(
                 ..
             } in tr.interface_surface.iter_mut()
             {
-                parameters
-                    .iter_mut()
-                    .for_each(|TypedFunctionParameter { ref mut r#type, .. }| {
+                parameters.iter_mut().for_each(
+                    |TypedFunctionParameter { ref mut r#type, .. }| {
                         if r#type == &ResolvedType::SelfType {
                             *r#type = type_implementing_for.clone();
                         }
-                    });
+                    },
+                );
                 if return_type == &ResolvedType::SelfType {
                     *return_type = type_implementing_for.clone();
                 }
@@ -58,17 +64,24 @@ pub(crate) fn implementation_of_trait<'sc>(
                 .iter()
                 .map(|TypedTraitFn { name, .. }| name)
                 .collect();
-            for mut fn_decl in functions.into_iter() {
+            for fn_decl in functions.into_iter() {
                 // replace SelfType with type of implementor
                 // i.e. fn add(self, other: u64) -> Self becomes fn
                 // add(self: u64, other: u64) -> u64
 
-                let fn_decl = type_check!(
-                    TypedFunctionDeclaration::type_check(fn_decl.clone(), &namespace, None, ""),
+                let mut fn_decl = type_check!(
+                    TypedFunctionDeclaration::type_check(
+                        fn_decl.clone(),
+                        &namespace,
+                        None,
+                        "",
+                        Some(type_implementing_for.clone())
+                    ),
                     continue,
                     warnings,
                     errors
                 );
+                /*
                 fn_decl
                     .parameters
                     .iter_mut()
@@ -76,6 +89,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     .for_each(|TypedFunctionParameter { ref mut r#type, .. }| {
                         *r#type = type_implementing_for.clone()
                     });
+                */
 
                 if fn_decl.return_type == ResolvedType::SelfType {
                     fn_decl.return_type = type_implementing_for.clone();

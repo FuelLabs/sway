@@ -48,7 +48,7 @@ impl<'sc> TypeInfo<'sc> {
     /// statements resolving types when it has already been verified that this type is _not_
     /// a custom (enum, struct, user-defined) or generic type.
     /// This function just passes all the trivial types through to a [ResolvedType].
-    pub(crate) fn to_resolved(&self) -> ResolvedType {
+    pub(crate) fn to_resolved(&self) -> ResolvedType<'sc> {
         match self {
             TypeInfo::Generic { .. } | TypeInfo::Struct { .. } | TypeInfo::Enum { .. } | TypeInfo::Custom { .. } => panic!("Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for more details."),
             TypeInfo::Boolean => ResolvedType::Boolean,

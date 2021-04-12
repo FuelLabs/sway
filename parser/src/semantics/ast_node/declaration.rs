@@ -42,7 +42,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     body, ..
                 }) => body.return_type.clone(),
                 TypedDeclaration::FunctionDeclaration { .. } => todo!("fn pointer type"),
-                TypedDeclaration::StructDeclaration(StructDeclaration { name, .. }) => {
+                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) => {
                     ResolvedType::Struct { name: name.clone() }
                 }
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
@@ -187,6 +187,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         namespace: &Namespace<'sc>,
         _return_type_annotation: Option<ResolvedType<'sc>>,
         _help_text: impl Into<String>,
+        // If there are any `Self` types in this declaration,
+        // resolve them to this type.
+        self_type: Option<ResolvedType<'sc>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -203,24 +206,36 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         let return_type = namespace.resolve_type(&return_type);
         // insert parameters into namespace
         let mut namespace = namespace.clone();
-        parameters
-            .clone()
-            .into_iter()
-            .for_each(|FunctionParameter { name, r#type, .. }| {
-                let r#type = namespace.resolve_type(&r#type);
-                namespace.insert(
-                    name.clone(),
-                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                        name: name.clone(),
-                        body: TypedExpression {
-                            expression: TypedExpressionVariant::FunctionParameter,
-                            return_type: r#type,
-                            is_constant: IsConstant::No,
-                        },
-                        is_mutable: false, // TODO allow mutable function params?
-                    }),
-                );
-            });
+        for FunctionParameter {
+            name, ref r#type, ..
+        } in parameters.clone()
+        {
+            let mut r#type = namespace.resolve_type(r#type);
+            namespace.insert(
+                name.clone(),
+                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    name: name.clone(),
+                    body: TypedExpression {
+                        expression: TypedExpressionVariant::FunctionParameter,
+                        return_type: r#type,
+                        is_constant: IsConstant::No,
+                    },
+                    is_mutable: false, // TODO allow mutable function params?
+                }),
+            );
+        }
+        // check return type for Self types
+        let return_type = if return_type == ResolvedType::SelfType {
+            match self_type {
+                Some(ref ty) => ty.clone(),
+                None => {
+                    errors.push(todo!("Self type unqualified"));
+                    return_type
+                }
+            }
+        } else {
+            return_type
+        };
         let (body, _implicit_block_return) =
             type_check!(
             TypedCodeBlock::type_check(
@@ -236,7 +251,20 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
         // check the generic types in the arguments, make sure they are in the type
         // scope
-        todo!("Convert params into typed function params");
+        let mut parameters = parameters
+            .into_iter()
+            .map(
+                |FunctionParameter {
+                     name,
+                     r#type,
+                     type_span,
+                 }| TypedFunctionParameter {
+                    name,
+                    r#type: namespace.resolve_type(&r#type),
+                    type_span,
+                },
+            )
+            .collect::<Vec<_>>();
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
             if let ResolvedType::Generic { ref name } = param.r#type {
@@ -244,7 +272,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             }
         }
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-        for FunctionParameter {
+        for TypedFunctionParameter {
             ref r#type, name, ..
         } in parameters.iter()
         {
@@ -253,7 +281,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span.clone(),
                     |acc,
-                     FunctionParameter {
+                     TypedFunctionParameter {
                          name: Ident { span, .. },
                          ..
                      }| crate::utils::join_spans(acc, span.clone()),
@@ -309,6 +337,18 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 }
                 Err(err) => {
                     errors.push(err.into());
+                }
+            }
+        }
+        for TypedFunctionParameter { ref mut r#type, .. } in parameters.iter_mut() {
+            if *r#type == ResolvedType::SelfType {
+                match self_type {
+                    Some(ref ty) => *r#type = ty.clone(),
+                    None => {
+                        errors.push(todo!("Self type unqualified"));
+
+                        continue;
+                    }
                 }
             }
         }

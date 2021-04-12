@@ -1,5 +1,5 @@
-use crate::{parser::Rule, types::ResolvedType};
 use crate::types::TypeInfo;
+use crate::{parser::Rule, types::ResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
@@ -116,10 +116,8 @@ impl<'sc, T> CompileResult<'sc, T> {
     pub fn ok(&self) -> Option<&T> {
         match self {
             CompileResult::Ok { value, .. } => Some(value),
-            _ => None
-
+            _ => None,
         }
-
     }
 }
 
