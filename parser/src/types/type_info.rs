@@ -18,19 +18,10 @@ pub enum TypeInfo<'sc> {
     Custom {
         name: Ident<'sc>,
     },
-    Generic {
-        name: Ident<'sc>,
-    },
     Unit,
     SelfType,
     Byte,
     Byte32,
-    Struct {
-        name: Ident<'sc>,
-    },
-    Enum {
-        name: Ident<'sc>,
-    },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -50,7 +41,7 @@ impl<'sc> TypeInfo<'sc> {
     /// This function just passes all the trivial types through to a [ResolvedType].
     pub(crate) fn to_resolved(&self) -> ResolvedType<'sc> {
         match self {
-            TypeInfo::Generic { .. } | TypeInfo::Struct { .. } | TypeInfo::Enum { .. } | TypeInfo::Custom { .. } => panic!("Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for more details."),
+            TypeInfo::Custom { .. } => panic!("Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for more details."),
             TypeInfo::Boolean => ResolvedType::Boolean,
             TypeInfo::String => ResolvedType::String,
             TypeInfo::UnsignedInteger(bits) => ResolvedType::UnsignedInteger(*bits),
@@ -113,20 +104,11 @@ impl<'sc> TypeInfo<'sc> {
                 .into()
             }
             Boolean => "bool".into(),
-            Generic { name } => format!("generic {}", name.primary_name),
             Custom { name } => format!("unknown {}", name.primary_name),
             Unit => "()".into(),
             SelfType => "Self".into(),
             Byte => "byte".into(),
             Byte32 => "byte32".into(),
-            Struct {
-                name: Ident { primary_name, .. },
-                ..
-            } => format!("struct {}", primary_name),
-            Enum {
-                name: Ident { primary_name, .. },
-                ..
-            } => format!("enum {}", primary_name),
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
