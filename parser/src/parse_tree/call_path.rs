@@ -35,7 +35,7 @@ impl<'sc> CallPath<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut pairs_buf = vec![];
-        for pair in pair.into_inner() {
+        for pair in pair.clone().into_inner() {
             if pair.as_rule() != Rule::path_separator {
                 pairs_buf.push(eval!(
                     Ident::parse_from_pair,
@@ -45,6 +45,9 @@ impl<'sc> CallPath<'sc> {
                     continue
                 ));
             }
+        }
+        if pairs_buf.len() == 0 {
+            dbg!(&pair);
         }
         assert!(pairs_buf.len() > 0);
         let suffix = pairs_buf.pop().unwrap();
