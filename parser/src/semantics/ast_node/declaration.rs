@@ -3,7 +3,6 @@ use super::{
 };
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
-use crate::TraitFn;
 use crate::{error::*, types::ResolvedType};
 use pest::Span;
 
@@ -48,11 +47,33 @@ impl<'sc> TypedDeclaration<'sc> {
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
                     rhs.return_type.clone()
                 }
-                _ => return err(vec![], vec![todo!("used typeless symbol as type err")]),
+                decl => {
+                    return err(
+                        vec![],
+                        vec![CompileError::NotAType {
+                            span: decl.span(),
+                            name: decl.pretty_print(),
+                            actually_is: decl.friendly_name().to_string(),
+                        }],
+                    )
+                }
             },
             vec![],
             vec![],
         )
+    }
+
+    pub(crate) fn span(&self) -> Span<'sc> {
+        use TypedDeclaration::*;
+        match self {
+            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span.clone(),
+            FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
+            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span.clone(),
+            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span.clone(),
+            EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
+            Reassignment(TypedReassignment { lhs, .. }) => lhs.span.clone(),
+            SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
+        }
     }
 
     pub(crate) fn pretty_print(&self) -> String {
@@ -211,7 +232,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             name, ref r#type, ..
         } in parameters.clone()
         {
-            let mut r#type = namespace.resolve_type(r#type);
+            let r#type = namespace.resolve_type(r#type);
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -230,7 +251,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             match self_type {
                 Some(ref ty) => ty.clone(),
                 None => {
-                    errors.push(todo!("Self type unqualified"));
+                    errors.push(CompileError::UnqualifiedSelfType {
+                        span: return_type_span.clone(),
+                    });
                     return_type
                 }
             }
@@ -341,13 +364,19 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 }
             }
         }
-        for TypedFunctionParameter { ref mut r#type, .. } in parameters.iter_mut() {
+        for TypedFunctionParameter {
+            ref mut r#type,
+            type_span,
+            ..
+        } in parameters.iter_mut()
+        {
             if *r#type == ResolvedType::SelfType {
                 match self_type {
                     Some(ref ty) => *r#type = ty.clone(),
                     None => {
-                        errors.push(todo!("Self type unqualified"));
-
+                        errors.push(CompileError::UnqualifiedSelfType {
+                            span: type_span.clone(),
+                        });
                         continue;
                     }
                 }

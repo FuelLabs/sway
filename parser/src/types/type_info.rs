@@ -1,7 +1,6 @@
 use crate::error::*;
 use crate::{parse_tree::Ident, Rule};
 use pest::iterators::Pair;
-use pest::Span;
 
 use super::ResolvedType;
 
@@ -86,37 +85,5 @@ impl<'sc> TypeInfo<'sc> {
             warnings,
             errors,
         )
-    }
-
-    pub(crate) fn friendly_type_str(&self) -> String {
-        use TypeInfo::*;
-        match self {
-            String => "String".into(),
-            UnsignedInteger(bits) => {
-                use IntegerBits::*;
-                match bits {
-                    Eight => "u8",
-                    Sixteen => "u16",
-                    ThirtyTwo => "u32",
-                    SixtyFour => "u64",
-                    OneTwentyEight => "u128",
-                }
-                .into()
-            }
-            Boolean => "bool".into(),
-            Custom { name } => format!("unknown {}", name.primary_name),
-            Unit => "()".into(),
-            SelfType => "Self".into(),
-            Byte => "byte".into(),
-            Byte32 => "byte32".into(),
-            ErrorRecovery => "\"unknown due to error\"".into(),
-        }
-    }
-    fn is_numeric(&self) -> bool {
-        if let TypeInfo::UnsignedInteger(_) = self {
-            true
-        } else {
-            false
-        }
     }
 }

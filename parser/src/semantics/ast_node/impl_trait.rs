@@ -2,12 +2,9 @@ use super::{
     declaration::{TypedFunctionParameter, TypedTraitFn},
     ERROR_RECOVERY_DECLARATION,
 };
-use crate::parse_tree::{FunctionParameter, Ident, ImplTrait, TraitFn};
+use crate::parse_tree::{Ident, ImplTrait};
 use crate::semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-use crate::{
-    error::*,
-    types::{ResolvedType, TypeInfo},
-};
+use crate::{error::*, types::ResolvedType};
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,

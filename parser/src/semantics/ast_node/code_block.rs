@@ -1,5 +1,5 @@
 use super::*;
-use crate::types::{ResolvedType, TypeInfo};
+use crate::types::ResolvedType;
 use crate::CodeBlock;
 
 #[derive(Clone, Debug)]

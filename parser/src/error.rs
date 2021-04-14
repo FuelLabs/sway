@@ -1,4 +1,3 @@
-use crate::types::TypeInfo;
 use crate::{parser::Rule, types::ResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
@@ -175,7 +174,9 @@ pub enum Warning<'sc> {
     OverridingTraitImplementation,
     DeadDeclaration,
     UnreachableCode,
-    DeadEnumVariant { variant_name: String }
+    DeadEnumVariant {
+        variant_name: String,
+    },
 }
 
 impl<'sc> Warning<'sc> {
@@ -370,6 +371,14 @@ pub enum CompileError<'sc> {
     SymbolNotFound { span: Span<'sc>, name: &'sc str },
     #[error("Because this if expression's value is used, an \"else\" branch is required and it must return type \"{r#type}\"")]
     NoElseBranch { span: Span<'sc>, r#type: String },
+    #[error("Use of type `Self` outside of a context in which `Self` refers to a type.")]
+    UnqualifiedSelfType { span: Span<'sc> },
+    #[error("Symbol \"{name}\" does not refer to a type, it refers to a {actually_is}. It cannot be used in this position.")]
+    NotAType {
+        span: Span<'sc>,
+        name: String,
+        actually_is: String,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -492,6 +501,8 @@ impl<'sc> CompileError<'sc> {
             FieldNotFound { span, .. } => (span.start(), span.end()),
             SymbolNotFound { span, .. } => (span.start(), span.end()),
             NoElseBranch { span, .. } => (span.start(), span.end()),
+            UnqualifiedSelfType { span, .. } => (span.start(), span.end()),
+            NotAType { span, .. } => (span.start(), span.end()),
         }
     }
 }

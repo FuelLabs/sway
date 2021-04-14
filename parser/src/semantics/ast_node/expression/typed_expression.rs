@@ -1,7 +1,6 @@
 use super::*;
 use crate::semantics::ast_node::*;
-use crate::types::IntegerBits;
-use crate::{error::*, types::ResolvedType};
+use crate::types::{IntegerBits, ResolvedType};
 use either::Either;
 
 #[derive(Clone, Debug)]
