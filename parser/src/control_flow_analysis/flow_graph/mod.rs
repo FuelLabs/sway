@@ -160,27 +160,39 @@ impl<'sc> ControlFlowGraph<'sc> {
                         .unwrap(),
                 ]
             }
-            TreeType::Contract | TreeType::Library => {
-                // eventually we want to limit this to pub stuff
-                // TODO issue #17
-                // only pub things are "real" entry points
-                // for now, all functions are entry points
-
-                graph
-                        .graph
-                        .node_indices()
-                        .filter(|i| match graph.graph[*i] {
-                            ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                            ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                                content:
-                                    TypedAstNodeContent::Declaration(
-                                        TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration { visibility: Visibility::Public, .. } ),
-                                    ),
-                                ..
-                            }) => true,
-                            _ => false,
-                        }).collect()
-            }
+            TreeType::Contract | TreeType::Library => graph
+                .graph
+                .node_indices()
+                .filter(|i| match graph.graph[*i] {
+                    ControlFlowGraphNode::OrganizationalDominator(_) => false,
+                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                        content:
+                            TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                                TypedFunctionDeclaration {
+                                    visibility: Visibility::Public,
+                                    ..
+                                },
+                            )),
+                        ..
+                    }) => true,
+                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                        content:
+                            TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(
+                                TypedTraitDeclaration {
+                                    visibility: Visibility::Public,
+                                    ..
+                                },
+                            )),
+                        ..
+                    }) => true,
+                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                        content:
+                            TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { .. }),
+                        ..
+                    }) => true,
+                    _ => false,
+                })
+                .collect(),
         };
         graph.visualize();
 
@@ -431,6 +443,9 @@ fn connect_impl_trait<'sc>(
             span: fn_decl.span.clone(),
             method_name: fn_decl.name.clone(),
         });
+        graph.add_edge(entry_node, fn_decl_entry_node, "".into());
+        // connect the impl declaration node to the functions themselves, as all trait functions are
+        // public if the trait is in scope
         connect_typed_fn_decl(
             &fn_decl,
             graph,

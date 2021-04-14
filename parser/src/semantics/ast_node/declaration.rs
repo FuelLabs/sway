@@ -197,6 +197,7 @@ pub struct TypedTraitDeclaration<'sc> {
     pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
     pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    pub(crate) visibility: Visibility,
 }
 #[derive(Clone, Debug)]
 pub struct TypedTraitFn<'sc> {

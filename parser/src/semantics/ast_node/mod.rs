@@ -160,6 +160,7 @@ impl<'sc> TypedAstNode<'sc> {
                         interface_surface,
                         methods,
                         type_parameters,
+                        visibility
                     }) => {
                         let mut methods_buf = Vec::new();
                         let interface_surface = interface_surface.into_iter().map(|TraitFn { name, parameters, return_type }| TypedTraitFn {
@@ -279,6 +280,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 interface_surface,
                                 methods: methods_buf,
                                 type_parameters,
+                                visibility,
                             });
                         namespace.insert(name, trait_decl.clone());
                         trait_decl

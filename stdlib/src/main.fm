@@ -1,9 +1,9 @@
 library ops {
-    trait Add {
+    pub trait Add {
         fn add(self, other: Self) -> Self;
     }
 
-    trait Subtract {
+    pub trait Subtract {
       fn subtract(self, other: Self) -> Self;
     }
 
@@ -41,7 +41,7 @@ library ops {
          }
     }
 
-    trait Cmp {
+    pub trait Cmp {
       fn less_than(self, other: Self) -> bool;
     }
 
