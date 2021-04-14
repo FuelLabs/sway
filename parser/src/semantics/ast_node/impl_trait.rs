@@ -111,16 +111,18 @@ pub(crate) fn implementation_of_trait<'sc>(
                                     _ => 
 
                                     errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: fn_decl_param.type_span.clone(),
-                                        given: fn_decl_param.r#type.friendly_type_str(),
-                                        expected: trait_param.r#type.friendly_type_str()
+                                        span: trait_param.type_span.clone(),
+                                        given: trait_param.r#type.friendly_type_str(),
+                                        expected: fn_decl_param.r#type.friendly_type_str()
                                     })
                                 }
                             } else {
                                 if fn_decl_param.r#type != trait_param.r#type  {
-                                    errors.push(CompileError::MismatchedTypeInTrait {span: fn_decl_param.type_span.clone(),
-                                    given: fn_decl_param.r#type.friendly_type_str(),
-                                    expected: trait_param.r#type.friendly_type_str()});
+                                    errors.push(CompileError::MismatchedTypeInTrait {
+                                        span: trait_param.type_span.clone(),
+                                        given: trait_param.r#type.friendly_type_str(),
+                                        expected: fn_decl_param.r#type.friendly_type_str()
+                                    });
                                 }
                             }
                             if errors.is_empty() { None } else { Some(errors) }

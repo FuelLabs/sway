@@ -366,7 +366,7 @@ fn connect_declaration<'sc>(
             connect_expression(&rhs.expression, graph, &[entry_node], namespace, exit_node)
         }
         SideEffect | ErrorRecovery => {
-            unreachable!("These are error cases and should be removed in the type checking stage. ")
+            vec![]
         }
     }
 }
