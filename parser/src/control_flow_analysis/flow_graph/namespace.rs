@@ -13,6 +13,7 @@ use std::collections::HashMap;
 pub struct ControlFlowNamespace<'sc> {
     function_namespace: HashMap<Ident<'sc>, (EntryPoint, ExitPoint)>,
     enum_namespace: HashMap<Ident<'sc>, (NodeIndex, HashMap<Ident<'sc>, NodeIndex>)>,
+    trait_namespace: HashMap<Ident<'sc>, NodeIndex>,
 }
 
 impl<'sc> ControlFlowNamespace<'sc> {
@@ -51,5 +52,9 @@ impl<'sc> ControlFlowNamespace<'sc> {
     ) -> Option<(NodeIndex, NodeIndex)> {
         let (enum_ix, enum_decl) = self.enum_namespace.get(enum_name)?;
         Some((enum_ix.clone(), enum_decl.get(variant_name)?.clone()))
+    }
+
+    pub(crate) fn add_trait(&mut self, trait_name: Ident<'sc>, trait_idx: NodeIndex) {
+        self.trait_namespace.insert(trait_name, trait_idx);
     }
 }

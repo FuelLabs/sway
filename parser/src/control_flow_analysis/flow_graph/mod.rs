@@ -3,7 +3,7 @@
 
 use crate::{
     parse_tree::Ident,
-    semantics::ast_node::{TypedEnumVariant, TypedExpressionVariant},
+    semantics::ast_node::{TypedEnumVariant, TypedExpressionVariant, TypedTraitDeclaration},
     TreeType,
 };
 use crate::{
@@ -353,7 +353,10 @@ fn connect_declaration<'sc>(
             connect_typed_fn_decl(fn_decl, graph, entry_node, namespace, span, exit_node);
             vec![]
         }
-        TraitDeclaration(_) => todo!(),
+        TraitDeclaration(trait_decl) => {
+            connect_trait_declaration(&trait_decl, entry_node, namespace);
+            vec![]
+        }
         StructDeclaration(_) => todo!(),
         EnumDeclaration(enum_decl) => {
             connect_enum_declaration(&enum_decl, graph, entry_node, namespace);
@@ -366,6 +369,23 @@ fn connect_declaration<'sc>(
             unreachable!("These are error cases and should be removed in the type checking stage. ")
         }
     }
+}
+
+/// The strategy here is to populate the trait namespace with just one singular trait
+/// and if it is ever implemented, by virtue of type checking, we know all interface points
+/// were met.
+/// Upon implementation, we can populate the methods namespace and track dead functions that way.
+/// TL;DR: At this point, we _only_ track the wholistic trait declaration and not the functions
+/// contained within.
+///
+/// The trait node itself has already been added (as `entry_node`), so we just need to insert that
+/// node index into the namespace for the trait.
+fn connect_trait_declaration<'sc>(
+    decl: &TypedTraitDeclaration<'sc>,
+    entry_node: NodeIndex,
+    namespace: &mut ControlFlowNamespace<'sc>,
+) {
+    namespace.add_trait(decl.name.clone(), entry_node);
 }
 
 /// For an enum declaration, we want to make a declaration node for every individual enum
@@ -543,10 +563,13 @@ fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> Compi
             warning_content: Warning::DeadDeclaration,
         },
         TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration { .. }),
-            span,
+            content:
+                TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(
+                    TypedTraitDeclaration { name, .. },
+                )),
+            ..
         } => CompileWarning {
-            span: span.clone(),
+            span: name.span.clone(),
             warning_content: Warning::DeadDeclaration,
         },
         TypedAstNode {
