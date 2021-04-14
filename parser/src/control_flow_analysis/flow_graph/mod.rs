@@ -1,12 +1,16 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use crate::{parse_tree::Ident, semantics::ast_node::TypedExpressionVariant, TreeType};
+use crate::{
+    parse_tree::Ident,
+    semantics::ast_node::{TypedEnumVariant, TypedExpressionVariant},
+    TreeType,
+};
 use crate::{
     semantics::{
         ast_node::{
-            TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
-            TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
+            TypedCodeBlock, TypedDeclaration, TypedEnumDeclaration, TypedExpression,
+            TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
         },
         TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
@@ -15,7 +19,9 @@ use crate::{
 use pest::Span;
 use petgraph::algo::has_path_connecting;
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
-use std::collections::HashMap;
+
+mod namespace;
+use namespace::ControlFlowNamespace;
 
 pub type EntryPoint = NodeIndex;
 pub type ExitPoint = NodeIndex;
@@ -26,8 +32,6 @@ pub struct ControlFlowGraph<'sc> {
 }
 
 type Graph<'sc> = petgraph::Graph<ControlFlowGraphNode<'sc>, ControlFlowGraphEdge>;
-
-pub type ControlFlowFunctionNamespace<'sc> = HashMap<Ident<'sc>, (EntryPoint, ExitPoint)>;
 
 pub struct ControlFlowGraphEdge(String);
 
@@ -46,6 +50,10 @@ impl std::convert::From<&str> for ControlFlowGraphEdge {
 pub enum ControlFlowGraphNode<'sc> {
     OrganizationalDominator(String),
     ProgramNode(TypedAstNode<'sc>),
+    EnumVariant {
+        span: Span<'sc>,
+        variant_name: String,
+    },
 }
 
 impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {
@@ -53,6 +61,9 @@ impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
             ControlFlowGraphNode::ProgramNode(node) => format!("{:?}", node),
+            ControlFlowGraphNode::EnumVariant { variant_name, .. } => {
+                format!("Enum variant {}", variant_name.to_string())
+            }
         };
         f.write_str(&text)
     }
@@ -64,9 +75,24 @@ impl<'sc> std::convert::From<&TypedAstNode<'sc>> for ControlFlowGraphNode<'sc> {
     }
 }
 
+impl<'sc> std::convert::From<&TypedEnumVariant<'sc>> for ControlFlowGraphNode<'sc> {
+    fn from(other: &TypedEnumVariant<'sc>) -> Self {
+        ControlFlowGraphNode::EnumVariant {
+            variant_name: other.name.primary_name.to_string(),
+            span: other.span.clone(),
+        }
+    }
+}
+
 impl std::convert::From<String> for ControlFlowGraphNode<'_> {
     fn from(other: String) -> Self {
         ControlFlowGraphNode::OrganizationalDominator(other)
+    }
+}
+
+impl std::convert::From<&str> for ControlFlowGraphNode<'_> {
+    fn from(other: &str) -> Self {
+        ControlFlowGraphNode::OrganizationalDominator(other.to_string())
     }
 }
 
@@ -87,7 +113,7 @@ impl<'sc> ControlFlowGraph<'sc> {
             graph: Graph::new(),
             entry_points: vec![],
         };
-        let mut fn_namespace = Default::default();
+        let mut namespace = Default::default();
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
@@ -96,7 +122,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                 ast_entrypoint,
                 &mut graph,
                 &leaves,
-                &mut fn_namespace,
+                &mut namespace,
                 exit_node,
             );
 
@@ -169,76 +195,48 @@ impl<'sc> ControlFlowGraph<'sc> {
                 dead_nodes.push(destination);
             }
         }
-
-        let mut dead_nodes = dead_nodes
-            .into_iter()
-            .filter_map(|x| match &self.graph[x] {
-                ControlFlowGraphNode::OrganizationalDominator(_) => None,
-                ControlFlowGraphNode::ProgramNode(node) => Some(node),
+        let dead_enum_variant_warnings = dead_nodes
+            .iter()
+            .filter_map(|x| match &self.graph[*x] {
+                ControlFlowGraphNode::EnumVariant { span, variant_name } => Some(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::DeadEnumVariant {
+                        variant_name: variant_name.to_string(),
+                    },
+                }),
+                _ => None,
             })
             .collect::<Vec<_>>();
 
+        let dead_ast_node_warnings = dead_nodes
+            .into_iter()
+            .filter_map(|x| match &self.graph[x] {
+                ControlFlowGraphNode::ProgramNode(node) => {
+                    Some(construct_dead_code_warning_from_node(node))
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        let all_warnings = [dead_enum_variant_warnings, dead_ast_node_warnings].concat();
         // filter out any overlapping spans -- if a span is contained within another one,
         // remove it.
-        dead_nodes = dead_nodes
+        all_warnings
             .clone()
             .into_iter()
-            .filter(|TypedAstNode { span, .. }| {
+            .filter(|CompileWarning { span, .. }| {
                 // if any other warnings contain a span which completely covers this one, filter
                 // out this one.
-                dead_nodes
+                all_warnings
                     .iter()
                     .find(
-                        |TypedAstNode {
+                        |CompileWarning {
                              span: other_span, ..
                          }| {
                             other_span.end() > span.end() && other_span.start() < span.start()
                         },
                     )
                     .is_none()
-            })
-            .collect();
-        dead_nodes
-            .into_iter()
-            // The distinction between dead code and unreachable code is that dead code is simply a 
-            // declaration that is never utilized, while unreachable code is a node which has no
-            // control flow paths leading to it.
-            .map(|dead_node| match dead_node {
-                // if this is a function, struct, or trait declaration that is never called, then it is dead
-                // code.
-                TypedAstNode {
-                    content:
-                        TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration {
-                            ..
-                        }),
-                    span,
-                } => CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::DeadCode,
-                },
-                TypedAstNode {
-                    content:
-                        TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration {
-                             ..
-                        }),
-                    span,
-                } => CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::DeadCode,
-                },
-                TypedAstNode {
-                    content:
-                        TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration { .. }),
-                    span,
-                } => CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::DeadCode,
-                },
-                // otherwise, this is unreachable. 
-                TypedAstNode { span, .. } => CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::UnreachableCode,
-                },
             })
             .collect()
     }
@@ -255,7 +253,7 @@ fn connect_node<'sc>(
     node: &TypedAstNode<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
-    function_namespace: &mut ControlFlowFunctionNamespace<'sc>,
+    namespace: &mut ControlFlowNamespace<'sc>,
     exit_node: Option<NodeIndex>,
 ) -> (Vec<NodeIndex>, Option<NodeIndex>) {
     //    let mut graph = graph.clone();
@@ -294,13 +292,8 @@ fn connect_node<'sc>(
                 "condition is initially false".into(),
             );
             let mut leaves = vec![entry];
-            let (l_leaves, _l_exit_node) = depth_first_insertion_code_block(
-                body,
-                graph,
-                &leaves,
-                function_namespace,
-                exit_node,
-            );
+            let (l_leaves, _l_exit_node) =
+                depth_first_insertion_code_block(body, graph, &leaves, namespace, exit_node);
             // insert edges from end of block back to beginning of it
             for leaf in &l_leaves {
                 graph.add_edge(*leaf, entry, "loop repeats".into());
@@ -324,7 +317,7 @@ fn connect_node<'sc>(
             }
 
             (
-                connect_expression(expr_variant, graph, &[entry], function_namespace, exit_node),
+                connect_expression(expr_variant, graph, &[entry], namespace, exit_node),
                 exit_node,
             )
         }
@@ -336,7 +329,7 @@ fn connect_node<'sc>(
                 graph.add_edge(*leaf, decl_node, "".into());
             }
             (
-                connect_declaration(&decl, graph, decl_node, function_namespace, span, exit_node),
+                connect_declaration(&decl, graph, decl_node, namespace, span, exit_node),
                 exit_node,
             )
         }
@@ -347,43 +340,54 @@ fn connect_declaration<'sc>(
     decl: &TypedDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
-    function_namespace: &mut ControlFlowFunctionNamespace<'sc>,
+    namespace: &mut ControlFlowNamespace<'sc>,
     span: Span<'sc>,
     exit_node: Option<NodeIndex>,
 ) -> Vec<NodeIndex> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(TypedVariableDeclaration { body, .. }) => connect_expression(
-            &body.expression,
-            graph,
-            &[entry_node],
-            function_namespace,
-            exit_node,
-        ),
+        VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
+            connect_expression(&body.expression, graph, &[entry_node], namespace, exit_node)
+        }
         FunctionDeclaration(fn_decl) => {
-            connect_typed_fn_decl(
-                fn_decl,
-                graph,
-                entry_node,
-                function_namespace,
-                span,
-                exit_node,
-            );
+            connect_typed_fn_decl(fn_decl, graph, entry_node, namespace, span, exit_node);
             vec![]
         }
         TraitDeclaration(_) => todo!(),
         StructDeclaration(_) => todo!(),
-        EnumDeclaration(_) => todo!(),
-        Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
-            &rhs.expression,
-            graph,
-            &[entry_node],
-            function_namespace,
-            exit_node,
-        ),
+        EnumDeclaration(enum_decl) => {
+            connect_enum_declaration(&enum_decl, graph, entry_node, namespace);
+            vec![]
+        }
+        Reassignment(TypedReassignment { rhs, .. }) => {
+            connect_expression(&rhs.expression, graph, &[entry_node], namespace, exit_node)
+        }
         SideEffect | ErrorRecovery => {
             unreachable!("These are error cases and should be removed in the type checking stage. ")
         }
+    }
+}
+
+/// For an enum declaration, we want to make a declaration node for every individual enum
+/// variant. When a variant is constructed, we can point an edge at that variant. This way,
+/// we can see clearly, and thusly warn, when individual variants are not ever constructed.
+fn connect_enum_declaration<'sc>(
+    enum_decl: &TypedEnumDeclaration<'sc>,
+    graph: &mut ControlFlowGraph<'sc>,
+    entry_node: NodeIndex,
+    namespace: &mut ControlFlowNamespace<'sc>,
+) {
+    // keep a mapping of each variant
+    for variant in &enum_decl.variants {
+        let variant_index = graph.add_node(variant.into());
+
+        //        graph.add_edge(entry_node, variant_index, "".into());
+        namespace.insert_enum(
+            enum_decl.name.clone(),
+            entry_node,
+            variant.name.clone(),
+            variant_index,
+        );
     }
 }
 
@@ -394,36 +398,36 @@ fn connect_typed_fn_decl<'sc>(
     fn_decl: &TypedFunctionDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
-    function_namespace: &mut ControlFlowFunctionNamespace<'sc>,
+    namespace: &mut ControlFlowNamespace<'sc>,
     _span: Span<'sc>,
     exit_node: Option<NodeIndex>,
 ) {
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.primary_name).into());
-    let (exit_nodes, _exit_node) = depth_first_insertion_code_block(
+    let (_exit_nodes, _exit_node) = depth_first_insertion_code_block(
         &fn_decl.body,
         graph,
         &[entry_node],
-        function_namespace,
+        namespace,
         Some(fn_exit_node),
     );
     if let Some(exit_node) = exit_node {
         graph.add_edge(fn_exit_node, exit_node, "".into());
     }
 
-    function_namespace.insert(fn_decl.name.clone(), (entry_node, fn_exit_node));
+    namespace.insert_function(fn_decl.name.clone(), (entry_node, fn_exit_node));
 }
 
 fn depth_first_insertion_code_block<'sc>(
     node_content: &TypedCodeBlock<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
-    fn_namespace: &mut ControlFlowFunctionNamespace<'sc>,
+    namespace: &mut ControlFlowNamespace<'sc>,
     exit_node: Option<NodeIndex>,
 ) -> (Vec<NodeIndex>, Option<NodeIndex>) {
     let mut leaves = leaves.to_vec();
     let mut exit_node = exit_node.clone();
     for node in node_content.contents.iter() {
-        let (this_node, l_exit_node) = connect_node(node, graph, &leaves, fn_namespace, exit_node);
+        let (this_node, l_exit_node) = connect_node(node, graph, &leaves, namespace, exit_node);
         leaves = this_node;
         exit_node = l_exit_node;
     }
@@ -436,7 +440,7 @@ fn connect_expression<'sc>(
     expr_variant: &TypedExpressionVariant<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
-    fn_namespace: &mut ControlFlowFunctionNamespace<'sc>,
+    namespace: &mut ControlFlowNamespace<'sc>,
     exit_node: Option<NodeIndex>,
 ) -> Vec<NodeIndex> {
     use TypedExpressionVariant::*;
@@ -444,8 +448,10 @@ fn connect_expression<'sc>(
         FunctionApplication { name, .. } => {
             let mut is_external = false;
             // find the function in the namespace
-            let (fn_entrypoint, fn_exit_point) =
-                fn_namespace.get(&name.suffix).cloned().unwrap_or_else(|| {
+            let (fn_entrypoint, fn_exit_point) = namespace
+                .get_function(&name.suffix)
+                .cloned()
+                .unwrap_or_else(|| {
                     let node_idx =
                         graph.add_node(format!("extern fn {}()", name.suffix.primary_name).into());
                     is_external = true;
@@ -470,6 +476,90 @@ fn connect_expression<'sc>(
         }
         Literal(_lit) => leaves.to_vec(),
         VariableExpression { .. } => leaves.to_vec(),
+        EnumInstantiation {
+            enum_name,
+            variant_name,
+            ..
+        } => {
+            // connect this particular instantiation to its variants declaration
+            connect_enum_instantiation(enum_name, variant_name, graph, namespace, leaves)
+        }
         a => todo!("{:?}", a),
+    }
+}
+
+fn connect_enum_instantiation<'sc>(
+    enum_name: &Ident<'sc>,
+    variant_name: &Ident<'sc>,
+    graph: &mut ControlFlowGraph,
+    namespace: &ControlFlowNamespace,
+    leaves: &[NodeIndex],
+) -> Vec<NodeIndex> {
+    let (decl_ix, variant_index) = namespace
+        .find_enum_variant_index(enum_name, variant_name)
+        .unwrap_or_else(|| {
+            let node_idx = graph.add_node(
+                format!(
+                    "extern enum {}::{}",
+                    enum_name.primary_name, variant_name.primary_name
+                )
+                .into(),
+            );
+            (node_idx, node_idx)
+        });
+
+    // insert organizational nodes for instantiation of enum
+    let enum_instantiation_entry_idx = graph.add_node("enum instantiation entry".into());
+    let enum_instantiation_exit_idx = graph.add_node("enum instantiation exit".into());
+
+    // connect to declaration node itself to show that the declaration is used
+    graph.add_edge(enum_instantiation_entry_idx, decl_ix, "".into());
+    for leaf in leaves {
+        graph.add_edge(*leaf, enum_instantiation_entry_idx, "".into());
+    }
+
+    graph.add_edge(decl_ix, variant_index, "".into());
+    graph.add_edge(variant_index, enum_instantiation_exit_idx, "".into());
+
+    vec![enum_instantiation_exit_idx]
+}
+
+fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> CompileWarning<'sc> {
+    match node {
+        // if this is a function, struct, or trait declaration that is never called, then it is dead
+        // code.
+        TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration { .. }),
+            span,
+        } => CompileWarning {
+            span: span.clone(),
+            warning_content: Warning::DeadDeclaration,
+        },
+        TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration { .. }),
+            span,
+        } => CompileWarning {
+            span: span.clone(),
+            warning_content: Warning::DeadDeclaration,
+        },
+        TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration { .. }),
+            span,
+        } => CompileWarning {
+            span: span.clone(),
+            warning_content: Warning::DeadDeclaration,
+        },
+        TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::EnumDeclaration(..)),
+            span,
+        } => CompileWarning {
+            span: span.clone(),
+            warning_content: Warning::DeadDeclaration,
+        },
+        // otherwise, this is unreachable.
+        TypedAstNode { span, .. } => CompileWarning {
+            span: span.clone(),
+            warning_content: Warning::UnreachableCode,
+        },
     }
 }

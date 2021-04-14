@@ -20,6 +20,7 @@ pub(crate) struct EnumVariant<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) r#type: TypeInfo<'sc>,
     pub(crate) tag: usize,
+    pub(crate) span: Span<'sc>,
 }
 
 impl<'sc> EnumDeclaration<'sc> {
@@ -132,6 +133,7 @@ impl<'sc> EnumVariant<'sc> {
             name: self.name.clone(),
             r#type: namespace.resolve_type(&self.r#type),
             tag: self.tag,
+            span: self.span.clone(),
         }
     }
     pub(crate) fn parse_from_pairs(
@@ -144,7 +146,7 @@ impl<'sc> EnumVariant<'sc> {
         if let Some(decl_inner) = decl_inner {
             let fields = decl_inner.into_inner().collect::<Vec<_>>();
             for i in (0..fields.len()).step_by(2) {
-                let span = fields[i].as_span();
+                let variant_span = fields[i].as_span();
                 let name = eval!(
                     Ident::parse_from_pair,
                     warnings,
@@ -155,7 +157,7 @@ impl<'sc> EnumVariant<'sc> {
                 assert_or_warn!(
                     is_class_case(name.primary_name),
                     warnings,
-                    span,
+                    name.span.clone(),
                     Warning::NonClassCaseEnumVariantName {
                         variant_name: name.primary_name
                     }
@@ -167,7 +169,12 @@ impl<'sc> EnumVariant<'sc> {
                     fields[i + 1].clone(),
                     TypeInfo::Unit
                 );
-                fields_buf.push(EnumVariant { name, r#type, tag });
+                fields_buf.push(EnumVariant {
+                    name,
+                    r#type,
+                    tag,
+                    span: variant_span,
+                });
                 tag = tag + 1;
             }
         }

@@ -131,6 +131,7 @@ pub struct TypedEnumVariant<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) r#type: ResolvedType<'sc>,
     pub(crate) tag: usize,
+    pub(crate) span: Span<'sc>,
 }
 
 #[derive(Clone, Debug)]

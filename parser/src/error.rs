@@ -173,8 +173,9 @@ pub enum Warning<'sc> {
         name: &'sc str,
     },
     OverridingTraitImplementation,
-    DeadCode,
+    DeadDeclaration,
     UnreachableCode,
+    DeadEnumVariant { variant_name: String }
 }
 
 impl<'sc> Warning<'sc> {
@@ -192,8 +193,9 @@ impl<'sc> Warning<'sc> {
             SimilarMethodFound { lib, module, name } => format!("A method with the same name was found for type {} in dependency \"{}::{}\". Traits must be in scope in order to access their methods. ", name, lib, module),
             OverridesOtherSymbol { name } => format!("This import would override another symbol with the same name \"{}\" in this namespace.", name),
             OverridingTraitImplementation  => format!("This trait implementation overrides another one that was previously defined."),
-            DeadCode  => "This code is never used.".into(),
-            UnreachableCode => "This code is unreachable.".into()
+            DeadDeclaration  => "This declaration is never used.".into(),
+            UnreachableCode => "This code is unreachable.".into(),
+            DeadEnumVariant { variant_name } => format!("Enum variant {} is never constructed.", variant_name)
             
         }
     }
