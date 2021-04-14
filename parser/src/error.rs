@@ -379,6 +379,8 @@ pub enum CompileError<'sc> {
         name: String,
         actually_is: String,
     },
+    #[error("This enum variant requires an instantiation expression. Try initializing it with arguments in parentheses.")]
+    MissingEnumInstantiator { span: Span<'sc> }
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -503,6 +505,7 @@ impl<'sc> CompileError<'sc> {
             NoElseBranch { span, .. } => (span.start(), span.end()),
             UnqualifiedSelfType { span, .. } => (span.start(), span.end()),
             NotAType { span, .. } => (span.start(), span.end()),
+            MissingEnumInstantiator { span, .. } => (span.start(), span.end()),
         }
     }
 }

@@ -76,6 +76,11 @@ pub(crate) fn instantiate_enum<'sc>(
                 errors,
             )
         }
-        (None, _) => todo!("error No enum instantiator provided for enum of type r#type"),
+        (None, _) => {
+            errors.push(CompileError::MissingEnumInstantiator {
+                span: enum_field_name.span.clone(),
+            });
+            return err(warnings, errors);
+        }
     }
 }
