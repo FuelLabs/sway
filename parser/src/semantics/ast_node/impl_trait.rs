@@ -168,7 +168,7 @@ pub(crate) fn implementation_of_trait<'sc>(
             // check that the implementation checklist is complete
             if !function_checklist.is_empty() {
                 errors.push(CompileError::MissingInterfaceSurfaceMethods {
-                    span: block_span,
+                    span: block_span.clone(),
                     missing_functions: function_checklist
                         .into_iter()
                         .map(|Ident { primary_name, .. }| primary_name.to_string())
@@ -177,8 +177,8 @@ pub(crate) fn implementation_of_trait<'sc>(
                 });
             }
 
-            namespace.insert_trait_implementation(trait_name, type_implementing_for, functions_buf);
-            ok(TypedDeclaration::SideEffect, warnings, errors)
+            namespace.insert_trait_implementation(trait_name.clone(), type_implementing_for, functions_buf.clone());
+            ok(TypedDeclaration::ImplTrait { trait_name, span: block_span, methods: functions_buf }, warnings, errors)
         }
         Some(_) => {
             errors.push(CompileError::NotATrait {

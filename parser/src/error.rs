@@ -173,10 +173,12 @@ pub enum Warning<'sc> {
     },
     OverridingTraitImplementation,
     DeadDeclaration,
+    DeadTrait,
     UnreachableCode,
     DeadEnumVariant {
         variant_name: String,
     },
+    DeadMethod,
 }
 
 impl<'sc> Warning<'sc> {
@@ -196,8 +198,9 @@ impl<'sc> Warning<'sc> {
             OverridingTraitImplementation  => format!("This trait implementation overrides another one that was previously defined."),
             DeadDeclaration  => "This declaration is never used.".into(),
             UnreachableCode => "This code is unreachable.".into(),
-            DeadEnumVariant { variant_name } => format!("Enum variant {} is never constructed.", variant_name)
-            
+            DeadEnumVariant { variant_name } => format!("Enum variant {} is never constructed.", variant_name),
+            DeadTrait => "This trait is never implemented.".into(),
+            DeadMethod => "This method is never called.".into()
         }
     }
 }
@@ -380,7 +383,7 @@ pub enum CompileError<'sc> {
         actually_is: String,
     },
     #[error("This enum variant requires an instantiation expression. Try initializing it with arguments in parentheses.")]
-    MissingEnumInstantiator { span: Span<'sc> }
+    MissingEnumInstantiator { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {

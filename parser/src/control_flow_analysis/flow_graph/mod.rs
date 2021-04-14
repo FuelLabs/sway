@@ -54,6 +54,10 @@ pub enum ControlFlowGraphNode<'sc> {
         span: Span<'sc>,
         variant_name: String,
     },
+    MethodDeclaration {
+        span: Span<'sc>,
+        method_name: Ident<'sc>,
+    },
 }
 
 impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {
@@ -63,6 +67,9 @@ impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {
             ControlFlowGraphNode::ProgramNode(node) => format!("{:?}", node),
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => {
                 format!("Enum variant {}", variant_name.to_string())
+            }
+            ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
+                format!("Method {}", method_name.primary_name.to_string())
             }
         };
         f.write_str(&text)
@@ -214,7 +221,17 @@ impl<'sc> ControlFlowGraph<'sc> {
                 ControlFlowGraphNode::ProgramNode(node) => {
                     Some(construct_dead_code_warning_from_node(node))
                 }
-                _ => None,
+                ControlFlowGraphNode::EnumVariant { span, variant_name } => Some(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::DeadEnumVariant {
+                        variant_name: variant_name.to_string(),
+                    },
+                }),
+                ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::DeadMethod,
+                }),
+                ControlFlowGraphNode::OrganizationalDominator(..) => None,
             })
             .collect::<Vec<_>>();
 
@@ -357,7 +374,7 @@ fn connect_declaration<'sc>(
             connect_trait_declaration(&trait_decl, entry_node, namespace);
             vec![]
         }
-        StructDeclaration(_) => todo!(),
+        StructDeclaration(_) => todo!("track each struct field's usage"),
         EnumDeclaration(enum_decl) => {
             connect_enum_declaration(&enum_decl, graph, entry_node, namespace);
             vec![]
@@ -365,10 +382,67 @@ fn connect_declaration<'sc>(
         Reassignment(TypedReassignment { rhs, .. }) => {
             connect_expression(&rhs.expression, graph, &[entry_node], namespace, exit_node)
         }
-        SideEffect | ErrorRecovery => {
+        ImplTrait {
+            trait_name,
+            methods,
+            ..
+        } => {
+            connect_impl_trait(trait_name, graph, methods, namespace, entry_node);
             vec![]
         }
+        SideEffect | ErrorRecovery => {
+            unreachable!("These are error cases and should be removed in the type checking stage. ")
+        }
     }
+}
+
+/// Implementations of traits are top-level things that are not conditional, so
+/// we insert an edge from the function's starting point to the declaration to show
+/// that the declaration was indeed at some point implemented.
+/// Additionally, we insert the trait's methods into the method namespace in order to
+/// track which exact methods are dead code.
+fn connect_impl_trait<'sc>(
+    trait_name: &Ident<'sc>,
+    graph: &mut ControlFlowGraph<'sc>,
+    methods: &[TypedFunctionDeclaration<'sc>],
+    namespace: &mut ControlFlowNamespace<'sc>,
+    entry_node: NodeIndex,
+) {
+    let trait_decl_node = namespace.find_trait(trait_name);
+    match trait_decl_node {
+        None => {
+            let edge_ix = graph.add_node("External trait".into());
+            graph.add_edge(entry_node, edge_ix, "".into());
+        }
+        Some(trait_decl_node) => {
+            // This is sort of a shortcut -- a path from the program exit to the trait will be
+            // included in the main execution path, since we are guaranteed to hit the program
+            // exit node.
+            // Eventually we can introduce a program entry dominator or something like that.
+            // This is not a risky shortcut and works fine for the time being.
+            graph.add_edge(0.into(), entry_node, "".into());
+            graph.add_edge(entry_node, *trait_decl_node, "".into());
+        }
+    }
+    let mut methods_and_indexes = vec![];
+    // insert method declarations into the graph
+    for fn_decl in methods {
+        let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
+            span: fn_decl.span.clone(),
+            method_name: fn_decl.name.clone(),
+        });
+        connect_typed_fn_decl(
+            &fn_decl,
+            graph,
+            fn_decl_entry_node,
+            namespace,
+            fn_decl.span.clone(),
+            None,
+        );
+        methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
+    }
+    // Now, insert the methods into the trait method namespace.
+    namespace.insert_trait_methods(trait_name.clone(), methods_and_indexes);
 }
 
 /// The strategy here is to populate the trait namespace with just one singular trait
@@ -570,7 +644,7 @@ fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> Compi
             ..
         } => CompileWarning {
             span: name.span.clone(),
-            warning_content: Warning::DeadDeclaration,
+            warning_content: Warning::DeadTrait,
         },
         TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::EnumDeclaration(..)),

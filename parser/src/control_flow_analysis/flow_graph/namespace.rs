@@ -14,6 +14,8 @@ pub struct ControlFlowNamespace<'sc> {
     function_namespace: HashMap<Ident<'sc>, (EntryPoint, ExitPoint)>,
     enum_namespace: HashMap<Ident<'sc>, (NodeIndex, HashMap<Ident<'sc>, NodeIndex>)>,
     trait_namespace: HashMap<Ident<'sc>, NodeIndex>,
+    /// This is a mapping from trait name to method names and their node indexes
+    trait_method_namespace: HashMap<Ident<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
 }
 
 impl<'sc> ControlFlowNamespace<'sc> {
@@ -56,5 +58,30 @@ impl<'sc> ControlFlowNamespace<'sc> {
 
     pub(crate) fn add_trait(&mut self, trait_name: Ident<'sc>, trait_idx: NodeIndex) {
         self.trait_namespace.insert(trait_name, trait_idx);
+    }
+
+    pub(crate) fn find_trait(&self, name: &Ident<'sc>) -> Option<&NodeIndex> {
+        self.trait_namespace.get(name)
+    }
+
+    pub(crate) fn insert_trait_methods(
+        &mut self,
+        trait_name: Ident<'sc>,
+        methods: Vec<(Ident<'sc>, NodeIndex)>,
+    ) {
+        match self.trait_method_namespace.get_mut(&trait_name) {
+            Some(methods_ns) => {
+                for (name, ix) in methods {
+                    methods_ns.insert(name, ix);
+                }
+            }
+            None => {
+                let mut ns = HashMap::default();
+                for (name, ix) in methods {
+                    ns.insert(name, ix);
+                }
+                self.trait_method_namespace.insert(trait_name, ns);
+            }
+        }
     }
 }

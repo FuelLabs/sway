@@ -14,6 +14,11 @@ pub enum TypedDeclaration<'sc> {
     StructDeclaration(TypedStructDeclaration<'sc>),
     EnumDeclaration(TypedEnumDeclaration<'sc>),
     Reassignment(TypedReassignment<'sc>),
+    ImplTrait {
+        trait_name: Ident<'sc>,
+        span: Span<'sc>,
+        methods: Vec<TypedFunctionDeclaration<'sc>>,
+    },
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
     ErrorRecovery,
@@ -30,6 +35,7 @@ impl<'sc> TypedDeclaration<'sc> {
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
             Reassignment(_) => "reassignment",
+            ImplTrait { .. } => "impl trait",
             SideEffect => "",
             ErrorRecovery => "error",
         }
@@ -72,6 +78,7 @@ impl<'sc> TypedDeclaration<'sc> {
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span.clone(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
             Reassignment(TypedReassignment { lhs, .. }) => lhs.span.clone(),
+            ImplTrait { span, .. } => span.clone(),
             SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
         }
     }
