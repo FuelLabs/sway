@@ -17,9 +17,10 @@ pub(crate) use type_parameter::*;
 pub(crate) use variable_declaration::*;
 
 use crate::error::*;
-use crate::parse_tree::{Expression, Ident};
+use crate::parse_tree::Expression;
 use crate::parser::Rule;
 use crate::types::TypeInfo;
+use crate::Ident;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]

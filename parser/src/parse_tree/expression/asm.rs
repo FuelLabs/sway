@@ -1,6 +1,6 @@
 use crate::error::*;
-use crate::parse_tree::Ident;
 use crate::parser::Rule;
+use crate::Ident;
 use pest::iterators::Pair;
 use pest::Span;
 

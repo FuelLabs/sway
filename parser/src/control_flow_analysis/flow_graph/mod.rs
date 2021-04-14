@@ -2,9 +2,9 @@
 //! execution.
 
 use crate::{
-    parse_tree::{Ident, Visibility},
+    parse_tree::Visibility,
     semantics::ast_node::{TypedEnumVariant, TypedExpressionVariant, TypedTraitDeclaration},
-    TreeType,
+    Ident, TreeType,
 };
 use crate::{
     semantics::{

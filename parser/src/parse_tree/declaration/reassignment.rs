@@ -1,6 +1,7 @@
 use crate::error::{err, ok, CompileResult};
-use crate::parse_tree::{Expression, Ident};
+use crate::parse_tree::Expression;
 use crate::parser::Rule;
+use crate::Ident;
 use pest::iterators::Pair;
 use pest::Span;
 

@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::{parse_tree::Ident, Rule};
+use crate::{Ident, Rule};
 use pest::iterators::Pair;
 
 use super::ResolvedType;

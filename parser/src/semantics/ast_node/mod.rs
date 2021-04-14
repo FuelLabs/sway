@@ -2,7 +2,7 @@ use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
 use crate::types::{ResolvedType, TypeInfo};
-use crate::{AstNode, AstNodeContent, ReturnStatement};
+use crate::{AstNode, AstNodeContent, ReturnStatement, Ident};
 use declaration::TypedTraitFn;
 use pest::Span;
 

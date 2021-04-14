@@ -4,25 +4,28 @@ extern crate pest_derive;
 mod error;
 
 mod control_flow_analysis;
+mod ident;
 mod parse_tree;
 mod parser;
 mod semantics;
-pub(crate) mod types;
-pub(crate) mod utils;
+
 use crate::error::*;
-pub use crate::parse_tree::Ident;
 use crate::parse_tree::*;
-pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 use crate::parser::{HllParser, Rule};
 use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
-pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use semantics::{TreeType, TypedParseTree};
-pub use types::TypeInfo;
+
+pub(crate) mod types;
+pub(crate) mod utils;
+pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
+pub use ident::Ident;
 pub use pest::Span;
+pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+pub use types::TypeInfo;
 
 // todo rename to language name
 #[derive(Debug)]

@@ -3,7 +3,7 @@ use super::{
 };
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
-use crate::{error::*, types::ResolvedType};
+use crate::{error::*, types::ResolvedType, Ident};
 use pest::Span;
 
 #[derive(Clone, Debug)]
