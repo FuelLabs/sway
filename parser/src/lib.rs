@@ -44,6 +44,7 @@ pub struct HllTypedParseTree<'sc> {
 #[derive(Debug)]
 pub struct LibraryExports<'sc> {
     pub namespace: Namespace<'sc>,
+    trees: Vec<TypedParseTree<'sc>>,
 }
 
 #[derive(Debug)]
@@ -250,11 +251,13 @@ pub fn compile<'sc, 'manifest>(
             .collect();
         let mut exports = LibraryExports {
             namespace: Default::default(),
+            trees: vec![],
         };
         for (ref name, parse_tree) in res {
             exports
                 .namespace
-                .insert_module(name.primary_name.to_string(), parse_tree.namespace);
+                .insert_module(name.primary_name.to_string(), parse_tree.namespace.clone());
+            exports.trees.push(parse_tree);
         }
         exports
     };
@@ -324,10 +327,14 @@ fn perform_control_flow_analysis<'sc>(
     }
 }
 fn perform_control_flow_analysis_on_library_exports<'sc>(
-    _tree: &LibraryExports<'sc>,
+    lib: &LibraryExports<'sc>,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
-    println!("TODO: control flow analysis on a library");
-    (vec![], vec![])
+    let mut warnings = vec![];
+    for tree in &lib.trees {
+        let graph = ControlFlowGraph::from_tree(tree, TreeType::Library);
+        warnings.append(&mut graph.find_dead_code());
+    }
+    (warnings, vec![])
 }
 
 // strategy: parse top level things

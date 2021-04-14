@@ -267,6 +267,9 @@ impl<'sc> TypedAstNode<'sc> {
                                 span,
                                 return_type,
                                 type_parameters,
+                                // For now, any method declared is automatically public. 
+                                // We can tweak that later if we want.
+                                visibility: Visibility::Public,
                                 return_type_span
                             });
                         }

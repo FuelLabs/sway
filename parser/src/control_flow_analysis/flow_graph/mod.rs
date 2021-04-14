@@ -2,7 +2,7 @@
 //! execution.
 
 use crate::{
-    parse_tree::Ident,
+    parse_tree::{Ident, Visibility},
     semantics::ast_node::{TypedEnumVariant, TypedExpressionVariant, TypedTraitDeclaration},
     TreeType,
 };
@@ -137,11 +137,11 @@ impl<'sc> ControlFlowGraph<'sc> {
         }
 
         // calculate the entry points based on the tree type
-        graph.entry_points =
-            match tree_type {
-                TreeType::Predicate | TreeType::Script => {
-                    // a predicate or script have a main function as the only entry point
-                    vec![graph
+        graph.entry_points = match tree_type {
+            TreeType::Predicate | TreeType::Script => {
+                // a predicate or script have a main function as the only entry point
+                vec![
+                    graph
                         .graph
                         .node_indices()
                         .find(|i| match graph.graph[*i] {
@@ -157,31 +157,31 @@ impl<'sc> ControlFlowGraph<'sc> {
                             }) => name.primary_name == "main",
                             _ => false,
                         })
-                        .unwrap()]
-                }
-                TreeType::Contract | TreeType::Library => {
-                    // eventually we want to limit this to pub stuff
-                    // TODO issue #17
-                    // only pub things are "real" entry points
-                    // for now, all functions are entry points
+                        .unwrap(),
+                ]
+            }
+            TreeType::Contract | TreeType::Library => {
+                // eventually we want to limit this to pub stuff
+                // TODO issue #17
+                // only pub things are "real" entry points
+                // for now, all functions are entry points
 
-                    vec![graph
+                graph
                         .graph
                         .node_indices()
-                        .find(|i| match graph.graph[*i] {
+                        .filter(|i| match graph.graph[*i] {
                             ControlFlowGraphNode::OrganizationalDominator(_) => false,
                             ControlFlowGraphNode::ProgramNode(TypedAstNode {
                                 content:
                                     TypedAstNodeContent::Declaration(
-                                        TypedDeclaration::FunctionDeclaration(_),
+                                        TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration { visibility: Visibility::Public, .. } ),
                                     ),
                                 ..
                             }) => true,
                             _ => false,
-                        })
-                        .unwrap()]
-                }
-            };
+                        }).collect()
+            }
+        };
         graph.visualize();
 
         graph

@@ -181,6 +181,7 @@ pub struct TypedFunctionDeclaration<'sc> {
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
     pub(crate) return_type_span: Span<'sc>,
+    pub(crate) visibility: Visibility,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -230,6 +231,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             return_type,
             type_parameters,
             return_type_span,
+            visibility,
             ..
         } = fn_decl.clone();
         let return_type = namespace.resolve_type(&return_type);
@@ -399,6 +401,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 return_type,
                 type_parameters,
                 return_type_span,
+                visibility,
             },
             warnings,
             errors,
