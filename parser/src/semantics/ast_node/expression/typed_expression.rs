@@ -395,7 +395,6 @@ impl<'sc> TypedExpression<'sc> {
                 name_parts,
                 span,
             } => {
-                //                let name_parts = VecDeque::from(name_parts);
                 // this must be >= 2, or else the parser would not have matched it. asserting that
                 // invariant here, since it is an assumption that is acted upon later.
                 assert!(name_parts.len() >= 2);

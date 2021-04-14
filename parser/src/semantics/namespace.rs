@@ -248,7 +248,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, ResolvedType<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut ident_iter = subfield_exp.into_iter();
+        let mut ident_iter = subfield_exp.into_iter().peekable();
         let first_ident = ident_iter.next().unwrap();
         let symbol = match self.symbols.get(&first_ident) {
             Some(s) => s,
@@ -260,6 +260,15 @@ impl<'sc> Namespace<'sc> {
                 return err(warnings, errors);
             }
         };
+        if ident_iter.peek().is_none() {
+            let ty = type_check!(
+                symbol.return_type(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            return ok(ty, warnings, errors);
+        }
         let (mut fields, struct_name) = match self.get_struct_type_fields(symbol, &first_ident) {
             CompileResult::Ok {
                 value,
