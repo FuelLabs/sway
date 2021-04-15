@@ -5,16 +5,13 @@ use super::*;
 use super::{ControlFlowGraph, EntryPoint, ExitPoint, Graph};
 use crate::semantics::{
     ast_node::{
-        TypedCodeBlock, TypedDeclaration, TypedEnumDeclaration, TypedExpression,
-        TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
+        TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
+        TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
     },
     TypedAstNode, TypedAstNodeContent,
 };
+use crate::Ident;
 use crate::{error::*, semantics::TypedParseTree};
-use crate::{
-    semantics::ast_node::{TypedExpressionVariant, TypedTraitDeclaration},
-    Ident,
-};
 use pest::Span;
 use petgraph::prelude::NodeIndex;
 
@@ -27,12 +24,13 @@ impl<'sc> ControlFlowGraph<'sc> {
         };
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
-        let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
         for ast_entrypoint in ast.root_nodes.iter() {
-            let (l_leaves, _new_exit_node) =
-                connect_node(ast_entrypoint, &mut graph, &leaves, exit_node);
+            let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves);
 
-            leaves = l_leaves;
+            match l_leaves {
+                NodeConnection::NextStep(nodes) => leaves = nodes,
+                _ => (),
+            }
         }
 
         graph
@@ -79,17 +77,25 @@ impl<'sc> ControlFlowGraph<'sc> {
             }
             rovers = next_rovers;
         }
+        self.visualize();
 
         errors
     }
 }
+
+/// The resulting edges from connecting a node to the graph.
+enum NodeConnection {
+    /// This represents a node that steps on to the next node.
+    NextStep(Vec<NodeIndex>),
+    /// This represents a return or implicit return node, which aborts the stepwise flow.
+    Return(NodeIndex),
+}
+
 fn connect_node<'sc>(
     node: &TypedAstNode<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
-    exit_node: Option<NodeIndex>,
-) -> (Vec<NodeIndex>, Option<NodeIndex>) {
-    //    let mut graph = graph.clone();
+) -> NodeConnection {
     let span = node.span.clone();
     match &node.content {
         TypedAstNodeContent::ReturnStatement(_)
@@ -98,110 +104,85 @@ fn connect_node<'sc>(
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
-            // connect return to the exit node
-            if let Some(exit_node) = exit_node {
-                graph.add_edge(this_index, exit_node, "return".into());
-                (vec![], None)
-            } else {
-                (vec![], None)
-            }
+            NodeConnection::Return(this_index)
         }
-        TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
-            // a while loop can loop back to the beginning,
-            // or it can terminate.
-            // so we connect the _end_ of the while loop _both_ to its beginning and the next node.
-            // the loop could also be entirely skipped
-
+        TypedAstNodeContent::WhileLoop(TypedWhileLoop { .. }) => {
+            // An abridged version of the dead code analysis for a while loop
+            // since we don't really care about what the loop body contains when detecting
+            // divergent paths
             let entry = graph.add_node(node.into());
             let while_loop_exit = graph.add_node("while loop exit".to_string().into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry, "".into());
             }
-            // it is possible for a whole while loop to be skipped so add edge from
-            // beginning of while loop straight to exit
             graph.add_edge(
                 entry,
                 while_loop_exit,
                 "condition is initially false".into(),
             );
-            let mut leaves = vec![entry];
-            let (l_leaves, _l_exit_node) =
-                depth_first_insertion_code_block(body, graph, &leaves, exit_node);
-            // insert edges from end of block back to beginning of it
-            for leaf in &l_leaves {
-                graph.add_edge(*leaf, entry, "loop repeats".into());
-            }
+            let loop_body = graph.add_node("Loop body".into());
+            graph.add_edge(loop_body, entry, "loop repeats".into());
 
-            leaves = l_leaves;
-            for leaf in leaves {
-                graph.add_edge(leaf, while_loop_exit, "".into());
-            }
-            (vec![while_loop_exit], exit_node)
+            graph.add_edge(loop_body, while_loop_exit, "".into());
+            NodeConnection::NextStep(vec![while_loop_exit])
         }
-        TypedAstNodeContent::Expression(TypedExpression {
-            expression: expr_variant,
-            ..
-        }) => {
+        TypedAstNodeContent::Expression(TypedExpression { .. }) => {
             let entry = graph.add_node(node.into());
             // insert organizational dominator node
             // connected to all current leaves
             for leaf in leaves {
                 graph.add_edge(*leaf, entry, "".into());
             }
-
-            (
-                connect_expression(expr_variant, graph, &[entry], exit_node),
-                exit_node,
-            )
+            NodeConnection::NextStep(vec![entry])
         }
-        TypedAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
+        TypedAstNodeContent::SideEffect => NodeConnection::NextStep(leaves.to_vec()),
         TypedAstNodeContent::Declaration(decl) => {
-            // all leaves connect to this node, then this node is the singular leaf
-            let decl_node = graph.add_node(node.into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, decl_node, "".into());
-            }
-            (
-                connect_declaration(&decl, graph, decl_node, span, exit_node),
-                exit_node,
-            )
+            NodeConnection::NextStep(connect_declaration(node, &decl, graph, span, leaves))
         }
     }
 }
 
 fn connect_declaration<'sc>(
+    node: &TypedAstNode<'sc>,
     decl: &TypedDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
-    entry_node: NodeIndex,
     span: Span<'sc>,
-    exit_node: Option<NodeIndex>,
+    leaves: &[NodeIndex],
 ) -> Vec<NodeIndex> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
-            connect_expression(&body.expression, graph, &[entry_node], exit_node)
+        TraitDeclaration(_) | StructDeclaration(_) | EnumDeclaration(_) => vec![],
+        VariableDeclaration(TypedVariableDeclaration { .. }) => {
+            let entry_node = graph.add_node(node.into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry_node, "".into());
+            }
+            vec![entry_node]
         }
         FunctionDeclaration(fn_decl) => {
-            connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node);
+            let entry_node = graph.add_node(node.into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry_node, "".into());
+            }
+            connect_typed_fn_decl(fn_decl, graph, entry_node, span);
             vec![]
         }
-        TraitDeclaration(trait_decl) => {
-            connect_trait_declaration(&trait_decl, graph, entry_node);
-            vec![]
-        }
-        StructDeclaration(_) => todo!("track each struct field's usage"),
-        EnumDeclaration(enum_decl) => {
-            connect_enum_declaration(&enum_decl, graph, entry_node);
-            vec![]
-        }
-        Reassignment(TypedReassignment { rhs, .. }) => {
-            connect_expression(&rhs.expression, graph, &[entry_node], exit_node)
+        Reassignment(TypedReassignment { .. }) => {
+            let entry_node = graph.add_node(node.into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry_node, "".into());
+            }
+            vec![entry_node]
         }
         ImplTrait {
             trait_name,
             methods,
             ..
         } => {
+            let entry_node = graph.add_node(node.into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry_node, "".into());
+            }
             connect_impl_trait(trait_name, graph, methods, entry_node);
             vec![]
         }
@@ -222,18 +203,6 @@ fn connect_impl_trait<'sc>(
     methods: &[TypedFunctionDeclaration<'sc>],
     entry_node: NodeIndex,
 ) {
-    let graph_c = graph.clone();
-    let trait_decl_node = graph_c.namespace.find_trait(trait_name);
-    match trait_decl_node {
-        None => {
-            let edge_ix = graph.add_node("External trait".into());
-            graph.add_edge(entry_node, edge_ix, "".into());
-        }
-        Some(trait_decl_node) => {
-            graph.add_edge_from_entry(entry_node, "".into());
-            graph.add_edge(entry_node, *trait_decl_node, "".into());
-        }
-    }
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
     for fn_decl in methods {
@@ -244,13 +213,7 @@ fn connect_impl_trait<'sc>(
         graph.add_edge(entry_node, fn_decl_entry_node, "".into());
         // connect the impl declaration node to the functions themselves, as all trait functions are
         // public if the trait is in scope
-        connect_typed_fn_decl(
-            &fn_decl,
-            graph,
-            fn_decl_entry_node,
-            fn_decl.span.clone(),
-            None,
-        );
+        connect_typed_fn_decl(&fn_decl, graph, fn_decl_entry_node, fn_decl.span.clone());
         methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
     }
     // Now, insert the methods into the trait method namespace.
@@ -268,35 +231,6 @@ fn connect_impl_trait<'sc>(
 ///
 /// The trait node itself has already been added (as `entry_node`), so we just need to insert that
 /// node index into the namespace for the trait.
-fn connect_trait_declaration<'sc>(
-    decl: &TypedTraitDeclaration<'sc>,
-    graph: &mut ControlFlowGraph<'sc>,
-    entry_node: NodeIndex,
-) {
-    graph.namespace.add_trait(decl.name.clone(), entry_node);
-}
-
-/// For an enum declaration, we want to make a declaration node for every individual enum
-/// variant. When a variant is constructed, we can point an edge at that variant. This way,
-/// we can see clearly, and thusly warn, when individual variants are not ever constructed.
-fn connect_enum_declaration<'sc>(
-    enum_decl: &TypedEnumDeclaration<'sc>,
-    graph: &mut ControlFlowGraph<'sc>,
-    entry_node: NodeIndex,
-) {
-    // keep a mapping of each variant
-    for variant in &enum_decl.variants {
-        let variant_index = graph.add_node(variant.into());
-
-        //        graph.add_edge(entry_node, variant_index, "".into());
-        graph.namespace.insert_enum(
-            enum_decl.name.clone(),
-            entry_node,
-            variant.name.clone(),
-            variant_index,
-        );
-    }
-}
 
 /// When connecting a function declaration, we are inserting a new root node into the graph that
 /// has no entry points, since it is just a declaration.
@@ -306,13 +240,11 @@ fn connect_typed_fn_decl<'sc>(
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
     _span: Span<'sc>,
-    exit_node: Option<NodeIndex>,
 ) {
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.primary_name).into());
-    let (_exit_nodes, _exit_node) =
-        depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node], Some(fn_exit_node));
-    if let Some(exit_node) = exit_node {
-        graph.add_edge(fn_exit_node, exit_node, "".into());
+    let return_nodes = depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node]);
+    for node in return_nodes {
+        graph.add_edge(node, fn_exit_node, "return".into());
     }
 
     graph
@@ -320,108 +252,23 @@ fn connect_typed_fn_decl<'sc>(
         .insert_function(fn_decl.name.clone(), (entry_node, fn_exit_node));
 }
 
+type ReturnStatementNodes = Vec<NodeIndex>;
+
 fn depth_first_insertion_code_block<'sc>(
     node_content: &TypedCodeBlock<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
-    exit_node: Option<NodeIndex>,
-) -> (Vec<NodeIndex>, Option<NodeIndex>) {
+) -> ReturnStatementNodes {
     let mut leaves = leaves.to_vec();
-    let mut exit_node = exit_node.clone();
+    let mut return_nodes = vec![];
     for node in node_content.contents.iter() {
-        let (this_node, l_exit_node) = connect_node(node, graph, &leaves, exit_node);
-        leaves = this_node;
-        exit_node = l_exit_node;
-    }
-    (leaves, exit_node)
-}
-
-/// connects any inner parts of an expression to the graph
-/// note the main expression node has already been inserted
-fn connect_expression<'sc>(
-    expr_variant: &TypedExpressionVariant<'sc>,
-    graph: &mut ControlFlowGraph<'sc>,
-    leaves: &[NodeIndex],
-    exit_node: Option<NodeIndex>,
-) -> Vec<NodeIndex> {
-    use TypedExpressionVariant::*;
-    match expr_variant {
-        FunctionApplication { name, .. } => {
-            let mut is_external = false;
-            // find the function in the namespace
-            let (fn_entrypoint, fn_exit_point) = graph
-                .namespace
-                .get_function(&name.suffix)
-                .cloned()
-                .unwrap_or_else(|| {
-                    let node_idx =
-                        graph.add_node(format!("extern fn {}()", name.suffix.primary_name).into());
-                    is_external = true;
-                    (node_idx, node_idx)
-                });
-            for leaf in leaves {
-                graph.add_edge(*leaf, fn_entrypoint, "".into());
-            }
-            // the exit points get connected to an exit node for the application
-            // if this is external, then we don't add the body to the graph so there's no point in
-            // an exit organizational dominator
-            if !is_external {
-                if let Some(exit_node) = exit_node {
-                    graph.add_edge(fn_exit_point, exit_node, "".into());
-                    vec![exit_node]
-                } else {
-                    vec![fn_exit_point]
-                }
-            } else {
-                vec![fn_entrypoint]
+        let this_node = connect_node(node, graph, &leaves);
+        match this_node {
+            NodeConnection::NextStep(nodes) => leaves = nodes,
+            NodeConnection::Return(node) => {
+                return_nodes.push(node);
             }
         }
-        Literal(_lit) => leaves.to_vec(),
-        VariableExpression { .. } => leaves.to_vec(),
-        EnumInstantiation {
-            enum_name,
-            variant_name,
-            ..
-        } => {
-            // connect this particular instantiation to its variants declaration
-            connect_enum_instantiation(enum_name, variant_name, graph, leaves)
-        }
-        a => todo!("{:?}", a),
     }
-}
-
-fn connect_enum_instantiation<'sc>(
-    enum_name: &Ident<'sc>,
-    variant_name: &Ident<'sc>,
-    graph: &mut ControlFlowGraph,
-    leaves: &[NodeIndex],
-) -> Vec<NodeIndex> {
-    let (decl_ix, variant_index) = graph
-        .namespace
-        .find_enum_variant_index(enum_name, variant_name)
-        .unwrap_or_else(|| {
-            let node_idx = graph.add_node(
-                format!(
-                    "extern enum {}::{}",
-                    enum_name.primary_name, variant_name.primary_name
-                )
-                .into(),
-            );
-            (node_idx, node_idx)
-        });
-
-    // insert organizational nodes for instantiation of enum
-    let enum_instantiation_entry_idx = graph.add_node("enum instantiation entry".into());
-    let enum_instantiation_exit_idx = graph.add_node("enum instantiation exit".into());
-
-    // connect to declaration node itself to show that the declaration is used
-    graph.add_edge(enum_instantiation_entry_idx, decl_ix, "".into());
-    for leaf in leaves {
-        graph.add_edge(*leaf, enum_instantiation_entry_idx, "".into());
-    }
-
-    graph.add_edge(decl_ix, variant_index, "".into());
-    graph.add_edge(variant_index, enum_instantiation_exit_idx, "".into());
-
-    vec![enum_instantiation_exit_idx]
+    return_nodes
 }
