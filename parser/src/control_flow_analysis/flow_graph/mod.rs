@@ -21,18 +21,22 @@ use petgraph::algo::has_path_connecting;
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
 mod namespace;
+mod return_paths;
 use namespace::ControlFlowNamespace;
 
 pub type EntryPoint = NodeIndex;
 pub type ExitPoint = NodeIndex;
 
+#[derive(Clone)]
 pub struct ControlFlowGraph<'sc> {
     graph: Graph<'sc>,
     entry_points: Vec<NodeIndex>,
+    namespace: ControlFlowNamespace<'sc>,
 }
 
 type Graph<'sc> = petgraph::Graph<ControlFlowGraphNode<'sc>, ControlFlowGraphEdge>;
 
+#[derive(Clone)]
 pub struct ControlFlowGraphEdge(String);
 
 impl std::fmt::Debug for ControlFlowGraphEdge {
@@ -47,6 +51,7 @@ impl std::convert::From<&str> for ControlFlowGraphEdge {
     }
 }
 
+#[derive(Clone)]
 pub enum ControlFlowGraphNode<'sc> {
     OrganizationalDominator(String),
     ProgramNode(TypedAstNode<'sc>),
@@ -104,6 +109,11 @@ impl std::convert::From<&str> for ControlFlowGraphNode<'_> {
 }
 
 impl<'sc> ControlFlowGraph<'sc> {
+    fn add_edge_from_entry(&mut self, to: NodeIndex, label: ControlFlowGraphEdge) {
+        for entry in &self.entry_points {
+            self.graph.add_edge(*entry, to, label.clone());
+        }
+    }
     fn add_node(&mut self, node: ControlFlowGraphNode<'sc>) -> NodeIndex {
         self.graph.add_node(node)
     }
@@ -119,19 +129,14 @@ impl<'sc> ControlFlowGraph<'sc> {
         let mut graph = ControlFlowGraph {
             graph: Graph::new(),
             entry_points: vec![],
+            namespace: Default::default(),
         };
-        let mut namespace = Default::default();
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
         for ast_entrypoint in ast.root_nodes.iter() {
-            let (l_leaves, _new_exit_node) = connect_node(
-                ast_entrypoint,
-                &mut graph,
-                &leaves,
-                &mut namespace,
-                exit_node,
-            );
+            let (l_leaves, _new_exit_node) =
+                connect_node(ast_entrypoint, &mut graph, &leaves, exit_node);
 
             leaves = l_leaves;
         }
@@ -282,7 +287,6 @@ fn connect_node<'sc>(
     node: &TypedAstNode<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
-    namespace: &mut ControlFlowNamespace<'sc>,
     exit_node: Option<NodeIndex>,
 ) -> (Vec<NodeIndex>, Option<NodeIndex>) {
     //    let mut graph = graph.clone();
@@ -322,7 +326,7 @@ fn connect_node<'sc>(
             );
             let mut leaves = vec![entry];
             let (l_leaves, _l_exit_node) =
-                depth_first_insertion_code_block(body, graph, &leaves, namespace, exit_node);
+                depth_first_insertion_code_block(body, graph, &leaves, exit_node);
             // insert edges from end of block back to beginning of it
             for leaf in &l_leaves {
                 graph.add_edge(*leaf, entry, "loop repeats".into());
@@ -346,7 +350,7 @@ fn connect_node<'sc>(
             }
 
             (
-                connect_expression(expr_variant, graph, &[entry], namespace, exit_node),
+                connect_expression(expr_variant, graph, &[entry], exit_node),
                 exit_node,
             )
         }
@@ -358,7 +362,7 @@ fn connect_node<'sc>(
                 graph.add_edge(*leaf, decl_node, "".into());
             }
             (
-                connect_declaration(&decl, graph, decl_node, namespace, span, exit_node),
+                connect_declaration(&decl, graph, decl_node, span, exit_node),
                 exit_node,
             )
         }
@@ -369,37 +373,36 @@ fn connect_declaration<'sc>(
     decl: &TypedDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
-    namespace: &mut ControlFlowNamespace<'sc>,
     span: Span<'sc>,
     exit_node: Option<NodeIndex>,
 ) -> Vec<NodeIndex> {
     use TypedDeclaration::*;
     match decl {
         VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
-            connect_expression(&body.expression, graph, &[entry_node], namespace, exit_node)
+            connect_expression(&body.expression, graph, &[entry_node], exit_node)
         }
         FunctionDeclaration(fn_decl) => {
-            connect_typed_fn_decl(fn_decl, graph, entry_node, namespace, span, exit_node);
+            connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node);
             vec![]
         }
         TraitDeclaration(trait_decl) => {
-            connect_trait_declaration(&trait_decl, entry_node, namespace);
+            connect_trait_declaration(&trait_decl, graph, entry_node);
             vec![]
         }
         StructDeclaration(_) => todo!("track each struct field's usage"),
         EnumDeclaration(enum_decl) => {
-            connect_enum_declaration(&enum_decl, graph, entry_node, namespace);
+            connect_enum_declaration(&enum_decl, graph, entry_node);
             vec![]
         }
         Reassignment(TypedReassignment { rhs, .. }) => {
-            connect_expression(&rhs.expression, graph, &[entry_node], namespace, exit_node)
+            connect_expression(&rhs.expression, graph, &[entry_node], exit_node)
         }
         ImplTrait {
             trait_name,
             methods,
             ..
         } => {
-            connect_impl_trait(trait_name, graph, methods, namespace, entry_node);
+            connect_impl_trait(trait_name, graph, methods, entry_node);
             vec![]
         }
         SideEffect | ErrorRecovery => {
@@ -417,22 +420,17 @@ fn connect_impl_trait<'sc>(
     trait_name: &Ident<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     methods: &[TypedFunctionDeclaration<'sc>],
-    namespace: &mut ControlFlowNamespace<'sc>,
     entry_node: NodeIndex,
 ) {
-    let trait_decl_node = namespace.find_trait(trait_name);
+    let graph_c = graph.clone();
+    let trait_decl_node = graph_c.namespace.find_trait(trait_name);
     match trait_decl_node {
         None => {
             let edge_ix = graph.add_node("External trait".into());
             graph.add_edge(entry_node, edge_ix, "".into());
         }
         Some(trait_decl_node) => {
-            // This is sort of a shortcut -- a path from the program exit to the trait will be
-            // included in the main execution path, since we are guaranteed to hit the program
-            // exit node.
-            // Eventually we can introduce a program entry dominator or something like that.
-            // This is not a risky shortcut and works fine for the time being.
-            graph.add_edge(0.into(), entry_node, "".into());
+            graph.add_edge_from_entry(entry_node, "".into());
             graph.add_edge(entry_node, *trait_decl_node, "".into());
         }
     }
@@ -450,14 +448,15 @@ fn connect_impl_trait<'sc>(
             &fn_decl,
             graph,
             fn_decl_entry_node,
-            namespace,
             fn_decl.span.clone(),
             None,
         );
         methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
     }
     // Now, insert the methods into the trait method namespace.
-    namespace.insert_trait_methods(trait_name.clone(), methods_and_indexes);
+    graph
+        .namespace
+        .insert_trait_methods(trait_name.clone(), methods_and_indexes);
 }
 
 /// The strategy here is to populate the trait namespace with just one singular trait
@@ -471,10 +470,10 @@ fn connect_impl_trait<'sc>(
 /// node index into the namespace for the trait.
 fn connect_trait_declaration<'sc>(
     decl: &TypedTraitDeclaration<'sc>,
+    graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
-    namespace: &mut ControlFlowNamespace<'sc>,
 ) {
-    namespace.add_trait(decl.name.clone(), entry_node);
+    graph.namespace.add_trait(decl.name.clone(), entry_node);
 }
 
 /// For an enum declaration, we want to make a declaration node for every individual enum
@@ -484,14 +483,13 @@ fn connect_enum_declaration<'sc>(
     enum_decl: &TypedEnumDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
-    namespace: &mut ControlFlowNamespace<'sc>,
 ) {
     // keep a mapping of each variant
     for variant in &enum_decl.variants {
         let variant_index = graph.add_node(variant.into());
 
         //        graph.add_edge(entry_node, variant_index, "".into());
-        namespace.insert_enum(
+        graph.namespace.insert_enum(
             enum_decl.name.clone(),
             entry_node,
             variant.name.clone(),
@@ -507,36 +505,31 @@ fn connect_typed_fn_decl<'sc>(
     fn_decl: &TypedFunctionDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
-    namespace: &mut ControlFlowNamespace<'sc>,
     _span: Span<'sc>,
     exit_node: Option<NodeIndex>,
 ) {
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.primary_name).into());
-    let (_exit_nodes, _exit_node) = depth_first_insertion_code_block(
-        &fn_decl.body,
-        graph,
-        &[entry_node],
-        namespace,
-        Some(fn_exit_node),
-    );
+    let (_exit_nodes, _exit_node) =
+        depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node], Some(fn_exit_node));
     if let Some(exit_node) = exit_node {
         graph.add_edge(fn_exit_node, exit_node, "".into());
     }
 
-    namespace.insert_function(fn_decl.name.clone(), (entry_node, fn_exit_node));
+    graph
+        .namespace
+        .insert_function(fn_decl.name.clone(), (entry_node, fn_exit_node));
 }
 
 fn depth_first_insertion_code_block<'sc>(
     node_content: &TypedCodeBlock<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
-    namespace: &mut ControlFlowNamespace<'sc>,
     exit_node: Option<NodeIndex>,
 ) -> (Vec<NodeIndex>, Option<NodeIndex>) {
     let mut leaves = leaves.to_vec();
     let mut exit_node = exit_node.clone();
     for node in node_content.contents.iter() {
-        let (this_node, l_exit_node) = connect_node(node, graph, &leaves, namespace, exit_node);
+        let (this_node, l_exit_node) = connect_node(node, graph, &leaves, exit_node);
         leaves = this_node;
         exit_node = l_exit_node;
     }
@@ -549,7 +542,6 @@ fn connect_expression<'sc>(
     expr_variant: &TypedExpressionVariant<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
-    namespace: &mut ControlFlowNamespace<'sc>,
     exit_node: Option<NodeIndex>,
 ) -> Vec<NodeIndex> {
     use TypedExpressionVariant::*;
@@ -557,7 +549,8 @@ fn connect_expression<'sc>(
         FunctionApplication { name, .. } => {
             let mut is_external = false;
             // find the function in the namespace
-            let (fn_entrypoint, fn_exit_point) = namespace
+            let (fn_entrypoint, fn_exit_point) = graph
+                .namespace
                 .get_function(&name.suffix)
                 .cloned()
                 .unwrap_or_else(|| {
@@ -591,7 +584,7 @@ fn connect_expression<'sc>(
             ..
         } => {
             // connect this particular instantiation to its variants declaration
-            connect_enum_instantiation(enum_name, variant_name, graph, namespace, leaves)
+            connect_enum_instantiation(enum_name, variant_name, graph, leaves)
         }
         a => todo!("{:?}", a),
     }
@@ -601,10 +594,10 @@ fn connect_enum_instantiation<'sc>(
     enum_name: &Ident<'sc>,
     variant_name: &Ident<'sc>,
     graph: &mut ControlFlowGraph,
-    namespace: &ControlFlowNamespace,
     leaves: &[NodeIndex],
 ) -> Vec<NodeIndex> {
-    let (decl_ix, variant_index) = namespace
+    let (decl_ix, variant_index) = graph
+        .namespace
         .find_enum_variant_index(enum_name, variant_name)
         .unwrap_or_else(|| {
             let node_idx = graph.add_node(

@@ -3,7 +3,7 @@ use crate::Ident;
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 /// This namespace holds mappings from various declarations to their indexes in the graph. This is
 /// used for connecting those vertices when the declarations are instantiated.
 ///
@@ -11,11 +11,11 @@ use std::collections::HashMap;
 /// of scope at this point, as that would have been caught earlier and aborted the compilation
 /// process.
 pub struct ControlFlowNamespace<'sc> {
-    function_namespace: HashMap<Ident<'sc>, (EntryPoint, ExitPoint)>,
-    enum_namespace: HashMap<Ident<'sc>, (NodeIndex, HashMap<Ident<'sc>, NodeIndex>)>,
-    trait_namespace: HashMap<Ident<'sc>, NodeIndex>,
+    pub(crate) function_namespace: HashMap<Ident<'sc>, (EntryPoint, ExitPoint)>,
+    pub(crate) enum_namespace: HashMap<Ident<'sc>, (NodeIndex, HashMap<Ident<'sc>, NodeIndex>)>,
+    pub(crate) trait_namespace: HashMap<Ident<'sc>, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
-    trait_method_namespace: HashMap<Ident<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
+    pub(crate) trait_method_namespace: HashMap<Ident<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
 }
 
 impl<'sc> ControlFlowNamespace<'sc> {
