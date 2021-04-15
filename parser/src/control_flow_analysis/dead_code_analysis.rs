@@ -237,7 +237,7 @@ fn connect_node<'sc>(
             }
 
             (
-                connect_expression(expr_variant, graph, &[entry], exit_node),
+                connect_expression(expr_variant, graph, &[entry], exit_node, ""),
                 exit_node,
             )
         }
@@ -265,9 +265,13 @@ fn connect_declaration<'sc>(
 ) -> Vec<NodeIndex> {
     use TypedDeclaration::*;
     match decl {
-        VariableDeclaration(TypedVariableDeclaration { body, .. }) => {
-            connect_expression(&body.expression, graph, &[entry_node], exit_node)
-        }
+        VariableDeclaration(TypedVariableDeclaration { body, .. }) => connect_expression(
+            &body.expression,
+            graph,
+            &[entry_node],
+            exit_node,
+            "variable instantiation",
+        ),
         FunctionDeclaration(fn_decl) => {
             connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node);
             vec![]
@@ -281,9 +285,13 @@ fn connect_declaration<'sc>(
             connect_enum_declaration(&enum_decl, graph, entry_node);
             vec![]
         }
-        Reassignment(TypedReassignment { rhs, .. }) => {
-            connect_expression(&rhs.expression, graph, &[entry_node], exit_node)
-        }
+        Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
+            &rhs.expression,
+            graph,
+            &[entry_node],
+            exit_node,
+            "variable reassignment",
+        ),
         ImplTrait {
             trait_name,
             methods,
@@ -436,6 +444,7 @@ fn connect_expression<'sc>(
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
+    label: &'static str,
 ) -> Vec<NodeIndex> {
     use TypedExpressionVariant::*;
     match expr_variant {
@@ -460,7 +469,7 @@ fn connect_expression<'sc>(
                     (node_idx, node_idx)
                 });
             for leaf in leaves {
-                graph.add_edge(*leaf, fn_entrypoint, "".into());
+                graph.add_edge(*leaf, fn_entrypoint, label.into());
             }
             // the exit points get connected to an exit node for the application
             // if this is external, then we don't add the body to the graph so there's no point in
@@ -485,6 +494,51 @@ fn connect_expression<'sc>(
         } => {
             // connect this particular instantiation to its variants declaration
             connect_enum_instantiation(enum_name, variant_name, graph, leaves)
+        }
+        IfExp {
+            condition,
+            then,
+            r#else,
+        } => {
+            let condition_expr =
+                connect_expression(&(*condition).expression, graph, leaves, exit_node, "");
+            let then_expr = connect_expression(
+                &(*then).expression,
+                graph,
+                &condition_expr,
+                exit_node,
+                "then branch",
+            );
+
+            let else_expr = if let Some(else_expr) = r#else {
+                connect_expression(
+                    &(*else_expr).expression,
+                    graph,
+                    &condition_expr,
+                    exit_node,
+                    "else branch",
+                )
+            } else {
+                vec![]
+            };
+
+            [then_expr, else_expr].concat()
+        }
+        CodeBlock(TypedCodeBlock { contents }) => {
+            let block_entry = graph.add_node("Code block entry".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, block_entry, label.into());
+            }
+            let mut current_leaf = vec![block_entry];
+            for node in contents {
+                current_leaf = connect_node(node, graph, &current_leaf, exit_node).0;
+            }
+
+            let block_exit = graph.add_node("Code block exit".into());
+            for leaf in current_leaf {
+                graph.add_edge(leaf, block_exit, "".into());
+            }
+            vec![block_exit]
         }
         a => todo!("{:?}", a),
     }
@@ -533,11 +587,12 @@ fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> Compi
         TypedAstNode {
             content:
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                    TypedFunctionDeclaration { name, .. },
+                    TypedFunctionDeclaration { .. },
                 )),
+            span,
             ..
         } => CompileWarning {
-            span: name.span.clone(),
+            span: span.clone(),
             warning_content: Warning::DeadFunctionDeclaration,
         },
         TypedAstNode {

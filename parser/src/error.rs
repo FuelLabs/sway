@@ -522,11 +522,8 @@ impl<'sc> CompileError<'sc> {
             NotAType { span, .. } => (span.start(), span.end()),
             MissingEnumInstantiator { span, .. } => (span.start(), span.end()),
             PathDoesNotReturn { span, .. } => (span.start(), span.end()),
-<<<<<<< HEAD
-=======
             ExpectedImplicitReturnFromBlockWithType { span, .. } => (span.start(), span.end()),
             ExpectedImplicitReturnFromBlock { span, .. } => (span.start(), span.end()),
->>>>>>> 3a905bee864ffdfdcd351adac57ad01253226558
         }
     }
 }
