@@ -394,10 +394,11 @@ impl<'sc> TypedAstNode<'sc> {
                     }
                     Declaration::StructDeclaration(decl) => {
                         // look up any generic or struct types in the namespace
-                        let fields = decl.fields.into_iter().map(|StructField { name, r#type }| {
+                        let fields = decl.fields.into_iter().map(|StructField { name, r#type, span }| {
                             TypedStructField {
                                 name,
-                                r#type: namespace.resolve_type(&r#type)
+                                r#type: namespace.resolve_type(&r#type),
+                                span
                             }
                         }).collect::<Vec<_>>();
                         let decl = TypedStructDeclaration {

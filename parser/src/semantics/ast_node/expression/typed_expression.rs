@@ -338,16 +338,16 @@ impl<'sc> TypedExpression<'sc> {
 
                 // match up the names with their type annotations from the declaration
                 for def_field in definition.fields.iter() {
-                    let expr_field = match fields.iter().find(|x| x.name == def_field.name) {
+                    let expr_field: crate::parse_tree::StructExpressionField = match fields.iter().find(|x| x.name == def_field.name) {
                         Some(val) => val.clone(),
                         None => {
                             errors.push(CompileError::StructMissingField {
-                                field_name: def_field.name,
+                                field_name: def_field.name.primary_name,
                                 struct_name: definition.name.primary_name,
                                 span: span.clone(),
                             });
                             typed_fields_buf.push(TypedStructExpressionField {
-                                name: def_field.name,
+                                name: def_field.name.clone(),
                                 value: TypedExpression {
                                     expression: TypedExpressionVariant::Unit,
                                     return_type: ResolvedType::ErrorRecovery,
@@ -372,7 +372,7 @@ impl<'sc> TypedExpression<'sc> {
 
                     typed_fields_buf.push(TypedStructExpressionField {
                         value: typed_field,
-                        name: expr_field.name,
+                        name: expr_field.name.clone(),
                     });
                 }
 
@@ -385,7 +385,7 @@ impl<'sc> TypedExpression<'sc> {
                         .is_none()
                     {
                         errors.push(CompileError::StructDoesntHaveThisField {
-                            field_name: field.name,
+                            field_name: field.name.primary_name.clone(),
                             struct_name: definition.name.primary_name,
                             span: field.span,
                         });

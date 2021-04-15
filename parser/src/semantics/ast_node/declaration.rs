@@ -125,8 +125,9 @@ pub struct TypedStructDeclaration<'sc> {
 
 #[derive(Debug, Clone)]
 pub struct TypedStructField<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: Ident<'sc>,
     pub(crate) r#type: ResolvedType<'sc>,
+    pub(crate) span: Span<'sc>,
 }
 
 #[derive(Clone, Debug)]

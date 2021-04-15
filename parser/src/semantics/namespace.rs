@@ -300,24 +300,25 @@ impl<'sc> Namespace<'sc> {
 
         for ident in ident_iter {
             // find the ident in the currently available fields
-            let TypedStructField { r#type, .. } =
-                match fields.iter().find(|x| x.name == ident.primary_name) {
-                    Some(field) => field.clone(),
-                    None => {
-                        // gather available fields for the error message
-                        let field_name = ident.primary_name.clone();
-                        let available_fields =
-                            fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
+            let TypedStructField { r#type, .. } = match fields.iter().find(|x| x.name == *ident) {
+                Some(field) => field.clone(),
+                None => {
+                    // gather available fields for the error message
+                    let field_name = ident.primary_name.clone();
+                    let available_fields = fields
+                        .iter()
+                        .map(|x| x.name.primary_name.clone())
+                        .collect::<Vec<_>>();
 
-                        errors.push(CompileError::FieldNotFound {
-                            field_name,
-                            struct_name: struct_name.primary_name.clone(),
-                            available_fields: available_fields.join(", "),
-                            span: ident.span.clone(),
-                        });
-                        return err(warnings, errors);
-                    }
-                };
+                    errors.push(CompileError::FieldNotFound {
+                        field_name,
+                        struct_name: struct_name.primary_name.clone(),
+                        available_fields: available_fields.join(", "),
+                        span: ident.span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+            };
             match r#type {
                 ResolvedType::Struct { .. } => {
                     let (l_fields, _l_name) = type_check!(
@@ -375,11 +376,16 @@ impl<'sc> Namespace<'sc> {
                 body: TypedExpression { return_type, .. },
                 ..
             }) => self.find_struct_name_and_fields(return_type, debug_ident),
-            o => todo!(
-                "err: {} is not a struct with field {}",
-                o.friendly_name(),
-                debug_ident.primary_name
-            ),
+            a => {
+                return err(
+                    vec![],
+                    vec![CompileError::NotAStruct {
+                        name: debug_ident.primary_name.clone(),
+                        span: debug_ident.span.clone(),
+                        actually: a.friendly_name().to_string(),
+                    }],
+                )
+            }
         }
     }
     /// given a type, look that type up in the namespace and:
@@ -397,11 +403,12 @@ impl<'sc> Namespace<'sc> {
                     name,
                     ..
                 })) => ok((fields.clone(), name), vec![], vec![]),
-                Some(_) => err(
+                Some(a) => err(
                     vec![],
                     vec![CompileError::NotAStruct {
                         name: debug_ident.span.as_str(),
                         span: debug_ident.span.clone(),
+                        actually: a.friendly_name().to_string(),
                     }],
                 ),
                 None => err(
@@ -418,6 +425,7 @@ impl<'sc> Namespace<'sc> {
                 vec![CompileError::NotAStruct {
                     name: debug_ident.span.as_str(),
                     span: debug_ident.span.clone(),
+                    actually: return_type.friendly_type_str(),
                 }],
             )
         }

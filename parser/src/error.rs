@@ -180,6 +180,7 @@ pub enum Warning<'sc> {
         variant_name: String,
     },
     DeadMethod,
+    StructFieldNeverRead,
 }
 
 impl<'sc> Warning<'sc> {
@@ -202,7 +203,8 @@ impl<'sc> Warning<'sc> {
             UnreachableCode => "This code is unreachable.".into(),
             DeadEnumVariant { variant_name } => format!("Enum variant {} is never constructed.", variant_name),
             DeadTrait => "This trait is never implemented.".into(),
-            DeadMethod => "This method is never called.".into()
+            DeadMethod => "This method is never called.".into(),
+            StructFieldNeverRead => "This struct field is never accessed.".into()
         }
     }
 }
@@ -363,8 +365,12 @@ pub enum CompileError<'sc> {
     NonFinalAsteriskInPath { span: Span<'sc> },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span<'sc>, name: String },
-    #[error("\"{name}\" is not a struct. Fields can only be accessed on structs.")]
-    NotAStruct { name: &'sc str, span: Span<'sc> },
+    #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
+    NotAStruct {
+        name: &'sc str,
+        span: Span<'sc>,
+        actually: String,
+    },
     #[error("Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n {available_fields}")]
     FieldNotFound {
         field_name: &'sc str,

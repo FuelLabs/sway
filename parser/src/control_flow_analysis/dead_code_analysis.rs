@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     parse_tree::Visibility,
-    semantics::ast_node::{TypedExpressionVariant, TypedTraitDeclaration},
+    semantics::ast_node::{TypedExpressionVariant, TypedStructDeclaration, TypedTraitDeclaration},
     Ident, TreeType,
 };
 use crate::{
@@ -62,6 +62,10 @@ impl<'sc> ControlFlowGraph<'sc> {
                 ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(CompileWarning {
                     span: span.clone(),
                     warning_content: Warning::DeadMethod,
+                }),
+                ControlFlowGraphNode::StructField { span, .. } => Some(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::StructFieldNeverRead,
                 }),
                 ControlFlowGraphNode::OrganizationalDominator(..) => None,
             })
@@ -280,7 +284,10 @@ fn connect_declaration<'sc>(
             connect_trait_declaration(&trait_decl, graph, entry_node);
             vec![]
         }
-        StructDeclaration(_) => todo!("track each struct field's usage"),
+        StructDeclaration(struct_decl) => {
+            connect_struct_declaration(&struct_decl, graph, entry_node);
+            vec![]
+        }
         EnumDeclaration(enum_decl) => {
             connect_enum_declaration(&enum_decl, graph, entry_node);
             vec![]
@@ -304,6 +311,33 @@ fn connect_declaration<'sc>(
             unreachable!("These are error cases and should be removed in the type checking stage. ")
         }
     }
+}
+
+/// Connect each individual struct field, and when that field is accessed in a subfield expression,
+/// connect that field.
+fn connect_struct_declaration<'sc>(
+    struct_decl: &TypedStructDeclaration<'sc>,
+    graph: &mut ControlFlowGraph<'sc>,
+    entry_node: NodeIndex,
+) {
+    let TypedStructDeclaration {
+        name,
+        fields,
+        type_parameters,
+    } = struct_decl;
+    let field_nodes = fields
+        .into_iter()
+        .map(|field| (graph.add_node(field.into()), field.name.clone()))
+        .collect::<Vec<_>>();
+    // connect all the fields to the struct decl node
+    // this is important because if the struct is public, you want to be able to signal that all
+    // fields are accessible by just adding an edge to the struct declaration node
+    for (node, name) in field_nodes {
+        graph.add_edge(entry_node, node, "".into());
+    }
+
+    // Now, populate the struct namespace with the location of this struct as well as the indexes
+    // of the field names
 }
 
 /// Implementations of traits are top-level things that are not conditional, so

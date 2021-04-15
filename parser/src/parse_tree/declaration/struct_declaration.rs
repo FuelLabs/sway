@@ -5,6 +5,7 @@ use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
+use pest::Span;
 
 #[derive(Debug, Clone)]
 pub struct StructDeclaration<'sc> {
@@ -15,8 +16,9 @@ pub struct StructDeclaration<'sc> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct StructField<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: Ident<'sc>,
     pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) span: Span<'sc>,
 }
 
 impl<'sc> StructDeclaration<'sc> {
@@ -114,12 +116,20 @@ impl<'sc> StructField<'sc> {
         let mut fields_buf = Vec::new();
         for i in (0..fields.len()).step_by(2) {
             let span = fields[i].as_span();
-            let name = fields[i].as_str();
-            assert_or_warn!(
-                is_snake_case(name),
+            let name = eval!(
+                Ident::parse_from_pair,
                 warnings,
-                span,
-                Warning::NonSnakeCaseStructFieldName { field_name: name }
+                errors,
+                fields[i],
+                return err(warnings, errors)
+            );
+            assert_or_warn!(
+                is_snake_case(name.primary_name),
+                warnings,
+                span.clone(),
+                Warning::NonSnakeCaseStructFieldName {
+                    field_name: name.primary_name.clone()
+                }
             );
             let r#type = eval!(
                 TypeInfo::parse_from_pair_inner,
@@ -128,7 +138,7 @@ impl<'sc> StructField<'sc> {
                 fields[i + 1].clone(),
                 TypeInfo::Unit
             );
-            fields_buf.push(StructField { name, r#type });
+            fields_buf.push(StructField { name, r#type, span });
         }
         ok(fields_buf, warnings, errors)
     }

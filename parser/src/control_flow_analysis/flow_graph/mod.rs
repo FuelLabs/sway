@@ -1,7 +1,7 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use crate::semantics::TypedAstNode;
+use crate::semantics::{ast_node::TypedStructField, TypedAstNode};
 use crate::{semantics::ast_node::TypedEnumVariant, Ident};
 use pest::Span;
 
@@ -53,6 +53,10 @@ pub enum ControlFlowGraphNode<'sc> {
         span: Span<'sc>,
         method_name: Ident<'sc>,
     },
+    StructField {
+        struct_field_name: Ident<'sc>,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> ControlFlowGraphNode<'sc> {
@@ -75,6 +79,14 @@ impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {
             ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
                 format!("Method {}", method_name.primary_name.to_string())
             }
+            ControlFlowGraphNode::StructField {
+                struct_field_name, ..
+            } => {
+                format!(
+                    "Struct field {}",
+                    struct_field_name.primary_name.to_string()
+                )
+            }
         };
         f.write_str(&text)
     }
@@ -95,6 +107,14 @@ impl<'sc> std::convert::From<&TypedEnumVariant<'sc>> for ControlFlowGraphNode<'s
     }
 }
 
+impl<'sc> std::convert::From<&TypedStructField<'sc>> for ControlFlowGraphNode<'sc> {
+    fn from(other: &TypedStructField<'sc>) -> Self {
+        ControlFlowGraphNode::StructField {
+            struct_field_name: other.name.clone(),
+            span: other.span.clone(),
+        }
+    }
+}
 impl std::convert::From<String> for ControlFlowGraphNode<'_> {
     fn from(other: String) -> Self {
         ControlFlowGraphNode::OrganizationalDominator(other)

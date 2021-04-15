@@ -90,7 +90,7 @@ visibility = { "pub"? }
 struct_decl = { "struct" ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}" }
 struct_name = {ident}
 struct_fields = { struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","? }
-struct_field_name = @{ident}
+struct_field_name = {ident}
 // // enum declaration
 enum_decl = { enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}" }
 enum_fields = { enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","? }
