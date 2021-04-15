@@ -7,11 +7,14 @@ use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 use pest::Span;
 
+use super::Visibility;
+
 #[derive(Debug, Clone)]
 pub struct StructDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) fields: Vec<StructField<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    pub(crate) visibility: Visibility,
 }
 
 #[derive(Debug, Clone)]
@@ -26,7 +29,8 @@ impl<'sc> StructDeclaration<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut decl = decl.into_inner();
-        let name = decl.next().unwrap();
+        let mut visibility = Visibility::Private;
+        let mut name = None;
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
         let mut fields_pair = None;
@@ -41,9 +45,17 @@ impl<'sc> StructDeclaration<'sc> {
                 Rule::struct_fields => {
                     fields_pair = Some(pair);
                 }
-                _ => unreachable!(),
+                Rule::struct_keyword => (),
+                Rule::struct_name => {
+                    name = Some(pair);
+                }
+                Rule::visibility => {
+                    visibility = Visibility::parse_from_pair(pair);
+                }
+                a => unreachable!("{:?}", a),
             }
         }
+        let name = name.expect("The parser would not have matched this if there was no name.");
 
         let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
@@ -101,6 +113,7 @@ impl<'sc> StructDeclaration<'sc> {
                 name,
                 fields,
                 type_parameters,
+                visibility,
             },
             warnings,
             errors,

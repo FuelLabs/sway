@@ -242,10 +242,12 @@ impl<'sc> Namespace<'sc> {
             _ => None,
         }
     }
+    /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
+    /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield(
         &self,
         subfield_exp: &[Ident<'sc>],
-    ) -> CompileResult<'sc, ResolvedType<'sc>> {
+    ) -> CompileResult<'sc, (ResolvedType<'sc>, ResolvedType<'sc>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ident_iter = subfield_exp.into_iter().peekable();
@@ -267,7 +269,7 @@ impl<'sc> Namespace<'sc> {
                 warnings,
                 errors
             );
-            return ok(ty, warnings, errors);
+            return ok((ty.clone(), ty), warnings, errors);
         }
         let (mut fields, struct_name) = match self.get_struct_type_fields(symbol, &first_ident) {
             CompileResult::Ok {
@@ -297,6 +299,7 @@ impl<'sc> Namespace<'sc> {
             warnings,
             errors
         );
+        let mut parent_rover = ret_ty.clone();
 
         for ident in ident_iter {
             // find the ident in the currently available fields
@@ -327,15 +330,17 @@ impl<'sc> Namespace<'sc> {
                         warnings,
                         errors
                     );
+                    parent_rover = ret_ty.clone();
                     fields = l_fields;
                 }
                 _ => {
                     fields = vec![];
+                    parent_rover = ret_ty.clone();
                     ret_ty = r#type;
                 }
             }
         }
-        ok(ret_ty, warnings, errors)
+        ok((ret_ty, parent_rover), warnings, errors)
     }
 
     pub(crate) fn get_methods_for_type(

@@ -174,6 +174,7 @@ pub enum Warning<'sc> {
     OverridingTraitImplementation,
     DeadDeclaration,
     DeadFunctionDeclaration,
+    DeadStructDeclaration,
     DeadTrait,
     UnreachableCode,
     DeadEnumVariant {
@@ -199,6 +200,7 @@ impl<'sc> Warning<'sc> {
             OverridesOtherSymbol { name } => format!("This import would override another symbol with the same name \"{}\" in this namespace.", name),
             OverridingTraitImplementation  => format!("This trait implementation overrides another one that was previously defined."),
             DeadDeclaration  => "This declaration is never used.".into(),
+            DeadStructDeclaration  => "This struct is never instantiated.".into(),
             DeadFunctionDeclaration  => "This function is never called.".into(),
             UnreachableCode => "This code is unreachable.".into(),
             DeadEnumVariant { variant_name } => format!("Enum variant {} is never constructed.", variant_name),

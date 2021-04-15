@@ -14,6 +14,12 @@ pub(crate) struct FunctionNamespaceEntry<'sc> {
 }
 
 #[derive(Default, Clone)]
+pub(crate) struct StructNamespaceEntry<'sc> {
+    pub(crate) struct_decl_ix: NodeIndex,
+    pub(crate) fields: HashMap<Ident<'sc>, NodeIndex>,
+}
+
+#[derive(Default, Clone)]
 /// This namespace holds mappings from various declarations to their indexes in the graph. This is
 /// used for connecting those vertices when the declarations are instantiated.
 ///
@@ -26,6 +32,8 @@ pub struct ControlFlowNamespace<'sc> {
     pub(crate) trait_namespace: HashMap<Ident<'sc>, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
     pub(crate) trait_method_namespace: HashMap<Ident<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
+    /// This is a mapping from struct name to field names and their node indexes
+    pub(crate) struct_namespace: HashMap<Ident<'sc>, StructNamespaceEntry<'sc>>,
 }
 
 impl<'sc> ControlFlowNamespace<'sc> {
@@ -97,5 +105,33 @@ impl<'sc> ControlFlowNamespace<'sc> {
                 self.trait_method_namespace.insert(trait_name, ns);
             }
         }
+    }
+
+    pub(crate) fn insert_struct(
+        &mut self,
+        struct_name: Ident<'sc>,
+        declaration_node: NodeIndex,
+        field_nodes: Vec<(Ident<'sc>, NodeIndex)>,
+    ) {
+        let entry = StructNamespaceEntry {
+            struct_decl_ix: declaration_node,
+            fields: field_nodes.into_iter().collect(),
+        };
+        self.struct_namespace.insert(struct_name, entry);
+    }
+    pub(crate) fn find_struct_decl(&self, struct_name: &Ident<'sc>) -> Option<&NodeIndex> {
+        self.struct_namespace
+            .get(struct_name)
+            .map(|StructNamespaceEntry { struct_decl_ix, .. }| struct_decl_ix)
+    }
+    pub(crate) fn find_struct_field_idx(
+        &self,
+        struct_name: &Ident<'sc>,
+        field_name: &Ident<'sc>,
+    ) -> Option<&NodeIndex> {
+        self.struct_namespace
+            .get(struct_name)?
+            .fields
+            .get(field_name)
     }
 }

@@ -43,6 +43,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         unary_op: Option<UnaryOp>,
         name: Vec<Ident<'sc>>,
         span: Span<'sc>,
+        resolved_type_of_parent: ResolvedType<'sc>,
     },
     EnumInstantiation {
         /// for printing

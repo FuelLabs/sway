@@ -121,6 +121,7 @@ pub struct TypedStructDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) fields: Vec<TypedStructField<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    pub(crate) visibility: Visibility,
 }
 
 #[derive(Debug, Clone)]

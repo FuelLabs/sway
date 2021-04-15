@@ -3,6 +3,7 @@ use crate::semantics::Namespace;
 use crate::ParseTree;
 use crate::{error::*, types::ResolvedType};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TreeType {
     Predicate,
     Script,

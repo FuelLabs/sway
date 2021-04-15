@@ -6,7 +6,7 @@ use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 use pest::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Visibility {
     Public,
     Private,

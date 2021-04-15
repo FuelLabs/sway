@@ -20,7 +20,7 @@ pub use declaration::{
     TypedFunctionParameter, TypedStructDeclaration, TypedStructField,
 };
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
-pub(crate) use expression::{TypedExpression, TypedExpressionVariant, ERROR_RECOVERY_EXPR};
+pub(crate) use expression::*;
 use impl_trait::implementation_of_trait;
 use return_statement::TypedReturnStatement;
 pub(crate) use while_loop::TypedWhileLoop;
@@ -404,7 +404,9 @@ impl<'sc> TypedAstNode<'sc> {
                         let decl = TypedStructDeclaration {
                             name: decl.name.clone(),
                             type_parameters: decl.type_parameters.clone(),
-                            fields
+                            fields,
+                            visibility: decl.visibility
+
                         };
                 
                         // insert struct into namespace

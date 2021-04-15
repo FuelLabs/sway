@@ -410,7 +410,7 @@ impl<'sc> TypedExpression<'sc> {
                 // this must be >= 2, or else the parser would not have matched it. asserting that
                 // invariant here, since it is an assumption that is acted upon later.
                 assert!(name_parts.len() >= 2);
-                let return_type = type_check!(
+                let (return_type, resolved_type_of_parent) = type_check!(
                     namespace.find_subfield(&name_parts),
                     return err(warnings, errors),
                     warnings,
@@ -423,6 +423,7 @@ impl<'sc> TypedExpression<'sc> {
                         unary_op,
                         name: name_parts,
                         span,
+                        resolved_type_of_parent
                     },
                     is_constant: IsConstant::No,
                 }
@@ -479,7 +480,7 @@ impl<'sc> TypedExpression<'sc> {
                         parent_expr.return_type,
                     )
                 } else {
-                    let parent_type = type_check!(
+                    let (parent_type, _) = type_check!(
                         namespace.find_subfield(&subfield_exp.clone()),
                         return err(warnings, errors),
                         warnings,
