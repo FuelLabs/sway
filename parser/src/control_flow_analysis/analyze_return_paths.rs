@@ -1,99 +1,25 @@
+//! This is the flow graph, a graph which contains edges that represent possible steps of program
+//! execution.
+
 use super::*;
-use crate::{
-    parse_tree::Visibility,
-    semantics::ast_node::{TypedExpressionVariant, TypedTraitDeclaration},
-    Ident, TreeType,
-};
-use crate::{
-    semantics::{
-        ast_node::{
-            TypedCodeBlock, TypedDeclaration, TypedEnumDeclaration, TypedExpression,
-            TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
-        },
-        TypedAstNode, TypedAstNodeContent, TypedParseTree,
+use super::{ControlFlowGraph, EntryPoint, ExitPoint, Graph};
+use crate::semantics::{
+    ast_node::{
+        TypedCodeBlock, TypedDeclaration, TypedEnumDeclaration, TypedExpression,
+        TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
     },
-    CompileWarning, Warning,
+    TypedAstNode, TypedAstNodeContent,
+};
+use crate::{error::*, semantics::TypedParseTree};
+use crate::{
+    semantics::ast_node::{TypedExpressionVariant, TypedTraitDeclaration},
+    Ident,
 };
 use pest::Span;
-use petgraph::algo::has_path_connecting;
-use petgraph::{prelude::NodeIndex};
+use petgraph::prelude::NodeIndex;
 
 impl<'sc> ControlFlowGraph<'sc> {
-    pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning<'sc>> {
-        // dead code is code that has no path to the entry point
-        let mut dead_nodes = vec![];
-        for destination in self.graph.node_indices() {
-            let mut is_connected = false;
-            for entry in &self.entry_points {
-                if has_path_connecting(&self.graph, *entry, destination, None) {
-                    is_connected = true;
-                    break;
-                }
-            }
-            if !is_connected {
-                dead_nodes.push(destination);
-            }
-        }
-        let dead_enum_variant_warnings = dead_nodes
-            .iter()
-            .filter_map(|x| match &self.graph[*x] {
-                ControlFlowGraphNode::EnumVariant { span, variant_name } => Some(CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::DeadEnumVariant {
-                        variant_name: variant_name.to_string(),
-                    },
-                }),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-
-        let dead_ast_node_warnings = dead_nodes
-            .into_iter()
-            .filter_map(|x| match &self.graph[x] {
-                ControlFlowGraphNode::ProgramNode(node) => {
-                    Some(construct_dead_code_warning_from_node(node))
-                }
-                ControlFlowGraphNode::EnumVariant { span, variant_name } => Some(CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::DeadEnumVariant {
-                        variant_name: variant_name.to_string(),
-                    },
-                }),
-                ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(CompileWarning {
-                    span: span.clone(),
-                    warning_content: Warning::DeadMethod,
-                }),
-                ControlFlowGraphNode::OrganizationalDominator(..) => None,
-            })
-            .collect::<Vec<_>>();
-
-        let all_warnings = [dead_enum_variant_warnings, dead_ast_node_warnings].concat();
-        // filter out any overlapping spans -- if a span is contained within another one,
-        // remove it.
-        all_warnings
-            .clone()
-            .into_iter()
-            .filter(|CompileWarning { span, .. }| {
-                // if any other warnings contain a span which completely covers this one, filter
-                // out this one.
-                all_warnings
-                    .iter()
-                    .find(
-                        |CompileWarning {
-                             span: other_span, ..
-                         }| {
-                            other_span.end() > span.end() && other_span.start() < span.start()
-                        },
-                    )
-                    .is_none()
-            })
-            .collect()
-    }
-    /// Constructs a graph that is designed to identify unused declarations and sections of code.
-    pub(crate) fn construct_dead_code_graph(
-        ast: &TypedParseTree<'sc>,
-        tree_type: TreeType,
-    ) -> Self {
+    pub(crate) fn construct_return_path_graph(ast: &TypedParseTree<'sc>) -> Self {
         let mut graph = ControlFlowGraph {
             graph: Graph::new(),
             entry_points: vec![],
@@ -109,65 +35,52 @@ impl<'sc> ControlFlowGraph<'sc> {
             leaves = l_leaves;
         }
 
-        // calculate the entry points based on the tree type
-        graph.entry_points = match tree_type {
-            TreeType::Predicate | TreeType::Script => {
-                // a predicate or script have a main function as the only entry point
-                vec![
-                    graph
-                        .graph
-                        .node_indices()
-                        .find(|i| match graph.graph[*i] {
-                            ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                            ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                                content:
-                                    TypedAstNodeContent::Declaration(
-                                        TypedDeclaration::FunctionDeclaration(
-                                            TypedFunctionDeclaration { ref name, .. },
-                                        ),
-                                    ),
-                                ..
-                            }) => name.primary_name == "main",
-                            _ => false,
-                        })
-                        .unwrap(),
-                ]
-            }
-            TreeType::Contract | TreeType::Library => graph
-                .graph
-                .node_indices()
-                .filter(|i| match graph.graph[*i] {
-                    ControlFlowGraphNode::OrganizationalDominator(_) => false,
-                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                        content:
-                            TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                                TypedFunctionDeclaration {
-                                    visibility: Visibility::Public,
-                                    ..
-                                },
-                            )),
-                        ..
-                    }) => true,
-                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                        content:
-                            TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(
-                                TypedTraitDeclaration {
-                                    visibility: Visibility::Public,
-                                    ..
-                                },
-                            )),
-                        ..
-                    }) => true,
-                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
-                        content:
-                            TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { .. }),
-                        ..
-                    }) => true,
-                    _ => false,
-                })
-                .collect(),
-        };
         graph
+    }
+    /// This function  looks through the control flow graph and ensures that all paths that are
+    /// required to return a value do, indeed, return a value of the correct type.
+    /// It does this by checking every function declaration in both the methods namespace
+    /// and the functions namespace and validating that all paths leading to the function exit node
+    /// return the same type. Additionally, if a function has a return type, all paths must indeed
+    /// lead to the function exit node.
+    pub(crate) fn analyze_return_paths(&self) -> Vec<CompileError<'sc>> {
+        let mut errors = vec![];
+        for (_name, (entry_point, exit_point)) in &self.namespace.function_namespace {
+            // For every node connected to the entry point
+            errors.append(&mut self.ensure_all_paths_reach_exit(*entry_point, *exit_point));
+        }
+        errors
+    }
+    fn ensure_all_paths_reach_exit(
+        &self,
+        entry_point: EntryPoint,
+        exit_point: ExitPoint,
+    ) -> Vec<CompileError<'sc>> {
+        let mut rovers = vec![entry_point];
+        let errors = vec![];
+        let mut max_iterations = 50;
+        while rovers.len() >= 1 && rovers[0] != exit_point && max_iterations > 0 {
+            max_iterations -= 1;
+            dbg!(&rovers);
+            rovers = rovers
+                .into_iter()
+                .filter(|idx| *idx != exit_point)
+                .collect();
+            let mut next_rovers = vec![];
+            for rover in rovers {
+                let mut neighbors = self
+                    .graph
+                    .neighbors_directed(rover, petgraph::Direction::Outgoing)
+                    .collect::<Vec<_>>();
+                if neighbors.is_empty() {
+                    //j                    errors.push(todo!("Path does not return error"));
+                }
+                next_rovers.append(&mut neighbors);
+            }
+            rovers = next_rovers;
+        }
+
+        errors
     }
 }
 fn connect_node<'sc>(
@@ -511,47 +424,4 @@ fn connect_enum_instantiation<'sc>(
     graph.add_edge(variant_index, enum_instantiation_exit_idx, "".into());
 
     vec![enum_instantiation_exit_idx]
-}
-
-fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> CompileWarning<'sc> {
-    match node {
-        // if this is a function, struct, or trait declaration that is never called, then it is dead
-        // code.
-        TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration { .. }),
-            span,
-        } => CompileWarning {
-            span: span.clone(),
-            warning_content: Warning::DeadDeclaration,
-        },
-        TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration { .. }),
-            span,
-        } => CompileWarning {
-            span: span.clone(),
-            warning_content: Warning::DeadDeclaration,
-        },
-        TypedAstNode {
-            content:
-                TypedAstNodeContent::Declaration(TypedDeclaration::TraitDeclaration(
-                    TypedTraitDeclaration { name, .. },
-                )),
-            ..
-        } => CompileWarning {
-            span: name.span.clone(),
-            warning_content: Warning::DeadTrait,
-        },
-        TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::EnumDeclaration(..)),
-            span,
-        } => CompileWarning {
-            span: span.clone(),
-            warning_content: Warning::DeadDeclaration,
-        },
-        // otherwise, this is unreachable.
-        TypedAstNode { span, .. } => CompileWarning {
-            span: span.clone(),
-            warning_content: Warning::UnreachableCode,
-        },
-    }
 }

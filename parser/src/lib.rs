@@ -324,7 +324,8 @@ fn perform_control_flow_analysis<'sc>(
             let mut warnings = vec![];
             let mut errors = vec![];
             warnings.append(&mut graph.find_dead_code());
-            //           errors.append(&mut graph.analyze_return_paths());
+            let graph = ControlFlowGraph::construct_return_path_graph(tree);
+            errors.append(&mut graph.analyze_return_paths());
             (warnings, errors)
         }
         None => (vec![], vec![]),
@@ -338,7 +339,8 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
     for tree in &lib.trees {
         let graph = ControlFlowGraph::construct_dead_code_graph(tree, TreeType::Library);
         warnings.append(&mut graph.find_dead_code());
-        //        errors.append(&mut graph.analyze_return_paths());
+        let graph = ControlFlowGraph::construct_return_path_graph(tree);
+        errors.append(&mut graph.analyze_return_paths());
     }
     (warnings, errors)
 }

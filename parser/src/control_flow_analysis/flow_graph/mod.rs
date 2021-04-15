@@ -1,27 +1,13 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use crate::{
-    parse_tree::Visibility,
-    semantics::ast_node::{TypedEnumVariant, TypedExpressionVariant, TypedTraitDeclaration},
-    Ident, TreeType,
-};
-use crate::{
-    semantics::{
-        ast_node::{
-            TypedCodeBlock, TypedDeclaration, TypedEnumDeclaration, TypedExpression,
-            TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
-        },
-        TypedAstNode, TypedAstNodeContent, TypedParseTree,
-    },
-    CompileWarning, Warning,
-};
+use crate::semantics::TypedAstNode;
+use crate::{semantics::ast_node::TypedEnumVariant, Ident};
 use pest::Span;
-use petgraph::algo::has_path_connecting;
+
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
 mod namespace;
-mod return_paths;
 use namespace::ControlFlowNamespace;
 
 pub type EntryPoint = NodeIndex;

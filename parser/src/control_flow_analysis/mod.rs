@@ -38,7 +38,9 @@
 //! A node _M_ dominates a node _N_ if every path from the entry that reaches node _N_ has to pass through node _M_.
 //! # # # Reachability
 
+mod analyze_return_paths;
 mod dead_code_analysis;
 mod flow_graph;
+pub use analyze_return_paths::*;
 pub use dead_code_analysis::*;
 pub use flow_graph::*;
