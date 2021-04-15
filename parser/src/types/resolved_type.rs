@@ -33,6 +33,12 @@ pub enum ResolvedType<'sc> {
     ErrorRecovery,
 }
 
+impl Default for ResolvedType<'_> {
+    fn default() -> Self {
+        ResolvedType::Unit
+    }
+}
+
 impl<'sc> ResolvedType<'sc> {
     pub(crate) fn friendly_type_str(&self) -> String {
         use ResolvedType::*;

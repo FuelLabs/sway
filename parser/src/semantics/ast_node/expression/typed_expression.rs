@@ -213,10 +213,14 @@ impl<'sc> TypedExpression<'sc> {
                         type_annotation.clone(),
                         help_text.clone()
                     ),
-                    (TypedCodeBlock { contents: vec![] }, ResolvedType::Unit),
+                    (TypedCodeBlock { contents: vec![] }, Some(ResolvedType::Unit)),
                     warnings,
                     errors
                 );
+                let block_return_type = match block_return_type {
+                    Some(ty) => ty,
+                    None => todo!("Expected code block to have implicit return error")
+                };
                 TypedExpression {
                     expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
                         contents: typed_block.contents,

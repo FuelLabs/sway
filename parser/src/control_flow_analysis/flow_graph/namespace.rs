@@ -1,9 +1,19 @@
 use super::{EntryPoint, ExitPoint};
-use crate::Ident;
+use crate::{types::ResolvedType, Ident};
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
+/// Represents a single entry in the [ControlFlowNamespace]'s function namespace. Contains various
+/// metadata about a function including its node indexes in the graph, its return type, and more.
+/// Used to both perform control flow analysis on functions as well as produce good error messages.
+pub(crate) struct FunctionNamespaceEntry<'sc> {
+    pub(crate) entry_point: EntryPoint,
+    pub(crate) exit_point: ExitPoint,
+    pub(crate) return_type: ResolvedType<'sc>,
+}
+
+#[derive(Default, Clone)]
 /// This namespace holds mappings from various declarations to their indexes in the graph. This is
 /// used for connecting those vertices when the declarations are instantiated.
 ///
@@ -11,19 +21,23 @@ use std::collections::HashMap;
 /// of scope at this point, as that would have been caught earlier and aborted the compilation
 /// process.
 pub struct ControlFlowNamespace<'sc> {
-    function_namespace: HashMap<Ident<'sc>, (EntryPoint, ExitPoint)>,
-    enum_namespace: HashMap<Ident<'sc>, (NodeIndex, HashMap<Ident<'sc>, NodeIndex>)>,
-    trait_namespace: HashMap<Ident<'sc>, NodeIndex>,
+    pub(crate) function_namespace: HashMap<Ident<'sc>, FunctionNamespaceEntry<'sc>>,
+    pub(crate) enum_namespace: HashMap<Ident<'sc>, (NodeIndex, HashMap<Ident<'sc>, NodeIndex>)>,
+    pub(crate) trait_namespace: HashMap<Ident<'sc>, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
-    trait_method_namespace: HashMap<Ident<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
+    pub(crate) trait_method_namespace: HashMap<Ident<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
 }
 
 impl<'sc> ControlFlowNamespace<'sc> {
-    pub(crate) fn get_function(&self, ident: &Ident<'sc>) -> Option<&(EntryPoint, ExitPoint)> {
+    pub(crate) fn get_function(&self, ident: &Ident<'sc>) -> Option<&FunctionNamespaceEntry<'sc>> {
         self.function_namespace.get(ident)
     }
-    pub(crate) fn insert_function(&mut self, ident: Ident<'sc>, points: (EntryPoint, ExitPoint)) {
-        self.function_namespace.insert(ident, points);
+    pub(crate) fn insert_function(
+        &mut self,
+        ident: Ident<'sc>,
+        entry: FunctionNamespaceEntry<'sc>,
+    ) {
+        self.function_namespace.insert(ident, entry);
     }
     pub(crate) fn insert_enum(
         &mut self,

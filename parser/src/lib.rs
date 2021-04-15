@@ -320,11 +320,13 @@ fn perform_control_flow_analysis<'sc>(
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     match tree {
         Some(tree) => {
-            let graph = ControlFlowGraph::from_tree(tree, tree_type);
+            let graph = ControlFlowGraph::construct_dead_code_graph(tree, tree_type);
             let mut warnings = vec![];
-            let mut dead_code_warnings = graph.find_dead_code();
-            warnings.append(&mut dead_code_warnings);
-            (warnings, vec![])
+            let mut errors = vec![];
+            warnings.append(&mut graph.find_dead_code());
+            let graph = ControlFlowGraph::construct_return_path_graph(tree);
+            errors.append(&mut graph.analyze_return_paths());
+            (warnings, errors)
         }
         None => (vec![], vec![]),
     }
@@ -333,11 +335,14 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
     lib: &LibraryExports<'sc>,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     let mut warnings = vec![];
+    let mut errors = vec![];
     for tree in &lib.trees {
-        let graph = ControlFlowGraph::from_tree(tree, TreeType::Library);
+        let graph = ControlFlowGraph::construct_dead_code_graph(tree, TreeType::Library);
         warnings.append(&mut graph.find_dead_code());
+        let graph = ControlFlowGraph::construct_return_path_graph(tree);
+        errors.append(&mut graph.analyze_return_paths());
     }
-    (warnings, vec![])
+    (warnings, errors)
 }
 
 // strategy: parse top level things

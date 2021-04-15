@@ -473,7 +473,7 @@ impl<'sc> TypedAstNode<'sc> {
                         Some(ResolvedType::Unit),
                         "A while loop's loop body cannot implicitly return a value.\
                         Try assigning it to a mutable variable declared outside of the loop instead."),
-                        (TypedCodeBlock { contents: vec![] }, ResolvedType::Unit),
+                        (TypedCodeBlock { contents: vec![] }, Some(ResolvedType::Unit)),
                         warnings,
                         errors
                     );
