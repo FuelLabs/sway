@@ -10,6 +10,7 @@ use crate::semantics::{
     },
     TypedAstNode, TypedAstNodeContent,
 };
+use crate::types::ResolvedType;
 use crate::Ident;
 use crate::{error::*, semantics::TypedParseTree};
 use pest::Span;
@@ -43,9 +44,22 @@ impl<'sc> ControlFlowGraph<'sc> {
     /// lead to the function exit node.
     pub(crate) fn analyze_return_paths(&self) -> Vec<CompileError<'sc>> {
         let mut errors = vec![];
-        for (_name, (entry_point, exit_point)) in &self.namespace.function_namespace {
+        for (
+            name,
+            FunctionNamespaceEntry {
+                entry_point,
+                exit_point,
+                return_type,
+            },
+        ) in &self.namespace.function_namespace
+        {
             // For every node connected to the entry point
-            errors.append(&mut self.ensure_all_paths_reach_exit(*entry_point, *exit_point));
+            errors.append(&mut self.ensure_all_paths_reach_exit(
+                *entry_point,
+                *exit_point,
+                name.primary_name,
+                return_type,
+            ));
         }
         errors
     }
@@ -53,13 +67,23 @@ impl<'sc> ControlFlowGraph<'sc> {
         &self,
         entry_point: EntryPoint,
         exit_point: ExitPoint,
+        function_name: &'sc str,
+        return_ty: &ResolvedType<'sc>,
     ) -> Vec<CompileError<'sc>> {
         let mut rovers = vec![entry_point];
-        let errors = vec![];
+        let mut errors = vec![];
         let mut max_iterations = 50;
         while rovers.len() >= 1 && rovers[0] != exit_point && max_iterations > 0 {
             max_iterations -= 1;
-            dbg!(&rovers);
+            /*
+            println!(
+                "{:?}",
+                rovers
+                    .iter()
+                    .map(|ix| self.graph[*ix].clone())
+                    .collect::<Vec<_>>()
+            );
+            */
             rovers = rovers
                 .into_iter()
                 .filter(|idx| *idx != exit_point)
@@ -70,14 +94,19 @@ impl<'sc> ControlFlowGraph<'sc> {
                     .graph
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
                     .collect::<Vec<_>>();
-                if neighbors.is_empty() {
-                    //j                    errors.push(todo!("Path does not return error"));
+                if neighbors.is_empty() && *return_ty != ResolvedType::Unit {
+                    errors.push(CompileError::PathDoesNotReturn {
+                        // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
+                        // different. To save some code duplication,
+                        span: self.graph[rover].unwrap_to_node().span.clone(),
+                        function_name,
+                        ty: return_ty.friendly_type_str(),
+                    });
                 }
                 next_rovers.append(&mut neighbors);
             }
             rovers = next_rovers;
         }
-        self.visualize();
 
         errors
     }
@@ -110,21 +139,7 @@ fn connect_node<'sc>(
             // An abridged version of the dead code analysis for a while loop
             // since we don't really care about what the loop body contains when detecting
             // divergent paths
-            let entry = graph.add_node(node.into());
-            let while_loop_exit = graph.add_node("while loop exit".to_string().into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry, "".into());
-            }
-            graph.add_edge(
-                entry,
-                while_loop_exit,
-                "condition is initially false".into(),
-            );
-            let loop_body = graph.add_node("Loop body".into());
-            graph.add_edge(loop_body, entry, "loop repeats".into());
-
-            graph.add_edge(loop_body, while_loop_exit, "".into());
-            NodeConnection::NextStep(vec![while_loop_exit])
+            NodeConnection::NextStep(vec![graph.add_node(node.into())])
         }
         TypedAstNodeContent::Expression(TypedExpression { .. }) => {
             let entry = graph.add_node(node.into());
@@ -247,9 +262,14 @@ fn connect_typed_fn_decl<'sc>(
         graph.add_edge(node, fn_exit_node, "return".into());
     }
 
+    let namespace_entry = FunctionNamespaceEntry {
+        entry_point: entry_node,
+        exit_point: fn_exit_node,
+        return_type: fn_decl.return_type.clone(),
+    };
     graph
         .namespace
-        .insert_function(fn_decl.name.clone(), (entry_node, fn_exit_node));
+        .insert_function(fn_decl.name.clone(), namespace_entry);
 }
 
 type ReturnStatementNodes = Vec<NodeIndex>;

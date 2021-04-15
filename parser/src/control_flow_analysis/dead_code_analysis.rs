@@ -16,7 +16,7 @@ use crate::{
 };
 use pest::Span;
 use petgraph::algo::has_path_connecting;
-use petgraph::{prelude::NodeIndex};
+use petgraph::prelude::NodeIndex;
 
 impl<'sc> ControlFlowGraph<'sc> {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning<'sc>> {
@@ -402,9 +402,15 @@ fn connect_typed_fn_decl<'sc>(
         graph.add_edge(fn_exit_node, exit_node, "".into());
     }
 
+    let namespace_entry = FunctionNamespaceEntry {
+        entry_point: entry_node,
+        exit_point: fn_exit_node,
+        return_type: fn_decl.return_type.clone(),
+    };
+
     graph
         .namespace
-        .insert_function(fn_decl.name.clone(), (entry_node, fn_exit_node));
+        .insert_function(fn_decl.name.clone(), namespace_entry);
 }
 
 fn depth_first_insertion_code_block<'sc>(
@@ -440,6 +446,13 @@ fn connect_expression<'sc>(
                 .namespace
                 .get_function(&name.suffix)
                 .cloned()
+                .map(
+                    |FunctionNamespaceEntry {
+                         entry_point,
+                         exit_point,
+                         ..
+                     }| (entry_point, exit_point),
+                )
                 .unwrap_or_else(|| {
                     let node_idx =
                         graph.add_node(format!("extern fn {}()", name.suffix.primary_name).into());
@@ -518,11 +531,14 @@ fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> Compi
         // if this is a function, struct, or trait declaration that is never called, then it is dead
         // code.
         TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration { .. }),
-            span,
+            content:
+                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
+                    TypedFunctionDeclaration { name, .. },
+                )),
+            ..
         } => CompileWarning {
-            span: span.clone(),
-            warning_content: Warning::DeadDeclaration,
+            span: name.span.clone(),
+            warning_content: Warning::DeadFunctionDeclaration,
         },
         TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration { .. }),

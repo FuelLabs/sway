@@ -173,6 +173,7 @@ pub enum Warning<'sc> {
     },
     OverridingTraitImplementation,
     DeadDeclaration,
+    DeadFunctionDeclaration,
     DeadTrait,
     UnreachableCode,
     DeadEnumVariant {
@@ -197,6 +198,7 @@ impl<'sc> Warning<'sc> {
             OverridesOtherSymbol { name } => format!("This import would override another symbol with the same name \"{}\" in this namespace.", name),
             OverridingTraitImplementation  => format!("This trait implementation overrides another one that was previously defined."),
             DeadDeclaration  => "This declaration is never used.".into(),
+            DeadFunctionDeclaration  => "This function is never called.".into(),
             UnreachableCode => "This code is unreachable.".into(),
             DeadEnumVariant { variant_name } => format!("Enum variant {} is never constructed.", variant_name),
             DeadTrait => "This trait is never implemented.".into(),
@@ -384,6 +386,12 @@ pub enum CompileError<'sc> {
     },
     #[error("This enum variant requires an instantiation expression. Try initializing it with arguments in parentheses.")]
     MissingEnumInstantiator { span: Span<'sc> },
+    #[error("This path must return a value of type \"{ty}\" from function \"{function_name}\", but it does not.")]
+    PathDoesNotReturn {
+        span: Span<'sc>,
+        ty: String,
+        function_name: &'sc str,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -509,6 +517,7 @@ impl<'sc> CompileError<'sc> {
             UnqualifiedSelfType { span, .. } => (span.start(), span.end()),
             NotAType { span, .. } => (span.start(), span.end()),
             MissingEnumInstantiator { span, .. } => (span.start(), span.end()),
+            PathDoesNotReturn { span, .. } => (span.start(), span.end()),
         }
     }
 }
