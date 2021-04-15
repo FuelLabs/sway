@@ -392,6 +392,10 @@ pub enum CompileError<'sc> {
         ty: String,
         function_name: &'sc str,
     },
+    #[error("Expected block to implicitly return a value of type \"{ty}\".")]
+    ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
+    #[error("Expected block to implicitly return a value.")]
+    ExpectedImplicitReturnFromBlock { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -518,6 +522,8 @@ impl<'sc> CompileError<'sc> {
             NotAType { span, .. } => (span.start(), span.end()),
             MissingEnumInstantiator { span, .. } => (span.start(), span.end()),
             PathDoesNotReturn { span, .. } => (span.start(), span.end()),
+            ExpectedImplicitReturnFromBlockWithType { span, .. } => (span.start(), span.end()),
+            ExpectedImplicitReturnFromBlock { span, .. } => (span.start(), span.end()),
         }
     }
 }

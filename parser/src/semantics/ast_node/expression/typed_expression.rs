@@ -205,7 +205,7 @@ impl<'sc> TypedExpression<'sc> {
                 ERROR_RECOVERY_EXPR.clone()
                 */
             }
-            Expression::CodeBlock { contents, .. } => {
+            Expression::CodeBlock { contents, span, .. } => {
                 let (typed_block, block_return_type) = type_check!(
                     TypedCodeBlock::type_check(
                         contents.clone(),
@@ -219,7 +219,15 @@ impl<'sc> TypedExpression<'sc> {
                 );
                 let block_return_type = match block_return_type {
                     Some(ty) => ty,
-                    None => todo!("Expected code block to have implicit return error")
+                    None => {
+                        match type_annotation {
+                            Some(ref ty) if ty != &ResolvedType::Unit =>{
+                                errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType { span: span.clone(), ty: ty.friendly_type_str() });
+                                ResolvedType::ErrorRecovery
+                            }
+                            _ => ResolvedType::Unit
+                        }
+                    }
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
