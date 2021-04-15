@@ -320,7 +320,7 @@ fn perform_control_flow_analysis<'sc>(
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     match tree {
         Some(tree) => {
-            let graph = ControlFlowGraph::from_tree(tree, tree_type);
+            let graph = ControlFlowGraph::construct_dead_code_graph(tree, tree_type);
             let mut warnings = vec![];
             let mut errors = vec![];
             warnings.append(&mut graph.find_dead_code());
@@ -336,7 +336,7 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     for tree in &lib.trees {
-        let graph = ControlFlowGraph::from_tree(tree, TreeType::Library);
+        let graph = ControlFlowGraph::construct_dead_code_graph(tree, TreeType::Library);
         warnings.append(&mut graph.find_dead_code());
         //        errors.append(&mut graph.analyze_return_paths());
     }
