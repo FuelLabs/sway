@@ -1,10 +1,12 @@
+mod enum_instantiation;
 mod match_branch;
 mod match_condition;
 mod struct_expr_field;
 mod typed_expression;
 mod typed_expression_variant;
-pub(super) use match_branch::TypedMatchBranch;
-pub(super) use match_condition::TypedMatchCondition;
-pub(super) use struct_expr_field::TypedStructExpressionField;
+pub(crate) use enum_instantiation::instantiate_enum;
+pub(crate) use match_branch::TypedMatchBranch;
+pub(crate) use match_condition::TypedMatchCondition;
+pub(crate) use struct_expr_field::TypedStructExpressionField;
 pub(crate) use typed_expression::{TypedExpression, ERROR_RECOVERY_EXPR};
 pub(crate) use typed_expression_variant::TypedExpressionVariant;

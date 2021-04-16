@@ -1,5 +1,5 @@
 use super::*;
-use crate::types::TypeInfo;
+use crate::types::ResolvedType;
 use crate::CodeBlock;
 
 #[derive(Clone, Debug)]
@@ -8,13 +8,13 @@ pub(crate) struct TypedCodeBlock<'sc> {
 }
 
 impl<'sc> TypedCodeBlock<'sc> {
-    pub(crate) fn type_check<'manifest>(
+    pub(crate) fn type_check(
         other: CodeBlock<'sc>,
         namespace: &Namespace<'sc>,
         // this is for the return or implicit return
-        type_annotation: Option<TypeInfo<'sc>>,
+        type_annotation: Option<ResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
-    ) -> CompileResult<'sc, (Self, TypeInfo<'sc>)> {
+    ) -> CompileResult<'sc, (Self, Option<ResolvedType<'sc>>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut evaluated_contents = Vec::new();
@@ -57,37 +57,36 @@ impl<'sc> TypedCodeBlock<'sc> {
         }
         // find the implicit return, if any, and use it as the code block's return type.
         // The fact that there is at most one implicit return is an invariant held by the parser.
-        let return_type = evaluated_contents
-            .iter()
-            .find_map(|x| match x {
-                TypedAstNode {
-                    content:
-                        TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
-                            ref return_type,
-                            ..
-                        }),
-                    ..
-                } => Some(return_type.clone()),
-                _ => None,
-            })
-            .unwrap_or(TypeInfo::Unit);
-        if let Some(type_annotation) = type_annotation {
-            let convertability = return_type.is_convertable(
-                &type_annotation,
-                implicit_return_span.unwrap_or(other.whole_block_span.clone()),
-                help_text,
-            );
-            match convertability {
-                Ok(warning) => {
-                    if let Some(warning) = warning {
-                        warnings.push(CompileWarning {
-                            warning_content: warning,
-                            span: other.whole_block_span,
-                        });
+        let return_type = evaluated_contents.iter().find_map(|x| match x {
+            TypedAstNode {
+                content:
+                    TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
+                        ref return_type,
+                        ..
+                    }),
+                ..
+            } => Some(return_type.clone()),
+            _ => None,
+        });
+        if let Some(ref return_type) = return_type {
+            if let Some(type_annotation) = type_annotation {
+                let convertability = return_type.is_convertable(
+                    &type_annotation,
+                    implicit_return_span.unwrap_or(other.whole_block_span.clone()),
+                    help_text,
+                );
+                match convertability {
+                    Ok(warning) => {
+                        if let Some(warning) = warning {
+                            warnings.push(CompileWarning {
+                                warning_content: warning,
+                                span: other.whole_block_span,
+                            });
+                        }
                     }
-                }
-                Err(err) => {
-                    errors.push(err.into());
+                    Err(err) => {
+                        errors.push(err.into());
+                    }
                 }
             }
         }

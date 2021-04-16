@@ -1,5 +1,4 @@
-use crate::parser::Rule;
-use crate::types::TypeInfo;
+use crate::{parser::Rule, types::ResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
@@ -113,6 +112,12 @@ impl<'sc, T> CompileResult<'sc, T> {
             }
         }
     }
+    pub fn ok(&self) -> Option<&T> {
+        match self {
+            CompileResult::Ok { value, .. } => Some(value),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -152,11 +157,11 @@ pub enum Warning<'sc> {
         name: &'sc str,
     },
     LossOfPrecision {
-        initial_type: TypeInfo<'sc>,
-        cast_to: TypeInfo<'sc>,
+        initial_type: ResolvedType<'sc>,
+        cast_to: ResolvedType<'sc>,
     },
     UnusedReturnValue {
-        r#type: TypeInfo<'sc>,
+        r#type: ResolvedType<'sc>,
     },
     SimilarMethodFound {
         lib: String,
@@ -167,6 +172,16 @@ pub enum Warning<'sc> {
         name: &'sc str,
     },
     OverridingTraitImplementation,
+    DeadDeclaration,
+    DeadFunctionDeclaration,
+    DeadStructDeclaration,
+    DeadTrait,
+    UnreachableCode,
+    DeadEnumVariant {
+        variant_name: String,
+    },
+    DeadMethod,
+    StructFieldNeverRead,
 }
 
 impl<'sc> Warning<'sc> {
@@ -183,12 +198,20 @@ impl<'sc> Warning<'sc> {
             UnusedReturnValue { r#type } => format!("This returns a value of type {}, which is not assigned to anything and is ignored.", r#type.friendly_type_str()),
             SimilarMethodFound { lib, module, name } => format!("A method with the same name was found for type {} in dependency \"{}::{}\". Traits must be in scope in order to access their methods. ", name, lib, module),
             OverridesOtherSymbol { name } => format!("This import would override another symbol with the same name \"{}\" in this namespace.", name),
-            OverridingTraitImplementation  => format!("This trait implementation overrides another one that was previously defined.")
+            OverridingTraitImplementation  => format!("This trait implementation overrides another one that was previously defined."),
+            DeadDeclaration  => "This declaration is never used.".into(),
+            DeadStructDeclaration  => "This struct is never instantiated.".into(),
+            DeadFunctionDeclaration  => "This function is never called.".into(),
+            UnreachableCode => "This code is unreachable.".into(),
+            DeadEnumVariant { variant_name } => format!("Enum variant {} is never constructed.", variant_name),
+            DeadTrait => "This trait is never implemented.".into(),
+            DeadMethod => "This method is never called.".into(),
+            StructFieldNeverRead => "This struct field is never accessed.".into()
         }
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: &'sc str, span: Span<'sc> },
@@ -344,8 +367,12 @@ pub enum CompileError<'sc> {
     NonFinalAsteriskInPath { span: Span<'sc> },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span<'sc>, name: String },
-    #[error("\"{name}\" is not a struct. Fields can only be accessed on structs.")]
-    NotAStruct { name: &'sc str, span: Span<'sc> },
+    #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
+    NotAStruct {
+        name: &'sc str,
+        span: Span<'sc>,
+        actually: String,
+    },
     #[error("Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n {available_fields}")]
     FieldNotFound {
         field_name: &'sc str,
@@ -357,6 +384,26 @@ pub enum CompileError<'sc> {
     SymbolNotFound { span: Span<'sc>, name: &'sc str },
     #[error("Because this if expression's value is used, an \"else\" branch is required and it must return type \"{r#type}\"")]
     NoElseBranch { span: Span<'sc>, r#type: String },
+    #[error("Use of type `Self` outside of a context in which `Self` refers to a type.")]
+    UnqualifiedSelfType { span: Span<'sc> },
+    #[error("Symbol \"{name}\" does not refer to a type, it refers to a {actually_is}. It cannot be used in this position.")]
+    NotAType {
+        span: Span<'sc>,
+        name: String,
+        actually_is: String,
+    },
+    #[error("This enum variant requires an instantiation expression. Try initializing it with arguments in parentheses.")]
+    MissingEnumInstantiator { span: Span<'sc> },
+    #[error("This path must return a value of type \"{ty}\" from function \"{function_name}\", but it does not.")]
+    PathDoesNotReturn {
+        span: Span<'sc>,
+        ty: String,
+        function_name: &'sc str,
+    },
+    #[error("Expected block to implicitly return a value of type \"{ty}\".")]
+    ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
+    #[error("Expected block to implicitly return a value.")]
+    ExpectedImplicitReturnFromBlock { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -365,7 +412,7 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum TypeError<'sc> {
     #[error("Mismatched types: Expected type {expected} but found type {received}. Type {received} is not castable to type {expected}.\n help: {help_text}")]
     MismatchedType {
@@ -479,6 +526,12 @@ impl<'sc> CompileError<'sc> {
             FieldNotFound { span, .. } => (span.start(), span.end()),
             SymbolNotFound { span, .. } => (span.start(), span.end()),
             NoElseBranch { span, .. } => (span.start(), span.end()),
+            UnqualifiedSelfType { span, .. } => (span.start(), span.end()),
+            NotAType { span, .. } => (span.start(), span.end()),
+            MissingEnumInstantiator { span, .. } => (span.start(), span.end()),
+            PathDoesNotReturn { span, .. } => (span.start(), span.end()),
+            ExpectedImplicitReturnFromBlockWithType { span, .. } => (span.start(), span.end()),
+            ExpectedImplicitReturnFromBlock { span, .. } => (span.start(), span.end()),
         }
     }
 }

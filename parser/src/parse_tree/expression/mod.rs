@@ -1,15 +1,11 @@
 use crate::error::*;
-use crate::parse_tree::CallPath;
-use crate::parse_tree::Literal;
+use crate::parse_tree::{CallPath, Literal};
 use crate::parser::Rule;
-use crate::CodeBlock;
+use crate::{CodeBlock, Ident};
 use either::Either;
 use pest::iterators::Pair;
 use pest::Span;
-use std::{
-    collections::HashMap,
-    hash::{Hash, Hasher},
-};
+use std::collections::HashMap;
 
 mod asm;
 pub(crate) use asm::AsmExpression;
@@ -72,16 +68,49 @@ pub(crate) enum Expression<'sc> {
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
+    /// A subfield expression is anything of the form:
+    /// ```ignore
+    /// <ident>.<ident>
+    /// ```
+    ///
+    /// Where there are `n >=2` idents. This is typically an access of a structure field.
     SubfieldExpression {
         name_parts: Vec<Ident<'sc>>,
         span: Span<'sc>,
         unary_op: Option<UnaryOp>,
     },
+    /// A [DelineatedPath] is anything of the form:
+    /// ```ignore
+    /// <ident>::<ident>
+    /// ```
+    /// Where there are `n >= 2` idents.
+    /// These could be either enum variant constructions, or they could be
+    /// references to some sort of module in the module tree.
+    /// For example, a reference to a module:
+    /// ```ignore
+    /// std::ops::add
+    /// ```
+    ///
+    /// And, an enum declaration:
+    /// ```ignore
+    /// enum MyEnum {
+    ///   Variant1,
+    ///   Variant2
+    /// }
+    ///
+    /// MyEnum::Variant1
+    /// ```
+    DelineatedPath {
+        call_path: CallPath<'sc>,
+        instantiator: Option<Box<Expression<'sc>>>,
+        span: Span<'sc>,
+        type_arguments: Vec<crate::types::TypeInfo<'sc>>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct StructExpressionField<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: Ident<'sc>,
     pub(crate) value: Expression<'sc>,
     pub(crate) span: Span<'sc>,
 }
@@ -103,6 +132,7 @@ impl<'sc> Expression<'sc> {
             AsmExpression { span, .. } => span,
             MethodApplication { span, .. } => span,
             SubfieldExpression { span, .. } => span,
+            DelineatedPath { span, .. } => span,
         })
         .clone()
     }
@@ -351,7 +381,13 @@ impl<'sc> Expression<'sc> {
                 let fields = expr_iter.next().unwrap().into_inner().collect::<Vec<_>>();
                 let mut fields_buf = Vec::new();
                 for i in (0..fields.len()).step_by(2) {
-                    let name = fields[i].as_str();
+                    let name = eval!(
+                        Ident::parse_from_pair,
+                        warnings,
+                        errors,
+                        fields[i],
+                        return err(warnings, errors)
+                    );
                     let span = fields[i].as_span();
                     let value = eval!(
                         Expression::parse_from_pair,
@@ -515,6 +551,44 @@ impl<'sc> Expression<'sc> {
                 expr,
                 return err(warnings, errors)
             ),
+            Rule::delineated_path => {
+                // this is either an enum expression or looking something
+                // up in libraries
+                let span = expr.as_span();
+                let mut parts = expr.into_inner();
+                let path_component = parts.next().unwrap();
+                let instantiator = parts.next();
+                let path = eval!(
+                    CallPath::parse_from_pair,
+                    warnings,
+                    errors,
+                    path_component,
+                    return err(warnings, errors)
+                );
+
+                let instantiator = if let Some(inst) = instantiator {
+                    Some(Box::new(eval!(
+                        Expression::parse_from_pair_inner,
+                        warnings,
+                        errors,
+                        inst.into_inner().next().unwrap(),
+                        return err(warnings, errors)
+                    )))
+                } else {
+                    None
+                };
+
+                // if there is an expression in parenthesis, that is the instantiator.
+
+                Expression::DelineatedPath {
+                    call_path: path,
+                    instantiator,
+                    span,
+                    // Eventually, when we support generic enums, we want to be able to parse type
+                    // arguments on the enum name and throw them in here. TODO
+                    type_arguments: vec![],
+                }
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -649,53 +723,6 @@ impl UnaryOp {
                 return err(Vec::new(), errors);
             }
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Ident<'sc> {
-    pub(crate) primary_name: &'sc str,
-    // sub-names are the stuff after periods
-    // like x.test.thing.method()
-    // `test`, `thing`, and `method` are sub-names
-    // the primary name is `x`
-    pub(crate) span: Span<'sc>,
-}
-
-// custom implementation of Hash so that namespacing isn't reliant on the span itself, which will
-// always be different.
-impl Hash for Ident<'_> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.primary_name.hash(state);
-    }
-}
-impl PartialEq for Ident<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.primary_name == other.primary_name
-    }
-}
-
-impl Eq for Ident<'_> {}
-
-impl<'sc> Ident<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Ident> {
-        let span = {
-            let pair = pair.clone();
-            if pair.as_rule() != Rule::ident {
-                pair.into_inner().next().unwrap().as_span()
-            } else {
-                pair.as_span()
-            }
-        };
-        let name = pair.as_str().trim();
-        ok(
-            Ident {
-                primary_name: name,
-                span,
-            },
-            Vec::new(),
-            Vec::new(),
-        )
     }
 }
 

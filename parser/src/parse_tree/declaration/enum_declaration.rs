@@ -1,13 +1,15 @@
-use crate::error::*;
-use crate::parse_tree::declaration::TypeParameter;
 use crate::parser::Rule;
 use crate::types::TypeInfo;
+use crate::Ident;
+use crate::Namespace;
+use crate::{error::*, semantics::ast_node::TypedEnumDeclaration};
+use crate::{parse_tree::declaration::TypeParameter, semantics::ast_node::TypedEnumVariant};
 use inflector::cases::classcase::is_class_case;
 use pest::iterators::Pair;
 use pest::Span;
 #[derive(Debug, Clone)]
 pub struct EnumDeclaration<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: Ident<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) variants: Vec<EnumVariant<'sc>>,
     pub(crate) span: Span<'sc>,
@@ -15,11 +17,27 @@ pub struct EnumDeclaration<'sc> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct EnumVariant<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: Ident<'sc>,
     pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) tag: usize,
+    pub(crate) span: Span<'sc>,
 }
 
 impl<'sc> EnumDeclaration<'sc> {
+    /// Looks up the various TypeInfos in the [Namespace] to see if they are generic or refer to
+    /// something.
+    pub(crate) fn to_typed_decl(&self, namespace: &Namespace<'sc>) -> TypedEnumDeclaration<'sc> {
+        TypedEnumDeclaration {
+            name: self.name.clone(),
+            type_parameters: self.type_parameters.clone(),
+            variants: self
+                .variants
+                .iter()
+                .map(|x| x.to_typed_decl(namespace))
+                .collect(),
+            span: self.span.clone(),
+        }
+    }
     pub(crate) fn parse_from_pair(decl_inner: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let whole_enum_span = decl_inner.as_span();
         let mut warnings = Vec::new();
@@ -72,13 +90,20 @@ impl<'sc> EnumDeclaration<'sc> {
 
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();
-        let span = enum_name.as_span();
-        let name = enum_name.as_str();
-        assert_or_warn!(
-            is_class_case(name),
+        let name = eval!(
+            Ident::parse_from_pair,
             warnings,
-            span,
-            Warning::NonClassCaseEnumName { enum_name: name }
+            errors,
+            enum_name,
+            return err(warnings, errors)
+        );
+        assert_or_warn!(
+            is_class_case(name.primary_name),
+            warnings,
+            enum_name.as_span(),
+            Warning::NonClassCaseEnumName {
+                enum_name: name.primary_name
+            }
         );
 
         let variants = eval!(
@@ -103,22 +128,39 @@ impl<'sc> EnumDeclaration<'sc> {
 }
 
 impl<'sc> EnumVariant<'sc> {
+    pub(crate) fn to_typed_decl(&self, namespace: &Namespace<'sc>) -> TypedEnumVariant<'sc> {
+        TypedEnumVariant {
+            name: self.name.clone(),
+            r#type: namespace.resolve_type(&self.r#type),
+            tag: self.tag,
+            span: self.span.clone(),
+        }
+    }
     pub(crate) fn parse_from_pairs(
         decl_inner: Option<Pair<'sc, Rule>>,
     ) -> CompileResult<'sc, Vec<Self>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut fields_buf = Vec::new();
+        let mut tag = 0;
         if let Some(decl_inner) = decl_inner {
             let fields = decl_inner.into_inner().collect::<Vec<_>>();
             for i in (0..fields.len()).step_by(2) {
-                let span = fields[i].as_span();
-                let name = fields[i].as_str();
-                assert_or_warn!(
-                    is_class_case(name),
+                let variant_span = fields[i].as_span();
+                let name = eval!(
+                    Ident::parse_from_pair,
                     warnings,
-                    span,
-                    Warning::NonClassCaseEnumVariantName { variant_name: name }
+                    errors,
+                    fields[i],
+                    return err(warnings, errors)
+                );
+                assert_or_warn!(
+                    is_class_case(name.primary_name),
+                    warnings,
+                    name.span.clone(),
+                    Warning::NonClassCaseEnumVariantName {
+                        variant_name: name.primary_name
+                    }
                 );
                 let r#type = eval!(
                     TypeInfo::parse_from_pair_inner,
@@ -127,7 +169,13 @@ impl<'sc> EnumVariant<'sc> {
                     fields[i + 1].clone(),
                     TypeInfo::Unit
                 );
-                fields_buf.push(EnumVariant { name, r#type });
+                fields_buf.push(EnumVariant {
+                    name,
+                    r#type,
+                    tag,
+                    span: variant_span,
+                });
+                tag = tag + 1;
             }
         }
         ok(fields_buf, warnings, errors)

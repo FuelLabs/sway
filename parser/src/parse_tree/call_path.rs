@@ -1,6 +1,6 @@
-use super::Ident;
 use crate::error::*;
 use crate::parser::Rule;
+use crate::Ident;
 use pest::iterators::Pair;
 use pest::Span;
 
@@ -32,19 +32,28 @@ impl<'sc> CallPath<'sc> {
         crate::utils::join_spans(prefixes_span, self.suffix.span.clone())
     }
     pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<Self> {
-        let warnings = vec![];
-        let errors = vec![];
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut pairs_buf = vec![];
+        for pair in pair.clone().into_inner() {
+            if pair.as_rule() != Rule::path_separator {
+                pairs_buf.push(eval!(
+                    Ident::parse_from_pair,
+                    warnings,
+                    errors,
+                    pair,
+                    continue
+                ));
+            }
+        }
+        if pairs_buf.len() == 0 {
+            dbg!(&pair);
+        }
+        assert!(pairs_buf.len() > 0);
+        let suffix = pairs_buf.pop().unwrap();
+        let prefixes = pairs_buf;
+
         // TODO eventually we want to be able to call methods with colon-delineated syntax
-        ok(
-            CallPath {
-                prefixes: vec![],
-                suffix: Ident {
-                    primary_name: pair.as_str().trim(),
-                    span: pair.as_span(),
-                },
-            },
-            warnings,
-            errors,
-        )
+        ok(CallPath { prefixes, suffix }, warnings, errors)
     }
 }

@@ -1,12 +1,12 @@
 use crate::error::*;
-use crate::parse_tree::{declaration::TypeParameter, Ident};
+use crate::parse_tree::declaration::TypeParameter;
 use crate::types::TypeInfo;
-use crate::{CodeBlock, Rule};
+use crate::{CodeBlock, Ident, Rule};
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 use pest::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Visibility {
     Public,
     Private,

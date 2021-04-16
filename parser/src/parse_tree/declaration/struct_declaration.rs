@@ -1,22 +1,27 @@
-use crate::error::*;
-use crate::parse_tree::{declaration::TypeParameter, Ident};
+use crate::parse_tree::declaration::TypeParameter;
 use crate::parser::Rule;
 use crate::types::TypeInfo;
+use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
+use pest::Span;
+
+use super::Visibility;
 
 #[derive(Debug, Clone)]
 pub struct StructDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) fields: Vec<StructField<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    pub(crate) visibility: Visibility,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct StructField<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: Ident<'sc>,
     pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) span: Span<'sc>,
 }
 
 impl<'sc> StructDeclaration<'sc> {
@@ -24,7 +29,8 @@ impl<'sc> StructDeclaration<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut decl = decl.into_inner();
-        let name = decl.next().unwrap();
+        let mut visibility = Visibility::Private;
+        let mut name = None;
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
         let mut fields_pair = None;
@@ -39,9 +45,17 @@ impl<'sc> StructDeclaration<'sc> {
                 Rule::struct_fields => {
                     fields_pair = Some(pair);
                 }
-                _ => unreachable!(),
+                Rule::struct_keyword => (),
+                Rule::struct_name => {
+                    name = Some(pair);
+                }
+                Rule::visibility => {
+                    visibility = Visibility::parse_from_pair(pair);
+                }
+                a => unreachable!("{:?}", a),
             }
         }
+        let name = name.expect("The parser would not have matched this if there was no name.");
 
         let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
@@ -99,6 +113,7 @@ impl<'sc> StructDeclaration<'sc> {
                 name,
                 fields,
                 type_parameters,
+                visibility,
             },
             warnings,
             errors,
@@ -114,12 +129,20 @@ impl<'sc> StructField<'sc> {
         let mut fields_buf = Vec::new();
         for i in (0..fields.len()).step_by(2) {
             let span = fields[i].as_span();
-            let name = fields[i].as_str();
-            assert_or_warn!(
-                is_snake_case(name),
+            let name = eval!(
+                Ident::parse_from_pair,
                 warnings,
-                span,
-                Warning::NonSnakeCaseStructFieldName { field_name: name }
+                errors,
+                fields[i],
+                return err(warnings, errors)
+            );
+            assert_or_warn!(
+                is_snake_case(name.primary_name),
+                warnings,
+                span.clone(),
+                Warning::NonSnakeCaseStructFieldName {
+                    field_name: name.primary_name.clone()
+                }
             );
             let r#type = eval!(
                 TypeInfo::parse_from_pair_inner,
@@ -128,7 +151,7 @@ impl<'sc> StructField<'sc> {
                 fields[i + 1].clone(),
                 TypeInfo::Unit
             );
-            fields_buf.push(StructField { name, r#type });
+            fields_buf.push(StructField { name, r#type, span });
         }
         ok(fields_buf, warnings, errors)
     }

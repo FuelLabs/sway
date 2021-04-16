@@ -5,6 +5,7 @@ trait_decl_keyword  =  {"trait"}
 return_keyword      =  {"return"}
 use_keyword         =  {"use"}
 enum_keyword        =  @{"enum"}
+struct_keyword      =  @{"struct"}
 impl_keyword        =  {"impl"}
 asm_keyword         =  {"asm"}
 while_keyword       =  {"while"}
@@ -28,7 +29,7 @@ script = { "script" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 predicate = { "predicate" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 
 // expressions
-expr_inner =  _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|method_exp|subfield_exp|var_exp|array_exp|match_expression}
+expr_inner =  _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|delineated_path|method_exp|subfield_exp|var_exp|array_exp|match_expression}
 parenthesized_expression = { "(" ~ expr ~ ")" }
 // // op exps built in to expr to prevent left recursion
 expr       =  {expr_inner ~ (op ~ expr_inner)*}
@@ -36,7 +37,11 @@ func_app   =  { fn_name ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 fn_name    =  {var_exp}
 var_exp    =  { unary_op? ~ var_name_ident } 
 method_exp =  { subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
-subfield_exp = { (ident ~ ".")+ ~ ident }
+subfield_exp = { (call_item ~ ".")+ ~ call_item }
+call_item = { ident }
+delineated_path = { path_component  ~ ( "(" ~ expr ~ ")" )? }
+path_component = { path_ident ~ (path_separator ~ path_ident )+  }
+path_ident = { ident }
 
 var_name_ident = { ident }
 
@@ -83,15 +88,15 @@ reassignment = { var_exp ~ assign ~ expr ~ ";" }
 
 visibility = { "pub"? }
 
-struct_decl = { "struct" ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}" }
+struct_decl = { visibility ~ struct_keyword  ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}" }
 struct_name = {ident}
 struct_fields = { struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","? }
-struct_field_name = @{ident}
+struct_field_name = {ident}
 // // enum declaration
 enum_decl = { enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}" }
 enum_fields = { enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","? }
-enum_name = @{ident} 
-enum_field_name = @{ident}
+enum_name = {ident} 
+enum_field_name = {ident}
 
 impl_self = { impl_keyword ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}") }
 
@@ -112,7 +117,7 @@ return_statement =  {return_keyword ~ expr? ~ ";"}
 expr_statement  = { expr ~ ";" }
 
 // traits
-trait_decl = { trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ trait_methods  }
+trait_decl = { visibility ~ trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ trait_methods  }
 // // just a fn signature denotes a fn something must implement in order for it to be part of the trait
 // // i like the idea of separating the interface points from the actual
 // // functional implementations the trait provides, so i have them
@@ -156,6 +161,6 @@ char          =  @{
   | "\\" ~ ("\""|"\\"|"/"|"b"|"f"|"n"|"r"|"t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-ident          = @{!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*}
+ident          = @{(!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*) | "()"}
 reserved_words = {  while_keyword | "struct" | enum_keyword |  match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
 

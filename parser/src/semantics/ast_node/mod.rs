@@ -1,8 +1,9 @@
 use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantics::Namespace;
-use crate::types::TypeInfo;
-use crate::{AstNode, AstNodeContent, ReturnStatement};
+use crate::types::{ResolvedType, TypeInfo};
+use crate::{AstNode, AstNodeContent, ReturnStatement, Ident};
+use declaration::TypedTraitFn;
 use pest::Span;
 
 mod code_block;
@@ -14,11 +15,12 @@ mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
-pub use declaration::{TypedDeclaration, TypedFunctionDeclaration};
-pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
-pub(crate) use expression::{
-    TypedExpression, TypedExpressionVariant, ERROR_RECOVERY_EXPR,
+pub use declaration::{
+    TypedDeclaration, TypedEnumDeclaration, TypedEnumVariant, TypedFunctionDeclaration,
+    TypedFunctionParameter, TypedStructDeclaration, TypedStructField,
 };
+pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
+pub(crate) use expression::*;
 use impl_trait::implementation_of_trait;
 use return_statement::TypedReturnStatement;
 pub(crate) use while_loop::TypedWhileLoop;
@@ -42,21 +44,37 @@ pub(crate) enum TypedAstNodeContent<'sc> {
     SideEffect,
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct TypedAstNode<'sc> {
+#[derive(Clone)]
+pub struct TypedAstNode<'sc> {
     pub(crate) content: TypedAstNodeContent<'sc>,
     pub(crate) span: Span<'sc>,
 }
 
+impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use TypedAstNodeContent::*;
+        let text = match &self.content {
+            ReturnStatement(TypedReturnStatement { ref expr }) => {
+                format!("return {}", expr.pretty_print())
+            }
+            Declaration(ref typed_decl) => typed_decl.pretty_print(),
+            Expression(exp) => exp.pretty_print(),
+            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
+            WhileLoop(w_loop) => w_loop.pretty_print(),
+            SideEffect => "".into(),
+        };
+        f.write_str(&text)
+    }
+}
 impl<'sc> TypedAstNode<'sc> {
-    fn type_info(&self) -> TypeInfo<'sc> {
+    fn type_info(&self) -> ResolvedType<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            ReturnStatement(_) | Declaration(_) => TypeInfo::Unit,
+            ReturnStatement(_) | Declaration(_) => ResolvedType::Unit,
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
-            WhileLoop(_) | SideEffect => TypeInfo::Unit,
+            WhileLoop(_) | SideEffect => ResolvedType::Unit,
         }
     }
 }
@@ -65,7 +83,7 @@ impl<'sc> TypedAstNode<'sc> {
     pub(crate) fn type_check(
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
-        return_type_annotation: Option<TypeInfo<'sc>>,
+        return_type_annotation: Option<ResolvedType<'sc>>,
         help_text: impl Into<String>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
@@ -90,17 +108,22 @@ impl<'sc> TypedAstNode<'sc> {
                         body,
                         is_mutable,
                     }) => {
+                        let type_ascription = type_ascription.map(|type_ascription| namespace.resolve_type(&type_ascription));
                         let body = type_check!(
-                        TypedExpression::type_check(
-                        body,
-                        &namespace,
-                        type_ascription.clone(), 
-                        format!("Variable declaration's type annotation (type {})\
-                            does not match up with the assigned expression's type.",
-                            type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into()))),
-                        ERROR_RECOVERY_EXPR.clone(),
-                        warnings,
-                        errors);
+                            TypedExpression::type_check(
+                                body,
+                                &namespace,
+                                type_ascription.clone(), 
+                                format!("Variable declaration's type annotation (type {}) \
+                                    does not match up with the assigned expression's type.",
+                                    type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())
+                                )
+                            ),
+                            ERROR_RECOVERY_EXPR.clone(),
+                            warnings,
+                            errors
+                            );
+
                         let body =
                             TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                 name: name.clone(),
@@ -112,14 +135,15 @@ impl<'sc> TypedAstNode<'sc> {
                     }
                     Declaration::EnumDeclaration(e) => {
                         let span = e.span.clone();
-                        let primary_name = e.name;
-                        let decl = TypedDeclaration::EnumDeclaration(e);
+                        let primary_name = e.name.primary_name;
+                        let decl = TypedDeclaration::EnumDeclaration(e.to_typed_decl(namespace));
+
                         namespace.insert(Ident { primary_name, span }, decl.clone());
                         decl
                     }
                     Declaration::FunctionDeclaration(fn_decl) => {
                         let decl = type_check!(
-                            TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, ""),
+                            TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, "", None),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -136,8 +160,18 @@ impl<'sc> TypedAstNode<'sc> {
                         interface_surface,
                         methods,
                         type_parameters,
+                        visibility
                     }) => {
                         let mut methods_buf = Vec::new();
+                        let interface_surface = interface_surface.into_iter().map(|TraitFn { name, parameters, return_type }| TypedTraitFn {
+                            name,
+                            parameters: parameters
+                                .into_iter()
+                                .map(|FunctionParameter { name, r#type, type_span }|
+                                    TypedFunctionParameter { name, r#type: namespace.resolve_type(&r#type), type_span }
+                                ).collect(),
+                            return_type: namespace.resolve_type(&return_type)
+                        }).collect::<Vec<_>>();
                         for FunctionDeclaration {
                             body,
                             name: fn_name,
@@ -145,12 +179,14 @@ impl<'sc> TypedAstNode<'sc> {
                             span,
                             return_type,
                             type_parameters,
+                            return_type_span,
                             ..
                         } in methods
                         {
                             let mut namespace = namespace.clone();
                             parameters.clone().into_iter().for_each(
                                 |FunctionParameter { name, r#type, .. }| {
+                                    let r#type = namespace.resolve_type(&r#type);
                                     namespace.insert(
                                         name.clone(),
                                         TypedDeclaration::VariableDeclaration(
@@ -206,7 +242,13 @@ impl<'sc> TypedAstNode<'sc> {
                                     }
                                 }
                             }
+                            let parameters = parameters.into_iter().map(|FunctionParameter { name, r#type, type_span }| TypedFunctionParameter {
+                                name,
+                                r#type: namespace.resolve_type(&r#type),
+                                type_span
+                            }).collect::<Vec<_>>();
                             // TODO check code block implicit return
+                            let return_type = namespace.resolve_type(&return_type);
                             let (body, _code_block_implicit_return) = 
                                         type_check!(
                                             TypedCodeBlock::type_check(
@@ -218,6 +260,7 @@ impl<'sc> TypedAstNode<'sc> {
                                             continue, 
                                             warnings, errors
                                         );
+
                             methods_buf.push(TypedFunctionDeclaration {
                                 name: fn_name,
                                 body,
@@ -225,6 +268,10 @@ impl<'sc> TypedAstNode<'sc> {
                                 span,
                                 return_type,
                                 type_parameters,
+                                // For now, any method declared is automatically public. 
+                                // We can tweak that later if we want.
+                                visibility: Visibility::Public,
+                                return_type_span
                             });
                         }
                         let trait_decl =
@@ -233,6 +280,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 interface_surface,
                                 methods: methods_buf,
                                 type_parameters,
+                                visibility,
                             });
                         namespace.insert(name, trait_decl.clone());
                         trait_decl
@@ -303,11 +351,8 @@ impl<'sc> TypedAstNode<'sc> {
                         block_span,
                         ..
                     }) => {
+                        let type_implementing_for_resolved = namespace.resolve_type(&type_implementing_for);
                         // check, if this is a custom type, if it is in scope or a generic.
-                        let type_implementing_for = match type_implementing_for {
-                            TypeInfo::Custom { name } => lookup_in_scope(&name, namespace) ,
-                            o => o,
-                        };
                         let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                         for mut fn_decl in functions.into_iter() {
                             let mut type_arguments = type_arguments.clone();
@@ -331,31 +376,38 @@ impl<'sc> TypedAstNode<'sc> {
                             }
 
                             functions_buf.push(type_check!(
-                                TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, ""),
+                                TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, "", Some(type_implementing_for_resolved.clone())),
                                 continue,
                                 warnings,
                                 errors
                             ));
                         }
-
                         namespace.insert_trait_implementation(
                             Ident {
                                 primary_name: "r#Self",
                                 span: block_span.clone(),
                             },
-                            type_implementing_for,
+                            type_implementing_for_resolved,
                             functions_buf,
                         );
                         TypedDeclaration::SideEffect
                     }
                     Declaration::StructDeclaration(decl) => {
                         // look up any generic or struct types in the namespace
-                        let mut decl = decl.clone();
-                        for ref mut field in decl.fields.iter_mut() {
-                            if let TypeInfo::Custom { ref name } = field.r#type {
-                                field.r#type = lookup_in_scope(name , namespace);
+                        let fields = decl.fields.into_iter().map(|StructField { name, r#type, span }| {
+                            TypedStructField {
+                                name,
+                                r#type: namespace.resolve_type(&r#type),
+                                span
                             }
-                        }
+                        }).collect::<Vec<_>>();
+                        let decl = TypedStructDeclaration {
+                            name: decl.name.clone(),
+                            type_parameters: decl.type_parameters.clone(),
+                            fields,
+                            visibility: decl.visibility
+
+                        };
                 
                         // insert struct into namespace
                         namespace.insert(
@@ -410,7 +462,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             condition,
                             &namespace,
-                            Some(TypeInfo::Boolean),
+                            Some(ResolvedType::Boolean),
                             "A while loop's loop condition must be a boolean expression."
                         ),
                         return err(warnings, errors),
@@ -421,10 +473,10 @@ impl<'sc> TypedAstNode<'sc> {
                     TypedCodeBlock::type_check(
                         body,
                         &namespace,
-                        Some(TypeInfo::Unit),
+                        Some(ResolvedType::Unit),
                         "A while loop's loop body cannot implicitly return a value.\
                         Try assigning it to a mutable variable declared outside of the loop instead."),
-                        (TypedCodeBlock { contents: vec![] }, TypeInfo::Unit),
+                        (TypedCodeBlock { contents: vec![] }, Some(ResolvedType::Unit)),
                         warnings,
                         errors
                     );
@@ -445,8 +497,8 @@ impl<'sc> TypedAstNode<'sc> {
                     r#type: node.type_info(),
                 };
                 assert_or_warn!(
-                    node.type_info() == TypeInfo::Unit
-                        || node.type_info() == TypeInfo::ErrorRecovery,
+                    node.type_info() == ResolvedType::Unit
+                        || node.type_info() == ResolvedType::ErrorRecovery,
                     warnings,
                     node.span.clone(),
                     warning
@@ -456,18 +508,5 @@ impl<'sc> TypedAstNode<'sc> {
         }
 
         ok(node, warnings, errors)
-    }
-}
-
-
-    /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
-    /// being looked for is actually a generic. 
-fn lookup_in_scope<'sc>(custom_type_name: &Ident<'sc>, namespace: &Namespace<'sc>) -> TypeInfo<'sc> { 
-    match namespace.get_symbol(custom_type_name) {
-       Some(TypedDeclaration::StructDeclaration(StructDeclaration {
-           name, .. 
-       })) => TypeInfo::Struct { name: name.clone() },
-       Some(_) => TypeInfo::Generic { name: custom_type_name.clone() },
-       None => TypeInfo::Generic { name: custom_type_name.clone() }
     }
 }

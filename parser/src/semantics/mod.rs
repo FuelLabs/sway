@@ -1,4 +1,4 @@
-mod ast_node;
+pub(crate) mod ast_node;
 mod namespace;
 mod syntax_tree;
 pub(crate) use ast_node::{TypedAstNode, TypedAstNodeContent, TypedExpression};

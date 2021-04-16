@@ -1,8 +1,8 @@
-use super::{FunctionDeclaration, FunctionParameter};
-use crate::error::*;
-use crate::parse_tree::{Ident, TypeParameter};
+use super::{FunctionDeclaration, FunctionParameter, Visibility};
+use crate::parse_tree::TypeParameter;
 use crate::parser::Rule;
 use crate::types::TypeInfo;
+use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
@@ -13,6 +13,7 @@ pub(crate) struct TraitDeclaration<'sc> {
     pub(crate) interface_surface: Vec<TraitFn<'sc>>,
     pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    pub(crate) visibility: Visibility,
 }
 
 impl<'sc> TraitDeclaration<'sc> {
@@ -20,7 +21,16 @@ impl<'sc> TraitDeclaration<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut trait_parts = pair.into_inner().peekable();
-        let _trait_keyword = trait_parts.next();
+        let trait_keyword_or_visibility = trait_parts.next().unwrap();
+        let (visibility, _trait_keyword) =
+            if trait_keyword_or_visibility.as_rule() == Rule::visibility {
+                (
+                    Visibility::parse_from_pair(trait_keyword_or_visibility),
+                    trait_parts.next().unwrap(),
+                )
+            } else {
+                (Visibility::Private, trait_keyword_or_visibility)
+            };
         let name_pair = trait_parts.next().unwrap();
         let name = eval!(
             Ident::parse_from_pair,
@@ -108,6 +118,7 @@ impl<'sc> TraitDeclaration<'sc> {
                 name,
                 interface_surface: interface,
                 methods,
+                visibility,
             },
             warnings,
             errors,

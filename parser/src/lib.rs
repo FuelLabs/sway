@@ -3,24 +3,29 @@ extern crate pest_derive;
 #[macro_use]
 mod error;
 
+mod control_flow_analysis;
+mod ident;
 mod parse_tree;
 mod parser;
 mod semantics;
-pub(crate) mod types;
-pub(crate) mod utils;
+
 use crate::error::*;
-pub use crate::parse_tree::Ident;
 use crate::parse_tree::*;
-pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 use crate::parser::{HllParser, Rule};
+use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
-pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use semantics::{TreeType, TypedParseTree};
-pub use types::TypeInfo;
+
+pub(crate) mod types;
+pub(crate) mod utils;
+pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
+pub use ident::Ident;
 pub use pest::Span;
+pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+pub use types::TypeInfo;
 
 // todo rename to language name
 #[derive(Debug)]
@@ -42,6 +47,7 @@ pub struct HllTypedParseTree<'sc> {
 #[derive(Debug)]
 pub struct LibraryExports<'sc> {
     pub namespace: Namespace<'sc>,
+    trees: Vec<TypedParseTree<'sc>>,
 }
 
 #[derive(Debug)]
@@ -248,14 +254,51 @@ pub fn compile<'sc, 'manifest>(
             .collect();
         let mut exports = LibraryExports {
             namespace: Default::default(),
+            trees: vec![],
         };
         for (ref name, parse_tree) in res {
             exports
                 .namespace
-                .insert_module(name.primary_name.to_string(), parse_tree.namespace);
+                .insert_module(name.primary_name.to_string(), parse_tree.namespace.clone());
+            exports.trees.push(parse_tree);
         }
         exports
     };
+    // If there are errors, display them now before performing control flow analysis.
+    // It is necessary that the syntax tree is well-formed for control flow analysis
+    // to be correct.
+    if !errors.is_empty() {
+        return Err((errors, warnings));
+    }
+
+    // perform control flow analysis on each branch
+    let (script_warnings, script_errors) =
+        perform_control_flow_analysis(&script_ast, TreeType::Script);
+    let (contract_warnings, contract_errors) =
+        perform_control_flow_analysis(&contract_ast, TreeType::Contract);
+    let (predicate_warnings, predicate_errors) =
+        perform_control_flow_analysis(&predicate_ast, TreeType::Predicate);
+    let (library_warnings, library_errors) =
+        perform_control_flow_analysis_on_library_exports(&library_exports);
+
+    let mut l_warnings = [
+        script_warnings,
+        contract_warnings,
+        predicate_warnings,
+        library_warnings,
+    ]
+    .concat();
+    let mut l_errors = [
+        script_errors,
+        contract_errors,
+        predicate_errors,
+        library_errors,
+    ]
+    .concat();
+
+    errors.append(&mut l_errors);
+    warnings.append(&mut l_warnings);
+
     if errors.is_empty() {
         Ok((
             HllTypedParseTree {
@@ -269,6 +312,37 @@ pub fn compile<'sc, 'manifest>(
     } else {
         Err((errors, warnings))
     }
+}
+
+fn perform_control_flow_analysis<'sc>(
+    tree: &Option<TypedParseTree<'sc>>,
+    tree_type: TreeType,
+) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
+    match tree {
+        Some(tree) => {
+            let graph = ControlFlowGraph::construct_dead_code_graph(tree, tree_type);
+            let mut warnings = vec![];
+            let mut errors = vec![];
+            warnings.append(&mut graph.find_dead_code());
+            let graph = ControlFlowGraph::construct_return_path_graph(tree);
+            errors.append(&mut graph.analyze_return_paths());
+            (warnings, errors)
+        }
+        None => (vec![], vec![]),
+    }
+}
+fn perform_control_flow_analysis_on_library_exports<'sc>(
+    lib: &LibraryExports<'sc>,
+) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    for tree in &lib.trees {
+        let graph = ControlFlowGraph::construct_dead_code_graph(tree, TreeType::Library);
+        warnings.append(&mut graph.find_dead_code());
+        let graph = ControlFlowGraph::construct_return_path_graph(tree);
+        errors.append(&mut graph.analyze_return_paths());
+    }
+    (warnings, errors)
 }
 
 // strategy: parse top level things

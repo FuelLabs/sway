@@ -1,9 +1,9 @@
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
-use crate::error::*;
 use crate::semantics::Namespace;
-use crate::types::TypeInfo;
 use crate::ParseTree;
+use crate::{error::*, types::ResolvedType};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TreeType {
     Predicate,
     Script,
@@ -13,7 +13,7 @@ pub(crate) enum TreeType {
 
 #[derive(Debug)]
 pub(crate) struct TypedParseTree<'sc> {
-    root_nodes: Vec<TypedAstNode<'sc>>,
+    pub(crate) root_nodes: Vec<TypedAstNode<'sc>>,
     pub(crate) namespace: Namespace<'sc>,
 }
 
@@ -88,7 +88,7 @@ impl<'sc> TypedParseTree<'sc> {
                 }
                 let main_func = main_func_vec[0];
                 match main_func {
-                    (TypeInfo::Boolean, _span) => (),
+                    (ResolvedType::Boolean, _span) => (),
                     (_, span) => {
                         errors.push(CompileError::PredicateMainDoesNotReturnBool(span.clone()))
                     }
