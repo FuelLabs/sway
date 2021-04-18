@@ -173,7 +173,6 @@ impl<'sc> ControlFlowGraph<'sc> {
                 })
                 .collect(),
         };
-        graph.visualize();
         graph
     }
 }

@@ -8,6 +8,7 @@ mod ident;
 mod parse_tree;
 mod parser;
 mod semantics;
+mod vendored_vm;
 
 use crate::error::*;
 use crate::parse_tree::*;

@@ -1,5 +1,6 @@
 use crate::error::*;
 use crate::parser::Rule;
+use crate::vendored_vm::Opcode;
 use crate::Ident;
 use pest::iterators::Pair;
 use pest::Span;
@@ -59,9 +60,7 @@ impl<'sc> AsmExpression<'sc> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct AsmOp<'sc> {
-    opcode: &'sc str,
-    registers: Vec<AsmRegister<'sc>>,
-    immediate: Option<u64>,
+    op: Opcode,
     span: Span<'sc>,
 }
 
@@ -85,50 +84,23 @@ impl<'sc> AsmRegister<'sc> {
 impl<'sc> AsmOp<'sc> {
     fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let warnings = Vec::new();
-        let mut errors = Vec::new();
+        let errors = Vec::new();
         let span = pair.as_span();
         let mut iter = pair.into_inner();
-        // TODO map to the actual enum from the VM
         let opcode = iter.next().unwrap().as_str();
-        let mut registers_buf = Vec::new();
-        let mut immediate: Option<u64> = None;
+        //        let mut registers_buf = Vec::new();
+        //        let mut immediate: Option<u64> = None;
+        let mut args = vec![];
         while let Some(pair) = iter.next() {
             match pair.as_rule() {
-                Rule::asm_register => {
-                    registers_buf.push(AsmRegister {
-                        name: pair.as_str(),
-                    });
-                }
-                Rule::asm_immediate => {
-                    let span = pair.as_span();
-                    let num = pair.into_inner().next().unwrap();
-                    if immediate.is_some() {
-                        errors.push(CompileError::MultipleImmediates(span.clone()));
-                    }
-                    immediate = Some(match num.into_inner().next().unwrap().as_str().parse() {
-                        Ok(o) => o,
-                        Err(_) => {
-                            errors.push(CompileError::Internal(
-                                "Attempted to parse u64 from invalid number",
-                                span,
-                            ));
-                            0
-                        }
-                    });
+                Rule::asm_register | Rule::asm_immediate => {
+                    args.push(pair.as_str());
                 }
                 _ => unreachable!(),
             }
         }
-        ok(
-            AsmOp {
-                span,
-                opcode,
-                registers: registers_buf,
-                immediate,
-            },
-            warnings,
-            errors,
-        )
+        let op = Opcode::parse(opcode, &args).expect("handle this err");
+        ok(AsmOp { span, op }, warnings, errors)
     }
 }
 
