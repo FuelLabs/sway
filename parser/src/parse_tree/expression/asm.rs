@@ -4,12 +4,14 @@ use crate::vendored_vm::Opcode;
 use crate::Ident;
 use pest::iterators::Pair;
 use pest::Span;
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub(crate) struct AsmExpression<'sc> {
     pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
     pub(crate) body: Vec<AsmOp<'sc>>,
-    pub(crate) returns: Option<AsmRegister<'sc>>,
+    pub(crate) unique_registers: HashSet<AsmRegister>,
+    pub(crate) returns: Option<AsmRegister>,
 }
 
 impl<'sc> AsmExpression<'sc> {
@@ -46,11 +48,18 @@ impl<'sc> AsmExpression<'sc> {
                 a => unreachable!("{:?}", a),
             }
         }
+
+        let unique_registers = asm_op_buf
+            .iter()
+            .map(|x| x.op.get_register_names())
+            .flatten()
+            .collect::<HashSet<_>>();
         ok(
             AsmExpression {
                 registers: asm_registers,
                 body: asm_op_buf,
                 returns: implicit_op_return,
+                unique_registers,
             },
             warnings,
             errors,
@@ -64,16 +73,16 @@ pub(crate) struct AsmOp<'sc> {
     span: Span<'sc>,
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct AsmRegister<'sc> {
-    name: &'sc str,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct AsmRegister {
+    pub(crate) name: String,
 }
 
-impl<'sc> AsmRegister<'sc> {
+impl<'sc> AsmRegister {
     fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         ok(
             AsmRegister {
-                name: pair.as_str(),
+                name: pair.as_str().to_string(),
             },
             vec![],
             vec![],

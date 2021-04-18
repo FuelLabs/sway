@@ -3,8 +3,10 @@
 //! Basically this is copy-pasted until things are public and it can be properly imported.
 //!
 //! Only things needed for opcode serialization and generation are included here.
-
 #![allow(dead_code)]
+
+use crate::parse_tree::AsmRegister;
+use std::collections::HashSet;
 
 #[macro_export]
 macro_rules! opcodes {
@@ -13,7 +15,7 @@ macro_rules! opcodes {
             $op:ident ( $($inits:ident),* ) = $val:expr
         ),+
     ) => {
-        #[derive(Copy, Clone, PartialEq, Debug)]
+        #[derive( Clone, PartialEq, Debug)]
         pub enum Opcode {
             $(
                 #[warn(unused_must_use)]
@@ -685,11 +687,88 @@ impl Opcode {
         };
         Ok(op)
     }
+    pub(crate) fn get_register_names(&self) -> HashSet<AsmRegister> {
+        use Opcode::*;
+        let regs: Vec<&String> = match self {
+            Add(r1, r2, r3) => vec![r1, r2, r3],
+            Addi(r1, r2, _imm) => vec![r1, r2],
+            And(r1, r2, r3) => vec![r1, r2, r3],
+            Andi(r1, r2, _imm) => vec![r1, r2],
+            Div(r1, r2, r3) => vec![r1, r2, r3],
+            Divi(r1, r2, _imm) => vec![r1, r2],
+            Mod(r1, r2, r3) => vec![r1, r2, r3],
+            Modi(r1, r2, _imm) => vec![r1, r2],
+            Eq(r1, r2, r3) => vec![r1, r2, r3],
+            Gt(r1, r2, r3) => vec![r1, r2, r3],
+            Mult(r1, r2, r3) => vec![r1, r2, r3],
+            Multi(r1, r2, _imm) => vec![r1, r2],
+            Noop() => vec![],
+            Not(r1, r2) => vec![r1, r2],
+            Or(r1, r2, r3) => vec![r1, r2, r3],
+            Ori(r1, r2, _imm) => vec![r1, r2],
+            Sll(r1, r2, _imm) => vec![r1, r2],
+            Sllv(r1, r2, r3) => vec![r1, r2, r3],
+            Sltiu(r1, r2, _imm) => vec![r1, r2],
+            Sltu(r1, r2, r3) => vec![r1, r2, r3],
+            Sra(r1, r2, _imm) => vec![r1, r2],
+            Srl(r1, r2, _imm) => vec![r1, r2],
+            Srlv(r1, r2, r3) => vec![r1, r2, r3],
+            Srav(r1, r2, r3) => vec![r1, r2, r3],
+            Sub(r1, r2, r3) => vec![r1, r2, r3],
+            Subi(r1, r2, _imm) => vec![r1, r2],
+            Xor(r1, r2, r3) => vec![r1, r2, r3],
+            Xori(r1, r2, _imm) => vec![r1, r2],
+            Exp(r1, r2, r3) => vec![r1, r2, r3],
+            Expi(r1, r2, _imm) => vec![r1, r2],
+            CIMV(r1, r2, _imm) => vec![r1, r2],
+            CTMV(r1, r2) => vec![r1, r2],
+            Ji(_imm) => vec![],
+            Jnzi(r1, _imm) => vec![r1],
+            Ret(r1) => vec![r1],
+            Cfe(r1) => vec![r1],
+            Cfs(r1) => vec![r1],
+            Lb(r1, r2, _imm) => vec![r1, r2],
+            Lw(r1, r2, _imm) => vec![r1, r2],
+            Malloc(r1) => vec![r1],
+            MemClear(r1, r2) => vec![r1, r2],
+            MemCp(r1, r2, r3) => vec![r1, r2, r3],
+            MemEq(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            Sb(r1, r2, _imm) => vec![r1, r2],
+            Sw(r1, r2, _imm) => vec![r1, r2],
+            BlockHash(r1, r2) => vec![r1, r2],
+            BlockHeight(r1) => vec![r1],
+            Call(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            CodeCopy(r1, r2, _imm) => vec![r1, r2],
+            CodeRoot(r1, r2) => vec![r1, r2],
+            Codesize(r1, r2) => vec![r1, r2],
+            Coinbase(r1) => vec![r1],
+            LoadCode(r1, r2, r3) => vec![r1, r2, r3],
+            SLoadCode(r1, r2, r3) => vec![r1, r2, r3],
+            Log(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            Revert(r1) => vec![r1],
+            Srw(r1, r2) => vec![r1, r2],
+            Srwx(r1, r2) => vec![r1, r2],
+            Sww(r1, r2) => vec![r1, r2],
+            Swwx(r1, r2) => vec![r1, r2],
+            Transfer(r1, r2, r3) => vec![r1, r2, r3],
+            TransferOut(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            Ecrecover(r1, r2, r3) => vec![r1, r2, r3],
+            Keccak256(r1, r2, r3) => vec![r1, r2, r3],
+            Sha256(r1, r2, r3) => vec![r1, r2, r3],
+            Flag(r1) => vec![r1],
+        };
+
+        regs.into_iter()
+            .map(|x| AsmRegister {
+                name: x.to_string(),
+            })
+            .collect()
+    }
 }
 
 // internal representation for register ids
 // simpler to represent as usize since it avoids casts
-pub type RegisterId = u8;
+pub type RegisterId = String;
 
 // Immediate Value.
 pub type ImmediateValue = u32;
