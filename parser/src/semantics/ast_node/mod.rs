@@ -119,7 +119,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())
                                 )
                             ),
-                            ERROR_RECOVERY_EXPR.clone(),
+                            error_recovery_expr(name.span.clone()),
                             warnings,
                             errors
                             );
@@ -197,6 +197,7 @@ impl<'sc> TypedAstNode<'sc> {
                                                         TypedExpressionVariant::FunctionParameter,
                                                     return_type: r#type,
                                                     is_constant: IsConstant::No,
+                                                    span: name.span.clone(),
                                                 },
                                                 is_mutable: false, // TODO allow mutable function params?
                                             },
@@ -300,7 +301,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 if !is_mutable {
                                     errors.push(CompileError::AssignmentToNonMutable(
                                         lhs.primary_name,
-                                        span,
+                                        span.clone(),
                                     ));
                                 }
 
@@ -330,7 +331,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 Some(thing_to_reassign.return_type.clone()),
                                 "You can only reassign a value of the same type to a variable."
                             ),
-                            ERROR_RECOVERY_EXPR.clone(),
+                            error_recovery_expr(span),
                             warnings,
                             errors
                         );
@@ -420,8 +421,8 @@ impl<'sc> TypedAstNode<'sc> {
                 }),
                 AstNodeContent::Expression(a) => {
                     let inner = type_check!(
-                        TypedExpression::type_check(a, &namespace, None, ""),
-                        ERROR_RECOVERY_EXPR.clone(),
+                        TypedExpression::type_check(a.clone(), &namespace, None, ""),
+                        error_recovery_expr(a.span()),
                         warnings,
                         errors
                     );
@@ -430,11 +431,11 @@ impl<'sc> TypedAstNode<'sc> {
                 AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
                         TypedAstNodeContent::ReturnStatement (TypedReturnStatement {
                         expr: type_check!(TypedExpression::type_check(
-                                  expr,
+                                  expr.clone(),
                                   &namespace,
                                   return_type_annotation, 
                                   "Returned value must match up with the function return type annotation."),
-                                  ERROR_RECOVERY_EXPR.clone(),
+                                  error_recovery_expr(expr.span()),
                                   warnings,
                                   errors)
                     })
@@ -443,7 +444,7 @@ impl<'sc> TypedAstNode<'sc> {
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let typed_expr = type_check!(
                         TypedExpression::type_check(
-                            expr,
+                            expr.clone(),
                             &namespace,
                             return_type_annotation,
                             format!(
@@ -451,7 +452,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 help_text.into()
                             )
                         ),
-                        ERROR_RECOVERY_EXPR.clone(),
+                        error_recovery_expr(expr.span()),
                         warnings,
                         errors
                     );

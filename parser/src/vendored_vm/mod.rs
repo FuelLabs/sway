@@ -6,6 +6,7 @@
 #![allow(dead_code)]
 
 use crate::parse_tree::AsmRegister;
+use pest::Span;
 use std::collections::HashSet;
 
 #[macro_export]
@@ -28,6 +29,38 @@ macro_rules! opcodes {
             const $op:u32 = $val;
         )+
 
+    }
+}
+
+pub(crate) struct Op<'sc> {
+    opcode: Opcode,
+    /// A descriptive comment for debugging
+    comment: String,
+    owning_span: Span<'sc>,
+}
+
+impl<'sc> Op<'sc> {
+    pub(crate) fn new(opcode: Opcode, owning_span: Span<'sc>) -> Self {
+        Op {
+            opcode,
+            comment: String::new(),
+            owning_span,
+        }
+    }
+    pub(crate) fn new_with_comment(
+        opcode: Opcode,
+        owning_span: Span<'sc>,
+        comment: impl Into<String>,
+    ) -> Self {
+        let comment = comment.into();
+        Op {
+            opcode,
+            comment,
+            owning_span,
+        }
+    }
+    pub(crate) fn parse_opcode(name: &str, args: &[&str]) -> Result<Opcode, ()> {
+        Opcode::parse(name, args)
     }
 }
 

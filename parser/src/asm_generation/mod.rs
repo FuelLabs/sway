@@ -1,10 +1,18 @@
 use crate::{
     parse_tree::AsmRegister,
     semantics::{TreeType, TypedAstNode, TypedAstNodeContent, TypedExpression, TypedParseTree},
-    vendored_vm::Opcode,
+    vendored_vm::Op,
 };
 
+mod compiler_constants;
+mod expression;
+mod register_sequencer;
 mod while_loop;
+
+pub(crate) use expression::*;
+pub(crate) use register_sequencer::*;
+pub(crate) use while_loop::*;
+
 use while_loop::convert_while_loop_to_asm;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
@@ -40,30 +48,31 @@ use while_loop::convert_while_loop_to_asm;
 /// The [HllAsmSet] contains either a contract ABI and corresponding ASM, a script's main
 /// function's ASM, or a predicate's main function's ASM. ASM is never generated for libraries,
 /// as that happens when the library itself is imported.
-pub(crate) enum HllAsmSet {
+pub(crate) enum HllAsmSet<'sc> {
     ContractAbi,
-    ScriptMain(AbstractInstructionSet),
-    PredicateMain(AbstractInstructionSet),
+    ScriptMain(AbstractInstructionSet<'sc>),
+    PredicateMain(AbstractInstructionSet<'sc>),
 }
 
 /// The [AbstractInstructionSet] is the list of register namespaces and operations existing
 /// within those namespaces in order.
-pub(crate) struct AbstractInstructionSet {
+pub(crate) struct AbstractInstructionSet<'sc> {
     /// Used to store mappings of values to register locations
     namespace: AsmNamespace,
-    asm: Vec<Opcode>,
+    asm: Vec<Op<'sc>>,
 }
 
 #[derive(Default)]
 pub(crate) struct AsmNamespace {}
 
-impl AbstractInstructionSet {
-    pub(crate) fn from_ast<'sc>(ast: TypedParseTree<'sc>, tree_type: TreeType) -> Self {
+impl<'sc> AbstractInstructionSet<'sc> {
+    pub(crate) fn from_ast(ast: TypedParseTree<'sc>, tree_type: TreeType) -> Self {
+        let mut register_sequencer = RegisterSequencer::new();
         match tree_type {
             TreeType::Script | TreeType::Predicate => {
                 let mut namespace: AsmNamespace = Default::default();
                 for node in ast.root_nodes {
-                    let asm = convert_node_to_asm(node, &mut namespace);
+                    let asm = convert_node_to_asm(node, &mut namespace, &mut register_sequencer);
                 }
             }
             TreeType::Contract => todo!(),
@@ -73,21 +82,17 @@ impl AbstractInstructionSet {
     }
 }
 
-fn convert_node_to_asm(node: TypedAstNode, namespace: &mut AsmNamespace) -> Vec<Opcode> {
+fn convert_node_to_asm<'sc>(
+    node: TypedAstNode<'sc>,
+    namespace: &mut AsmNamespace,
+    register_sequencer: &mut RegisterSequencer,
+) -> Vec<Op<'sc>> {
     match node.content {
-        TypedAstNodeContent::WhileLoop(r#loop) => convert_while_loop_to_asm(r#loop, namespace),
+        TypedAstNodeContent::WhileLoop(r#loop) => {
+            convert_while_loop_to_asm(r#loop, namespace, register_sequencer)
+        }
         a => todo!("{:?}", a),
     }
-}
-
-/// Given a [TypedExpression], convert it to assembly and put its return value, if any, in the
-/// `return_register`.
-fn convert_expression_to_asm(
-    exp: TypedExpression,
-    namespace: &mut AsmNamespace,
-    return_register: AsmRegister,
-) -> Vec<Opcode> {
-    todo!()
 }
 
 /*

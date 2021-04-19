@@ -253,6 +253,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         expression: TypedExpressionVariant::FunctionParameter,
                         return_type: r#type,
                         is_constant: IsConstant::No,
+                        span: name.span.clone(),
                     },
                     is_mutable: false, // TODO allow mutable function params?
                 }),
