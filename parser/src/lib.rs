@@ -14,10 +14,12 @@ mod vendored_vm;
 use crate::error::*;
 use crate::parse_tree::*;
 use crate::parser::{HllParser, Rule};
+use asm_generation::{AbstractInstructionSet, HllAsmSet};
 use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
 use semantics::{TreeType, TypedParseTree};
+use std::collections::HashMap;
 
 pub(crate) mod types;
 pub(crate) mod utils;
@@ -141,13 +143,33 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
     ok(res, warnings, errors)
 }
 
+pub enum CompilationResult<'sc> {
+    ContractAbi {
+        abi: HashMap<usize, HllAsmSet<'sc>>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    ScriptAsm {
+        asm: HllAsmSet<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    PredicateAsm {
+        asm: HllAsmSet<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Library {
+        exports: LibraryExports<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Failure {
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+    },
+}
+
 pub fn compile<'sc, 'manifest>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
-) -> Result<
-    (HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>),
-    (Vec<CompileError<'sc>>, Vec<CompileWarning<'sc>>),
-> {
+) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = eval!(
@@ -155,7 +177,7 @@ pub fn compile<'sc, 'manifest>(
         warnings,
         errors,
         input,
-        return Err((errors, warnings))
+        return CompilationResult::Failure { errors, warnings }
     );
 
     let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
@@ -270,7 +292,7 @@ pub fn compile<'sc, 'manifest>(
     // It is necessary that the syntax tree is well-formed for control flow analysis
     // to be correct.
     if !errors.is_empty() {
-        return Err((errors, warnings));
+        return CompilationResult::Failure { errors, warnings };
     }
 
     // perform control flow analysis on each branch
@@ -300,19 +322,49 @@ pub fn compile<'sc, 'manifest>(
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
-
-    if errors.is_empty() {
-        Ok((
-            HllTypedParseTree {
-                contract_ast,
-                script_ast,
-                predicate_ast,
-                library_exports,
-            },
-            warnings,
-        ))
+    // for each syntax tree, generate assembly.
+    let predicate_asm = if let Some(tree) = predicate_ast {
+        Some(HllAsmSet::from_ast(tree, TreeType::Predicate))
     } else {
-        Err((errors, warnings))
+        None
+    };
+
+    let contract_asm = if let Some(tree) = contract_ast {
+        Some(HllAsmSet::from_ast(tree, TreeType::Contract))
+    } else {
+        None
+    };
+
+    let script_asm = if let Some(tree) = script_ast {
+        Some(HllAsmSet::from_ast(tree, TreeType::Script))
+    } else {
+        None
+    };
+    if errors.is_empty() {
+        // TODO move this check earlier and don't compile all of them if there is only one
+        match (predicate_asm, contract_asm, script_asm, library_exports) {
+            (Some(pred), None, None, o) if o.trees.is_empty() => CompilationResult::PredicateAsm {
+                asm: pred,
+                warnings,
+            },
+            (None, Some(contract), None, o) if o.trees.is_empty() => {
+                CompilationResult::ContractAbi {
+                    abi: todo!(),
+                    warnings,
+                }
+            }
+            (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::ScriptAsm {
+                asm: script,
+                warnings,
+            },
+            (None, None, None, o) if !o.trees.is_empty() => CompilationResult::Library {
+                warnings,
+                exports: o,
+            },
+            _ => todo!(),
+        }
+    } else {
+        CompilationResult::Failure { errors, warnings }
     }
 }
 

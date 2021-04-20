@@ -9,7 +9,8 @@ use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteC
 
 use crate::manifest::{Dependency, DependencyDetails, Manifest};
 use parser::{
-    Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    CompilationResult, Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration,
+    TypedFunctionDeclaration,
 };
 use std::{fs, path::PathBuf};
 
@@ -115,7 +116,9 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let compiled = compile(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
 
-    namespace.insert_module(dependency_name.to_string(), compiled.namespace);
+    if let Some(exports) = compiled {
+        namespace.insert_module(dependency_name.to_string(), exports.namespace);
+    }
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())
@@ -147,18 +150,18 @@ fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
-) -> Result<LibraryExports<'source>, String> {
+) -> Result<Option<LibraryExports<'source>>, String> {
     let res = parser::compile(&source, namespace);
     match res {
-        Ok((compiled, warnings)) => {
+        CompilationResult::ScriptAsm { asm, warnings } => {
             for ref warning in warnings.iter() {
                 format_warning(&source, warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled {:?}.", proj_name));
+                let _ = write_green(&format!("Compiled script {:?}.", proj_name));
             } else {
                 let _ = write_yellow(&format!(
-                    "Compiled {:?} with {} {}.",
+                    "Compiled script {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -168,9 +171,69 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(compiled.library_exports)
+            Ok(None)
         }
-        Err((errors, warnings)) => {
+        CompilationResult::PredicateAsm { asm, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled predicate {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled predicate {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(None)
+        }
+        CompilationResult::ContractAbi { abi, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled contract {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled contract {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(None)
+        }
+        CompilationResult::Library { exports, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled library {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(Some(exports))
+        }
+        CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {

@@ -48,7 +48,7 @@ use while_loop::convert_while_loop_to_asm;
 /// The [HllAsmSet] contains either a contract ABI and corresponding ASM, a script's main
 /// function's ASM, or a predicate's main function's ASM. ASM is never generated for libraries,
 /// as that happens when the library itself is imported.
-pub(crate) enum HllAsmSet<'sc> {
+pub enum HllAsmSet<'sc> {
     ContractAbi,
     ScriptMain(AbstractInstructionSet<'sc>),
     PredicateMain(AbstractInstructionSet<'sc>),
@@ -56,7 +56,7 @@ pub(crate) enum HllAsmSet<'sc> {
 
 /// The [AbstractInstructionSet] is the list of register namespaces and operations existing
 /// within those namespaces in order.
-pub(crate) struct AbstractInstructionSet<'sc> {
+pub struct AbstractInstructionSet<'sc> {
     /// Used to store mappings of values to register locations
     namespace: AsmNamespace,
     asm: Vec<Op<'sc>>,
@@ -65,7 +65,7 @@ pub(crate) struct AbstractInstructionSet<'sc> {
 #[derive(Default)]
 pub(crate) struct AsmNamespace {}
 
-impl<'sc> AbstractInstructionSet<'sc> {
+impl<'sc> HllAsmSet<'sc> {
     pub(crate) fn from_ast(ast: TypedParseTree<'sc>, tree_type: TreeType) -> Self {
         let mut register_sequencer = RegisterSequencer::new();
         match tree_type {
