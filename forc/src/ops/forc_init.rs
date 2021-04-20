@@ -1,5 +1,5 @@
-use std::fs;
 use crate::utils::defaults;
+use std::fs;
 
 pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::error::Error>> {
     // make an new directory for the project

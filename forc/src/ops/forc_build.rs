@@ -1,19 +1,19 @@
-use std::{fs, path::PathBuf};
 use std::collections::HashMap;
 use std::io::{self, Write};
+use std::{fs, path::PathBuf};
 
-use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 use line_col::LineColLookup;
+use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
+use parser::{
+    Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+};
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
-use parser::{
-    Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
-};
 
-use crate::utils::{manifest, constants};
+use crate::utils::{constants, manifest};
 use manifest::{Dependency, DependencyDetails, Manifest};
 
 pub(crate) fn build(path: Option<String>) -> Result<(), String> {
