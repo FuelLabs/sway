@@ -4,7 +4,7 @@ use super::{
 };
 use crate::parse_tree::ImplTrait;
 use crate::semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-use crate::{Ident, error::*, types::ResolvedType};
+use crate::{error::*, types::ResolvedType, Ident};
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
@@ -177,8 +177,20 @@ pub(crate) fn implementation_of_trait<'sc>(
                 });
             }
 
-            namespace.insert_trait_implementation(trait_name.clone(), type_implementing_for, functions_buf.clone());
-            ok(TypedDeclaration::ImplTrait { trait_name, span: block_span, methods: functions_buf }, warnings, errors)
+            namespace.insert_trait_implementation(
+                trait_name.clone(),
+                type_implementing_for,
+                functions_buf.clone(),
+            );
+            ok(
+                TypedDeclaration::ImplTrait {
+                    trait_name,
+                    span: block_span,
+                    methods: functions_buf,
+                },
+                warnings,
+                errors,
+            )
         }
         Some(_) => {
             errors.push(CompileError::NotATrait {

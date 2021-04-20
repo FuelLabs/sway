@@ -213,21 +213,25 @@ impl<'sc> TypedExpression<'sc> {
                         type_annotation.clone(),
                         help_text.clone()
                     ),
-                    (TypedCodeBlock { contents: vec![] }, Some(ResolvedType::Unit)),
+                    (
+                        TypedCodeBlock { contents: vec![] },
+                        Some(ResolvedType::Unit)
+                    ),
                     warnings,
                     errors
                 );
                 let block_return_type = match block_return_type {
                     Some(ty) => ty,
-                    None => {
-                        match type_annotation {
-                            Some(ref ty) if ty != &ResolvedType::Unit =>{
-                                errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType { span: span.clone(), ty: ty.friendly_type_str() });
-                                ResolvedType::ErrorRecovery
-                            }
-                            _ => ResolvedType::Unit
+                    None => match type_annotation {
+                        Some(ref ty) if ty != &ResolvedType::Unit => {
+                            errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
+                                span: span.clone(),
+                                ty: ty.friendly_type_str(),
+                            });
+                            ResolvedType::ErrorRecovery
                         }
-                    }
+                        _ => ResolvedType::Unit,
+                    },
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
@@ -338,25 +342,26 @@ impl<'sc> TypedExpression<'sc> {
 
                 // match up the names with their type annotations from the declaration
                 for def_field in definition.fields.iter() {
-                    let expr_field: crate::parse_tree::StructExpressionField = match fields.iter().find(|x| x.name == def_field.name) {
-                        Some(val) => val.clone(),
-                        None => {
-                            errors.push(CompileError::StructMissingField {
-                                field_name: def_field.name.primary_name,
-                                struct_name: definition.name.primary_name,
-                                span: span.clone(),
-                            });
-                            typed_fields_buf.push(TypedStructExpressionField {
-                                name: def_field.name.clone(),
-                                value: TypedExpression {
-                                    expression: TypedExpressionVariant::Unit,
-                                    return_type: ResolvedType::ErrorRecovery,
-                                    is_constant: IsConstant::No,
-                                },
-                            });
-                            continue;
-                        }
-                    };
+                    let expr_field: crate::parse_tree::StructExpressionField =
+                        match fields.iter().find(|x| x.name == def_field.name) {
+                            Some(val) => val.clone(),
+                            None => {
+                                errors.push(CompileError::StructMissingField {
+                                    field_name: def_field.name.primary_name,
+                                    struct_name: definition.name.primary_name,
+                                    span: span.clone(),
+                                });
+                                typed_fields_buf.push(TypedStructExpressionField {
+                                    name: def_field.name.clone(),
+                                    value: TypedExpression {
+                                        expression: TypedExpressionVariant::Unit,
+                                        return_type: ResolvedType::ErrorRecovery,
+                                        is_constant: IsConstant::No,
+                                    },
+                                });
+                                continue;
+                            }
+                        };
 
                     let typed_field = type_check!(
                         TypedExpression::type_check(
@@ -423,7 +428,7 @@ impl<'sc> TypedExpression<'sc> {
                         unary_op,
                         name: name_parts,
                         span,
-                        resolved_type_of_parent
+                        resolved_type_of_parent,
                     },
                     is_constant: IsConstant::No,
                 }

@@ -1,17 +1,20 @@
+use std::{fs, path::PathBuf};
+use std::collections::HashMap;
+use std::io::{self, Write};
+
+use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 use line_col::LineColLookup;
+
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
-use std::collections::HashMap;
-use std::io::{self, Write};
-use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
-
-use crate::manifest::{Dependency, DependencyDetails, Manifest};
 use parser::{
     Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
 };
-use std::{fs, path::PathBuf};
+
+use crate::utils::{manifest, constants};
+use manifest::{Dependency, DependencyDetails, Manifest};
 
 pub(crate) fn build(path: Option<String>) -> Result<(), String> {
     // find manifest directory, even if in subdirectory
@@ -55,7 +58,7 @@ fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
     let mut path = fs::canonicalize(starter_path.clone()).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
-        path.push(crate::constants::MANIFEST_FILE_NAME);
+        path.push(constants::MANIFEST_FILE_NAME);
         if path.exists() {
             path.pop();
             return Some(path);
@@ -124,7 +127,7 @@ fn compile_dependency_lib<'source, 'manifest>(
 fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     let manifest_path = {
         let mut man = manifest_dir.clone();
-        man.push(crate::constants::MANIFEST_FILE_NAME);
+        man.push(constants::MANIFEST_FILE_NAME);
         man
     };
     let manifest_path_str = format!("{:?}", manifest_path);
