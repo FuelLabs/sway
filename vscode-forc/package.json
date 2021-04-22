@@ -1,0 +1,34 @@
+{
+    "name": "vscode-forc",
+    "displayName": "vscode-forc",
+    "description": "Forc language VSCode extension",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.55.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Extension Packs",
+        "Snippets",
+        "Themes"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "forc",
+            "aliases": ["Forc", "forc"],
+            "extensions": [".fm"],
+            "configuration": "./language-configuration.json"
+        }],
+        "snippets": [
+            {
+                "language": "forc",
+                "path": "./snippets/forc.json"
+            }
+        ],
+        "grammars": [{
+            "language": "forc",
+            "scopeName": "source.forc",
+            "path": "./syntaxes/forc.tmLanguage.json"
+        }]
+    }
+}
