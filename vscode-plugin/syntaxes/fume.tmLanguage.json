@@ -1,6 +1,6 @@
 {
-	"name": "Forc",
-	"scopeName": "source.forc",
+	"name": "fume",
+	"scopeName": "source.fume",
 	"patterns": [
 		{
 			"comment": "Implementation",
@@ -8,7 +8,7 @@
 			"end": "\\{",
 			"beginCaptures": {
 				"1": {
-					"name": "storage.type.forc"
+					"name": "storage.type.fume"
 				}
 			},
 			"patterns": [
@@ -34,7 +34,7 @@
 					"include": "#where"
 				},
 				{
-					"name": "storage.type.forc",
+					"name": "storage.type.fume",
 					"match": "\\bfor\\b"
 				},
 				{
@@ -56,32 +56,32 @@
 		},
 		{
 			"comment": "Integer literal (decimal)",
-			"name": "constant.numeric.integer.forc",
+			"name": "constant.numeric.integer.fume",
 			"match": "\\b[0-9][0-9_]*([u](8|16|32|64|128))?\\b"
 		},
 		{
 			"comment": "Integer literal (hexadecimal)",
-			"name": "constant.numeric.integer.hexadecimal.forc",
+			"name": "constant.numeric.integer.hexadecimal.fume",
 			"match": "\\b0x[a-fA-F0-9_]+([u](8|16|32|64|128))?\\b"
 		},
 		{
 			"comment": "Integer literal (binary)",
-			"name": "constant.numeric.integer.binary.forc",
+			"name": "constant.numeric.integer.binary.fume",
 			"match": "\\b0b[01_]+([u](8|16|32|64|128))?\\b"
 		},
 		{
 			"comment": "Boolean constant",
-			"name": "constant.language.boolean.forc",
+			"name": "constant.language.boolean.fume",
 			"match": "\\b(true|false)\\b"
 		},
 		{
 			"comment": "Control keyword",
-			"name": "keyword.control.forc",
+			"name": "keyword.control.fume",
 			"match": "\\b(else|if|for|match|return|while)\\b"
 		},
 		{
 			"comment": "Keyword",
-			"name": "keyword.other.forc",
+			"name": "keyword.other.fume",
 			"match": "\\b(deref|let|ref|use|asm)\\b"
 		},
 		{
@@ -101,27 +101,27 @@
 		},
 		{
 			"comment": "Miscellaneous operator",
-			"name": "keyword.operator.misc.forc",
+			"name": "keyword.operator.misc.fume",
 			"match": "(=>|::|->\\?)"
 		},
 		{
 			"comment": "Comparison operator",
-			"name": "keyword.operator.comparison.forc",
+			"name": "keyword.operator.comparison.fume",
 			"match": "(&&|\\|\\||==|!=)"
 		},
 		{
 			"comment": "Assignment operator",
-			"name": "keyword.operator.assignment.forc",
+			"name": "keyword.operator.assignment.fume",
 			"match": "(\\+=|-=|/=|\\*=|%=|\\^=|&=|\\|=|<<=|>>=|=)"
 		},
 		{
 			"comment": "Arithmetic operator",
-			"name": "keyword.operator.arithmetic.forc",
+			"name": "keyword.operator.arithmetic.fume",
 			"match": "(!|\\+|-|/|\\*|%|\\^|&|\\||<<|>>)"
 		},
 		{
 			"comment": "Comparison operator (second group because of regex precedence)",
-			"name": "keyword.operator.comparison.forc",
+			"name": "keyword.operator.comparison.fume",
 			"match": "(<=|>=|<|>)"
 		},
 		{
@@ -132,7 +132,7 @@
 			"match": "\\b([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
 			"captures": {
 				"1": {
-					"name": "entity.name.function.forc"
+					"name": "entity.name.function.fume"
 				}
 			}
 		},
@@ -142,10 +142,10 @@
 			"end": "\\(",
 			"captures": {
 				"1": {
-					"name": "entity.name.function.forc"
+					"name": "entity.name.function.fume"
 				},
 				"2": {
-					"name": "keyword.operator.misc.forc"
+					"name": "keyword.operator.misc.fume"
 				}
 			},
 			"patterns": [
@@ -160,10 +160,10 @@
 			"end": "[\\{;]",
 			"beginCaptures": {
 				"1": {
-					"name": "keyword.other.fn.forc"
+					"name": "keyword.other.fn.fume"
 				},
 				"2": {
-					"name": "entity.name.function.forc"
+					"name": "entity.name.function.fume"
 				}
 			},
 			"patterns": [
@@ -197,7 +197,7 @@
 				{
 					"comment": "Function arguments",
 					"match": "\bfn\b",
-					"name": "keyword.other.fn.forc"
+					"name": "keyword.other.fn.fume"
 				}
 			]
 		},
@@ -207,10 +207,10 @@
 			"end": "[\\{\\(;]",
 			"beginCaptures": {
 				"1": {
-					"name": "storage.type.forc"
+					"name": "storage.type.fume"
 				},
 				"2": {
-					"name": "entity.name.type.forc"
+					"name": "entity.name.type.fume"
 				}
 			},
 			"patterns": [
@@ -243,10 +243,10 @@
 			"end": "[\\{\\(;]",
 			"beginCaptures": {
 				"1": {
-					"name": "storage.type.forc"
+					"name": "storage.type.fume"
 				},
 				"2": {
-					"name": "entity.name.type.forc"
+					"name": "entity.name.type.fume"
 				}
 			},
 			"patterns": [
@@ -274,7 +274,7 @@
 	"repository": {
 		"block_doc_comment": {
 			"comment": "Block documentation comment",
-			"name": "comment.block.documentation.forc",
+			"name": "comment.block.documentation.fume",
 			"begin": "/\\*[\\*!](?![\\*/])",
 			"end": "\\*/",
 			"patterns": [
@@ -288,7 +288,7 @@
 		},
 		"block_comment": {
 			"comment": "Block comment",
-			"name": "comment.block.forc",
+			"name": "comment.block.fume",
 			"begin": "/\\*",
 			"end": "\\*/",
 			"patterns": [
@@ -302,23 +302,23 @@
 		},
 		"line_doc_comment": {
 			"comment": "Single-line documentation comment",
-			"name": "comment.line.documentation.forc",
+			"name": "comment.line.documentation.fume",
 			"begin": "//[!/](?=[^/])",
 			"end": "$"
 		},
 		"line_comment": {
 			"comment": "Single-line comment",
-			"name": "comment.line.double-slash.forc",
+			"name": "comment.line.double-slash.fume",
 			"begin": "//",
 			"end": "$"
 		},
 		"escaped_character": {
-			"name": "constant.character.escape.forc",
+			"name": "constant.character.escape.fume",
 			"match": "\\\\(x[0-9A-Fa-f]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.)"
 		},
 		"string_literal": {
 			"comment": "Double-quote string literal",
-			"name": "string.quoted.double.forc",
+			"name": "string.quoted.double.fume",
 			"begin": "b?\"",
 			"end": "\"",
 			"patterns": [
@@ -329,47 +329,47 @@
 		},
 		"sigils": {
 			"comment": "Sigil",
-			"name": "keyword.operator.sigil.forc",
+			"name": "keyword.operator.sigil.fume",
 			"match": "[&*](?=[a-zA-Z0-9_\\(\\[\\|\\\"]+)"
 		},
 		"self": {
 			"comment": "Self variable",
-			"name": "variable.language.forc",
+			"name": "variable.language.fume",
 			"match": "\\bself\\b"
 		},
 		"mut": {
 			"comment": "Mutable storage modifier",
-			"name": "storage.modifier.mut.forc",
+			"name": "storage.modifier.mut.fume",
 			"match": "\\bmut\\b"
 		},
 		"impl": {
 			"comment": "Existential type modifier",
-			"name": "storage.modifier.impl.forc",
+			"name": "storage.modifier.impl.fume",
 			"match": "\\bimpl\\b"
 		},
 		"pub": {
 			"comment": "Visibility modifier",
-			"name": "storage.modifier.visibility.forc",
+			"name": "storage.modifier.visibility.fume",
 			"match": "\\bpub\\b"
 		},
 		"where": {
 			"comment": "Generic where clause",
-			"name": "keyword.other.where.forc",
+			"name": "keyword.other.where.fume",
 			"match": "\\bwhere\\b"
 		},
 		"core_types": {
 			"comment": "Built-in/core type",
-			"name": "support.type.primitive.forc",
+			"name": "support.type.primitive.fume",
 			"match": "\\b(bool|char|u8|u16|u32|u64|u128|string|Self)\\b"
 		},
 		"type": {
 			"comment": "A type",
-			"name": "entity.name.type.forc",
+			"name": "entity.name.type.fume",
 			"match": "\\b([A-Za-z][_A-Za-z0-9]*|_[_A-Za-z0-9]+)\\b"
 		},
 		"type_params": {
 			"comment": "Type parameters",
-			"name": "meta.type_params.forc",
+			"name": "meta.type_params.fume",
 			"begin": "<(?![=<])",
 			"end": "(?<![-])>",
 			"patterns": [

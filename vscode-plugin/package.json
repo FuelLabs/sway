@@ -1,7 +1,7 @@
 {
-    "name": "vscode-forc",
-    "displayName": "vscode-forc",
-    "description": "Forc language VSCode extension",
+    "name": "vscode-fume",
+    "displayName": "vscode-fume",
+    "description": "Fume language VSCode extension",
     "version": "0.0.1",
     "engines": {
         "vscode": "^1.55.0"
@@ -14,21 +14,21 @@
     ],
     "contributes": {
         "languages": [{
-            "id": "forc",
-            "aliases": ["Forc", "forc"],
+            "id": "fume",
+            "aliases": ["Fume", "fume"],
             "extensions": [".fm"],
             "configuration": "./language-configuration.json"
         }],
         "snippets": [
             {
-                "language": "forc",
-                "path": "./snippets/forc.json"
+                "language": "fume",
+                "path": "./snippets/fume.json"
             }
         ],
         "grammars": [{
-            "language": "forc",
-            "scopeName": "source.forc",
-            "path": "./syntaxes/forc.tmLanguage.json"
+            "language": "fume",
+            "scopeName": "source.fume",
+            "path": "./syntaxes/fume.tmLanguage.json"
         }]
     }
 }
