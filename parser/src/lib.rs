@@ -281,9 +281,10 @@ pub fn compile<'sc, 'manifest>(
             trees: vec![],
         };
         for (ref name, parse_tree) in res {
-            exports
-                .namespace
-                .insert_module(name.primary_name.to_string(), parse_tree.namespace.clone());
+            exports.namespace.insert_module(
+                name.primary_name.to_string(),
+                parse_tree.namespace().clone(),
+            );
             exports.trees.push(parse_tree);
         }
         exports
@@ -324,19 +325,19 @@ pub fn compile<'sc, 'manifest>(
     warnings.append(&mut l_warnings);
     // for each syntax tree, generate assembly.
     let predicate_asm = if let Some(tree) = predicate_ast {
-        Some(HllAsmSet::from_ast(tree, TreeType::Predicate))
+        Some(HllAsmSet::from_ast(tree))
     } else {
         None
     };
 
     let contract_asm = if let Some(tree) = contract_ast {
-        Some(HllAsmSet::from_ast(tree, TreeType::Contract))
+        Some(HllAsmSet::from_ast(tree))
     } else {
         None
     };
 
     let script_asm = if let Some(tree) = script_ast {
-        Some(HllAsmSet::from_ast(tree, TreeType::Script))
+        Some(HllAsmSet::from_ast(tree))
     } else {
         None
     };

@@ -6,7 +6,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     Literal(Literal<'sc>),
     FunctionApplication {
         name: CallPath<'sc>,
-        arguments: Vec<TypedExpression<'sc>>,
+        arguments: Vec<(Ident<'sc>, TypedExpression<'sc>)>,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,

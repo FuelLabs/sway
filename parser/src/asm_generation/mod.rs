@@ -1,14 +1,19 @@
+use std::collections::HashMap;
+
 use crate::{
-    parse_tree::AsmRegister,
+    parse_tree::{AsmRegister, Literal},
     semantics::{TreeType, TypedAstNode, TypedAstNodeContent, TypedExpression, TypedParseTree},
-    vendored_vm::Op,
+    vendored_vm::{ImmediateValue, Op},
+    Ident,
 };
 
 mod compiler_constants;
+mod declaration;
 mod expression;
 mod register_sequencer;
 mod while_loop;
 
+pub(crate) use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use register_sequencer::*;
 pub(crate) use while_loop::*;
@@ -57,61 +62,90 @@ pub enum HllAsmSet<'sc> {
 /// The [AbstractInstructionSet] is the list of register namespaces and operations existing
 /// within those namespaces in order.
 pub struct AbstractInstructionSet<'sc> {
-    /// Used to store mappings of values to register locations
-    namespace: AsmNamespace,
-    asm: Vec<Op<'sc>>,
+    ops: Vec<Op<'sc>>,
+}
+
+type Data<'sc> = Literal<'sc>;
+impl<'sc> AbstractInstructionSet<'sc> {}
+
+#[derive(Default)]
+pub(crate) struct DataSection<'sc> {
+    /// the data to be put in the data section of the asm
+    value_pairs: Vec<Data<'sc>>,
 }
 
 #[derive(Default)]
-pub(crate) struct AsmNamespace {}
+pub(crate) struct AsmNamespace<'sc> {
+    data_section: DataSection<'sc>,
+    variables: HashMap<Ident<'sc>, AsmRegister>,
+}
+
+impl<'sc> AsmNamespace<'sc> {
+    pub(crate) fn insert_variable(&mut self, var_name: Ident<'sc>, register_location: AsmRegister) {
+        self.variables.insert(var_name, register_location);
+    }
+    pub(crate) fn insert_data_value(&mut self, data: &Data<'sc>) -> u32 {
+        self.data_section.value_pairs.push(data.clone());
+        // the index of the data section where the value is stored
+        (self.data_section.value_pairs.len() - 1) as u32
+    }
+    /// Finds the register which contains variable `var_name`
+    /// The `get` is unwrapped, because invalid variable expressions are
+    /// checked for in the type checking stage.
+    pub(crate) fn look_up_variable(&self, var_name: &Ident<'sc>) -> &AsmRegister {
+        self.variables.get(&var_name).unwrap()
+    }
+}
 
 impl<'sc> HllAsmSet<'sc> {
-    pub(crate) fn from_ast(ast: TypedParseTree<'sc>, tree_type: TreeType) -> Self {
+    pub(crate) fn from_ast(ast: TypedParseTree<'sc>) -> Self {
         let mut register_sequencer = RegisterSequencer::new();
-        match tree_type {
-            TreeType::Script | TreeType::Predicate => {
+        match ast {
+            TypedParseTree::Script { main_function, .. } => {
                 let mut namespace: AsmNamespace = Default::default();
-                for node in ast.root_nodes {
-                    let asm = convert_node_to_asm(node, &mut namespace, &mut register_sequencer);
-                }
+                let mut asm_buf = vec![];
+                // start generating from the main function
+                asm_buf.append(&mut convert_code_block_to_asm(
+                    &main_function.body,
+                    &mut namespace,
+                    &mut register_sequencer,
+                ));
+
+                HllAsmSet::ScriptMain(AbstractInstructionSet { ops: asm_buf })
             }
-            TreeType::Contract => todo!(),
-            TreeType::Library => todo!(),
+            TypedParseTree::Predicate { main_function, .. } => {
+                /*
+                let mut asm_buf: Vec<Op<'sc>> = vec![];
+                let mut namespace: AsmNamespace = Default::default();
+                let mut asm_buf = vec![];
+                // start generating from the main function
+                asm_buf.append(&mut convert_fn_decl_to_asm(
+                    &main_function,
+                    &mut namespace,
+                    &mut register_sequencer,
+                ));
+                */
+                todo!()
+
+                // HllAsmSet::PredicateMain(AbstractInstructionSet { ops: asm_buf })
+            }
+            _ => todo!(),
         }
-        todo!()
     }
 }
 
 fn convert_node_to_asm<'sc>(
-    node: TypedAstNode<'sc>,
-    namespace: &mut AsmNamespace,
+    node: &TypedAstNode<'sc>,
+    namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
 ) -> Vec<Op<'sc>> {
-    match node.content {
+    match &node.content {
         TypedAstNodeContent::WhileLoop(r#loop) => {
             convert_while_loop_to_asm(r#loop, namespace, register_sequencer)
+        }
+        TypedAstNodeContent::Declaration(typed_decl) => {
+            convert_decl_to_asm(typed_decl, namespace, register_sequencer)
         }
         a => todo!("{:?}", a),
     }
 }
-
-/*
-fn allocate_registers(bytecode: VirtualizedByteCode) -> FinalizedByteCode {
-    const MAX_REGISTERS = 48;
-    let mut allocated_registers = Vec::new();
-    for AsmOp { registers, .. } in bytecode {
-        for register in registers {
-            if !allocated_registers.contains(register) {
-                if allocated_registers.len() == MAX_REGISTERS {
-                    panic!("Out of registers!");
-                } else {
-                    allocated_registers.push(register.clone());
-                    let register_name = format!("r{}", allocated_registers.len());
-                    // TODOthis should be some sort of mapping
-                }
-            }
-        }
-    }
-
-}
-*/

@@ -2,8 +2,8 @@ use super::*;
 use crate::semantics::ast_node::TypedWhileLoop;
 use crate::vendored_vm::Op;
 pub(super) fn convert_while_loop_to_asm<'sc>(
-    r#loop: TypedWhileLoop<'sc>,
-    namespace: &mut AsmNamespace,
+    r#loop: &TypedWhileLoop<'sc>,
+    namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
 ) -> Vec<Op<'sc>> {
     let mut buf: Vec<Op> = vec![];
@@ -12,9 +12,9 @@ pub(super) fn convert_while_loop_to_asm<'sc>(
     let condition_result_register = register_sequencer.next();
     let condition_span = r#loop.condition.span.clone();
     let asm_for_condition = convert_expression_to_asm(
-        r#loop.condition,
+        &r#loop.condition,
         namespace,
-        condition_result_register,
+        &condition_result_register,
         register_sequencer,
     );
 

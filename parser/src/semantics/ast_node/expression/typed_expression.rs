@@ -129,7 +129,7 @@ impl<'sc> TypedExpression<'sc> {
                                     error_recovery_expr(arg.span())
                                 }
                             };
-                            typed_call_arguments.push(arg);
+                            typed_call_arguments.push((param.name.clone(), arg));
                         }
 
                         TypedExpression {
@@ -515,13 +515,13 @@ impl<'sc> TypedExpression<'sc> {
                 let zipped = method.parameters.iter().zip(arguments.iter());
 
                 let mut typed_arg_buf = vec![];
-                for (TypedFunctionParameter { r#type, .. }, arg) in zipped {
+                for (TypedFunctionParameter { r#type, name, .. }, arg) in zipped {
                     let un_self_type = if r#type == &ResolvedType::SelfType {
                         parent_type.clone()
                     } else {
                         r#type.clone()
                     };
-                    typed_arg_buf.push(type_check!(
+                    typed_arg_buf.push((name.clone(), type_check!(
                         TypedExpression::type_check(
                             arg.clone(),
                             &namespace,
@@ -530,7 +530,7 @@ impl<'sc> TypedExpression<'sc> {
                         continue, 
                         warnings,
                         errors
-                    ));
+                    )));
                 }
 
                 TypedExpression {

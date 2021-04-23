@@ -108,7 +108,7 @@ impl<'sc> ControlFlowGraph<'sc> {
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
-        for ast_entrypoint in ast.root_nodes.iter() {
+        for ast_entrypoint in ast.all_nodes().iter() {
             let (l_leaves, _new_exit_node) =
                 connect_node(ast_entrypoint, &mut graph, &leaves, exit_node, tree_type);
 
@@ -541,7 +541,7 @@ fn connect_expression<'sc>(
             }
             // we evaluate every one of the function arguments
             let mut current_leaf = vec![fn_entrypoint];
-            for arg in arguments {
+            for (_name, arg) in arguments {
                 current_leaf = connect_expression(
                     &arg.expression,
                     graph,

@@ -25,7 +25,7 @@ impl<'sc> ControlFlowGraph<'sc> {
         };
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
-        for ast_entrypoint in ast.root_nodes.iter() {
+        for ast_entrypoint in ast.all_nodes().iter() {
             let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves);
 
             match l_leaves {

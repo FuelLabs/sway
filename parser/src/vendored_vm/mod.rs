@@ -32,6 +32,12 @@ macro_rules! opcodes {
     }
 }
 
+impl From<&AsmRegister> for RegisterId {
+    fn from(o: &AsmRegister) -> Self {
+        o.name.clone()
+    }
+}
+
 pub(crate) struct Op<'sc> {
     opcode: Opcode,
     /// A descriptive comment for debugging
