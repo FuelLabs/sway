@@ -96,6 +96,7 @@ impl<'sc> TypedExpression<'sc> {
                     TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                         parameters,
                         return_type,
+                        body,
                         ..
                     }) => {
                         // type check arguments in function application vs arguments in function
@@ -142,6 +143,7 @@ impl<'sc> TypedExpression<'sc> {
                             expression: TypedExpressionVariant::FunctionApplication {
                                 arguments: typed_call_arguments,
                                 name: name.clone(),
+                                function_body: body.clone()
                             },
                             span,
                         }
@@ -537,8 +539,9 @@ impl<'sc> TypedExpression<'sc> {
                     expression: TypedExpressionVariant::FunctionApplication {
                         // TODO the prefix should be a type info maybe? and then the first arg can
                         // be self?
-                        name: method_name.into(), // TODO todo!("put the actual fully-typed function bodies in these applications"),
+                        name: method_name.into(), 
                         arguments: typed_arg_buf,
+                        function_body: method.body.clone(),
                     },
                     return_type: method.return_type,
                     is_constant: IsConstant::No,

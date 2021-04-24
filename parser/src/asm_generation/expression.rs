@@ -9,6 +9,11 @@ use crate::{
 };
 use pest::Span;
 
+pub(crate) enum ExpressionAsmResult<'sc> {
+    Ops(Vec<Op<'sc>>),
+    Shortcut(AsmRegister),
+}
+
 /// Given a [TypedExpression], convert it to assembly and put its return value, if any, in the
 /// `return_register`.
 pub(crate) fn convert_expression_to_asm<'sc>(
@@ -16,25 +21,35 @@ pub(crate) fn convert_expression_to_asm<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     return_register: &AsmRegister,
     register_sequencer: &mut RegisterSequencer,
-) -> Vec<Op<'sc>> {
+) -> ExpressionAsmResult<'sc> {
     match &exp.expression {
-        TypedExpressionVariant::Literal(ref lit) => convert_literal_to_asm(
-            lit,
-            namespace,
-            return_register,
-            register_sequencer,
-            exp.span.clone(),
-        ),
-        TypedExpressionVariant::FunctionApplication { name, arguments } => convert_fn_app_to_asm(
+        TypedExpressionVariant::Literal(ref lit) => {
+            ExpressionAsmResult::Ops(convert_literal_to_asm(
+                lit,
+                namespace,
+                return_register,
+                register_sequencer,
+                exp.span.clone(),
+            ))
+        }
+        TypedExpressionVariant::FunctionApplication {
             name,
             arguments,
+            function_body,
+        } => ExpressionAsmResult::Ops(convert_fn_app_to_asm(
+            name,
+            arguments,
+            function_body,
             namespace,
             return_register,
             register_sequencer,
-        ),
+        )),
         TypedExpressionVariant::VariableExpression { unary_op, name } => {
             let var = namespace.look_up_variable(name);
-            todo!()
+            // we set this register as equivalent to another register
+            // it is not a load, because that would be superfluous
+            // the expression is literally just referring to this specific register
+            ExpressionAsmResult::Shortcut(var.clone())
         }
         a => todo!("{:?}", a),
     }
@@ -79,6 +94,7 @@ fn convert_literal_to_asm<'sc>(
 fn convert_fn_app_to_asm<'sc>(
     name: &CallPath<'sc>,
     arguments: &[(Ident<'sc>, TypedExpression<'sc>)],
+    function_body: &TypedCodeBlock<'sc>,
     namespace: &mut AsmNamespace<'sc>,
     return_register: &AsmRegister,
     register_sequencer: &mut RegisterSequencer,
@@ -88,22 +104,28 @@ fn convert_fn_app_to_asm<'sc>(
     // evaluate every expression being passed into the function
     for (name, arg) in arguments {
         let return_register = register_sequencer.next();
-        asm_buf.append(&mut convert_expression_to_asm(
-            arg,
-            namespace,
-            &return_register,
-            register_sequencer,
-        ));
-        args_and_registers.insert(name.clone(), return_register);
+        match convert_expression_to_asm(arg, namespace, &return_register, register_sequencer) {
+            ExpressionAsmResult::Ops(mut ops) => {
+                asm_buf.append(&mut ops);
+                args_and_registers.insert(name.clone(), return_register);
+            }
+            ExpressionAsmResult::Shortcut(new_return_register) => {
+                args_and_registers.insert(name.clone(), new_return_register);
+            }
+        }
     }
 
+    // insert the arguments into the asm namespace with their registers mapped
     for (name, reg) in args_and_registers {
         namespace.insert_variable(name, reg);
     }
 
-    // insert the arguments into the asm namespace with their registers mapped
-
-    // evaluate the function body, with the
+    // evaluate the function body
+    asm_buf.append(&mut convert_code_block_to_asm(
+        function_body,
+        namespace,
+        register_sequencer,
+    ));
 
     todo!()
 }

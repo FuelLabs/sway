@@ -146,6 +146,19 @@ fn convert_node_to_asm<'sc>(
         TypedAstNodeContent::Declaration(typed_decl) => {
             convert_decl_to_asm(typed_decl, namespace, register_sequencer)
         }
+        TypedAstNodeContent::ImplicitReturnExpression(exp) => {
+            let return_register = register_sequencer.next();
+            todo!("What should I do with the return register here?");
+            let (ops, return_register) = match convert_expression_to_asm(
+                exp,
+                namespace,
+                &return_register,
+                register_sequencer,
+            ) {
+                ExpressionAsmResult::Ops(ops) => (ops, return_register),
+                ExpressionAsmResult::Shortcut(new_return_register) => (vec![], new_return_register),
+            };
+        }
         a => todo!("{:?}", a),
     }
 }
