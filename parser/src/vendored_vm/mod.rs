@@ -6,6 +6,7 @@
 #![allow(dead_code)]
 
 use crate::parse_tree::AsmRegister;
+use either::Either;
 use pest::Span;
 use std::collections::HashSet;
 
@@ -39,7 +40,7 @@ impl From<&AsmRegister> for RegisterId {
 }
 
 pub(crate) struct Op<'sc> {
-    opcode: Opcode,
+    opcode: Either<Opcode, OrganizationalOp>,
     /// A descriptive comment for debugging
     comment: String,
     owning_span: Span<'sc>,
@@ -48,7 +49,7 @@ pub(crate) struct Op<'sc> {
 impl<'sc> Op<'sc> {
     pub(crate) fn new(opcode: Opcode, owning_span: Span<'sc>) -> Self {
         Op {
-            opcode,
+            opcode: Either::Left(opcode),
             comment: String::new(),
             owning_span,
         }
@@ -60,11 +61,29 @@ impl<'sc> Op<'sc> {
     ) -> Self {
         let comment = comment.into();
         Op {
-            opcode,
+            opcode: Either::Left(opcode),
             comment,
             owning_span,
         }
     }
+
+    pub(crate) fn jump_label(label: impl Into<String>, owning_span: Span<'sc>) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Label(label.into())),
+            comment: String::new(),
+            owning_span,
+        }
+    }
+
+    /// Moves the register in the second argument into the register in the first argument
+    pub(crate) fn register_move(r1: RegisterId, r2: RegisterId, owning_span: Span<'sc>) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            comment: String::new(),
+            owning_span,
+        }
+    }
+
     pub(crate) fn parse_opcode(name: &str, args: &[&str]) -> Result<Opcode, ()> {
         Opcode::parse(name, args)
     }
@@ -890,4 +909,14 @@ opcodes! {
 
     // Additional Opcodes.
     Flag(RegisterId) = 130
+
+}
+
+// Convenience opcodes for the compiler -- will be optimized out or removed
+// these do not reflect actual ops in the VM
+enum OrganizationalOp {
+    // moves the second register into the first register
+    RMove(RegisterId, RegisterId),
+    // Labels the code for jumps, will later be interpreted into offsets
+    Label(String),
 }

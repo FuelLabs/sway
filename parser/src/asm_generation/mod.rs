@@ -109,6 +109,7 @@ impl<'sc> HllAsmSet<'sc> {
                     &main_function.body,
                     &mut namespace,
                     &mut register_sequencer,
+                    None,
                 ));
 
                 HllAsmSet::ScriptMain(AbstractInstructionSet { ops: asm_buf })
@@ -134,30 +135,37 @@ impl<'sc> HllAsmSet<'sc> {
     }
 }
 
+pub(crate) enum NodeAsmResult<'sc> {
+    JustAsm(Vec<Op<'sc>>),
+    ReturnStatement { asm: Vec<Op<'sc>> },
+}
+/// The tuple being returned here contains the opcodes of the code block and,
+/// optionally, a return register in case this node was a return statement
 fn convert_node_to_asm<'sc>(
     node: &TypedAstNode<'sc>,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
-) -> Vec<Op<'sc>> {
+    // Where to put the return value of this node, if it is desired.
+    return_register: Option<&AsmRegister>,
+) -> NodeAsmResult<'sc> {
     match &node.content {
-        TypedAstNodeContent::WhileLoop(r#loop) => {
-            convert_while_loop_to_asm(r#loop, namespace, register_sequencer)
-        }
-        TypedAstNodeContent::Declaration(typed_decl) => {
-            convert_decl_to_asm(typed_decl, namespace, register_sequencer)
-        }
+        TypedAstNodeContent::WhileLoop(r#loop) => NodeAsmResult::JustAsm(
+            convert_while_loop_to_asm(r#loop, namespace, register_sequencer),
+        ),
+        TypedAstNodeContent::Declaration(typed_decl) => NodeAsmResult::JustAsm(
+            convert_decl_to_asm(typed_decl, namespace, register_sequencer),
+        ),
         TypedAstNodeContent::ImplicitReturnExpression(exp) => {
-            let return_register = register_sequencer.next();
-            todo!("What should I do with the return register here?");
-            let (ops, return_register) = match convert_expression_to_asm(
-                exp,
-                namespace,
-                &return_register,
-                register_sequencer,
-            ) {
-                ExpressionAsmResult::Ops(ops) => (ops, return_register),
-                ExpressionAsmResult::Shortcut(new_return_register) => (vec![], new_return_register),
+            // if a return register was specified, we use it. If not, we generate a register but
+            // it is going to get thrown away later (in coalescing) as it is never read
+            let return_register = if let Some(return_register) = return_register {
+                return_register.clone()
+            } else {
+                register_sequencer.next()
             };
+            let ops =
+                convert_expression_to_asm(exp, namespace, &return_register, register_sequencer);
+            NodeAsmResult::ReturnStatement { asm: ops }
         }
         a => todo!("{:?}", a),
     }
