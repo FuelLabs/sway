@@ -12,11 +12,13 @@ use super::Expression;
 pub(crate) struct AsmExpression<'sc> {
     pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
     pub(crate) body: Vec<AsmOp<'sc>>,
-    pub(crate) returns: Option<AsmRegister>,
+    pub(crate) returns: Option<(AsmRegister, Span<'sc>)>,
+    pub(crate) whole_block_span: Span<'sc>,
 }
 
 impl<'sc> AsmExpression<'sc> {
     pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        let whole_block_span = pair.as_span();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut iter = pair.into_inner();
@@ -30,7 +32,7 @@ impl<'sc> AsmExpression<'sc> {
             return err(warnings, errors)
         );
         let mut asm_op_buf = Vec::new();
-        let mut implicit_op_return: Option<AsmRegister> = None;
+        let mut implicit_op_return = None;
         while let Some(pair) = iter.next() {
             match pair.as_rule() {
                 Rule::asm_op => {
@@ -38,12 +40,15 @@ impl<'sc> AsmExpression<'sc> {
                     asm_op_buf.push(op);
                 }
                 Rule::asm_register => {
-                    implicit_op_return = Some(eval!(
-                        AsmRegister::parse_from_pair,
-                        warnings,
-                        errors,
-                        pair,
-                        continue
+                    implicit_op_return = Some((
+                        eval!(
+                            AsmRegister::parse_from_pair,
+                            warnings,
+                            errors,
+                            pair,
+                            continue
+                        ),
+                        pair.as_span(),
                     ));
                 }
                 a => unreachable!("{:?}", a),
@@ -55,6 +60,7 @@ impl<'sc> AsmExpression<'sc> {
                 registers: asm_registers,
                 body: asm_op_buf,
                 returns: implicit_op_return,
+                whole_block_span,
             },
             warnings,
             errors,

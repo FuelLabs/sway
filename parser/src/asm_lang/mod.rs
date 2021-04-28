@@ -5,7 +5,7 @@
 //! Only things needed for opcode serialization and generation are included here.
 #![allow(dead_code)]
 
-use crate::{error::*, parse_tree::AsmRegister, Ident};
+use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
 use pest::Span;
 use std::collections::HashSet;
@@ -35,7 +35,7 @@ macro_rules! opcodes {
 
 impl From<&AsmRegister> for RegisterId {
     fn from(o: &AsmRegister) -> Self {
-        o.name.clone()
+        RegisterId(o.name.clone())
     }
 }
 
@@ -91,6 +91,19 @@ impl<'sc> Op<'sc> {
             opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
             comment: String::new(),
             owning_span: Some(owning_span),
+        }
+    }
+
+    /// Moves the register in the second argument into the register in the first argument
+    pub(crate) fn unowned_register_move_comment(
+        r1: RegisterId,
+        r2: RegisterId,
+        comment: impl Into<String>,
+    ) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            comment: comment.into(),
+            owning_span: None,
         }
     }
 
@@ -909,9 +922,9 @@ impl Opcode {
         };
         ok(op, vec![], vec![])
     }
-    pub(crate) fn get_register_names(&self) -> HashSet<AsmRegister> {
+    pub(crate) fn get_register_names(&self) -> HashSet<&RegisterId> {
         use Opcode::*;
-        let regs: Vec<&String> = match self {
+        let regs: Vec<&RegisterId> = match self {
             Add(r1, r2, r3) => vec![r1, r2, r3],
             Addi(r1, r2, _imm) => vec![r1, r2],
             And(r1, r2, r3) => vec![r1, r2, r3],
@@ -980,17 +993,14 @@ impl Opcode {
             Flag(r1) => vec![r1],
         };
 
-        regs.into_iter()
-            .map(|x| AsmRegister {
-                name: x.to_string(),
-            })
-            .collect()
+        regs.into_iter().collect()
     }
 }
 
 // internal representation for register ids
 // simpler to represent as usize since it avoids casts
-pub type RegisterId = String;
+#[derive(Hash, PartialEq, Eq, Debug, Clone)]
+pub struct RegisterId(String);
 
 // Immediate Value.
 pub type ImmediateValue = u32;
@@ -1080,7 +1090,7 @@ opcodes! {
 pub(crate) struct Label(uuid_b64::UuidB64);
 
 // Convenience opcodes for the compiler -- will be optimized out or removed
-// these do not reflect actual ops in the VM
+// these do not reflect actual ops in the VM and will be compiled to bytecode
 pub(crate) enum OrganizationalOp {
     // copies the second register into the first register
     RMove(RegisterId, RegisterId),
@@ -1090,4 +1100,7 @@ pub(crate) enum OrganizationalOp {
     Comment,
     // Jumps to a label
     Jump(Label),
+    // Loads from the data section into a register
+    // "load data"
+    Ld(RegisterId, DataId),
 }

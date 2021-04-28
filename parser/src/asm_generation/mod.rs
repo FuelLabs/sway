@@ -81,14 +81,17 @@ pub(crate) struct AsmNamespace<'sc> {
     variables: HashMap<Ident<'sc>, AsmRegister>,
 }
 
+/// An address which refers to a value in the data section of the asm.
+pub(crate) struct DataId(u32);
+
 impl<'sc> AsmNamespace<'sc> {
     pub(crate) fn insert_variable(&mut self, var_name: Ident<'sc>, register_location: AsmRegister) {
         self.variables.insert(var_name, register_location);
     }
-    pub(crate) fn insert_data_value(&mut self, data: &Data<'sc>) -> u32 {
+    pub(crate) fn insert_data_value(&mut self, data: &Data<'sc>) -> DataId {
         self.data_section.value_pairs.push(data.clone());
         // the index of the data section where the value is stored
-        (self.data_section.value_pairs.len() - 1) as u32
+        DataId((self.data_section.value_pairs.len() - 1) as u32)
     }
     /// Finds the register which contains variable `var_name`
     /// The `get` is unwrapped, because invalid variable expressions are

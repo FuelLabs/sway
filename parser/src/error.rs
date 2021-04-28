@@ -413,6 +413,9 @@ pub enum CompileError<'sc> {
     MissingImmediate { span: Span<'sc> },
     #[error("This immediate value is invalid.")]
     InvalidImmediateValue { span: Span<'sc> },
+    #[error("This expression was expected to return a value but no return register was specified. Provide a register \
+    in the implicit return position of this asm expression to return it.")]
+    InvalidAssemblyMismatchedReturn { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -544,6 +547,7 @@ impl<'sc> CompileError<'sc> {
             UnknownRegister { span, .. } => (span.start(), span.end()),
             MissingImmediate { span, .. } => (span.start(), span.end()),
             InvalidImmediateValue { span, .. } => (span.start(), span.end()),
+            InvalidAssemblyMismatchedReturn { span, .. } => (span.start(), span.end()),
         }
     }
 }

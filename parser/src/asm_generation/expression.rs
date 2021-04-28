@@ -71,6 +71,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             registers,
             body,
             returns,
+            whole_block_span,
         } => {
             let mut asm_buf = vec![];
             let mut warnings = vec![];
@@ -143,7 +144,40 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     owning_span: Some(op.span.clone()),
                 });
             }
-            todo!()
+            // Now, load the designated asm return register into the desired return register
+            match (returns, return_register) {
+                (Some((asm_reg, asm_reg_span)), return_reg) => {
+                    // lookup and replace the return register
+                    let mapped_asm_ret = match mapping_of_real_registers_to_declared_names
+                        .get(asm_reg.name.as_str())
+                    {
+                        Some(reg) => reg,
+                        None => {
+                            errors.push(CompileError::UnknownRegister {
+                                span: asm_reg_span.clone(),
+                                initialized_registers: mapping_of_real_registers_to_declared_names
+                                    .iter()
+                                    .map(|(name, _)| name.to_string())
+                                    .collect::<Vec<_>>()
+                                    .join("\n"),
+                            });
+                            return err(warnings, errors);
+                        }
+                    };
+                    asm_buf.push(Op::unowned_register_move_comment(
+                        return_reg.into(),
+                        asm_reg.into(),
+                        "return value from inline asm",
+                    ));
+                }
+                _ => {
+                    errors.push(CompileError::InvalidAssemblyMismatchedReturn {
+                        span: whole_block_span.clone(),
+                    });
+                }
+            }
+
+            ok(asm_buf, warnings, errors)
         }
         a => todo!("{:?}", a),
     }
@@ -195,11 +229,11 @@ fn convert_literal_to_asm<'sc>(
     // first, insert the literal into the data section
     let data_id = namespace.insert_data_value(lit);
     // then get that literal id and use it to make a load word op
-    vec![Op::new_with_comment(
-        Opcode::Lw(return_register.into(), "$r0".to_string(), data_id),
-        span,
-        "literal instantiation",
-    )]
+    vec![Op {
+        opcode: either::Either::Right(OrganizationalOp::Ld(return_register.into(), data_id)),
+        comment: "literal instantiation".into(),
+        owning_span: Some(span),
+    }]
 }
 
 /// For now, all functions are handled by inlining at the time of application.
@@ -241,5 +275,7 @@ fn convert_fn_app_to_asm<'sc>(
         Some(return_register),
     ));
 
-    todo!()
+    // the return  value is already put in its proper register via the above statement, so the buf
+    // is done
+    ok(asm_buf, warnings, errors)
 }

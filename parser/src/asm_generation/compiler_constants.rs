@@ -3,8 +3,10 @@
 //!
 // Rustfmt is set to skip this file so we can see the bytes all lined up.
 
+#![allow(dead_code)]
 #[rustfmt::skip]
 pub(crate) mod registers {
     const FALSE: u64 = 0x00;
+    const ZERO:  u64 = 0x00;
     const TRUE:  u64 = 0x01;
 }

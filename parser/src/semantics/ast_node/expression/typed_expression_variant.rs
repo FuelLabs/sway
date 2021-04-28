@@ -39,7 +39,8 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     AsmExpression {
         registers: Vec<TypedAsmRegisterDeclaration<'sc>>,
         body: Vec<AsmOp<'sc>>,
-        returns: Option<AsmRegister>,
+        returns: Option<(AsmRegister, Span<'sc>)>,
+        whole_block_span: Span<'sc>,
     },
     // like a variable expression but it has multiple parts,
     // like looking up a field in a struct
