@@ -1,4 +1,5 @@
 use super::*;
+use crate::parse_tree::AsmOp;
 use crate::semantics::ast_node::*;
 use crate::Ident;
 #[derive(Clone, Debug)]
@@ -36,7 +37,9 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         r#else: Option<Box<TypedExpression<'sc>>>,
     },
     AsmExpression {
-        asm: AsmExpression<'sc>,
+        registers: Vec<TypedAsmRegisterDeclaration<'sc>>,
+        body: Vec<AsmOp<'sc>>,
+        returns: Option<AsmRegister>,
     },
     // like a variable expression but it has multiple parts,
     // like looking up a field in a struct
@@ -54,6 +57,12 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         tag: usize,
         contents: Option<Box<TypedExpression<'sc>>>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct TypedAsmRegisterDeclaration<'sc> {
+    pub(crate) initializer: Option<TypedExpression<'sc>>,
+    pub(crate) name: &'sc str,
 }
 
 impl<'sc> TypedExpressionVariant<'sc> {

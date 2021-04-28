@@ -4,12 +4,12 @@ extern crate pest_derive;
 mod error;
 
 mod asm_generation;
+mod asm_lang;
 mod control_flow_analysis;
 mod ident;
 mod parse_tree;
 mod parser;
 mod semantics;
-mod vendored_vm;
 
 use crate::error::*;
 use crate::parse_tree::*;

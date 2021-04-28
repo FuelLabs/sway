@@ -1,16 +1,17 @@
+use crate::asm_lang::{ImmediateValue, Opcode};
 use crate::error::*;
 use crate::parser::Rule;
-use crate::vendored_vm::Opcode;
 use crate::Ident;
 use pest::iterators::Pair;
 use pest::Span;
 use std::collections::HashSet;
 
+use super::Expression;
+
 #[derive(Debug, Clone)]
 pub(crate) struct AsmExpression<'sc> {
     pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
     pub(crate) body: Vec<AsmOp<'sc>>,
-    pub(crate) unique_registers: HashSet<AsmRegister>,
     pub(crate) returns: Option<AsmRegister>,
 }
 
@@ -49,17 +50,11 @@ impl<'sc> AsmExpression<'sc> {
             }
         }
 
-        let unique_registers = asm_op_buf
-            .iter()
-            .map(|x| x.op.get_register_names())
-            .flatten()
-            .collect::<HashSet<_>>();
         ok(
             AsmExpression {
                 registers: asm_registers,
                 body: asm_op_buf,
                 returns: implicit_op_return,
-                unique_registers,
             },
             warnings,
             errors,
@@ -69,8 +64,10 @@ impl<'sc> AsmExpression<'sc> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct AsmOp<'sc> {
-    op: Opcode,
-    span: Span<'sc>,
+    pub(crate) op_name: Ident<'sc>,
+    pub(crate) op_args: Vec<Ident<'sc>>,
+    pub(crate) span: Span<'sc>,
+    pub(crate) immediate: Option<ImmediateValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -90,33 +87,67 @@ impl<'sc> AsmRegister {
     }
 }
 
+impl Into<String> for AsmRegister {
+    fn into(self) -> String {
+        self.name.clone()
+    }
+}
+
 impl<'sc> AsmOp<'sc> {
     fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        let warnings = Vec::new();
-        let errors = Vec::new();
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
         let span = pair.as_span();
         let mut iter = pair.into_inner();
-        let opcode = iter.next().unwrap().as_str();
-        //        let mut registers_buf = Vec::new();
-        //        let mut immediate: Option<u64> = None;
+        let opcode = eval!(
+            Ident::parse_from_pair,
+            warnings,
+            errors,
+            iter.next().unwrap(),
+            return err(warnings, errors)
+        );
         let mut args = vec![];
+        let mut immediate_value = None;
         while let Some(pair) = iter.next() {
             match pair.as_rule() {
-                Rule::asm_register | Rule::asm_immediate => {
-                    args.push(pair.as_str());
+                Rule::asm_register => {
+                    args.push(Ident {
+                        primary_name: pair.as_str(),
+                        span: pair.as_span(),
+                    });
+                }
+                Rule::asm_immediate => {
+                    let imm: ImmediateValue = match pair.as_str().parse() {
+                        Ok(o) => o,
+                        Err(e) => {
+                            errors.push(CompileError::InvalidImmediateValue {
+                                span: pair.as_span(),
+                            });
+                            return err(warnings, errors);
+                        }
+                    };
+                    immediate_value = Some(imm);
                 }
                 _ => unreachable!(),
             }
         }
-        let op = Opcode::parse(opcode, &args).expect("handle this err");
-        ok(AsmOp { span, op }, warnings, errors)
+        ok(
+            AsmOp {
+                span,
+                op_name: opcode,
+                op_args: args,
+                immediate: immediate_value,
+            },
+            warnings,
+            errors,
+        )
     }
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct AsmRegisterDeclaration<'sc> {
-    name: &'sc str,
-    initializer: Option<Ident<'sc>>,
+    pub(crate) name: &'sc str,
+    pub(crate) initializer: Option<Expression<'sc>>,
 }
 
 impl<'sc> AsmRegisterDeclaration<'sc> {
@@ -133,7 +164,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
             // assigned to that register
             let initializer = if let Some(pair) = iter.next() {
                 Some(eval!(
-                    Ident::parse_from_pair,
+                    Expression::parse_from_pair,
                     warnings,
                     errors,
                     pair,

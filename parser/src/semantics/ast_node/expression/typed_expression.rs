@@ -316,8 +316,17 @@ impl<'sc> TypedExpression<'sc> {
                 } else {
                     ResolvedType::Unit
                 };
+
+                // type check the initializers
+                let typed_registers = asm.registers.into_iter().map(|AsmRegisterDeclaration { name, initializer  }| TypedAsmRegisterDeclaration {
+                    name,
+                    initializer: initializer.map(|initializer| type_check!(
+                        TypedExpression::type_check(initializer.clone(), namespace, None, ""), error_recovery_expr(initializer.span()), warnings, errors
+                    ))
+
+                }).collect();
                 TypedExpression {
-                    expression: TypedExpressionVariant::AsmExpression { asm },
+                    expression: TypedExpressionVariant::AsmExpression { body: asm.body, registers: typed_registers, returns: asm.returns },
                     return_type,
                     is_constant: IsConstant::No,
                     span,

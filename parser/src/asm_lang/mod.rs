@@ -5,7 +5,7 @@
 //! Only things needed for opcode serialization and generation are included here.
 #![allow(dead_code)]
 
-use crate::parse_tree::AsmRegister;
+use crate::{error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
 use pest::Span;
 use std::collections::HashSet;
@@ -40,10 +40,10 @@ impl From<&AsmRegister> for RegisterId {
 }
 
 pub(crate) struct Op<'sc> {
-    opcode: Either<Opcode, OrganizationalOp>,
+    pub(crate) opcode: Either<Opcode, OrganizationalOp>,
     /// A descriptive comment for debugging
-    comment: String,
-    owning_span: Span<'sc>,
+    pub(crate) comment: String,
+    pub(crate) owning_span: Option<Span<'sc>>,
 }
 
 impl<'sc> Op<'sc> {
@@ -51,7 +51,7 @@ impl<'sc> Op<'sc> {
         Op {
             opcode: Either::Left(opcode),
             comment: String::new(),
-            owning_span,
+            owning_span: Some(owning_span),
         }
     }
     pub(crate) fn new_with_comment(
@@ -63,15 +63,25 @@ impl<'sc> Op<'sc> {
         Op {
             opcode: Either::Left(opcode),
             comment,
-            owning_span,
+            owning_span: Some(owning_span),
         }
     }
 
-    pub(crate) fn jump_label(label: impl Into<String>, owning_span: Span<'sc>) -> Self {
+    /// Given a label, creates the actual asm line to put in the ASM which represents a label
+    pub(crate) fn jump_label(label: Label, owning_span: Span<'sc>) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Label(label.into())),
+            opcode: Either::Right(OrganizationalOp::Label(label)),
             comment: String::new(),
-            owning_span,
+            owning_span: Some(owning_span),
+        }
+    }
+
+    /// Given a label, creates the actual asm line to put in the ASM which represents a label
+    pub(crate) fn unowned_jump_label(label: Label) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Label(label)),
+            comment: String::new(),
+            owning_span: None,
         }
     }
 
@@ -80,28 +90,53 @@ impl<'sc> Op<'sc> {
         Op {
             opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
             comment: String::new(),
-            owning_span,
+            owning_span: Some(owning_span),
         }
     }
 
-    pub(crate) fn parse_opcode(name: &str, args: &[&str]) -> Result<Opcode, ()> {
-        Opcode::parse(name, args)
+    pub(crate) fn new_comment(comm: impl Into<String>) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Comment),
+            comment: comm.into(),
+            owning_span: None,
+        }
+    }
+
+    /// Generates a new label with a UUID (in base 64) for convenience.
+    pub(crate) fn new_label() -> Label {
+        Label(uuid_b64::UuidB64::new())
+    }
+
+    pub(crate) fn jump_to_label(label: Label) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Jump(label)),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
+
+    pub(crate) fn parse_opcode(
+        name: &Ident<'sc>,
+        args: &[&AsmRegister],
+        immediate: Option<ImmediateValue>,
+    ) -> CompileResult<'sc, Opcode> {
+        Opcode::parse(name, args, immediate)
     }
 }
 
 impl Opcode {
     /// If this name matches an opcode and there are the correct number and
     /// type of arguments, parse the given inputs into an opcode.
-    pub(crate) fn parse(name: &str, args: &[&str]) -> Result<Opcode, ()> {
+    pub(crate) fn parse<'sc>(
+        name: &Ident<'sc>,
+        args: &[&AsmRegister],
+        immediate: Option<ImmediateValue>,
+    ) -> CompileResult<'sc, Opcode> {
         use Opcode::*;
-        let op = match name {
+        let op = match name.primary_name {
             "add" => {
                 if args.len() == 3 {
-                    Add(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Add(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -109,9 +144,19 @@ impl Opcode {
             "addi" => {
                 if args.len() == 3 {
                     Addi(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -119,11 +164,7 @@ impl Opcode {
             }
             "and" => {
                 if args.len() == 3 {
-                    And(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    And(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -131,9 +172,19 @@ impl Opcode {
             "andi" => {
                 if args.len() == 3 {
                     Andi(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -141,11 +192,7 @@ impl Opcode {
             }
             "div" => {
                 if args.len() == 3 {
-                    Div(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Div(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -153,9 +200,19 @@ impl Opcode {
             "divi" => {
                 if args.len() == 3 {
                     Divi(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -163,11 +220,7 @@ impl Opcode {
             }
             "mod" => {
                 if args.len() == 3 {
-                    Mod(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Mod(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -175,9 +228,19 @@ impl Opcode {
             "modi" => {
                 if args.len() == 3 {
                     Modi(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -185,33 +248,21 @@ impl Opcode {
             }
             "eq" => {
                 if args.len() == 3 {
-                    Eq(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Eq(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "gt" => {
                 if args.len() == 3 {
-                    Gt(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Gt(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "mult" => {
                 if args.len() == 3 {
-                    Mult(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Mult(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -219,9 +270,19 @@ impl Opcode {
             "multi" => {
                 if args.len() == 3 {
                     Multi(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -236,18 +297,14 @@ impl Opcode {
             }
             "not" => {
                 if args.len() == 2 {
-                    Not(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    Not(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "or" => {
                 if args.len() == 3 {
-                    Or(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Or(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -255,9 +312,19 @@ impl Opcode {
             "ori" => {
                 if args.len() == 3 {
                     Ori(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -266,9 +333,19 @@ impl Opcode {
             "sll" => {
                 if args.len() == 3 {
                     Sll(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -276,11 +353,7 @@ impl Opcode {
             }
             "sllv" => {
                 if args.len() == 3 {
-                    Sllv(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Sllv(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -288,9 +361,19 @@ impl Opcode {
             "sltiu" => {
                 if args.len() == 3 {
                     Sltiu(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -298,11 +381,7 @@ impl Opcode {
             }
             "sltu" => {
                 if args.len() == 3 {
-                    Sltu(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Sltu(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -310,9 +389,19 @@ impl Opcode {
             "sra" => {
                 if args.len() == 3 {
                     Sra(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -321,9 +410,19 @@ impl Opcode {
             "srl" => {
                 if args.len() == 3 {
                     Srl(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -331,33 +430,21 @@ impl Opcode {
             }
             "srlv" => {
                 if args.len() == 3 {
-                    Srlv(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Srlv(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "srav" => {
                 if args.len() == 3 {
-                    Srav(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Srav(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "sub" => {
                 if args.len() == 3 {
-                    Sub(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Sub(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -365,9 +452,19 @@ impl Opcode {
             "subi" => {
                 if args.len() == 3 {
                     Subi(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -375,11 +472,7 @@ impl Opcode {
             }
             "xor" => {
                 if args.len() == 3 {
-                    Xor(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Xor(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -387,9 +480,19 @@ impl Opcode {
             "xori" => {
                 if args.len() == 3 {
                     Xori(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -397,11 +500,7 @@ impl Opcode {
             }
             "exp" => {
                 if args.len() == 3 {
-                    Exp(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Exp(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -409,9 +508,19 @@ impl Opcode {
             "expi" => {
                 if args.len() == 3 {
                     Expi(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -420,9 +529,19 @@ impl Opcode {
             "cimv" => {
                 if args.len() == 3 {
                     CIMV(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -430,42 +549,65 @@ impl Opcode {
             }
             "ctmv" => {
                 if args.len() == 2 {
-                    CTMV(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    CTMV(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "ji" => {
                 if args.len() == 1 {
-                    Ji(args[0].parse().unwrap())
+                    Ji(match immediate {
+                        Some(i) => i,
+                        None => {
+                            return err(
+                                vec![],
+                                vec![CompileError::MissingImmediate {
+                                    span: name.span.clone(),
+                                }],
+                            )
+                        }
+                    })
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "jnzi" => {
                 if args.len() == 2 {
-                    Jnzi(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    Jnzi(
+                        args[0].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
+                    )
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "ret" => {
                 if args.len() == 1 {
-                    Ret(args[0].parse().unwrap())
+                    Ret(args[0].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "cfe" => {
                 if args.len() == 1 {
-                    Cfe(args[0].parse().unwrap())
+                    Cfe(args[0].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "cfs" => {
                 if args.len() == 1 {
-                    Cfs(args[0].parse().unwrap())
+                    Cfs(args[0].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -473,9 +615,19 @@ impl Opcode {
             "lb" => {
                 if args.len() == 3 {
                     Lb(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -484,9 +636,19 @@ impl Opcode {
             "lw" => {
                 if args.len() == 3 {
                     Lw(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -494,25 +656,21 @@ impl Opcode {
             }
             "malloc" => {
                 if args.len() == 1 {
-                    Malloc(args[0].parse().unwrap())
+                    Malloc(args[0].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "memclear" => {
                 if args.len() == 2 {
-                    MemClear(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    MemClear(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "memcp" => {
                 if args.len() == 2 {
-                    MemCp(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    MemCp(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -520,10 +678,10 @@ impl Opcode {
             "memeq" => {
                 if args.len() == 4 {
                     MemEq(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                        args[3].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        args[2].into(),
+                        args[3].into(),
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -532,9 +690,19 @@ impl Opcode {
             "sb" => {
                 if args.len() == 3 {
                     Sb(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -543,9 +711,19 @@ impl Opcode {
             "sw" => {
                 if args.len() == 3 {
                     Sw(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -553,14 +731,14 @@ impl Opcode {
             }
             "blockhash" => {
                 if args.len() == 2 {
-                    BlockHash(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    BlockHash(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "blockheight" => {
                 if args.len() == 1 {
-                    BlockHeight(args[0].parse().unwrap())
+                    BlockHeight(args[0].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -568,10 +746,10 @@ impl Opcode {
             "call" => {
                 if args.len() == 4 {
                     Call(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                        args[3].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        args[2].into(),
+                        args[3].into(),
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -580,9 +758,19 @@ impl Opcode {
             "codecopy" => {
                 if args.len() == 3 {
                     CodeCopy(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -590,43 +778,35 @@ impl Opcode {
             }
             "coderoot" => {
                 if args.len() == 2 {
-                    CodeRoot(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    CodeRoot(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "codesize" => {
                 if args.len() == 2 {
-                    Codesize(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    Codesize(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "coinbase" => {
                 if args.len() == 1 {
-                    Coinbase(args[0].parse().unwrap())
+                    Coinbase(args[0].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "loadcode" => {
                 if args.len() == 3 {
-                    LoadCode(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    LoadCode(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "sloadcode" => {
                 if args.len() == 3 {
-                    SLoadCode(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    SLoadCode(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -634,10 +814,10 @@ impl Opcode {
             "log" => {
                 if args.len() == 4 {
                     Log(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                        args[3].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        args[2].into(),
+                        args[3].into(),
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -645,46 +825,42 @@ impl Opcode {
             }
             "revert" => {
                 if args.len() == 1 {
-                    Revert(args[0].parse().unwrap())
+                    Revert(args[0].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "srw" => {
                 if args.len() == 2 {
-                    Srw(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    Srw(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "srwx" => {
                 if args.len() == 2 {
-                    Srwx(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    Srwx(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "sww" => {
                 if args.len() == 2 {
-                    Sww(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    Sww(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "swwx" => {
                 if args.len() == 2 {
-                    Swwx(args[0].parse().unwrap(), args[1].parse().unwrap())
+                    Swwx(args[0].into(), args[1].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "transfer" => {
                 if args.len() == 3 {
-                    Transfer(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Transfer(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -692,10 +868,10 @@ impl Opcode {
             "transferout" => {
                 if args.len() == 4 {
                     TransferOut(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                        args[3].parse().unwrap(),
+                        args[0].into(),
+                        args[1].into(),
+                        args[2].into(),
+                        args[3].into(),
                     )
                 } else {
                     todo!("ArgMismatchError")
@@ -703,47 +879,35 @@ impl Opcode {
             }
             "ecrecover" => {
                 if args.len() == 3 {
-                    Ecrecover(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Ecrecover(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "keccak256" => {
                 if args.len() == 3 {
-                    Keccak256(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Keccak256(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "sha256" => {
                 if args.len() == 3 {
-                    Sha256(
-                        args[0].parse().unwrap(),
-                        args[1].parse().unwrap(),
-                        args[2].parse().unwrap(),
-                    )
+                    Sha256(args[0].into(), args[1].into(), args[2].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             "flag" => {
                 if args.len() == 1 {
-                    Flag(args[0].parse().unwrap())
+                    Flag(args[0].into())
                 } else {
                     todo!("ArgMismatchError")
                 }
             }
             _ => todo!("unknown op error"),
         };
-        Ok(op)
+        ok(op, vec![], vec![])
     }
     pub(crate) fn get_register_names(&self) -> HashSet<AsmRegister> {
         use Opcode::*;
@@ -912,11 +1076,18 @@ opcodes! {
 
 }
 
+#[derive(Clone)]
+pub(crate) struct Label(uuid_b64::UuidB64);
+
 // Convenience opcodes for the compiler -- will be optimized out or removed
 // these do not reflect actual ops in the VM
-enum OrganizationalOp {
-    // moves the second register into the first register
+pub(crate) enum OrganizationalOp {
+    // copies the second register into the first register
     RMove(RegisterId, RegisterId),
     // Labels the code for jumps, will later be interpreted into offsets
-    Label(String),
+    Label(Label),
+    // Just a comment that will be inserted into the asm without an op
+    Comment,
+    // Jumps to a label
+    Jump(Label),
 }

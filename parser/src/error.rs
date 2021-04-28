@@ -404,6 +404,15 @@ pub enum CompileError<'sc> {
     ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
     #[error("Expected block to implicitly return a value.")]
     ExpectedImplicitReturnFromBlock { span: Span<'sc> },
+    #[error("This register was not initialized in the initialization section of the ASM expression. Initialized registers are: {initialized_registers}")]
+    UnknownRegister {
+        span: Span<'sc>,
+        initialized_registers: String,
+    },
+    #[error("This opcode takes an immediate value but none was provided.")]
+    MissingImmediate { span: Span<'sc> },
+    #[error("This immediate value is invalid.")]
+    InvalidImmediateValue { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -532,6 +541,9 @@ impl<'sc> CompileError<'sc> {
             PathDoesNotReturn { span, .. } => (span.start(), span.end()),
             ExpectedImplicitReturnFromBlockWithType { span, .. } => (span.start(), span.end()),
             ExpectedImplicitReturnFromBlock { span, .. } => (span.start(), span.end()),
+            UnknownRegister { span, .. } => (span.start(), span.end()),
+            MissingImmediate { span, .. } => (span.start(), span.end()),
+            InvalidImmediateValue { span, .. } => (span.start(), span.end()),
         }
     }
 }

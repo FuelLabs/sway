@@ -1,19 +1,17 @@
 use super::*;
-use crate::{parse_tree::CallPath, vendored_vm::*};
+use crate::{
+    asm_lang::*,
+    error::*,
+    parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath},
+};
 use crate::{
     parse_tree::Literal,
     semantics::{
-        ast_node::{TypedCodeBlock, TypedExpressionVariant},
+        ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },
 };
-use either::Either;
 use pest::Span;
-
-pub(crate) enum ExpressionAsmResult<'sc> {
-    Ops(Vec<Op<'sc>>),
-    Shortcut(AsmRegister),
-}
 
 /// Given a [TypedExpression], convert it to assembly and put its return value, if any, in the
 /// `return_register`.
@@ -22,14 +20,20 @@ pub(crate) fn convert_expression_to_asm<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     return_register: &AsmRegister,
     register_sequencer: &mut RegisterSequencer,
-) -> Vec<Op<'sc>> {
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
     match &exp.expression {
-        TypedExpressionVariant::Literal(ref lit) => convert_literal_to_asm(
-            lit,
-            namespace,
-            return_register,
-            register_sequencer,
-            exp.span.clone(),
+        TypedExpressionVariant::Literal(ref lit) => ok(
+            convert_literal_to_asm(
+                lit,
+                namespace,
+                return_register,
+                register_sequencer,
+                exp.span.clone(),
+            ),
+            warnings,
+            errors,
         ),
         TypedExpressionVariant::FunctionApplication {
             name,
@@ -44,15 +48,102 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             register_sequencer,
         ),
         TypedExpressionVariant::VariableExpression { unary_op, name } => {
-            let var = namespace.look_up_variable(name);
+            let var = type_check!(
+                namespace.look_up_variable(name),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             // we set this register as equivalent to another register
             // it is not a load, because that would be superfluous
             // the expression is literally just referring to this specific register
-            vec![Op::new_with_comment(
-                Opcode::RMove(return_register.into(), var.into()),
-                exp.span,
-                "variable expression",
-            )]
+            ok(
+                vec![Op::register_move(
+                    return_register.into(),
+                    var.into(),
+                    exp.span.clone(),
+                )],
+                warnings,
+                errors,
+            )
+        }
+        TypedExpressionVariant::AsmExpression {
+            registers,
+            body,
+            returns,
+        } => {
+            let mut asm_buf = vec![];
+            let mut warnings = vec![];
+            let mut errors = vec![];
+            // Keep track of the mapping from the declared names of the registers to the actual
+            // registers from the sequencer for replacement
+            let mut mapping_of_real_registers_to_declared_names: HashMap<&str, AsmRegister> =
+                Default::default();
+            for TypedAsmRegisterDeclaration { name, initializer } in registers {
+                let register = register_sequencer.next();
+                mapping_of_real_registers_to_declared_names.insert(name, register.clone());
+                // evaluate each register's initializer
+                if let Some(initializer) = initializer {
+                    asm_buf.append(&mut type_check!(
+                        convert_expression_to_asm(
+                            initializer,
+                            namespace,
+                            &register,
+                            register_sequencer,
+                        ),
+                        continue,
+                        warnings,
+                        errors
+                    ));
+                }
+            }
+
+            // For each opcode in the asm expression, attempt to parse it into an opcode and
+            // replace references to the above registers with the newly allocated ones.
+            for op in body {
+                let replaced_registers = op
+                    .op_args
+                    .iter()
+                    .map(|x| -> Result<_, CompileError> {
+                        match mapping_of_real_registers_to_declared_names.get(x.primary_name) {
+                            Some(o) => Ok(o),
+                            None => Err(CompileError::UnknownRegister {
+                                span: x.span.clone(),
+                                initialized_registers: mapping_of_real_registers_to_declared_names
+                                    .iter()
+                                    .map(|(name, _)| name.to_string())
+                                    .collect::<Vec<_>>()
+                                    .join("\n"),
+                            }),
+                        }
+                    })
+                    .collect::<Vec<Result<_, _>>>();
+
+                let replaced_registers = replaced_registers
+                    .into_iter()
+                    .filter_map(|x| match x {
+                        Err(e) => {
+                            errors.push(e);
+                            None
+                        }
+                        Ok(o) => Some(o),
+                    })
+                    .collect::<Vec<&AsmRegister>>();
+
+                // parse the actual op and registers
+                let opcode = type_check!(
+                    Op::parse_opcode(&op.op_name, &replaced_registers, op.immediate),
+                    continue,
+                    warnings,
+                    errors
+                );
+                asm_buf.push(Op {
+                    opcode: either::Either::Left(opcode),
+                    comment: String::new(),
+                    owning_span: Some(op.span.clone()),
+                });
+            }
+            todo!()
         }
         a => todo!("{:?}", a),
     }
@@ -65,29 +156,30 @@ pub(crate) fn convert_code_block_to_asm<'sc>(
     // Where to put the return value of this code block, if there was any.
     return_register: Option<&AsmRegister>,
 ) -> Vec<Op<'sc>> {
-    let mut asm_buf: Vec<Either<JumpPlaceholer, Op<'sc>>> = vec![];
+    let mut asm_buf: Vec<Op> = vec![];
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    // generate a label for this block
+    let exit_label = Op::new_label();
     for node in &block.contents {
         // If this is a return, then we jump to the end of the function and put the
         // value in the return register
-        let res = convert_node_to_asm(node, namespace, register_sequencer, return_register);
+        let res = type_check!(
+            convert_node_to_asm(node, namespace, register_sequencer, return_register),
+            continue,
+            warnings,
+            errors
+        );
         match res {
-            NodeAsmResult::JustAsm(ops) => {
-                asm_buf.append(&mut ops.into_iter().map(Either::Right).collect())
-            }
-            NodeAsmResult::ReturnStatement { asm } => {
+            NodeAsmResult::JustAsm(ops) => asm_buf.append(&mut ops.into_iter().collect()),
+            NodeAsmResult::ReturnStatement { mut asm } => {
                 // insert a placeholder to jump to the end of the block and put the register
-                // being returned in the return register
-                if let Some(return_register) = return_register {
-                    asm_buf.push(Op::register_move(
-                        return_register.into(),
-                        register_being_returned.into(),
-                        node.span,
-                    ));
-                    // to later replace with a jump to the end of the block
-                }
+                asm_buf.append(&mut asm);
+                asm_buf.push(Op::jump_to_label(exit_label.clone()));
             }
         }
     }
+    asm_buf.push(Op::unowned_jump_label(exit_label));
 
     asm_buf
 }
@@ -118,13 +210,20 @@ fn convert_fn_app_to_asm<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     return_register: &AsmRegister,
     register_sequencer: &mut RegisterSequencer,
-) -> Vec<Op<'sc>> {
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
     let mut asm_buf = vec![];
     let mut args_and_registers: HashMap<Ident<'sc>, AsmRegister> = Default::default();
     // evaluate every expression being passed into the function
     for (name, arg) in arguments {
         let return_register = register_sequencer.next();
-        let ops = convert_expression_to_asm(arg, namespace, &return_register, register_sequencer);
+        let mut ops = type_check!(
+            convert_expression_to_asm(arg, namespace, &return_register, register_sequencer),
+            continue,
+            warnings,
+            errors
+        );
         asm_buf.append(&mut ops);
         args_and_registers.insert(name.clone(), return_register);
     }
@@ -139,6 +238,7 @@ fn convert_fn_app_to_asm<'sc>(
         function_body,
         namespace,
         register_sequencer,
+        Some(return_register),
     ));
 
     todo!()

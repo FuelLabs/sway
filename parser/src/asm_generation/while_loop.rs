@@ -1,11 +1,11 @@
 use super::*;
+use crate::asm_lang::Op;
 use crate::semantics::ast_node::TypedWhileLoop;
-use crate::vendored_vm::Op;
 pub(super) fn convert_while_loop_to_asm<'sc>(
     r#loop: &TypedWhileLoop<'sc>,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
-) -> Vec<Op<'sc>> {
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut buf: Vec<Op> = vec![];
     // convert the condition of the while loop to assembly, and then insert jump
     // instructions based on what the outcome of that condition was

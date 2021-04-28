@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
+    asm_lang::{ImmediateValue, Op},
+    error::*,
     parse_tree::{AsmRegister, Literal},
     semantics::{TreeType, TypedAstNode, TypedAstNodeContent, TypedExpression, TypedParseTree},
-    vendored_vm::{ImmediateValue, Op},
     Ident,
 };
 
@@ -92,8 +93,15 @@ impl<'sc> AsmNamespace<'sc> {
     /// Finds the register which contains variable `var_name`
     /// The `get` is unwrapped, because invalid variable expressions are
     /// checked for in the type checking stage.
-    pub(crate) fn look_up_variable(&self, var_name: &Ident<'sc>) -> &AsmRegister {
-        self.variables.get(&var_name).unwrap()
+    pub(crate) fn look_up_variable(
+        &self,
+        var_name: &Ident<'sc>,
+    ) -> CompileResult<'sc, &AsmRegister> {
+        match self.variables.get(&var_name) {
+            Some(o) => ok(o, vec![], vec![]),
+            None => err(vec![], vec![CompileError::Internal ("Unknown variable in assembly generation. This should have been an error during type checking.",  var_name.span.clone() )])
+
+        }
     }
 }
 
@@ -145,16 +153,30 @@ fn convert_node_to_asm<'sc>(
     node: &TypedAstNode<'sc>,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
-    // Where to put the return value of this node, if it is desired.
+    // Where to put the return value of this node, if it is needed.
     return_register: Option<&AsmRegister>,
-) -> NodeAsmResult<'sc> {
+) -> CompileResult<'sc, NodeAsmResult<'sc>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
     match &node.content {
-        TypedAstNodeContent::WhileLoop(r#loop) => NodeAsmResult::JustAsm(
-            convert_while_loop_to_asm(r#loop, namespace, register_sequencer),
-        ),
-        TypedAstNodeContent::Declaration(typed_decl) => NodeAsmResult::JustAsm(
-            convert_decl_to_asm(typed_decl, namespace, register_sequencer),
-        ),
+        TypedAstNodeContent::WhileLoop(r#loop) => {
+            let res = type_check!(
+                convert_while_loop_to_asm(r#loop, namespace, register_sequencer),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(NodeAsmResult::JustAsm(res), warnings, errors)
+        }
+        TypedAstNodeContent::Declaration(typed_decl) => {
+            let res = type_check!(
+                convert_decl_to_asm(typed_decl, namespace, register_sequencer),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(NodeAsmResult::JustAsm(res), warnings, errors)
+        }
         TypedAstNodeContent::ImplicitReturnExpression(exp) => {
             // if a return register was specified, we use it. If not, we generate a register but
             // it is going to get thrown away later (in coalescing) as it is never read
@@ -163,9 +185,17 @@ fn convert_node_to_asm<'sc>(
             } else {
                 register_sequencer.next()
             };
-            let ops =
-                convert_expression_to_asm(exp, namespace, &return_register, register_sequencer);
-            NodeAsmResult::ReturnStatement { asm: ops }
+            let ops = type_check!(
+                convert_expression_to_asm(exp, namespace, &return_register, register_sequencer),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(
+                NodeAsmResult::ReturnStatement { asm: ops },
+                warnings,
+                errors,
+            )
         }
         a => todo!("{:?}", a),
     }
