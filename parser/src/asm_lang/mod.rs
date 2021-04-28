@@ -8,7 +8,10 @@
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
 use pest::Span;
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt};
+
+/// The column where the ; for comments starts
+const COMMENT_START_COLUMN: usize = 40;
 
 #[macro_export]
 macro_rules! opcodes {
@@ -17,7 +20,7 @@ macro_rules! opcodes {
             $op:ident ( $($inits:ident),* ) = $val:expr
         ),+
     ) => {
-        #[derive( Clone, PartialEq, Debug)]
+        #[derive(Clone, PartialEq, Debug)]
         pub enum Opcode {
             $(
                 #[warn(unused_must_use)]
@@ -113,11 +116,6 @@ impl<'sc> Op<'sc> {
             comment: comm.into(),
             owning_span: None,
         }
-    }
-
-    /// Generates a new label with a UUID (in base 64) for convenience.
-    pub(crate) fn new_label() -> Label {
-        Label(uuid_b64::UuidB64::new())
     }
 
     pub(crate) fn jump_to_label(label: Label) -> Self {
@@ -1083,11 +1081,125 @@ opcodes! {
 
     // Additional Opcodes.
     Flag(RegisterId) = 130
+}
+impl fmt::Display for RegisterId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "$r{}", self.0)
+    }
+}
 
+impl fmt::Display for Label {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, ".{}", self.0)
+    }
+}
+
+impl fmt::Display for Op<'_> {
+    // very clunky but lets us tweak assembly language most easily
+    // below code was constructed with vim macros -- easier to regenerate rather than rewrite.
+    // @alex if you want to change the format and save yourself the pain.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Opcode::*;
+        use OrganizationalOp::*;
+        let op_str = match &self.opcode {
+            Either::Left(opcode) => match opcode {
+                Add(a, b, c) => format!("add {} {} {}", a, b, c),
+                Addi(a, b, c) => format!("addi {} {} {}", a, b, c),
+                And(a, b, c) => format!("and {} {} {}", a, b, c),
+                Andi(a, b, c) => format!("andi {} {} {}", a, b, c),
+                Div(a, b, c) => format!("div {} {} {}", a, b, c),
+                Divi(a, b, c) => format!("divi {} {} {}", a, b, c),
+                Mod(a, b, c) => format!("mod {} {} {}", a, b, c),
+                Modi(a, b, c) => format!("modi {} {} {}", a, b, c),
+                Eq(a, b, c) => format!("eq {} {} {}", a, b, c),
+                Gt(a, b, c) => format!("gt {} {} {}", a, b, c),
+                Mult(a, b, c) => format!("mult {} {} {}", a, b, c),
+                Multi(a, b, c) => format!("multi {} {} {}", a, b, c),
+                Noop() => "noop".to_string(),
+                Not(a, b) => format!("not {} {}", a, b),
+                Or(a, b, c) => format!("or {} {} {}", a, b, c),
+                Ori(a, b, c) => format!("ori {} {} {}", a, b, c),
+                Sll(a, b, c) => format!("sll {} {} {}", a, b, c),
+                Sllv(a, b, c) => format!("sllv {} {} {}", a, b, c),
+                Sltiu(a, b, c) => format!("sltiu {} {} {}", a, b, c),
+
+                Sltu(a, b, c) => format!("sltu {} {} {}", a, b, c),
+                Sra(a, b, c) => format!("sra {} {} {}", a, b, c),
+                Srl(a, b, c) => format!("srl {} {} {}", a, b, c),
+                Srlv(a, b, c) => format!("srlv {} {} {}", a, b, c),
+                Srav(a, b, c) => format!("srav {} {} {}", a, b, c),
+                Sub(a, b, c) => format!("sub {} {} {}", a, b, c),
+                Subi(a, b, c) => format!("subi {} {} {}", a, b, c),
+                Xor(a, b, c) => format!("xor {} {} {}", a, b, c),
+                Xori(a, b, c) => format!("xori {} {} {}", a, b, c),
+                Exp(a, b, c) => format!("exp {} {} {}", a, b, c),
+                Expi(a, b, c) => format!("expi {} {} {}", a, b, c),
+
+                CIMV(a, b, c) => format!("cimv {} {} {}", a, b, c),
+                CTMV(a, b) => format!("ctmv {} {}", a, b),
+                Ji(a) => format!("ji {}", a),
+                Jnzi(a, b) => format!("jnzi {} {}", a, b),
+                Ret(a) => format!("ret {}", a),
+
+                Cfe(a) => format!("cfe {}", a),
+                Cfs(a) => format!("cfs {}", a),
+                Lb(a, b, c) => format!("lb {} {} {}", a, b, c),
+                Lw(a, b, c) => format!("lw {} {} {}", a, b, c),
+                Malloc(a) => format!("malloc {}", a),
+                MemClear(a, b) => format!("memclear {} {}", a, b),
+                MemCp(a, b, c) => format!("memcp {} {} {}", a, b, c),
+                MemEq(a, b, c, d) => format!("memeq {} {} {} {}", a, b, c, d),
+                Sb(a, b, c) => format!("sb {} {} {}", a, b, c),
+                Sw(a, b, c) => format!("sw {} {} {}", a, b, c),
+
+                BlockHash(a, b) => format!("blockhash {} {}", a, b),
+                BlockHeight(a) => format!("blockheight {}", a),
+                Call(a, b, c, d) => format!("call {} {} {} {}", a, b, c, d),
+                CodeCopy(a, b, c) => format!("codecopy {} {} {}", a, b, c),
+                CodeRoot(a, b) => format!("coderoot {} {}", a, b),
+                Codesize(a, b) => format!("codesize {} {}", a, b),
+                Coinbase(a) => format!("coinbase {}", a),
+                LoadCode(a, b, c) => format!("loadcode {} {} {}", a, b, c),
+                SLoadCode(a, b, c) => format!("sloadcode {} {} {}", a, b, c),
+                Log(a, b, c, d) => format!("log {} {} {} {}", a, b, c, d),
+                Revert(a) => format!("revert {}", a),
+                Srw(a, b) => format!("srw {} {}", a, b),
+                Srwx(a, b) => format!("srwx {} {}", a, b),
+                Sww(a, b) => format!("sww {} {}", a, b),
+                Swwx(a, b) => format!("swwx {} {}", a, b),
+                Transfer(a, b, c) => format!("transfer {} {} {}", a, b, c),
+                TransferOut(a, b, c, d) => format!("transferout {} {} {} {}", a, b, c, d),
+
+                Ecrecover(a, b, c) => format!("ecrecover {} {} {}", a, b, c),
+                Keccak256(a, b, c) => format!("keccak256 {} {} {}", a, b, c),
+                Sha256(a, b, c) => format!("sha256 {} {} {}", a, b, c),
+
+                Flag(a) => format!("flag {}", a),
+            },
+            Either::Right(opcode) => match opcode {
+                Label(l) => format!("{}", l),
+                RMove(r1, r2) => format!("move {} {}", r1, r2),
+                Comment => "".into(),
+                Jump(label) => format!("jump {}", label),
+                Ld(register, data_id) => format!("ld {} {}", register, data_id),
+            },
+        };
+        // we want the comment to always be 40 characters offset to the right
+        // to not interfere with the ASM but to be aligned
+        let mut op_and_comment = op_str;
+        if self.comment.len() > 0 {
+            while op_and_comment.len() < COMMENT_START_COLUMN {
+                op_and_comment.push_str(" ");
+            }
+            op_and_comment.push_str(&format!("; {}", self.comment))
+        }
+
+        write!(f, "{}", op_and_comment)
+    }
 }
 
 #[derive(Clone)]
-pub(crate) struct Label(uuid_b64::UuidB64);
+pub(crate) struct Label(pub(crate) usize);
 
 // Convenience opcodes for the compiler -- will be optimized out or removed
 // these do not reflect actual ops in the VM and will be compiled to bytecode

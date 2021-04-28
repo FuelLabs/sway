@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use crate::{
     asm_lang::{ImmediateValue, Op},
@@ -56,8 +56,16 @@ use while_loop::convert_while_loop_to_asm;
 /// as that happens when the library itself is imported.
 pub enum HllAsmSet<'sc> {
     ContractAbi,
-    ScriptMain(AbstractInstructionSet<'sc>),
-    PredicateMain(AbstractInstructionSet<'sc>),
+    ScriptMain {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
+    PredicateMain {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
+    // Libraries do not generate any asm.
+    Library,
 }
 
 /// The [AbstractInstructionSet] is the list of register namespaces and operations existing
@@ -70,9 +78,56 @@ type Data<'sc> = Literal<'sc>;
 impl<'sc> AbstractInstructionSet<'sc> {}
 
 #[derive(Default)]
-pub(crate) struct DataSection<'sc> {
+pub struct DataSection<'sc> {
     /// the data to be put in the data section of the asm
     value_pairs: Vec<Data<'sc>>,
+}
+
+impl fmt::Display for DataSection<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut data_buf = String::new();
+        for (ix, data) in self.value_pairs.iter().enumerate() {
+            let data_val = match data {
+                Literal::U8(num) => format!(".u8 {:x}", num),
+                Literal::U16(num) => format!(".u16 {:x}", num),
+                Literal::U32(num) => format!(".u32 {:x}", num),
+                Literal::U64(num) => format!(".u64 {:x}", num),
+                Literal::U128(num) => format!(".u128 {:x}", num),
+                Literal::Boolean(b) => format!(".bool {}", if *b { "0x01" } else { "0x00" }),
+                a => todo!("{:?}", a),
+            };
+            let data_label = DataId(ix as u32);
+            data_buf.push_str(&format!("{} {}\n", data_label, data_val));
+        }
+
+        write!(f, ".data:\n{}", data_buf)
+    }
+}
+
+impl fmt::Display for HllAsmSet<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HllAsmSet::ScriptMain {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", data_section, program_section),
+            _ => todo!(),
+        }
+    }
+}
+
+impl fmt::Display for AbstractInstructionSet<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            ".program:\n{}",
+            self.ops
+                .iter()
+                .map(|x| format!("{}", x))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    }
 }
 
 #[derive(Default)]
@@ -83,6 +138,12 @@ pub(crate) struct AsmNamespace<'sc> {
 
 /// An address which refers to a value in the data section of the asm.
 pub(crate) struct DataId(u32);
+
+impl fmt::Display for DataId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "data_{}", self.0)
+    }
+}
 
 impl<'sc> AsmNamespace<'sc> {
     pub(crate) fn insert_variable(&mut self, var_name: Ident<'sc>, register_location: AsmRegister) {
@@ -123,7 +184,10 @@ impl<'sc> HllAsmSet<'sc> {
                     None,
                 ));
 
-                HllAsmSet::ScriptMain(AbstractInstructionSet { ops: asm_buf })
+                HllAsmSet::ScriptMain {
+                    program_section: AbstractInstructionSet { ops: asm_buf },
+                    data_section: namespace.data_section,
+                }
             }
             TypedParseTree::Predicate { main_function, .. } => {
                 /*

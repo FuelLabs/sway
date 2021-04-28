@@ -1,10 +1,11 @@
-use crate::parse_tree::AsmRegister;
+use crate::{asm_lang::Label, parse_tree::AsmRegister};
 /// The [RegisterSequencer] is basically an iterator over integers -- it distributes unique ids in
 /// the form of integers while ASM is being generated to ensure a monotonically increasing unique
 /// register Id for every virtual register that is used.
 #[derive(Default)]
 pub(crate) struct RegisterSequencer {
     next_register: usize,
+    next_jump_label: usize,
 }
 
 impl RegisterSequencer {
@@ -19,5 +20,10 @@ impl RegisterSequencer {
         AsmRegister {
             name: next_val.to_string(),
         }
+    }
+    pub(crate) fn get_label(&mut self) -> Label {
+        let next_val = self.next_jump_label.clone();
+        self.next_jump_label += 1;
+        Label(next_val)
     }
 }

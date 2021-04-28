@@ -14,7 +14,7 @@ mod semantics;
 use crate::error::*;
 use crate::parse_tree::*;
 use crate::parser::{HllParser, Rule};
-use asm_generation::{AbstractInstructionSet, HllAsmSet};
+pub use asm_generation::{AbstractInstructionSet, HllAsmSet};
 use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;

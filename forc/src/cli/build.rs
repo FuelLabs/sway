@@ -46,7 +46,9 @@ pub(crate) fn build(path: Option<String>) -> Result<(), String> {
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-    let _main = compile(main_file, &manifest.project.name, &namespace)?;
+    let main = compile(main_file, &manifest.project.name, &namespace)?;
+
+    println!("Generated assembly was: \n{}", main);
 
     Ok(())
 }
@@ -114,11 +116,9 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
-    let compiled = compile(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
+    let compiled = compile_library(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
 
-    if let Some(exports) = compiled {
-        namespace.insert_module(dependency_name.to_string(), exports.namespace);
-    }
+    namespace.insert_module(dependency_name.to_string(), compiled.namespace);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())
@@ -146,11 +146,63 @@ fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     }
 }
 
+fn compile_library<'source, 'manifest>(
+    source: &'source str,
+    proj_name: &str,
+    namespace: &Namespace<'source>,
+) -> Result<LibraryExports<'source>, String> {
+    let res = parser::compile(&source, namespace);
+    match res {
+        CompilationResult::Library { exports, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled library {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(exports)
+        }
+        CompilationResult::Failure { errors, warnings } => {
+            let e_len = errors.len();
+
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+
+            errors.into_iter().for_each(|e| format_err(&source, e));
+
+            write_red(format!(
+                "Aborting due to {} {}.",
+                e_len,
+                if e_len > 1 { "errors" } else { "error" }
+            ))
+            .unwrap();
+            Err(format!("Failed to compile {}", proj_name))
+        }
+        _ => {
+            return Err(format!(
+                "Project \"{}\" was included as a dependency but it is not a library.",
+                proj_name
+            ))
+        }
+    }
+}
 fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
-) -> Result<Option<LibraryExports<'source>>, String> {
+) -> Result<parser::HllAsmSet<'source>, String> {
     let res = parser::compile(&source, namespace);
     match res {
         CompilationResult::ScriptAsm { asm, warnings } => {
@@ -171,7 +223,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(None)
+            Ok(asm)
         }
         CompilationResult::PredicateAsm { asm, warnings } => {
             for ref warning in warnings.iter() {
@@ -191,7 +243,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(None)
+            Ok(asm)
         }
         CompilationResult::ContractAbi { abi, warnings } => {
             for ref warning in warnings.iter() {
@@ -211,7 +263,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(None)
+            Ok(parser::HllAsmSet::ContractAbi)
         }
         CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
@@ -231,7 +283,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(Some(exports))
+            Ok(parser::HllAsmSet::Library)
         }
         CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();

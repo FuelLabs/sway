@@ -194,7 +194,7 @@ pub(crate) fn convert_code_block_to_asm<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     // generate a label for this block
-    let exit_label = Op::new_label();
+    let exit_label = register_sequencer.get_label();
     for node in &block.contents {
         // If this is a return, then we jump to the end of the function and put the
         // value in the return register
