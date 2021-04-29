@@ -38,7 +38,7 @@ macro_rules! opcodes {
 
 impl From<&AsmRegister> for RegisterId {
     fn from(o: &AsmRegister) -> Self {
-        RegisterId(o.name.clone())
+        RegisterId::Virtual(o.name.clone())
     }
 }
 
@@ -75,6 +75,20 @@ impl<'sc> Op<'sc> {
         Op {
             opcode: Either::Right(OrganizationalOp::Label(label)),
             comment: String::new(),
+            owning_span: Some(owning_span),
+        }
+    }
+
+    /// Given a label, creates the actual asm line to put in the ASM which represents a label.
+    /// Also attaches a comment to it.
+    pub(crate) fn jump_label_comment(
+        label: Label,
+        owning_span: Span<'sc>,
+        comment: impl Into<String>,
+    ) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Label(label)),
+            comment: comment.into(),
             owning_span: Some(owning_span),
         }
     }
@@ -126,12 +140,27 @@ impl<'sc> Op<'sc> {
         }
     }
 
+    /// Jumps to [Label] `label`  if the given [RegisterId] `reg1` is not equal to `reg0`.
+    pub(crate) fn jump_if_not_equal(reg0: RegisterId, reg1: RegisterId, label: Label) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(reg0, reg1, label)),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
+
     pub(crate) fn parse_opcode(
         name: &Ident<'sc>,
-        args: &[&AsmRegister],
+        args: &[&RegisterId],
         immediate: Option<ImmediateValue>,
     ) -> CompileResult<'sc, Opcode> {
         Opcode::parse(name, args, immediate)
+    }
+}
+
+impl Into<RegisterId> for &RegisterId {
+    fn into(self) -> RegisterId {
+        self.clone()
     }
 }
 
@@ -140,7 +169,7 @@ impl Opcode {
     /// type of arguments, parse the given inputs into an opcode.
     pub(crate) fn parse<'sc>(
         name: &Ident<'sc>,
-        args: &[&AsmRegister],
+        args: &[&RegisterId],
         immediate: Option<ImmediateValue>,
     ) -> CompileResult<'sc, Opcode> {
         use Opcode::*;
@@ -998,7 +1027,10 @@ impl Opcode {
 // internal representation for register ids
 // simpler to represent as usize since it avoids casts
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
-pub struct RegisterId(String);
+pub enum RegisterId {
+    Virtual(String),
+    Constant(u64),
+}
 
 // Immediate Value.
 pub type ImmediateValue = u32;
@@ -1084,7 +1116,12 @@ opcodes! {
 }
 impl fmt::Display for RegisterId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "$r{}", self.0)
+        match self {
+            RegisterId::Virtual(name) => write!(f, "$r{}", name),
+            RegisterId::Constant(name) => {
+                write!(f, "$rc{}", name)
+            }
+        }
     }
 }
 
@@ -1182,6 +1219,7 @@ impl fmt::Display for Op<'_> {
                 Comment => "".into(),
                 Jump(label) => format!("jump {}", label),
                 Ld(register, data_id) => format!("ld {} {}", register, data_id),
+                JumpIfNotEq(reg0, reg1, label) => format!("jnei {} {} {}", reg0, reg1, label),
             },
         };
         // we want the comment to always be 40 characters offset to the right
@@ -1215,4 +1253,6 @@ pub(crate) enum OrganizationalOp {
     // Loads from the data section into a register
     // "load data"
     Ld(RegisterId, DataId),
+    //
+    JumpIfNotEq(RegisterId, RegisterId, Label),
 }

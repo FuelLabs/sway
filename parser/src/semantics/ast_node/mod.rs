@@ -472,12 +472,12 @@ impl<'sc> TypedAstNode<'sc> {
                     );
                     let (typed_body, _block_implicit_return) = type_check!(
                     TypedCodeBlock::type_check(
-                        body,
+                        body.clone(),
                         &namespace,
                         Some(ResolvedType::Unit),
                         "A while loop's loop body cannot implicitly return a value.\
                         Try assigning it to a mutable variable declared outside of the loop instead."),
-                        (TypedCodeBlock { contents: vec![] }, Some(ResolvedType::Unit)),
+                        (TypedCodeBlock { contents: vec![], whole_block_span: body.whole_block_span.clone(), }, Some(ResolvedType::Unit)),
                         warnings,
                         errors
                     );

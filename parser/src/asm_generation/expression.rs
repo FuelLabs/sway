@@ -18,7 +18,7 @@ use pest::Span;
 pub(crate) fn convert_expression_to_asm<'sc>(
     exp: &TypedExpression<'sc>,
     namespace: &mut AsmNamespace<'sc>,
-    return_register: &AsmRegister,
+    return_register: &RegisterId,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut warnings = vec![];
@@ -78,7 +78,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             let mut errors = vec![];
             // Keep track of the mapping from the declared names of the registers to the actual
             // registers from the sequencer for replacement
-            let mut mapping_of_real_registers_to_declared_names: HashMap<&str, AsmRegister> =
+            let mut mapping_of_real_registers_to_declared_names: HashMap<&str, RegisterId> =
                 Default::default();
             for TypedAsmRegisterDeclaration { name, initializer } in registers {
                 let register = register_sequencer.next();
@@ -129,11 +129,11 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         }
                         Ok(o) => Some(o),
                     })
-                    .collect::<Vec<&AsmRegister>>();
+                    .collect::<Vec<&RegisterId>>();
 
                 // parse the actual op and registers
                 let opcode = type_check!(
-                    Op::parse_opcode(&op.op_name, &replaced_registers, op.immediate),
+                    Op::parse_opcode(&op.op_name, replaced_registers.as_slice(), op.immediate),
                     continue,
                     warnings,
                     errors
@@ -165,8 +165,8 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         }
                     };
                     asm_buf.push(Op::unowned_register_move_comment(
-                        return_reg.into(),
-                        asm_reg.into(),
+                        return_reg.clone(),
+                        mapped_asm_ret.clone(),
                         "return value from inline asm",
                     ));
                 }
@@ -188,8 +188,8 @@ pub(crate) fn convert_code_block_to_asm<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
     // Where to put the return value of this code block, if there was any.
-    return_register: Option<&AsmRegister>,
-) -> Vec<Op<'sc>> {
+    return_register: Option<&RegisterId>,
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut asm_buf: Vec<Op> = vec![];
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -215,14 +215,14 @@ pub(crate) fn convert_code_block_to_asm<'sc>(
     }
     asm_buf.push(Op::unowned_jump_label(exit_label));
 
-    asm_buf
+    ok(asm_buf, warnings, errors)
 }
 
-/// Initializes [Literal] `lit` into [AsmRegister] `return_register`.
+/// Initializes [Literal] `lit` into [RegisterId] `return_register`.
 fn convert_literal_to_asm<'sc>(
     lit: &Literal<'sc>,
     namespace: &mut AsmNamespace<'sc>,
-    return_register: &AsmRegister,
+    return_register: &RegisterId,
     _register_sequencer: &mut RegisterSequencer,
     span: Span<'sc>,
 ) -> Vec<Op<'sc>> {
@@ -230,7 +230,7 @@ fn convert_literal_to_asm<'sc>(
     let data_id = namespace.insert_data_value(lit);
     // then get that literal id and use it to make a load word op
     vec![Op {
-        opcode: either::Either::Right(OrganizationalOp::Ld(return_register.into(), data_id)),
+        opcode: either::Either::Right(OrganizationalOp::Ld(return_register.clone(), data_id)),
         comment: "literal instantiation".into(),
         owning_span: Some(span),
     }]
@@ -242,13 +242,13 @@ fn convert_fn_app_to_asm<'sc>(
     arguments: &[(Ident<'sc>, TypedExpression<'sc>)],
     function_body: &TypedCodeBlock<'sc>,
     namespace: &mut AsmNamespace<'sc>,
-    return_register: &AsmRegister,
+    return_register: &RegisterId,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut asm_buf = vec![];
-    let mut args_and_registers: HashMap<Ident<'sc>, AsmRegister> = Default::default();
+    let mut args_and_registers: HashMap<Ident<'sc>, RegisterId> = Default::default();
     // evaluate every expression being passed into the function
     for (name, arg) in arguments {
         let return_register = register_sequencer.next();
@@ -267,13 +267,19 @@ fn convert_fn_app_to_asm<'sc>(
         namespace.insert_variable(name, reg);
     }
 
+    let mut body = type_check!(
+        convert_code_block_to_asm(
+            function_body,
+            namespace,
+            register_sequencer,
+            Some(return_register),
+        ),
+        vec![],
+        warnings,
+        errors
+    );
     // evaluate the function body
-    asm_buf.append(&mut convert_code_block_to_asm(
-        function_body,
-        namespace,
-        register_sequencer,
-        Some(return_register),
-    ));
+    asm_buf.append(&mut body);
 
     // the return  value is already put in its proper register via the above statement, so the buf
     // is done

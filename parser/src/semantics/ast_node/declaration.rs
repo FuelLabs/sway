@@ -275,18 +275,23 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         };
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) =
-            type_check!(
-                TypedCodeBlock::type_check(
-                    body,
-                    &namespace,
-                    Some(return_type.clone()),
-                    "Function body's return type does not match up with its return type annotation."
-                ),
-                (TypedCodeBlock { contents: vec![] }, Some(ResolvedType::ErrorRecovery)),
-                warnings,
-                errors
-            );
+        let (body, _implicit_block_return) = type_check!(
+            TypedCodeBlock::type_check(
+                body.clone(),
+                &namespace,
+                Some(return_type.clone()),
+                "Function body's return type does not match up with its return type annotation."
+            ),
+            (
+                TypedCodeBlock {
+                    contents: vec![],
+                    whole_block_span: body.whole_block_span.clone()
+                },
+                Some(ResolvedType::ErrorRecovery)
+            ),
+            warnings,
+            errors
+        );
 
         // check the generic types in the arguments, make sure they are in the type
         // scope

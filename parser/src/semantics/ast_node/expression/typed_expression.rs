@@ -229,7 +229,7 @@ impl<'sc> TypedExpression<'sc> {
                         help_text.clone()
                     ),
                     (
-                        TypedCodeBlock { contents: vec![] },
+                        TypedCodeBlock { contents: vec![], whole_block_span: span.clone() },
                         Some(ResolvedType::Unit)
                     ),
                     warnings,
@@ -251,6 +251,7 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression {
                     expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
                         contents: typed_block.contents,
+                        whole_block_span: span.clone(),
                     }),
                     return_type: block_return_type,
                     is_constant: IsConstant::No, // TODO if all elements of block are constant then this is constant

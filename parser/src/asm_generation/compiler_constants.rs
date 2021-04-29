@@ -6,7 +6,8 @@
 #![allow(dead_code)]
 #[rustfmt::skip]
 pub(crate) mod registers {
-    const FALSE: u64 = 0x00;
-    const ZERO:  u64 = 0x00;
-    const TRUE:  u64 = 0x01;
+    use crate::asm_lang::RegisterId; 
+    pub(crate) const FALSE: RegisterId = RegisterId::Constant(0x00);
+    pub(crate) const ZERO:  RegisterId = RegisterId::Constant(0x00);
+    pub(crate) const TRUE:  RegisterId = RegisterId::Constant(0x01);
 }

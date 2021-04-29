@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt};
 
 use crate::{
-    asm_lang::{ImmediateValue, Op},
+    asm_lang::{ImmediateValue, Op, RegisterId},
     error::*,
     parse_tree::{AsmRegister, Literal},
     semantics::{TreeType, TypedAstNode, TypedAstNodeContent, TypedExpression, TypedParseTree},
@@ -133,7 +133,7 @@ impl fmt::Display for AbstractInstructionSet<'_> {
 #[derive(Default)]
 pub(crate) struct AsmNamespace<'sc> {
     data_section: DataSection<'sc>,
-    variables: HashMap<Ident<'sc>, AsmRegister>,
+    variables: HashMap<Ident<'sc>, RegisterId>,
 }
 
 /// An address which refers to a value in the data section of the asm.
@@ -146,7 +146,7 @@ impl fmt::Display for DataId {
 }
 
 impl<'sc> AsmNamespace<'sc> {
-    pub(crate) fn insert_variable(&mut self, var_name: Ident<'sc>, register_location: AsmRegister) {
+    pub(crate) fn insert_variable(&mut self, var_name: Ident<'sc>, register_location: RegisterId) {
         self.variables.insert(var_name, register_location);
     }
     pub(crate) fn insert_data_value(&mut self, data: &Data<'sc>) -> DataId {
@@ -160,7 +160,7 @@ impl<'sc> AsmNamespace<'sc> {
     pub(crate) fn look_up_variable(
         &self,
         var_name: &Ident<'sc>,
-    ) -> CompileResult<'sc, &AsmRegister> {
+    ) -> CompileResult<'sc, &RegisterId> {
         match self.variables.get(&var_name) {
             Some(o) => ok(o, vec![], vec![]),
             None => err(vec![], vec![CompileError::Internal ("Unknown variable in assembly generation. This should have been an error during type checking.",  var_name.span.clone() )])
@@ -172,17 +172,25 @@ impl<'sc> AsmNamespace<'sc> {
 impl<'sc> HllAsmSet<'sc> {
     pub(crate) fn from_ast(ast: TypedParseTree<'sc>) -> Self {
         let mut register_sequencer = RegisterSequencer::new();
+        let mut warnings = vec![];
+        let mut errors = vec![];
         match ast {
             TypedParseTree::Script { main_function, .. } => {
                 let mut namespace: AsmNamespace = Default::default();
                 let mut asm_buf = vec![];
                 // start generating from the main function
-                asm_buf.append(&mut convert_code_block_to_asm(
-                    &main_function.body,
-                    &mut namespace,
-                    &mut register_sequencer,
-                    None,
-                ));
+                let mut body = type_check!(
+                    convert_code_block_to_asm(
+                        &main_function.body,
+                        &mut namespace,
+                        &mut register_sequencer,
+                        None,
+                    ),
+                    vec![],
+                    warnings,
+                    errors
+                );
+                asm_buf.append(&mut body);
 
                 HllAsmSet::ScriptMain {
                     program_section: AbstractInstructionSet { ops: asm_buf },
@@ -221,7 +229,7 @@ fn convert_node_to_asm<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
     // Where to put the return value of this node, if it is needed.
-    return_register: Option<&AsmRegister>,
+    return_register: Option<&RegisterId>,
 ) -> CompileResult<'sc, NodeAsmResult<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];

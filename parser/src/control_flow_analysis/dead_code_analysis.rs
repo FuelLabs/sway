@@ -620,7 +620,7 @@ fn connect_expression<'sc>(
 
             [then_expr, else_expr].concat()
         }
-        CodeBlock(TypedCodeBlock { contents }) => {
+        CodeBlock(TypedCodeBlock { contents, .. }) => {
             let block_entry = graph.add_node("Code block entry".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, block_entry, label.into());

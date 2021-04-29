@@ -5,6 +5,7 @@ use crate::CodeBlock;
 #[derive(Clone, Debug)]
 pub(crate) struct TypedCodeBlock<'sc> {
     pub(crate) contents: Vec<TypedAstNode<'sc>>,
+    pub(crate) whole_block_span: Span<'sc>,
 }
 
 impl<'sc> TypedCodeBlock<'sc> {
@@ -80,7 +81,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                         if let Some(warning) = warning {
                             warnings.push(CompileWarning {
                                 warning_content: warning,
-                                span: other.whole_block_span,
+                                span: other.whole_block_span.clone(),
                             });
                         }
                     }
@@ -95,6 +96,7 @@ impl<'sc> TypedCodeBlock<'sc> {
             (
                 TypedCodeBlock {
                     contents: evaluated_contents,
+                    whole_block_span: other.whole_block_span,
                 },
                 return_type,
             ),

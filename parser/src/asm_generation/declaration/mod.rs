@@ -2,8 +2,10 @@ use crate::{asm_lang::Op, error::*, TypedDeclaration};
 
 use super::{AsmNamespace, RegisterSequencer};
 mod fn_decl;
+mod reassignment;
 mod var_decl;
 pub(crate) use fn_decl::convert_fn_decl_to_asm;
+pub(crate) use reassignment::convert_reassignment_to_asm;
 pub(crate) use var_decl::convert_variable_decl_to_asm;
 
 pub(crate) fn convert_decl_to_asm<'sc>(
@@ -25,6 +27,9 @@ pub(crate) fn convert_decl_to_asm<'sc>(
         TypedDeclaration::StructDeclaration(_) => ok(vec![], vec![], vec![]),
         TypedDeclaration::VariableDeclaration(var_decl) => {
             convert_variable_decl_to_asm(var_decl, namespace, register_sequencer)
+        }
+        TypedDeclaration::Reassignment(reassignment) => {
+            convert_reassignment_to_asm(reassignment, namespace, register_sequencer)
         }
         a => todo!("{:?}", a),
     }
