@@ -237,9 +237,15 @@ impl<'sc> AsmNamespace<'sc> {
         self.variables.insert(var_name, register_location);
     }
     pub(crate) fn insert_data_value(&mut self, data: &Data<'sc>) -> DataId {
-        self.data_section.value_pairs.push(data.clone());
-        // the index of the data section where the value is stored
-        DataId((self.data_section.value_pairs.len() - 1) as u32)
+        // if there is an identical data value, use the same id
+        match self.data_section.value_pairs.iter().position(|x| x == data) {
+            Some(num) => DataId(num as u32),
+            None => {
+                self.data_section.value_pairs.push(data.clone());
+                // the index of the data section where the value is stored
+                DataId((self.data_section.value_pairs.len() - 1) as u32)
+            }
+        }
     }
     /// Finds the register which contains variable `var_name`
     /// The `get` is unwrapped, because invalid variable expressions are
