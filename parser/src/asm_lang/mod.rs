@@ -42,6 +42,7 @@ impl From<&AsmRegister> for RegisterId {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct Op<'sc> {
     pub(crate) opcode: Either<Opcode, OrganizationalOp>,
     /// A descriptive comment for debugging
@@ -107,6 +108,19 @@ impl<'sc> Op<'sc> {
         Op {
             opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
             comment: String::new(),
+            owning_span: Some(owning_span),
+        }
+    }
+
+    pub(crate) fn register_move_comment(
+        r1: RegisterId,
+        r2: RegisterId,
+        owning_span: Span<'sc>,
+        comment: impl Into<String>,
+    ) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            comment: comment.into(),
             owning_span: Some(owning_span),
         }
     }
@@ -1236,11 +1250,12 @@ impl fmt::Display for Op<'_> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub(crate) struct Label(pub(crate) usize);
 
 // Convenience opcodes for the compiler -- will be optimized out or removed
 // these do not reflect actual ops in the VM and will be compiled to bytecode
+#[derive(Clone)]
 pub(crate) enum OrganizationalOp {
     // copies the second register into the first register
     RMove(RegisterId, RegisterId),

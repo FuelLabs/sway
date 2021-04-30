@@ -202,7 +202,7 @@ fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
-) -> Result<parser::HllAsmSet<'source>, String> {
+) -> Result<parser::FinalizedAsm<'source>, String> {
     let res = parser::compile(&source, namespace);
     match res {
         CompilationResult::ScriptAsm { asm, warnings } => {
@@ -263,7 +263,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(parser::HllAsmSet::ContractAbi)
+            Ok(parser::FinalizedAsm::ContractAbi)
         }
         CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
@@ -283,7 +283,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(parser::HllAsmSet::Library)
+            Ok(parser::FinalizedAsm::Library)
         }
         CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();

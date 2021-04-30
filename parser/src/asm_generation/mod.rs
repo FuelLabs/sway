@@ -1,12 +1,13 @@
 use std::{collections::HashMap, fmt};
 
 use crate::{
-    asm_lang::{ImmediateValue, Op, RegisterId},
+    asm_lang::{Label, Op, OrganizationalOp, RegisterId},
     error::*,
-    parse_tree::{AsmRegister, Literal},
-    semantics::{TreeType, TypedAstNode, TypedAstNodeContent, TypedExpression, TypedParseTree},
+    parse_tree::Literal,
+    semantics::{TypedAstNode, TypedAstNodeContent, TypedParseTree},
     Ident,
 };
+use either::Either;
 
 mod compiler_constants;
 mod declaration;
@@ -17,7 +18,6 @@ mod while_loop;
 pub(crate) use declaration::*;
 pub(crate) use expression::*;
 pub(crate) use register_sequencer::*;
-pub(crate) use while_loop::*;
 
 use while_loop::convert_while_loop_to_asm;
 
@@ -75,7 +75,59 @@ pub struct AbstractInstructionSet<'sc> {
 }
 
 type Data<'sc> = Literal<'sc>;
-impl<'sc> AbstractInstructionSet<'sc> {}
+impl<'sc> AbstractInstructionSet<'sc> {
+    /// Removes any jumps that jump to the subsequent line
+    fn remove_sequential_jumps(&self) -> AbstractInstructionSet<'sc> {
+        let mut buf = vec![];
+        for i in 0..self.ops.len() - 1 {
+            if let Op {
+                opcode: Either::Right(OrganizationalOp::Jump(ref label)),
+                ..
+            } = self.ops[i]
+            {
+                if let Op {
+                    opcode: Either::Right(OrganizationalOp::Label(ref label2)),
+                    ..
+                } = self.ops[i + 1]
+                {
+                    if label == label2 {
+                        // this is a jump to the next line
+                        // omit these by doing nothing
+                        continue;
+                    }
+                }
+            }
+            buf.push(self.ops[i].clone());
+        }
+
+        // scan through the jumps and remove any labels that are unused
+        // this could of course be N instead of 2N if i did this in the above for loop.
+        // However, the sweep for unused labels is inevitable regardless of the above phase
+        // so might as well do it here.
+        let mut buf2 = vec![];
+        for op in &buf {
+            match op.opcode {
+                Either::Right(OrganizationalOp::Label(ref label)) => {
+                    if label_is_used(&buf, label) {
+                        buf2.push(op.clone());
+                    }
+                }
+                _ => buf2.push(op.clone()),
+            }
+        }
+
+        AbstractInstructionSet { ops: buf2 }
+    }
+}
+
+/// helper function to check if a label is used in a given buffer of ops
+fn label_is_used<'sc>(buf: &[Op<'sc>], label: &Label) -> bool {
+    buf.iter().any(|Op { ref opcode, .. }| match opcode {
+        Either::Right(OrganizationalOp::Jump(ref l)) if label == l => true,
+        Either::Right(OrganizationalOp::JumpIfNotEq(_reg0, _reg1, ref l)) if label == l => true,
+        _ => false,
+    })
+}
 
 #[derive(Default)]
 pub struct DataSection<'sc> {
@@ -116,6 +168,40 @@ impl fmt::Display for HllAsmSet<'_> {
     }
 }
 
+impl fmt::Display for JumpOptimizedAsmSet<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            JumpOptimizedAsmSet::ScriptMain {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", data_section, program_section),
+            _ => todo!(),
+        }
+    }
+}
+
+impl fmt::Display for RegisterAllocatedAsmSet<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RegisterAllocatedAsmSet::ScriptMain {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", data_section, program_section),
+            _ => todo!(),
+        }
+    }
+}
+impl fmt::Display for FinalizedAsm<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FinalizedAsm::ScriptMain {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", data_section, program_section),
+            _ => todo!(),
+        }
+    }
+}
 impl fmt::Display for AbstractInstructionSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -137,6 +223,7 @@ pub(crate) struct AsmNamespace<'sc> {
 }
 
 /// An address which refers to a value in the data section of the asm.
+#[derive(Clone)]
 pub(crate) struct DataId(u32);
 
 impl fmt::Display for DataId {
@@ -169,55 +256,164 @@ impl<'sc> AsmNamespace<'sc> {
     }
 }
 
-impl<'sc> HllAsmSet<'sc> {
-    pub(crate) fn from_ast(ast: TypedParseTree<'sc>) -> Self {
-        let mut register_sequencer = RegisterSequencer::new();
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        match ast {
-            TypedParseTree::Script { main_function, .. } => {
-                let mut namespace: AsmNamespace = Default::default();
-                let mut asm_buf = vec![];
-                // start generating from the main function
-                let mut body = type_check!(
-                    convert_code_block_to_asm(
-                        &main_function.body,
-                        &mut namespace,
-                        &mut register_sequencer,
-                        None,
-                    ),
-                    vec![],
-                    warnings,
-                    errors
-                );
-                asm_buf.append(&mut body);
-
-                HllAsmSet::ScriptMain {
-                    program_section: AbstractInstructionSet { ops: asm_buf },
-                    data_section: namespace.data_section,
-                }
-            }
-            TypedParseTree::Predicate { main_function, .. } => {
-                /*
-                let mut asm_buf: Vec<Op<'sc>> = vec![];
-                let mut namespace: AsmNamespace = Default::default();
-                let mut asm_buf = vec![];
-                // start generating from the main function
-                asm_buf.append(&mut convert_fn_decl_to_asm(
-                    &main_function,
+pub(crate) fn compile_ast_to_asm<'sc>(ast: TypedParseTree<'sc>) -> FinalizedAsm<'sc> {
+    let mut register_sequencer = RegisterSequencer::new();
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let asm = match ast {
+        TypedParseTree::Script { main_function, .. } => {
+            let mut namespace: AsmNamespace = Default::default();
+            let mut asm_buf = vec![];
+            // start generating from the main function
+            let mut body = type_check!(
+                convert_code_block_to_asm(
+                    &main_function.body,
                     &mut namespace,
                     &mut register_sequencer,
-                ));
-                */
-                todo!()
+                    None,
+                ),
+                vec![],
+                warnings,
+                errors
+            );
+            asm_buf.append(&mut body);
 
-                // HllAsmSet::PredicateMain(AbstractInstructionSet { ops: asm_buf })
+            HllAsmSet::ScriptMain {
+                program_section: AbstractInstructionSet { ops: asm_buf },
+                data_section: namespace.data_section,
             }
+        }
+        TypedParseTree::Predicate { main_function, .. } => {
+            /*
+            let mut asm_buf: Vec<Op<'sc>> = vec![];
+            let mut namespace: AsmNamespace = Default::default();
+            let mut asm_buf = vec![];
+            // start generating from the main function
+            asm_buf.append(&mut convert_fn_decl_to_asm(
+                &main_function,
+                &mut namespace,
+                &mut register_sequencer,
+            ));
+            */
+            todo!()
+
+            // HllAsmSet::PredicateMain(AbstractInstructionSet { ops: asm_buf })
+        }
+        _ => todo!(),
+    };
+
+    asm.remove_unnecessary_jumps()
+        .allocate_registers()
+        .optimize()
+}
+
+impl<'sc> HllAsmSet<'sc> {
+    pub(crate) fn remove_unnecessary_jumps(self) -> JumpOptimizedAsmSet<'sc> {
+        match self {
+            HllAsmSet::ScriptMain {
+                data_section,
+                program_section,
+            } => JumpOptimizedAsmSet::ScriptMain {
+                data_section,
+                program_section: program_section.remove_sequential_jumps(),
+            },
             _ => todo!(),
         }
     }
 }
 
+impl<'sc> JumpOptimizedAsmSet<'sc> {
+    fn allocate_registers(self) -> RegisterAllocatedAsmSet<'sc> {
+        // TODO implement this -- noop for now
+        match self {
+            JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
+            JumpOptimizedAsmSet::ScriptMain {
+                data_section,
+                program_section,
+            } => RegisterAllocatedAsmSet::ScriptMain {
+                data_section,
+                program_section,
+            },
+            JumpOptimizedAsmSet::PredicateMain {
+                data_section,
+                program_section,
+            } => RegisterAllocatedAsmSet::PredicateMain {
+                data_section,
+                program_section,
+            },
+            JumpOptimizedAsmSet::ContractAbi => RegisterAllocatedAsmSet::ContractAbi,
+        }
+    }
+}
+
+/// Represents an ASM set which has had jump labels and jumps optimized
+pub enum JumpOptimizedAsmSet<'sc> {
+    ContractAbi,
+    ScriptMain {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
+    PredicateMain {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
+    // Libraries do not generate any asm.
+    Library,
+}
+/// Represents an ASM set which has had registers allocated
+pub enum RegisterAllocatedAsmSet<'sc> {
+    ContractAbi,
+    ScriptMain {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
+    PredicateMain {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
+    // Libraries do not generate any asm.
+    Library,
+}
+
+impl<'sc> RegisterAllocatedAsmSet<'sc> {
+    fn optimize(self) -> FinalizedAsm<'sc> {
+        // TODO implement this -- noop for now
+        match self {
+            RegisterAllocatedAsmSet::Library => FinalizedAsm::Library,
+            RegisterAllocatedAsmSet::ScriptMain {
+                data_section,
+                program_section,
+            } => FinalizedAsm::ScriptMain {
+                data_section,
+                program_section,
+            },
+            RegisterAllocatedAsmSet::PredicateMain {
+                data_section,
+                program_section,
+            } => FinalizedAsm::PredicateMain {
+                data_section,
+                program_section,
+            },
+            RegisterAllocatedAsmSet::ContractAbi => FinalizedAsm::ContractAbi,
+        }
+    }
+}
+
+/// Represents an ASM set which has had register allocation, jump elimination, and optimization
+/// applied to it
+pub enum FinalizedAsm<'sc> {
+    ContractAbi,
+    ScriptMain {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
+    PredicateMain {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
+    // Libraries do not generate any asm.
+    Library,
+}
 pub(crate) enum NodeAsmResult<'sc> {
     JustAsm(Vec<Op<'sc>>),
     ReturnStatement { asm: Vec<Op<'sc>> },

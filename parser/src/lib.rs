@@ -11,10 +11,10 @@ mod parse_tree;
 mod parser;
 mod semantics;
 
-use crate::error::*;
 use crate::parse_tree::*;
 use crate::parser::{HllParser, Rule};
-pub use asm_generation::{AbstractInstructionSet, HllAsmSet};
+use crate::{asm_generation::compile_ast_to_asm, error::*};
+pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
@@ -145,15 +145,15 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
 
 pub enum CompilationResult<'sc> {
     ContractAbi {
-        abi: HashMap<usize, HllAsmSet<'sc>>,
+        abi: HashMap<usize, FinalizedAsm<'sc>>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     ScriptAsm {
-        asm: HllAsmSet<'sc>,
+        asm: FinalizedAsm<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     PredicateAsm {
-        asm: HllAsmSet<'sc>,
+        asm: FinalizedAsm<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Library {
@@ -325,19 +325,19 @@ pub fn compile<'sc, 'manifest>(
     warnings.append(&mut l_warnings);
     // for each syntax tree, generate assembly.
     let predicate_asm = if let Some(tree) = predicate_ast {
-        Some(HllAsmSet::from_ast(tree))
+        Some(compile_ast_to_asm(tree))
     } else {
         None
     };
 
     let contract_asm = if let Some(tree) = contract_ast {
-        Some(HllAsmSet::from_ast(tree))
+        Some(compile_ast_to_asm(tree))
     } else {
         None
     };
 
     let script_asm = if let Some(tree) = script_ast {
-        Some(HllAsmSet::from_ast(tree))
+        Some(compile_ast_to_asm(tree))
     } else {
         None
     };

@@ -41,10 +41,11 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
     );
 
     // step 2
-    buf.push(Op::register_move(
+    buf.push(Op::register_move_comment(
         var_register.clone(),
         return_register,
         reassignment.lhs.span.clone(),
+        format!("variable {} reassignment", reassignment.lhs.primary_name),
     ));
 
     ok(buf, warnings, errors)
