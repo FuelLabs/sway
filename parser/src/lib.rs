@@ -596,6 +596,5 @@ fn test_parenthesized() {
    } 
     "#,
     );
-    dbg!(&prog);
     prog.unwrap();
 }

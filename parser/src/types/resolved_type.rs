@@ -1,5 +1,5 @@
 use super::IntegerBits;
-use crate::{error::*, Ident};
+use crate::{error::*, semantics::ast_node::TypedStructField, Ident};
 use pest::Span;
 /// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
 /// Type symbols are ambiguous in the beginning of compilation, as any custom symbol could be
@@ -25,6 +25,7 @@ pub enum ResolvedType<'sc> {
     Byte32,
     Struct {
         name: Ident<'sc>,
+        fields: Vec<TypedStructField<'sc>>,
     },
     Enum {
         name: Ident<'sc>,
@@ -101,6 +102,30 @@ impl<'sc> ResolvedType<'sc> {
             })
         }
     }
+
+    /// Calculates the stack size of this type, to be used when allocating stack memory for it.
+    /// This is _in words_!
+    pub(crate) fn stack_size_of(&self) -> u64 {
+        match self {
+            // the pointer to the beginning of the string is 64 bits
+            ResolvedType::String => 1,
+            // Since things are unpacked, all unsigned integers are 64 bits.....for now
+            ResolvedType::UnsignedInteger(_) => 1,
+            ResolvedType::Boolean => 1,
+            ResolvedType::Unit => 0,
+            ResolvedType::Generic { .. } | ResolvedType::SelfType => {
+                todo!("Properly handle generic types before this point")
+            }
+            ResolvedType::Byte => 1,
+            ResolvedType::Byte32 => 4,
+            ResolvedType::Enum { .. } => todo!(),
+            ResolvedType::Struct { fields, .. } => fields
+                .iter()
+                .fold(0, |acc, x| acc + x.r#type.stack_size_of()),
+            ResolvedType::ErrorRecovery => unreachable!(),
+        }
+    }
+
     fn numeric_cast_compat(&self, other: &ResolvedType<'sc>) -> Result<(), Warning<'sc>> {
         assert!(self.is_numeric(), other.is_numeric());
         use ResolvedType::*;

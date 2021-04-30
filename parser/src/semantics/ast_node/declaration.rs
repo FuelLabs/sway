@@ -47,9 +47,14 @@ impl<'sc> TypedDeclaration<'sc> {
                     body, ..
                 }) => body.return_type.clone(),
                 TypedDeclaration::FunctionDeclaration { .. } => todo!("fn pointer type"),
-                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) => {
-                    ResolvedType::Struct { name: name.clone() }
-                }
+                TypedDeclaration::StructDeclaration(TypedStructDeclaration {
+                    name,
+                    fields,
+                    ..
+                }) => ResolvedType::Struct {
+                    name: name.clone(),
+                    fields: fields.clone(),
+                },
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
                     rhs.return_type.clone()
                 }
@@ -124,7 +129,7 @@ pub struct TypedStructDeclaration<'sc> {
     pub(crate) visibility: Visibility,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TypedStructField<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) r#type: ResolvedType<'sc>,

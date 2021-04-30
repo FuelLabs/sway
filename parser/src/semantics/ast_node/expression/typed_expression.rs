@@ -457,6 +457,7 @@ impl<'sc> TypedExpression<'sc> {
                     },
                     return_type: ResolvedType::Struct {
                         name: definition.name.clone(),
+                        fields: definition.fields.clone(),
                     },
                     is_constant: IsConstant::No,
                     span,

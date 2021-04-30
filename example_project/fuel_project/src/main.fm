@@ -48,12 +48,12 @@ script{
   while b < 100 {
     b = b + 1;
   }
-  /*
   let a = MyStruct {
     field_1: 5u32,
     field_2: 2u32,
   };
 
+  /*
     let a = a.field_1 + 2;
     let z = MyEnum::Variant2;
     let z = MyEnum::Variant1(10u32);

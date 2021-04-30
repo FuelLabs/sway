@@ -32,8 +32,13 @@ impl<'sc> Namespace<'sc> {
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol(&name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
-                    name, ..
-                })) => ResolvedType::Struct { name: name.clone() },
+                    name,
+                    fields,
+                    ..
+                })) => ResolvedType::Struct {
+                    name: name.clone(),
+                    fields: fields.clone(),
+                },
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. })) => {
                     ResolvedType::Enum { name: name.clone() }
                 }
@@ -401,7 +406,7 @@ impl<'sc> Namespace<'sc> {
         return_type: &ResolvedType<'sc>,
         debug_ident: &Ident<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
-        if let ResolvedType::Struct { name } = return_type {
+        if let ResolvedType::Struct { name, fields } = return_type {
             match self.get_symbol(name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     fields,

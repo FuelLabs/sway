@@ -289,7 +289,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(ast: TypedParseTree<'sc>) -> FinalizedAsm<
                 data_section: namespace.data_section,
             }
         }
-        TypedParseTree::Predicate { main_function, .. } => {
+        TypedParseTree::Predicate { .. } => {
             /*
             let mut asm_buf: Vec<Op<'sc>> = vec![];
             let mut namespace: AsmNamespace = Default::default();

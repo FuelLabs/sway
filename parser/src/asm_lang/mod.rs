@@ -51,6 +51,36 @@ pub(crate) struct Op<'sc> {
 }
 
 impl<'sc> Op<'sc> {
+    /// Write value in given [RegisterId] `rb` to given memory address that is held within the
+    /// [RegisterId] `ra`.
+    pub(crate) fn write_register_to_memory(
+        ra: RegisterId,
+        rb: RegisterId,
+        offset: ImmediateValue,
+        span: Span<'sc>,
+    ) -> Self {
+        Op {
+            opcode: Either::Left(Opcode::Sw(ra, rb, offset)),
+            comment: String::new(),
+            owning_span: Some(span),
+        }
+    }
+
+    /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
+    pub(crate) fn unowned_stack_allocate_memory(size_to_allocate_in_words: u32) -> Self {
+        Op {
+            opcode: Either::Left(Opcode::Cfei(size_to_allocate_in_words)),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
+    pub(crate) fn unowned_new_with_comment(opcode: Opcode, comment: impl Into<String>) -> Self {
+        Op {
+            opcode: Either::Left(opcode),
+            comment: comment.into(),
+            owning_span: None,
+        }
+    }
     pub(crate) fn new(opcode: Opcode, owning_span: Span<'sc>) -> Self {
         Op {
             opcode: Either::Left(opcode),
@@ -68,6 +98,15 @@ impl<'sc> Op<'sc> {
             opcode: Either::Left(opcode),
             comment,
             owning_span: Some(owning_span),
+        }
+    }
+
+    /// Loads the data from [DataId] `data` into [RegisterId] `reg`.
+    pub(crate) fn unowned_load_data(reg: RegisterId, data: DataId) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Ld(reg, data)),
+            comment: String::new(),
+            owning_span: None,
         }
     }
 
@@ -112,6 +151,14 @@ impl<'sc> Op<'sc> {
         }
     }
 
+    /// Moves the register in the second argument into the register in the first argument
+    pub(crate) fn unowned_register_move(r1: RegisterId, r2: RegisterId) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
     pub(crate) fn register_move_comment(
         r1: RegisterId,
         r2: RegisterId,
@@ -652,9 +699,19 @@ impl Opcode {
                     todo!("ArgMismatchError")
                 }
             }
-            "cfe" => {
+            "cfei" => {
                 if args.len() == 1 {
-                    Cfe(args[0].into())
+                    Cfei(match immediate {
+                        Some(i) => i,
+                        None => {
+                            return err(
+                                vec![],
+                                vec![CompileError::MissingImmediate {
+                                    span: name.span.clone(),
+                                }],
+                            )
+                        }
+                    })
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -1001,7 +1058,7 @@ impl Opcode {
             Ji(_imm) => vec![],
             Jnzi(r1, _imm) => vec![r1],
             Ret(r1) => vec![r1],
-            Cfe(r1) => vec![r1],
+            Cfei(_imm) => vec![],
             Cfs(r1) => vec![r1],
             Lb(r1, r2, _imm) => vec![r1, r2],
             Lw(r1, r2, _imm) => vec![r1, r2],
@@ -1043,7 +1100,49 @@ impl Opcode {
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum RegisterId {
     Virtual(String),
-    Constant(u64),
+    Constant(ConstantRegister),
+}
+
+#[derive(Hash, PartialEq, Eq, Debug, Clone)]
+/// These are the special registers defined in the spec
+pub enum ConstantRegister {
+    Zero,
+    One,
+    Overflow,
+    ProgramCounter,
+    StackStartPointer,
+    StackPointer,
+    FramePointer,
+    HeapPointer,
+    Error,
+    GlobalGas,
+    ContextGas,
+    Balance,
+    InstructionStart,
+    Flags,
+}
+
+impl fmt::Display for ConstantRegister {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use ConstantRegister::*;
+        let text = match self {
+            Zero => "$zero",
+            One => "$one",
+            Overflow => "$of",
+            ProgramCounter => "$pc",
+            StackStartPointer => "$ssp",
+            StackPointer => "$sp",
+            FramePointer => "$fp",
+            HeapPointer => "$hp",
+            Error => "$err",
+            GlobalGas => "$ggas",
+            ContextGas => "$cgas",
+            Balance => "$bal",
+            InstructionStart => "$is",
+            Flags => "$flag",
+        };
+        write!(f, "{}", text)
+    }
 }
 
 // Immediate Value.
@@ -1090,7 +1189,7 @@ opcodes! {
     Ret(RegisterId) = 54,
 
     // Memory opcodes.
-    Cfe(RegisterId) = 60,
+    Cfei(ImmediateValue) = 60,
     Cfs(RegisterId) = 61,
     Lb(RegisterId, RegisterId, ImmediateValue) = 62,
     Lw(RegisterId, RegisterId, ImmediateValue) = 63,
@@ -1133,7 +1232,7 @@ impl fmt::Display for RegisterId {
         match self {
             RegisterId::Virtual(name) => write!(f, "$r{}", name),
             RegisterId::Constant(name) => {
-                write!(f, "$rc{}", name)
+                write!(f, "{}", name)
             }
         }
     }
@@ -1192,7 +1291,7 @@ impl fmt::Display for Op<'_> {
                 Jnzi(a, b) => format!("jnzi {} {}", a, b),
                 Ret(a) => format!("ret {}", a),
 
-                Cfe(a) => format!("cfe {}", a),
+                Cfei(a) => format!("cfei {}", a),
                 Cfs(a) => format!("cfs {}", a),
                 Lb(a, b, c) => format!("lb {} {} {}", a, b, c),
                 Lw(a, b, c) => format!("lw {} {} {}", a, b, c),

@@ -684,7 +684,7 @@ fn connect_expression<'sc>(
                 ResolvedType::Struct { .. }
             ));
             let resolved_type_of_parent = match resolved_type_of_parent {
-                ResolvedType::Struct { name } => name.clone(),
+                ResolvedType::Struct { name, .. } => name.clone(),
                 _ => panic!("Called subfvield on a non-struct"),
             };
             let field_name = name.last().unwrap();
