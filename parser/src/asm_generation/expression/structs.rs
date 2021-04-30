@@ -84,8 +84,8 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         );
         asm_buf.append(&mut field_instantiation);
         asm_buf.push(Op::write_register_to_memory(
-            return_register,
             struct_beginning_pointer.clone(),
+            return_register,
             offset,
             name.span.clone(),
         ));
