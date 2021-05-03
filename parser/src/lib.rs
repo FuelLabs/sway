@@ -131,7 +131,15 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
     let mut errors: Vec<CompileError> = Vec::new();
     let mut parsed = match HllParser::parse(Rule::program, input) {
         Ok(o) => o,
-        Err(e) => return err(Vec::new(), vec![e.into()]),
+        Err(e) => {
+            return err(
+                Vec::new(),
+                vec![CompileError::ParseFailure {
+                    span: Span::new(input, get_start(&e), get_end(&e)).unwrap(),
+                    err: e,
+                }],
+            )
+        }
     };
     let res = eval!(
         parse_root_from_pairs,
@@ -164,6 +172,20 @@ pub enum CompilationResult<'sc> {
         warnings: Vec<CompileWarning<'sc>>,
         errors: Vec<CompileError<'sc>>,
     },
+}
+
+fn get_start(err: &pest::error::Error<Rule>) -> usize {
+    match err.location {
+        pest::error::InputLocation::Pos(num) => num,
+        pest::error::InputLocation::Span((start, _)) => start,
+    }
+}
+
+fn get_end(err: &pest::error::Error<Rule>) -> usize {
+    match err.location {
+        pest::error::InputLocation::Pos(num) => num,
+        pest::error::InputLocation::Span((_, end)) => end,
+    }
 }
 
 pub fn compile<'sc, 'manifest>(
