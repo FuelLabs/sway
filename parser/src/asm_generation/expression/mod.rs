@@ -14,7 +14,9 @@ use crate::{
 use pest::Span;
 
 mod structs;
+mod subfield;
 use structs::convert_struct_expression_to_asm;
+use subfield::convert_subfield_expression_to_asm;
 
 /// Given a [TypedExpression], convert it to assembly and put its return value, if any, in the
 /// `return_register`.
@@ -185,6 +187,20 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             struct_name,
             fields,
         } => convert_struct_expression_to_asm(struct_name, fields, namespace, register_sequencer),
+        TypedExpressionVariant::SubfieldExpression {
+            unary_op,
+            span,
+            name,
+            resolved_type_of_parent,
+        } => convert_subfield_expression_to_asm(
+            unary_op,
+            span,
+            name,
+            resolved_type_of_parent,
+            namespace,
+            register_sequencer,
+        ),
+
         a => todo!("{:?}", a),
     }
 }

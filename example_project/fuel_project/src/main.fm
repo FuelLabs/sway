@@ -53,8 +53,8 @@ script{
     field_2: 2u32,
   };
 
-  /*
     let a = a.field_1 + 2;
+    /*
     let z = MyEnum::Variant2;
     let z = MyEnum::Variant1(10u32);
     if true {
@@ -63,8 +63,8 @@ script{
     } else {
       let a = 5;
     };
+    */
 
-*/
     true
   }
 
