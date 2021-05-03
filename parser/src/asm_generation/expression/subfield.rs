@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use super::*;
 use crate::{
     asm_lang::*,

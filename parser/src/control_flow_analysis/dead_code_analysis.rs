@@ -576,12 +576,12 @@ fn connect_expression<'sc>(
         }
         VariableExpression { .. } => leaves.to_vec(),
         EnumInstantiation {
-            enum_name,
+            enum_decl,
             variant_name,
             ..
         } => {
             // connect this particular instantiation to its variants declaration
-            connect_enum_instantiation(enum_name, variant_name, graph, leaves)
+            connect_enum_instantiation(enum_decl, variant_name, graph, leaves)
         }
         IfExp {
             condition,
@@ -715,11 +715,12 @@ fn connect_expression<'sc>(
 }
 
 fn connect_enum_instantiation<'sc>(
-    enum_name: &Ident<'sc>,
+    enum_decl: &TypedEnumDeclaration<'sc>,
     variant_name: &Ident<'sc>,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
 ) -> Vec<NodeIndex> {
+    let enum_name = &enum_decl.name;
     let (decl_ix, variant_index) = graph
         .namespace
         .find_enum_variant_index(enum_name, variant_name)

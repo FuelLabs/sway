@@ -13,8 +13,10 @@ use crate::{
 };
 use pest::Span;
 
+mod enum_instantiation;
 mod structs;
 mod subfield;
+use enum_instantiation::convert_enum_instantiation_to_asm;
 use structs::convert_struct_expression_to_asm;
 use subfield::convert_subfield_expression_to_asm;
 
@@ -197,6 +199,20 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             span,
             name,
             resolved_type_of_parent,
+            namespace,
+            register_sequencer,
+        ),
+        TypedExpressionVariant::EnumInstantiation {
+            enum_decl,
+            variant_name,
+            tag,
+            contents,
+        } => convert_enum_instantiation_to_asm(
+            enum_decl,
+            variant_name,
+            *tag,
+            contents,
+            return_register,
             namespace,
             register_sequencer,
         ),

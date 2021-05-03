@@ -6,4 +6,3 @@ name = "Fuel example project"
 
 [dependencies]
 std = { path = "../../stdlib" }
-example_dependency = { path = "../example_dependency" }

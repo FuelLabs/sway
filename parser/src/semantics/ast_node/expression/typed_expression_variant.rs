@@ -52,7 +52,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     },
     EnumInstantiation {
         /// for printing
-        enum_name: Ident<'sc>,
+        enum_decl: TypedEnumDeclaration<'sc>,
         /// for printing
         variant_name: Ident<'sc>,
         tag: usize,
@@ -108,13 +108,13 @@ impl<'sc> TypedExpressionVariant<'sc> {
             }
             TypedExpressionVariant::EnumInstantiation {
                 tag,
-                enum_name,
+                enum_decl,
                 variant_name,
                 ..
             } => {
                 format!(
                     "{}::{} enum instantiation (tag: {})",
-                    enum_name.primary_name, variant_name.primary_name, tag
+                    enum_decl.name.primary_name, variant_name.primary_name, tag
                 )
             }
         }

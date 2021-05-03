@@ -54,13 +54,13 @@ impl<'sc> Op<'sc> {
     /// Write value in given [RegisterId] `rb` to given memory address that is held within the
     /// [RegisterId] `ra`.
     pub(crate) fn write_register_to_memory(
-        ra: RegisterId,
-        rb: RegisterId,
+        destination_address: RegisterId,
+        value_to_write: RegisterId,
         offset: ImmediateValue,
         span: Span<'sc>,
     ) -> Self {
         Op {
-            opcode: Either::Left(Opcode::Sw(ra, rb, offset)),
+            opcode: Either::Left(Opcode::Sw(destination_address, value_to_write, offset)),
             comment: String::new(),
             owning_span: Some(span),
         }
@@ -101,21 +101,24 @@ impl<'sc> Op<'sc> {
         }
     }
 
-    /// Loads the data from [DataId] `data` into [RegisterId] `reg`.
-    pub(crate) fn unowned_load_data(reg: RegisterId, data: DataId) -> Self {
-        Op {
-            opcode: Either::Right(OrganizationalOp::Ld(reg, data)),
-            comment: String::new(),
-            owning_span: None,
-        }
-    }
-
     /// Given a label, creates the actual asm line to put in the ASM which represents a label
     pub(crate) fn jump_label(label: Label, owning_span: Span<'sc>) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::Label(label)),
             comment: String::new(),
             owning_span: Some(owning_span),
+        }
+    }
+    /// Loads the data from [DataId] `data` into [RegisterId] `reg`.
+    pub(crate) fn unowned_load_data_comment(
+        reg: RegisterId,
+        data: DataId,
+        comment: impl Into<String>,
+    ) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Ld(reg, data)),
+            comment: comment.into(),
+            owning_span: None,
         }
     }
 
