@@ -126,6 +126,20 @@ pub struct CompileWarning<'sc> {
     pub warning_content: Warning<'sc>,
 }
 
+pub struct LineCol {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl From<(usize, usize)> for LineCol {
+    fn from(o: (usize, usize)) -> Self {
+        LineCol {
+            line: o.0,
+            col: o.1,
+        }
+    }
+}
+
 impl<'sc> CompileWarning<'sc> {
     pub fn to_friendly_warning_string(&self) -> String {
         self.warning_content.to_string()
@@ -133,6 +147,14 @@ impl<'sc> CompileWarning<'sc> {
 
     pub fn span(&self) -> (usize, usize) {
         (self.span.start(), self.span.end())
+    }
+
+    /// Returns the line and column start and end
+    pub fn line_col(&self) -> (LineCol, LineCol) {
+        (
+            self.span.start_pos().line_col().into(),
+            self.span.end_pos().line_col().into(),
+        )
     }
 }
 
@@ -235,8 +257,11 @@ pub enum CompileError<'sc> {
     Unimplemented(&'static str, Span<'sc>),
     #[error("{0}")]
     TypeError(TypeError<'sc>),
-    #[error("Error parsing input: expected {0:?}")]
-    ParseFailure(#[from] pest::error::Error<Rule>),
+    #[error("Error parsing input: expected {err:?}")]
+    ParseFailure {
+        span: Span<'sc>,
+        err: pest::error::Error<Rule>,
+    },
     #[error("Invalid top-level item: {0:?}. A program should consist of a contract, script, or predicate at the top level.")]
     InvalidTopLevelItem(Rule, Span<'sc>),
     #[error("Internal compiler error: {0}\nPlease file an issue on the repository and include the code that triggered this error.")]
@@ -424,10 +449,10 @@ pub enum TypeError<'sc> {
 }
 
 impl<'sc> TypeError<'sc> {
-    pub(crate) fn span(&self) -> (usize, usize) {
+    pub(crate) fn pest_span(&self) -> &Span<'sc> {
         use TypeError::*;
         match self {
-            MismatchedType { span, .. } => (span.start(), span.end()),
+            MismatchedType { span, .. } => span,
         }
     }
 }
@@ -435,7 +460,7 @@ impl<'sc> TypeError<'sc> {
 impl<'sc> CompileError<'sc> {
     pub fn to_friendly_error_string(&self) -> String {
         match self {
-            CompileError::ParseFailure(err) => format!(
+            CompileError::ParseFailure { err, .. } => format!(
                 "Error parsing input: {}",
                 match &err.variant {
                     pest::error::ErrorVariant::ParsingError {
@@ -473,65 +498,75 @@ impl<'sc> CompileError<'sc> {
     }
 
     pub fn span(&self) -> (usize, usize) {
+        let sp = self.pest_span();
+        (sp.start(), sp.end())
+    }
+
+    pub fn pest_span(&self) -> &Span<'sc> {
         use CompileError::*;
         match self {
-            UnknownVariable { span, .. } => (span.start(), span.end()),
-            UnknownVariablePath { span, .. } => (span.start(), span.end()),
-            UnknownFunction { span, .. } => (span.start(), span.end()),
-            NotAVariable { span, .. } => (span.start(), span.end()),
-            NotAFunction { span, .. } => (span.start(), span.end()),
-            Unimplemented(_, span) => (span.start(), span.end()),
-            TypeError(err) => err.span(),
-            ParseFailure(err) => match err.location {
-                pest::error::InputLocation::Pos(num) => (num, num + 1),
-                pest::error::InputLocation::Span((start, end)) => (start, end),
-            },
-            InvalidTopLevelItem(_, sp) => (sp.start(), sp.end()),
-            Internal(_, sp) => (sp.start(), sp.end()),
-            UnimplementedRule(_, sp) => (sp.start(), sp.end()),
-            InvalidByteLiteralLength { span, .. } => (span.start(), span.end()),
-            ExpectedExprAfterOp { span, .. } => (span.start(), span.end()),
-            ExpectedOp { span, .. } => (span.start(), span.end()),
-            UnexpectedWhereClause(sp) => (sp.start(), sp.end()),
-            UndeclaredGenericTypeInWhereClause { span, .. } => (span.start(), span.end()),
-            MultiplePredicates(sp) => (sp.start(), sp.end()),
-            MultipleScripts(sp) => (sp.start(), sp.end()),
-            MultipleContracts(sp) => (sp.start(), sp.end()),
-            ConstrainedNonExistentType { span, .. } => (span.start(), span.end()),
-            MultiplePredicateMainFunctions(sp) => (sp.start(), sp.end()),
-            NoPredicateMainFunction(sp) => (sp.start(), sp.end()),
-            PredicateMainDoesNotReturnBool(sp) => (sp.start(), sp.end()),
-            NoScriptMainFunction(sp) => (sp.start(), sp.end()),
-            MultipleScriptMainFunctions(sp) => (sp.start(), sp.end()),
-            ReassignmentToNonVariable { span, .. } => (span.start(), span.end()),
-            AssignmentToNonMutable(_, sp) => (sp.start(), sp.end()),
-            TypeParameterNotInTypeScope { span, .. } => (span.start(), span.end()),
-            MultipleImmediates(sp) => (sp.start(), sp.end()),
-            MismatchedTypeInTrait { span, .. } => (span.start(), span.end()),
-            NotATrait { span, .. } => (span.start(), span.end()),
-            UnknownTrait { span, .. } => (span.start(), span.end()),
-            FunctionNotAPartOfInterfaceSurface { span, .. } => (span.start(), span.end()),
-            MissingInterfaceSurfaceMethods { span, .. } => (span.start(), span.end()),
-            IncorrectNumberOfTypeArguments { span, .. } => (span.start(), span.end()),
-            StructNotFound { span, .. } => (span.start(), span.end()),
-            DeclaredNonStructAsStruct { span, .. } => (span.start(), span.end()),
-            AccessedFieldOfNonStruct { span, .. } => (span.start(), span.end()),
-            MethodOnNonValue { span, .. } => (span.start(), span.end()),
-            StructMissingField { span, .. } => (span.start(), span.end()),
-            StructDoesntHaveThisField { span, .. } => (span.start(), span.end()),
-            MethodNotFound { span, .. } => (span.start(), span.end()),
-            NonFinalAsteriskInPath { span, .. } => (span.start(), span.end()),
-            ModuleNotFound { span, .. } => (span.start(), span.end()),
-            NotAStruct { span, .. } => (span.start(), span.end()),
-            FieldNotFound { span, .. } => (span.start(), span.end()),
-            SymbolNotFound { span, .. } => (span.start(), span.end()),
-            NoElseBranch { span, .. } => (span.start(), span.end()),
-            UnqualifiedSelfType { span, .. } => (span.start(), span.end()),
-            NotAType { span, .. } => (span.start(), span.end()),
-            MissingEnumInstantiator { span, .. } => (span.start(), span.end()),
-            PathDoesNotReturn { span, .. } => (span.start(), span.end()),
-            ExpectedImplicitReturnFromBlockWithType { span, .. } => (span.start(), span.end()),
-            ExpectedImplicitReturnFromBlock { span, .. } => (span.start(), span.end()),
+            UnknownVariable { span, .. } => span,
+            UnknownVariablePath { span, .. } => span,
+            UnknownFunction { span, .. } => span,
+            NotAVariable { span, .. } => span,
+            NotAFunction { span, .. } => span,
+            Unimplemented(_, span) => span,
+            TypeError(err) => err.pest_span(),
+            ParseFailure { span, .. } => span,
+            InvalidTopLevelItem(_, span) => span,
+            Internal(_, span) => span,
+            UnimplementedRule(_, span) => span,
+            InvalidByteLiteralLength { span, .. } => span,
+            ExpectedExprAfterOp { span, .. } => span,
+            ExpectedOp { span, .. } => span,
+            UnexpectedWhereClause(span) => span,
+            UndeclaredGenericTypeInWhereClause { span, .. } => span,
+            MultiplePredicates(span) => span,
+            MultipleScripts(span) => span,
+            MultipleContracts(span) => span,
+            ConstrainedNonExistentType { span, .. } => span,
+            MultiplePredicateMainFunctions(span) => span,
+            NoPredicateMainFunction(span) => span,
+            PredicateMainDoesNotReturnBool(span) => span,
+            NoScriptMainFunction(span) => span,
+            MultipleScriptMainFunctions(span) => span,
+            ReassignmentToNonVariable { span, .. } => span,
+            AssignmentToNonMutable(_, span) => span,
+            TypeParameterNotInTypeScope { span, .. } => span,
+            MultipleImmediates(span) => span,
+            MismatchedTypeInTrait { span, .. } => span,
+            NotATrait { span, .. } => span,
+            UnknownTrait { span, .. } => span,
+            FunctionNotAPartOfInterfaceSurface { span, .. } => span,
+            MissingInterfaceSurfaceMethods { span, .. } => span,
+            IncorrectNumberOfTypeArguments { span, .. } => span,
+            StructNotFound { span, .. } => span,
+            DeclaredNonStructAsStruct { span, .. } => span,
+            AccessedFieldOfNonStruct { span, .. } => span,
+            MethodOnNonValue { span, .. } => span,
+            StructMissingField { span, .. } => span,
+            StructDoesntHaveThisField { span, .. } => span,
+            MethodNotFound { span, .. } => span,
+            NonFinalAsteriskInPath { span, .. } => span,
+            ModuleNotFound { span, .. } => span,
+            NotAStruct { span, .. } => span,
+            FieldNotFound { span, .. } => span,
+            SymbolNotFound { span, .. } => span,
+            NoElseBranch { span, .. } => span,
+            UnqualifiedSelfType { span, .. } => span,
+            NotAType { span, .. } => span,
+            MissingEnumInstantiator { span, .. } => span,
+            PathDoesNotReturn { span, .. } => span,
+            ExpectedImplicitReturnFromBlockWithType { span, .. } => span,
+            ExpectedImplicitReturnFromBlock { span, .. } => span,
         }
+    }
+
+    /// Returns the line and column start and end
+    pub fn line_col(&self) -> (LineCol, LineCol) {
+        (
+            self.pest_span().start_pos().line_col().into(),
+            self.pest_span().end_pos().line_col().into(),
+        )
     }
 }
