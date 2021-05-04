@@ -43,6 +43,7 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
         warnings,
         errors
     );
+    asm_buf.push(Op::new_comment("begin if expression"));
 
     asm_buf.append(&mut condition);
     // if the condition is not true, jump to the else branch (if there is one).
