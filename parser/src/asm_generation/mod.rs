@@ -140,11 +140,11 @@ impl fmt::Display for DataSection<'_> {
         let mut data_buf = String::new();
         for (ix, data) in self.value_pairs.iter().enumerate() {
             let data_val = match data {
-                Literal::U8(num) => format!(".u8 {:x}", num),
-                Literal::U16(num) => format!(".u16 {:x}", num),
-                Literal::U32(num) => format!(".u32 {:x}", num),
-                Literal::U64(num) => format!(".u64 {:x}", num),
-                Literal::U128(num) => format!(".u128 {:x}", num),
+                Literal::U8(num) => format!(".u8 {:#04x}", num),
+                Literal::U16(num) => format!(".u16 {:#04x}", num),
+                Literal::U32(num) => format!(".u32 {:#04x}", num),
+                Literal::U64(num) => format!(".u64 {:#04x}", num),
+                Literal::U128(num) => format!(".u128 {:#04x}", num),
                 Literal::Boolean(b) => format!(".bool {}", if *b { "0x01" } else { "0x00" }),
                 a => todo!("{:?}", a),
             };

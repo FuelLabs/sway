@@ -51,8 +51,8 @@ pub(crate) struct Op<'sc> {
 }
 
 impl<'sc> Op<'sc> {
-    /// Write value in given [RegisterId] `rb` to given memory address that is held within the
-    /// [RegisterId] `ra`.
+    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held within the
+    /// [RegisterId] `destination_address`
     pub(crate) fn write_register_to_memory(
         destination_address: RegisterId,
         value_to_write: RegisterId,
@@ -65,7 +65,21 @@ impl<'sc> Op<'sc> {
             owning_span: Some(span),
         }
     }
-
+    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held within the
+    /// [RegisterId] `destination_address`, with the provided comment.
+    pub(crate) fn write_register_to_memory_comment(
+        destination_address: RegisterId,
+        value_to_write: RegisterId,
+        offset: ImmediateValue,
+        span: Span<'sc>,
+        comment: impl Into<String>,
+    ) -> Self {
+        Op {
+            opcode: Either::Left(Opcode::Sw(destination_address, value_to_write, offset)),
+            comment: comment.into(),
+            owning_span: Some(span),
+        }
+    }
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
     pub(crate) fn unowned_stack_allocate_memory(size_to_allocate_in_words: u32) -> Self {
         Op {
@@ -117,6 +131,16 @@ impl<'sc> Op<'sc> {
     ) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::Ld(reg, data)),
+            comment: comment.into(),
+            owning_span: None,
+        }
+    }
+
+    /// Given a label, creates the actual asm line to put in the ASM which represents a label.
+    /// Also attaches a comment to it.
+    pub(crate) fn unowned_jump_label_comment(label: Label, comment: impl Into<String>) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Label(label)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -200,6 +224,14 @@ impl<'sc> Op<'sc> {
         Op {
             opcode: Either::Right(OrganizationalOp::Jump(label)),
             comment: String::new(),
+            owning_span: None,
+        }
+    }
+
+    pub(crate) fn jump_to_label_comment(label: Label, comment: impl Into<String>) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Jump(label)),
+            comment: comment.into(),
             owning_span: None,
         }
     }

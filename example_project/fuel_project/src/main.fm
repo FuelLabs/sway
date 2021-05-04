@@ -37,23 +37,35 @@ script{
     }
   }
 
+struct MyOtherStruct {
+  x: u32,
+}
   struct MyStruct {
     field_1: u32,
-    field_2: u32
+    field_2: MyOtherStruct
   }
 
   pub fn main() -> bool {
-  let a = 5;
-  let mut b = 5 + a;
-  while b < 100 {
-    b = b + 1;
-  }
-  let a = MyStruct {
-    field_1: 5u32,
-    field_2: 2u32,
-  };
+    /*
+    let a = 5;
+    let mut b = 5 + a;
+    while b < 100 {
+      b = b + 1;
+    }
+    let a = MyStruct {
+      field_1: 5u32,
+      field_2: 2u32,
+    };
+*/
+    let z = if true { 2 } else { 4 } ;
+    //let z = MyEnum::Variant2;
+    let x: MyStruct = MyStruct {
+      field_1: 5u32,
+      field_2: MyOtherStruct {
+        x: 5u32
+      }
+    };
 
-    let z = MyEnum::Variant2;
     /*
         let a = a.field_1 + 2;
 

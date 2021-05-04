@@ -14,9 +14,11 @@ use crate::{
 use pest::Span;
 
 mod enum_instantiation;
+mod if_exp;
 mod structs;
 mod subfield;
 use enum_instantiation::convert_enum_instantiation_to_asm;
+use if_exp::convert_if_exp_to_asm;
 use structs::convert_struct_expression_to_asm;
 use subfield::convert_subfield_expression_to_asm;
 
@@ -212,6 +214,18 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             variant_name,
             *tag,
             contents,
+            return_register,
+            namespace,
+            register_sequencer,
+        ),
+        TypedExpressionVariant::IfExp {
+            condition,
+            then,
+            r#else,
+        } => convert_if_exp_to_asm(
+            &**condition,
+            &**then,
+            r#else,
             return_register,
             namespace,
             register_sequencer,

@@ -78,11 +78,12 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
         asm_buf.append(&mut asm);
         // write these enum contents to the address after the tag
         // step 2
-        asm_buf.push(Op::write_register_to_memory(
+        asm_buf.push(Op::write_register_to_memory_comment(
             pointer_register.clone(),
             return_register.clone(),
             1, /* offset by 1 because the tag was already written */
             instantiation.span.clone(),
+            format!("{} enum contents", decl.name.primary_name),
         ));
     }
 
