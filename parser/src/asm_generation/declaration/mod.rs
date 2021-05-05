@@ -31,6 +31,12 @@ pub(crate) fn convert_decl_to_asm<'sc>(
         TypedDeclaration::Reassignment(reassignment) => {
             convert_reassignment_to_asm(reassignment, namespace, register_sequencer)
         }
-        a => todo!("{:?}", a),
+        _ => err(
+            vec![],
+            vec![CompileError::Unimplemented(
+                "ASM generation has not yet been implemented for this declaration variant.",
+                decl.span().clone(),
+            )],
+        ),
     }
 }

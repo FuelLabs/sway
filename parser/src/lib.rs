@@ -346,23 +346,45 @@ pub fn compile<'sc, 'manifest>(
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
     // for each syntax tree, generate assembly.
-    let predicate_asm = if let Some(tree) = predicate_ast {
-        Some(compile_ast_to_asm(tree))
-    } else {
-        None
-    };
+    let predicate_asm = (|| {
+        if let Some(tree) = predicate_ast {
+            Some(type_check!(
+                compile_ast_to_asm(tree),
+                return None,
+                warnings,
+                errors
+            ))
+        } else {
+            None
+        }
+    })();
 
-    let contract_asm = if let Some(tree) = contract_ast {
-        Some(compile_ast_to_asm(tree))
-    } else {
-        None
-    };
+    let contract_asm = (|| {
+        if let Some(tree) = contract_ast {
+            Some(type_check!(
+                compile_ast_to_asm(tree),
+                return None,
+                warnings,
+                errors
+            ))
+        } else {
+            None
+        }
+    })();
 
-    let script_asm = if let Some(tree) = script_ast {
-        Some(compile_ast_to_asm(tree))
-    } else {
-        None
-    };
+    let script_asm = (|| {
+        if let Some(tree) = script_ast {
+            Some(type_check!(
+                compile_ast_to_asm(tree),
+                return None,
+                warnings,
+                errors
+            ))
+        } else {
+            None
+        }
+    })();
+
     if errors.is_empty() {
         // TODO move this check earlier and don't compile all of them if there is only one
         match (predicate_asm, contract_asm, script_asm, library_exports) {
@@ -372,7 +394,7 @@ pub fn compile<'sc, 'manifest>(
             },
             (None, Some(contract), None, o) if o.trees.is_empty() => {
                 CompilationResult::ContractAbi {
-                    abi: todo!(),
+                    abi: Default::default(),
                     warnings,
                 }
             }

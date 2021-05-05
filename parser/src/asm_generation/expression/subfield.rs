@@ -23,6 +23,11 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
-    // 0. find the struct
-    todo!()
+    return err(
+        vec![],
+        vec![CompileError::Unimplemented(
+            "Struct field access ASM generation is unimplemented.",
+            span.clone(),
+        )],
+    );
 }

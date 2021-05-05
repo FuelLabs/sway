@@ -8,6 +8,7 @@ use crate::{
     Ident,
 };
 use either::Either;
+use pest::Span;
 
 mod compiler_constants;
 mod declaration;
@@ -146,7 +147,15 @@ impl fmt::Display for DataSection<'_> {
                 Literal::U64(num) => format!(".u64 {:#04x}", num),
                 Literal::U128(num) => format!(".u128 {:#04x}", num),
                 Literal::Boolean(b) => format!(".bool {}", if *b { "0x01" } else { "0x00" }),
-                a => todo!("{:?}", a),
+                Literal::String(st) => format!(".str \"{}\"", st),
+                Literal::Byte(b) => format!(".byte {:#08b}", b),
+                Literal::Byte32(b) => format!(
+                    ".byte32 0x{}",
+                    b.into_iter()
+                        .map(|x| format!("{:02x}", x))
+                        .collect::<Vec<_>>()
+                        .join("")
+                ),
             };
             let data_label = DataId(ix as u32);
             data_buf.push_str(&format!("{} {}\n", data_label, data_val));
@@ -163,7 +172,13 @@ impl fmt::Display for HllAsmSet<'_> {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", data_section, program_section),
-            _ => todo!(),
+            HllAsmSet::PredicateMain {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", data_section, program_section),
+            HllAsmSet::ContractAbi { .. } => write!(f, "TODO contract ABI asm is unimplemented"),
+            // Libraries do not directly generate any asm.
+            HllAsmSet::Library => write!(f, ""),
         }
     }
 }
@@ -175,7 +190,15 @@ impl fmt::Display for JumpOptimizedAsmSet<'_> {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", data_section, program_section),
-            _ => todo!(),
+            JumpOptimizedAsmSet::PredicateMain {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", data_section, program_section),
+            JumpOptimizedAsmSet::ContractAbi { .. } => {
+                write!(f, "TODO contract ABI asm is unimplemented")
+            }
+            // Libraries do not directly generate any asm.
+            JumpOptimizedAsmSet::Library => write!(f, ""),
         }
     }
 }
@@ -187,10 +210,19 @@ impl fmt::Display for RegisterAllocatedAsmSet<'_> {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", data_section, program_section),
-            _ => todo!(),
+            RegisterAllocatedAsmSet::PredicateMain {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", data_section, program_section),
+            RegisterAllocatedAsmSet::ContractAbi { .. } => {
+                write!(f, "TODO contract ABI asm is unimplemented")
+            }
+            // Libraries do not directly generate any asm.
+            RegisterAllocatedAsmSet::Library => write!(f, ""),
         }
     }
 }
+
 impl fmt::Display for FinalizedAsm<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -198,10 +230,19 @@ impl fmt::Display for FinalizedAsm<'_> {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", data_section, program_section),
-            _ => todo!(),
+            FinalizedAsm::PredicateMain {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", data_section, program_section),
+            FinalizedAsm::ContractAbi { .. } => {
+                write!(f, "TODO contract ABI asm is unimplemented")
+            }
+            // Libraries do not directly generate any asm.
+            FinalizedAsm::Library => write!(f, ""),
         }
     }
 }
+
 impl fmt::Display for AbstractInstructionSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -262,7 +303,9 @@ impl<'sc> AsmNamespace<'sc> {
     }
 }
 
-pub(crate) fn compile_ast_to_asm<'sc>(ast: TypedParseTree<'sc>) -> FinalizedAsm<'sc> {
+pub(crate) fn compile_ast_to_asm<'sc>(
+    ast: TypedParseTree<'sc>,
+) -> CompileResult<'sc, FinalizedAsm<'sc>> {
     let mut register_sequencer = RegisterSequencer::new();
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -289,28 +332,41 @@ pub(crate) fn compile_ast_to_asm<'sc>(ast: TypedParseTree<'sc>) -> FinalizedAsm<
                 data_section: namespace.data_section,
             }
         }
-        TypedParseTree::Predicate { .. } => {
-            /*
-            let mut asm_buf: Vec<Op<'sc>> = vec![];
+        TypedParseTree::Predicate { main_function, .. } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = vec![];
             // start generating from the main function
-            asm_buf.append(&mut convert_fn_decl_to_asm(
-                &main_function,
-                &mut namespace,
-                &mut register_sequencer,
-            ));
-            */
-            todo!()
+            let mut body = type_check!(
+                convert_code_block_to_asm(
+                    &main_function.body,
+                    &mut namespace,
+                    &mut register_sequencer,
+                    None,
+                ),
+                vec![],
+                warnings,
+                errors
+            );
+            asm_buf.append(&mut body);
 
-            // HllAsmSet::PredicateMain(AbstractInstructionSet { ops: asm_buf })
+            HllAsmSet::PredicateMain {
+                program_section: AbstractInstructionSet { ops: asm_buf },
+                data_section: namespace.data_section,
+            }
         }
-        _ => todo!(),
+        TypedParseTree::Contract { .. } => {
+            unimplemented!("Contract ABI ASM generation has not been implemented.");
+        }
+        TypedParseTree::Library { .. } => HllAsmSet::Library,
     };
 
-    asm.remove_unnecessary_jumps()
-        .allocate_registers()
-        .optimize()
+    ok(
+        asm.remove_unnecessary_jumps()
+            .allocate_registers()
+            .optimize(),
+        warnings,
+        errors,
+    )
 }
 
 impl<'sc> HllAsmSet<'sc> {

@@ -70,6 +70,7 @@ impl<'sc> TypeInfo<'sc> {
                 "string" => TypeInfo::String,
                 "unit" => TypeInfo::Unit,
                 "byte" => TypeInfo::Byte,
+                "byte32" => TypeInfo::Byte32,
                 "Self" | "self" => TypeInfo::SelfType,
                 "()" => TypeInfo::Unit,
                 _other => TypeInfo::Custom {

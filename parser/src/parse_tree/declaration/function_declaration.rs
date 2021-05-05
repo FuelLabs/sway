@@ -84,7 +84,12 @@ impl<'sc> FunctionDeclaration<'sc> {
                     where_clause_pair = Some(pair);
                 }
                 Rule::fn_returns => (),
-                a => todo!("What is this? {:?}", a),
+                _ => {
+                    errors.push(CompileError::Internal(
+                        "Unexpected token while parsing function signature.",
+                        pair.as_span(),
+                    ));
+                }
             }
         }
 

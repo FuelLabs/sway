@@ -514,7 +514,15 @@ impl<'sc> TypedExpression<'sc> {
                         "",
                     ) {
                         // throw away warnings and errors since this will be checked again later
-                        CompileResult::Ok { value, .. } => value,
+                        CompileResult::Ok {
+                            value,
+                            warnings: mut l_w,
+                            errors: mut l_e,
+                        } => {
+                            warnings.append(&mut l_w);
+                            errors.append(&mut l_e);
+                            value
+                        }
                         CompileResult::Err {
                             warnings: mut l_w,
                             errors: mut l_e,
