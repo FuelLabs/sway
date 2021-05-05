@@ -11,16 +11,16 @@ mod semantics;
 
 use crate::error::*;
 use crate::parse_tree::*;
-use crate::parser::{HllParser, Rule};
 use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
-use pest::Parser;
+pub use pest::Parser;
 use semantics::{TreeType, TypedParseTree};
 
 pub(crate) mod types;
 pub(crate) mod utils;
 pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 
+pub use crate::parser::{HllParser, Rule};
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
 pub use pest::Span;
