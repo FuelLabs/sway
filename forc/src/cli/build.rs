@@ -78,8 +78,6 @@ fn compile_dependency_lib<'source, 'manifest>(
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
 ) -> Result<(), String> {
-    //todo!("For tomorrow: This needs to accumulate dependencies over time and build up the dependency namespace. Then, colon delineated paths in the compiler
-    // need to look in the imports namespace.");
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
             return Err("Simple version-spec dependencies require a registry.".into())

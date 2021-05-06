@@ -55,7 +55,9 @@ script{
     field_2: 2u32,
   };
 
-    let a = a.field_1 + 2;
+    //let a = a.field_1 + 2;
+    while false { let z = 0; }
+
     /*
     let z = MyEnum::Variant2;
     let z = MyEnum::Variant1(10u32);

@@ -46,7 +46,15 @@ impl<'sc> TypedDeclaration<'sc> {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body, ..
                 }) => body.return_type.clone(),
-                TypedDeclaration::FunctionDeclaration { .. } => todo!("fn pointer type"),
+                TypedDeclaration::FunctionDeclaration { .. } => {
+                    return err(
+                        vec![],
+                        vec![CompileError::Unimplemented(
+                            "Function pointers have not yet been implemented.",
+                            self.span(),
+                        )],
+                    )
+                }
                 TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,
@@ -157,6 +165,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
     pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
         ResolvedType::Enum {
             name: self.name.clone(),
+            variant_types: self.variants.iter().map(|x| x.r#type.clone()).collect(),
         }
     }
 }

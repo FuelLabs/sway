@@ -1051,7 +1051,15 @@ impl Opcode {
                     todo!("ArgMismatchError")
                 }
             }
-            _ => todo!("unknown op error"),
+            other => {
+                return err(
+                    vec![],
+                    vec![CompileError::UnrecognizedOp {
+                        op_name: other,
+                        span: name.clone().span,
+                    }],
+                )
+            }
         };
         ok(op, vec![], vec![])
     }

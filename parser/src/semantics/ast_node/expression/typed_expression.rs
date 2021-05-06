@@ -164,8 +164,10 @@ impl<'sc> TypedExpression<'sc> {
                     }
                 }
             }
-            Expression::MatchExpression { .. } => {
-                todo!("Match expressions");
+            Expression::MatchExpression { span, .. } => {
+                errors.push(CompileError::Unimplemented("Match expressions and pattern \
+                matching have not been implemented.", span));
+                return err(warnings, errors);
                 /*
                 let typed_primary_expression = type_check!(
                     TypedExpression::type_check(*primary_expression, &namespace, None, ""),
@@ -561,7 +563,14 @@ impl<'sc> TypedExpression<'sc> {
                             .find_method_for_type(&parent_type, method_name.suffix.clone())
                         {
                             Some(o) => o,
-                            None => todo!("Method not found error"),
+                            None => {
+                                errors.push(CompileError::MethodNotFound {
+                                    span: method_name.suffix.clone().span,
+                                    method_name: method_name.suffix.primary_name,
+                                    type_name: parent_type.friendly_type_str()
+                                });
+                                return err(warnings, errors)
+                            },
                         },
                         parent_type,
                     )

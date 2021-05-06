@@ -39,9 +39,14 @@ impl<'sc> Namespace<'sc> {
                     name: name.clone(),
                     fields: fields.clone(),
                 },
-                Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. })) => {
-                    ResolvedType::Enum { name: name.clone() }
-                }
+                Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
+                    name,
+                    variants,
+                    ..
+                })) => ResolvedType::Enum {
+                    name: name.clone(),
+                    variant_types: variants.iter().map(|x| x.r#type.clone()).collect(),
+                },
                 Some(_) => ResolvedType::Generic { name: name.clone() },
                 None => ResolvedType::Generic { name: name.clone() },
             },

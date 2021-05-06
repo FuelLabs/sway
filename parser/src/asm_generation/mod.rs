@@ -379,7 +379,15 @@ impl<'sc> HllAsmSet<'sc> {
                 data_section,
                 program_section: program_section.remove_sequential_jumps(),
             },
-            _ => todo!(),
+            HllAsmSet::PredicateMain {
+                data_section,
+                program_section,
+            } => JumpOptimizedAsmSet::ScriptMain {
+                data_section,
+                program_section: program_section.remove_sequential_jumps(),
+            },
+            HllAsmSet::Library {} => JumpOptimizedAsmSet::Library,
+            HllAsmSet::ContractAbi {} => JumpOptimizedAsmSet::ContractAbi {},
         }
     }
 }
@@ -530,6 +538,12 @@ fn convert_node_to_asm<'sc>(
                 errors,
             )
         }
-        a => todo!("{:?}", a),
+        _ => {
+            errors.push(CompileError::Unimplemented(
+                "The ASM for this construct has not been written yet.",
+                node.clone().span,
+            ));
+            return err(warnings, errors);
+        }
     }
 }

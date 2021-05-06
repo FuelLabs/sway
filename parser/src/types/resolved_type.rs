@@ -29,6 +29,7 @@ pub enum ResolvedType<'sc> {
     },
     Enum {
         name: Ident<'sc>,
+        variant_types: Vec<ResolvedType<'sc>>,
     },
     // used for recovering from errors in the ast
     ErrorRecovery,
@@ -114,11 +115,19 @@ impl<'sc> ResolvedType<'sc> {
             ResolvedType::Boolean => 1,
             ResolvedType::Unit => 0,
             ResolvedType::Generic { .. } | ResolvedType::SelfType => {
-                todo!("Properly handle generic types before this point")
+                unimplemented!("Generic types are not fully fleshed out yet...")
             }
             ResolvedType::Byte => 1,
             ResolvedType::Byte32 => 4,
-            ResolvedType::Enum { .. } => todo!(),
+            ResolvedType::Enum { variant_types, .. } => {
+                // the size of an enum is one word (for the tag) plus the maximum size
+                // of any individual variant
+                1 + variant_types
+                    .into_iter()
+                    .map(|x| x.stack_size_of())
+                    .max()
+                    .unwrap()
+            }
             ResolvedType::Struct { fields, .. } => fields
                 .iter()
                 .fold(0, |acc, x| acc + x.r#type.stack_size_of()),

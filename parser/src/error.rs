@@ -441,6 +441,14 @@ pub enum CompileError<'sc> {
     #[error("This expression was expected to return a value but no return register was specified. Provide a register \
     in the implicit return position of this asm expression to return it.")]
     InvalidAssemblyMismatchedReturn { span: Span<'sc> },
+    #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
+    UnknownEnumVariant {
+        enum_name: &'sc str,
+        variant_name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Unknown opcode: \"{op_name}\".")]
+    UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -575,6 +583,8 @@ impl<'sc> CompileError<'sc> {
             MissingImmediate { span, .. } => span,
             InvalidImmediateValue { span, .. } => span,
             InvalidAssemblyMismatchedReturn { span, .. } => span,
+            UnknownEnumVariant { span, .. } => span,
+            UnrecognizedOp { span, .. } => span,
         }
     }
 

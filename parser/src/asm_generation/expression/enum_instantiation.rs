@@ -1,5 +1,5 @@
 use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
-use crate::asm_lang::{ConstantRegister, Op, RegisterId};
+use crate::asm_lang::{ConstantRegister, Op, Opcode, RegisterId};
 use crate::error::*;
 use crate::semantics::ast_node::TypedEnumDeclaration;
 use crate::semantics::TypedExpression;
@@ -38,7 +38,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
         RegisterId::Constant(ConstantRegister::StackPointer),
         "load $sp for enum pointer",
     ));
-    let size_of_enum = 1 /* tag */ + if let Some(contents) = contents { (*contents).return_type.stack_size_of() } else { 0 };
+    let size_of_enum = 1 /* tag */ + decl.as_type().stack_size_of();
     let size_of_enum: u32 = match u32::try_from(size_of_enum) {
         Ok(o) => o,
         Err(e) => {
@@ -51,6 +51,22 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     };
 
     asm_buf.push(Op::unowned_stack_allocate_memory(size_of_enum));
+    // initialize all the memory to 0
+    // calculate the end pointer
+    let end_pointer_register = register_sequencer.next();
+    asm_buf.push(Op::new(
+        Opcode::Addi(
+            end_pointer_register.clone(),
+            pointer_register.clone(),
+            size_of_enum,
+        ),
+        decl.clone().span,
+    ));
+    // TODO when memclear-immediate is added to the specs, this can become memclear immediate.
+    asm_buf.push(Op::new(
+        Opcode::MemClear(pointer_register.clone(), end_pointer_register),
+        decl.clone().span,
+    ));
     // write the tag
     // step 2
     asm_buf.push(Op::write_register_to_memory(

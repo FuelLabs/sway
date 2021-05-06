@@ -406,7 +406,8 @@ pub fn compile<'sc, 'manifest>(
                 warnings,
                 exports: o,
             },
-            _ => todo!(),
+            // Default to compiling an empty library if there is no code or invalid state
+            _ => unimplemented!("Multiple contracts, libraries, scripts, or predicates in a single file are unsupported."),
         }
     } else {
         CompilationResult::Failure { errors, warnings }
