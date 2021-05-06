@@ -35,7 +35,7 @@ impl<'sc> ControlFlowGraph<'sc> {
 
         graph
     }
-    /// This function  looks through the control flow graph and ensures that all paths that are
+    /// This function looks through the control flow graph and ensures that all paths that are
     /// required to return a value do, indeed, return a value of the correct type.
     /// It does this by checking every function declaration in both the methods namespace
     /// and the functions namespace and validating that all paths leading to the function exit node
