@@ -33,13 +33,16 @@ impl TextDocument {
 
 // private methods
 impl TextDocument {
-    fn build_edit<'change>(&self, change: &'change TextDocumentContentChangeEvent) -> EditText<'change> {
+    fn build_edit<'change>(
+        &self,
+        change: &'change TextDocumentContentChangeEvent,
+    ) -> EditText<'change> {
         let change_text = change.text.as_str();
         let text_bytes = change_text.as_bytes();
         let text_end_byte_index = text_bytes.len();
 
         let range = match change.range {
-            Some(range ) => range,
+            Some(range) => range,
             None => {
                 let start = self.byte_to_position(0);
                 let end = self.byte_to_position(text_end_byte_index);
@@ -81,7 +84,7 @@ impl TextDocument {
 
         let row_char_index = self.text.line_to_char(row_index);
         let column_char_index = self.text.utf16_cu_to_char(column_index);
-        
+
         row_char_index + column_char_index
     }
 }

@@ -1,8 +1,8 @@
 use lspower::{LspService, Server};
 
 mod capabilities;
-mod server;
 mod core;
+mod server;
 use server::Backend;
 
 #[tokio::main]

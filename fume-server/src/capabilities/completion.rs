@@ -1,14 +1,15 @@
 use crate::core::session::Session;
-use lspower::lsp::{
-    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse,
-};
+use lspower::lsp::{CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse};
 use parser::{HllParser, Rule};
 use pest::iterators::Pairs;
 use pest::Parser;
 
 use std::sync::Arc;
 
-pub fn get_completion(session: Arc<Session>, params: CompletionParams) -> Option<CompletionResponse> {
+pub fn get_completion(
+    session: Arc<Session>,
+    params: CompletionParams,
+) -> Option<CompletionResponse> {
     let uri = params.text_document_position.text_document.uri;
 
     match session.get_document_text(&uri) {

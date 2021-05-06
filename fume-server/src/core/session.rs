@@ -25,23 +25,24 @@ impl Session {
         }
     }
 
-    pub fn update_document(&self, uri: Url, changes: Vec<TextDocumentContentChangeEvent>) -> Result<(), SessionError> {
+    pub fn update_document(
+        &self,
+        uri: Url,
+        changes: Vec<TextDocumentContentChangeEvent>,
+    ) -> Result<(), SessionError> {
         let uri = uri.as_str();
         let mut text_document = self.documents.get_mut(uri).unwrap();
 
-        changes.iter()
-            .for_each(|change| {
-                text_document.apply_change(change);
-            });
+        changes.iter().for_each(|change| {
+            text_document.apply_change(change);
+        });
 
         Ok(())
     }
 
     pub fn get_document_text(&self, uri: &Url) -> Result<String, SessionError> {
         match self.documents.get(uri.as_str()) {
-            Some(document) => {
-                Ok(document.get_text_as_string())
-            }
+            Some(document) => Ok(document.get_text_as_string()),
             None => Err(SessionError::DocumentAlreadyClosed),
         }
     }
@@ -59,6 +60,3 @@ pub enum SessionError {
     DocumentAlreadyOpened,
     DocumentAlreadyClosed,
 }
-
-
-
