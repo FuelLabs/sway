@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 
 // using https://github.com/rust-lang/cargo/blob/master/src/cargo/util/toml/mod.rs as the source of
-// implementation strateby
+// implementation strategy
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
