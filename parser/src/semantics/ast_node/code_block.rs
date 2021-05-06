@@ -71,7 +71,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         });
         if let Some(ref return_type) = return_type {
             if let Some(type_annotation) = type_annotation {
-                let convertability = return_type.is_convertable(
+                let convertability = return_type.is_convertible(
                     &type_annotation,
                     implicit_return_span.unwrap_or(other.whole_block_span.clone()),
                     help_text,

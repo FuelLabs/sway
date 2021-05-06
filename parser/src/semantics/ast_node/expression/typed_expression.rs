@@ -40,7 +40,6 @@ impl<'sc> TypedExpression<'sc> {
                     Literal::U16(_) => ResolvedType::UnsignedInteger(IntegerBits::Sixteen),
                     Literal::U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
                     Literal::U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-                    Literal::U128(_) => ResolvedType::UnsignedInteger(IntegerBits::OneTwentyEight),
                     Literal::Boolean(_) => ResolvedType::Boolean,
                     Literal::Byte(_) => ResolvedType::Byte,
                     Literal::Byte32(_) => ResolvedType::Byte32,
@@ -445,7 +444,7 @@ impl<'sc> TypedExpression<'sc> {
                         .find(|x| x.name == field.name)
                         .is_none()
                     {
-                        errors.push(CompileError::StructDoesntHaveThisField {
+                        errors.push(CompileError::StructDoesNotHaveField {
                             field_name: field.name.primary_name.clone(),
                             struct_name: definition.name.primary_name,
                             span: field.span,
@@ -704,7 +703,7 @@ impl<'sc> TypedExpression<'sc> {
         };
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
-            let convertability = typed_expression.return_type.is_convertable(
+            let convertability = typed_expression.return_type.is_convertible(
                 &type_annotation,
                 expr_span.clone(),
                 help_text,

@@ -144,7 +144,6 @@ impl fmt::Display for DataSection<'_> {
                 Literal::U16(num) => format!(".u16 {:#04x}", num),
                 Literal::U32(num) => format!(".u32 {:#04x}", num),
                 Literal::U64(num) => format!(".u64 {:#04x}", num),
-                Literal::U128(num) => format!(".u128 {:#04x}", num),
                 Literal::Boolean(b) => format!(".bool {}", if *b { "0x01" } else { "0x00" }),
                 Literal::String(st) => format!(".str \"{}\"", st),
                 Literal::Byte(b) => format!(".byte {:#08b}", b),

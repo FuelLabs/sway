@@ -379,7 +379,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 })
                 .collect();
         for (stmt, span) in return_statements {
-            let convertability = stmt.return_type.is_convertable(
+            let convertability = stmt.return_type.is_convertible(
                 &return_type,
                 span.clone(),
                 "Function body's return type does not match up with its return type annotation.",

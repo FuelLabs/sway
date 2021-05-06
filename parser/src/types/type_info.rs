@@ -30,7 +30,6 @@ pub enum IntegerBits {
     Sixteen,
     ThirtyTwo,
     SixtyFour,
-    OneTwentyEight,
 }
 
 impl<'sc> TypeInfo<'sc> {
@@ -65,7 +64,6 @@ impl<'sc> TypeInfo<'sc> {
                 "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
                 "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
                 "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                "u128" => TypeInfo::UnsignedInteger(IntegerBits::OneTwentyEight),
                 "bool" => TypeInfo::Boolean,
                 "string" => TypeInfo::String,
                 "unit" => TypeInfo::Unit,

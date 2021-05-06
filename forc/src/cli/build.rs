@@ -330,11 +330,6 @@ fn format_warning(input: &str, err: &parser::CompileWarning) {
     );
 
     let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-    fmt.add(
-        buffer.span(),
-        Some("this is the whole program\nwhat a nice program!".to_string()),
-        Style::Error,
-    );
 
     println!("{}", formatted);
 }

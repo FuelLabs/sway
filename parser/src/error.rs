@@ -377,7 +377,7 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
     },
     #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
-    StructDoesntHaveThisField {
+    StructDoesNotHaveField {
         field_name: &'sc str,
         struct_name: &'sc str,
         span: Span<'sc>,
@@ -565,7 +565,7 @@ impl<'sc> CompileError<'sc> {
             AccessedFieldOfNonStruct { span, .. } => span,
             MethodOnNonValue { span, .. } => span,
             StructMissingField { span, .. } => span,
-            StructDoesntHaveThisField { span, .. } => span,
+            StructDoesNotHaveField { span, .. } => span,
             MethodNotFound { span, .. } => span,
             NonFinalAsteriskInPath { span, .. } => span,
             ModuleNotFound { span, .. } => span,

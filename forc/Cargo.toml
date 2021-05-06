@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 parser      = { path = "../parser" }
 structopt   = "0.3"
-source-span = "2.2"
+source-span = "2.4"
 termcolor   = "1.1"
 line-col    = "0.2"
 toml        = "0.5"

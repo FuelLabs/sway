@@ -53,7 +53,6 @@ impl<'sc> ResolvedType<'sc> {
                     Sixteen => "u16",
                     ThirtyTwo => "u32",
                     SixtyFour => "u64",
-                    OneTwentyEight => "u128",
                 }
                 .into()
             }
@@ -74,7 +73,7 @@ impl<'sc> ResolvedType<'sc> {
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
-    pub(crate) fn is_convertable(
+    pub(crate) fn is_convertible(
         &self,
         other: &ResolvedType<'sc>,
         debug_span: Span<'sc>,
@@ -167,13 +166,6 @@ impl<'sc> ResolvedType<'sc> {
                     cast_to: other.clone(),
                 }),
                 _ => Ok(()),
-            },
-            UnsignedInteger(IntegerBits::OneTwentyEight) => match other {
-                UnsignedInteger(IntegerBits::OneTwentyEight) => Ok(()),
-                _ => Err(Warning::LossOfPrecision {
-                    initial_type: self.clone(),
-                    cast_to: other.clone(),
-                }),
             },
             _ => unreachable!(),
         }

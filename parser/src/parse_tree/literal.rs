@@ -11,7 +11,6 @@ pub(crate) enum Literal<'sc> {
     U16(u16),
     U32(u32),
     U64(u64),
-    U128(u128),
     String(&'sc str),
     Boolean(bool),
     Byte(u8),
@@ -69,17 +68,6 @@ impl<'sc> Literal<'sc> {
                             .trim()
                             .parse()
                             .map(Literal::U64)
-                            .map_err(|_| {
-                                CompileError::Internal(
-                                    "Called incorrect internal parser on literal type.",
-                                    int_inner.as_span(),
-                                )
-                            }),
-                        Rule::u128_integer => int_inner
-                            .as_str()
-                            .trim()
-                            .parse()
-                            .map(Literal::U128)
                             .map_err(|_| {
                                 CompileError::Internal(
                                     "Called incorrect internal parser on literal type.",

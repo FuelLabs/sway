@@ -76,7 +76,6 @@ impl<'sc> TypedExpressionVariant<'sc> {
                     Literal::U16(content) => content.to_string(),
                     Literal::U32(content) => content.to_string(),
                     Literal::U64(content) => content.to_string(),
-                    Literal::U128(content) => content.to_string(),
                     Literal::String(content) => content.to_string(),
                     Literal::Boolean(content) => content.to_string(),
                     Literal::Byte(content) => content.to_string(),
