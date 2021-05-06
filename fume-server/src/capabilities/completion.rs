@@ -1,6 +1,6 @@
-use crate::session::Session;
+use crate::core::session::Session;
 use lspower::lsp::{
-    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse, InsertTextFormat,
+    CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse,
 };
 use parser::{HllParser, Rule};
 use pest::iterators::Pairs;
@@ -8,13 +8,13 @@ use pest::Parser;
 
 use std::sync::Arc;
 
-pub fn completion(session: Arc<Session>, params: CompletionParams) -> Option<CompletionResponse> {
+pub fn get_completion(session: Arc<Session>, params: CompletionParams) -> Option<CompletionResponse> {
     let uri = params.text_document_position.text_document.uri;
 
-    match session.get_document(&uri) {
+    match session.get_document_text(&uri) {
         Ok(document) => match HllParser::parse(Rule::program, &document) {
             Ok(rules) => {
-                let completion_items = get_completion(rules);
+                let completion_items = get_completion_items(rules);
                 Some(CompletionResponse::Array(completion_items))
             }
             Err(e) => None,
@@ -23,7 +23,7 @@ pub fn completion(session: Arc<Session>, params: CompletionParams) -> Option<Com
     }
 }
 
-fn get_completion(pairs: Pairs<Rule>) -> Vec<CompletionItem> {
+fn get_completion_items(pairs: Pairs<Rule>) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
     for rule in pairs.flatten() {
@@ -62,7 +62,6 @@ fn create_completion_item(name: &str, kind: CompletionItemKind) -> CompletionIte
     CompletionItem {
         label: name.to_string(),
         kind: Some(kind),
-        //insert_text_format: Some(InsertTextFormat::Snippet),
         ..Default::default()
     }
 }
