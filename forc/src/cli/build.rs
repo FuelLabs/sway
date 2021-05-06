@@ -95,7 +95,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     project_path.push(dep_path);
 
     // compile the dependencies of this dependency
-    //this should detect circular dependencies
+    // this should detect circular dependencies
     let manifest_dir = match find_manifest_dir(&project_path) {
         Some(o) => o,
         None => return Err("Manifest not found for dependency.".into()),
