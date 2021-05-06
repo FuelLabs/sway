@@ -1,4 +1,5 @@
 use super::*;
+use crate::parse_tree::AsmOp;
 use crate::semantics::ast_node::*;
 use crate::Ident;
 #[derive(Clone, Debug)]
@@ -6,7 +7,8 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     Literal(Literal<'sc>),
     FunctionApplication {
         name: CallPath<'sc>,
-        arguments: Vec<TypedExpression<'sc>>,
+        arguments: Vec<(Ident<'sc>, TypedExpression<'sc>)>,
+        function_body: TypedCodeBlock<'sc>,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,
@@ -35,7 +37,10 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         r#else: Option<Box<TypedExpression<'sc>>>,
     },
     AsmExpression {
-        asm: AsmExpression<'sc>,
+        registers: Vec<TypedAsmRegisterDeclaration<'sc>>,
+        body: Vec<AsmOp<'sc>>,
+        returns: Option<(AsmRegister, Span<'sc>)>,
+        whole_block_span: Span<'sc>,
     },
     // like a variable expression but it has multiple parts,
     // like looking up a field in a struct
@@ -47,12 +52,18 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     },
     EnumInstantiation {
         /// for printing
-        enum_name: Ident<'sc>,
+        enum_decl: TypedEnumDeclaration<'sc>,
         /// for printing
         variant_name: Ident<'sc>,
         tag: usize,
         contents: Option<Box<TypedExpression<'sc>>>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct TypedAsmRegisterDeclaration<'sc> {
+    pub(crate) initializer: Option<TypedExpression<'sc>>,
+    pub(crate) name: &'sc str,
 }
 
 impl<'sc> TypedExpressionVariant<'sc> {
@@ -97,13 +108,13 @@ impl<'sc> TypedExpressionVariant<'sc> {
             }
             TypedExpressionVariant::EnumInstantiation {
                 tag,
-                enum_name,
+                enum_decl,
                 variant_name,
                 ..
             } => {
                 format!(
                     "{}::{} enum instantiation (tag: {})",
-                    enum_name.primary_name, variant_name.primary_name, tag
+                    enum_decl.name.primary_name, variant_name.primary_name, tag
                 )
             }
         }

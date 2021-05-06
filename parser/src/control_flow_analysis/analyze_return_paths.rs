@@ -25,9 +25,8 @@ impl<'sc> ControlFlowGraph<'sc> {
         };
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
-        for ast_entrypoint in ast.root_nodes.iter() {
+        for ast_entrypoint in ast.all_nodes().iter() {
             let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves);
-
             match l_leaves {
                 NodeConnection::NextStep(nodes) => leaves = nodes,
                 _ => (),
@@ -139,7 +138,11 @@ fn connect_node<'sc>(
             // An abridged version of the dead code analysis for a while loop
             // since we don't really care about what the loop body contains when detecting
             // divergent paths
-            NodeConnection::NextStep(vec![graph.add_node(node.into())])
+            let node = graph.add_node(node.into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "while loop entry".into());
+            }
+            NodeConnection::NextStep(vec![node])
         }
         TypedAstNodeContent::Expression(TypedExpression { .. }) => {
             let entry = graph.add_node(node.into());

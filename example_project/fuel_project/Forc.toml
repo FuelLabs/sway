@@ -1,0 +1,8 @@
+[project]
+author  = "Alex Hansen"
+license = "MIT"
+name = "Fuel example project"
+
+
+[dependencies]
+std = { path = "../../stdlib" }

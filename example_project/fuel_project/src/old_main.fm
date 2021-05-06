@@ -1,0 +1,61 @@
+script {
+  struct Fuel {
+    john: u64,
+    nick: u64,
+  }
+
+  impl Fuel {
+    fn fuel_add(self, other: Self) -> Self {
+      Fuel {
+        john: self.john + other.john,
+        nick: self.nick + other.nick,
+      }
+    }
+  }
+
+  fn foo(a: u64) -> u64 {
+    let st =  Fuel { john: a, nick: a, };
+    st.john
+  }
+
+  fn main() -> u64 {
+    let z = Fuel {
+      john: 10,
+      nick: 11u64,
+    };
+    let x = Fuel {
+      john: 10,
+      nick: 11u64,
+    };
+    
+//    return if true { foo(5u64) };
+    return z.john;
+//    x.fuel_add(z); TODO fix this code block return type in control flow analysis
+// to recreate that scenario, remove the implicit return
+    5u64
+  }
+
+
+
+
+    /*
+
+    if x < 5 {
+      return true;
+    }
+    else {
+      return 5;
+    };
+    fn main() {
+      let a = 6 + 2;
+      a.a_function(10);
+
+    }
+    impl ExampleTrait for u64 {
+      fn a_function(a: u64) -> u64 {
+        a
+      }
+    }
+    */
+
+}

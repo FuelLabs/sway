@@ -1,10 +1,11 @@
 use super::*;
+use crate::error::err;
 use crate::semantics::ast_node::TypedStructExpressionField;
 use crate::types::ResolvedType;
 use crate::{
     parse_tree::Visibility,
     semantics::ast_node::{TypedExpressionVariant, TypedStructDeclaration, TypedTraitDeclaration},
-    Ident, TreeType,
+    CompileError, Ident, TreeType,
 };
 use crate::{
     semantics::{
@@ -99,7 +100,7 @@ impl<'sc> ControlFlowGraph<'sc> {
     pub(crate) fn construct_dead_code_graph(
         ast: &TypedParseTree<'sc>,
         tree_type: TreeType,
-    ) -> Self {
+    ) -> Result<Self, CompileError<'sc>> {
         let mut graph = ControlFlowGraph {
             graph: Graph::new(),
             entry_points: vec![],
@@ -108,9 +109,9 @@ impl<'sc> ControlFlowGraph<'sc> {
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
-        for ast_entrypoint in ast.root_nodes.iter() {
+        for ast_entrypoint in ast.all_nodes().iter() {
             let (l_leaves, _new_exit_node) =
-                connect_node(ast_entrypoint, &mut graph, &leaves, exit_node, tree_type);
+                connect_node(ast_entrypoint, &mut graph, &leaves, exit_node, tree_type)?;
 
             leaves = l_leaves;
         }
@@ -173,8 +174,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                 })
                 .collect(),
         };
-        graph.visualize();
-        graph
+        Ok(graph)
     }
 }
 fn connect_node<'sc>(
@@ -183,10 +183,10 @@ fn connect_node<'sc>(
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: TreeType,
-) -> (Vec<NodeIndex>, Option<NodeIndex>) {
+) -> Result<(Vec<NodeIndex>, Option<NodeIndex>), CompileError<'sc>> {
     //    let mut graph = graph.clone();
     let span = node.span.clone();
-    match &node.content {
+    Ok(match &node.content {
         TypedAstNodeContent::ReturnStatement(_)
         | TypedAstNodeContent::ImplicitReturnExpression(_) => {
             let this_index = graph.add_node(node.into());
@@ -221,7 +221,7 @@ fn connect_node<'sc>(
             );
             let mut leaves = vec![entry];
             let (l_leaves, _l_exit_node) =
-                depth_first_insertion_code_block(body, graph, &leaves, exit_node, tree_type);
+                depth_first_insertion_code_block(body, graph, &leaves, exit_node, tree_type)?;
             // insert edges from end of block back to beginning of it
             for leaf in &l_leaves {
                 graph.add_edge(*leaf, entry, "loop repeats".into());
@@ -235,6 +235,7 @@ fn connect_node<'sc>(
         }
         TypedAstNodeContent::Expression(TypedExpression {
             expression: expr_variant,
+            span,
             ..
         }) => {
             let entry = graph.add_node(node.into());
@@ -245,7 +246,15 @@ fn connect_node<'sc>(
             }
 
             (
-                connect_expression(expr_variant, graph, &[entry], exit_node, "", tree_type),
+                connect_expression(
+                    expr_variant,
+                    graph,
+                    &[entry],
+                    exit_node,
+                    "",
+                    tree_type,
+                    span.clone(),
+                )?,
                 exit_node,
             )
         }
@@ -257,11 +266,11 @@ fn connect_node<'sc>(
                 graph.add_edge(*leaf, decl_node, "".into());
             }
             (
-                connect_declaration(&decl, graph, decl_node, span, exit_node, tree_type),
+                connect_declaration(&decl, graph, decl_node, span, exit_node, tree_type)?,
                 exit_node,
             )
         }
-    }
+    })
 }
 
 fn connect_declaration<'sc>(
@@ -271,7 +280,7 @@ fn connect_declaration<'sc>(
     span: Span<'sc>,
     exit_node: Option<NodeIndex>,
     tree_type: TreeType,
-) -> Vec<NodeIndex> {
+) -> Result<Vec<NodeIndex>, CompileError<'sc>> {
     use TypedDeclaration::*;
     match decl {
         VariableDeclaration(TypedVariableDeclaration { body, .. }) => connect_expression(
@@ -281,22 +290,23 @@ fn connect_declaration<'sc>(
             exit_node,
             "variable instantiation",
             tree_type,
+            body.clone().span,
         ),
         FunctionDeclaration(fn_decl) => {
             connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type);
-            vec![]
+            Ok(vec![])
         }
         TraitDeclaration(trait_decl) => {
             connect_trait_declaration(&trait_decl, graph, entry_node);
-            vec![]
+            Ok(vec![])
         }
         StructDeclaration(struct_decl) => {
             connect_struct_declaration(&struct_decl, graph, entry_node, tree_type);
-            vec![]
+            Ok(vec![])
         }
         EnumDeclaration(enum_decl) => {
             connect_enum_declaration(&enum_decl, graph, entry_node);
-            vec![]
+            Ok(vec![])
         }
         Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
             &rhs.expression,
@@ -305,6 +315,7 @@ fn connect_declaration<'sc>(
             exit_node,
             "variable reassignment",
             tree_type,
+            rhs.clone().span,
         ),
         ImplTrait {
             trait_name,
@@ -312,7 +323,7 @@ fn connect_declaration<'sc>(
             ..
         } => {
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type);
-            vec![]
+            Ok(vec![])
         }
         SideEffect | ErrorRecovery => {
             unreachable!("These are error cases and should be removed in the type checking stage. ")
@@ -457,7 +468,7 @@ fn connect_typed_fn_decl<'sc>(
     _span: Span<'sc>,
     exit_node: Option<NodeIndex>,
     tree_type: TreeType,
-) {
+) -> Result<(), CompileError<'sc>> {
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.primary_name).into());
     let (_exit_nodes, _exit_node) = depth_first_insertion_code_block(
         &fn_decl.body,
@@ -465,7 +476,7 @@ fn connect_typed_fn_decl<'sc>(
         &[entry_node],
         Some(fn_exit_node),
         tree_type,
-    );
+    )?;
     if let Some(exit_node) = exit_node {
         graph.add_edge(fn_exit_node, exit_node, "".into());
     }
@@ -479,6 +490,7 @@ fn connect_typed_fn_decl<'sc>(
     graph
         .namespace
         .insert_function(fn_decl.name.clone(), namespace_entry);
+    Ok(())
 }
 
 fn depth_first_insertion_code_block<'sc>(
@@ -487,15 +499,15 @@ fn depth_first_insertion_code_block<'sc>(
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: TreeType,
-) -> (Vec<NodeIndex>, Option<NodeIndex>) {
+) -> Result<(Vec<NodeIndex>, Option<NodeIndex>), CompileError<'sc>> {
     let mut leaves = leaves.to_vec();
     let mut exit_node = exit_node.clone();
     for node in node_content.contents.iter() {
-        let (this_node, l_exit_node) = connect_node(node, graph, &leaves, exit_node, tree_type);
+        let (this_node, l_exit_node) = connect_node(node, graph, &leaves, exit_node, tree_type)?;
         leaves = this_node;
         exit_node = l_exit_node;
     }
-    (leaves, exit_node)
+    Ok((leaves, exit_node))
 }
 
 /// connects any inner parts of an expression to the graph
@@ -507,7 +519,8 @@ fn connect_expression<'sc>(
     exit_node: Option<NodeIndex>,
     label: &'static str,
     tree_type: TreeType,
-) -> Vec<NodeIndex> {
+    expression_span: Span<'sc>,
+) -> Result<Vec<NodeIndex>, CompileError<'sc>> {
     use TypedExpressionVariant::*;
     match expr_variant {
         FunctionApplication {
@@ -542,7 +555,7 @@ fn connect_expression<'sc>(
             }
             // we evaluate every one of the function arguments
             let mut current_leaf = vec![fn_entrypoint];
-            for arg in arguments {
+            for (_name, arg) in arguments {
                 current_leaf = connect_expression(
                     &arg.expression,
                     graph,
@@ -550,7 +563,8 @@ fn connect_expression<'sc>(
                     exit_node,
                     "arg eval",
                     tree_type,
-                );
+                    arg.clone().span,
+                )?;
             }
             // connect final leaf to fn exit
             for leaf in current_leaf {
@@ -560,12 +574,12 @@ fn connect_expression<'sc>(
             if !is_external {
                 if let Some(exit_node) = exit_node {
                     graph.add_edge(fn_exit_point, exit_node, "".into());
-                    vec![exit_node]
+                    Ok(vec![exit_node])
                 } else {
-                    vec![fn_exit_point]
+                    Ok(vec![fn_exit_point])
                 }
             } else {
-                vec![fn_entrypoint]
+                Ok(vec![fn_entrypoint])
             }
         }
         Literal(_) => {
@@ -573,16 +587,21 @@ fn connect_expression<'sc>(
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "".into());
             }
-            vec![node]
+            Ok(vec![node])
         }
-        VariableExpression { .. } => leaves.to_vec(),
+        VariableExpression { .. } => Ok(leaves.to_vec()),
         EnumInstantiation {
-            enum_name,
+            enum_decl,
             variant_name,
             ..
         } => {
             // connect this particular instantiation to its variants declaration
-            connect_enum_instantiation(enum_name, variant_name, graph, leaves)
+            Ok(connect_enum_instantiation(
+                enum_decl,
+                variant_name,
+                graph,
+                leaves,
+            ))
         }
         IfExp {
             condition,
@@ -596,7 +615,8 @@ fn connect_expression<'sc>(
                 exit_node,
                 "",
                 tree_type,
-            );
+                (*condition).span.clone(),
+            )?;
             let then_expr = connect_expression(
                 &(*then).expression,
                 graph,
@@ -604,7 +624,8 @@ fn connect_expression<'sc>(
                 exit_node,
                 "then branch",
                 tree_type,
-            );
+                (*then).span.clone(),
+            )?;
 
             let else_expr = if let Some(else_expr) = r#else {
                 connect_expression(
@@ -614,28 +635,29 @@ fn connect_expression<'sc>(
                     exit_node,
                     "else branch",
                     tree_type,
-                )
+                    else_expr.clone().span,
+                )?
             } else {
                 vec![]
             };
 
-            [then_expr, else_expr].concat()
+            Ok([then_expr, else_expr].concat())
         }
-        CodeBlock(TypedCodeBlock { contents }) => {
+        CodeBlock(TypedCodeBlock { contents, .. }) => {
             let block_entry = graph.add_node("Code block entry".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, block_entry, label.into());
             }
             let mut current_leaf = vec![block_entry];
             for node in contents {
-                current_leaf = connect_node(node, graph, &current_leaf, exit_node, tree_type).0;
+                current_leaf = connect_node(node, graph, &current_leaf, exit_node, tree_type)?.0;
             }
 
             let block_exit = graph.add_node("Code block exit".into());
             for leaf in current_leaf {
                 graph.add_edge(leaf, block_exit, "".into());
             }
-            vec![block_exit]
+            Ok(vec![block_exit])
         }
         StructExpression {
             struct_name,
@@ -666,14 +688,15 @@ fn connect_expression<'sc>(
                     exit_node,
                     "struct field instantiation",
                     tree_type,
-                );
+                    value.clone().span,
+                )?;
             }
 
             // connect the final field to the exit
             for leaf in current_leaf {
                 graph.add_edge(leaf, exit, "".into());
             }
-            vec![exit]
+            Ok(vec![exit])
         }
         SubfieldExpression {
             name,
@@ -685,7 +708,7 @@ fn connect_expression<'sc>(
                 ResolvedType::Struct { .. }
             ));
             let resolved_type_of_parent = match resolved_type_of_parent {
-                ResolvedType::Struct { name } => name.clone(),
+                ResolvedType::Struct { name, .. } => name.clone(),
                 _ => panic!("Called subfvield on a non-struct"),
             };
             let field_name = name.last().unwrap();
@@ -709,18 +732,24 @@ fn connect_expression<'sc>(
                 graph.add_edge(*leaf, this_ix, "".into());
             }
             graph.add_edge(this_ix, field_ix, "".into());
-            vec![this_ix]
+            Ok(vec![this_ix])
         }
-        a => todo!("{:?}", a),
+        a => {
+            return Err(CompileError::Unimplemented(
+                "Unimplemented dead code analysis for this.",
+                expression_span,
+            ));
+        }
     }
 }
 
 fn connect_enum_instantiation<'sc>(
-    enum_name: &Ident<'sc>,
+    enum_decl: &TypedEnumDeclaration<'sc>,
     variant_name: &Ident<'sc>,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
 ) -> Vec<NodeIndex> {
+    let enum_name = &enum_decl.name;
     let (decl_ix, variant_index) = graph
         .namespace
         .find_enum_variant_index(enum_name, variant_name)

@@ -9,7 +9,8 @@ use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteC
 
 use crate::manifest::{Dependency, DependencyDetails, Manifest};
 use parser::{
-    Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+    CompilationResult, Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration,
+    TypedFunctionDeclaration,
 };
 use std::{fs, path::PathBuf};
 
@@ -45,7 +46,9 @@ pub(crate) fn build(path: Option<String>) -> Result<(), String> {
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-    let _main = compile(main_file, &manifest.project.name, &namespace)?;
+    let main = compile(main_file, &manifest.project.name, &namespace)?;
+
+    println!("Generated assembly was: \n{}", main);
 
     Ok(())
 }
@@ -75,8 +78,6 @@ fn compile_dependency_lib<'source, 'manifest>(
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
 ) -> Result<(), String> {
-    //todo!("For tomorrow: This needs to accumulate dependencies over time and build up the dependency namespace. Then, colon delineated paths in the compiler
-    // need to look in the imports namespace.");
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
             return Err("Simple version-spec dependencies require a registry.".into())
@@ -113,7 +114,7 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
-    let compiled = compile(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
+    let compiled = compile_library(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
 
     namespace.insert_module(dependency_name.to_string(), compiled.namespace);
 
@@ -143,22 +144,22 @@ fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     }
 }
 
-fn compile<'source, 'manifest>(
+fn compile_library<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
 ) -> Result<LibraryExports<'source>, String> {
     let res = parser::compile(&source, namespace);
     match res {
-        Ok((compiled, warnings)) => {
+        CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
                 format_warning(&source, warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled {:?}.", proj_name));
+                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
             } else {
                 let _ = write_yellow(&format!(
-                    "Compiled {:?} with {} {}.",
+                    "Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -168,9 +169,121 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(compiled.library_exports)
+            Ok(exports)
         }
-        Err((errors, warnings)) => {
+        CompilationResult::Failure { errors, warnings } => {
+            let e_len = errors.len();
+
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+
+            errors.into_iter().for_each(|e| format_err(&source, e));
+
+            write_red(format!(
+                "Aborting due to {} {}.",
+                e_len,
+                if e_len > 1 { "errors" } else { "error" }
+            ))
+            .unwrap();
+            Err(format!("Failed to compile {}", proj_name))
+        }
+        _ => {
+            return Err(format!(
+                "Project \"{}\" was included as a dependency but it is not a library.",
+                proj_name
+            ))
+        }
+    }
+}
+fn compile<'source, 'manifest>(
+    source: &'source str,
+    proj_name: &str,
+    namespace: &Namespace<'source>,
+) -> Result<parser::FinalizedAsm<'source>, String> {
+    let res = parser::compile(&source, namespace);
+    match res {
+        CompilationResult::ScriptAsm { asm, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled script {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled script {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(asm)
+        }
+        CompilationResult::PredicateAsm { asm, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled predicate {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled predicate {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(asm)
+        }
+        CompilationResult::ContractAbi { abi, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled contract {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled contract {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(parser::FinalizedAsm::ContractAbi)
+        }
+        CompilationResult::Library { exports, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled library {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(parser::FinalizedAsm::Library)
+        }
+        CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {

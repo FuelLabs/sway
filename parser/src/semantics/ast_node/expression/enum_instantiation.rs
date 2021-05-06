@@ -24,7 +24,14 @@ pub(crate) fn instantiate_enum<'sc>(
         .find(|x| x.name.primary_name == enum_field_name.primary_name)
     {
         Some(o) => (o.r#type.clone(), o.tag, o.name.clone()),
-        None => todo!("Field does not exist on this enum error"),
+        None => {
+            errors.push(CompileError::UnknownEnumVariant {
+                enum_name: enum_decl.name.primary_name,
+                variant_name: enum_field_name.primary_name,
+                span: enum_field_name.clone().span,
+            });
+            return err(warnings, errors);
+        }
     };
 
     // If there is an instantiator, it must match up with the type. If there is not an
@@ -37,10 +44,11 @@ pub(crate) fn instantiate_enum<'sc>(
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
-                    enum_name: enum_decl.name.clone(),
+                    enum_decl,
                     variant_name,
                 },
                 is_constant: IsConstant::No,
+                span: enum_field_name.span.clone(),
             },
             warnings,
             errors,
@@ -67,10 +75,11 @@ pub(crate) fn instantiate_enum<'sc>(
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),
-                        enum_name: enum_decl.name.clone(),
+                        enum_decl,
                         variant_name,
                     },
                     is_constant: IsConstant::No,
+                    span: enum_field_name.span.clone(),
                 },
                 warnings,
                 errors,

@@ -8,7 +8,7 @@ use pest::Span;
 use std::collections::HashMap;
 
 mod asm;
-pub(crate) use asm::AsmExpression;
+pub(crate) use asm::*;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Expression<'sc> {

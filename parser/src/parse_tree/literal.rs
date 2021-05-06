@@ -5,7 +5,7 @@ use pest::iterators::Pair;
 use pest::Span;
 use std::convert::TryInto;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum Literal<'sc> {
     U8(u8),
     U16(u16),

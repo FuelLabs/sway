@@ -46,10 +46,23 @@ impl<'sc> TypedDeclaration<'sc> {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body, ..
                 }) => body.return_type.clone(),
-                TypedDeclaration::FunctionDeclaration { .. } => todo!("fn pointer type"),
-                TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) => {
-                    ResolvedType::Struct { name: name.clone() }
+                TypedDeclaration::FunctionDeclaration { .. } => {
+                    return err(
+                        vec![],
+                        vec![CompileError::Unimplemented(
+                            "Function pointers have not yet been implemented.",
+                            self.span(),
+                        )],
+                    )
                 }
+                TypedDeclaration::StructDeclaration(TypedStructDeclaration {
+                    name,
+                    fields,
+                    ..
+                }) => ResolvedType::Struct {
+                    name: name.clone(),
+                    fields: fields.clone(),
+                },
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
                     rhs.return_type.clone()
                 }
@@ -124,7 +137,7 @@ pub struct TypedStructDeclaration<'sc> {
     pub(crate) visibility: Visibility,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TypedStructField<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) r#type: ResolvedType<'sc>,
@@ -152,6 +165,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
     pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
         ResolvedType::Enum {
             name: self.name.clone(),
+            variant_types: self.variants.iter().map(|x| x.r#type.clone()).collect(),
         }
     }
 }
@@ -253,6 +267,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         expression: TypedExpressionVariant::FunctionParameter,
                         return_type: r#type,
                         is_constant: IsConstant::No,
+                        span: name.span.clone(),
                     },
                     is_mutable: false, // TODO allow mutable function params?
                 }),
@@ -274,18 +289,23 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         };
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) =
-            type_check!(
-                TypedCodeBlock::type_check(
-                    body,
-                    &namespace,
-                    Some(return_type.clone()),
-                    "Function body's return type does not match up with its return type annotation."
-                ),
-                (TypedCodeBlock { contents: vec![] }, Some(ResolvedType::ErrorRecovery)),
-                warnings,
-                errors
-            );
+        let (body, _implicit_block_return) = type_check!(
+            TypedCodeBlock::type_check(
+                body.clone(),
+                &namespace,
+                Some(return_type.clone()),
+                "Function body's return type does not match up with its return type annotation."
+            ),
+            (
+                TypedCodeBlock {
+                    contents: vec![],
+                    whole_block_span: body.whole_block_span.clone()
+                },
+                Some(ResolvedType::ErrorRecovery)
+            ),
+            warnings,
+            errors
+        );
 
         // check the generic types in the arguments, make sure they are in the type
         // scope

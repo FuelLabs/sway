@@ -3,19 +3,23 @@ extern crate pest_derive;
 #[macro_use]
 mod error;
 
+mod asm_generation;
+mod asm_lang;
 mod control_flow_analysis;
 mod ident;
 mod parse_tree;
 mod parser;
 mod semantics;
 
-use crate::error::*;
 use crate::parse_tree::*;
 use crate::parser::{HllParser, Rule};
+use crate::{asm_generation::compile_ast_to_asm, error::*};
+pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
 use semantics::{TreeType, TypedParseTree};
+use std::collections::HashMap;
 
 pub(crate) mod types;
 pub(crate) mod utils;
@@ -147,6 +151,29 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
     ok(res, warnings, errors)
 }
 
+pub enum CompilationResult<'sc> {
+    ContractAbi {
+        abi: HashMap<usize, FinalizedAsm<'sc>>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    ScriptAsm {
+        asm: FinalizedAsm<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    PredicateAsm {
+        asm: FinalizedAsm<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Library {
+        exports: LibraryExports<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Failure {
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+    },
+}
+
 fn get_start(err: &pest::error::Error<Rule>) -> usize {
     match err.location {
         pest::error::InputLocation::Pos(num) => num,
@@ -164,10 +191,7 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
 pub fn compile<'sc, 'manifest>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
-) -> Result<
-    (HllTypedParseTree<'sc>, Vec<CompileWarning<'sc>>),
-    (Vec<CompileError<'sc>>, Vec<CompileWarning<'sc>>),
-> {
+) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = eval!(
@@ -175,7 +199,7 @@ pub fn compile<'sc, 'manifest>(
         warnings,
         errors,
         input,
-        return Err((errors, warnings))
+        return CompilationResult::Failure { errors, warnings }
     );
 
     let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
@@ -279,9 +303,10 @@ pub fn compile<'sc, 'manifest>(
             trees: vec![],
         };
         for (ref name, parse_tree) in res {
-            exports
-                .namespace
-                .insert_module(name.primary_name.to_string(), parse_tree.namespace.clone());
+            exports.namespace.insert_module(
+                name.primary_name.to_string(),
+                parse_tree.namespace().clone(),
+            );
             exports.trees.push(parse_tree);
         }
         exports
@@ -290,7 +315,7 @@ pub fn compile<'sc, 'manifest>(
     // It is necessary that the syntax tree is well-formed for control flow analysis
     // to be correct.
     if !errors.is_empty() {
-        return Err((errors, warnings));
+        return CompilationResult::Failure { errors, warnings };
     }
 
     // perform control flow analysis on each branch
@@ -320,19 +345,72 @@ pub fn compile<'sc, 'manifest>(
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
+    // for each syntax tree, generate assembly.
+    let predicate_asm = (|| {
+        if let Some(tree) = predicate_ast {
+            Some(type_check!(
+                compile_ast_to_asm(tree),
+                return None,
+                warnings,
+                errors
+            ))
+        } else {
+            None
+        }
+    })();
+
+    let contract_asm = (|| {
+        if let Some(tree) = contract_ast {
+            Some(type_check!(
+                compile_ast_to_asm(tree),
+                return None,
+                warnings,
+                errors
+            ))
+        } else {
+            None
+        }
+    })();
+
+    let script_asm = (|| {
+        if let Some(tree) = script_ast {
+            Some(type_check!(
+                compile_ast_to_asm(tree),
+                return None,
+                warnings,
+                errors
+            ))
+        } else {
+            None
+        }
+    })();
 
     if errors.is_empty() {
-        Ok((
-            HllTypedParseTree {
-                contract_ast,
-                script_ast,
-                predicate_ast,
-                library_exports,
+        // TODO move this check earlier and don't compile all of them if there is only one
+        match (predicate_asm, contract_asm, script_asm, library_exports) {
+            (Some(pred), None, None, o) if o.trees.is_empty() => CompilationResult::PredicateAsm {
+                asm: pred,
+                warnings,
             },
-            warnings,
-        ))
+            (None, Some(contract), None, o) if o.trees.is_empty() => {
+                CompilationResult::ContractAbi {
+                    abi: Default::default(),
+                    warnings,
+                }
+            }
+            (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::ScriptAsm {
+                asm: script,
+                warnings,
+            },
+            (None, None, None, o) if !o.trees.is_empty() => CompilationResult::Library {
+                warnings,
+                exports: o,
+            },
+            // Default to compiling an empty library if there is no code or invalid state
+            _ => unimplemented!("Multiple contracts, libraries, scripts, or predicates in a single file are unsupported."),
+        }
     } else {
-        Err((errors, warnings))
+        CompilationResult::Failure { errors, warnings }
     }
 }
 
@@ -342,7 +420,10 @@ fn perform_control_flow_analysis<'sc>(
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     match tree {
         Some(tree) => {
-            let graph = ControlFlowGraph::construct_dead_code_graph(tree, tree_type);
+            let graph = match ControlFlowGraph::construct_dead_code_graph(tree, tree_type) {
+                Ok(o) => o,
+                Err(e) => return (vec![], vec![e]),
+            };
             let mut warnings = vec![];
             let mut errors = vec![];
             warnings.append(&mut graph.find_dead_code());
@@ -359,7 +440,10 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     for tree in &lib.trees {
-        let graph = ControlFlowGraph::construct_dead_code_graph(tree, TreeType::Library);
+        let graph = match ControlFlowGraph::construct_dead_code_graph(tree, TreeType::Library) {
+            Ok(o) => o,
+            Err(e) => return (vec![], vec![e]),
+        };
         warnings.append(&mut graph.find_dead_code());
         let graph = ControlFlowGraph::construct_return_path_graph(tree);
         errors.append(&mut graph.analyze_return_paths());
@@ -563,6 +647,5 @@ fn test_parenthesized() {
    } 
     "#,
     );
-    dbg!(&prog);
     prog.unwrap();
 }

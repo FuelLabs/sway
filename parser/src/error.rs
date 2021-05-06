@@ -382,7 +382,7 @@ pub enum CompileError<'sc> {
         struct_name: &'sc str,
         span: Span<'sc>,
     },
-    #[error("No method named {method_name} found for type {type_name}.")]
+    #[error("No method named \"{method_name}\" found for type {type_name}.")]
     MethodNotFound {
         span: Span<'sc>,
         method_name: &'sc str,
@@ -429,6 +429,26 @@ pub enum CompileError<'sc> {
     ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
     #[error("Expected block to implicitly return a value.")]
     ExpectedImplicitReturnFromBlock { span: Span<'sc> },
+    #[error("This register was not initialized in the initialization section of the ASM expression. Initialized registers are: {initialized_registers}")]
+    UnknownRegister {
+        span: Span<'sc>,
+        initialized_registers: String,
+    },
+    #[error("This opcode takes an immediate value but none was provided.")]
+    MissingImmediate { span: Span<'sc> },
+    #[error("This immediate value is invalid.")]
+    InvalidImmediateValue { span: Span<'sc> },
+    #[error("This expression was expected to return a value but no return register was specified. Provide a register \
+    in the implicit return position of this asm expression to return it.")]
+    InvalidAssemblyMismatchedReturn { span: Span<'sc> },
+    #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
+    UnknownEnumVariant {
+        enum_name: &'sc str,
+        variant_name: &'sc str,
+        span: Span<'sc>,
+    },
+    #[error("Unknown opcode: \"{op_name}\".")]
+    UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -559,6 +579,12 @@ impl<'sc> CompileError<'sc> {
             PathDoesNotReturn { span, .. } => span,
             ExpectedImplicitReturnFromBlockWithType { span, .. } => span,
             ExpectedImplicitReturnFromBlock { span, .. } => span,
+            UnknownRegister { span, .. } => span,
+            MissingImmediate { span, .. } => span,
+            InvalidImmediateValue { span, .. } => span,
+            InvalidAssemblyMismatchedReturn { span, .. } => span,
+            UnknownEnumVariant { span, .. } => span,
+            UnrecognizedOp { span, .. } => span,
         }
     }
 

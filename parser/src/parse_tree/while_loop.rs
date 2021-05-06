@@ -42,6 +42,7 @@ impl<'sc> WhileLoop<'sc> {
                 scope: Default::default()
             }
         );
+
         ok(WhileLoop { condition, body }, warnings, errors)
     }
 }
