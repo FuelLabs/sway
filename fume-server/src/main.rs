@@ -2,7 +2,7 @@ use lspower::{LspService, Server};
 
 mod capabilities;
 mod server;
-mod session;
+mod core;
 use server::Backend;
 
 #[tokio::main]
