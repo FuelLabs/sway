@@ -47,7 +47,7 @@ pub(super) fn convert_while_loop_to_asm<'sc>(
     // if it is FALSE, then jump to the end of the block.
     buf.push(Op::jump_if_not_equal(
         condition_result_register.into(),
-        RegisterId::Constant(ConstantRegister::Zero),
+        RegisterId::Constant(ConstantRegister::One),
         exit_label.clone(),
     ));
 

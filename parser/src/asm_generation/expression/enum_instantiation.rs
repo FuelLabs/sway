@@ -40,10 +40,10 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     ));
     let size_of_enum = 1 /* tag */ + decl.as_type().stack_size_of();
     let size_of_enum: u32 = match u32::try_from(size_of_enum) {
-        Ok(o) => o,
-        Err(_e) => {
+        Ok(o) if o < 16777216 /* 2^24 */ => o,
+        _ => {
             errors.push(CompileError::Unimplemented(
-                "Stack variables which exceed 32 words in size are not supported yet.",
+                "Stack variables which exceed 2^24 (16777216) words in size are not supported yet.",
                 decl.clone().span,
             ));
             return err(warnings, errors);
@@ -52,19 +52,8 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
 
     asm_buf.push(Op::unowned_stack_allocate_memory(size_of_enum));
     // initialize all the memory to 0
-    // calculate the end pointer
-    let end_pointer_register = register_sequencer.next();
     asm_buf.push(Op::new(
-        Opcode::Addi(
-            end_pointer_register.clone(),
-            pointer_register.clone(),
-            size_of_enum,
-        ),
-        decl.clone().span,
-    ));
-    // TODO when memclear-immediate is added to the specs, this can become memclear immediate.
-    asm_buf.push(Op::new(
-        Opcode::MemClear(pointer_register.clone(), end_pointer_register),
+        Opcode::MemClearImmediate(pointer_register.clone(), size_of_enum),
         decl.clone().span,
     ));
     // write the tag

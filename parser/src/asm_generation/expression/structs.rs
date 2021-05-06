@@ -51,8 +51,8 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     ));
 
     // step 2
-    // decide how many stack allocations we will need to do based on the size of the struct
-    // this is 2^24, the size of an immediate.
+    // decide how many call frame extensions are needed based on the size of the struct
+    // and how many bits can be put in a single cfei op
     let twenty_four_bits = 0b111111111111111111111111;
     let number_of_allocations_necessary = (total_size / twenty_four_bits) + 1;
 
@@ -71,7 +71,6 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
 
     // step 3
     let mut offset = 0;
-    // TODO:
     for TypedStructExpressionField { name, value } in fields {
         // evaluate the expression
         let return_register = register_sequencer.next();
@@ -91,7 +90,10 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         // TODO: if the struct needs multiple allocations, this offset could exceed the size of the
         // immediate value allowed in SW. In that case, we need to shift `struct_beginning_pointer`
         // to the max offset and start the offset back from 0. This is only for structs in excess
-        // of 130MB.
+        // of 130MB
+        // from john about the above: As a TODO, maybe let's just restrict the maximum size of
+        // something (I don't know exactly what) at the consensus level so this case is guaranteed
+        // to never be hit.
         offset += value.return_type.stack_size_of() as u32;
     }
 

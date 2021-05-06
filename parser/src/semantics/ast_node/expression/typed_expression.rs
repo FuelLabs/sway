@@ -164,8 +164,11 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             Expression::MatchExpression { span, .. } => {
-                errors.push(CompileError::Unimplemented("Match expressions and pattern \
-                matching have not been implemented.", span));
+                errors.push(CompileError::Unimplemented(
+                    "Match expressions and pattern \
+                matching have not been implemented.",
+                    span,
+                ));
                 return err(warnings, errors);
                 /*
                 let typed_primary_expression = type_check!(
@@ -230,7 +233,10 @@ impl<'sc> TypedExpression<'sc> {
                         help_text.clone()
                     ),
                     (
-                        TypedCodeBlock { contents: vec![], whole_block_span: span.clone() },
+                        TypedCodeBlock {
+                            contents: vec![],
+                            whole_block_span: span.clone()
+                        },
                         Some(ResolvedType::Unit)
                     ),
                     warnings,
@@ -566,10 +572,10 @@ impl<'sc> TypedExpression<'sc> {
                                 errors.push(CompileError::MethodNotFound {
                                     span: method_name.suffix.clone().span,
                                     method_name: method_name.suffix.primary_name,
-                                    type_name: parent_type.friendly_type_str()
+                                    type_name: parent_type.friendly_type_str(),
                                 });
-                                return err(warnings, errors)
-                            },
+                                return err(warnings, errors);
+                            }
                         },
                         parent_type,
                     )

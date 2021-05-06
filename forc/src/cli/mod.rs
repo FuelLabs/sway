@@ -30,12 +30,6 @@ pub(crate) fn run_cli() -> Result<(), String> {
         }
         Command::Build { path } => build::build(path),
     }?;
-    /*
-    let content = fs::read_to_string(opt.input.clone())?;
-
-    let res = compile(&content);
-
-    */
 
     Ok(())
 }

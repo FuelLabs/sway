@@ -807,9 +807,22 @@ impl Opcode {
                     todo!("ArgMismatchError")
                 }
             }
-            "memclear" => {
+            "memcleari" => {
                 if args.len() == 2 {
-                    MemClear(args[0].into(), args[1].into())
+                    MemClearImmediate(
+                        args[0].into(),
+                        match immediate {
+                            Some(i) => i,
+                            None => {
+                                return err(
+                                    vec![],
+                                    vec![CompileError::MissingImmediate {
+                                        span: name.span.clone(),
+                                    }],
+                                )
+                            }
+                        },
+                    )
                 } else {
                     todo!("ArgMismatchError")
                 }
@@ -1106,7 +1119,7 @@ impl Opcode {
             Lb(r1, r2, _imm) => vec![r1, r2],
             Lw(r1, r2, _imm) => vec![r1, r2],
             Malloc(r1) => vec![r1],
-            MemClear(r1, r2) => vec![r1, r2],
+            MemClearImmediate(r1, _imm) => vec![r1],
             MemCp(r1, r2, r3) => vec![r1, r2, r3],
             MemEq(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             Sb(r1, r2, _imm) => vec![r1, r2],
@@ -1237,7 +1250,7 @@ opcodes! {
     Lb(RegisterId, RegisterId, ImmediateValue) = 62,
     Lw(RegisterId, RegisterId, ImmediateValue) = 63,
     Malloc(RegisterId) = 64,
-    MemClear(RegisterId, RegisterId) = 65,
+    MemClearImmediate(RegisterId, ImmediateValue) = 65,
     MemCp(RegisterId, RegisterId, RegisterId) = 66,
     MemEq(RegisterId, RegisterId, RegisterId, RegisterId) = 67,
     Sb(RegisterId, RegisterId, ImmediateValue) = 68,
@@ -1339,7 +1352,7 @@ impl fmt::Display for Op<'_> {
                 Lb(a, b, c) => format!("lb {} {} {}", a, b, c),
                 Lw(a, b, c) => format!("lw {} {} {}", a, b, c),
                 Malloc(a) => format!("malloc {}", a),
-                MemClear(a, b) => format!("memclear {} {}", a, b),
+                MemClearImmediate(a, b) => format!("memcleari {} {}", a, b),
                 MemCp(a, b, c) => format!("memcp {} {} {}", a, b, c),
                 MemEq(a, b, c, d) => format!("memeq {} {} {} {}", a, b, c, d),
                 Sb(a, b, c) => format!("sb {} {} {}", a, b, c),

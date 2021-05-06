@@ -1,10 +1,9 @@
-use crate::asm_lang::{ImmediateValue};
+use crate::asm_lang::ImmediateValue;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::Ident;
 use pest::iterators::Pair;
 use pest::Span;
-
 
 use super::Expression;
 

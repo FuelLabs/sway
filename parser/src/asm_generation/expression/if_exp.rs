@@ -4,8 +4,7 @@ use crate::error::*;
 
 use crate::semantics::TypedExpression;
 
-use crate::{CompileResult};
-
+use crate::CompileResult;
 
 pub(crate) fn convert_if_exp_to_asm<'sc>(
     condition: &TypedExpression<'sc>,
