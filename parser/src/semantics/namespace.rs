@@ -411,7 +411,7 @@ impl<'sc> Namespace<'sc> {
         return_type: &ResolvedType<'sc>,
         debug_ident: &Ident<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
-        if let ResolvedType::Struct { name, fields } = return_type {
+        if let ResolvedType::Struct { name, fields: _ } = return_type {
             match self.get_symbol(name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     fields,

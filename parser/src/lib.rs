@@ -392,7 +392,7 @@ pub fn compile<'sc, 'manifest>(
                 asm: pred,
                 warnings,
             },
-            (None, Some(contract), None, o) if o.trees.is_empty() => {
+            (None, Some(_contract), None, o) if o.trees.is_empty() => {
                 CompilationResult::ContractAbi {
                     abi: Default::default(),
                     warnings,

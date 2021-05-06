@@ -2,9 +2,8 @@
 
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
-    asm_lang::{ConstantRegister, Op, Opcode, RegisterId},
+    asm_lang::{ConstantRegister, Op, RegisterId},
     error::*,
-    parse_tree::Literal,
     semantics::ast_node::TypedStructExpressionField,
     CompileResult, Ident,
 };

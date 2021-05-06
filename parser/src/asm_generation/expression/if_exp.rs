@@ -1,11 +1,11 @@
 use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
 use crate::asm_lang::{ConstantRegister, Op, RegisterId};
 use crate::error::*;
-use crate::semantics::ast_node::{TypedCodeBlock, TypedEnumDeclaration};
+
 use crate::semantics::TypedExpression;
-use crate::Literal;
-use crate::{CompileResult, Ident};
-use std::convert::TryFrom;
+
+use crate::{CompileResult};
+
 
 pub(crate) fn convert_if_exp_to_asm<'sc>(
     condition: &TypedExpression<'sc>,
@@ -36,7 +36,7 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
 
     let else_label = register_sequencer.get_label();
     let after_else_label = register_sequencer.get_label();
-    let mut condition_result = register_sequencer.next();
+    let condition_result = register_sequencer.next();
     let mut condition = type_check!(
         convert_expression_to_asm(condition, namespace, &condition_result, register_sequencer),
         return err(warnings, errors),
@@ -82,7 +82,7 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
             "beginning of else branch",
         ));
         let else_branch_result = register_sequencer.next();
-        let mut else_branch = type_check!(
+        let _else_branch = type_check!(
             convert_expression_to_asm(&r#else, namespace, &else_branch_result, register_sequencer),
             return err(warnings, errors),
             warnings,

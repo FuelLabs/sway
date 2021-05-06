@@ -1,5 +1,5 @@
 use super::*;
-use crate::error::err;
+
 use crate::semantics::ast_node::TypedStructExpressionField;
 use crate::types::ResolvedType;
 use crate::{
@@ -293,7 +293,7 @@ fn connect_declaration<'sc>(
             body.clone().span,
         ),
         FunctionDeclaration(fn_decl) => {
-            connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type);
+            connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type)?;
             Ok(vec![])
         }
         TraitDeclaration(trait_decl) => {
@@ -322,7 +322,7 @@ fn connect_declaration<'sc>(
             methods,
             ..
         } => {
-            connect_impl_trait(trait_name, graph, methods, entry_node, tree_type);
+            connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
             Ok(vec![])
         }
         SideEffect | ErrorRecovery => {
@@ -380,7 +380,7 @@ fn connect_impl_trait<'sc>(
     methods: &[TypedFunctionDeclaration<'sc>],
     entry_node: NodeIndex,
     tree_type: TreeType,
-) {
+) -> Result<(), CompileError<'sc>> {
     let graph_c = graph.clone();
     let trait_decl_node = graph_c.namespace.find_trait(trait_name);
     match trait_decl_node {
@@ -410,13 +410,14 @@ fn connect_impl_trait<'sc>(
             fn_decl.span.clone(),
             None,
             tree_type,
-        );
+        )?;
         methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
     }
     // Now, insert the methods into the trait method namespace.
     graph
         .namespace
         .insert_trait_methods(trait_name.clone(), methods_and_indexes);
+    Ok(())
 }
 
 /// The strategy here is to populate the trait namespace with just one singular trait
@@ -734,7 +735,7 @@ fn connect_expression<'sc>(
             graph.add_edge(this_ix, field_ix, "".into());
             Ok(vec![this_ix])
         }
-        a => {
+        _a => {
             return Err(CompileError::Unimplemented(
                 "Unimplemented dead code analysis for this.",
                 expression_span,

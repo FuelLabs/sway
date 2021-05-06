@@ -1,10 +1,10 @@
-use crate::asm_lang::{ImmediateValue, Opcode};
+use crate::asm_lang::{ImmediateValue};
 use crate::error::*;
 use crate::parser::Rule;
 use crate::Ident;
 use pest::iterators::Pair;
 use pest::Span;
-use std::collections::HashSet;
+
 
 use super::Expression;
 
@@ -125,7 +125,7 @@ impl<'sc> AsmOp<'sc> {
                 Rule::asm_immediate => {
                     let imm: ImmediateValue = match pair.as_str().parse() {
                         Ok(o) => o,
-                        Err(e) => {
+                        Err(_e) => {
                             errors.push(CompileError::InvalidImmediateValue {
                                 span: pair.as_span(),
                             });

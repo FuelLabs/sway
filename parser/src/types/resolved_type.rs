@@ -136,7 +136,7 @@ impl<'sc> ResolvedType<'sc> {
     }
 
     fn numeric_cast_compat(&self, other: &ResolvedType<'sc>) -> Result<(), Warning<'sc>> {
-        assert!(self.is_numeric(), other.is_numeric());
+        assert_eq!(self.is_numeric(), other.is_numeric());
         use ResolvedType::*;
         // if this is a downcast, warn for loss of precision. if upcast, then no warning.
         match self {

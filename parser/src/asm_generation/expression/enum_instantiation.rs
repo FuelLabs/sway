@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 
 pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     decl: &TypedEnumDeclaration<'sc>,
-    variant_name: &Ident<'sc>,
+    _variant_name: &Ident<'sc>,
     tag: usize,
     contents: &Option<Box<TypedExpression<'sc>>>,
     return_register: &RegisterId,
@@ -41,7 +41,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     let size_of_enum = 1 /* tag */ + decl.as_type().stack_size_of();
     let size_of_enum: u32 = match u32::try_from(size_of_enum) {
         Ok(o) => o,
-        Err(e) => {
+        Err(_e) => {
             errors.push(CompileError::Unimplemented(
                 "Stack variables which exceed 32 words in size are not supported yet.",
                 decl.clone().span,

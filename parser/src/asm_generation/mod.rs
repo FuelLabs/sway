@@ -8,7 +8,6 @@ use crate::{
     Ident,
 };
 use either::Either;
-use pest::Span;
 
 mod compiler_constants;
 mod declaration;
@@ -382,7 +381,7 @@ impl<'sc> HllAsmSet<'sc> {
             HllAsmSet::PredicateMain {
                 data_section,
                 program_section,
-            } => JumpOptimizedAsmSet::ScriptMain {
+            } => JumpOptimizedAsmSet::PredicateMain {
                 data_section,
                 program_section: program_section.remove_sequential_jumps(),
             },

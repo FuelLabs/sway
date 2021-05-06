@@ -1,9 +1,5 @@
 use super::*;
-use crate::{
-    asm_lang::*,
-    error::*,
-    parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath},
-};
+use crate::{asm_lang::*, parse_tree::CallPath};
 use crate::{
     parse_tree::Literal,
     semantics::{
@@ -56,7 +52,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             return_register,
             register_sequencer,
         ),
-        TypedExpressionVariant::VariableExpression { unary_op, name } => {
+        TypedExpressionVariant::VariableExpression { unary_op: _, name } => {
             let var = type_check!(
                 namespace.look_up_variable(name),
                 return err(warnings, errors),
@@ -298,7 +294,7 @@ fn convert_literal_to_asm<'sc>(
 
 /// For now, all functions are handled by inlining at the time of application.
 fn convert_fn_app_to_asm<'sc>(
-    name: &CallPath<'sc>,
+    _name: &CallPath<'sc>,
     arguments: &[(Ident<'sc>, TypedExpression<'sc>)],
     function_body: &TypedCodeBlock<'sc>,
     namespace: &mut AsmNamespace<'sc>,
