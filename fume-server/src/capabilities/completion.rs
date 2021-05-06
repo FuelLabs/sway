@@ -17,9 +17,9 @@ pub fn get_completion(session: Arc<Session>, params: CompletionParams) -> Option
                 let completion_items = get_completion_items(rules);
                 Some(CompletionResponse::Array(completion_items))
             }
-            Err(e) => None,
+            Err(_) => None,
         },
-        Err(e) => None,
+        Err(_) => None,
     }
 }
 
