@@ -37,7 +37,7 @@ impl<'sc> Literal<'sc> {
                             .map(Literal::U8)
                             .map_err(|_| {
                                 CompileError::Internal(
-                                    "Called incorrect internal parser on literal type.",
+                                    "Called incorrect internal core_lang on literal type.",
                                     int_inner.as_span(),
                                 )
                             }),
@@ -48,7 +48,7 @@ impl<'sc> Literal<'sc> {
                             .map(Literal::U16)
                             .map_err(|_| {
                                 CompileError::Internal(
-                                    "Called incorrect internal parser on literal type.",
+                                    "Called incorrect internal core_lang on literal type.",
                                     int_inner.as_span(),
                                 )
                             }),
@@ -59,7 +59,7 @@ impl<'sc> Literal<'sc> {
                             .map(Literal::U32)
                             .map_err(|_| {
                                 CompileError::Internal(
-                                    "Called incorrect internal parser on literal type.",
+                                    "Called incorrect internal core_lang on literal type.",
                                     int_inner.as_span(),
                                 )
                             }),
@@ -70,7 +70,7 @@ impl<'sc> Literal<'sc> {
                             .map(Literal::U64)
                             .map_err(|_| {
                                 CompileError::Internal(
-                                    "Called incorrect internal parser on literal type.",
+                                    "Called incorrect internal core_lang on literal type.",
                                     int_inner.as_span(),
                                 )
                             }),

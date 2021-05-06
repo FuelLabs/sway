@@ -534,7 +534,7 @@ fn parse_root_from_pairs<'sc>(
                 }
             }
             Rule::library => {
-                fuel_ast.library_exports.push((library_name.expect("Safe unwrap, because the parser enforces the library keyword is followed by a name. This is an invariant"), parse_tree));
+                fuel_ast.library_exports.push((library_name.expect("Safe unwrap, because the core_lang enforces the library keyword is followed by a name. This is an invariant"), parse_tree));
             }
             Rule::EOI => (),
             a => errors.push(CompileError::InvalidTopLevelItem(a, block.as_span())),

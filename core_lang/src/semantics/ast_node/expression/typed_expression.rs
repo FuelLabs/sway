@@ -475,7 +475,7 @@ impl<'sc> TypedExpression<'sc> {
                 name_parts,
                 span,
             } => {
-                // this must be >= 2, or else the parser would not have matched it. asserting that
+                // this must be >= 2, or else the core_lang would not have matched it. asserting that
                 // invariant here, since it is an assumption that is acted upon later.
                 assert!(name_parts.len() >= 2);
                 let (return_type, resolved_type_of_parent) = type_check!(

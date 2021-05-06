@@ -55,7 +55,7 @@ impl<'sc> StructDeclaration<'sc> {
                 a => unreachable!("{:?}", a),
             }
         }
-        let name = name.expect("The parser would not have matched this if there was no name.");
+        let name = name.expect("The core_lang would not have matched this if there was no name.");
 
         let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,

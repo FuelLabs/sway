@@ -1,5 +1,5 @@
 [package]
-name = "parser"
+name = "core_lang"
 version = "0.1.0"
 authors = ["Alex <alex.hansen@fuel.sh>"]
 edition = "2018"

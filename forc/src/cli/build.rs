@@ -8,7 +8,7 @@ use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::manifest::{Dependency, DependencyDetails, Manifest};
-use parser::{
+use core_lang::{
     CompilationResult, Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration,
     TypedFunctionDeclaration,
 };
@@ -149,7 +149,7 @@ fn compile_library<'source, 'manifest>(
     proj_name: &str,
     namespace: &Namespace<'source>,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = parser::compile(&source, namespace);
+    let res = core_lang::compile(&source, namespace);
     match res {
         CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
@@ -200,8 +200,8 @@ fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
-) -> Result<parser::FinalizedAsm<'source>, String> {
-    let res = parser::compile(&source, namespace);
+) -> Result<core_lang::FinalizedAsm<'source>, String> {
+    let res = core_lang::compile(&source, namespace);
     match res {
         CompilationResult::ScriptAsm { asm, warnings } => {
             for ref warning in warnings.iter() {
@@ -261,7 +261,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(parser::FinalizedAsm::ContractAbi)
+            Ok(core_lang::FinalizedAsm::ContractAbi)
         }
         CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
@@ -281,7 +281,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(parser::FinalizedAsm::Library)
+            Ok(core_lang::FinalizedAsm::Library)
         }
         CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
@@ -303,7 +303,7 @@ fn compile<'source, 'manifest>(
     }
 }
 
-fn format_warning(input: &str, err: &parser::CompileWarning) {
+fn format_warning(input: &str, err: &core_lang::CompileWarning) {
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;
@@ -334,7 +334,7 @@ fn format_warning(input: &str, err: &parser::CompileWarning) {
     println!("{}", formatted);
 }
 
-fn format_err(input: &str, err: parser::CompileError) {
+fn format_err(input: &str, err: core_lang::CompileError) {
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;

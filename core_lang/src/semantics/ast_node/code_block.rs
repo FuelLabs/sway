@@ -57,7 +57,7 @@ impl<'sc> TypedCodeBlock<'sc> {
             };
         }
         // find the implicit return, if any, and use it as the code block's return type.
-        // The fact that there is at most one implicit return is an invariant held by the parser.
+        // The fact that there is at most one implicit return is an invariant held by the core_lang.
         let return_type = evaluated_contents.iter().find_map(|x| match x {
             TypedAstNode {
                 content:
