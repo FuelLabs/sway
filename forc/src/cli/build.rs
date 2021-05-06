@@ -53,7 +53,7 @@ pub(crate) fn build(path: Option<String>) -> Result<(), String> {
     Ok(())
 }
 
-/// Continually go up in the file tree until a manifest (Fuel.toml) is found.
+/// Continually go up in the file tree until a manifest (Forc.toml) is found.
 fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
     let mut path = fs::canonicalize(starter_path.clone()).ok()?;
     let empty_path = PathBuf::from("/");
