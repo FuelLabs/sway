@@ -1,11 +1,14 @@
 use lspower::{
     jsonrpc,
-    lsp::{self, CompletionParams, CompletionResponse},
+    lsp::{self},
     Client, LanguageServer,
 };
 use std::sync::Arc;
 
-use lsp::{Hover, HoverParams, InitializeParams, InitializeResult, MessageType};
+use lsp::{
+    CompletionParams, CompletionResponse, Hover, HoverParams, HoverProviderCapability,
+    InitializeParams, InitializeResult, MessageType, OneOf,
+};
 
 use crate::capabilities;
 use crate::core::session::Session;
@@ -40,6 +43,7 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(lsp::TextDocumentSyncCapability::Kind(
                     lsp::TextDocumentSyncKind::Incremental,
                 )),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(lsp::CompletionOptions {
                     resolve_provider: Some(false),
                     trigger_characters: None,
@@ -49,10 +53,11 @@ impl LanguageServer for Backend {
                     commands: vec![],
                     ..Default::default()
                 }),
+                document_highlight_provider: Some(OneOf::Left(true)),
                 workspace: Some(lsp::WorkspaceServerCapabilities {
                     workspace_folders: Some(lsp::WorkspaceFoldersServerCapabilities {
                         supported: Some(true),
-                        change_notifications: Some(lsp::OneOf::Left(true)),
+                        change_notifications: Some(OneOf::Left(true)),
                     }),
                     ..Default::default()
                 }),
@@ -108,7 +113,10 @@ impl LanguageServer for Backend {
         let uri = params.text_document.uri.clone();
         self.client.publish_diagnostics(uri, vec![], None).await;
 
-        match self.session.get_document_text(&params.text_document.uri) {
+        match self
+            .session
+            .get_document_text_as_string(&params.text_document.uri)
+        {
             Ok(document) => {
                 if let Some(diagnostics) = capabilities::diagnostic::perform_diagnostics(&document)
                 {
@@ -139,26 +147,20 @@ impl LanguageServer for Backend {
         &self,
         params: CompletionParams,
     ) -> jsonrpc::Result<Option<CompletionResponse>> {
+        // TODO
+        // here we would also need to provide a list of builtin methods not just the ones from the document
         Ok(capabilities::completion::get_completion(
             self.session.clone(),
             params,
         ))
     }
 
-    async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        let uri = params.text_document_position_params.text_document.uri;
-        todo!()
-    }
-
-    // OPTIONALS
-    async fn did_change_workspace_folders(&self, _params: lsp::DidChangeWorkspaceFoldersParams) {
-        todo!()
-    }
-
-    async fn symbol(
-        &self,
-        _params: lsp::WorkspaceSymbolParams,
-    ) -> jsonrpc::Result<Option<Vec<lsp::SymbolInformation>>> {
+    async fn hover(&self, _params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
+        // TODO
+        // 0. on document open / save -> parse and store all the values and their metadata
+        // 1. get the document
+        // 2. find exact value of the hover
+        // 3. return info of the hovered Value and it's metadata
         todo!()
     }
 
@@ -166,55 +168,10 @@ impl LanguageServer for Backend {
         &self,
         _params: lsp::DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<lsp::DocumentHighlight>>> {
-        todo!()
-    }
-
-    async fn execute_command(
-        &self,
-        _params: lsp::ExecuteCommandParams,
-    ) -> jsonrpc::Result<Option<serde_json::Value>> {
-        todo!()
-    }
-
-    async fn code_action(
-        &self,
-        _params: lsp::CodeActionParams,
-    ) -> jsonrpc::Result<Option<lsp::CodeActionResponse>> {
-        todo!()
-    }
-
-    async fn signature_help(
-        &self,
-        _params: lsp::SignatureHelpParams,
-    ) -> jsonrpc::Result<Option<lsp::SignatureHelp>> {
-        todo!()
-    }
-
-    async fn range_formatting(
-        &self,
-        _params: lsp::DocumentRangeFormattingParams,
-    ) -> jsonrpc::Result<Option<Vec<lsp::TextEdit>>> {
-        todo!()
-    }
-
-    async fn formatting(
-        &self,
-        _params: lsp::DocumentFormattingParams,
-    ) -> jsonrpc::Result<Option<Vec<lsp::TextEdit>>> {
-        todo!()
-    }
-
-    async fn references(
-        &self,
-        _params: lsp::ReferenceParams,
-    ) -> jsonrpc::Result<Option<Vec<lsp::Location>>> {
-        todo!()
-    }
-
-    async fn rename(
-        &self,
-        _params: lsp::RenameParams,
-    ) -> jsonrpc::Result<Option<lsp::WorkspaceEdit>> {
+        // TODO
+        // 1. find exact value of the highlight
+        // 2. find it's matches in the document - convert to Range
+        // 3. return the Vector of those ranges
         todo!()
     }
 
@@ -222,6 +179,32 @@ impl LanguageServer for Backend {
         &self,
         _params: lsp::DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<lsp::DocumentSymbolResponse>> {
+        // TODO
+        // 0. on document open / save -> parse it and store all the values and their metada
+        // 1. get the stored document
+        // 2. get all symbols of the document that was previously stored
+        // 3. return the Vector of symbols
+        todo!()
+    }
+
+    async fn goto_declaration(
+        &self,
+        _params: lsp::request::GotoDeclarationParams,
+    ) -> jsonrpc::Result<Option<lsp::request::GotoDeclarationResponse>> {
+        todo!()
+    }
+
+    async fn goto_definition(
+        &self,
+        _params: lsp::GotoDefinitionParams,
+    ) -> jsonrpc::Result<Option<lsp::GotoDefinitionResponse>> {
+        todo!()
+    }
+
+    async fn goto_type_definition(
+        &self,
+        _params: lsp::request::GotoTypeDefinitionParams,
+    ) -> jsonrpc::Result<Option<lsp::request::GotoTypeDefinitionResponse>> {
         todo!()
     }
 }

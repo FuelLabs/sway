@@ -1,5 +1,6 @@
 use dashmap::DashMap;
-use lspower::lsp::{TextDocumentContentChangeEvent, TextDocumentItem, Url};
+use lspower::lsp::{Position, TextDocumentContentChangeEvent, TextDocumentItem, Url};
+use ropey::{Rope, RopeSlice};
 
 use super::document::TextDocument;
 
@@ -40,7 +41,15 @@ impl Session {
         Ok(())
     }
 
-    pub fn get_document_text(&self, uri: &Url) -> Result<String, SessionError> {
+    pub fn get_document(&self, key: &str, position: Position) -> Option<String> {
+        if let Some(document) = self.documents.get(key) {
+            Some(document.get_slice(position))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_document_text_as_string(&self, uri: &Url) -> Result<String, SessionError> {
         match self.documents.get(uri.as_str()) {
             Some(document) => Ok(document.get_text_as_string()),
             None => Err(SessionError::DocumentAlreadyClosed),

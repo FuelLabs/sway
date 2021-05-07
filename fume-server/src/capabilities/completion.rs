@@ -12,7 +12,7 @@ pub fn get_completion(
 ) -> Option<CompletionResponse> {
     let uri = params.text_document_position.text_document.uri;
 
-    match session.get_document_text(&uri) {
+    match session.get_document_text_as_string(&uri) {
         Ok(document) => match HllParser::parse(Rule::program, &document) {
             Ok(rules) => {
                 let completion_items = get_completion_items(rules);
