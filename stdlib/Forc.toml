@@ -1,0 +1,7 @@
+[project]
+author  = "Alex Hansen,,,"
+license = "MIT"
+name = "stdlib"
+
+
+[dependencies]
