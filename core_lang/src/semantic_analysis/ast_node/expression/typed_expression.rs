@@ -1,5 +1,5 @@
 use super::*;
-use crate::semantics::ast_node::*;
+use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, ResolvedType};
 use either::Either;
 
@@ -698,7 +698,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             a => {
-                println!("Unimplemented semantics for expression: {:?}", a);
+                println!("Unimplemented semantic_analysis for expression: {:?}", a);
                 errors.push(CompileError::Unimplemented(
                     "Unimplemented expression",
                     a.span(),

@@ -2,7 +2,7 @@ use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSeq
 use crate::asm_lang::{ConstantRegister, Op, RegisterId};
 use crate::error::*;
 
-use crate::semantics::TypedExpression;
+use crate::semantic_analysis::TypedExpression;
 
 use crate::CompileResult;
 

@@ -3,7 +3,7 @@
 
 use super::*;
 use super::{ControlFlowGraph, EntryPoint, ExitPoint, Graph};
-use crate::semantics::{
+use crate::semantic_analysis::{
     ast_node::{
         TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
         TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
@@ -12,7 +12,7 @@ use crate::semantics::{
 };
 use crate::types::ResolvedType;
 use crate::Ident;
-use crate::{error::*, semantics::TypedParseTree};
+use crate::{error::*, semantic_analysis::TypedParseTree};
 use pest::Span;
 use petgraph::prelude::NodeIndex;
 

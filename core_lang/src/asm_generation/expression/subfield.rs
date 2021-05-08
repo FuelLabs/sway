@@ -9,7 +9,7 @@ use crate::{
 };
 use crate::{
     parse_tree::Literal,
-    semantics::{
+    semantic_analysis::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },

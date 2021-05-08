@@ -1,14 +1,16 @@
 use super::*;
 
-use crate::semantics::ast_node::TypedStructExpressionField;
+use crate::semantic_analysis::ast_node::TypedStructExpressionField;
 use crate::types::ResolvedType;
 use crate::{
     parse_tree::Visibility,
-    semantics::ast_node::{TypedExpressionVariant, TypedStructDeclaration, TypedTraitDeclaration},
+    semantic_analysis::ast_node::{
+        TypedExpressionVariant, TypedStructDeclaration, TypedTraitDeclaration,
+    },
     CompileError, Ident, TreeType,
 };
 use crate::{
-    semantics::{
+    semantic_analysis::{
         ast_node::{
             TypedCodeBlock, TypedDeclaration, TypedEnumDeclaration, TypedExpression,
             TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,

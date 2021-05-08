@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
-    semantics::ast_node::TypedReassignment,
+    semantic_analysis::ast_node::TypedReassignment,
 };
 
 pub(crate) fn convert_reassignment_to_asm<'sc>(

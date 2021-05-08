@@ -1,5 +1,5 @@
 use super::*;
-use crate::semantics::ast_node::TypedCodeBlock;
+use crate::semantic_analysis::ast_node::TypedCodeBlock;
 use either::Either;
 
 #[allow(dead_code)]

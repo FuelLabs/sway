@@ -4,7 +4,7 @@ use crate::{
     asm_lang::{Label, Op, OrganizationalOp, RegisterId},
     error::*,
     parse_tree::Literal,
-    semantics::{TypedAstNode, TypedAstNodeContent, TypedParseTree},
+    semantic_analysis::{TypedAstNode, TypedAstNodeContent, TypedParseTree},
     Ident,
 };
 use either::Either;

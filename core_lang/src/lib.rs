@@ -9,7 +9,7 @@ mod control_flow_analysis;
 mod ident;
 mod parse_tree;
 mod parser;
-mod semantics;
+mod semantic_analysis;
 
 use crate::parse_tree::*;
 use crate::parser::{HllParser, Rule};
@@ -18,7 +18,7 @@ pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
-use semantics::{TreeType, TypedParseTree};
+use semantic_analysis::{TreeType, TypedParseTree};
 use std::collections::HashMap;
 
 pub(crate) mod types;
@@ -28,7 +28,7 @@ pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
 pub use pest::Span;
-pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 pub use types::TypeInfo;
 
 // todo rename to language name

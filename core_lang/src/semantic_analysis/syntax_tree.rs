@@ -1,5 +1,5 @@
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
-use crate::semantics::Namespace;
+use crate::semantic_analysis::Namespace;
 use crate::ParseTree;
 use crate::{error::*, types::ResolvedType};
 

@@ -2,7 +2,7 @@ use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
 use crate::parse_tree::*;
-use crate::semantics::Namespace;
+use crate::semantic_analysis::Namespace;
 use crate::{error::*, types::ResolvedType, Ident};
 use pest::Span;
 
@@ -360,24 +360,24 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             }
         }
         // handle the return statement(s)
-        let return_statements: Vec<(&TypedExpression, &pest::Span<'sc>)> =
-            body.contents
-                .iter()
-                .filter_map(|x| {
-                    if let crate::semantics::TypedAstNode {
-                        content:
-                            crate::semantics::TypedAstNodeContent::ReturnStatement(
-                                TypedReturnStatement { ref expr },
-                            ),
-                        span,
-                    } = x
-                    {
-                        Some((expr, span))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+        let return_statements: Vec<(&TypedExpression, &pest::Span<'sc>)> = body
+            .contents
+            .iter()
+            .filter_map(|x| {
+                if let crate::semantic_analysis::TypedAstNode {
+                    content:
+                        crate::semantic_analysis::TypedAstNodeContent::ReturnStatement(
+                            TypedReturnStatement { ref expr },
+                        ),
+                    span,
+                } = x
+                {
+                    Some((expr, span))
+                } else {
+                    None
+                }
+            })
+            .collect();
         for (stmt, span) in return_statements {
             let convertability = stmt.return_type.is_convertible(
                 &return_type,

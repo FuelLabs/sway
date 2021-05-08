@@ -1,8 +1,8 @@
 use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
 use crate::asm_lang::{ConstantRegister, Op, Opcode, RegisterId};
 use crate::error::*;
-use crate::semantics::ast_node::TypedEnumDeclaration;
-use crate::semantics::TypedExpression;
+use crate::semantic_analysis::ast_node::TypedEnumDeclaration;
+use crate::semantic_analysis::TypedExpression;
 use crate::Literal;
 use crate::{CompileResult, Ident};
 use std::convert::TryFrom;

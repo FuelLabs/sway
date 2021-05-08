@@ -2,7 +2,7 @@ use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
     asm_lang::Op,
     error::*,
-    semantics::ast_node::TypedVariableDeclaration,
+    semantic_analysis::ast_node::TypedVariableDeclaration,
 };
 
 /// Provisions a register to put a variable in, and then adds the assembly used to initialize the

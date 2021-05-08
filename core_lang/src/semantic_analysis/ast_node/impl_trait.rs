@@ -3,7 +3,7 @@ use super::{
     ERROR_RECOVERY_DECLARATION,
 };
 use crate::parse_tree::ImplTrait;
-use crate::semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::{error::*, types::ResolvedType, Ident};
 
 pub(crate) fn implementation_of_trait<'sc>(
