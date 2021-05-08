@@ -1,5 +1,4 @@
 //! This module contains the logic for struct layout in memory and instantiation.
-
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
     asm_lang::{ConstantRegister, Op, RegisterId},
@@ -7,6 +6,7 @@ use crate::{
     semantics::ast_node::TypedStructExpressionField,
     CompileResult, Ident,
 };
+use std::convert::TryInto;
 
 pub(crate) fn convert_struct_expression_to_asm<'sc>(
     struct_name: &Ident<'sc>,
@@ -69,7 +69,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         // However, since we may change the twenty four bits to something else, we want to check anyway
         let val_as_u32: u32 = match this_allocation.try_into() {
             Ok(o) => o,
-            Err(e) => {
+            Err(_) => {
                 errors.push(CompileError::Unimplemented(
                     "This struct is too large, and would \
                 not fit in one call frame extension.",
