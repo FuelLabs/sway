@@ -26,7 +26,7 @@ jobs:
         override: true
 
     - name: Install rustfmt
-        run: rustup component add rustfmt
+      run: rustup component add rustfmt
 
     - name: Check formatting
       uses: actions-rs/cargo@v1
