@@ -546,8 +546,9 @@ impl<'sc> TypedExpression<'sc> {
                         ) {
                             Some(o) => o,
                             None => {
+                                println!("2");
                                 errors.push(CompileError::MethodNotFound {
-                                    span,
+                                    span: method_name.suffix.clone().span,
                                     method_name: method_name.suffix.clone().primary_name,
                                     type_name: parent_expr.return_type.friendly_type_str(),
                                 });
@@ -569,6 +570,7 @@ impl<'sc> TypedExpression<'sc> {
                         {
                             Some(o) => o,
                             None => {
+                                println!("1");
                                 errors.push(CompileError::MethodNotFound {
                                     span: method_name.suffix.clone().span,
                                     method_name: method_name.suffix.primary_name,

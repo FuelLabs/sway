@@ -1,6 +1,7 @@
 use structopt::StructOpt;
 
 mod build;
+pub use build::*;
 mod init;
 
 #[derive(Debug, StructOpt)]

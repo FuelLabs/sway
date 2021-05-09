@@ -1,3 +1,4 @@
 [workspace]
 
-members = ["core_lang", "forc"]
+members = ["core_lang", "forc", "test_suite"]
+

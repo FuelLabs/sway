@@ -45,7 +45,7 @@ path_ident = { ident }
 
 var_name_ident = { ident }
 
-if_exp =  {"if" ~ expr ~  code_block ~ ("else" ~ code_block)?}
+if_exp =  {"if" ~ expr ~  code_block ~ ("else" ~ (code_block | if_exp))?}
 
 op =  {"+"|"-"|"/"|"*"|"=="|"!="|"|"|"||"|"&"|"&&"|"^"|"%"|"<"|">"}
 unary_op = { "!" | "ref" | "deref" }

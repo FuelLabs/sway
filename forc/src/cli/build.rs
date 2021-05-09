@@ -14,7 +14,7 @@ use core_lang::{
 };
 use std::{fs, path::PathBuf};
 
-pub(crate) fn build(path: Option<String>) -> Result<(), String> {
+pub fn build(path: Option<String>) -> Result<(), String> {
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(path) = path {
         PathBuf::from(path)

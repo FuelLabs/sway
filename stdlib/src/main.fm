@@ -41,6 +41,10 @@ library ops {
          }
     }
 
+    pub trait Eq {
+        fn equals(self, other: Self) -> bool;
+    }
+
     pub trait Cmp {
       fn less_than(self, other: Self) -> bool;
     }
