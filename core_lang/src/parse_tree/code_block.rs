@@ -1,7 +1,9 @@
 use super::WhileLoop;
 use crate::parser::Rule;
 use crate::{
-    error::*, parse_tree::Expression, AstNode, AstNodeContent, Declaration, ReturnStatement,
+    error::*,
+    parse_tree::{Expression, ReturnStatement},
+    AstNode, AstNodeContent, Declaration,
 };
 use pest::iterators::Pair;
 use pest::Span;

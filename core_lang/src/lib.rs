@@ -79,38 +79,6 @@ pub(crate) enum AstNodeContent<'sc> {
     WhileLoop(WhileLoop<'sc>),
 }
 
-#[derive(Debug, Clone)]
-struct ReturnStatement<'sc> {
-    expr: Expression<'sc>,
-}
-
-impl<'sc> ReturnStatement<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        let span = pair.as_span();
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-        let mut inner = pair.into_inner();
-        let _ret_keyword = inner.next();
-        let expr = inner.next();
-        let res = match expr {
-            None => ReturnStatement {
-                expr: Expression::Unit { span },
-            },
-            Some(expr_pair) => {
-                let expr = eval!(
-                    Expression::parse_from_pair,
-                    warnings,
-                    errors,
-                    expr_pair,
-                    Expression::Unit { span }
-                );
-                ReturnStatement { expr }
-            }
-        };
-        ok(res, warnings, errors)
-    }
-}
-
 impl<'sc> ParseTree<'sc> {
     pub(crate) fn new(span: Span<'sc>) -> Self {
         ParseTree {
