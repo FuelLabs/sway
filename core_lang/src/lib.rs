@@ -519,15 +519,15 @@ fn test_basic_prog() {
         contract {
 
     enum yo
-    <T> 
-    where 
+    <T>
+    where
     T: IsAThing
     {
         x: u32,
         y: MyStruct<u32>
     }
 
-    enum  MyOtherSumType 
+    enum  MyOtherSumType
     {
         x: u32,
         y: MyStruct<u32>
@@ -541,22 +541,22 @@ fn test_basic_prog() {
     fn generic_function
     <T>
     (arg1: u64,
-    arg2: T) 
+    arg2: T)
     ->
-    T 
+    T
     where T: Display,
           T: Debug {
-          let x: MyStruct = 
+          let x: MyStruct =
           MyStruct
           {
               field_name:
-              5 
+              5
           };
-          return 
-          match 
+          return
+          match
             arg1
           {
-               1 
+               1
                => true,
                _ => { return false; },
           };
@@ -578,7 +578,7 @@ fn test_basic_prog() {
         fn calls_interface_fn(x: int) -> unit {
             // declare a byte
             let x = 0b10101111;
-            let mut y = 0b11111111; 
+            let mut y = 0b11111111;
             self.interface_fn(x);
         }
     }
@@ -595,9 +595,9 @@ fn test_basic_prog() {
          func_app(my_args, (so_many_args))];
         return 5;
     }
-    
+
     }
-    
+
     "#,
     );
     dbg!(&prog);
@@ -612,7 +612,7 @@ fn test_parenthesized() {
             let x = (5 + 6 / (1 + (2 / 1) + 4));
             return;
         }
-   } 
+   }
     "#,
     );
     prog.unwrap();

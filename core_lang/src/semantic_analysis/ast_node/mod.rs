@@ -113,7 +113,7 @@ impl<'sc> TypedAstNode<'sc> {
                             TypedExpression::type_check(
                                 body,
                                 &namespace,
-                                type_ascription.clone(), 
+                                type_ascription.clone(),
                                 format!("Variable declaration's type annotation (type {}) \
                                     does not match up with the assigned expression's type.",
                                     type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())
@@ -250,7 +250,7 @@ impl<'sc> TypedAstNode<'sc> {
                             }).collect::<Vec<_>>();
                             // TODO check code block implicit return
                             let return_type = namespace.resolve_type(&return_type);
-                            let (body, _code_block_implicit_return) = 
+                            let (body, _code_block_implicit_return) =
                                         type_check!(
                                             TypedCodeBlock::type_check(
                                             body,
@@ -258,7 +258,7 @@ impl<'sc> TypedAstNode<'sc> {
                                             Some(return_type.clone()),
                                             "Trait method body's return type does not \
                                             match up with its return type annotation."),
-                                            continue, 
+                                            continue,
                                             warnings, errors
                                         );
 
@@ -269,7 +269,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 span,
                                 return_type,
                                 type_parameters,
-                                // For now, any method declared is automatically public. 
+                                // For now, any method declared is automatically public.
                                 // We can tweak that later if we want.
                                 visibility: Visibility::Public,
                                 return_type_span
@@ -409,7 +409,7 @@ impl<'sc> TypedAstNode<'sc> {
                             visibility: decl.visibility
 
                         };
-                
+
                         // insert struct into namespace
                         namespace.insert(
                             decl.name.clone(),
@@ -433,13 +433,12 @@ impl<'sc> TypedAstNode<'sc> {
                         expr: type_check!(TypedExpression::type_check(
                                   expr.clone(),
                                   &namespace,
-                                  return_type_annotation, 
+                                  return_type_annotation,
                                   "Returned value must match up with the function return type annotation."),
                                   error_recovery_expr(expr.span()),
                                   warnings,
                                   errors)
                     })
-                    
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let typed_expr = type_check!(

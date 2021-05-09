@@ -108,7 +108,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                             if let ResolvedType::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
                                 match trait_param.r#type {
                                     ResolvedType::Generic { .. } => (),
-                                    _ => 
+                                    _ =>
 
                                     errors.push(CompileError::MismatchedTypeInTrait {
                                         span: trait_param.type_span.clone(),
@@ -133,13 +133,13 @@ pub(crate) fn implementation_of_trait<'sc>(
                             errors.push(CompileError::MismatchedTypeInTrait {
                                 span: fn_decl.return_type_span.clone(),
                                 expected: return_type.friendly_type_str(),
-                                given: fn_decl.return_type.friendly_type_str() 
+                                given: fn_decl.return_type.friendly_type_str()
                             });
                         }
                         if errors.is_empty() { None } else { Some(errors) }
                     } else {
-                        None 
-                    } 
+                        None
+                    }
                 })
                 {
                     errors.append(&mut l_e);

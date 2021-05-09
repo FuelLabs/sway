@@ -63,7 +63,7 @@ mod test {
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32) -> i32 {
             // a function body
-            let x = if 
+            let x = if
                 true
                 { 5 }
                 else { 6 };
@@ -218,7 +218,7 @@ mod test {
         let parsed = HllParser::parse(
             Rule::program,
             r#"
-           predicate { 
+           predicate {
             trait MyTrait {
                 fn some_method_you_need_to_implement(x: i32) -> i32;
             } {
