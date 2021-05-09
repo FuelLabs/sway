@@ -1,5 +1,5 @@
 use super::IntegerBits;
-use crate::{error::*, semantics::ast_node::TypedStructField, Ident};
+use crate::{error::*, semantic_analysis::ast_node::TypedStructField, Ident};
 use pest::Span;
 /// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
 /// Type symbols are ambiguous in the beginning of compilation, as any custom symbol could be

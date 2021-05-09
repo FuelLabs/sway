@@ -22,7 +22,7 @@
 //!
 //! # # Terms
 //! # # # Node
-//! A node is any [crate::semantics::TypedAstNode], with some [crate::semantics::TypedAstNodeContent].
+//! A node is any [crate::semantic_analysis::TypedAstNode], with some [crate::semantic_analysis::TypedAstNodeContent].
 //! # # # Dominating nodes
 //! A dominating node is a node which all previous nodes pass through. These are what we are
 //! concerned about in control flow analysis. More formally,

@@ -1,4 +1,4 @@
-use crate::semantics::TypedExpression;
+use crate::semantic_analysis::TypedExpression;
 use crate::Ident;
 
 #[derive(Clone, Debug)]

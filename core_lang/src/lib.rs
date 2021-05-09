@@ -9,7 +9,7 @@ mod control_flow_analysis;
 mod ident;
 mod parse_tree;
 mod parser;
-mod semantics;
+mod semantic_analysis;
 
 use crate::parse_tree::*;
 use crate::parser::{HllParser, Rule};
@@ -18,7 +18,7 @@ pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
-use semantics::{TreeType, TypedParseTree};
+use semantic_analysis::{TreeType, TypedParseTree};
 use std::collections::HashMap;
 
 pub(crate) mod types;
@@ -28,7 +28,7 @@ pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
 pub use pest::Span;
-pub use semantics::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 pub use types::TypeInfo;
 
 // todo rename to language name
@@ -77,38 +77,6 @@ pub(crate) enum AstNodeContent<'sc> {
     Expression(Expression<'sc>),
     ImplicitReturnExpression(Expression<'sc>),
     WhileLoop(WhileLoop<'sc>),
-}
-
-#[derive(Debug, Clone)]
-struct ReturnStatement<'sc> {
-    expr: Expression<'sc>,
-}
-
-impl<'sc> ReturnStatement<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        let span = pair.as_span();
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-        let mut inner = pair.into_inner();
-        let _ret_keyword = inner.next();
-        let expr = inner.next();
-        let res = match expr {
-            None => ReturnStatement {
-                expr: Expression::Unit { span },
-            },
-            Some(expr_pair) => {
-                let expr = eval!(
-                    Expression::parse_from_pair,
-                    warnings,
-                    errors,
-                    expr_pair,
-                    Expression::Unit { span }
-                );
-                ReturnStatement { expr }
-            }
-        };
-        ok(res, warnings, errors)
-    }
 }
 
 impl<'sc> ParseTree<'sc> {

@@ -1,4 +1,4 @@
-use crate::semantics::TypedExpression;
+use crate::semantic_analysis::TypedExpression;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]

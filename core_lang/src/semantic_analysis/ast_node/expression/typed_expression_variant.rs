@@ -1,6 +1,6 @@
 use super::*;
 use crate::parse_tree::AsmOp;
-use crate::semantics::ast_node::*;
+use crate::semantic_analysis::ast_node::*;
 use crate::Ident;
 #[derive(Clone, Debug)]
 pub(crate) enum TypedExpressionVariant<'sc> {

@@ -2,8 +2,10 @@ use crate::parser::Rule;
 use crate::types::TypeInfo;
 use crate::Ident;
 use crate::Namespace;
-use crate::{error::*, semantics::ast_node::TypedEnumDeclaration};
-use crate::{parse_tree::declaration::TypeParameter, semantics::ast_node::TypedEnumVariant};
+use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
+use crate::{
+    parse_tree::declaration::TypeParameter, semantic_analysis::ast_node::TypedEnumVariant,
+};
 use inflector::cases::classcase::is_class_case;
 use pest::iterators::Pair;
 use pest::Span;

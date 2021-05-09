@@ -2,7 +2,7 @@ use super::*;
 use crate::{asm_lang::*, parse_tree::CallPath};
 use crate::{
     parse_tree::Literal,
-    semantics::{
+    semantic_analysis::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },

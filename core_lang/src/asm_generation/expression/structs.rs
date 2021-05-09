@@ -3,7 +3,7 @@ use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
     asm_lang::{ConstantRegister, Op, RegisterId},
     error::*,
-    semantics::ast_node::TypedStructExpressionField,
+    semantic_analysis::ast_node::TypedStructExpressionField,
     CompileResult, Ident,
 };
 use std::convert::TryInto;

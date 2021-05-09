@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::semantics::ast_node::*;
+use crate::semantic_analysis::ast_node::*;
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
