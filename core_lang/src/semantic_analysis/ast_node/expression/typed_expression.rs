@@ -597,7 +597,7 @@ impl<'sc> TypedExpression<'sc> {
                             &namespace,
                             Some(un_self_type),
                             "Function argument must be of the same type declared in the function declaration."),
-                        continue, 
+                        continue,
                         warnings,
                         errors
                     )));

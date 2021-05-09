@@ -35,7 +35,7 @@ parenthesized_expression = { "(" ~ expr ~ ")" }
 expr       =  {expr_inner ~ (op ~ expr_inner)*}
 func_app   =  { fn_name ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 fn_name    =  {var_exp}
-var_exp    =  { unary_op? ~ var_name_ident } 
+var_exp    =  { unary_op? ~ var_name_ident }
 method_exp =  { subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 subfield_exp = { (call_item ~ ".")+ ~ call_item }
 call_item = { ident }
@@ -65,7 +65,7 @@ u64_integer = { basic_integer ~ "u64"? }
 byte = { binary_byte | hex_byte }
 binary_byte = @{ "0b" ~ ("1" | "0")*}
 hex_byte    = @{ "0x" ~ hex_digit* }
-hex_digit = { "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" | ASCII_DIGIT } 
+hex_digit = { "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" | ASCII_DIGIT }
 match_expression = { "match"  ~ expr ~ "{" ~ match_branch+ ~ "}" }
 match_branch = { match_condition ~ "=>" ~ (code_block | expr) ~ "," }
 match_condition = { expr | "_" } // TODO this doesn't support pattern matching
@@ -76,14 +76,14 @@ struct_expression = { struct_name ~ "{" ~ struct_expr_fields ~ "}" }
 struct_expr_fields = { struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","? }
 array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
-// declarations 
+// declarations
 declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment|impl_trait|impl_self)}
 var_decl    =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription = { ":" ~ type_name}
 fn_decl     =  {visibility ~ fn_signature ~ code_block}
 fn_signature = { fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds? }
 var_name = {ident}
-reassignment = { var_exp ~ assign ~ expr ~ ";" } 
+reassignment = { var_exp ~ assign ~ expr ~ ";" }
 
 visibility = { "pub"? }
 
@@ -94,7 +94,7 @@ struct_field_name = {ident}
 // // enum declaration
 enum_decl = { enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}" }
 enum_fields = { enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","? }
-enum_name = {ident} 
+enum_name = {ident}
 enum_field_name = {ident}
 
 impl_self = { impl_keyword ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}") }
@@ -123,7 +123,7 @@ trait_decl = { visibility ~ trait_decl_keyword ~ trait_name ~ type_params? ~ tra
 // // parsed as two separate blocks here.
 // // this can of course be changed if others dislike it.
 trait_methods = { "{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{"~ fn_decl* ~ "}")* }
-trait_name = { ident } 
+trait_name = { ident }
 impl_trait = { impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{"~ fn_decl* ~ "}") }
 
 
@@ -139,13 +139,13 @@ while_loop = { while_keyword ~ expr ~ code_block }
 // asm inlining
 asm_expression = { asm_keyword ~ asm_registers ~ "{" ~ asm_op* ~ asm_register? ~  "}" }
 asm_registers = { "(" ~ asm_register_declaration ~ ("," ~ asm_register_declaration)* ~ ")" }
-// should we allow expressions to be directly assigned to registers, or only 
+// should we allow expressions to be directly assigned to registers, or only
 // already declared variables? i'm unsure
 asm_register_declaration = { ident ~ (":" ~ expr)? }
 asm_op = { opcode ~ (asm_immediate | asm_register)* ~ ";" }
 asm_register = { ident }
 asm_immediate = {"i" ~ u64_integer}
-opcode = { ident } 
+opcode = { ident }
 
 // control flow
 control_flow = _{while_loop|return_statement}
@@ -161,5 +161,5 @@ char          =  @{
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 ident          = @{(!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*) | "()"}
-reserved_words = {  while_keyword | "struct" | enum_keyword |  match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword } 
+reserved_words = {  while_keyword | "struct" | enum_keyword |  match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword }
 

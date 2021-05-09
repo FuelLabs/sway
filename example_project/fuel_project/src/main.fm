@@ -33,7 +33,7 @@ script{
 
   impl MyTrait for MyEnum {
     fn to_implement(a: MyEnum) -> Self {
-      a 
+      a
     }
   }
 

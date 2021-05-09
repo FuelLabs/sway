@@ -27,7 +27,7 @@ script {
       john: 10,
       nick: 11u64,
     };
-    
+
 //    return if true { foo(5u64) };
     return z.john;
 //    x.fuel_add(z); TODO fix this code block return type in control flow analysis
