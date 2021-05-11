@@ -31,6 +31,33 @@ impl TextDocument {
         }
     }
 
+    pub fn get_token_at_position(&self, position: Position) -> Option<Token> {
+        let line = position.line;
+
+        if let Some(tokens) = self.lines.get(&line) {
+            for token in tokens {
+                if token.contains_character(position.character) {
+                    return Some(token.clone());
+                }
+            }
+            None
+        } else {
+            None
+        }
+    }
+
+    pub fn get_tokens(&self) -> Vec<Token> {
+        let mut result = vec![];
+
+        for (_, tokens) in &self.lines {
+            for token in tokens {
+                result.push(token.clone());
+            }
+        }
+
+        result
+    }
+
     pub fn sync_text_with_content(&mut self) {
         self.text = self.content.to_string();
     }
@@ -77,10 +104,6 @@ impl TextDocument {
 
         self.content.remove(edit.start_index..edit.end_index);
         self.content.insert(edit.start_index, edit.change_text);
-    }
-
-    pub fn get_text_as_string(&self) -> String {
-        self.content.to_string()
     }
 }
 

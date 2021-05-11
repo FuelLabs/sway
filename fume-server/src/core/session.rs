@@ -1,7 +1,10 @@
 use dashmap::DashMap;
-use lspower::lsp::{TextDocumentContentChangeEvent, TextDocumentItem, Url};
+use lspower::lsp::{Position, TextDocumentContentChangeEvent, TextDocumentItem, Url};
 
-use super::document::{DocumentError, TextDocument};
+use super::{
+    document::{DocumentError, TextDocument},
+    token::Token,
+};
 
 #[derive(Debug)]
 pub struct Session {
@@ -44,10 +47,10 @@ impl Session {
         Ok(())
     }
 
-    pub fn get_document_text_as_string(&self, uri: &Url) -> Result<String, SessionError> {
-        match self.documents.get(uri) {
-            Some(document) => Ok(document.get_text_as_string()),
-            None => Err(SessionError::DocumentAlreadyClosed),
+    pub fn get_token_from_position(&self, url: &Url, position: Position) -> Option<Token> {
+        match self.documents.get(url) {
+            Some(document) => document.get_token_at_position(position),
+            _ => None,
         }
     }
 
@@ -55,6 +58,13 @@ impl Session {
         match self.documents.remove(uri) {
             Some((_, text_document)) => Ok(text_document),
             None => Err(SessionError::DocumentAlreadyClosed),
+        }
+    }
+
+    pub fn get_tokens_from_file(&self, url: &Url) -> Option<Vec<Token>> {
+        match self.documents.get(url) {
+            Some(document) => Some(document.get_tokens()),
+            _ => None,
         }
     }
 }

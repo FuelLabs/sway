@@ -196,13 +196,20 @@ impl LanguageServer for Backend {
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        let line = params.text_document_position_params.position;
-        // TODO
-        // 0. on document open / save -> parse and store all the values and their metadata
-        // 1. get the document
-        // 2. find exact value of the hover
-        // 3. return info of the hovered Value and it's metadata
-        Ok(None)
+        let position = params.text_document_position_params.position;
+        let url = &params.text_document_position_params.text_document.uri;
+
+        self.log_info_message(&format!("position is {:?}", position))
+            .await;
+
+        match self.session.get_token_from_position(url, position) {
+            Some(token) => {
+                self.log_info_message(&format!("token found is at {:?}", token.range))
+                    .await;
+                Ok(capabilities::hover::get_hover_data(token))
+            }
+            _ => Ok(None),
+        }
     }
 
     async fn document_highlight(

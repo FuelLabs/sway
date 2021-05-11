@@ -6,11 +6,11 @@ use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    range: Range,
-    token_type: TokenType,
-    name: String,
+    pub range: Range,
+    pub token_type: TokenType,
+    pub name: String,
+    pub line_start: u32,
     is_multi_line: bool,
-    line_start: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +34,13 @@ impl Token {
             is_multi_line: range.start.line != range.end.line,
             line_start: range.start.line,
         }
+    }
+
+    pub fn contains_character(&self, character: u32) -> bool {
+        let range = self.range;
+        !self.is_multi_line
+            && character >= range.start.character
+            && character <= range.end.character
     }
 
     pub fn get_line_start(&self) -> u32 {
