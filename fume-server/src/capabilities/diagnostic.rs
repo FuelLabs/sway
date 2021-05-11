@@ -1,41 +1,39 @@
 use lsp::{Diagnostic, DiagnosticSeverity, Position, Range};
 use lspower::lsp::{self};
 
-use parser::{CompileError, CompileResult, CompileWarning};
+use parser::{CompileError, CompileWarning};
 
-pub fn perform_diagnostics(text_document: &str) -> Option<Vec<Diagnostic>> {
-    match parser::parse(text_document) {
-        CompileResult::Err { warnings, errors } => {
-            let errors: Vec<Diagnostic> = errors
-                .iter()
-                .map(|error| {
-                    let range = get_range(&WarningOrError::Error(error));
-                    Diagnostic {
-                        range,
-                        severity: Some(DiagnosticSeverity::Error),
-                        message: error.to_friendly_error_string(),
-                        ..Default::default()
-                    }
-                })
-                .collect();
+pub fn perform_diagnostics(
+    warnings: Vec<CompileWarning>,
+    errors: Vec<CompileError>,
+) -> Vec<Diagnostic> {
+    let errors: Vec<Diagnostic> = errors
+        .iter()
+        .map(|error| {
+            let range = get_range(&WarningOrError::Error(error));
+            Diagnostic {
+                range,
+                severity: Some(DiagnosticSeverity::Error),
+                message: error.to_friendly_error_string(),
+                ..Default::default()
+            }
+        })
+        .collect();
 
-            let warnings: Vec<Diagnostic> = warnings
-                .iter()
-                .map(|warning| {
-                    let range = get_range(&WarningOrError::Warning(warning));
-                    Diagnostic {
-                        range,
-                        severity: Some(DiagnosticSeverity::Warning),
-                        message: warning.to_friendly_warning_string(),
-                        ..Default::default()
-                    }
-                })
-                .collect();
+    let warnings: Vec<Diagnostic> = warnings
+        .iter()
+        .map(|warning| {
+            let range = get_range(&WarningOrError::Warning(warning));
+            Diagnostic {
+                range,
+                severity: Some(DiagnosticSeverity::Warning),
+                message: warning.to_friendly_warning_string(),
+                ..Default::default()
+            }
+        })
+        .collect();
 
-            return Some(vec![warnings, errors].into_iter().flatten().collect());
-        }
-        _ => None,
-    }
+    vec![warnings, errors].into_iter().flatten().collect()
 }
 
 fn get_range<'s>(warning_or_error: &WarningOrError<'s>) -> Range {

@@ -1,12 +1,22 @@
-use lspower::lsp::{Position, Range, TextDocumentContentChangeEvent, TextDocumentItem};
+use std::collections::HashMap;
+
+use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent, TextDocumentItem};
+use parser::{self, HllParser, Rule};
+use pest::Parser;
 use ropey::Rope;
+
+use crate::capabilities;
+
+use super::token::{pair_rule_to_token, Token};
 
 #[derive(Debug)]
 pub struct TextDocument {
     language_id: String,
     version: i32,
     uri: String,
-    text: Rope,
+    content: Rope,
+    text: String,
+    lines: HashMap<u32, Vec<Token>>,
 }
 
 impl TextDocument {
@@ -15,19 +25,62 @@ impl TextDocument {
             language_id: item.language_id.clone(),
             version: item.version,
             uri: item.uri.to_string(),
-            text: Rope::from_str(&item.text),
+            content: Rope::from_str(&item.text),
+            text: item.text.clone(),
+            lines: HashMap::new(),
+        }
+    }
+
+    pub fn sync_text_with_content(&mut self) {
+        self.text = self.content.to_string();
+    }
+
+    pub fn clear_lines(&mut self) {
+        self.lines = HashMap::new();
+    }
+
+    pub fn parse(&mut self) -> Result<(), DocumentError> {
+        self.sync_text_with_content();
+        self.clear_lines();
+
+        match HllParser::parse(Rule::program, &self.text) {
+            Ok(pairs) => {
+                for pair in pairs.flatten() {
+                    if let Some(token) = pair_rule_to_token(&pair) {
+                        let line = token.get_line_start();
+                        match self.lines.get_mut(&line) {
+                            Some(v) => {
+                                v.push(token);
+                            }
+                            None => {
+                                self.lines.insert(line, vec![token]);
+                            }
+                        }
+                    }
+                }
+
+                Ok(())
+            }
+            Err(_) => match parser::parse(&self.text) {
+                parser::CompileResult::Err { warnings, errors } => {
+                    Err(DocumentError::FailedToParse(
+                        capabilities::diagnostic::perform_diagnostics(warnings, errors),
+                    ))
+                }
+                _ => Ok(()),
+            },
         }
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
         let edit = self.build_edit(change);
 
-        self.text.remove(edit.start_index..edit.end_index);
-        self.text.insert(edit.start_index, edit.change_text);
+        self.content.remove(edit.start_index..edit.end_index);
+        self.content.insert(edit.start_index, edit.change_text);
     }
 
     pub fn get_text_as_string(&self) -> String {
-        self.text.to_string()
+        self.content.to_string()
     }
 }
 
@@ -61,16 +114,16 @@ impl TextDocument {
     }
 
     fn byte_to_position(&self, byte_index: usize) -> Position {
-        let line_index = self.text.byte_to_line(byte_index);
+        let line_index = self.content.byte_to_line(byte_index);
 
         let line_utf16_cu_index = {
-            let char_index = self.text.line_to_char(line_index);
-            self.text.char_to_utf16_cu(char_index)
+            let char_index = self.content.line_to_char(line_index);
+            self.content.char_to_utf16_cu(char_index)
         };
 
         let character_utf16_cu_index = {
-            let char_index = self.text.byte_to_char(byte_index);
-            self.text.char_to_utf16_cu(char_index)
+            let char_index = self.content.byte_to_char(byte_index);
+            self.content.char_to_utf16_cu(char_index)
         };
 
         let character = character_utf16_cu_index - line_utf16_cu_index;
@@ -82,8 +135,8 @@ impl TextDocument {
         let row_index = position.line as usize;
         let column_index = position.character as usize;
 
-        let row_char_index = self.text.line_to_char(row_index);
-        let column_char_index = self.text.utf16_cu_to_char(column_index);
+        let row_char_index = self.content.line_to_char(row_index);
+        let column_char_index = self.content.utf16_cu_to_char(column_index);
 
         row_char_index + column_char_index
     }
@@ -94,4 +147,9 @@ struct EditText<'text> {
     start_index: usize,
     end_index: usize,
     change_text: &'text str,
+}
+
+#[derive(Debug)]
+pub enum DocumentError {
+    FailedToParse(Vec<Diagnostic>),
 }
