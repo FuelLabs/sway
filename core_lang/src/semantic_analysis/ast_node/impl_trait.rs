@@ -4,7 +4,7 @@ use super::{
 };
 use crate::parse_tree::ImplTrait;
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-use crate::{error::*, types::MaybeResolvedType, Ident};
+use crate::{error::*, types::{MaybeResolvedType, ResolvedType, PartiallyResolvedType}, Ident};
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
@@ -80,9 +80,9 @@ pub(crate) fn implementation_of_trait<'sc>(
                         let mut errors = vec![];
                         if let Some(mut maybe_err) = parameters.iter().zip(fn_decl.parameters.iter()).find_map(|(fn_decl_param, trait_param)| {
                             let mut errors = vec![];
-                            if let MaybeResolvedType::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
+                            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ }) = fn_decl_param.r#type {
                                 match trait_param.r#type {
-                                    MaybeResolvedType::Generic { .. } => (),
+                                    MaybeResolvedType::Partial(PartiallyResolvedType::Generic { .. }) => (),
                                     _ => 
 
                                     errors.push(CompileError::MismatchedTypeInTrait {

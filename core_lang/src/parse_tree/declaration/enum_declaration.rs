@@ -1,11 +1,11 @@
-use crate::parser::Rule;
-use crate::types::{MaybeResolvedType, TypeInfo};
+use crate::types::{MaybeResolvedType, ResolvedType, TypeInfo};
 use crate::Ident;
 use crate::Namespace;
 use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
 use crate::{
     parse_tree::declaration::TypeParameter, semantic_analysis::ast_node::TypedEnumVariant,
 };
+use crate::{parser::Rule, types::IntegerBits};
 use inflector::cases::classcase::is_class_case;
 use pest::iterators::Pair;
 use pest::Span;
@@ -33,14 +33,22 @@ impl<'sc> EnumDeclaration<'sc> {
         namespace: &Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
     ) -> TypedEnumDeclaration<'sc> {
+        let mut variants_buf = vec![];
+        let mut errors = vec![];
+        let mut warnings = vec![];
+
+        for variant in &self.variants {
+            variants_buf.push(type_check!(
+                variant.to_typed_decl(namespace, self_type, variant.span.clone()),
+                continue,
+                warnings,
+                errors
+            ));
+        }
         TypedEnumDeclaration {
             name: self.name.clone(),
             type_parameters: self.type_parameters.clone(),
-            variants: self
-                .variants
-                .iter()
-                .map(|x| x.to_typed_decl(namespace, self_type))
-                .collect(),
+            variants: variants_buf,
             span: self.span.clone(),
         }
     }
@@ -138,13 +146,32 @@ impl<'sc> EnumVariant<'sc> {
         &self,
         namespace: &Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-    ) -> TypedEnumVariant<'sc> {
-        TypedEnumVariant {
-            name: self.name.clone(),
-            r#type: namespace.resolve_type(&self.r#type, self_type),
-            tag: self.tag,
-            span: self.span.clone(),
-        }
+        span: Span<'sc>,
+    ) -> CompileResult<'sc, TypedEnumVariant<'sc>> {
+        ok(
+            TypedEnumVariant {
+                name: self.name.clone(),
+                r#type: match namespace.resolve_type(&self.r#type, self_type) {
+                    MaybeResolvedType::Resolved(r) => r,
+                    MaybeResolvedType::Partial(crate::types::PartiallyResolvedType::Numeric) => {
+                        ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
+                    }
+                    MaybeResolvedType::Partial(p) => {
+                        return err(
+                            vec![],
+                            vec![CompileError::TypeMustBeKnown {
+                                ty: p.friendly_type_str(),
+                                span,
+                            }],
+                        )
+                    }
+                },
+                tag: self.tag,
+                span: self.span.clone(),
+            },
+            vec![],
+            vec![],
+        )
     }
     pub(crate) fn parse_from_pairs(
         decl_inner: Option<Pair<'sc, Rule>>,

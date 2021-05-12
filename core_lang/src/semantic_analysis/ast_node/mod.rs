@@ -1,7 +1,7 @@
-use crate::error::*;
+use crate::{error::*, types::IntegerBits};
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
-use crate::types::{MaybeResolvedType, TypeInfo};
+use crate::types::{MaybeResolvedType, TypeInfo, ResolvedType};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
@@ -71,10 +71,10 @@ impl<'sc> TypedAstNode<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            ReturnStatement(_) | Declaration(_) => MaybeResolvedType::Unit,
+            ReturnStatement(_) | Declaration(_) => MaybeResolvedType::Resolved(ResolvedType::Unit),
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
-            WhileLoop(_) | SideEffect => MaybeResolvedType::Unit,
+            WhileLoop(_) | SideEffect => MaybeResolvedType::Resolved(ResolvedType::Unit),
         }
     }
 }
@@ -408,7 +408,15 @@ impl<'sc> TypedAstNode<'sc> {
                         let fields = decl.fields.into_iter().map(|StructField { name, r#type, span }| {
                             TypedStructField {
                                 name,
-                                r#type: namespace.resolve_type(&r#type, self_type),
+                                r#type: match namespace.resolve_type(&r#type, self_type) {
+                                    MaybeResolvedType::Resolved(r) => r,
+                                    MaybeResolvedType::Partial(crate::types::PartiallyResolvedType::Numeric) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+                                    MaybeResolvedType::Partial(p) => {
+                                        errors.push(CompileError::TypeMustBeKnown { ty: p.friendly_type_str(), span: span.clone() });
+                                        ResolvedType::ErrorRecovery
+                                    }
+
+                                },
                                 span
                             }
                         }).collect::<Vec<_>>();
@@ -475,7 +483,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             condition,
                             &namespace,
-                            Some(MaybeResolvedType::Boolean),
+                            Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
                             self_type
                         ),
@@ -487,12 +495,12 @@ impl<'sc> TypedAstNode<'sc> {
                     TypedCodeBlock::type_check(
                             body.clone(),
                             &namespace,
-                            Some(MaybeResolvedType::Unit),
+                            Some(MaybeResolvedType::Resolved(ResolvedType::Unit)),
                             "A while loop's loop body cannot implicitly return a value.\
                             Try assigning it to a mutable variable declared outside of the loop instead.",
                             self_type
                         ),
-                        (TypedCodeBlock { contents: vec![], whole_block_span: body.whole_block_span.clone(), }, Some(MaybeResolvedType::Unit)),
+                        (TypedCodeBlock { contents: vec![], whole_block_span: body.whole_block_span.clone(), }, Some(MaybeResolvedType::Resolved(ResolvedType::Unit))),
                         warnings,
                         errors
                     );
@@ -513,8 +521,8 @@ impl<'sc> TypedAstNode<'sc> {
                     r#type: node.type_info(),
                 };
                 assert_or_warn!(
-                    node.type_info() == MaybeResolvedType::Unit
-                        || node.type_info() == MaybeResolvedType::ErrorRecovery,
+                    node.type_info() == MaybeResolvedType::Resolved(ResolvedType::Unit)
+                        || node.type_info() == MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
                     warnings,
                     node.span.clone(),
                     warning

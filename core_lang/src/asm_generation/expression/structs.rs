@@ -4,6 +4,7 @@ use crate::{
     asm_lang::{ConstantRegister, Op, RegisterId},
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
+    types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     CompileResult, Ident,
 };
 use std::convert::TryInto;
@@ -32,10 +33,24 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     // step 4: put the pointer to the beginning of the struct in the namespace
 
     // step 0
-    let fields_with_sizes: Vec<(&TypedStructExpressionField, u64)> = fields
-        .into_iter()
-        .map(|field| (field, field.value.return_type.stack_size_of()))
-        .collect::<Vec<_>>();
+    let mut fields_with_sizes = vec![];
+    for field in fields {
+        let stack_size = match field.value.return_type {
+            MaybeResolvedType::Partial(PartiallyResolvedType::Numeric) => {
+                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour).stack_size_of()
+            }
+            MaybeResolvedType::Resolved(ref r) => r.stack_size_of(),
+            MaybeResolvedType::Partial(ref p) => {
+                errors.push(CompileError::TypeMustBeKnown {
+                    span: field.value.span.clone(),
+                    ty: p.friendly_type_str(),
+                });
+                continue;
+            }
+        };
+        fields_with_sizes.push((field, stack_size));
+    }
+
     let total_size = fields_with_sizes.iter().fold(0, |acc, (_, num)| acc + num);
 
     asm_buf.push(Op::new_comment(format!(
@@ -86,6 +101,19 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     for TypedStructExpressionField { name, value } in fields {
         // evaluate the expression
         let return_register = register_sequencer.next();
+        let value_stack_size = match value.return_type {
+            MaybeResolvedType::Partial(PartiallyResolvedType::Numeric) => {
+                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour).stack_size_of()
+            }
+            MaybeResolvedType::Resolved(ref r) => r.stack_size_of(),
+            MaybeResolvedType::Partial(ref p) => {
+                errors.push(CompileError::TypeMustBeKnown {
+                    span: value.span.clone(),
+                    ty: p.friendly_type_str(),
+                });
+                continue;
+            }
+        };
         let mut field_instantiation = type_check!(
             convert_expression_to_asm(value, namespace, &return_register, register_sequencer),
             vec![],
@@ -106,7 +134,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         // from john about the above: As a TODO, maybe let's just restrict the maximum size of
         // something (I don't know exactly what) at the consensus level so this case is guaranteed
         // to never be hit.
-        offset += value.return_type.stack_size_of() as u32;
+        offset += value_stack_size as u32;
     }
 
     ok(asm_buf, warnings, errors)

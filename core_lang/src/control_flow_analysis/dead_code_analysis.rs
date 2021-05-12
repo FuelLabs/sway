@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::semantic_analysis::ast_node::TypedStructExpressionField;
-use crate::types::MaybeResolvedType;
+use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
     parse_tree::Visibility,
     semantic_analysis::ast_node::{
@@ -708,10 +708,10 @@ fn connect_expression<'sc>(
         } => {
             assert!(matches!(
                 resolved_type_of_parent,
-                MaybeResolvedType::Struct { .. }
+                MaybeResolvedType::Resolved(ResolvedType::Struct { .. })
             ));
             let resolved_type_of_parent = match resolved_type_of_parent {
-                MaybeResolvedType::Struct { name, .. } => name.clone(),
+                MaybeResolvedType::Resolved(ResolvedType::Struct { name, .. }) => name.clone(),
                 _ => panic!("Called subfvield on a non-struct"),
             };
             let field_name = name.last().unwrap();

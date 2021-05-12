@@ -5,7 +5,7 @@ use super::{
     TypedExpression,
 };
 use crate::error::*;
-use crate::types::MaybeResolvedType;
+use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
@@ -37,20 +37,24 @@ impl<'sc> Namespace<'sc> {
                     name,
                     fields,
                     ..
-                })) => MaybeResolvedType::Struct {
+                })) => MaybeResolvedType::Resolved(ResolvedType::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
-                },
+                }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                     name,
                     variants,
                     ..
-                })) => MaybeResolvedType::Enum {
+                })) => MaybeResolvedType::Resolved(ResolvedType::Enum {
                     name: name.clone(),
                     variant_types: variants.iter().map(|x| x.r#type.clone()).collect(),
-                },
-                Some(_) => MaybeResolvedType::Generic { name: name.clone() },
-                None => MaybeResolvedType::Generic { name: name.clone() },
+                }),
+                Some(_) => MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
+                    name: name.clone(),
+                }),
+                None => MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
+                    name: name.clone(),
+                }),
             },
             TypeInfo::SelfType => self_type.clone(),
 
@@ -67,20 +71,24 @@ impl<'sc> Namespace<'sc> {
                     name,
                     fields,
                     ..
-                })) => MaybeResolvedType::Struct {
+                })) => MaybeResolvedType::Resolved(ResolvedType::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
-                },
+                }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                     name,
                     variants,
                     ..
-                })) => MaybeResolvedType::Enum {
+                })) => MaybeResolvedType::Resolved(ResolvedType::Enum {
                     name: name.clone(),
                     variant_types: variants.iter().map(|x| x.r#type.clone()).collect(),
-                },
-                Some(_) => MaybeResolvedType::Generic { name: name.clone() },
-                None => MaybeResolvedType::Generic { name: name.clone() },
+                }),
+                Some(_) => MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
+                    name: name.clone(),
+                }),
+                None => MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
+                    name: name.clone(),
+                }),
             },
             TypeInfo::SelfType => {
                 unreachable!("Type resolution without self called on a self type.")
@@ -368,9 +376,12 @@ impl<'sc> Namespace<'sc> {
                 }
             };
             match r#type {
-                MaybeResolvedType::Struct { .. } => {
+                ResolvedType::Struct { .. } => {
                     let (l_fields, _l_name) = type_check!(
-                        self.find_struct_name_and_fields(&r#type, &ident),
+                        self.find_struct_name_and_fields(
+                            &MaybeResolvedType::Resolved(r#type),
+                            &ident
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -381,7 +392,7 @@ impl<'sc> Namespace<'sc> {
                 _ => {
                     fields = vec![];
                     parent_rover = ret_ty.clone();
-                    ret_ty = r#type;
+                    ret_ty = MaybeResolvedType::Resolved(r#type);
                 }
             }
         }
@@ -446,7 +457,7 @@ impl<'sc> Namespace<'sc> {
         return_type: &MaybeResolvedType<'sc>,
         debug_ident: &Ident<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
-        if let MaybeResolvedType::Struct { name, fields: _ } = return_type {
+        if let MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields: _ }) = return_type {
             match self.get_symbol(name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     fields,

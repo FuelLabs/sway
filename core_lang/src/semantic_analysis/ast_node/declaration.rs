@@ -3,7 +3,11 @@ use super::{
 };
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
-use crate::{error::*, types::MaybeResolvedType, Ident};
+use crate::{
+    error::*,
+    types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    Ident,
+};
 use pest::Span;
 
 #[derive(Clone, Debug)]
@@ -59,10 +63,10 @@ impl<'sc> TypedDeclaration<'sc> {
                     name,
                     fields,
                     ..
-                }) => MaybeResolvedType::Struct {
+                }) => MaybeResolvedType::Resolved(ResolvedType::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
-                },
+                }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
                     rhs.return_type.clone()
                 }
@@ -140,7 +144,7 @@ pub struct TypedStructDeclaration<'sc> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TypedStructField<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: MaybeResolvedType<'sc>,
+    pub(crate) r#type: ResolvedType<'sc>,
     pub(crate) span: Span<'sc>,
 }
 
@@ -162,8 +166,8 @@ impl<'sc> TypedEnumDeclaration<'sc> {
         ok(self.clone(), vec![], vec![])
     }
     /// Returns the [ResolvedType] corresponding to this enum's type.
-    pub(crate) fn as_type(&self) -> MaybeResolvedType<'sc> {
-        MaybeResolvedType::Enum {
+    pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
+        ResolvedType::Enum {
             name: self.name.clone(),
             variant_types: self.variants.iter().map(|x| x.r#type.clone()).collect(),
         }
@@ -173,7 +177,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
 #[derive(Debug, Clone)]
 pub struct TypedEnumVariant<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: MaybeResolvedType<'sc>,
+    pub(crate) r#type: ResolvedType<'sc>,
     pub(crate) tag: usize,
     pub(crate) span: Span<'sc>,
 }
@@ -289,7 +293,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     contents: vec![],
                     whole_block_span: body.whole_block_span.clone()
                 },
-                Some(MaybeResolvedType::ErrorRecovery)
+                Some(MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery))
             ),
             warnings,
             errors
@@ -313,7 +317,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .collect::<Vec<_>>();
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let MaybeResolvedType::Generic { ref name } = param.r#type {
+            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { ref name }) =
+                param.r#type
+            {
                 generic_params_buf_for_error_message.push(name.primary_name);
             }
         }
@@ -323,7 +329,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         } in parameters.iter()
         {
             let span = name.span.clone();
-            if let MaybeResolvedType::Generic { name, .. } = r#type {
+            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { name, .. }) = r#type
+            {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span.clone(),
                     |acc,

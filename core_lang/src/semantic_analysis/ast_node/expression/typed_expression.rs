@@ -1,6 +1,6 @@
 use super::*;
 use crate::semantic_analysis::ast_node::*;
-use crate::types::{IntegerBits, MaybeResolvedType};
+use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
 
 #[derive(Clone, Debug)]
@@ -16,7 +16,7 @@ pub(crate) struct TypedExpression<'sc> {
 pub(crate) fn error_recovery_expr<'sc>(span: Span<'sc>) -> TypedExpression<'sc> {
     TypedExpression {
         expression: TypedExpressionVariant::Unit,
-        return_type: MaybeResolvedType::ErrorRecovery,
+        return_type: MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
         is_constant: IsConstant::No,
         span,
     }
@@ -36,14 +36,14 @@ impl<'sc> TypedExpression<'sc> {
         let mut typed_expression = match other {
             Expression::Literal { value: lit, span } => {
                 let return_type = match lit {
-                    Literal::String(_) => MaybeResolvedType::String,
-                    Literal::U8(_) => MaybeResolvedType::UnsignedInteger(IntegerBits::Eight),
-                    Literal::U16(_) => MaybeResolvedType::UnsignedInteger(IntegerBits::Sixteen),
-                    Literal::U32(_) => MaybeResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
-                    Literal::U64(_) => MaybeResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-                    Literal::Boolean(_) => MaybeResolvedType::Boolean,
-                    Literal::Byte(_) => MaybeResolvedType::Byte,
-                    Literal::Byte32(_) => MaybeResolvedType::Byte32,
+                    Literal::String(_) =>  MaybeResolvedType::Resolved(ResolvedType::String),
+                    Literal::U8(_) =>      MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Eight)),
+                    Literal::U16(_) =>     MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Sixteen)),
+                    Literal::U32(_) =>     MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                    Literal::U64(_) =>     MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)),
+                    Literal::Boolean(_) => MaybeResolvedType::Resolved(ResolvedType::Boolean),
+                    Literal::Byte(_) =>    MaybeResolvedType::Resolved(ResolvedType::Byte),
+                    Literal::Byte32(_) =>  MaybeResolvedType::Resolved(ResolvedType::Byte32),
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::Literal(lit),
@@ -240,7 +240,7 @@ impl<'sc> TypedExpression<'sc> {
                             contents: vec![],
                             whole_block_span: span.clone()
                         },
-                        Some(MaybeResolvedType::Unit)
+                        Some(MaybeResolvedType::Resolved(ResolvedType::Unit))
                     ),
                     warnings,
                     errors
@@ -248,14 +248,14 @@ impl<'sc> TypedExpression<'sc> {
                 let block_return_type = match block_return_type {
                     Some(ty) => ty,
                     None => match type_annotation {
-                        Some(ref ty) if ty != &MaybeResolvedType::Unit => {
+                        Some(ref ty) if ty != &MaybeResolvedType::Resolved(ResolvedType::Unit) => {
                             errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
                                 span: span.clone(),
                                 ty: ty.friendly_type_str(),
                             });
-                            MaybeResolvedType::ErrorRecovery
+                            MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
                         }
-                        _ => MaybeResolvedType::Unit,
+                        _ => MaybeResolvedType::Resolved(ResolvedType::Unit),
                     },
                 };
                 TypedExpression {
@@ -280,7 +280,7 @@ impl<'sc> TypedExpression<'sc> {
                     TypedExpression::type_check(
                         *condition.clone(),
                         &namespace,
-                        Some(MaybeResolvedType::Boolean),
+                        Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                         "The condition of an if expression must be a boolean expression.",
                         self_type
                     ),
@@ -418,7 +418,7 @@ impl<'sc> TypedExpression<'sc> {
                                     name: def_field.name.clone(),
                                     value: TypedExpression {
                                         expression: TypedExpressionVariant::Unit,
-                                        return_type: MaybeResolvedType::ErrorRecovery,
+                                        return_type: MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
                                         is_constant: IsConstant::No,
                                         span: span.clone(),
                                     },
@@ -431,7 +431,7 @@ impl<'sc> TypedExpression<'sc> {
                         TypedExpression::type_check(
                             expr_field.value,
                             &namespace,
-                            Some(def_field.r#type.clone()),
+                            Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
                             "Struct field's type must match up with the type specified in its declaration.",
                             self_type
                         ),
@@ -466,10 +466,10 @@ impl<'sc> TypedExpression<'sc> {
                         struct_name: definition.name.clone(),
                         fields: typed_fields_buf,
                     },
-                    return_type: MaybeResolvedType::Struct {
+                    return_type: MaybeResolvedType::Resolved(ResolvedType::Struct {
                         name: definition.name.clone(),
                         fields: definition.fields.clone(),
-                    },
+                    }),
                     is_constant: IsConstant::No,
                     span,
                 }
@@ -620,7 +620,7 @@ impl<'sc> TypedExpression<'sc> {
             }
             Expression::Unit { span } => TypedExpression {
                 expression: TypedExpressionVariant::Unit,
-                return_type: MaybeResolvedType::Unit,
+                return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
                 is_constant: IsConstant::Yes,
                 span,
             },

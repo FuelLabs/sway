@@ -1,5 +1,6 @@
 use crate::error::*;
 use crate::semantic_analysis::ast_node::*;
+use crate::types::ResolvedType;
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
@@ -39,9 +40,9 @@ pub(crate) fn instantiate_enum<'sc>(
     // instantiator, then the type of the enum is necessarily the unit type.
 
     match (instantiator, enum_field_type) {
-        (None, MaybeResolvedType::Unit) => ok(
+        (None, ResolvedType::Unit) => ok(
             TypedExpression {
-                return_type: enum_decl.as_type(),
+                return_type: MaybeResolvedType::Resolved(enum_decl.as_type()),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
@@ -59,7 +60,7 @@ pub(crate) fn instantiate_enum<'sc>(
                 TypedExpression::type_check(
                     *boxed_expr,
                     namespace,
-                    Some(r#type.clone()),
+                    Some(MaybeResolvedType::Resolved(r#type.clone())),
                     "Enum instantiator must match its declared variant type.",
                     self_type
                 ),
@@ -73,7 +74,7 @@ pub(crate) fn instantiate_enum<'sc>(
 
             ok(
                 TypedExpression {
-                    return_type: enum_decl.as_type(),
+                    return_type: MaybeResolvedType::Resolved(enum_decl.as_type()),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),

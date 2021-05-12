@@ -1,8 +1,7 @@
+use super::{MaybeResolvedType, ResolvedType};
 use crate::error::*;
 use crate::{Ident, Rule};
 use pest::iterators::Pair;
-
-use super::MaybeResolvedType;
 
 /// Type information without an associated value, used for type inferencing and definition.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -41,12 +40,12 @@ impl<'sc> TypeInfo<'sc> {
         match self {
             TypeInfo::Custom { .. } | TypeInfo::SelfType => panic!("Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for more details."),
             TypeInfo::Boolean => MaybeResolvedType::Resolved(ResolvedType::Boolean),
-            TypeInfo::String => MaybeResolvedType::String,
-            TypeInfo::UnsignedInteger(bits) => MaybeResolvedType::UnsignedInteger(*bits),
-            TypeInfo::Unit => MaybeResolvedType::Unit,
-            TypeInfo::Byte => MaybeResolvedType::Byte,
-            TypeInfo::Byte32 => MaybeResolvedType::Byte32,
-            TypeInfo::ErrorRecovery => MaybeResolvedType::ErrorRecovery
+            TypeInfo::String => MaybeResolvedType::Resolved(ResolvedType::String),
+            TypeInfo::UnsignedInteger(bits) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(*bits)),
+            TypeInfo::Unit => MaybeResolvedType::Resolved(ResolvedType::Unit),
+            TypeInfo::Byte => MaybeResolvedType::Resolved(ResolvedType::Byte),
+            TypeInfo::Byte32 => MaybeResolvedType::Resolved(ResolvedType::Byte32),
+            TypeInfo::ErrorRecovery => MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
 
         }
     }
