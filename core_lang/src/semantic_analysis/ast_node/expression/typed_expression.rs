@@ -314,6 +314,7 @@ impl<'sc> TypedExpression<'sc> {
                 // if there is a type annotation, then the else branch must exist
                 if let Some(ref annotation) = type_annotation {
                     if r#else.is_none() {
+                        dbg!(condition.span.clone().as_str());
                         errors.push(CompileError::NoElseBranch {
                             span: span.clone(),
                             r#type: annotation.friendly_type_str(),
@@ -546,7 +547,6 @@ impl<'sc> TypedExpression<'sc> {
                         ) {
                             Some(o) => o,
                             None => {
-                                println!("2");
                                 errors.push(CompileError::MethodNotFound {
                                     span: method_name.suffix.clone().span,
                                     method_name: method_name.suffix.clone().primary_name,
@@ -570,7 +570,6 @@ impl<'sc> TypedExpression<'sc> {
                         {
                             Some(o) => o,
                             None => {
-                                println!("1");
                                 errors.push(CompileError::MethodNotFound {
                                     span: method_name.suffix.clone().span,
                                     method_name: method_name.suffix.primary_name,

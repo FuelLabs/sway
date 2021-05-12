@@ -8,6 +8,7 @@ use pest::Span;
 use std::collections::HashMap;
 
 mod asm;
+use crate::utils::join_spans;
 pub(crate) use asm::*;
 
 #[derive(Debug, Clone)]
@@ -589,6 +590,9 @@ impl<'sc> Expression<'sc> {
                     type_arguments: vec![],
                 }
             }
+            Rule::unit => Expression::Unit {
+                span: expr.as_span(),
+            },
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -935,8 +939,8 @@ fn arrange_by_order_of_operations<'sc>(
                 suffix: op.to_var_name(),
             },
             subfield_exp: vec![],
-            arguments: vec![lhs, rhs],
-            span: op.span.clone(),
+            arguments: vec![lhs.clone(), rhs.clone()],
+            span: join_spans(join_spans(lhs.span(), op.span.clone()), rhs.span()),
         });
     }
 

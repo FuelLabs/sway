@@ -40,7 +40,7 @@ pub(crate) fn instantiate_enum<'sc>(
     match (instantiator, enum_field_type) {
         (None, ResolvedType::Unit) => ok(
             TypedExpression {
-                return_type: ResolvedType::Unit,
+                return_type: enum_decl.as_type(),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,

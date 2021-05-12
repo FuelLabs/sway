@@ -15,7 +15,7 @@ pub enum TypedDeclaration<'sc> {
     EnumDeclaration(TypedEnumDeclaration<'sc>),
     Reassignment(TypedReassignment<'sc>),
     ImplTrait {
-        trait_name: Ident<'sc>,
+        trait_name: CallPath<'sc>,
         span: Span<'sc>,
         methods: Vec<TypedFunctionDeclaration<'sc>>,
     },

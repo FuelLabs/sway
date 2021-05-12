@@ -21,8 +21,14 @@ pub(crate) fn implementation_of_trait<'sc>(
         block_span,
     } = impl_trait;
     let type_implementing_for = namespace.resolve_type(&type_implementing_for);
-    match namespace.get_symbol(&trait_name) {
-        Some(TypedDeclaration::TraitDeclaration(tr)) => {
+    match namespace.get_call_path(&trait_name) {
+        CompileResult::Ok {
+            value: TypedDeclaration::TraitDeclaration(tr),
+            warnings: mut l_w,
+            errors: mut l_e,
+        } => {
+            errors.append(&mut l_e);
+            warnings.append(&mut l_w);
             let mut tr = tr.clone();
             if type_arguments.len() != tr.type_parameters.len() {
                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
@@ -154,7 +160,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     None => {
                         errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                             name: fn_decl.name.primary_name.clone(),
-                            trait_name: trait_name.primary_name.clone(),
+                            trait_name: trait_name.span().as_str(),
                             span: fn_decl.name.span.clone(),
                         });
                         return err(warnings, errors);
@@ -178,7 +184,7 @@ pub(crate) fn implementation_of_trait<'sc>(
             }
 
             namespace.insert_trait_implementation(
-                trait_name.clone(),
+                trait_name.suffix.clone(),
                 type_implementing_for,
                 functions_buf.clone(),
             );
@@ -192,17 +198,28 @@ pub(crate) fn implementation_of_trait<'sc>(
                 errors,
             )
         }
-        Some(_) => {
+        CompileResult::Ok {
+            value: _,
+            errors: mut l_e,
+            warnings: mut l_w,
+        } => {
+            errors.append(&mut l_e);
+            warnings.append(&mut l_w);
             errors.push(CompileError::NotATrait {
-                span: trait_name.span,
-                name: trait_name.primary_name,
+                span: trait_name.span(),
+                name: trait_name.suffix.primary_name.clone(),
             });
             ok(ERROR_RECOVERY_DECLARATION.clone(), warnings, errors)
         }
-        None => {
+        CompileResult::Err {
+            warnings: mut l_w,
+            errors: mut l_e,
+        } => {
+            errors.append(&mut l_e);
+            warnings.append(&mut l_w);
             errors.push(CompileError::UnknownTrait {
-                name: trait_name.primary_name,
-                span: trait_name.span,
+                name: trait_name.suffix.primary_name,
+                span: trait_name.span(),
             });
             ok(ERROR_RECOVERY_DECLARATION.clone(), warnings, errors)
         }

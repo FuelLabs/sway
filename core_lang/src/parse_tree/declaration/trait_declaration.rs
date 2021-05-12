@@ -41,11 +41,11 @@ impl<'sc> TraitDeclaration<'sc> {
         );
         let span = name.span.clone();
         assert_or_warn!(
-            is_class_case(name_pair.as_str()),
+            is_class_case(name_pair.as_str().trim()),
             warnings,
             span,
             Warning::NonClassCaseTraitName {
-                name: name_pair.as_str()
+                name: name_pair.as_str().trim()
             }
         );
         let mut type_params_pair = None;

@@ -324,7 +324,7 @@ fn connect_declaration<'sc>(
             methods,
             ..
         } => {
-            connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
+            connect_impl_trait(&trait_name.suffix, graph, methods, entry_node, tree_type)?;
             Ok(vec![])
         }
         SideEffect | ErrorRecovery => {

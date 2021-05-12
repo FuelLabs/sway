@@ -1,46 +1,46 @@
 script {
-    struct RGB {
+    struct Rgb {
       red: u64,
       green: u64,
       blue: u64,
     }
 
 	trait Color {
-		fn rgb(self) -> RGB;
+		fn rgb(self) -> Rgb;
 	}
 
-enum PrimaryColors {
-       Red : (),
-       Green : (),
-       Blue : ()
-    }
+	enum PrimaryColor {
+		   Red : (),
+		   Green : (),
+		   Blue : ()
+		}
 
-    impl Color for PrimaryColors {
+    impl Color for PrimaryColor {
 		// TODO: when we support match statements, change this to a match statement
-		fn rgb(self) -> RGB {
-			if self == PrimaryColors::Red {
-				RGB {
+		fn rgb(self) -> Rgb {
+			if self == PrimaryColor::Red {
+				Rgb {
 					red: 255,
 					blue: 0,
 					green: 0,
 				}
 			}
-			else if self == PrimaryColors::Green {
-				RGB {
+			else if self == PrimaryColor::Green {
+				Rgb {
 					red: 0,
 					blue: 0,
 					green: 255,
 				}
 			}
-			else if self == PrimaryColors::Blue {
-				RGB {
+			else if self == PrimaryColor::Blue {
+				Rgb {
 					red: 0,
 					blue: 255,
 					green: 0,
 				}
 			}
 			else {
-				RGB {
+				Rgb {
 					red: 0,
 					blue: 0,
 					green: 0
@@ -50,7 +50,7 @@ enum PrimaryColors {
     }
 
     fn main() {
-		let first_color = PrimaryColors::Green;
-        let rgb: RGB = first_color.rgb();
+		let first_color = PrimaryColor::Green;
+        let rgb: Rgb = first_color.rgb();
     }
 }

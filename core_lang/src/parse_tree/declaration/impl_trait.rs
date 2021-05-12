@@ -1,11 +1,12 @@
 use super::{FunctionDeclaration, Ident, TypeParameter};
+use crate::parse_tree::CallPath;
 use crate::{error::*, parser::Rule, types::TypeInfo};
 use pest::iterators::Pair;
 use pest::Span;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ImplTrait<'sc> {
-    pub(crate) trait_name: Ident<'sc>,
+    pub(crate) trait_name: CallPath<'sc>,
     pub(crate) type_implementing_for: TypeInfo<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
     pub(crate) functions: Vec<FunctionDeclaration<'sc>>,
@@ -38,7 +39,7 @@ impl<'sc> ImplTrait<'sc> {
         let trait_name = iter.next().unwrap();
         assert_eq!(trait_name.as_rule(), Rule::trait_name);
         let trait_name = eval!(
-            Ident::parse_from_pair,
+            CallPath::parse_from_pair,
             warnings,
             errors,
             trait_name,
@@ -66,7 +67,7 @@ impl<'sc> ImplTrait<'sc> {
         };
         let type_arguments_span = match type_params_pair {
             Some(ref x) => x.as_span(),
-            None => trait_name.span.clone(),
+            None => trait_name.span(),
         };
         let type_arguments = match TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,

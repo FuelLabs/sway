@@ -201,7 +201,7 @@ fn connect_declaration<'sc>(
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
-            connect_impl_trait(trait_name, graph, methods, entry_node);
+            connect_impl_trait(&trait_name.suffix, graph, methods, entry_node);
             vec![]
         }
         SideEffect | ErrorRecovery => {
