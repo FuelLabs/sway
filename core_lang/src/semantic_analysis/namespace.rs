@@ -27,7 +27,11 @@ impl<'sc> Namespace<'sc> {
     /// being looked for is actually a generic, not-yet-resolved type.
     /// Eventually, this should return a [ResolvedType], which currently doesn't exist,
     /// to further solidify the bounary between the monomorphized AST and the parameterized one.
-    pub(crate) fn resolve_type(&self, ty: &TypeInfo<'sc>) -> ResolvedType<'sc> {
+    pub(crate) fn resolve_type(
+        &self,
+        ty: &TypeInfo<'sc>,
+        self_type: &ResolvedType<'sc>,
+    ) -> ResolvedType<'sc> {
         let ty = ty.clone();
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol(&name) {
@@ -50,6 +54,8 @@ impl<'sc> Namespace<'sc> {
                 Some(_) => ResolvedType::Generic { name: name.clone() },
                 None => ResolvedType::Generic { name: name.clone() },
             },
+            TypeInfo::SelfType => self_type.clone(),
+
             o => o.to_resolved(),
         }
     }

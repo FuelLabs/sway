@@ -68,7 +68,15 @@ impl<'sc> TypedParseTree<'sc> {
         let typed_tree = parsed
             .root_nodes
             .into_iter()
-            .map(|node| TypedAstNode::type_check(node, &mut initial_namespace, None, ""))
+            .map(|node| {
+                TypedAstNode::type_check(
+                    node,
+                    &mut initial_namespace,
+                    None,
+                    "",
+                    todo!("Contract type"),
+                )
+            })
             .collect::<Vec<CompileResult<_>>>();
 
         let mut typed_tree_nodes = Vec::new();

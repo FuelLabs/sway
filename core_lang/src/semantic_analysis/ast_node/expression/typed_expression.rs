@@ -28,6 +28,7 @@ impl<'sc> TypedExpression<'sc> {
         namespace: &Namespace<'sc>,
         type_annotation: Option<ResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
+        self_type: &ResolvedType<'sc>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -114,7 +115,8 @@ impl<'sc> TypedExpression<'sc> {
                                 arg.clone(),
                                 &namespace,
                                 Some(param.r#type.clone()),
-                                    "The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration."
+                                "The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration.",
+                                self_type
                             );
                             let arg = match res {
                                 CompileResult::Ok {
@@ -230,7 +232,8 @@ impl<'sc> TypedExpression<'sc> {
                         contents.clone(),
                         &namespace,
                         type_annotation.clone(),
-                        help_text.clone()
+                        help_text.clone(),
+                        self_type
                     ),
                     (
                         TypedCodeBlock {
@@ -279,6 +282,7 @@ impl<'sc> TypedExpression<'sc> {
                         &namespace,
                         Some(ResolvedType::Boolean),
                         "The condition of an if expression must be a boolean expression.",
+                        self_type
                     ),
                     error_recovery_expr(condition.span()),
                     warnings,
@@ -289,7 +293,8 @@ impl<'sc> TypedExpression<'sc> {
                         *then.clone(),
                         &namespace,
                         type_annotation.clone(),
-                        ""
+                        "",
+                        self_type
                     ),
                     error_recovery_expr(then.span()),
                     warnings,
@@ -301,7 +306,8 @@ impl<'sc> TypedExpression<'sc> {
                             *expr.clone(),
                             namespace,
                             Some(then.return_type.clone()),
-                            ""
+                            "",
+                            self_type
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -334,7 +340,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             Expression::AsmExpression { asm, span, .. } => {
-                let return_type = namespace.resolve_type(&asm.return_type)  ;
+                let return_type = namespace.resolve_type(&asm.return_type, self_type);
                 // type check the initializers
                 let typed_registers = asm
                     .registers
@@ -348,7 +354,8 @@ impl<'sc> TypedExpression<'sc> {
                                         initializer.clone(),
                                         namespace,
                                         None,
-                                        ""
+                                        "",
+                                        self_type
                                     ),
                                     error_recovery_expr(initializer.span()),
                                     warnings,
@@ -426,6 +433,7 @@ impl<'sc> TypedExpression<'sc> {
                             &namespace,
                             Some(def_field.r#type.clone()),
                             "Struct field's type must match up with the type specified in its declaration.",
+                            self_type
                         ),
                         continue,
                         warnings,
@@ -515,6 +523,7 @@ impl<'sc> TypedExpression<'sc> {
                         namespace,
                         None,
                         "",
+                        self_type
                     ) {
                         // throw away warnings and errors since this will be checked again later
                         CompileResult::Ok {
@@ -582,17 +591,14 @@ impl<'sc> TypedExpression<'sc> {
 
                 let mut typed_arg_buf = vec![];
                 for (TypedFunctionParameter { r#type, name, .. }, arg) in zipped {
-                    let un_self_type = if r#type == &ResolvedType::SelfType {
-                        parent_type.clone()
-                    } else {
-                        r#type.clone()
-                    };
                     typed_arg_buf.push((name.clone(), type_check!(
                         TypedExpression::type_check(
                             arg.clone(),
                             &namespace,
-                            Some(un_self_type),
-                            "Function argument must be of the same type declared in the function declaration."),
+                            Some(r#type.clone()),
+                            "Function argument must be of the same type declared in the function declaration.",
+                            self_type
+                        ),
                         continue, 
                         warnings,
                         errors
@@ -657,7 +663,7 @@ impl<'sc> TypedExpression<'sc> {
 
                 let type_arguments = type_arguments
                     .iter()
-                    .map(|x| namespace.resolve_type(x))
+                    .map(|x| namespace.resolve_type(x, self_type))
                     .collect();
                 // now we can see if this thing is a symbol (typed declaration) or reference to an
                 // enum instantiation
@@ -676,7 +682,8 @@ impl<'sc> TypedExpression<'sc> {
                                 call_path.suffix,
                                 instantiator,
                                 type_arguments,
-                                namespace
+                                namespace,
+                                self_type
                             ),
                             return err(warnings, errors),
                             warnings,

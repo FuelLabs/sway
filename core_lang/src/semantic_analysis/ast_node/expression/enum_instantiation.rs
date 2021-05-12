@@ -9,6 +9,7 @@ pub(crate) fn instantiate_enum<'sc>(
     instantiator: Option<Box<Expression<'sc>>>,
     type_arguments: Vec<ResolvedType<'sc>>,
     namespace: &Namespace<'sc>,
+    self_type: &ResolvedType<'sc>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -59,7 +60,8 @@ pub(crate) fn instantiate_enum<'sc>(
                     *boxed_expr,
                     namespace,
                     Some(r#type.clone()),
-                    "Enum instantiator must match its declared variant type."
+                    "Enum instantiator must match its declared variant type.",
+                    self_type
                 ),
                 return err(warnings, errors),
                 warnings,

@@ -236,7 +236,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         _help_text: impl Into<String>,
         // If there are any `Self` types in this declaration,
         // resolve them to this type.
-        self_type: Option<ResolvedType<'sc>>,
+        self_type: &ResolvedType<'sc>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -251,14 +251,14 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             visibility,
             ..
         } = fn_decl.clone();
-        let return_type = namespace.resolve_type(&return_type);
+        let return_type = namespace.resolve_type(&return_type, &self_type);
         // insert parameters into namespace
         let mut namespace = namespace.clone();
         for FunctionParameter {
             name, ref r#type, ..
         } in parameters.clone()
         {
-            let r#type = namespace.resolve_type(r#type);
+            let r#type = namespace.resolve_type(r#type, &self_type);
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -273,20 +273,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 }),
             );
         }
-        // check return type for Self types
-        let return_type = if return_type == ResolvedType::SelfType {
-            match self_type {
-                Some(ref ty) => ty.clone(),
-                None => {
-                    errors.push(CompileError::UnqualifiedSelfType {
-                        span: return_type_span.clone(),
-                    });
-                    return_type
-                }
-            }
-        } else {
-            return_type
-        };
+
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = type_check!(
@@ -294,7 +281,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 body.clone(),
                 &namespace,
                 Some(return_type.clone()),
-                "Function body's return type does not match up with its return type annotation."
+                "Function body's return type does not match up with its return type annotation.",
+                self_type
             ),
             (
                 TypedCodeBlock {
@@ -318,7 +306,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                      type_span,
                  }| TypedFunctionParameter {
                     name,
-                    r#type: namespace.resolve_type(&r#type),
+                    r#type: namespace.resolve_type(&r#type, &self_type),
                     type_span,
                 },
             )
@@ -395,24 +383,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 }
                 Err(err) => {
                     errors.push(err.into());
-                }
-            }
-        }
-        for TypedFunctionParameter {
-            ref mut r#type,
-            type_span,
-            ..
-        } in parameters.iter_mut()
-        {
-            if *r#type == ResolvedType::SelfType {
-                match self_type {
-                    Some(ref ty) => *r#type = ty.clone(),
-                    None => {
-                        errors.push(CompileError::UnqualifiedSelfType {
-                            span: type_span.clone(),
-                        });
-                        continue;
-                    }
                 }
             }
         }

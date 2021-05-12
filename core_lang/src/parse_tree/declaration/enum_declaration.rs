@@ -1,5 +1,5 @@
 use crate::parser::Rule;
-use crate::types::TypeInfo;
+use crate::types::{ResolvedType, TypeInfo};
 use crate::Ident;
 use crate::Namespace;
 use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
@@ -28,14 +28,18 @@ pub(crate) struct EnumVariant<'sc> {
 impl<'sc> EnumDeclaration<'sc> {
     /// Looks up the various TypeInfos in the [Namespace] to see if they are generic or refer to
     /// something.
-    pub(crate) fn to_typed_decl(&self, namespace: &Namespace<'sc>) -> TypedEnumDeclaration<'sc> {
+    pub(crate) fn to_typed_decl(
+        &self,
+        namespace: &Namespace<'sc>,
+        self_type: &ResolvedType<'sc>,
+    ) -> TypedEnumDeclaration<'sc> {
         TypedEnumDeclaration {
             name: self.name.clone(),
             type_parameters: self.type_parameters.clone(),
             variants: self
                 .variants
                 .iter()
-                .map(|x| x.to_typed_decl(namespace))
+                .map(|x| x.to_typed_decl(namespace, self_type))
                 .collect(),
             span: self.span.clone(),
         }
@@ -130,10 +134,14 @@ impl<'sc> EnumDeclaration<'sc> {
 }
 
 impl<'sc> EnumVariant<'sc> {
-    pub(crate) fn to_typed_decl(&self, namespace: &Namespace<'sc>) -> TypedEnumVariant<'sc> {
+    pub(crate) fn to_typed_decl(
+        &self,
+        namespace: &Namespace<'sc>,
+        self_type: &ResolvedType<'sc>,
+    ) -> TypedEnumVariant<'sc> {
         TypedEnumVariant {
             name: self.name.clone(),
-            r#type: namespace.resolve_type(&self.r#type),
+            r#type: namespace.resolve_type(&self.r#type, self_type),
             tag: self.tag,
             span: self.span.clone(),
         }

@@ -39,12 +39,11 @@ impl<'sc> TypeInfo<'sc> {
     /// This function just passes all the trivial types through to a [ResolvedType].
     pub(crate) fn to_resolved(&self) -> ResolvedType<'sc> {
         match self {
-            TypeInfo::Custom { .. } => panic!("Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for more details."),
+            TypeInfo::Custom { .. } | TypeInfo::SelfType => panic!("Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for more details."),
             TypeInfo::Boolean => ResolvedType::Boolean,
             TypeInfo::String => ResolvedType::String,
             TypeInfo::UnsignedInteger(bits) => ResolvedType::UnsignedInteger(*bits),
             TypeInfo::Unit => ResolvedType::Unit,
-            TypeInfo::SelfType => ResolvedType::SelfType,
             TypeInfo::Byte => ResolvedType::Byte,
             TypeInfo::Byte32 => ResolvedType::Byte32,
             TypeInfo::ErrorRecovery => ResolvedType::ErrorRecovery

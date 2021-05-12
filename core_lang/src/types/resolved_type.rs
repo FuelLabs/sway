@@ -20,7 +20,6 @@ pub enum ResolvedType<'sc> {
         name: Ident<'sc>,
     },
     Unit,
-    SelfType,
     Byte,
     Byte32,
     Struct {
@@ -59,7 +58,6 @@ impl<'sc> ResolvedType<'sc> {
             Boolean => "bool".into(),
             Generic { name } => format!("generic {}", name.primary_name),
             Unit => "()".into(),
-            SelfType => "Self".into(),
             Byte => "byte".into(),
             Byte32 => "byte32".into(),
             Struct {
@@ -113,7 +111,7 @@ impl<'sc> ResolvedType<'sc> {
             ResolvedType::UnsignedInteger(_) => 1,
             ResolvedType::Boolean => 1,
             ResolvedType::Unit => 0,
-            ResolvedType::Generic { .. } | ResolvedType::SelfType => {
+            ResolvedType::Generic { .. } => {
                 unimplemented!("Generic types are not fully fleshed out yet...")
             }
             ResolvedType::Byte => 1,

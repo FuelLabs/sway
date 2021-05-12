@@ -9,6 +9,7 @@ use crate::{error::*, types::ResolvedType, Ident};
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
+    self_type: &ResolvedType<'sc>
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -20,7 +21,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
-    let type_implementing_for = namespace.resolve_type(&type_implementing_for);
+    let type_implementing_for = namespace.resolve_type(&type_implementing_for, todo!());
     match namespace.get_call_path(&trait_name) {
         CompileResult::Ok {
             value: TypedDeclaration::TraitDeclaration(tr),
@@ -36,25 +37,6 @@ pub(crate) fn implementation_of_trait<'sc>(
                     expected: tr.type_parameters.len(),
                     span: type_arguments_span,
                 })
-            }
-            // replace all references to Self in the interface surface with the
-            // concrete type
-            for TypedTraitFn {
-                ref mut parameters,
-                ref mut return_type,
-                ..
-            } in tr.interface_surface.iter_mut()
-            {
-                parameters.iter_mut().for_each(
-                    |TypedFunctionParameter { ref mut r#type, .. }| {
-                        if r#type == &ResolvedType::SelfType {
-                            *r#type = type_implementing_for.clone();
-                        }
-                    },
-                );
-                if return_type == &ResolvedType::SelfType {
-                    *return_type = type_implementing_for.clone();
-                }
             }
 
             // type check all components of the impl trait functions
@@ -78,25 +60,12 @@ pub(crate) fn implementation_of_trait<'sc>(
                         &namespace,
                         None,
                         "",
-                        Some(type_implementing_for.clone())
+                        &type_implementing_for
                     ),
                     continue,
                     warnings,
                     errors
                 );
-                /*
-                fn_decl
-                    .parameters
-                    .iter_mut()
-                    .filter(|TypedFunctionParameter { r#type, .. }| r#type == &ResolvedType::SelfType)
-                    .for_each(|TypedFunctionParameter { ref mut r#type, .. }| {
-                        *r#type = type_implementing_for.clone()
-                    });
-                */
-
-                if fn_decl.return_type == ResolvedType::SelfType {
-                    fn_decl.return_type = type_implementing_for.clone();
-                }
 
                 let mut type_arguments = type_arguments.clone();
                 // add generic params from impl trait into function type params

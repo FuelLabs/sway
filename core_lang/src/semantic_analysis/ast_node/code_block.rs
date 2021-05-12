@@ -15,6 +15,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         // this is for the return or implicit return
         type_annotation: Option<ResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
+        self_type: &ResolvedType<'sc>,
     ) -> CompileResult<'sc, (Self, Option<ResolvedType<'sc>>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -37,6 +38,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 &mut local_namespace,
                 type_annotation.clone(),
                 help_text.clone(),
+                self_type,
             ) {
                 CompileResult::Ok {
                     value,
@@ -56,6 +58,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 }
             };
         }
+
         // find the implicit return, if any, and use it as the code block's return type.
         // The fact that there is at most one implicit return is an invariant held by the core_lang.
         let return_type = evaluated_contents.iter().find_map(|x| match x {
