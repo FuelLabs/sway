@@ -1,26 +1,26 @@
 // tweakable things
-var_decl_keyword    =  {"let"}
-fn_decl_keyword     =  {"fn"}
-trait_decl_keyword  =  {"trait"}
-return_keyword      =  {"return"}
-use_keyword         =  {"use"}
-enum_keyword        =  @{"enum"}
-struct_keyword      =  @{"struct"}
-impl_keyword        =  {"impl"}
-asm_keyword         =  {"asm"}
-while_keyword       =  {"while"}
-match_keyword       =  {"match"}
+var_decl_keyword    =  { "let" }
+fn_decl_keyword     =  { "fn" }
+trait_decl_keyword  =  { "trait" }
+return_keyword      =  { "return" }
+use_keyword         =  { "use" }
+enum_keyword        =  @{ "enum" }
+struct_keyword      =  @{ "struct" }
+impl_keyword        =  { "impl" }
+asm_keyword         =  { "asm" }
+while_keyword       =  { "while" }
+match_keyword       =  { "match" }
 mut_keyword         =  { "mut" }
-assign              =  _{"="}
-line_comment_open   =  {"//"}
-block_comment_open  =  {"/*"}
-block_comment_close =  {"*/"}
-fn_returns          =  {"->"}
-path_separator      =  {"::"}
+assign              =  _{ "=" }
+line_comment_open   =  { "//" }
+block_comment_open  =  { "/*" }
+block_comment_close =  { "*/" }
+fn_returns          =  { "->" }
+path_separator      =  { "::" }
 
 
 // top level
-program =  {SOI ~ (library|contract|script|predicate)* ~ EOI}
+program =  { SOI ~ (library|contract|script|predicate)* ~ EOI }
 
 library =  { "library" ~ library_name ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 library_name = { ident }
@@ -29,94 +29,94 @@ script = { "script" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 predicate = { "predicate" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}" }
 
 // expressions
-expr_inner =  _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|delineated_path|method_exp|subfield_exp|var_exp|array_exp|match_expression}
+expr_inner =  _{ literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|delineated_path|method_exp|subfield_exp|var_exp|array_exp|match_expression }
 parenthesized_expression = { "(" ~ expr ~ ")" }
 // // op exps built in to expr to prevent left recursion
-expr       =  {expr_inner ~ (op ~ expr_inner)*}
+expr       =  { expr_inner ~ (op ~ expr_inner)* }
 func_app   =  { fn_name ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
-fn_name    =  {var_exp}
+fn_name    =  { var_exp }
 var_exp    =  { unary_op? ~ var_name_ident }
 method_exp =  { subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)* )? ~ ")" }
 subfield_exp = { (call_item ~ ".")+ ~ call_item }
 call_item = { ident }
 delineated_path = { path_component  ~ ( "(" ~ expr ~ ")" )? }
-path_component = { path_ident ~ (path_separator ~ path_ident )+  }
+path_component = { path_ident ~ (path_separator ~ path_ident )+ }
 path_ident = { ident }
 
 var_name_ident = { ident }
 
-if_exp =  {"if" ~ expr ~  code_block ~ ("else" ~ code_block)?}
+if_exp =  { "if" ~ expr ~  code_block ~ ("else" ~ code_block)? }
 
-op =  {"+"|"-"|"/"|"*"|"=="|"!="|"|"|"||"|"&"|"&&"|"^"|"%"|"<"|">"}
+op =  { "+"|"-"|"/"|"*"|"=="|"!="|"|"|"||"|"&"|"&&"|"^"|"%"|"<"|">" }
 unary_op = { "!" | "ref" | "deref" }
 
 // // note that decimal/float exprs might be removed since vm doesn't support them
-literal_value =  {integer|byte|string|boolean}
+literal_value =  { integer|byte|string|boolean }
 
-boolean =  {"true"|"false"}
-string  = ${"\"" ~ char* ~ "\""}
+boolean =  { "true"|"false" }
+string  = ${ "\"" ~ char* ~ "\"" }
 integer = { (u8_integer | u16_integer | u32_integer | u64_integer) }
-basic_integer = @{!("0b" | "0x") ~ ASCII_DIGIT+}
-u8_integer = {  basic_integer ~ "u8" }
+basic_integer = @{ !("0b" | "0x") ~ ASCII_DIGIT+ }
+u8_integer  = { basic_integer ~ "u8" }
 u16_integer = { basic_integer ~ "u16" }
 u32_integer = { basic_integer ~ "u32" }
-// default is u64
+// // default is u64
 u64_integer = { basic_integer ~ "u64"? }
 byte = { binary_byte | hex_byte }
-binary_byte = @{ "0b" ~ ("1" | "0")*}
+binary_byte = @{ "0b" ~ ("1" | "0")* }
 hex_byte    = @{ "0x" ~ hex_digit* }
 hex_digit = { "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" | ASCII_DIGIT }
-match_expression = { "match"  ~ expr ~ "{" ~ match_branch+ ~ "}" }
+match_expression = { "match" ~ expr ~ "{" ~ match_branch+ ~ "}" }
 match_branch = { match_condition ~ "=>" ~ (code_block | expr) ~ "," }
 match_condition = { expr | "_" } // TODO this doesn't support pattern matching
 
-code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
+code_block =  { "{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}" }
 
 struct_expression = { struct_name ~ "{" ~ struct_expr_fields ~ "}" }
 struct_expr_fields = { struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","? }
 array_exp = { "[" ~ (expr ~ ("," ~ expr)*) ~ "]" }
 
 // declarations
-declaration =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment|impl_trait|impl_self)}
-var_decl    =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
-type_ascription = { ":" ~ type_name}
-fn_decl     =  {visibility ~ fn_signature ~ code_block}
+declaration =  { (enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment|impl_trait|impl_self) }
+var_decl    =  { var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";" }
+type_ascription = { ":" ~ type_name }
+fn_decl     =  { visibility ~ fn_signature ~ code_block }
 fn_signature = { fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds? }
-var_name = {ident}
+var_name = { ident }
 reassignment = { var_exp ~ assign ~ expr ~ ";" }
 
 visibility = { "pub"? }
 
-struct_decl = { visibility ~ struct_keyword  ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}" }
-struct_name = {ident}
+struct_decl = { visibility ~ struct_keyword ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}" }
+struct_name = { ident }
 struct_fields = { struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","? }
-struct_field_name = {ident}
+struct_field_name = { ident }
 // // enum declaration
 enum_decl = { enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}" }
 enum_fields = { enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","? }
-enum_name = {ident}
-enum_field_name = {ident}
+enum_name = { ident }
+enum_field_name = { ident }
 
 impl_self = { impl_keyword ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}") }
 
 // // fn declaration
-fn_decl_params =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
+fn_decl_params =  { "(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")" }
 type_params = { "<" ~ generic_type_param ~ (", " ~ generic_type_param)* ~ ">" }
-fn_decl_param  =  {("self") | (fn_decl_param_name ~ ":" ~ type_name)}
-fn_decl_param_name = {ident}
-return_type    =  {ident}
-fn_decl_name   =  {ident}
-type_name      =  {ident ~ type_params?}
+fn_decl_param  =  { ("self") | (fn_decl_param_name ~ ":" ~ type_name) }
+fn_decl_param_name = { ident }
+return_type    =  { ident }
+fn_decl_name   =  { ident }
+type_name      =  { ident ~ type_params? }
 trait_bounds   =  { "where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)* }
-generic_type_param = @{ident}
+generic_type_param = @{ ident }
 
 // statements
 // // statements are basically non-expressions that don't alter the namespace like declarations do
-return_statement =  {return_keyword ~ expr? ~ ";"}
-expr_statement  = { expr ~ ";" }
+return_statement = { return_keyword ~ expr? ~ ";" }
+expr_statement = { expr ~ ";" }
 
 // traits
-trait_decl = { visibility ~ trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ trait_methods  }
+trait_decl = { visibility ~ trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ trait_methods }
 // // just a fn signature denotes a fn something must implement in order for it to be part of the trait
 // // i like the idea of separating the interface points from the actual
 // // functional implementations the trait provides, so i have them
@@ -128,8 +128,7 @@ impl_trait = { impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ ty
 
 
 // imports
-
-use_statement = { use_keyword ~ import_path ~ ";"}
+use_statement = { use_keyword ~ import_path ~ ";" }
 import_path = { ident ~ (path_separator ~ (ident|star))* }
 star = { "*" }
 
@@ -144,22 +143,22 @@ asm_registers = { "(" ~ asm_register_declaration ~ ("," ~ asm_register_declarati
 asm_register_declaration = { ident ~ (":" ~ expr)? }
 asm_op = { opcode ~ (asm_immediate | asm_register)* ~ ";" }
 asm_register = { ident }
-asm_immediate = {"i" ~ u64_integer}
+asm_immediate = { "i" ~ u64_integer }
 opcode = { ident }
 
 // control flow
-control_flow = _{while_loop|return_statement}
+control_flow = _{ while_loop|return_statement }
 
 // boilerplate
-WHITESPACE    = _{(" "|"\t"|"\r"|"\n")+}
-COMMENT       = _{block_comment|line_comment}
-block_comment = @{block_comment_open ~ (!block_comment_close ~ ANY)* ~ block_comment_close}
-line_comment  = @{line_comment_open ~ (!("\r"|"\n") ~ ANY)*}
-char          =  @{
+WHITESPACE    = _{ (" "|"\t"|"\r"|"\n")+ }
+COMMENT       = _{ block_comment|line_comment }
+block_comment = @{ block_comment_open ~ (!block_comment_close ~ ANY)* ~ block_comment_close }
+line_comment  = @{ line_comment_open ~ (!("\r"|"\n") ~ ANY)* }
+char          = @{
     !("\""|"\\") ~ ANY
   | "\\" ~ ("\""|"\\"|"/"|"b"|"f"|"n"|"r"|"t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-ident          = @{(!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*) | "()"}
-reserved_words = {  while_keyword | "struct" | enum_keyword |  match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword }
+ident          = @{ (!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*) | "()" }
+reserved_words = { while_keyword | "struct" | enum_keyword | match_keyword | use_keyword | var_decl_keyword | fn_decl_keyword | trait_decl_keyword | return_keyword }
 
