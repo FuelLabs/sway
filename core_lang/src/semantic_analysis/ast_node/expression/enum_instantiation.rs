@@ -7,9 +7,9 @@ pub(crate) fn instantiate_enum<'sc>(
     enum_decl: TypedEnumDeclaration<'sc>,
     enum_field_name: Ident<'sc>,
     instantiator: Option<Box<Expression<'sc>>>,
-    type_arguments: Vec<ResolvedType<'sc>>,
+    type_arguments: Vec<MaybeResolvedType<'sc>>,
     namespace: &Namespace<'sc>,
-    self_type: &ResolvedType<'sc>,
+    self_type: &MaybeResolvedType<'sc>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -39,7 +39,7 @@ pub(crate) fn instantiate_enum<'sc>(
     // instantiator, then the type of the enum is necessarily the unit type.
 
     match (instantiator, enum_field_type) {
-        (None, ResolvedType::Unit) => ok(
+        (None, MaybeResolvedType::Unit) => ok(
             TypedExpression {
                 return_type: enum_decl.as_type(),
                 expression: TypedExpressionVariant::EnumInstantiation {

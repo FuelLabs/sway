@@ -2,7 +2,7 @@ use crate::error::*;
 use crate::{Ident, Rule};
 use pest::iterators::Pair;
 
-use super::ResolvedType;
+use super::MaybeResolvedType;
 
 /// Type information without an associated value, used for type inferencing and definition.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -37,16 +37,16 @@ impl<'sc> TypeInfo<'sc> {
     /// statements resolving types when it has already been verified that this type is _not_
     /// a custom (enum, struct, user-defined) or generic type.
     /// This function just passes all the trivial types through to a [ResolvedType].
-    pub(crate) fn to_resolved(&self) -> ResolvedType<'sc> {
+    pub(crate) fn to_resolved(&self) -> MaybeResolvedType<'sc> {
         match self {
             TypeInfo::Custom { .. } | TypeInfo::SelfType => panic!("Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for more details."),
-            TypeInfo::Boolean => ResolvedType::Boolean,
-            TypeInfo::String => ResolvedType::String,
-            TypeInfo::UnsignedInteger(bits) => ResolvedType::UnsignedInteger(*bits),
-            TypeInfo::Unit => ResolvedType::Unit,
-            TypeInfo::Byte => ResolvedType::Byte,
-            TypeInfo::Byte32 => ResolvedType::Byte32,
-            TypeInfo::ErrorRecovery => ResolvedType::ErrorRecovery
+            TypeInfo::Boolean => MaybeResolvedType::Resolved(ResolvedType::Boolean),
+            TypeInfo::String => MaybeResolvedType::String,
+            TypeInfo::UnsignedInteger(bits) => MaybeResolvedType::UnsignedInteger(*bits),
+            TypeInfo::Unit => MaybeResolvedType::Unit,
+            TypeInfo::Byte => MaybeResolvedType::Byte,
+            TypeInfo::Byte32 => MaybeResolvedType::Byte32,
+            TypeInfo::ErrorRecovery => MaybeResolvedType::ErrorRecovery
 
         }
     }

@@ -3,7 +3,7 @@ use super::{
 };
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
-use crate::{error::*, types::ResolvedType, Ident};
+use crate::{error::*, types::MaybeResolvedType, Ident};
 use pest::Span;
 
 #[derive(Clone, Debug)]
@@ -40,7 +40,7 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
-    pub(crate) fn return_type(&self) -> CompileResult<'sc, ResolvedType<'sc>> {
+    pub(crate) fn return_type(&self) -> CompileResult<'sc, MaybeResolvedType<'sc>> {
         ok(
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -59,7 +59,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     name,
                     fields,
                     ..
-                }) => ResolvedType::Struct {
+                }) => MaybeResolvedType::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
                 },
@@ -140,7 +140,7 @@ pub struct TypedStructDeclaration<'sc> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TypedStructField<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: ResolvedType<'sc>,
+    pub(crate) r#type: MaybeResolvedType<'sc>,
     pub(crate) span: Span<'sc>,
 }
 
@@ -157,13 +157,13 @@ impl<'sc> TypedEnumDeclaration<'sc> {
     /// the place to resolve those typed.
     pub(crate) fn resolve_generic_types(
         &self,
-        _type_arguments: Vec<ResolvedType<'sc>>,
+        _type_arguments: Vec<MaybeResolvedType<'sc>>,
     ) -> CompileResult<'sc, Self> {
         ok(self.clone(), vec![], vec![])
     }
     /// Returns the [ResolvedType] corresponding to this enum's type.
-    pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
-        ResolvedType::Enum {
+    pub(crate) fn as_type(&self) -> MaybeResolvedType<'sc> {
+        MaybeResolvedType::Enum {
             name: self.name.clone(),
             variant_types: self.variants.iter().map(|x| x.r#type.clone()).collect(),
         }
@@ -173,7 +173,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
 #[derive(Debug, Clone)]
 pub struct TypedEnumVariant<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: ResolvedType<'sc>,
+    pub(crate) r#type: MaybeResolvedType<'sc>,
     pub(crate) tag: usize,
     pub(crate) span: Span<'sc>,
 }
@@ -192,7 +192,7 @@ pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) body: TypedCodeBlock<'sc>,
     pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
     pub(crate) span: pest::Span<'sc>,
-    pub(crate) return_type: ResolvedType<'sc>,
+    pub(crate) return_type: MaybeResolvedType<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
@@ -203,7 +203,7 @@ pub struct TypedFunctionDeclaration<'sc> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedFunctionParameter<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: ResolvedType<'sc>,
+    pub(crate) r#type: MaybeResolvedType<'sc>,
     pub(crate) type_span: Span<'sc>,
 }
 
@@ -219,7 +219,7 @@ pub struct TypedTraitDeclaration<'sc> {
 pub struct TypedTraitFn<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
-    pub(crate) return_type: ResolvedType<'sc>,
+    pub(crate) return_type: MaybeResolvedType<'sc>,
 }
 
 #[derive(Clone, Debug)]
@@ -232,11 +232,11 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub(crate) fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
-        _return_type_annotation: Option<ResolvedType<'sc>>,
+        _return_type_annotation: Option<MaybeResolvedType<'sc>>,
         _help_text: impl Into<String>,
         // If there are any `Self` types in this declaration,
         // resolve them to this type.
-        self_type: &ResolvedType<'sc>,
+        self_type: &MaybeResolvedType<'sc>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -289,7 +289,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     contents: vec![],
                     whole_block_span: body.whole_block_span.clone()
                 },
-                Some(ResolvedType::ErrorRecovery)
+                Some(MaybeResolvedType::ErrorRecovery)
             ),
             warnings,
             errors
@@ -313,7 +313,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .collect::<Vec<_>>();
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let ResolvedType::Generic { ref name } = param.r#type {
+            if let MaybeResolvedType::Generic { ref name } = param.r#type {
                 generic_params_buf_for_error_message.push(name.primary_name);
             }
         }
@@ -323,7 +323,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         } in parameters.iter()
         {
             let span = name.span.clone();
-            if let ResolvedType::Generic { name, .. } = r#type {
+            if let MaybeResolvedType::Generic { name, .. } = r#type {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span.clone(),
                     |acc,

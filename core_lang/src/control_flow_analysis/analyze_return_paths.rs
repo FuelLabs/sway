@@ -10,7 +10,7 @@ use crate::semantic_analysis::{
     },
     TypedAstNode, TypedAstNodeContent,
 };
-use crate::types::ResolvedType;
+use crate::types::MaybeResolvedType;
 use crate::Ident;
 use crate::{error::*, semantic_analysis::TypedParseTree};
 use pest::Span;
@@ -67,7 +67,7 @@ impl<'sc> ControlFlowGraph<'sc> {
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &'sc str,
-        return_ty: &ResolvedType<'sc>,
+        return_ty: &MaybeResolvedType<'sc>,
     ) -> Vec<CompileError<'sc>> {
         let mut rovers = vec![entry_point];
         let mut errors = vec![];
@@ -93,7 +93,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                     .graph
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
                     .collect::<Vec<_>>();
-                if neighbors.is_empty() && *return_ty != ResolvedType::Unit {
+                if neighbors.is_empty() && *return_ty != MaybeResolvedType::Unit {
                     errors.push(CompileError::PathDoesNotReturn {
                         // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
                         // different. To save some code duplication,

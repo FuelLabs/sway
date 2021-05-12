@@ -1,5 +1,5 @@
 use super::*;
-use crate::types::ResolvedType;
+use crate::types::MaybeResolvedType;
 use crate::CodeBlock;
 
 #[derive(Clone, Debug)]
@@ -13,10 +13,10 @@ impl<'sc> TypedCodeBlock<'sc> {
         other: CodeBlock<'sc>,
         namespace: &Namespace<'sc>,
         // this is for the return or implicit return
-        type_annotation: Option<ResolvedType<'sc>>,
+        type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
-        self_type: &ResolvedType<'sc>,
-    ) -> CompileResult<'sc, (Self, Option<ResolvedType<'sc>>)> {
+        self_type: &MaybeResolvedType<'sc>,
+    ) -> CompileResult<'sc, (Self, Option<MaybeResolvedType<'sc>>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut evaluated_contents = Vec::new();

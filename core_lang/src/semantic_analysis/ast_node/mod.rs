@@ -1,7 +1,7 @@
 use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
-use crate::types::{ResolvedType, TypeInfo};
+use crate::types::{MaybeResolvedType, TypeInfo};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
@@ -67,14 +67,14 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
     }
 }
 impl<'sc> TypedAstNode<'sc> {
-    fn type_info(&self) -> ResolvedType<'sc> {
+    fn type_info(&self) -> MaybeResolvedType<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            ReturnStatement(_) | Declaration(_) => ResolvedType::Unit,
+            ReturnStatement(_) | Declaration(_) => MaybeResolvedType::Unit,
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
-            WhileLoop(_) | SideEffect => ResolvedType::Unit,
+            WhileLoop(_) | SideEffect => MaybeResolvedType::Unit,
         }
     }
 }
@@ -83,9 +83,9 @@ impl<'sc> TypedAstNode<'sc> {
     pub(crate) fn type_check(
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
-        return_type_annotation: Option<ResolvedType<'sc>>,
+        return_type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String>,
-        self_type: &ResolvedType<'sc>,
+        self_type: &MaybeResolvedType<'sc>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -362,7 +362,7 @@ impl<'sc> TypedAstNode<'sc> {
                         block_span,
                         ..
                     }) => {
-                        let type_implementing_for_resolved = namespace.resolve_type(&type_implementing_for, todo!());
+                        let type_implementing_for_resolved = namespace.resolve_type_without_self(&type_implementing_for);
                         // check, if this is a custom type, if it is in scope or a generic.
                         let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                         for mut fn_decl in functions.into_iter() {
@@ -475,7 +475,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             condition,
                             &namespace,
-                            Some(ResolvedType::Boolean),
+                            Some(MaybeResolvedType::Boolean),
                             "A while loop's loop condition must be a boolean expression.",
                             self_type
                         ),
@@ -487,12 +487,12 @@ impl<'sc> TypedAstNode<'sc> {
                     TypedCodeBlock::type_check(
                             body.clone(),
                             &namespace,
-                            Some(ResolvedType::Unit),
+                            Some(MaybeResolvedType::Unit),
                             "A while loop's loop body cannot implicitly return a value.\
                             Try assigning it to a mutable variable declared outside of the loop instead.",
                             self_type
                         ),
-                        (TypedCodeBlock { contents: vec![], whole_block_span: body.whole_block_span.clone(), }, Some(ResolvedType::Unit)),
+                        (TypedCodeBlock { contents: vec![], whole_block_span: body.whole_block_span.clone(), }, Some(MaybeResolvedType::Unit)),
                         warnings,
                         errors
                     );
@@ -513,8 +513,8 @@ impl<'sc> TypedAstNode<'sc> {
                     r#type: node.type_info(),
                 };
                 assert_or_warn!(
-                    node.type_info() == ResolvedType::Unit
-                        || node.type_info() == ResolvedType::ErrorRecovery,
+                    node.type_info() == MaybeResolvedType::Unit
+                        || node.type_info() == MaybeResolvedType::ErrorRecovery,
                     warnings,
                     node.span.clone(),
                     warning

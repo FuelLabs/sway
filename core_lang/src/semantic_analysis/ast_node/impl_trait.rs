@@ -4,12 +4,12 @@ use super::{
 };
 use crate::parse_tree::ImplTrait;
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-use crate::{error::*, types::ResolvedType, Ident};
+use crate::{error::*, types::MaybeResolvedType, Ident};
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
-    self_type: &ResolvedType<'sc>
+    self_type: &MaybeResolvedType<'sc>
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -21,7 +21,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
-    let type_implementing_for = namespace.resolve_type(&type_implementing_for, todo!());
+    let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
     match namespace.get_call_path(&trait_name) {
         CompileResult::Ok {
             value: TypedDeclaration::TraitDeclaration(tr),
@@ -80,9 +80,9 @@ pub(crate) fn implementation_of_trait<'sc>(
                         let mut errors = vec![];
                         if let Some(mut maybe_err) = parameters.iter().zip(fn_decl.parameters.iter()).find_map(|(fn_decl_param, trait_param)| {
                             let mut errors = vec![];
-                            if let ResolvedType::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
+                            if let MaybeResolvedType::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ } = fn_decl_param.r#type {
                                 match trait_param.r#type {
-                                    ResolvedType::Generic { .. } => (),
+                                    MaybeResolvedType::Generic { .. } => (),
                                     _ => 
 
                                     errors.push(CompileError::MismatchedTypeInTrait {

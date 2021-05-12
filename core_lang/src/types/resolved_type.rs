@@ -8,17 +8,15 @@ use pest::Span;
 /// known type. This allows us to ensure structurally that no unresolved types bleed into the
 /// syntax tree.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum MaybeResolvedType<'sc> {
+    Resolved(ResolvedType<'sc>),
+    Partial(PartiallyResolvedType<'sc>),
+}
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ResolvedType<'sc> {
     String,
     UnsignedInteger(IntegerBits),
     Boolean,
-    /// A custom type could be a struct or similar if the name is in scope,
-    /// or just a generic parameter if it is not.
-    /// At parse time, there is no sense of scope, so this determination is not made
-    /// until the semantic analysis stage.
-    Generic {
-        name: Ident<'sc>,
-    },
     Unit,
     Byte,
     Byte32,
@@ -30,13 +28,42 @@ pub enum ResolvedType<'sc> {
         name: Ident<'sc>,
         variant_types: Vec<ResolvedType<'sc>>,
     },
+    /// Represents the contract's type as a whole. Used for implementing
+    /// traits on the contract itself, to enforce a specific type of ABI.
+    Contract,
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
+/// A partially resolved type is pending further information to be typed.
+/// This could be the number of bits in an integer, or it could be a generic/self type.
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum PartiallyResolvedType<'sc> {
+    Numeric,
+    SelfType,
+    Generic { name: Ident<'sc> },
+}
 
-impl Default for ResolvedType<'_> {
+impl Default for MaybeResolvedType<'_> {
     fn default() -> Self {
-        ResolvedType::Unit
+        MaybeResolvedType::Unit
+    }
+}
+
+impl<'sc> MaybeResolvedType<'sc> {
+    pub(crate) fn friendly_type_str(&self) -> String {
+        match self {
+            MaybeResolvedType::Partial(ty) => ty.friendly_type_str(),
+            MaybeResolvedType::Resolved(ty) => ty.friendly_type_str(),
+        }
+    }
+}
+impl<'sc> PartiallyResolvedType<'sc> {
+    pub(crate) fn friendly_type_str(&self) -> String {
+        match self {
+            PartiallyResolvedType::Generic { name } => format!("generic {}", name.primary_name),
+            PartiallyResolvedType::Numeric => "numeric".into(),
+            PartiallyResolvedType::SelfType => "self".into(),
+        }
     }
 }
 
@@ -56,7 +83,7 @@ impl<'sc> ResolvedType<'sc> {
                 .into()
             }
             Boolean => "bool".into(),
-            Generic { name } => format!("generic {}", name.primary_name),
+
             Unit => "()".into(),
             Byte => "byte".into(),
             Byte32 => "byte32".into(),
@@ -68,17 +95,18 @@ impl<'sc> ResolvedType<'sc> {
                 name: Ident { primary_name, .. },
                 ..
             } => format!("enum {}", primary_name),
+            Contract => "contract".into(),
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
     pub(crate) fn is_convertible(
         &self,
-        other: &ResolvedType<'sc>,
+        other: &MaybeResolvedType<'sc>,
         debug_span: Span<'sc>,
         help_text: impl Into<String>,
     ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
         let help_text = help_text.into();
-        if *self == ResolvedType::ErrorRecovery || *other == ResolvedType::ErrorRecovery {
+        if *self == MaybeResolvedType::ErrorRecovery || *other == MaybeResolvedType::ErrorRecovery {
             return Ok(None);
         }
         // TODO  actually check more advanced conversion rules like upcasting vs downcasting
@@ -106,17 +134,14 @@ impl<'sc> ResolvedType<'sc> {
     pub(crate) fn stack_size_of(&self) -> u64 {
         match self {
             // the pointer to the beginning of the string is 64 bits
-            ResolvedType::String => 1,
+            MaybeResolvedType::String => 1,
             // Since things are unpacked, all unsigned integers are 64 bits.....for now
-            ResolvedType::UnsignedInteger(_) => 1,
-            ResolvedType::Boolean => 1,
-            ResolvedType::Unit => 0,
-            ResolvedType::Generic { .. } => {
-                unimplemented!("Generic types are not fully fleshed out yet...")
-            }
-            ResolvedType::Byte => 1,
-            ResolvedType::Byte32 => 4,
-            ResolvedType::Enum { variant_types, .. } => {
+            MaybeResolvedType::UnsignedInteger(_) => 1,
+            MaybeResolvedType::Boolean => 1,
+            MaybeResolvedType::Unit => 0,
+            MaybeResolvedType::Byte => 1,
+            MaybeResolvedType::Byte32 => 4,
+            MaybeResolvedType::Enum { variant_types, .. } => {
                 // the size of an enum is one word (for the tag) plus the maximum size
                 // of any individual variant
                 1 + variant_types
@@ -125,16 +150,17 @@ impl<'sc> ResolvedType<'sc> {
                     .max()
                     .unwrap()
             }
-            ResolvedType::Struct { fields, .. } => fields
+            MaybeResolvedType::Struct { fields, .. } => fields
                 .iter()
                 .fold(0, |acc, x| acc + x.r#type.stack_size_of()),
-            ResolvedType::ErrorRecovery => unreachable!(),
+            MaybeResolvedType::Contract => unreachable!("contract types are never instantiated"),
+            MaybeResolvedType::ErrorRecovery => unreachable!(),
         }
     }
 
-    fn numeric_cast_compat(&self, other: &ResolvedType<'sc>) -> Result<(), Warning<'sc>> {
+    fn numeric_cast_compat(&self, other: &MaybeResolvedType<'sc>) -> Result<(), Warning<'sc>> {
         assert_eq!(self.is_numeric(), other.is_numeric());
-        use ResolvedType::*;
+        use MaybeResolvedType::*;
         // if this is a downcast, warn for loss of precision. if upcast, then no warning.
         match self {
             UnsignedInteger(IntegerBits::Eight) => Ok(()),
@@ -169,7 +195,7 @@ impl<'sc> ResolvedType<'sc> {
         }
     }
     fn is_numeric(&self) -> bool {
-        if let ResolvedType::UnsignedInteger(_) = self {
+        if let MaybeResolvedType::UnsignedInteger(_) = self {
             true
         } else {
             false

@@ -5,7 +5,7 @@ use super::{
     TypedExpression,
 };
 use crate::error::*;
-use crate::types::ResolvedType;
+use crate::types::MaybeResolvedType;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
@@ -17,7 +17,7 @@ type ModuleName = String;
 pub struct Namespace<'sc> {
     symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
     implemented_traits:
-        HashMap<(Ident<'sc>, ResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
+        HashMap<(Ident<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     modules: HashMap<ModuleName, Namespace<'sc>>,
 }
@@ -25,13 +25,11 @@ pub struct Namespace<'sc> {
 impl<'sc> Namespace<'sc> {
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
-    /// Eventually, this should return a [ResolvedType], which currently doesn't exist,
-    /// to further solidify the bounary between the monomorphized AST and the parameterized one.
     pub(crate) fn resolve_type(
         &self,
         ty: &TypeInfo<'sc>,
-        self_type: &ResolvedType<'sc>,
-    ) -> ResolvedType<'sc> {
+        self_type: &MaybeResolvedType<'sc>,
+    ) -> MaybeResolvedType<'sc> {
         let ty = ty.clone();
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol(&name) {
@@ -39,7 +37,7 @@ impl<'sc> Namespace<'sc> {
                     name,
                     fields,
                     ..
-                })) => ResolvedType::Struct {
+                })) => MaybeResolvedType::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
                 },
@@ -47,14 +45,46 @@ impl<'sc> Namespace<'sc> {
                     name,
                     variants,
                     ..
-                })) => ResolvedType::Enum {
+                })) => MaybeResolvedType::Enum {
                     name: name.clone(),
                     variant_types: variants.iter().map(|x| x.r#type.clone()).collect(),
                 },
-                Some(_) => ResolvedType::Generic { name: name.clone() },
-                None => ResolvedType::Generic { name: name.clone() },
+                Some(_) => MaybeResolvedType::Generic { name: name.clone() },
+                None => MaybeResolvedType::Generic { name: name.clone() },
             },
             TypeInfo::SelfType => self_type.clone(),
+
+            o => o.to_resolved(),
+        }
+    }
+    /// Used to resolve a type when there is no known self type. This is needed
+    /// when declaring new self types.
+    pub(crate) fn resolve_type_without_self(&self, ty: &TypeInfo<'sc>) -> MaybeResolvedType<'sc> {
+        let ty = ty.clone();
+        match ty {
+            TypeInfo::Custom { name } => match self.get_symbol(&name) {
+                Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
+                    name,
+                    fields,
+                    ..
+                })) => MaybeResolvedType::Struct {
+                    name: name.clone(),
+                    fields: fields.clone(),
+                },
+                Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
+                    name,
+                    variants,
+                    ..
+                })) => MaybeResolvedType::Enum {
+                    name: name.clone(),
+                    variant_types: variants.iter().map(|x| x.r#type.clone()).collect(),
+                },
+                Some(_) => MaybeResolvedType::Generic { name: name.clone() },
+                None => MaybeResolvedType::Generic { name: name.clone() },
+            },
+            TypeInfo::SelfType => {
+                unreachable!("Type resolution without self called on a self type.")
+            }
 
             o => o.to_resolved(),
         }
@@ -225,7 +255,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: Ident<'sc>,
-        type_implementing_for: ResolvedType<'sc>,
+        type_implementing_for: MaybeResolvedType<'sc>,
         functions_buf: Vec<TypedFunctionDeclaration<'sc>>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
@@ -262,7 +292,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn find_subfield(
         &self,
         subfield_exp: &[Ident<'sc>],
-    ) -> CompileResult<'sc, (ResolvedType<'sc>, ResolvedType<'sc>)> {
+    ) -> CompileResult<'sc, (MaybeResolvedType<'sc>, MaybeResolvedType<'sc>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ident_iter = subfield_exp.into_iter().peekable();
@@ -338,7 +368,7 @@ impl<'sc> Namespace<'sc> {
                 }
             };
             match r#type {
-                ResolvedType::Struct { .. } => {
+                MaybeResolvedType::Struct { .. } => {
                     let (l_fields, _l_name) = type_check!(
                         self.find_struct_name_and_fields(&r#type, &ident),
                         return err(warnings, errors),
@@ -360,7 +390,7 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn get_methods_for_type(
         &self,
-        r#type: &ResolvedType<'sc>,
+        r#type: &MaybeResolvedType<'sc>,
     ) -> Vec<TypedFunctionDeclaration<'sc>> {
         let mut methods = vec![];
         for ((_trait_name, type_info), l_methods) in &self.implemented_traits {
@@ -373,7 +403,7 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn find_method_for_type(
         &self,
-        r#type: &ResolvedType<'sc>,
+        r#type: &MaybeResolvedType<'sc>,
         method_name: Ident<'sc>,
     ) -> Option<TypedFunctionDeclaration<'sc>> {
         let methods = self.get_methods_for_type(r#type);
@@ -413,10 +443,10 @@ impl<'sc> Namespace<'sc> {
     /// 2) return its fields and struct name
     fn find_struct_name_and_fields(
         &self,
-        return_type: &ResolvedType<'sc>,
+        return_type: &MaybeResolvedType<'sc>,
         debug_ident: &Ident<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
-        if let ResolvedType::Struct { name, fields: _ } = return_type {
+        if let MaybeResolvedType::Struct { name, fields: _ } = return_type {
             match self.get_symbol(name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     fields,

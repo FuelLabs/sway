@@ -1,5 +1,5 @@
 use crate::parser::Rule;
-use crate::types::{ResolvedType, TypeInfo};
+use crate::types::{MaybeResolvedType, TypeInfo};
 use crate::Ident;
 use crate::Namespace;
 use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
@@ -31,7 +31,7 @@ impl<'sc> EnumDeclaration<'sc> {
     pub(crate) fn to_typed_decl(
         &self,
         namespace: &Namespace<'sc>,
-        self_type: &ResolvedType<'sc>,
+        self_type: &MaybeResolvedType<'sc>,
     ) -> TypedEnumDeclaration<'sc> {
         TypedEnumDeclaration {
             name: self.name.clone(),
@@ -137,7 +137,7 @@ impl<'sc> EnumVariant<'sc> {
     pub(crate) fn to_typed_decl(
         &self,
         namespace: &Namespace<'sc>,
-        self_type: &ResolvedType<'sc>,
+        self_type: &MaybeResolvedType<'sc>,
     ) -> TypedEnumVariant<'sc> {
         TypedEnumVariant {
             name: self.name.clone(),

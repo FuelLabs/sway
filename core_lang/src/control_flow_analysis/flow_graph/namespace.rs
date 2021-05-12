@@ -1,5 +1,5 @@
 use super::{EntryPoint, ExitPoint};
-use crate::{types::ResolvedType, Ident};
+use crate::{types::MaybeResolvedType, Ident};
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
 
@@ -10,7 +10,7 @@ use std::collections::HashMap;
 pub(crate) struct FunctionNamespaceEntry<'sc> {
     pub(crate) entry_point: EntryPoint,
     pub(crate) exit_point: ExitPoint,
-    pub(crate) return_type: ResolvedType<'sc>,
+    pub(crate) return_type: MaybeResolvedType<'sc>,
 }
 
 #[derive(Default, Clone)]
