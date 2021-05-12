@@ -67,6 +67,22 @@ pub(crate) fn implementation_of_trait<'sc>(
                     warnings,
                     errors
                 );
+                // remove this function from the "checklist"
+                let ix_of_thing_to_remove = match function_checklist
+                    .iter()
+                    .position(|name| **name == fn_decl.name)
+                {
+                    Some(ix) => ix,
+                    None => {
+                        errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
+                            name: fn_decl.name.primary_name.clone(),
+                            trait_name: trait_name.span().as_str(),
+                            span: fn_decl.name.span.clone(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                function_checklist.remove(ix_of_thing_to_remove);
 
                 let mut type_arguments = type_arguments.clone();
                 // add generic params from impl trait into function type params
@@ -121,22 +137,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     errors.append(&mut l_e);
                     continue;
                 }
-                // remove this function from the "checklist"
-                let ix_of_thing_to_remove = match function_checklist
-                    .iter()
-                    .position(|name| **name == fn_decl.name)
-                {
-                    Some(ix) => ix,
-                    None => {
-                        errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                            name: fn_decl.name.primary_name.clone(),
-                            trait_name: trait_name.span().as_str(),
-                            span: fn_decl.name.span.clone(),
-                        });
-                        return err(warnings, errors);
-                    }
-                };
-                function_checklist.remove(ix_of_thing_to_remove);
+
 
                 functions_buf.push(fn_decl);
             }

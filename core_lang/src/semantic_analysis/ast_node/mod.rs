@@ -172,7 +172,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 .map(|FunctionParameter { name, r#type, type_span }|
                                     TypedFunctionParameter { name, r#type: namespace.resolve_type(&r#type, &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)), type_span }
                                 ).collect(),
-                            return_type: namespace.resolve_type(&return_type, self_type)
+                            return_type: namespace.resolve_type(&return_type, &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType))
                         }).collect::<Vec<_>>();
                         for FunctionDeclaration {
                             body,
