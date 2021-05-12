@@ -95,10 +95,10 @@ fn get_range(span: &Span) -> Range {
     let end = span.end_pos().line_col();
 
     let start_line = start.0 as u32 - 1;
-    let start_character = start.1 as u32;
+    let start_character = start.1 as u32 - 1;
 
     let end_line = end.0 as u32 - 1;
-    let end_character = end.1 as u32;
+    let end_character = end.1 as u32 - 2;
 
     Range {
         start: Position::new(start_line, start_character),
