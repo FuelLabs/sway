@@ -22,6 +22,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         block_span,
     } = impl_trait;
     let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
+    let self_type = type_implementing_for;
     match namespace.get_call_path(&trait_name) {
         CompileResult::Ok {
             value: TypedDeclaration::TraitDeclaration(tr),
@@ -30,7 +31,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         } => {
             errors.append(&mut l_e);
             warnings.append(&mut l_w);
-            let mut tr = tr.clone();
+            let tr = tr.clone();
             if type_arguments.len() != tr.type_parameters.len() {
                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
                     given: type_arguments.len(),
@@ -60,7 +61,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                         &namespace,
                         None,
                         "",
-                        &type_implementing_for
+                        &self_type
                     ),
                     continue,
                     warnings,
@@ -154,7 +155,7 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.suffix.clone(),
-                type_implementing_for,
+                self_type,
                 functions_buf.clone(),
             );
             ok(

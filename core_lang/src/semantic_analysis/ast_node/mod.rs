@@ -1,7 +1,7 @@
 use crate::{error::*, types::IntegerBits};
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
-use crate::types::{MaybeResolvedType, TypeInfo, ResolvedType};
+use crate::types::{MaybeResolvedType, TypeInfo, ResolvedType, PartiallyResolvedType};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
@@ -170,7 +170,7 @@ impl<'sc> TypedAstNode<'sc> {
                             parameters: parameters
                                 .into_iter()
                                 .map(|FunctionParameter { name, r#type, type_span }|
-                                    TypedFunctionParameter { name, r#type: namespace.resolve_type(&r#type, self_type), type_span }
+                                    TypedFunctionParameter { name, r#type: namespace.resolve_type(&r#type, &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)), type_span }
                                 ).collect(),
                             return_type: namespace.resolve_type(&return_type, self_type)
                         }).collect::<Vec<_>>();
@@ -188,7 +188,7 @@ impl<'sc> TypedAstNode<'sc> {
                             let mut namespace = namespace.clone();
                             parameters.clone().into_iter().for_each(
                                 |FunctionParameter { name, r#type, .. }| {
-                                    let r#type = namespace.resolve_type(&r#type, self_type);
+                                    let r#type = namespace.resolve_type(&r#type, &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType));
                                     namespace.insert(
                                         name.clone(),
                                         TypedDeclaration::VariableDeclaration(
@@ -252,7 +252,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     }
                                 | TypedFunctionParameter {
                                     name,
-                                    r#type: namespace.resolve_type(&r#type, self_type),
+                                    r#type: namespace.resolve_type(&r#type, &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)),
                                     type_span
                                 }).collect::<Vec<_>>();
                             // TODO check code block implicit return

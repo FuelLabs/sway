@@ -90,10 +90,7 @@ impl<'sc> Namespace<'sc> {
                     name: name.clone(),
                 }),
             },
-            TypeInfo::SelfType => {
-                unreachable!("Type resolution without self called on a self type.")
-            }
-
+            TypeInfo::SelfType => MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
             o => o.to_resolved(),
         }
     }
