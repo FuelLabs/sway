@@ -334,12 +334,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             Expression::AsmExpression { asm, span, .. } => {
-                let return_type = if asm.returns.is_some() {
-                    ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
-                } else {
-                    ResolvedType::Unit
-                };
-
+                let return_type = namespace.resolve_type(&asm.return_type)  ;
                 // type check the initializers
                 let typed_registers = asm
                     .registers

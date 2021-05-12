@@ -1,4 +1,4 @@
-use super::{FunctionDeclaration, Ident, TypeParameter};
+use super::{FunctionDeclaration, TypeParameter};
 use crate::parse_tree::CallPath;
 use crate::{error::*, parser::Rule, types::TypeInfo};
 use pest::iterators::Pair;

@@ -167,7 +167,6 @@ impl<'sc> Namespace<'sc> {
     /// `foo::bar::function`
     /// where `foo` and `bar` are the prefixes
     /// and `function` is the suffix
-    #[allow(dead_code)]
     pub(crate) fn get_call_path(
         &self,
         path: &CallPath<'sc>,
