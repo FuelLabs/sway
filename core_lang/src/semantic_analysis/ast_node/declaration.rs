@@ -224,6 +224,7 @@ pub struct TypedTraitFn<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
     pub(crate) return_type: MaybeResolvedType<'sc>,
+    pub(crate) return_type_span: Span<'sc>,
 }
 
 #[derive(Clone, Debug)]
@@ -301,7 +302,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
         // check the generic types in the arguments, make sure they are in the type
         // scope
-        let mut parameters = parameters
+        let parameters = parameters
             .into_iter()
             .map(
                 |FunctionParameter {

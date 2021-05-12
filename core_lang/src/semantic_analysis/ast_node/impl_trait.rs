@@ -1,5 +1,5 @@
 use super::{
-    declaration::{TypedFunctionParameter, TypedTraitFn},
+    declaration::TypedTraitFn,
     ERROR_RECOVERY_DECLARATION,
 };
 use crate::parse_tree::ImplTrait;
@@ -9,7 +9,6 @@ use crate::{error::*, types::{MaybeResolvedType, ResolvedType, PartiallyResolved
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
-    self_type: &MaybeResolvedType<'sc>
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -87,12 +86,10 @@ pub(crate) fn implementation_of_trait<'sc>(
                 let mut type_arguments = type_arguments.clone();
                 // add generic params from impl trait into function type params
                 fn_decl.type_parameters.append(&mut type_arguments);
-                // TODO handle these generics smartly
-                // replace all references to type_implementing_for with Self
 
                 // ensure this fn decl's parameters and signature lines up with the one
                 // in the trait
-                if let Some(mut l_e) = tr.interface_surface.iter().find_map(|TypedTraitFn { name, parameters, return_type }| {
+                if let Some(mut l_e) = tr.interface_surface.iter().find_map(|TypedTraitFn { name, parameters, return_type, return_type_span }| {
                     if fn_decl.name == *name {
                         let mut errors = vec![];
                         if let Some(mut maybe_err) = parameters.iter().zip(fn_decl.parameters.iter()).find_map(|(fn_decl_param, trait_param)| {
@@ -109,7 +106,26 @@ pub(crate) fn implementation_of_trait<'sc>(
                                     })
                                 }
                             } else {
-                                if fn_decl_param.r#type != trait_param.r#type  {
+                                let fn_decl_param_type = type_check!(
+                                    fn_decl_param.r#type.force_resolution(
+                                        &self_type,
+                                        &fn_decl_param.type_span
+                                    ),
+                                    return Some(errors),
+                                    warnings,
+                                    errors
+                                );
+                                let trait_param_type = type_check!(
+                                    trait_param.r#type.force_resolution(
+                                        &self_type,
+                                        &fn_decl_param.type_span
+                                    ),
+                                    return Some(errors),
+                                    warnings,
+                                    errors
+                                );
+
+                                if fn_decl_param_type != trait_param_type  {
                                     errors.push(CompileError::MismatchedTypeInTrait {
                                         span: trait_param.type_span.clone(),
                                         given: trait_param.r#type.friendly_type_str(),
@@ -121,7 +137,13 @@ pub(crate) fn implementation_of_trait<'sc>(
                         }) {
                             errors.append(&mut maybe_err);
                         }
-                        if fn_decl.return_type != *return_type {
+                        let return_type = type_check!(
+                            return_type.force_resolution(&self_type, return_type_span),
+                            ResolvedType::ErrorRecovery,
+                            warnings,
+                            errors
+                        );
+                        if fn_decl.return_type != MaybeResolvedType::Resolved(return_type.clone()) {
                             errors.push(CompileError::MismatchedTypeInTrait {
                                 span: fn_decl.return_type_span.clone(),
                                 expected: return_type.friendly_type_str(),

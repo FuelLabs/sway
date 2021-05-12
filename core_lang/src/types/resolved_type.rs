@@ -1,6 +1,7 @@
 use super::IntegerBits;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, Ident};
 use pest::Span;
+
 /// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
 /// Type symbols are ambiguous in the beginning of compilation, as any custom symbol could be
 /// an enum, struct, or generic type name. This enum is similar to [TypeInfo], except it lacks
@@ -103,6 +104,36 @@ impl<'sc> MaybeResolvedType<'sc> {
             }),
         }
     }
+    /// Force this type into a [ResolvedType]. This returns an error if the type is not resolvable.
+    pub(crate) fn force_resolution(
+        &self,
+        self_type: &MaybeResolvedType<'sc>,
+        debug_span: &Span<'sc>,
+    ) -> CompileResult<'sc, ResolvedType<'sc>> {
+        ok(
+            match (self, self_type) {
+                (MaybeResolvedType::Resolved(r), _) => r.clone(),
+                (MaybeResolvedType::Partial(PartiallyResolvedType::Numeric), _) => {
+                    ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
+                }
+                (
+                    MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                    MaybeResolvedType::Resolved(r),
+                ) => r.clone(),
+                _ => {
+                    return err(
+                        vec![],
+                        vec![CompileError::TypeMustBeKnown {
+                            ty: self.friendly_type_str(),
+                            span: debug_span.clone(),
+                        }],
+                    )
+                }
+            },
+            vec![],
+            vec![],
+        )
+    }
 }
 impl<'sc> PartiallyResolvedType<'sc> {
     pub(crate) fn friendly_type_str(&self) -> String {
@@ -180,35 +211,6 @@ impl<'sc> ResolvedType<'sc> {
             } => format!("enum {}", primary_name),
             Contract => "contract".into(),
             ErrorRecovery => "\"unknown due to error\"".into(),
-        }
-    }
-    pub(crate) fn is_convertible(
-        &self,
-        other: &ResolvedType<'sc>,
-        debug_span: Span<'sc>,
-        help_text: impl Into<String>,
-    ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
-        let help_text = help_text.into();
-        if *self == ResolvedType::ErrorRecovery || *other == ResolvedType::ErrorRecovery {
-            return Ok(None);
-        }
-        // TODO  actually check more advanced conversion rules like upcasting vs downcasting
-        // numbers, emit warnings for loss of precision
-        if self == other {
-            Ok(None)
-        } else if self.is_numeric() && other.is_numeric() {
-            // check numeric castability
-            match self.numeric_cast_compat(other) {
-                Ok(()) => Ok(None),
-                Err(warn) => Ok(Some(warn)),
-            }
-        } else {
-            Err(TypeError::MismatchedType {
-                expected: other.friendly_type_str(),
-                received: self.friendly_type_str(),
-                help_text,
-                span: debug_span,
-            })
         }
     }
 

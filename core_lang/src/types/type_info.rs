@@ -1,5 +1,6 @@
 use super::{MaybeResolvedType, ResolvedType};
 use crate::error::*;
+use crate::types::PartiallyResolvedType;
 use crate::{Ident, Rule};
 use pest::iterators::Pair;
 
@@ -20,6 +21,9 @@ pub enum TypeInfo<'sc> {
     SelfType,
     Byte,
     Byte32,
+    /// This means that specific type of a number is not yet known. It will be
+    /// determined via inference at a later time.
+    Numeric,
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -42,6 +46,7 @@ impl<'sc> TypeInfo<'sc> {
             TypeInfo::Boolean => MaybeResolvedType::Resolved(ResolvedType::Boolean),
             TypeInfo::String => MaybeResolvedType::Resolved(ResolvedType::String),
             TypeInfo::UnsignedInteger(bits) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(*bits)),
+            TypeInfo::Numeric => MaybeResolvedType::Partial(PartiallyResolvedType::Numeric),
             TypeInfo::Unit => MaybeResolvedType::Resolved(ResolvedType::Unit),
             TypeInfo::Byte => MaybeResolvedType::Resolved(ResolvedType::Byte),
             TypeInfo::Byte32 => MaybeResolvedType::Resolved(ResolvedType::Byte32),

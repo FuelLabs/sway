@@ -18,7 +18,7 @@ library ops {
          fn add(self, other: Self) -> Self {
             asm(r1: self, r2: other, r3) {
                 add r3 r2 r1;
-                r3
+                r3: u64
             }
          }
     }
@@ -27,7 +27,7 @@ library ops {
          fn add(self, other: Self) -> Self {
             asm(r1: self, r2: other, r3) {
                 add r3 r2 r1;
-                r3
+                r3: u32
             }
          }
     }
@@ -36,7 +36,7 @@ library ops {
          fn add(self, other: Self) -> Self {
             asm(r1: self, r2: other, r3) {
                 add r3 r2 r1;
-                r3
+                r3: u16
             }
          }
     }

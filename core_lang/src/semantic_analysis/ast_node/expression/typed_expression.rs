@@ -507,7 +507,7 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span,
             } => {
-                let (method, parent_type) = if subfield_exp.is_empty() {
+                let (method, _parent_type) = if subfield_exp.is_empty() {
                     // if subfield exp is empty, then we are calling a method using either ::
                     // syntax or an operator
                     let ns = type_check!(

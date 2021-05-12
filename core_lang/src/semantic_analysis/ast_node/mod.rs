@@ -165,8 +165,9 @@ impl<'sc> TypedAstNode<'sc> {
                         visibility
                     }) => {
                         let mut methods_buf = Vec::new();
-                        let interface_surface = interface_surface.into_iter().map(|TraitFn { name, parameters, return_type }| TypedTraitFn {
+                        let interface_surface = interface_surface.into_iter().map(|TraitFn { name, parameters, return_type, return_type_span }| TypedTraitFn {
                             name,
+                            return_type_span,
                             parameters: parameters
                                 .into_iter()
                                 .map(|FunctionParameter { name, r#type, type_span }|
@@ -349,7 +350,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs })
                     }
                     Declaration::ImplTrait(impl_trait) => type_check!(
-                        implementation_of_trait(impl_trait, namespace, self_type),
+                        implementation_of_trait(impl_trait, namespace),
                         return err(warnings, errors),
                         warnings,
                         errors
