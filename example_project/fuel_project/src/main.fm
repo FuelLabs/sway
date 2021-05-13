@@ -43,7 +43,7 @@ script{
   }
 
   pub fn main() -> bool {
-  let a = 5;
+  let a = 5_000;
   let z: byte = 0b01010101;
   let x: byte32 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
   let mut b = 5 + a;
