@@ -507,7 +507,7 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span,
             } => {
-                let (method, parent_expr) = if subfield_exp.is_empty() {
+                let (method, parent_type) = if subfield_exp.is_empty() {
                     // if subfield exp is empty, then we are calling a method using either ::
                     // syntax or an operator
                     let ns = type_check!(
@@ -558,10 +558,10 @@ impl<'sc> TypedExpression<'sc> {
                                 return err(warnings, errors);
                             }
                         },
-                        parent_expr,
+                        parent_expr.return_type,
                     )
                 } else {
-                    let (parent_of_method_type, subfield_parent) = type_check!(
+                    let (parent_of_method_type, _) = type_check!(
                         namespace.find_subfield_type(&subfield_exp.clone()),
                         return err(warnings, errors),
                         warnings,
@@ -582,17 +582,7 @@ impl<'sc> TypedExpression<'sc> {
                                 return err(warnings, errors);
                             }
                         },
-                        TypedExpression {
-                            expression: TypedExpressionVariant::SubfieldExpression {
-                                unary_op: None, // TODO Support unary ops on method invocations
-                                name: subfield_exp,
-                                span: subfield_span.clone(),
-                                resolved_type_of_parent: subfield_parent.clone()
-                            },
-                            return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
-                            is_constant: IsConstant::No,
-                            span: subfield_span.clone()
-                        }
+                        parent_of_method_type
                     )
                 };
 
@@ -600,9 +590,7 @@ impl<'sc> TypedExpression<'sc> {
                 let zipped = method.parameters.iter().zip(arguments.iter());
                 let mut typed_arg_buf = vec![];
                 for (TypedFunctionParameter { r#type, name, .. }, arg) in zipped {
-                    if name.primary_name == "self" {
-                        typed_arg_buf.push((name.clone(), parent_expr.clone()));
-                    } else {
+
                         typed_arg_buf.push((name.clone(), type_check!(
                         TypedExpression::type_check(
                             arg.clone(),
@@ -615,7 +603,7 @@ impl<'sc> TypedExpression<'sc> {
                         warnings,
                         errors
                     )));
-                    }
+
                 }
 
                 TypedExpression {

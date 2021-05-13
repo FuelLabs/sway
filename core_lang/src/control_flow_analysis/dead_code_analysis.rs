@@ -720,13 +720,14 @@ fn connect_expression<'sc>(
             resolved_type_of_parent,
             ..
         } => {
+            dbg!(&resolved_type_of_parent);
             assert!(matches!(
                 resolved_type_of_parent,
                 MaybeResolvedType::Resolved(ResolvedType::Struct { .. })
             ));
             let resolved_type_of_parent = match resolved_type_of_parent {
                 MaybeResolvedType::Resolved(ResolvedType::Struct { name, .. }) => name.clone(),
-                _ => panic!("Called subfvield on a non-struct"),
+                _ => panic!("Called subfield on a non-struct"),
             };
             let field_name = name.last().unwrap();
             // find the struct field index in the namespace

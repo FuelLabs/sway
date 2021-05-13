@@ -17,15 +17,15 @@ use std::ops::Eq;
        Blue : ()
     }
 
-impl std::ops::Eq for u64 {
-  fn equals(self, other: Self) -> bool {
-   asm(r1: self, r2: other, r3) {
-      eq r3 r1 r2;
-      r3: bool
+    impl std::ops::Eq for PrimaryColor {
+      fn equals(self, other: Self) -> bool {
+       asm(r1: self, r2: other, r3) {
+          eq r3 r1 r2;
+          r3: bool
+        }
+      }
     }
-  }
-}
-/*
+
 impl Color for PrimaryColor {
   // TODO: when we support match statements, change this to a match statement
   fn rgb(self) -> Rgb {
@@ -59,11 +59,11 @@ impl Color for PrimaryColor {
        }
      }
    }
-}*/
+}
 
   fn main() {
     let first_color: PrimaryColor = PrimaryColor::Green;
-        //let rgb: Rgb = first_color.rgb();
-      let z = 5 == 2;
+      let rgb: Rgb = first_color.rgb();
+      // let z = 5 == 2;
     }
 }
