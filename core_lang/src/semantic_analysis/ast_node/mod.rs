@@ -395,10 +395,15 @@ impl<'sc> TypedAstNode<'sc> {
                             ));
                         }
                         namespace.insert_trait_implementation(
-                            Ident {
-                                primary_name: "r#Self",
-                                span: block_span.clone(),
-                            },
+                            CallPath {
+                                prefixes: vec![],
+                                suffix:
+                                Ident
+                                    {
+                                    primary_name: "r#Self",
+                                    span: block_span.clone(),
+                                }
+                             },
                             type_implementing_for_resolved,
                             functions_buf,
                         );

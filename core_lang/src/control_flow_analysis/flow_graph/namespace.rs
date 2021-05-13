@@ -1,4 +1,5 @@
 use super::{EntryPoint, ExitPoint};
+use crate::parse_tree::CallPath;
 use crate::{types::MaybeResolvedType, Ident};
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
@@ -29,9 +30,9 @@ pub(crate) struct StructNamespaceEntry<'sc> {
 pub struct ControlFlowNamespace<'sc> {
     pub(crate) function_namespace: HashMap<Ident<'sc>, FunctionNamespaceEntry<'sc>>,
     pub(crate) enum_namespace: HashMap<Ident<'sc>, (NodeIndex, HashMap<Ident<'sc>, NodeIndex>)>,
-    pub(crate) trait_namespace: HashMap<Ident<'sc>, NodeIndex>,
+    pub(crate) trait_namespace: HashMap<CallPath<'sc>, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
-    pub(crate) trait_method_namespace: HashMap<Ident<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
+    pub(crate) trait_method_namespace: HashMap<CallPath<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
     /// This is a mapping from struct name to field names and their node indexes
     pub(crate) struct_namespace: HashMap<Ident<'sc>, StructNamespaceEntry<'sc>>,
 }
@@ -78,17 +79,17 @@ impl<'sc> ControlFlowNamespace<'sc> {
         Some((enum_ix.clone(), enum_decl.get(variant_name)?.clone()))
     }
 
-    pub(crate) fn add_trait(&mut self, trait_name: Ident<'sc>, trait_idx: NodeIndex) {
+    pub(crate) fn add_trait(&mut self, trait_name: CallPath<'sc>, trait_idx: NodeIndex) {
         self.trait_namespace.insert(trait_name, trait_idx);
     }
 
-    pub(crate) fn find_trait(&self, name: &Ident<'sc>) -> Option<&NodeIndex> {
+    pub(crate) fn find_trait(&self, name: &CallPath<'sc>) -> Option<&NodeIndex> {
         self.trait_namespace.get(name)
     }
 
     pub(crate) fn insert_trait_methods(
         &mut self,
-        trait_name: Ident<'sc>,
+        trait_name: CallPath<'sc>,
         methods: Vec<(Ident<'sc>, NodeIndex)>,
     ) {
         match self.trait_method_namespace.get_mut(&trait_name) {

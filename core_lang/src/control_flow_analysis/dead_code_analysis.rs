@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::parse_tree::CallPath;
 use crate::semantic_analysis::ast_node::TypedStructExpressionField;
 use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
@@ -324,7 +325,7 @@ fn connect_declaration<'sc>(
             methods,
             ..
         } => {
-            connect_impl_trait(&trait_name.suffix, graph, methods, entry_node, tree_type)?;
+            connect_impl_trait(&trait_name, graph, methods, entry_node, tree_type)?;
             Ok(vec![])
         }
         SideEffect | ErrorRecovery => {
@@ -377,7 +378,7 @@ fn connect_struct_declaration<'sc>(
 /// Additionally, we insert the trait's methods into the method namespace in order to
 /// track which exact methods are dead code.
 fn connect_impl_trait<'sc>(
-    trait_name: &Ident<'sc>,
+    trait_name: &CallPath<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     methods: &[TypedFunctionDeclaration<'sc>],
     entry_node: NodeIndex,
@@ -387,14 +388,14 @@ fn connect_impl_trait<'sc>(
     let trait_decl_node = graph_c.namespace.find_trait(trait_name);
     match trait_decl_node {
         None => {
-            let edge_ix = graph.add_node("External trait".into());
-            graph.add_edge(entry_node, edge_ix, "".into());
+            let node_ix = graph.add_node("External trait".into());
+            graph.add_edge(entry_node, node_ix, "".into());
         }
         Some(trait_decl_node) => {
             graph.add_edge_from_entry(entry_node, "".into());
             graph.add_edge(entry_node, *trait_decl_node, "".into());
         }
-    }
+    };
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
     for fn_decl in methods {
@@ -415,10 +416,17 @@ fn connect_impl_trait<'sc>(
         )?;
         methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
     }
+    // we also want to add an edge from the methods back to the trait, so if a method gets called,
+    // the trait impl is considered used
+    for (_, ix) in methods_and_indexes.iter() {
+        graph.add_edge(*ix, entry_node, "".into());
+    }
+
     // Now, insert the methods into the trait method namespace.
     graph
         .namespace
         .insert_trait_methods(trait_name.clone(), methods_and_indexes);
+
     Ok(())
 }
 
@@ -436,7 +444,13 @@ fn connect_trait_declaration<'sc>(
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
 ) {
-    graph.namespace.add_trait(decl.name.clone(), entry_node);
+    graph.namespace.add_trait(
+        CallPath {
+            suffix: decl.name.clone(),
+            prefixes: vec![],
+        },
+        entry_node,
+    );
 }
 
 /// For an enum declaration, we want to make a declaration node for every individual enum

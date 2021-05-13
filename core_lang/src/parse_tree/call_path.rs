@@ -5,7 +5,7 @@ use pest::iterators::Pair;
 use pest::Span;
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CallPath<'sc> {
     pub(crate) prefixes: Vec<Ident<'sc>>,
     pub(crate) suffix: Ident<'sc>,

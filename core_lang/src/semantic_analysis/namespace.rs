@@ -257,16 +257,50 @@ impl<'sc> Namespace<'sc> {
         }
         ok(namespace, warnings, errors)
     }
+    pub(crate) fn find_module_mut(
+        &mut self,
+        path: &[Ident<'sc>],
+    ) -> CompileResult<'sc, &mut Namespace<'sc>> {
+        let mut namespace = self;
+        let mut errors = vec![];
+        let warnings = vec![];
+        for ident in path {
+            match namespace.modules.get_mut(ident.primary_name) {
+                Some(o) => namespace = o,
+                None => {
+                    errors.push(CompileError::ModuleNotFound {
+                        span: path.iter().fold(path[0].span.clone(), |acc, this_one| {
+                            crate::utils::join_spans(acc, this_one.span.clone())
+                        }),
+                        name: path
+                            .iter()
+                            .map(|x| x.primary_name)
+                            .collect::<Vec<_>>()
+                            .join("::"),
+                    });
+                    return err(warnings, errors);
+                }
+            };
+        }
+        ok(namespace, warnings, errors)
+    }
     pub(crate) fn insert_trait_implementation(
         &mut self,
-        trait_name: Ident<'sc>,
+        trait_name: CallPath<'sc>,
         type_implementing_for: MaybeResolvedType<'sc>,
         functions_buf: Vec<TypedFunctionDeclaration<'sc>>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
-        if let Some(_) = self
+        let mut errors = vec![];
+        let module_to_insert_into = type_check!(
+            self.find_module_mut(&trait_name.prefixes),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        if let Some(_) = module_to_insert_into
             .implemented_traits
-            .get(&(trait_name.clone(), type_implementing_for.clone()))
+            .get(&(trait_name.suffix.clone(), type_implementing_for.clone()))
         {
             warnings.push(CompileWarning {
                 warning_content: Warning::OverridingTraitImplementation,
@@ -278,9 +312,10 @@ impl<'sc> Namespace<'sc> {
                 ),
             })
         }
-        self.implemented_traits
-            .insert((trait_name, type_implementing_for), functions_buf);
-        ok((), warnings, vec![])
+        module_to_insert_into
+            .implemented_traits
+            .insert((trait_name.suffix, type_implementing_for), functions_buf);
+        ok((), warnings, errors)
     }
 
     pub fn insert_module(&mut self, module_name: String, module_contents: Namespace<'sc>) {
@@ -294,7 +329,7 @@ impl<'sc> Namespace<'sc> {
     }
     /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
-    pub(crate) fn find_subfield(
+    pub(crate) fn find_subfield_type(
         &self,
         subfield_exp: &[Ident<'sc>],
     ) -> CompileResult<'sc, (MaybeResolvedType<'sc>, MaybeResolvedType<'sc>)> {

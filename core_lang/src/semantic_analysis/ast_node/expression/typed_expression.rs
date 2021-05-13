@@ -2,6 +2,7 @@ use super::*;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
+use crate::utils::join_spans;
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedExpression<'sc> {
@@ -320,7 +321,6 @@ impl<'sc> TypedExpression<'sc> {
                 // if there is a type annotation, then the else branch must exist
                 if let Some(ref annotation) = type_annotation {
                     if r#else.is_none() {
-                        dbg!(condition.span.clone().as_str());
                         errors.push(CompileError::NoElseBranch {
                             span: span.clone(),
                             r#type: annotation.friendly_type_str(),
@@ -483,7 +483,7 @@ impl<'sc> TypedExpression<'sc> {
                 // invariant here, since it is an assumption that is acted upon later.
                 assert!(name_parts.len() >= 2);
                 let (return_type, resolved_type_of_parent) = type_check!(
-                    namespace.find_subfield(&name_parts),
+                    namespace.find_subfield_type(&name_parts),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -507,7 +507,7 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span,
             } => {
-                let (method, _parent_type) = if subfield_exp.is_empty() {
+                let (method, parent_expr) = if subfield_exp.is_empty() {
                     // if subfield exp is empty, then we are calling a method using either ::
                     // syntax or an operator
                     let ns = type_check!(
@@ -519,13 +519,12 @@ impl<'sc> TypedExpression<'sc> {
                     // a method is defined by the type of the parent, and in this case the parent
                     // is the first argument
                     let parent_expr = match TypedExpression::type_check(
-                        arguments[0].clone(),
+                        dbg!(arguments[0].clone()),
                         namespace,
                         None,
                         "",
                         self_type
                     ) {
-                        // throw away warnings and errors since this will be checked again later
                         CompileResult::Ok {
                             value,
                             warnings: mut l_w,
@@ -559,39 +558,52 @@ impl<'sc> TypedExpression<'sc> {
                                 return err(warnings, errors);
                             }
                         },
-                        parent_expr.return_type,
+                        parent_expr,
                     )
                 } else {
-                    let (parent_type, _) = type_check!(
-                        namespace.find_subfield(&subfield_exp.clone()),
+                    let (parent_of_method_type, subfield_parent) = type_check!(
+                        namespace.find_subfield_type(&subfield_exp.clone()),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
+                    let subfield_span = subfield_exp.iter().fold(subfield_exp[0].span.clone(), |acc, this| join_spans(acc, this.span.clone()));
                     (
                         match namespace
-                            .find_method_for_type(&parent_type, method_name.suffix.clone())
+                            .find_method_for_type(&parent_of_method_type, method_name.suffix.clone())
                         {
                             Some(o) => o,
                             None => {
                                 errors.push(CompileError::MethodNotFound {
                                     span: method_name.suffix.clone().span,
                                     method_name: method_name.suffix.primary_name,
-                                    type_name: parent_type.friendly_type_str(),
+                                    type_name: parent_of_method_type.friendly_type_str(),
                                 });
                                 return err(warnings, errors);
                             }
                         },
-                        parent_type,
+                        TypedExpression {
+                            expression: TypedExpressionVariant::SubfieldExpression {
+                                unary_op: None, // TODO Support unary ops on method invocations
+                                name: subfield_exp,
+                                span: subfield_span.clone(),
+                                resolved_type_of_parent: subfield_parent.clone()
+                            },
+                            return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
+                            is_constant: IsConstant::No,
+                            span: subfield_span.clone()
+                        }
                     )
                 };
 
                 // zip parameters to arguments to perform type checking
                 let zipped = method.parameters.iter().zip(arguments.iter());
-
                 let mut typed_arg_buf = vec![];
                 for (TypedFunctionParameter { r#type, name, .. }, arg) in zipped {
-                    typed_arg_buf.push((name.clone(), type_check!(
+                    if name.primary_name == "self" {
+                        typed_arg_buf.push((name.clone(), parent_expr.clone()));
+                    } else {
+                        typed_arg_buf.push((name.clone(), type_check!(
                         TypedExpression::type_check(
                             arg.clone(),
                             &namespace,
@@ -603,12 +615,11 @@ impl<'sc> TypedExpression<'sc> {
                         warnings,
                         errors
                     )));
+                    }
                 }
 
                 TypedExpression {
                     expression: TypedExpressionVariant::FunctionApplication {
-                        // TODO the prefix should be a type info maybe? and then the first arg can
-                        // be self?
                         name: method_name.into(),
                         arguments: typed_arg_buf,
                         function_body: method.body.clone(),

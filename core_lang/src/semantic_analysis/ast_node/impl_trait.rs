@@ -177,7 +177,7 @@ pub(crate) fn implementation_of_trait<'sc>(
             }
 
             namespace.insert_trait_implementation(
-                trait_name.suffix.clone(),
+                trait_name.clone(),
                 self_type,
                 functions_buf.clone(),
             );
