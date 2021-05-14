@@ -311,7 +311,6 @@ fn convert_fn_app_to_asm<'sc>(
     // evaluate every expression being passed into the function
     for (name, arg) in arguments {
         let return_register = register_sequencer.next();
-        println!("evaluating arg: {} {:?}", name.primary_name, arg);
         let mut ops = type_check!(
             convert_expression_to_asm(arg, &mut namespace, &return_register, register_sequencer),
             continue,
@@ -324,7 +323,6 @@ fn convert_fn_app_to_asm<'sc>(
 
     // insert the arguments into the asm namespace with their registers mapped
     for (name, reg) in args_and_registers {
-        println!("inserting arg: {} {:?}", name.primary_name, reg);
         namespace.insert_variable(name, reg);
     }
 

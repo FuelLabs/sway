@@ -1,7 +1,7 @@
-use crate::{error::*, types::IntegerBits};
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
-use crate::types::{MaybeResolvedType, TypeInfo, ResolvedType, PartiallyResolvedType};
+use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
+use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
@@ -528,7 +528,8 @@ impl<'sc> TypedAstNode<'sc> {
                 };
                 assert_or_warn!(
                     node.type_info() == MaybeResolvedType::Resolved(ResolvedType::Unit)
-                        || node.type_info() == MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
+                        || node.type_info()
+                            == MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
                     warnings,
                     node.span.clone(),
                     warning

@@ -2,7 +2,6 @@ use super::*;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
-use crate::utils::join_spans;
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedExpression<'sc> {
@@ -37,14 +36,22 @@ impl<'sc> TypedExpression<'sc> {
         let mut typed_expression = match other {
             Expression::Literal { value: lit, span } => {
                 let return_type = match lit {
-                    Literal::String(_) =>  MaybeResolvedType::Resolved(ResolvedType::String),
-                    Literal::U8(_) =>      MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Eight)),
-                    Literal::U16(_) =>     MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Sixteen)),
-                    Literal::U32(_) =>     MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                    Literal::U64(_) =>     MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)),
+                    Literal::String(_) => MaybeResolvedType::Resolved(ResolvedType::String),
+                    Literal::U8(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::Eight,
+                    )),
+                    Literal::U16(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::Sixteen,
+                    )),
+                    Literal::U32(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::ThirtyTwo,
+                    )),
+                    Literal::U64(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    )),
                     Literal::Boolean(_) => MaybeResolvedType::Resolved(ResolvedType::Boolean),
-                    Literal::Byte(_) =>    MaybeResolvedType::Resolved(ResolvedType::Byte),
-                    Literal::Byte32(_) =>  MaybeResolvedType::Resolved(ResolvedType::Byte32),
+                    Literal::Byte(_) => MaybeResolvedType::Resolved(ResolvedType::Byte),
+                    Literal::Byte32(_) => MaybeResolvedType::Resolved(ResolvedType::Byte32),
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::Literal(lit),
@@ -418,7 +425,9 @@ impl<'sc> TypedExpression<'sc> {
                                     name: def_field.name.clone(),
                                     value: TypedExpression {
                                         expression: TypedExpressionVariant::Unit,
-                                        return_type: MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
+                                        return_type: MaybeResolvedType::Resolved(
+                                            ResolvedType::ErrorRecovery,
+                                        ),
                                         is_constant: IsConstant::No,
                                         span: span.clone(),
                                     },
@@ -507,7 +516,7 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span,
             } => {
-                let (method, parent_type) = if subfield_exp.is_empty() {
+                let method = if subfield_exp.is_empty() {
                     // if subfield exp is empty, then we are calling a method using either ::
                     // syntax or an operator
                     let ns = type_check!(
@@ -519,11 +528,11 @@ impl<'sc> TypedExpression<'sc> {
                     // a method is defined by the type of the parent, and in this case the parent
                     // is the first argument
                     let parent_expr = match TypedExpression::type_check(
-                        dbg!(arguments[0].clone()),
+                        arguments[0].clone(),
                         namespace,
                         None,
                         "",
-                        self_type
+                        self_type,
                     ) {
                         CompileResult::Ok {
                             value,
@@ -543,23 +552,20 @@ impl<'sc> TypedExpression<'sc> {
                             return err(warnings, errors);
                         }
                     };
-                    (
-                        match ns.find_method_for_type(
-                            &parent_expr.return_type.clone(),
-                            method_name.suffix.clone(),
-                        ) {
-                            Some(o) => o,
-                            None => {
-                                errors.push(CompileError::MethodNotFound {
-                                    span: method_name.suffix.clone().span,
-                                    method_name: method_name.suffix.clone().primary_name,
-                                    type_name: parent_expr.return_type.friendly_type_str(),
-                                });
-                                return err(warnings, errors);
-                            }
-                        },
-                        parent_expr.return_type,
-                    )
+                    match ns.find_method_for_type(
+                        &parent_expr.return_type.clone(),
+                        method_name.suffix.clone(),
+                    ) {
+                        Some(o) => o,
+                        None => {
+                            errors.push(CompileError::MethodNotFound {
+                                span: method_name.suffix.clone().span,
+                                method_name: method_name.suffix.clone().primary_name,
+                                type_name: parent_expr.return_type.friendly_type_str(),
+                            });
+                            return err(warnings, errors);
+                        }
+                    }
                 } else {
                     let (parent_of_method_type, _) = type_check!(
                         namespace.find_subfield_type(&subfield_exp.clone()),
@@ -567,31 +573,26 @@ impl<'sc> TypedExpression<'sc> {
                         warnings,
                         errors
                     );
-                    let subfield_span = subfield_exp.iter().fold(subfield_exp[0].span.clone(), |acc, this| join_spans(acc, this.span.clone()));
-                    (
-                        match namespace
-                            .find_method_for_type(&parent_of_method_type, method_name.suffix.clone())
-                        {
-                            Some(o) => o,
-                            None => {
-                                errors.push(CompileError::MethodNotFound {
-                                    span: method_name.suffix.clone().span,
-                                    method_name: method_name.suffix.primary_name,
-                                    type_name: parent_of_method_type.friendly_type_str(),
-                                });
-                                return err(warnings, errors);
-                            }
-                        },
-                        parent_of_method_type
-                    )
+                    match namespace
+                        .find_method_for_type(&parent_of_method_type, method_name.suffix.clone())
+                    {
+                        Some(o) => o,
+                        None => {
+                            errors.push(CompileError::MethodNotFound {
+                                span: method_name.suffix.clone().span,
+                                method_name: method_name.suffix.primary_name,
+                                type_name: parent_of_method_type.friendly_type_str(),
+                            });
+                            return err(warnings, errors);
+                        }
+                    }
                 };
 
                 // zip parameters to arguments to perform type checking
                 let zipped = method.parameters.iter().zip(arguments.iter());
                 let mut typed_arg_buf = vec![];
                 for (TypedFunctionParameter { r#type, name, .. }, arg) in zipped {
-
-                        typed_arg_buf.push((name.clone(), type_check!(
+                    typed_arg_buf.push((name.clone(), type_check!(
                         TypedExpression::type_check(
                             arg.clone(),
                             &namespace,
@@ -603,7 +604,6 @@ impl<'sc> TypedExpression<'sc> {
                         warnings,
                         errors
                     )));
-
                 }
 
                 TypedExpression {

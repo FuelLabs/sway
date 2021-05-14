@@ -1,10 +1,11 @@
-use super::{
-    declaration::TypedTraitFn,
-    ERROR_RECOVERY_DECLARATION,
-};
+use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::ImplTrait;
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-use crate::{error::*, types::{MaybeResolvedType, ResolvedType, PartiallyResolvedType}, Ident};
+use crate::{
+    error::*,
+    types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    Ident,
+};
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
@@ -159,7 +160,6 @@ pub(crate) fn implementation_of_trait<'sc>(
                     errors.append(&mut l_e);
                     continue;
                 }
-
 
                 functions_buf.push(fn_decl);
             }

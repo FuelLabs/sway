@@ -5,7 +5,7 @@ use crate::{CodeBlock, Ident};
 use either::Either;
 use pest::iterators::Pair;
 use pest::Span;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 mod asm;
 use crate::utils::join_spans;
@@ -513,7 +513,7 @@ impl<'sc> Expression<'sc> {
                     .next()
                     .map(|x| x.into_inner().collect::<Vec<_>>())
                     .unwrap_or_else(|| vec![]);
-                let mut arguments_buf = Vec::new();
+                let mut arguments_buf = VecDeque::new();
                 for argument in function_arguments {
                     let arg = eval!(
                         Expression::parse_from_pair_inner,
@@ -524,7 +524,7 @@ impl<'sc> Expression<'sc> {
                             span: argument.as_span()
                         }
                     );
-                    arguments_buf.push(arg);
+                    arguments_buf.push_back(arg);
                 }
                 let mut name_parts_buf = Vec::new();
                 for name_part in name_parts {
@@ -538,10 +538,31 @@ impl<'sc> Expression<'sc> {
                     name_parts_buf.push(name);
                 }
 
+                if name_parts_buf.len() == 1 {
+                    // then the first argument is a variable expression
+                    arguments_buf.push_front(Expression::VariableExpression {
+                        unary_op: None, // TODO
+                        name: name_parts_buf[0].clone(),
+                        span: name_parts_buf[0].clone().span,
+                    });
+                } else {
+                    // then it is a subfield expression
+                    // then the first argument is a variable expression
+                    arguments_buf.push_front(Expression::SubfieldExpression {
+                        name_parts: name_parts_buf.clone(),
+                        unary_op: None, // TODO
+                        span: name_parts_buf
+                            .clone()
+                            .into_iter()
+                            .fold(name_parts_buf[0].clone().span, |acc, this| {
+                                join_spans(acc, this.span)
+                            }),
+                    });
+                }
                 Expression::MethodApplication {
-                    subfield_exp: name_parts_buf,
+                    subfield_exp: vec![],
                     method_name,
-                    arguments: arguments_buf,
+                    arguments: arguments_buf.into_iter().collect(),
                     span: whole_exp_span,
                 }
             }

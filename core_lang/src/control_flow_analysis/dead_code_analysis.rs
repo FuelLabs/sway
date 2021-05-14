@@ -720,7 +720,6 @@ fn connect_expression<'sc>(
             resolved_type_of_parent,
             ..
         } => {
-            dbg!(&resolved_type_of_parent);
             assert!(matches!(
                 resolved_type_of_parent,
                 MaybeResolvedType::Resolved(ResolvedType::Struct { .. })
