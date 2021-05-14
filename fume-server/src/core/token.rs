@@ -10,17 +10,7 @@ pub struct Token {
     pub token_type: TokenType,
     pub name: String,
     pub line_start: u32,
-    is_multi_line: bool,
-}
-
-#[derive(Debug, Clone)]
-pub enum TokenType {
-    Library,
-    Variable,
-    Function,
-    Enum,
-    Trait,
-    Struct,
+    pub length: u32,
 }
 
 impl Token {
@@ -31,20 +21,30 @@ impl Token {
             range,
             token_type,
             name,
-            is_multi_line: range.start.line != range.end.line,
             line_start: range.start.line,
+            length: range.end.character - range.start.character + 1,
         }
     }
 
     pub fn contains_character(&self, character: u32) -> bool {
         let range = self.range;
-        !self.is_multi_line
-            && character >= range.start.character
-            && character <= range.end.character
+        character >= range.start.character && character <= range.end.character
     }
 
     pub fn get_line_start(&self) -> u32 {
         self.line_start
+    }
+
+    pub fn does_match_type(&self, token_type: &TokenType) -> bool {
+        // TODO
+        // add more checks
+        if self.token_type == TokenType::FunctionDefinition
+            && token_type == &TokenType::FunctionCall
+        {
+            return true;
+        }
+
+        false
     }
 }
 
@@ -59,32 +59,38 @@ impl fmt::Display for Token {
 }
 
 pub fn pair_rule_to_token(pair: &Pair<Rule>) -> Option<Token> {
+    // TODO
+    // add more rules
     let span = pair.as_span();
 
     match pair.as_rule() {
         Rule::library_name => {
             let library_name = pair.as_str().into();
-            Some(Token::new(span, library_name, TokenType::Library))
+            Some(Token::new(span, library_name, TokenType::LibraryDefinition))
         }
         Rule::var_name => {
             let var_name = pair.as_str().into();
-            Some(Token::new(span, var_name, TokenType::Variable))
+            Some(Token::new(span, var_name, TokenType::VariableDefinition))
         }
         Rule::fn_decl_name => {
             let func_name = pair.as_str().into();
-            Some(Token::new(span, func_name, TokenType::Function))
+            Some(Token::new(span, func_name, TokenType::FunctionDefinition))
         }
         Rule::enum_name => {
             let enum_name = pair.as_str().into();
-            Some(Token::new(span, enum_name, TokenType::Enum))
+            Some(Token::new(span, enum_name, TokenType::EnumDefinition))
         }
         Rule::trait_name => {
             let trait_name = pair.as_str().into();
-            Some(Token::new(span, trait_name, TokenType::Trait))
+            Some(Token::new(span, trait_name, TokenType::TraitDefinition))
         }
         Rule::struct_name => {
             let struct_name = pair.as_str().into();
-            Some(Token::new(span, struct_name, TokenType::Struct))
+            Some(Token::new(span, struct_name, TokenType::StructDefinition))
+        }
+        Rule::fn_name => {
+            let fn_name = pair.as_str().into();
+            Some(Token::new(span, fn_name, TokenType::FunctionCall))
         }
         _ => None,
     }
@@ -104,4 +110,20 @@ fn get_range(span: &Span) -> Range {
         start: Position::new(start_line, start_character),
         end: Position::new(end_line, end_character),
     }
+}
+
+// TODO
+// add more types
+#[derive(Debug, Clone, PartialEq)]
+pub enum TokenType {
+    // definitions
+    LibraryDefinition,
+    VariableDefinition,
+    FunctionDefinition,
+    EnumDefinition,
+    TraitDefinition,
+    StructDefinition,
+
+    // calls
+    FunctionCall,
 }

@@ -36,12 +36,12 @@ fn get_completion_items(tokens: Vec<Token>) -> Vec<CompletionItem> {
 
 fn get_kind(token_type: &TokenType) -> Option<CompletionItemKind> {
     match token_type {
-        TokenType::Enum => Some(CompletionItemKind::Enum),
-        TokenType::Function => Some(CompletionItemKind::Function),
-        TokenType::Library => Some(CompletionItemKind::Module),
-        TokenType::Struct => Some(CompletionItemKind::Struct),
-        TokenType::Variable => Some(CompletionItemKind::Variable),
-        TokenType::Trait => Some(CompletionItemKind::Interface),
+        TokenType::EnumDefinition => Some(CompletionItemKind::Enum),
+        TokenType::FunctionDefinition => Some(CompletionItemKind::Function),
+        TokenType::LibraryDefinition => Some(CompletionItemKind::Module),
+        TokenType::StructDefinition => Some(CompletionItemKind::Struct),
+        TokenType::VariableDefinition => Some(CompletionItemKind::Variable),
+        TokenType::TraitDefinition => Some(CompletionItemKind::Interface),
         _ => None,
     }
 }

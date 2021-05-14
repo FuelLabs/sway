@@ -1,9 +1,6 @@
 use lspower::{
     jsonrpc,
-    lsp::{
-        self, SemanticTokenModifier, SemanticTokenType, SemanticTokensFullOptions,
-        SemanticTokensLegend, SemanticTokensOptions, SemanticTokensServerCapabilities,
-    },
+    lsp::{self},
     Client, LanguageServer,
 };
 use std::sync::Arc;
@@ -31,51 +28,6 @@ impl Backend {
     async fn log_info_message(&self, message: &str) {
         self.client.log_message(MessageType::Info, message).await;
     }
-
-    fn get_semantic_tokens() -> Option<SemanticTokensServerCapabilities> {
-        let token_types = vec![
-            SemanticTokenType::CLASS,
-            SemanticTokenType::FUNCTION,
-            SemanticTokenType::KEYWORD,
-            SemanticTokenType::NAMESPACE,
-            SemanticTokenType::OPERATOR,
-            SemanticTokenType::PARAMETER,
-            SemanticTokenType::STRING,
-            SemanticTokenType::TYPE,
-            SemanticTokenType::TYPE_PARAMETER,
-            SemanticTokenType::VARIABLE,
-        ];
-
-        let token_modifiers: Vec<SemanticTokenModifier> = vec![
-            // declaration of symbols
-            SemanticTokenModifier::DECLARATION,
-            // definition of symbols as in header files
-            SemanticTokenModifier::DEFINITION,
-            SemanticTokenModifier::READONLY,
-            SemanticTokenModifier::STATIC,
-            // for variable references where the variable is assigned to
-            SemanticTokenModifier::MODIFICATION,
-            SemanticTokenModifier::DOCUMENTATION,
-            // for symbols that are part of stdlib
-            SemanticTokenModifier::DEFAULT_LIBRARY,
-        ];
-
-        let legend = SemanticTokensLegend {
-            token_types,
-            token_modifiers,
-        };
-
-        let options = SemanticTokensOptions {
-            legend,
-            range: None,
-            full: Some(SemanticTokensFullOptions::Bool(true)),
-            ..Default::default()
-        };
-
-        Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
-            options,
-        ))
-    }
 }
 
 #[lspower::async_trait]
@@ -91,7 +43,9 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(lsp::TextDocumentSyncCapability::Kind(
                     lsp::TextDocumentSyncKind::Incremental,
                 )),
-                semantic_tokens_provider: Backend::get_semantic_tokens(),
+                definition_provider: Some(lsp::OneOf::Left(true)),
+                semantic_tokens_provider: capabilities::semantic_tokens::get_semantic_tokens(),
+                document_symbol_provider: Some(lsp::OneOf::Left(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(lsp::CompletionOptions {
                     resolve_provider: Some(false),
@@ -161,6 +115,14 @@ impl LanguageServer for Backend {
             self.client
                 .publish_diagnostics(params.text_document.uri, diagnostics, None)
                 .await;
+        } else {
+            match self.session.get_tokens_from_file(&params.text_document.uri) {
+                Some(tokens) => {
+                    self.log_info_message(&format!("len is {} - {:?}", tokens.len(), tokens))
+                        .await
+                }
+                _ => {}
+            }
         }
     }
 
@@ -173,16 +135,16 @@ impl LanguageServer for Backend {
         };
     }
 
-    // refer to this
-    // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
-    async fn semantic_tokens_full(
-        &self,
-        _params: lsp::SemanticTokensParams,
-    ) -> jsonrpc::Result<Option<lsp::SemanticTokensResult>> {
-        Ok(None)
+    async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
+        let position = params.text_document_position_params.position;
+        let url = &params.text_document_position_params.text_document.uri;
+
+        match self.session.get_token_from_position(url, position) {
+            Some(token) => Ok(capabilities::hover::get_hover_data(token)),
+            _ => Ok(None),
+        }
     }
 
-    // Completion
     async fn completion(
         &self,
         params: CompletionParams,
@@ -195,43 +157,35 @@ impl LanguageServer for Backend {
         ))
     }
 
-    async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        let position = params.text_document_position_params.position;
-        let url = &params.text_document_position_params.text_document.uri;
-
-        self.log_info_message(&format!("position is {:?}", position))
-            .await;
-
-        match self.session.get_token_from_position(url, position) {
-            Some(token) => {
-                self.log_info_message(&format!("token found is at {:?}", token.range))
-                    .await;
-                Ok(capabilities::hover::get_hover_data(token))
-            }
-            _ => Ok(None),
-        }
+    async fn document_symbol(
+        &self,
+        params: lsp::DocumentSymbolParams,
+    ) -> jsonrpc::Result<Option<lsp::DocumentSymbolResponse>> {
+        self.log_info_message("requesting a symbol").await;
+        Ok(capabilities::document_symbol::document_symbol(
+            self.session.clone(),
+            params.text_document.uri,
+        ))
     }
 
-    async fn document_highlight(
+    async fn semantic_tokens_full(
         &self,
-        _params: lsp::DocumentHighlightParams,
-    ) -> jsonrpc::Result<Option<Vec<lsp::DocumentHighlight>>> {
-        // TODO
+        params: lsp::SemanticTokensParams,
+    ) -> jsonrpc::Result<Option<lsp::SemanticTokensResult>> {
+        Ok(capabilities::semantic_tokens::get_semantic_tokens_full(
+            self.session.clone(),
+            params,
+        ))
+    }
+
+    // Completion
+    async fn document_highlight(
         // 1. find exact value of the highlight
         // 2. find it's matches in the document - convert to Range
         // 3. return the Vector of those ranges
-        Ok(None)
-    }
-
-    async fn document_symbol(
         &self,
-        _params: lsp::DocumentSymbolParams,
-    ) -> jsonrpc::Result<Option<lsp::DocumentSymbolResponse>> {
-        // TODO
-        // 0. on document open / save -> parse it and store all the values and their metada
-        // 1. get the stored document
-        // 2. get all symbols of the document that was previously stored
-        // 3. return the Vector of symbols
+        _params: lsp::DocumentHighlightParams,
+    ) -> jsonrpc::Result<Option<Vec<lsp::DocumentHighlight>>> {
         Ok(None)
     }
 
@@ -245,10 +199,13 @@ impl LanguageServer for Backend {
 
     async fn goto_definition(
         &self,
-        _params: lsp::GotoDefinitionParams,
+        params: lsp::GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<lsp::GotoDefinitionResponse>> {
-        // TODO
-        Ok(None)
+        self.log_info_message("goint to the definiton").await;
+        Ok(capabilities::go_to::go_to_definition(
+            self.session.clone(),
+            params,
+        ))
     }
 
     async fn goto_type_definition(

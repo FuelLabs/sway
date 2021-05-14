@@ -3,7 +3,7 @@ use lspower::lsp::{Position, TextDocumentContentChangeEvent, TextDocumentItem, U
 
 use super::{
     document::{DocumentError, TextDocument},
-    token::Token,
+    token::{Token, TokenType},
 };
 
 #[derive(Debug)]
@@ -50,6 +50,18 @@ impl Session {
     pub fn get_token_from_position(&self, url: &Url, position: Position) -> Option<Token> {
         match self.documents.get(url) {
             Some(document) => document.get_token_at_position(position),
+            _ => None,
+        }
+    }
+
+    pub fn get_token_with_name_and_type(
+        &self,
+        url: &Url,
+        name: &str,
+        token_type: &TokenType,
+    ) -> Option<Token> {
+        match self.documents.get(url) {
+            Some(document) => document.get_token_with_name(name, token_type),
             _ => None,
         }
     }

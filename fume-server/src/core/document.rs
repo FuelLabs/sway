@@ -7,7 +7,7 @@ use ropey::Rope;
 
 use crate::capabilities;
 
-use super::token::{pair_rule_to_token, Token};
+use super::token::{pair_rule_to_token, Token, TokenType};
 
 #[derive(Debug)]
 pub struct TextDocument {
@@ -16,7 +16,9 @@ pub struct TextDocument {
     uri: String,
     content: Rope,
     text: String,
-    lines: HashMap<u32, Vec<Token>>,
+    tokens: Vec<Token>,
+    lines: HashMap<u32, Vec<usize>>,
+    values: HashMap<String, Vec<usize>>,
 }
 
 impl TextDocument {
@@ -27,15 +29,18 @@ impl TextDocument {
             uri: item.uri.to_string(),
             content: Rope::from_str(&item.text),
             text: item.text.clone(),
+            tokens: vec![],
             lines: HashMap::new(),
+            values: HashMap::new(),
         }
     }
 
     pub fn get_token_at_position(&self, position: Position) -> Option<Token> {
         let line = position.line;
 
-        if let Some(tokens) = self.lines.get(&line) {
-            for token in tokens {
+        if let Some(indices) = self.lines.get(&line) {
+            for index in indices {
+                let token = &self.tokens[*index];
                 if token.contains_character(position.character) {
                     return Some(token.clone());
                 }
@@ -46,28 +51,39 @@ impl TextDocument {
         }
     }
 
-    pub fn get_tokens(&self) -> Vec<Token> {
-        let mut result = vec![];
-
-        for (_, tokens) in &self.lines {
-            for token in tokens {
-                result.push(token.clone());
+    pub fn get_token_with_name(&self, name: &str, token_type: &TokenType) -> Option<Token> {
+        if let Some(indices) = self.values.get(name) {
+            for index in indices {
+                let token = &self.tokens[*index];
+                if token.does_match_type(token_type) {
+                    return Some(self.tokens[*index].clone());
+                }
             }
+            None
+        } else {
+            None
         }
-
-        result
     }
 
-    pub fn sync_text_with_content(&mut self) {
+    pub fn get_tokens(&self) -> Vec<Token> {
+        self.tokens.clone()
+    }
+
+    fn sync_text_with_content(&mut self) {
         self.text = self.content.to_string();
     }
 
-    pub fn clear_lines(&mut self) {
+    fn clear_lines(&mut self) {
         self.lines = HashMap::new();
+    }
+
+    fn clear_tokens(&mut self) {
+        self.tokens = vec![];
     }
 
     pub fn parse(&mut self) -> Result<(), DocumentError> {
         self.sync_text_with_content();
+        self.clear_tokens();
         self.clear_lines();
 
         match HllParser::parse(Rule::program, &self.text) {
@@ -75,12 +91,30 @@ impl TextDocument {
                 for pair in pairs.flatten() {
                     if let Some(token) = pair_rule_to_token(&pair) {
                         let line = token.get_line_start();
+                        let token_name = token.name.clone();
+
+                        // insert to tokens
+                        self.tokens.push(token);
+
+                        let token_index = self.tokens.len() - 1;
+
+                        // insert index into hashmap for lines
                         match self.lines.get_mut(&line) {
                             Some(v) => {
-                                v.push(token);
+                                v.push(token_index);
                             }
                             None => {
-                                self.lines.insert(line, vec![token]);
+                                self.lines.insert(line, vec![token_index]);
+                            }
+                        }
+
+                        // insert index into hashmap for names
+                        match self.values.get_mut(&token_name) {
+                            Some(v) => {
+                                v.push(token_index);
+                            }
+                            None => {
+                                self.values.insert(token_name, vec![token_index]);
                             }
                         }
                     }
