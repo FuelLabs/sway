@@ -49,5 +49,5 @@ jobs:
     - name: Run compile test suite
       uses: actions-rs/cargo@v1
       with:
-          command: run
-          args: --bin test_suite
+        command: run
+        args: --bin test_suite
