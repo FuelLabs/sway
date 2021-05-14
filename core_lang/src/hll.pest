@@ -21,11 +21,11 @@ path_separator      =  {"::"}
 // top level
 program =  {SOI ~ (library|contract|script|predicate)* ~ EOI}
 
-library      =  {"library" ~ library_name ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}"}
+library      =  {"library" ~ library_name ~ ";" ~ (control_flow|declaration|use_statement)* }
 library_name =  {ident}
-contract     =  {"contract" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}"}
-script       =  {"script" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}"}
-predicate    =  {"predicate" ~ "{" ~ (control_flow|declaration|use_statement)* ~ "}"}
+contract     =  {"contract" ~ ";" ~ (control_flow|declaration|use_statement)*}
+script       =  {"script" ~ ";" ~ (control_flow|declaration|use_statement)*}
+predicate    =  {"predicate" ~ ";" ~ (control_flow|declaration|use_statement)*}
 
 // expressions
 expr_inner               = _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|delineated_path|method_exp|subfield_exp|var_exp|array_exp|match_expression|unit}

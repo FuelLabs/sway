@@ -348,7 +348,7 @@ fn format_err(input: &str, err: core_lang::CompileError) {
     let (start_pos, end_pos) = err.span();
     let lookup = LineColLookup::new(input);
     let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(end_pos - 1);
+    let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
 
     let err_start = Position::new(start_line - 1, start_col - 1);
     let err_end = Position::new(end_line - 1, end_col - 1);
