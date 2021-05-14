@@ -1076,7 +1076,7 @@ impl Opcode {
         };
         ok(op, vec![], vec![])
     }
-    pub(crate) fn get_register_names(&self) -> HashSet<&RegisterId> {
+    pub(crate) fn next_names(&self) -> HashSet<&RegisterId> {
         use Opcode::*;
         let regs: Vec<&RegisterId> = match self {
             Add(r1, r2, r3) => vec![r1, r2, r3],

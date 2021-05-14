@@ -68,9 +68,14 @@ pub enum HllAsmSet<'sc> {
     Library,
 }
 
-/// The [AbstractInstructionSet] is the list of register namespaces and operations existing
-/// within those namespaces in order.
+/// An [AbstractInstructionSet] is a set of instructions that use entirely virtual registers
+/// and excessive moves, with the intention of later optimizing it.
+#[derive(Clone)]
 pub struct AbstractInstructionSet<'sc> {
+    ops: Vec<Op<'sc>>,
+}
+/// An [InstructionSet] is produced by allocating registers on an [AbstractInstructionSet].
+pub struct InstructionSet<'sc> {
     ops: Vec<Op<'sc>>,
 }
 
@@ -117,6 +122,10 @@ impl<'sc> AbstractInstructionSet<'sc> {
         }
 
         AbstractInstructionSet { ops: buf2 }
+    }
+
+    fn allocate_registers(self) -> InstructionSet<'sc> {
+        todo!()
     }
 }
 
@@ -254,6 +263,22 @@ impl fmt::Display for AbstractInstructionSet<'_> {
         )
     }
 }
+
+
+impl fmt::Display for InstructionSet<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            ".program:\n{}",
+            self.ops
+                .iter()
+                .map(|x| format!("{}", x))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    }
+}
+
 
 #[derive(Default, Clone)]
 pub(crate) struct AsmNamespace<'sc> {
@@ -400,14 +425,14 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 program_section,
             } => RegisterAllocatedAsmSet::ScriptMain {
                 data_section,
-                program_section,
+                program_section: program_section.clone().allocate_registers(),
             },
             JumpOptimizedAsmSet::PredicateMain {
                 data_section,
                 program_section,
             } => RegisterAllocatedAsmSet::PredicateMain {
                 data_section,
-                program_section,
+                program_section: program_section.allocate_registers(),
             },
             JumpOptimizedAsmSet::ContractAbi => RegisterAllocatedAsmSet::ContractAbi,
         }
@@ -433,11 +458,11 @@ pub enum RegisterAllocatedAsmSet<'sc> {
     ContractAbi,
     ScriptMain {
         data_section: DataSection<'sc>,
-        program_section: AbstractInstructionSet<'sc>,
+        program_section: InstructionSet<'sc>,
     },
     PredicateMain {
         data_section: DataSection<'sc>,
-        program_section: AbstractInstructionSet<'sc>,
+        program_section: InstructionSet<'sc>,
     },
     // Libraries do not generate any asm.
     Library,
@@ -473,11 +498,11 @@ pub enum FinalizedAsm<'sc> {
     ContractAbi,
     ScriptMain {
         data_section: DataSection<'sc>,
-        program_section: AbstractInstructionSet<'sc>,
+        program_section: InstructionSet<'sc>,
     },
     PredicateMain {
         data_section: DataSection<'sc>,
-        program_section: AbstractInstructionSet<'sc>,
+        program_section: InstructionSet<'sc>,
     },
     // Libraries do not generate any asm.
     Library,
