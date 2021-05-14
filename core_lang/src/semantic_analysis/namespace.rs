@@ -122,6 +122,7 @@ impl<'sc> Namespace<'sc> {
         &mut self,
         path: Vec<Ident<'sc>>,
         item: &Ident<'sc>,
+        // TODO support aliasing in grammar -- see alias
         alias: Option<Ident<'sc>>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];

@@ -600,7 +600,7 @@ impl<'sc> TypedExpression<'sc> {
                             "Function argument must be of the same type declared in the function declaration.",
                             self_type
                         ),
-                        continue, 
+                        continue,
                         warnings,
                         errors
                     )));

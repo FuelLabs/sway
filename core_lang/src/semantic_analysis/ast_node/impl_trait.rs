@@ -90,73 +90,97 @@ pub(crate) fn implementation_of_trait<'sc>(
 
                 // ensure this fn decl's parameters and signature lines up with the one
                 // in the trait
-                if let Some(mut l_e) = tr.interface_surface.iter().find_map(|TypedTraitFn { name, parameters, return_type, return_type_span }| {
-                    if fn_decl.name == *name {
-                        let mut errors = vec![];
-                        if let Some(mut maybe_err) = parameters.iter().zip(fn_decl.parameters.iter()).find_map(|(fn_decl_param, trait_param)| {
+                if let Some(mut l_e) = tr.interface_surface.iter().find_map(
+                    |TypedTraitFn {
+                         name,
+                         parameters,
+                         return_type,
+                         return_type_span,
+                     }| {
+                        if fn_decl.name == *name {
                             let mut errors = vec![];
-                            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { .. /* TODO use trait constraints as part of the type here to implement trait constraint solver */ }) = fn_decl_param.r#type {
-                                match trait_param.r#type {
-                                    MaybeResolvedType::Partial(PartiallyResolvedType::Generic { .. }) => (),
-                                    _ => 
+                            if let Some(mut maybe_err) = parameters
+                                .iter()
+                                .zip(fn_decl.parameters.iter())
+                                .find_map(|(fn_decl_param, trait_param)| {
+                                    let mut errors = vec![];
+                                    // TODO use trait constraints as part of the type here to implement trait constraint solver */
+                                    if let MaybeResolvedType::Partial(
+                                        PartiallyResolvedType::Generic { .. },
+                                    ) = fn_decl_param.r#type
+                                    {
+                                        match trait_param.r#type {
+                                            MaybeResolvedType::Partial(
+                                                PartiallyResolvedType::Generic { .. },
+                                            ) => (),
+                                            _ => errors.push(CompileError::MismatchedTypeInTrait {
+                                                span: trait_param.type_span.clone(),
+                                                given: trait_param.r#type.friendly_type_str(),
+                                                expected: fn_decl_param.r#type.friendly_type_str(),
+                                            }),
+                                        }
+                                    } else {
+                                        let fn_decl_param_type = type_check!(
+                                            fn_decl_param.r#type.force_resolution(
+                                                &self_type,
+                                                &fn_decl_param.type_span
+                                            ),
+                                            return Some(errors),
+                                            warnings,
+                                            errors
+                                        );
+                                        let trait_param_type = type_check!(
+                                            trait_param.r#type.force_resolution(
+                                                &self_type,
+                                                &fn_decl_param.type_span
+                                            ),
+                                            return Some(errors),
+                                            warnings,
+                                            errors
+                                        );
 
-                                    errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: trait_param.type_span.clone(),
-                                        given: trait_param.r#type.friendly_type_str(),
-                                        expected: fn_decl_param.r#type.friendly_type_str()
-                                    })
-                                }
-                            } else {
-                                let fn_decl_param_type = type_check!(
-                                    fn_decl_param.r#type.force_resolution(
-                                        &self_type,
-                                        &fn_decl_param.type_span
-                                    ),
-                                    return Some(errors),
-                                    warnings,
-                                    errors
-                                );
-                                let trait_param_type = type_check!(
-                                    trait_param.r#type.force_resolution(
-                                        &self_type,
-                                        &fn_decl_param.type_span
-                                    ),
-                                    return Some(errors),
-                                    warnings,
-                                    errors
-                                );
-
-                                if fn_decl_param_type != trait_param_type  {
-                                    errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: trait_param.type_span.clone(),
-                                        given: trait_param.r#type.friendly_type_str(),
-                                        expected: fn_decl_param.r#type.friendly_type_str()
-                                    });
-                                }
+                                        if fn_decl_param_type != trait_param_type {
+                                            errors.push(CompileError::MismatchedTypeInTrait {
+                                                span: trait_param.type_span.clone(),
+                                                given: trait_param.r#type.friendly_type_str(),
+                                                expected: fn_decl_param.r#type.friendly_type_str(),
+                                            });
+                                        }
+                                    }
+                                    if errors.is_empty() {
+                                        None
+                                    } else {
+                                        Some(errors)
+                                    }
+                                })
+                            {
+                                errors.append(&mut maybe_err);
                             }
-                            if errors.is_empty() { None } else { Some(errors) }
-                        }) {
-                            errors.append(&mut maybe_err);
+                            let return_type = type_check!(
+                                return_type.force_resolution(&self_type, return_type_span),
+                                ResolvedType::ErrorRecovery,
+                                warnings,
+                                errors
+                            );
+                            if fn_decl.return_type
+                                != MaybeResolvedType::Resolved(return_type.clone())
+                            {
+                                errors.push(CompileError::MismatchedTypeInTrait {
+                                    span: fn_decl.return_type_span.clone(),
+                                    expected: return_type.friendly_type_str(),
+                                    given: fn_decl.return_type.friendly_type_str(),
+                                });
+                            }
+                            if errors.is_empty() {
+                                None
+                            } else {
+                                Some(errors)
+                            }
+                        } else {
+                            None
                         }
-                        let return_type = type_check!(
-                            return_type.force_resolution(&self_type, return_type_span),
-                            ResolvedType::ErrorRecovery,
-                            warnings,
-                            errors
-                        );
-                        if fn_decl.return_type != MaybeResolvedType::Resolved(return_type.clone()) {
-                            errors.push(CompileError::MismatchedTypeInTrait {
-                                span: fn_decl.return_type_span.clone(),
-                                expected: return_type.friendly_type_str(),
-                                given: fn_decl.return_type.friendly_type_str()
-                            });
-                        }
-                        if errors.is_empty() { None } else { Some(errors) }
-                    } else {
-                        None
-                    }
-                })
-                {
+                    },
+                ) {
                     errors.append(&mut l_e);
                     continue;
                 }
