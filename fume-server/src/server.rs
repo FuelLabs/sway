@@ -189,30 +189,13 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
-    async fn goto_declaration(
-        &self,
-        _params: lsp::request::GotoDeclarationParams,
-    ) -> jsonrpc::Result<Option<lsp::request::GotoDeclarationResponse>> {
-        // TODO
-        Ok(None)
-    }
-
     async fn goto_definition(
         &self,
         params: lsp::GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<lsp::GotoDefinitionResponse>> {
-        self.log_info_message("goint to the definiton").await;
         Ok(capabilities::go_to::go_to_definition(
             self.session.clone(),
             params,
         ))
-    }
-
-    async fn goto_type_definition(
-        &self,
-        _params: lsp::request::GotoTypeDefinitionParams,
-    ) -> jsonrpc::Result<Option<lsp::request::GotoTypeDefinitionResponse>> {
-        // TODO
-        Ok(None)
     }
 }
