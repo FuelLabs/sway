@@ -148,13 +148,13 @@ pub(crate) fn implementation_of_trait<'sc>(
                             errors.push(CompileError::MismatchedTypeInTrait {
                                 span: fn_decl.return_type_span.clone(),
                                 expected: return_type.friendly_type_str(),
-                                given: fn_decl.return_type.friendly_type_str() 
+                                given: fn_decl.return_type.friendly_type_str()
                             });
                         }
                         if errors.is_empty() { None } else { Some(errors) }
                     } else {
-                        None 
-                    } 
+                        None
+                    }
                 })
                 {
                     errors.append(&mut l_e);

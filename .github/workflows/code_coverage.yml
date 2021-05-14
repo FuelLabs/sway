@@ -1,6 +1,12 @@
-on: [push]
+name: Codecov
 
-name: build
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+  pull_request:
 
 jobs:
   check:

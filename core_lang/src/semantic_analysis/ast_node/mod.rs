@@ -114,7 +114,7 @@ impl<'sc> TypedAstNode<'sc> {
                             TypedExpression::type_check(
                                 body,
                                 &namespace,
-                                type_ascription.clone(), 
+                                type_ascription.clone(),
                                 format!("Variable declaration's type annotation (type {}) \
                                     does not match up with the assigned expression's type.",
                                     type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())
@@ -279,7 +279,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 span,
                                 return_type,
                                 type_parameters,
-                                // For now, any method declared is automatically public. 
+                                // For now, any method declared is automatically public.
                                 // We can tweak that later if we want.
                                 visibility: Visibility::Public,
                                 return_type_span
@@ -433,7 +433,7 @@ impl<'sc> TypedAstNode<'sc> {
                             visibility: decl.visibility
 
                         };
-                
+
                         // insert struct into namespace
                         namespace.insert(
                             decl.name.clone(),
@@ -459,12 +459,13 @@ impl<'sc> TypedAstNode<'sc> {
                                   &namespace,
                                   return_type_annotation, 
                                   "Returned value must match up with the function return type annotation.",
-                                    self_type),
+                                    self_type
+                                ),
                               error_recovery_expr(expr.span()),
                               warnings,
-                              errors)
+                              errors
+                            )
                     })
-                    
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let typed_expr = type_check!(
