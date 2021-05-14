@@ -1,17 +1,19 @@
 use crate::asm_lang::ImmediateValue;
 use crate::error::*;
 use crate::parser::Rule;
-use crate::Ident;
+use crate::{Ident, TypeInfo};
 use pest::iterators::Pair;
 use pest::Span;
 
 use super::Expression;
+use crate::types::IntegerBits;
 
 #[derive(Debug, Clone)]
 pub(crate) struct AsmExpression<'sc> {
     pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
     pub(crate) body: Vec<AsmOp<'sc>>,
     pub(crate) returns: Option<(AsmRegister, Span<'sc>)>,
+    pub(crate) return_type: TypeInfo<'sc>,
     pub(crate) whole_block_span: Span<'sc>,
 }
 
@@ -32,6 +34,7 @@ impl<'sc> AsmExpression<'sc> {
         );
         let mut asm_op_buf = Vec::new();
         let mut implicit_op_return = None;
+        let mut implicit_op_type = None;
         while let Some(pair) = iter.next() {
             match pair.as_rule() {
                 Rule::asm_op => {
@@ -50,6 +53,15 @@ impl<'sc> AsmExpression<'sc> {
                         pair.as_span(),
                     ));
                 }
+                Rule::type_name => {
+                    implicit_op_type = Some(eval!(
+                        TypeInfo::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair,
+                        continue
+                    ));
+                }
                 a => unreachable!("{:?}", a),
             }
         }
@@ -59,6 +71,8 @@ impl<'sc> AsmExpression<'sc> {
                 registers: asm_registers,
                 body: asm_op_buf,
                 returns: implicit_op_return,
+                return_type: implicit_op_type
+                    .unwrap_or(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
                 whole_block_span,
             },
             warnings,

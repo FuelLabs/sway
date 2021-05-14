@@ -1,7 +1,10 @@
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
 use crate::semantic_analysis::Namespace;
 use crate::ParseTree;
-use crate::{error::*, types::ResolvedType};
+use crate::{
+    error::*,
+    types::{MaybeResolvedType, ResolvedType},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TreeType {
@@ -68,7 +71,17 @@ impl<'sc> TypedParseTree<'sc> {
         let typed_tree = parsed
             .root_nodes
             .into_iter()
-            .map(|node| TypedAstNode::type_check(node, &mut initial_namespace, None, ""))
+            .map(|node| {
+                TypedAstNode::type_check(
+                    node,
+                    &mut initial_namespace,
+                    None,
+                    "",
+                    // TODO only allow impl traits on contract trees, do something else
+                    // for other tree types
+                    &MaybeResolvedType::Resolved(ResolvedType::Contract),
+                )
+            })
             .collect::<Vec<CompileResult<_>>>();
 
         let mut typed_tree_nodes = Vec::new();
@@ -125,7 +138,7 @@ impl<'sc> TypedParseTree<'sc> {
                 }
                 let main_func = main_func_vec[0];
                 match main_func.return_type {
-                    ResolvedType::Boolean => (),
+                    MaybeResolvedType::Resolved(ResolvedType::Boolean) => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
                     )),

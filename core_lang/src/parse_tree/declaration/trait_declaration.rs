@@ -6,6 +6,7 @@ use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
+use pest::Span;
 
 #[derive(Debug, Clone)]
 pub(crate) struct TraitDeclaration<'sc> {
@@ -41,11 +42,11 @@ impl<'sc> TraitDeclaration<'sc> {
         );
         let span = name.span.clone();
         assert_or_warn!(
-            is_class_case(name_pair.as_str()),
+            is_class_case(name_pair.as_str().trim()),
             warnings,
             span,
             Warning::NonClassCaseTraitName {
-                name: name_pair.as_str()
+                name: name_pair.as_str().trim()
             }
         );
         let mut type_params_pair = None;
@@ -131,6 +132,7 @@ pub(crate) struct TraitFn<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type_span: Span<'sc>,
 }
 
 impl<'sc> TraitFn<'sc> {
@@ -138,6 +140,7 @@ impl<'sc> TraitFn<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut signature = pair.clone().into_inner();
+        let whole_fn_sig_span = pair.as_span();
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
         let name_span = name.as_span();
@@ -165,15 +168,22 @@ impl<'sc> TraitFn<'sc> {
             Vec::new()
         );
         let return_type_signal = signature.next();
-        let return_type = match return_type_signal {
-            Some(_) => eval!(
-                TypeInfo::parse_from_pair,
-                warnings,
-                errors,
-                signature.next().unwrap(),
-                TypeInfo::ErrorRecovery
-            ),
-            None => TypeInfo::Unit,
+        let (return_type, return_type_span) = match return_type_signal {
+            Some(_) => {
+                let pair = signature.next().unwrap();
+                let span = pair.as_span();
+                (
+                    eval!(
+                        TypeInfo::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair,
+                        TypeInfo::ErrorRecovery
+                    ),
+                    span,
+                )
+            }
+            None => (TypeInfo::Unit, whole_fn_sig_span),
         };
 
         ok(
@@ -181,6 +191,7 @@ impl<'sc> TraitFn<'sc> {
                 name,
                 parameters,
                 return_type,
+                return_type_span,
             },
             warnings,
             errors,

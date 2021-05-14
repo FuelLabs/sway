@@ -1,5 +1,6 @@
 use crate::error::*;
 use crate::semantic_analysis::ast_node::*;
+use crate::types::ResolvedType;
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
@@ -7,8 +8,9 @@ pub(crate) fn instantiate_enum<'sc>(
     enum_decl: TypedEnumDeclaration<'sc>,
     enum_field_name: Ident<'sc>,
     instantiator: Option<Box<Expression<'sc>>>,
-    type_arguments: Vec<ResolvedType<'sc>>,
+    type_arguments: Vec<MaybeResolvedType<'sc>>,
     namespace: &Namespace<'sc>,
+    self_type: &MaybeResolvedType<'sc>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -40,7 +42,7 @@ pub(crate) fn instantiate_enum<'sc>(
     match (instantiator, enum_field_type) {
         (None, ResolvedType::Unit) => ok(
             TypedExpression {
-                return_type: ResolvedType::Unit,
+                return_type: MaybeResolvedType::Resolved(enum_decl.as_type()),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
@@ -58,8 +60,9 @@ pub(crate) fn instantiate_enum<'sc>(
                 TypedExpression::type_check(
                     *boxed_expr,
                     namespace,
-                    Some(r#type.clone()),
-                    "Enum instantiator must match its declared variant type."
+                    Some(MaybeResolvedType::Resolved(r#type.clone())),
+                    "Enum instantiator must match its declared variant type.",
+                    self_type
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -71,7 +74,7 @@ pub(crate) fn instantiate_enum<'sc>(
 
             ok(
                 TypedExpression {
-                    return_type: enum_decl.as_type(),
+                    return_type: MaybeResolvedType::Resolved(enum_decl.as_type()),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),

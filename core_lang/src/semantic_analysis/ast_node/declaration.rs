@@ -3,7 +3,11 @@ use super::{
 };
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
-use crate::{error::*, types::ResolvedType, Ident};
+use crate::{
+    error::*,
+    types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    Ident,
+};
 use pest::Span;
 
 #[derive(Clone, Debug)]
@@ -15,7 +19,7 @@ pub enum TypedDeclaration<'sc> {
     EnumDeclaration(TypedEnumDeclaration<'sc>),
     Reassignment(TypedReassignment<'sc>),
     ImplTrait {
-        trait_name: Ident<'sc>,
+        trait_name: CallPath<'sc>,
         span: Span<'sc>,
         methods: Vec<TypedFunctionDeclaration<'sc>>,
     },
@@ -40,7 +44,7 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
-    pub(crate) fn return_type(&self) -> CompileResult<'sc, ResolvedType<'sc>> {
+    pub(crate) fn return_type(&self) -> CompileResult<'sc, MaybeResolvedType<'sc>> {
         ok(
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -59,10 +63,10 @@ impl<'sc> TypedDeclaration<'sc> {
                     name,
                     fields,
                     ..
-                }) => ResolvedType::Struct {
+                }) => MaybeResolvedType::Resolved(ResolvedType::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
-                },
+                }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
                     rhs.return_type.clone()
                 }
@@ -157,7 +161,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
     /// the place to resolve those typed.
     pub(crate) fn resolve_generic_types(
         &self,
-        _type_arguments: Vec<ResolvedType<'sc>>,
+        _type_arguments: Vec<MaybeResolvedType<'sc>>,
     ) -> CompileResult<'sc, Self> {
         ok(self.clone(), vec![], vec![])
     }
@@ -192,7 +196,7 @@ pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) body: TypedCodeBlock<'sc>,
     pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
     pub(crate) span: pest::Span<'sc>,
-    pub(crate) return_type: ResolvedType<'sc>,
+    pub(crate) return_type: MaybeResolvedType<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
@@ -203,7 +207,7 @@ pub struct TypedFunctionDeclaration<'sc> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedFunctionParameter<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: ResolvedType<'sc>,
+    pub(crate) r#type: MaybeResolvedType<'sc>,
     pub(crate) type_span: Span<'sc>,
 }
 
@@ -219,7 +223,8 @@ pub struct TypedTraitDeclaration<'sc> {
 pub struct TypedTraitFn<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
-    pub(crate) return_type: ResolvedType<'sc>,
+    pub(crate) return_type: MaybeResolvedType<'sc>,
+    pub(crate) return_type_span: Span<'sc>,
 }
 
 #[derive(Clone, Debug)]
@@ -232,11 +237,11 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub(crate) fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
-        _return_type_annotation: Option<ResolvedType<'sc>>,
+        _return_type_annotation: Option<MaybeResolvedType<'sc>>,
         _help_text: impl Into<String>,
         // If there are any `Self` types in this declaration,
         // resolve them to this type.
-        self_type: Option<ResolvedType<'sc>>,
+        self_type: &MaybeResolvedType<'sc>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -251,14 +256,14 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             visibility,
             ..
         } = fn_decl.clone();
-        let return_type = namespace.resolve_type(&return_type);
+        let return_type = namespace.resolve_type(&return_type, &self_type);
         // insert parameters into namespace
         let mut namespace = namespace.clone();
         for FunctionParameter {
             name, ref r#type, ..
         } in parameters.clone()
         {
-            let r#type = namespace.resolve_type(r#type);
+            let r#type = namespace.resolve_type(r#type, &self_type);
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -273,20 +278,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 }),
             );
         }
-        // check return type for Self types
-        let return_type = if return_type == ResolvedType::SelfType {
-            match self_type {
-                Some(ref ty) => ty.clone(),
-                None => {
-                    errors.push(CompileError::UnqualifiedSelfType {
-                        span: return_type_span.clone(),
-                    });
-                    return_type
-                }
-            }
-        } else {
-            return_type
-        };
+
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = type_check!(
@@ -294,14 +286,15 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 body.clone(),
                 &namespace,
                 Some(return_type.clone()),
-                "Function body's return type does not match up with its return type annotation."
+                "Function body's return type does not match up with its return type annotation.",
+                self_type
             ),
             (
                 TypedCodeBlock {
                     contents: vec![],
                     whole_block_span: body.whole_block_span.clone()
                 },
-                Some(ResolvedType::ErrorRecovery)
+                Some(MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery))
             ),
             warnings,
             errors
@@ -309,7 +302,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
         // check the generic types in the arguments, make sure they are in the type
         // scope
-        let mut parameters = parameters
+        let parameters = parameters
             .into_iter()
             .map(
                 |FunctionParameter {
@@ -318,14 +311,16 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                      type_span,
                  }| TypedFunctionParameter {
                     name,
-                    r#type: namespace.resolve_type(&r#type),
+                    r#type: namespace.resolve_type(&r#type, &self_type),
                     type_span,
                 },
             )
             .collect::<Vec<_>>();
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let ResolvedType::Generic { ref name } = param.r#type {
+            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { ref name }) =
+                param.r#type
+            {
                 generic_params_buf_for_error_message.push(name.primary_name);
             }
         }
@@ -335,7 +330,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         } in parameters.iter()
         {
             let span = name.span.clone();
-            if let ResolvedType::Generic { name, .. } = r#type {
+            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { name, .. }) = r#type
+            {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span.clone(),
                     |acc,
@@ -395,24 +391,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 }
                 Err(err) => {
                     errors.push(err.into());
-                }
-            }
-        }
-        for TypedFunctionParameter {
-            ref mut r#type,
-            type_span,
-            ..
-        } in parameters.iter_mut()
-        {
-            if *r#type == ResolvedType::SelfType {
-                match self_type {
-                    Some(ref ty) => *r#type = ty.clone(),
-                    None => {
-                        errors.push(CompileError::UnqualifiedSelfType {
-                            span: type_span.clone(),
-                        });
-                        continue;
-                    }
                 }
             }
         }

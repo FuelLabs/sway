@@ -3,18 +3,14 @@ use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
-use std::collections::HashMap;
 use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::manifest::{Dependency, DependencyDetails, Manifest};
-use core_lang::{
-    CompilationResult, Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration,
-    TypedFunctionDeclaration,
-};
+use core_lang::{CompilationResult, LibraryExports, Namespace};
 use std::{fs, path::PathBuf};
 
-pub(crate) fn build(path: Option<String>) -> Result<(), String> {
+pub fn build(path: Option<String>) -> Result<(), String> {
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(path) = path {
         PathBuf::from(path)
@@ -243,7 +239,7 @@ fn compile<'source, 'manifest>(
             }
             Ok(asm)
         }
-        CompilationResult::ContractAbi { abi, warnings } => {
+        CompilationResult::ContractAbi { abi: _, warnings } => {
             for ref warning in warnings.iter() {
                 format_warning(&source, warning);
             }
@@ -263,7 +259,10 @@ fn compile<'source, 'manifest>(
             }
             Ok(core_lang::FinalizedAsm::ContractAbi)
         }
-        CompilationResult::Library { exports, warnings } => {
+        CompilationResult::Library {
+            exports: _,
+            warnings,
+        } => {
             for ref warning in warnings.iter() {
                 format_warning(&source, warning);
             }

@@ -3,6 +3,7 @@
 
 use super::*;
 use super::{ControlFlowGraph, EntryPoint, ExitPoint, Graph};
+use crate::parse_tree::CallPath;
 use crate::semantic_analysis::{
     ast_node::{
         TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
@@ -10,8 +11,7 @@ use crate::semantic_analysis::{
     },
     TypedAstNode, TypedAstNodeContent,
 };
-use crate::types::ResolvedType;
-use crate::Ident;
+use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{error::*, semantic_analysis::TypedParseTree};
 use pest::Span;
 use petgraph::prelude::NodeIndex;
@@ -67,7 +67,7 @@ impl<'sc> ControlFlowGraph<'sc> {
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &'sc str,
-        return_ty: &ResolvedType<'sc>,
+        return_ty: &MaybeResolvedType<'sc>,
     ) -> Vec<CompileError<'sc>> {
         let mut rovers = vec![entry_point];
         let mut errors = vec![];
@@ -93,7 +93,9 @@ impl<'sc> ControlFlowGraph<'sc> {
                     .graph
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
                     .collect::<Vec<_>>();
-                if neighbors.is_empty() && *return_ty != ResolvedType::Unit {
+                if neighbors.is_empty()
+                    && *return_ty != MaybeResolvedType::Resolved(ResolvedType::Unit)
+                {
                     errors.push(CompileError::PathDoesNotReturn {
                         // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
                         // different. To save some code duplication,
@@ -201,7 +203,7 @@ fn connect_declaration<'sc>(
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
-            connect_impl_trait(trait_name, graph, methods, entry_node);
+            connect_impl_trait(&trait_name, graph, methods, entry_node);
             vec![]
         }
         SideEffect | ErrorRecovery => {
@@ -216,7 +218,7 @@ fn connect_declaration<'sc>(
 /// Additionally, we insert the trait's methods into the method namespace in order to
 /// track which exact methods are dead code.
 fn connect_impl_trait<'sc>(
-    trait_name: &Ident<'sc>,
+    trait_name: &CallPath<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     methods: &[TypedFunctionDeclaration<'sc>],
     entry_node: NodeIndex,

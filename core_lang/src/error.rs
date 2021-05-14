@@ -1,4 +1,4 @@
-use crate::{parser::Rule, types::ResolvedType};
+use crate::{parser::Rule, types::MaybeResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
@@ -179,11 +179,11 @@ pub enum Warning<'sc> {
         name: &'sc str,
     },
     LossOfPrecision {
-        initial_type: ResolvedType<'sc>,
-        cast_to: ResolvedType<'sc>,
+        initial_type: MaybeResolvedType<'sc>,
+        cast_to: MaybeResolvedType<'sc>,
     },
     UnusedReturnValue {
-        r#type: ResolvedType<'sc>,
+        r#type: MaybeResolvedType<'sc>,
     },
     SimilarMethodFound {
         lib: String,
@@ -449,6 +449,8 @@ pub enum CompileError<'sc> {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
+    #[error("Unable to infer concrete type for partial type \"{ty}\". Type must be known at this point. Try providing an annotation or using a concrete type.")]
+    TypeMustBeKnown { ty: String, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -585,6 +587,7 @@ impl<'sc> CompileError<'sc> {
             InvalidAssemblyMismatchedReturn { span, .. } => span,
             UnknownEnumVariant { span, .. } => span,
             UnrecognizedOp { span, .. } => span,
+            TypeMustBeKnown { span, .. } => span,
         }
     }
 

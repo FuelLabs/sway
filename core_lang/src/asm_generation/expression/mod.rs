@@ -297,19 +297,22 @@ fn convert_fn_app_to_asm<'sc>(
     _name: &CallPath<'sc>,
     arguments: &[(Ident<'sc>, TypedExpression<'sc>)],
     function_body: &TypedCodeBlock<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+    parent_namespace: &mut AsmNamespace<'sc>,
     return_register: &RegisterId,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut asm_buf = vec![];
+    // Make a local namespace so that the namespace of this function does not pollute the outer
+    // scope
+    let mut namespace = parent_namespace.clone();
     let mut args_and_registers: HashMap<Ident<'sc>, RegisterId> = Default::default();
     // evaluate every expression being passed into the function
     for (name, arg) in arguments {
         let return_register = register_sequencer.next();
         let mut ops = type_check!(
-            convert_expression_to_asm(arg, namespace, &return_register, register_sequencer),
+            convert_expression_to_asm(arg, &mut namespace, &return_register, register_sequencer),
             continue,
             warnings,
             errors
@@ -326,7 +329,7 @@ fn convert_fn_app_to_asm<'sc>(
     let mut body = type_check!(
         convert_code_block_to_asm(
             function_body,
-            namespace,
+            &mut namespace,
             register_sequencer,
             Some(return_register),
         ),
@@ -336,6 +339,7 @@ fn convert_fn_app_to_asm<'sc>(
     );
     // evaluate the function body
     asm_buf.append(&mut body);
+    parent_namespace.data_section = namespace.data_section;
 
     // the return  value is already put in its proper register via the above statement, so the buf
     // is done

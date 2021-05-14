@@ -1,12 +1,12 @@
 use super::*;
 use crate::semantic_analysis::ast_node::*;
-use crate::types::{IntegerBits, ResolvedType};
+use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedExpression<'sc> {
     pub(crate) expression: TypedExpressionVariant<'sc>,
-    pub(crate) return_type: ResolvedType<'sc>,
+    pub(crate) return_type: MaybeResolvedType<'sc>,
     /// whether or not this expression is constantly evaluatable (if the result is known at compile
     /// time)
     pub(crate) is_constant: IsConstant,
@@ -16,7 +16,7 @@ pub(crate) struct TypedExpression<'sc> {
 pub(crate) fn error_recovery_expr<'sc>(span: Span<'sc>) -> TypedExpression<'sc> {
     TypedExpression {
         expression: TypedExpressionVariant::Unit,
-        return_type: ResolvedType::ErrorRecovery,
+        return_type: MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
         is_constant: IsConstant::No,
         span,
     }
@@ -26,8 +26,9 @@ impl<'sc> TypedExpression<'sc> {
     pub(crate) fn type_check(
         other: Expression<'sc>,
         namespace: &Namespace<'sc>,
-        type_annotation: Option<ResolvedType<'sc>>,
+        type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
+        self_type: &MaybeResolvedType<'sc>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -35,14 +36,22 @@ impl<'sc> TypedExpression<'sc> {
         let mut typed_expression = match other {
             Expression::Literal { value: lit, span } => {
                 let return_type = match lit {
-                    Literal::String(_) => ResolvedType::String,
-                    Literal::U8(_) => ResolvedType::UnsignedInteger(IntegerBits::Eight),
-                    Literal::U16(_) => ResolvedType::UnsignedInteger(IntegerBits::Sixteen),
-                    Literal::U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
-                    Literal::U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-                    Literal::Boolean(_) => ResolvedType::Boolean,
-                    Literal::Byte(_) => ResolvedType::Byte,
-                    Literal::Byte32(_) => ResolvedType::Byte32,
+                    Literal::String(_) => MaybeResolvedType::Resolved(ResolvedType::String),
+                    Literal::U8(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::Eight,
+                    )),
+                    Literal::U16(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::Sixteen,
+                    )),
+                    Literal::U32(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::ThirtyTwo,
+                    )),
+                    Literal::U64(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    )),
+                    Literal::Boolean(_) => MaybeResolvedType::Resolved(ResolvedType::Boolean),
+                    Literal::Byte(_) => MaybeResolvedType::Resolved(ResolvedType::Byte),
+                    Literal::Byte32(_) => MaybeResolvedType::Resolved(ResolvedType::Byte32),
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::Literal(lit),
@@ -114,7 +123,8 @@ impl<'sc> TypedExpression<'sc> {
                                 arg.clone(),
                                 &namespace,
                                 Some(param.r#type.clone()),
-                                    "The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration."
+                                "The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration.",
+                                self_type
                             );
                             let arg = match res {
                                 CompileResult::Ok {
@@ -230,14 +240,15 @@ impl<'sc> TypedExpression<'sc> {
                         contents.clone(),
                         &namespace,
                         type_annotation.clone(),
-                        help_text.clone()
+                        help_text.clone(),
+                        self_type
                     ),
                     (
                         TypedCodeBlock {
                             contents: vec![],
                             whole_block_span: span.clone()
                         },
-                        Some(ResolvedType::Unit)
+                        Some(MaybeResolvedType::Resolved(ResolvedType::Unit))
                     ),
                     warnings,
                     errors
@@ -245,14 +256,14 @@ impl<'sc> TypedExpression<'sc> {
                 let block_return_type = match block_return_type {
                     Some(ty) => ty,
                     None => match type_annotation {
-                        Some(ref ty) if ty != &ResolvedType::Unit => {
+                        Some(ref ty) if ty != &MaybeResolvedType::Resolved(ResolvedType::Unit) => {
                             errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
                                 span: span.clone(),
                                 ty: ty.friendly_type_str(),
                             });
-                            ResolvedType::ErrorRecovery
+                            MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
                         }
-                        _ => ResolvedType::Unit,
+                        _ => MaybeResolvedType::Resolved(ResolvedType::Unit),
                     },
                 };
                 TypedExpression {
@@ -277,8 +288,9 @@ impl<'sc> TypedExpression<'sc> {
                     TypedExpression::type_check(
                         *condition.clone(),
                         &namespace,
-                        Some(ResolvedType::Boolean),
+                        Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                         "The condition of an if expression must be a boolean expression.",
+                        self_type
                     ),
                     error_recovery_expr(condition.span()),
                     warnings,
@@ -289,7 +301,8 @@ impl<'sc> TypedExpression<'sc> {
                         *then.clone(),
                         &namespace,
                         type_annotation.clone(),
-                        ""
+                        "",
+                        self_type
                     ),
                     error_recovery_expr(then.span()),
                     warnings,
@@ -301,7 +314,8 @@ impl<'sc> TypedExpression<'sc> {
                             *expr.clone(),
                             namespace,
                             Some(then.return_type.clone()),
-                            ""
+                            "",
+                            self_type
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -333,12 +347,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             Expression::AsmExpression { asm, span, .. } => {
-                let return_type = if asm.returns.is_some() {
-                    ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
-                } else {
-                    ResolvedType::Unit
-                };
-
+                let return_type = namespace.resolve_type(&asm.return_type, self_type);
                 // type check the initializers
                 let typed_registers = asm
                     .registers
@@ -352,7 +361,8 @@ impl<'sc> TypedExpression<'sc> {
                                         initializer.clone(),
                                         namespace,
                                         None,
-                                        ""
+                                        "",
+                                        self_type
                                     ),
                                     error_recovery_expr(initializer.span()),
                                     warnings,
@@ -415,7 +425,9 @@ impl<'sc> TypedExpression<'sc> {
                                     name: def_field.name.clone(),
                                     value: TypedExpression {
                                         expression: TypedExpressionVariant::Unit,
-                                        return_type: ResolvedType::ErrorRecovery,
+                                        return_type: MaybeResolvedType::Resolved(
+                                            ResolvedType::ErrorRecovery,
+                                        ),
                                         is_constant: IsConstant::No,
                                         span: span.clone(),
                                     },
@@ -428,8 +440,9 @@ impl<'sc> TypedExpression<'sc> {
                         TypedExpression::type_check(
                             expr_field.value,
                             &namespace,
-                            Some(def_field.r#type.clone()),
+                            Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
                             "Struct field's type must match up with the type specified in its declaration.",
+                            self_type
                         ),
                         continue,
                         warnings,
@@ -462,10 +475,10 @@ impl<'sc> TypedExpression<'sc> {
                         struct_name: definition.name.clone(),
                         fields: typed_fields_buf,
                     },
-                    return_type: ResolvedType::Struct {
+                    return_type: MaybeResolvedType::Resolved(ResolvedType::Struct {
                         name: definition.name.clone(),
                         fields: definition.fields.clone(),
-                    },
+                    }),
                     is_constant: IsConstant::No,
                     span,
                 }
@@ -479,7 +492,7 @@ impl<'sc> TypedExpression<'sc> {
                 // invariant here, since it is an assumption that is acted upon later.
                 assert!(name_parts.len() >= 2);
                 let (return_type, resolved_type_of_parent) = type_check!(
-                    namespace.find_subfield(&name_parts),
+                    namespace.find_subfield_type(&name_parts),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -503,7 +516,7 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span,
             } => {
-                let (method, parent_type) = if subfield_exp.is_empty() {
+                let method = if subfield_exp.is_empty() {
                     // if subfield exp is empty, then we are calling a method using either ::
                     // syntax or an operator
                     let ns = type_check!(
@@ -519,8 +532,8 @@ impl<'sc> TypedExpression<'sc> {
                         namespace,
                         None,
                         "",
+                        self_type,
                     ) {
-                        // throw away warnings and errors since this will be checked again later
                         CompileResult::Ok {
                             value,
                             warnings: mut l_w,
@@ -539,64 +552,54 @@ impl<'sc> TypedExpression<'sc> {
                             return err(warnings, errors);
                         }
                     };
-                    (
-                        match ns.find_method_for_type(
-                            &parent_expr.return_type.clone(),
-                            method_name.suffix.clone(),
-                        ) {
-                            Some(o) => o,
-                            None => {
-                                errors.push(CompileError::MethodNotFound {
-                                    span,
-                                    method_name: method_name.suffix.clone().primary_name,
-                                    type_name: parent_expr.return_type.friendly_type_str(),
-                                });
-                                return err(warnings, errors);
-                            }
-                        },
-                        parent_expr.return_type,
-                    )
+                    match ns.find_method_for_type(
+                        &parent_expr.return_type.clone(),
+                        method_name.suffix.clone(),
+                    ) {
+                        Some(o) => o,
+                        None => {
+                            errors.push(CompileError::MethodNotFound {
+                                span: method_name.suffix.clone().span,
+                                method_name: method_name.suffix.clone().primary_name,
+                                type_name: parent_expr.return_type.friendly_type_str(),
+                            });
+                            return err(warnings, errors);
+                        }
+                    }
                 } else {
-                    let (parent_type, _) = type_check!(
-                        namespace.find_subfield(&subfield_exp.clone()),
+                    let (parent_of_method_type, _) = type_check!(
+                        namespace.find_subfield_type(&subfield_exp.clone()),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    (
-                        match namespace
-                            .find_method_for_type(&parent_type, method_name.suffix.clone())
-                        {
-                            Some(o) => o,
-                            None => {
-                                errors.push(CompileError::MethodNotFound {
-                                    span: method_name.suffix.clone().span,
-                                    method_name: method_name.suffix.primary_name,
-                                    type_name: parent_type.friendly_type_str(),
-                                });
-                                return err(warnings, errors);
-                            }
-                        },
-                        parent_type,
-                    )
+                    match namespace
+                        .find_method_for_type(&parent_of_method_type, method_name.suffix.clone())
+                    {
+                        Some(o) => o,
+                        None => {
+                            errors.push(CompileError::MethodNotFound {
+                                span: method_name.suffix.clone().span,
+                                method_name: method_name.suffix.primary_name,
+                                type_name: parent_of_method_type.friendly_type_str(),
+                            });
+                            return err(warnings, errors);
+                        }
+                    }
                 };
 
                 // zip parameters to arguments to perform type checking
                 let zipped = method.parameters.iter().zip(arguments.iter());
-
                 let mut typed_arg_buf = vec![];
                 for (TypedFunctionParameter { r#type, name, .. }, arg) in zipped {
-                    let un_self_type = if r#type == &ResolvedType::SelfType {
-                        parent_type.clone()
-                    } else {
-                        r#type.clone()
-                    };
                     typed_arg_buf.push((name.clone(), type_check!(
                         TypedExpression::type_check(
                             arg.clone(),
                             &namespace,
-                            Some(un_self_type),
-                            "Function argument must be of the same type declared in the function declaration."),
+                            Some(r#type.clone()),
+                            "Function argument must be of the same type declared in the function declaration.",
+                            self_type
+                        ),
                         continue,
                         warnings,
                         errors
@@ -605,8 +608,6 @@ impl<'sc> TypedExpression<'sc> {
 
                 TypedExpression {
                     expression: TypedExpressionVariant::FunctionApplication {
-                        // TODO the prefix should be a type info maybe? and then the first arg can
-                        // be self?
                         name: method_name.into(),
                         arguments: typed_arg_buf,
                         function_body: method.body.clone(),
@@ -618,7 +619,7 @@ impl<'sc> TypedExpression<'sc> {
             }
             Expression::Unit { span } => TypedExpression {
                 expression: TypedExpressionVariant::Unit,
-                return_type: ResolvedType::Unit,
+                return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
                 is_constant: IsConstant::Yes,
                 span,
             },
@@ -661,7 +662,7 @@ impl<'sc> TypedExpression<'sc> {
 
                 let type_arguments = type_arguments
                     .iter()
-                    .map(|x| namespace.resolve_type(x))
+                    .map(|x| namespace.resolve_type(x, self_type))
                     .collect();
                 // now we can see if this thing is a symbol (typed declaration) or reference to an
                 // enum instantiation
@@ -680,7 +681,8 @@ impl<'sc> TypedExpression<'sc> {
                                 call_path.suffix,
                                 instantiator,
                                 type_arguments,
-                                namespace
+                                namespace,
+                                self_type
                             ),
                             return err(warnings, errors),
                             warnings,

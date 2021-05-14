@@ -1,7 +1,7 @@
-use crate::error::*;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
-use crate::types::{ResolvedType, TypeInfo};
+use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
+use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
@@ -67,14 +67,14 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
     }
 }
 impl<'sc> TypedAstNode<'sc> {
-    fn type_info(&self) -> ResolvedType<'sc> {
+    fn type_info(&self) -> MaybeResolvedType<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            ReturnStatement(_) | Declaration(_) => ResolvedType::Unit,
+            ReturnStatement(_) | Declaration(_) => MaybeResolvedType::Resolved(ResolvedType::Unit),
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
-            WhileLoop(_) | SideEffect => ResolvedType::Unit,
+            WhileLoop(_) | SideEffect => MaybeResolvedType::Resolved(ResolvedType::Unit),
         }
     }
 }
@@ -83,20 +83,23 @@ impl<'sc> TypedAstNode<'sc> {
     pub(crate) fn type_check(
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
-        return_type_annotation: Option<ResolvedType<'sc>>,
+        return_type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String>,
+        self_type: &MaybeResolvedType<'sc>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
                     match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path),
+
                         ImportType::Item(s) => namespace.item_import(
                             a.call_path,
                             &s,
-                            None, /*TODO support aliasing in grammar*/
+                            None,
                         ),
                     };
                     TypedAstNodeContent::SideEffect
@@ -108,7 +111,9 @@ impl<'sc> TypedAstNode<'sc> {
                         body,
                         is_mutable,
                     }) => {
-                        let type_ascription = type_ascription.map(|type_ascription| namespace.resolve_type(&type_ascription));
+                        let type_ascription = type_ascription.map(|type_ascription| {
+                            namespace.resolve_type(&type_ascription, self_type)
+                        });
                         let body = type_check!(
                             TypedExpression::type_check(
                                 body,
@@ -117,7 +122,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 format!("Variable declaration's type annotation (type {}) \
                                     does not match up with the assigned expression's type.",
                                     type_ascription.map(|x| x.friendly_type_str()).unwrap_or("none".into())
-                                )
+                                ),
+                                self_type
                             ),
                             error_recovery_expr(name.span.clone()),
                             warnings,
@@ -136,14 +142,14 @@ impl<'sc> TypedAstNode<'sc> {
                     Declaration::EnumDeclaration(e) => {
                         let span = e.span.clone();
                         let primary_name = e.name.primary_name;
-                        let decl = TypedDeclaration::EnumDeclaration(e.to_typed_decl(namespace));
+                        let decl = TypedDeclaration::EnumDeclaration(e.to_typed_decl(namespace, self_type));
 
                         namespace.insert(Ident { primary_name, span }, decl.clone());
                         decl
                     }
                     Declaration::FunctionDeclaration(fn_decl) => {
                         let decl = type_check!(
-                            TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, "", None),
+                            TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, "", self_type),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -163,14 +169,28 @@ impl<'sc> TypedAstNode<'sc> {
                         visibility
                     }) => {
                         let mut methods_buf = Vec::new();
-                        let interface_surface = interface_surface.into_iter().map(|TraitFn { name, parameters, return_type }| TypedTraitFn {
+                        let interface_surface = interface_surface
+                        .into_iter()
+                        .map(|TraitFn {
+                             name,
+                              parameters,
+                              return_type,
+                              return_type_span
+                             }| TypedTraitFn {
                             name,
+                            return_type_span,
                             parameters: parameters
                                 .into_iter()
                                 .map(|FunctionParameter { name, r#type, type_span }|
-                                    TypedFunctionParameter { name, r#type: namespace.resolve_type(&r#type), type_span }
+                                    TypedFunctionParameter {
+                                         name,
+                                         r#type: namespace.resolve_type(&r#type, 
+                                            &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)),
+                                             type_span }
                                 ).collect(),
-                            return_type: namespace.resolve_type(&return_type)
+                            return_type: namespace.resolve_type(&return_type,
+                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
+                            )
                         }).collect::<Vec<_>>();
                         for FunctionDeclaration {
                             body,
@@ -186,7 +206,9 @@ impl<'sc> TypedAstNode<'sc> {
                             let mut namespace = namespace.clone();
                             parameters.clone().into_iter().for_each(
                                 |FunctionParameter { name, r#type, .. }| {
-                                    let r#type = namespace.resolve_type(&r#type);
+                                    let r#type = namespace.resolve_type(&r#type,
+                                         &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
+                                        );
                                     namespace.insert(
                                         name.clone(),
                                         TypedDeclaration::VariableDeclaration(
@@ -199,7 +221,8 @@ impl<'sc> TypedAstNode<'sc> {
                                                     is_constant: IsConstant::No,
                                                     span: name.span.clone(),
                                                 },
-                                                is_mutable: false, // TODO allow mutable function params?
+                                                // TODO allow mutable function params?
+                                                is_mutable: false,
                                             },
                                         ),
                                     );
@@ -243,21 +266,31 @@ impl<'sc> TypedAstNode<'sc> {
                                     }
                                 }
                             }
-                            let parameters = parameters.into_iter().map(|FunctionParameter { name, r#type, type_span }| TypedFunctionParameter {
-                                name,
-                                r#type: namespace.resolve_type(&r#type),
-                                type_span
-                            }).collect::<Vec<_>>();
+                            let parameters =
+                                parameters.into_iter().map(|
+                                    FunctionParameter {
+                                     name, r#type, type_span
+                                    }
+                                | TypedFunctionParameter {
+                                    name,
+                                    r#type: namespace.resolve_type(
+                                        &r#type,
+                                         &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
+                                        ),
+                                    type_span
+                                }).collect::<Vec<_>>();
                             // TODO check code block implicit return
-                            let return_type = namespace.resolve_type(&return_type);
+                            let return_type = namespace.resolve_type(&return_type, self_type);
                             let (body, _code_block_implicit_return) =
                                         type_check!(
                                             TypedCodeBlock::type_check(
-                                            body,
-                                            &namespace,
-                                            Some(return_type.clone()),
-                                            "Trait method body's return type does not \
-                                            match up with its return type annotation."),
+                                                body,
+                                                &namespace,
+                                                Some(return_type.clone()),
+                                                "Trait method body's return type does not \
+                                                match up with its return type annotation.",
+                                                self_type
+                                            ),
                                             continue,
                                             warnings, errors
                                         );
@@ -329,7 +362,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 rhs,
                                 &namespace,
                                 Some(thing_to_reassign.return_type.clone()),
-                                "You can only reassign a value of the same type to a variable."
+                                "You can only reassign a value of the same type to a variable.",
+                                self_type
                             ),
                             error_recovery_expr(span),
                             warnings,
@@ -352,7 +386,7 @@ impl<'sc> TypedAstNode<'sc> {
                         block_span,
                         ..
                     }) => {
-                        let type_implementing_for_resolved = namespace.resolve_type(&type_implementing_for);
+                        let type_implementing_for_resolved = namespace.resolve_type_without_self(&type_implementing_for);
                         // check, if this is a custom type, if it is in scope or a generic.
                         let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                         for mut fn_decl in functions.into_iter() {
@@ -377,17 +411,22 @@ impl<'sc> TypedAstNode<'sc> {
                             }
 
                             functions_buf.push(type_check!(
-                                TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, "", Some(type_implementing_for_resolved.clone())),
+                                TypedFunctionDeclaration::type_check(fn_decl, &namespace, None, "", &type_implementing_for_resolved),
                                 continue,
                                 warnings,
                                 errors
                             ));
                         }
                         namespace.insert_trait_implementation(
-                            Ident {
-                                primary_name: "r#Self",
-                                span: block_span.clone(),
-                            },
+                            CallPath {
+                                prefixes: vec![],
+                                suffix:
+                                Ident
+                                    {
+                                    primary_name: "r#Self",
+                                    span: block_span.clone(),
+                                }
+                             },
                             type_implementing_for_resolved,
                             functions_buf,
                         );
@@ -398,7 +437,17 @@ impl<'sc> TypedAstNode<'sc> {
                         let fields = decl.fields.into_iter().map(|StructField { name, r#type, span }| {
                             TypedStructField {
                                 name,
-                                r#type: namespace.resolve_type(&r#type),
+                                r#type: match namespace.resolve_type(&r#type, self_type) {
+                                    MaybeResolvedType::Resolved(r) => r,
+                                    MaybeResolvedType::Partial(
+                                        crate::types::PartiallyResolvedType::Numeric
+                                    ) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+                                    MaybeResolvedType::Partial(p) => {
+                                        errors.push(CompileError::TypeMustBeKnown { ty: p.friendly_type_str(), span: span.clone() });
+                                        ResolvedType::ErrorRecovery
+                                    }
+
+                                },
                                 span
                             }
                         }).collect::<Vec<_>>();
@@ -421,7 +470,7 @@ impl<'sc> TypedAstNode<'sc> {
                 }),
                 AstNodeContent::Expression(a) => {
                     let inner = type_check!(
-                        TypedExpression::type_check(a.clone(), &namespace, None, ""),
+                        TypedExpression::type_check(a.clone(), &namespace, None, "", self_type),
                         error_recovery_expr(a.span()),
                         warnings,
                         errors
@@ -434,10 +483,13 @@ impl<'sc> TypedAstNode<'sc> {
                                   expr.clone(),
                                   &namespace,
                                   return_type_annotation,
-                                  "Returned value must match up with the function return type annotation."),
-                                  error_recovery_expr(expr.span()),
-                                  warnings,
-                                  errors)
+                                  "Returned value must match up with the function return type annotation.",
+                                  self_type
+                                ),
+                              error_recovery_expr(expr.span()),
+                              warnings,
+                              errors
+                            )
                     })
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
@@ -449,7 +501,8 @@ impl<'sc> TypedAstNode<'sc> {
                             format!(
                                 "Implicit return must match up with block's type. {}",
                                 help_text.into()
-                            )
+                            ),
+                            self_type
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -462,8 +515,9 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             condition,
                             &namespace,
-                            Some(ResolvedType::Boolean),
-                            "A while loop's loop condition must be a boolean expression."
+                            Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
+                            "A while loop's loop condition must be a boolean expression.",
+                            self_type
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -471,12 +525,17 @@ impl<'sc> TypedAstNode<'sc> {
                     );
                     let (typed_body, _block_implicit_return) = type_check!(
                     TypedCodeBlock::type_check(
-                        body.clone(),
-                        &namespace,
-                        Some(ResolvedType::Unit),
-                        "A while loop's loop body cannot implicitly return a value.\
-                        Try assigning it to a mutable variable declared outside of the loop instead."),
-                        (TypedCodeBlock { contents: vec![], whole_block_span: body.whole_block_span.clone(), }, Some(ResolvedType::Unit)),
+                            body.clone(),
+                            &namespace,
+                            Some(MaybeResolvedType::Resolved(ResolvedType::Unit)),
+                            "A while loop's loop body cannot implicitly return a value.\
+                            Try assigning it to a mutable variable declared outside of the loop instead.",
+                            self_type
+                        ),
+                        (TypedCodeBlock {
+                            contents: vec![],
+                            whole_block_span: body.whole_block_span.clone(),
+                         }, Some(MaybeResolvedType::Resolved(ResolvedType::Unit))),
                         warnings,
                         errors
                     );
@@ -497,8 +556,9 @@ impl<'sc> TypedAstNode<'sc> {
                     r#type: node.type_info(),
                 };
                 assert_or_warn!(
-                    node.type_info() == ResolvedType::Unit
-                        || node.type_info() == ResolvedType::ErrorRecovery,
+                    node.type_info() == MaybeResolvedType::Resolved(ResolvedType::Unit)
+                        || node.type_info()
+                            == MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
                     warnings,
                     node.span.clone(),
                     warning

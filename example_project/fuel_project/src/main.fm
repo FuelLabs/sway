@@ -1,82 +1,56 @@
-script{
-  // Count to 5 and return the number 5.
-  /*
-  fn foo() -> u32 {
-    let mut x = 0;
-    let mut y = 1;
-    while x < 5 {
-      x = x + 1;
-      y = y + 1;
-      x = x - 1;
-      x = x + 1;
+script {
+    struct Rgb {
+      red: u64,
+      green: u64,
+      blue: u64,
     }
 
-    5u32
-  }
-  */
+	trait Color {
+		fn rgb(self) -> Rgb;
+	}
 
-  enum MyEnum {
-    Variant1: u32,
-    Variant2: ()
-  }
+	enum PrimaryColor {
+		   Red : (),
+		   Green : (),
+		   Blue : ()
+		}
 
-  fn test() {
-    let x: MyEnum = MyEnum::Variant1(6 + 2);
-    let y = MyEnum::Variant2;
-    return;
-  }
-
-
-  trait MyTrait {
-    fn to_implement(a: self) -> Self;
-  }
-
-  impl MyTrait for MyEnum {
-    fn to_implement(a: MyEnum) -> Self {
-      a
+    impl Color for PrimaryColor {
+		// TODO: when we support match statements, change this to a match statement
+		fn rgb(self) -> Rgb {
+			if self == PrimaryColor::Red {
+				Rgb {
+					red: 255,
+					blue: 0,
+					green: 0,
+				}
+			}
+			else if self == PrimaryColor::Green {
+				Rgb {
+					red: 0,
+					blue: 0,
+					green: 255,
+				}
+			}
+			else if self == PrimaryColor::Blue {
+				Rgb {
+					red: 0,
+					blue: 255,
+					green: 0,
+				}
+			}
+			else {
+				Rgb {
+					red: 0,
+					blue: 0,
+					green: 0
+				}
+			}
+        }
     }
-  }
 
-  struct MyStruct {
-    field_1: u32,
-    field_2: u32
-  }
-
-  pub fn main() -> bool {
-  let a = 5_000;
-  let z: byte = 0b01010101;
-  let x: byte32 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-  let mut b = 5 + a;
-  while b < 100 {
-    b = b + 1;
-  }
-  let a = MyStruct {
-    field_1: 5u32,
-    field_2: 2u32,
-  };
-
-    //let a = a.field_1 + 2;
-    while false { let z = 0; }
-
-    /*
-    let z = MyEnum::Variant2;
-    let z = MyEnum::Variant1(10u32);
-    if true {
-      let z = z.to_implement();
-      return true;
-    } else {
-      let a = 5;
-    };
-    */
-
-    true
-  }
-
-/*
-  fn bar() {
-    let x = 5;
-    let y = x;
-    let z = y;
-  }
-*/
+    fn main() {
+		let first_color = PrimaryColor::Green;
+        let rgb: Rgb = first_color.rgb();
+    }
 }
