@@ -516,7 +516,7 @@ fn parse_root_from_pairs<'sc>(
 fn test_basic_prog() {
     let prog = parse(
         r#"
-        contract {
+        contract;
 
     enum yo
     <T>
@@ -595,9 +595,6 @@ fn test_basic_prog() {
          func_app(my_args, (so_many_args))];
         return 5;
     }
-
-    }
-
     "#,
     );
     dbg!(&prog);
@@ -607,12 +604,11 @@ fn test_basic_prog() {
 fn test_parenthesized() {
     let prog = parse(
         r#"
-        contract {
+        contract;
         pub fn abi_func() -> unit {
             let x = (5 + 6 / (1 + (2 / 1) + 4));
             return;
         }
-   }
     "#,
     );
     prog.unwrap();

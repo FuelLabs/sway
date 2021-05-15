@@ -1,0 +1,5 @@
+max_width = 100
+wrap_comments = true
+comment_width = 100
+format_strings = true # This will wrap very long strings to the next line with escaped newlines
+edition = "2018"
