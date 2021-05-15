@@ -125,8 +125,34 @@ impl<'sc> AbstractInstructionSet<'sc> {
     }
 
     fn allocate_registers(self) -> InstructionSet<'sc> {
+        // Eventually, we will use a cool graph-coloring algorithm.
+        // For now, just keep a pool of registers
         todo!()
     }
+}
+
+struct RegisterPool {
+    available_registers: Vec<Register>,
+}
+
+struct Register { val: u8 }
+
+impl RegisterPool {
+    fn init() -> Self {
+        let mut register_pool: Vec<Register> = (compiler_constants::NUM_FREE_REGISTERS..0).map(|x| Register(x)).collect();
+        Self {
+            available_registers: register_pool
+        }
+    }
+
+    fn get_register(&mut self) -> Option<Register> {
+        self.available_registers.pop()
+    }
+
+    fn return_register_to_pool(&mut self, item_to_return: Register) {
+        self.available_registers.push(item_to_return);
+    }
+
 }
 
 /// helper function to check if a label is used in a given buffer of ops
