@@ -19,7 +19,7 @@ fn_returns          =  {"->"}
 path_separator      =  {"::"}
 
 // top level
-program =  {SOI ~ (library|contract|script|predicate)* ~ EOI}
+program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
 
 library      =  {"library" ~ library_name ~ ";" ~ (control_flow|declaration|use_statement)* }
 library_name =  {ident}

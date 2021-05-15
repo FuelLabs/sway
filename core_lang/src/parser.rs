@@ -323,4 +323,36 @@ mod test {
             Ok(_) => (),
         }
     }
+
+    #[test]
+    #[should_panic]
+    fn multiple_programs() {
+        let parsed = HllParser::parse(
+            Rule::program,
+            r#"
+            predicate;
+                fn main(){
+                    let x = 0b01011010;
+                    // 32 bytes in a bytes32
+                    let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
+                    return x;
+                }
+            predicate;
+                fn main(){
+                    let x = 0b01011010;
+                    // 32 bytes in a bytes32
+                    let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
+                    return x;
+                }
+            "#,
+        );
+        dbg!(&parsed);
+        match parsed {
+            Err(e) => {
+                println!("{:#?}", e);
+                panic!()
+            }
+            Ok(_) => (),
+        }
+    }
 }
