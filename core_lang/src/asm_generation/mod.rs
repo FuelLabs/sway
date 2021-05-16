@@ -124,24 +124,69 @@ impl<'sc> AbstractInstructionSet<'sc> {
         AbstractInstructionSet { ops: buf2 }
     }
 
-    fn allocate_registers(self) -> InstructionSet<'sc> {
+    fn allocate_registers(mut self) -> InstructionSet<'sc> {
         // Eventually, we will use a cool graph-coloring algorithm.
-        // For now, just keep a pool of registers
+        // For now, just keep a pool of registers and return
+        // registers when they are not read anymore
+
+        // construct a mapping from every op to the registers it uses
+        let mut op_register_mapping = self
+            .ops
+            .iter_mut()
+            .map(|op| {
+                (
+                    op.clone(),
+                    match op.opcode {
+                        Either::Left(mut opc) => opc.registers(),
+                        Either::Right(mut orgop) => orgop.registers(),
+                    },
+                )
+            })
+            .collect::<Vec<_>>();
+
+        // get registers from the pool.
+        // if the registers are never read again, return them to the pool.
+        let mut pool = RegisterPool::init();
+        for (op, registers) in op_register_mapping {
+            let new_registers: Option<Vec<_>> = registers
+                .into_iter()
+                .map(|reg| (reg, pool.get_register()))
+                .collect();
+            let new_registers = match new_registers {
+                a @ (_, Some(_)) => a,
+                _ => todo!("Return out of registers error"),
+            };
+            // if the virtual register is never read again, then we can
+            // return this virtual register back into the pool
+
+            // TODO:
+            // properly parse reserved registers and handle them in asm expressions
+            // do not pull from the pool for reserved registers
+            //
+        }
         todo!()
     }
 }
 
+fn register_is_never_read_again(reg: &Register, ops: &[(Op, Vec<Register>)]) -> bool {
+    todo!()
+}
 struct RegisterPool {
     available_registers: Vec<Register>,
 }
 
-struct Register { val: u8 }
+enum Register {
+    Free(u8),
+    Reserved(u8),
+}
 
 impl RegisterPool {
     fn init() -> Self {
-        let mut register_pool: Vec<Register> = (compiler_constants::NUM_FREE_REGISTERS..0).map(|x| Register(x)).collect();
+        let mut register_pool: Vec<Register> = (compiler_constants::NUM_FREE_REGISTERS..0)
+            .map(|x| Register::Free(x))
+            .collect();
         Self {
-            available_registers: register_pool
+            available_registers: register_pool,
         }
     }
 
@@ -152,7 +197,6 @@ impl RegisterPool {
     fn return_register_to_pool(&mut self, item_to_return: Register) {
         self.available_registers.push(item_to_return);
     }
-
 }
 
 /// helper function to check if a label is used in a given buffer of ops
@@ -290,7 +334,6 @@ impl fmt::Display for AbstractInstructionSet<'_> {
     }
 }
 
-
 impl fmt::Display for InstructionSet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -304,7 +347,6 @@ impl fmt::Display for InstructionSet<'_> {
         )
     }
 }
-
 
 #[derive(Default, Clone)]
 pub(crate) struct AsmNamespace<'sc> {
