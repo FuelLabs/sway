@@ -1,22 +1,16 @@
-use std::collections::HashMap;
-use std::io::{self, Write};
-use std::{fs, path::PathBuf};
-
 use line_col::LineColLookup;
-use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
-
-use parser::{
-    Ident, LibraryExports, Namespace, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
-};
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
+use std::io::{self, Write};
+use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
-use crate::utils::{constants, manifest};
-use manifest::{Dependency, DependencyDetails, Manifest};
+use crate::utils::manifest::{Dependency, DependencyDetails, Manifest};
+use core_lang::{CompilationResult, LibraryExports, Namespace};
+use std::{fs, path::PathBuf};
 
-pub(crate) fn build(path: Option<String>) -> Result<(), String> {
+pub fn build(path: Option<String>) -> Result<(), String> {
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(path) = path {
         PathBuf::from(path)
@@ -48,17 +42,19 @@ pub(crate) fn build(path: Option<String>) -> Result<(), String> {
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-    let _main = compile(main_file, &manifest.project.name, &namespace)?;
+    let main = compile(main_file, &manifest.project.name, &namespace)?;
+
+    println!("Generated assembly was: \n{}", main);
 
     Ok(())
 }
 
-/// Continually go up in the file tree until a manifest (Fuel.toml) is found.
+/// Continually go up in the file tree until a manifest (Forc.toml) is found.
 fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
     let mut path = fs::canonicalize(starter_path.clone()).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
-        path.push(constants::MANIFEST_FILE_NAME);
+        path.push(crate::utils::constants::MANIFEST_FILE_NAME);
         if path.exists() {
             path.pop();
             return Some(path);
@@ -78,8 +74,6 @@ fn compile_dependency_lib<'source, 'manifest>(
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
 ) -> Result<(), String> {
-    //todo!("For tomorrow: This needs to accumulate dependencies over time and build up the dependency namespace. Then, colon delineated paths in the compiler
-    // need to look in the imports namespace.");
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
             return Err("Simple version-spec dependencies require a registry.".into())
@@ -97,7 +91,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     project_path.push(dep_path);
 
     // compile the dependencies of this dependency
-    //this should detect circular dependencies
+    // this should detect circular dependencies
     let manifest_dir = match find_manifest_dir(&project_path) {
         Some(o) => o,
         None => return Err("Manifest not found for dependency.".into()),
@@ -116,7 +110,7 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
-    let compiled = compile(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
+    let compiled = compile_library(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
 
     namespace.insert_module(dependency_name.to_string(), compiled.namespace);
 
@@ -127,7 +121,7 @@ fn compile_dependency_lib<'source, 'manifest>(
 fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     let manifest_path = {
         let mut man = manifest_dir.clone();
-        man.push(constants::MANIFEST_FILE_NAME);
+        man.push(crate::utils::constants::MANIFEST_FILE_NAME);
         man
     };
     let manifest_path_str = format!("{:?}", manifest_path);
@@ -146,22 +140,22 @@ fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     }
 }
 
-fn compile<'source, 'manifest>(
+fn compile_library<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = parser::compile(&source, namespace);
+    let res = core_lang::compile(&source, namespace);
     match res {
-        Ok((compiled, warnings)) => {
+        CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
                 format_warning(&source, warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled {:?}.", proj_name));
+                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
             } else {
                 let _ = write_yellow(&format!(
-                    "Compiled {:?} with {} {}.",
+                    "Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -171,9 +165,125 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(compiled.library_exports)
+            Ok(exports)
         }
-        Err((errors, warnings)) => {
+        CompilationResult::Failure { errors, warnings } => {
+            let e_len = errors.len();
+
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+
+            errors.into_iter().for_each(|e| format_err(&source, e));
+
+            write_red(format!(
+                "Aborting due to {} {}.",
+                e_len,
+                if e_len > 1 { "errors" } else { "error" }
+            ))
+            .unwrap();
+            Err(format!("Failed to compile {}", proj_name))
+        }
+        _ => {
+            return Err(format!(
+                "Project \"{}\" was included as a dependency but it is not a library.",
+                proj_name
+            ))
+        }
+    }
+}
+
+fn compile<'source, 'manifest>(
+    source: &'source str,
+    proj_name: &str,
+    namespace: &Namespace<'source>,
+) -> Result<core_lang::FinalizedAsm<'source>, String> {
+    let res = core_lang::compile(&source, namespace);
+    match res {
+        CompilationResult::ScriptAsm { asm, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled script {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled script {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(asm)
+        }
+        CompilationResult::PredicateAsm { asm, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled predicate {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled predicate {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(asm)
+        }
+        CompilationResult::ContractAbi { abi: _, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled contract {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled contract {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(core_lang::FinalizedAsm::ContractAbi)
+        }
+        CompilationResult::Library {
+            exports: _,
+            warnings,
+        } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled library {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(core_lang::FinalizedAsm::Library)
+        }
+        CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {
@@ -193,7 +303,7 @@ fn compile<'source, 'manifest>(
     }
 }
 
-fn format_warning(input: &str, err: &parser::CompileWarning) {
+fn format_warning(input: &str, err: &core_lang::CompileWarning) {
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;
@@ -220,16 +330,11 @@ fn format_warning(input: &str, err: &parser::CompileWarning) {
     );
 
     let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-    fmt.add(
-        buffer.span(),
-        Some("this is the whole program\nwhat a nice program!".to_string()),
-        Style::Error,
-    );
 
     println!("{}", formatted);
 }
 
-fn format_err(input: &str, err: parser::CompileError) {
+fn format_err(input: &str, err: core_lang::CompileError) {
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;
@@ -244,7 +349,7 @@ fn format_err(input: &str, err: parser::CompileError) {
     let (start_pos, end_pos) = err.span();
     let lookup = LineColLookup::new(input);
     let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(end_pos - 1);
+    let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
 
     let err_start = Position::new(start_line - 1, start_col - 1);
     let err_end = Position::new(end_line - 1, end_col - 1);

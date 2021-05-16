@@ -11,7 +11,7 @@ use lsp::{
 };
 
 use crate::core::session::Session;
-use crate::{capabilities, core::document::DocumentError};
+use crate::{capabilities};
 
 #[derive(Debug)]
 pub struct Backend {

@@ -2,9 +2,6 @@
 mod cli;
 mod ops;
 mod utils;
-mod constants;
-mod defaults;
-mod manifest;
 
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     match cli::run_cli() {
