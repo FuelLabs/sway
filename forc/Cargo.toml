@@ -3,13 +3,15 @@ name    = "forc"
 version = "0.1.0"
 authors = ["Alex Hansen <alex.hansen@fuel.sh>"]
 edition = "2018"
+rust = "1.50"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-parser      = { path = "../parser" }
+core_lang   = { path = "../core_lang" }
 structopt   = "0.3"
-source-span = "2.2"
+source-span = "2.4"
 termcolor   = "1.1"
 line-col    = "0.2"
 toml        = "0.5"
