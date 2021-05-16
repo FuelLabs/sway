@@ -7,7 +7,7 @@ use ropey::Rope;
 
 use crate::capabilities;
 
-use super::token::{pair_rule_to_token, Token, TokenType};
+use super::token::{pair_rule_to_token, ExpressionType, Token};
 
 #[derive(Debug)]
 pub struct TextDocument {
@@ -41,44 +41,42 @@ impl TextDocument {
         if let Some(indices) = self.lines.get(&line) {
             for index in indices {
                 let token = &self.tokens[*index];
-                if token.contains_character(position.character) {
+                if token.is_within_character_range(position.character) {
                     return Some(token.clone());
                 }
             }
-            None
+        }
+
+        None
+    }
+
+    pub fn get_all_tokens_by_single_name(&self, name: &str) -> Option<Vec<&Token>> {
+        if let Some(indices) = self.values.get(name) {
+            let tokens = indices.iter().map(|index| &self.tokens[*index]).collect();
+            Some(tokens)
         } else {
             None
         }
     }
 
-    pub fn get_token_with_name(&self, name: &str, token_type: &TokenType) -> Option<Token> {
+    pub fn get_token_by_name_and_expression_type(
+        &self,
+        name: &str,
+        expression_type: ExpressionType,
+    ) -> Option<Token> {
         if let Some(indices) = self.values.get(name) {
             for index in indices {
                 let token = &self.tokens[*index];
-                if token.does_match_type(token_type) {
+                if token.expression_type == expression_type {
                     return Some(self.tokens[*index].clone());
                 }
             }
-            None
-        } else {
-            None
         }
+        None
     }
 
     pub fn get_tokens(&self) -> Vec<Token> {
         self.tokens.clone()
-    }
-
-    fn sync_text_with_content(&mut self) {
-        self.text = self.content.to_string();
-    }
-
-    fn clear_lines(&mut self) {
-        self.lines = HashMap::new();
-    }
-
-    fn clear_tokens(&mut self) {
-        self.tokens = vec![];
     }
 
     pub fn parse(&mut self) -> Result<(), DocumentError> {
@@ -86,6 +84,8 @@ impl TextDocument {
         self.clear_tokens();
         self.clear_lines();
 
+        // TODO
+        // improve parsing flow
         match HllParser::parse(Rule::program, &self.text) {
             Ok(pairs) => {
                 for pair in pairs.flatten() {
@@ -143,6 +143,18 @@ impl TextDocument {
 
 // private methods
 impl TextDocument {
+    fn sync_text_with_content(&mut self) {
+        self.text = self.content.to_string();
+    }
+
+    fn clear_lines(&mut self) {
+        self.lines = HashMap::new();
+    }
+
+    fn clear_tokens(&mut self) {
+        self.tokens = vec![];
+    }
+
     fn build_edit<'change>(
         &self,
         change: &'change TextDocumentContentChangeEvent,
@@ -209,4 +221,6 @@ struct EditText<'text> {
 #[derive(Debug)]
 pub enum DocumentError {
     FailedToParse(Vec<Diagnostic>),
+    DocumentNotFound,
+    DocumentAlreadyStored,
 }

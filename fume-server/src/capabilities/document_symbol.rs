@@ -36,12 +36,12 @@ fn create_symbol_info(token: Token, url: Url) -> SymbolInformation {
 
 fn get_kind(token_type: &TokenType) -> SymbolKind {
     match token_type {
-        TokenType::EnumDefinition => SymbolKind::Enum,
-        TokenType::FunctionDefinition => SymbolKind::Function,
-        TokenType::LibraryDefinition => SymbolKind::Module,
-        TokenType::StructDefinition => SymbolKind::Struct,
-        TokenType::VariableDefinition => SymbolKind::Variable,
-        TokenType::TraitDefinition => SymbolKind::Interface,
+        TokenType::Enum => SymbolKind::Enum,
+        TokenType::Function => SymbolKind::Function,
+        TokenType::Library => SymbolKind::Module,
+        TokenType::Struct => SymbolKind::Struct,
+        TokenType::Variable => SymbolKind::Variable,
+        TokenType::Trait => SymbolKind::Interface,
         _ => SymbolKind::Unknown,
     }
 }

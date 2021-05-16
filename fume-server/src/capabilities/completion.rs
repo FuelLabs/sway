@@ -1,6 +1,6 @@
 use crate::core::{
     session::Session,
-    token::{Token, TokenType},
+    token::{ExpressionType, Token, TokenType},
 };
 use lspower::lsp::{CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse};
 use std::sync::Arc;
@@ -23,12 +23,14 @@ fn get_completion_items(tokens: Vec<Token>) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
     for token in tokens {
-        let item = CompletionItem {
-            label: token.name,
-            kind: get_kind(&token.token_type),
-            ..Default::default()
-        };
-        completion_items.push(item);
+        if token.expression_type == ExpressionType::Declaration {
+            let item = CompletionItem {
+                label: token.name,
+                kind: get_kind(&token.token_type),
+                ..Default::default()
+            };
+            completion_items.push(item);
+        }
     }
 
     completion_items
@@ -36,12 +38,12 @@ fn get_completion_items(tokens: Vec<Token>) -> Vec<CompletionItem> {
 
 fn get_kind(token_type: &TokenType) -> Option<CompletionItemKind> {
     match token_type {
-        TokenType::EnumDefinition => Some(CompletionItemKind::Enum),
-        TokenType::FunctionDefinition => Some(CompletionItemKind::Function),
-        TokenType::LibraryDefinition => Some(CompletionItemKind::Module),
-        TokenType::StructDefinition => Some(CompletionItemKind::Struct),
-        TokenType::VariableDefinition => Some(CompletionItemKind::Variable),
-        TokenType::TraitDefinition => Some(CompletionItemKind::Interface),
+        TokenType::Enum => Some(CompletionItemKind::Enum),
+        TokenType::Function => Some(CompletionItemKind::Function),
+        TokenType::Library => Some(CompletionItemKind::Module),
+        TokenType::Struct => Some(CompletionItemKind::Struct),
+        TokenType::Variable => Some(CompletionItemKind::Variable),
+        TokenType::Trait => Some(CompletionItemKind::Interface),
         _ => None,
     }
 }

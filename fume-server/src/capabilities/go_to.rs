@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use crate::core::{
-    session::Session,
-    token::{Token, TokenType},
-};
+use crate::core::{session::Session, token::ExpressionType};
 use lspower::lsp::{GotoDefinitionParams, GotoDefinitionResponse, Location};
 
 pub fn go_to_definition(
@@ -12,17 +9,19 @@ pub fn go_to_definition(
 ) -> Option<GotoDefinitionResponse> {
     let url = params.text_document_position_params.text_document.uri;
 
-    match session.get_token_from_position(&url, params.text_document_position_params.position) {
+    match session.get_token_at_position(&url, params.text_document_position_params.position) {
         Some(token) => {
-            if is_definition(&token) {
+            if token.expression_type == ExpressionType::Declaration {
                 Some(GotoDefinitionResponse::Scalar(Location::new(
                     url,
                     token.range,
                 )))
             } else {
-                if let Some(token_definition) =
-                    session.get_token_with_name_and_type(&url, &token.name, &token.token_type)
-                {
+                if let Some(token_definition) = session.get_token_by_name_and_expression_type(
+                    &url,
+                    &token.name,
+                    ExpressionType::Declaration,
+                ) {
                     Some(GotoDefinitionResponse::Scalar(Location::new(
                         url,
                         token_definition.range,
@@ -33,12 +32,5 @@ pub fn go_to_definition(
             }
         }
         _ => None,
-    }
-}
-
-fn is_definition(token: &Token) -> bool {
-    match token.token_type {
-        TokenType::FunctionCall => false,
-        _ => true,
     }
 }

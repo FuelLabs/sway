@@ -5,3 +5,4 @@ pub mod go_to;
 pub mod highlight;
 pub mod hover;
 pub mod semantic_tokens;
+pub mod text_sync;

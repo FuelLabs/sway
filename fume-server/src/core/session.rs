@@ -1,9 +1,9 @@
 use dashmap::DashMap;
-use lspower::lsp::{Position, TextDocumentContentChangeEvent, TextDocumentItem, Url};
+use lspower::lsp::{Position, Range, TextDocumentContentChangeEvent, TextDocumentItem, Url};
 
 use super::{
     document::{DocumentError, TextDocument},
-    token::{Token, TokenType},
+    token::{ExpressionType, Token},
 };
 
 #[derive(Debug)]
@@ -18,58 +18,79 @@ impl Session {
         }
     }
 
-    pub fn store_document(&self, document: &TextDocumentItem) -> Result<(), SessionError> {
+    // Document
+    pub fn store_document(&self, document: &TextDocumentItem) -> Result<(), DocumentError> {
         let text_document = TextDocument::new(document);
-        let uri = document.uri.clone();
+        let url = document.uri.clone();
 
-        match self.documents.insert(uri, text_document) {
+        match self.documents.insert(url, text_document) {
             None => Ok(()),
-            _ => Err(SessionError::DocumentAlreadyOpened),
+            _ => Err(DocumentError::DocumentAlreadyStored),
+        }
+    }
+
+    pub fn remove_document(&self, uri: &Url) -> Result<TextDocument, DocumentError> {
+        match self.documents.remove(uri) {
+            Some((_, text_document)) => Ok(text_document),
+            None => Err(DocumentError::DocumentNotFound),
         }
     }
 
     pub fn parse_document(&self, url: &Url) -> Result<(), DocumentError> {
-        let mut text_document = self.documents.get_mut(&url).unwrap();
-        text_document.parse()
+        match self.documents.get_mut(&url) {
+            Some(ref mut document) => document.parse(),
+            _ => Err(DocumentError::DocumentNotFound),
+        }
     }
 
     pub fn update_text_document(
         &self,
         uri: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
-    ) -> Result<(), SessionError> {
-        let mut text_document = self.documents.get_mut(&uri).unwrap();
-
-        changes.iter().for_each(|change| {
-            text_document.apply_change(change);
-        });
-
-        Ok(())
+    ) -> Result<(), DocumentError> {
+        match self.documents.get_mut(&uri) {
+            Some(ref mut document) => {
+                changes.iter().for_each(|change| {
+                    document.apply_change(change);
+                });
+                Ok(())
+            }
+            _ => Err(DocumentError::DocumentNotFound),
+        }
     }
 
-    pub fn get_token_from_position(&self, url: &Url, position: Position) -> Option<Token> {
+    // Token
+    pub fn get_token_at_position(&self, url: &Url, position: Position) -> Option<Token> {
         match self.documents.get(url) {
             Some(document) => document.get_token_at_position(position),
             _ => None,
         }
     }
 
-    pub fn get_token_with_name_and_type(
-        &self,
-        url: &Url,
-        name: &str,
-        token_type: &TokenType,
-    ) -> Option<Token> {
+    pub fn get_token_ranges(&self, url: &Url, name: &str) -> Option<Vec<Range>> {
         match self.documents.get(url) {
-            Some(document) => document.get_token_with_name(name, token_type),
+            Some(document) => {
+                let result = document
+                    .get_all_tokens_by_single_name(name)
+                    .unwrap()
+                    .iter()
+                    .map(|token| token.range)
+                    .collect();
+                Some(result)
+            }
             _ => None,
         }
     }
 
-    pub fn remove_document(&self, uri: &Url) -> Result<TextDocument, SessionError> {
-        match self.documents.remove(uri) {
-            Some((_, text_document)) => Ok(text_document),
-            None => Err(SessionError::DocumentAlreadyClosed),
+    pub fn get_token_by_name_and_expression_type(
+        &self,
+        url: &Url,
+        name: &str,
+        definition_type: ExpressionType,
+    ) -> Option<Token> {
+        match self.documents.get(url) {
+            Some(document) => document.get_token_by_name_and_expression_type(name, definition_type),
+            _ => None,
         }
     }
 
@@ -79,10 +100,4 @@ impl Session {
             _ => None,
         }
     }
-}
-
-#[derive(Debug)]
-pub enum SessionError {
-    DocumentAlreadyOpened,
-    DocumentAlreadyClosed,
 }

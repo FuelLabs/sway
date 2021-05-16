@@ -69,12 +69,12 @@ fn create_semantic_token(next_token: &Token, prev_token: Option<&Token>) -> Sema
 
 fn get_type(token_type: &TokenType) -> u32 {
     match token_type {
-        TokenType::FunctionDefinition => 1,
-        TokenType::LibraryDefinition => 3,
-        TokenType::VariableDefinition => 9,
-        TokenType::EnumDefinition => 10,
-        TokenType::StructDefinition => 11,
-        TokenType::TraitDefinition => 12,
+        TokenType::Function => 1,
+        TokenType::Library => 3,
+        TokenType::Variable => 9,
+        TokenType::Enum => 10,
+        TokenType::Struct => 11,
+        TokenType::Trait => 12,
         _ => 9,
     }
 }

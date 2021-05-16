@@ -57,13 +57,6 @@ impl LanguageServer for Backend {
                     ..Default::default()
                 }),
                 document_highlight_provider: Some(OneOf::Left(true)),
-                workspace: Some(lsp::WorkspaceServerCapabilities {
-                    workspace_folders: Some(lsp::WorkspaceFoldersServerCapabilities {
-                        supported: Some(true),
-                        change_notifications: Some(OneOf::Left(true)),
-                    }),
-                    ..Default::default()
-                }),
                 ..lsp::ServerCapabilities::default()
             },
         })
@@ -81,68 +74,41 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: lsp::DidOpenTextDocumentParams) {
-        self.log_info_message("File opened").await;
-
-        let url = params.text_document.uri.clone();
-
-        if let Ok(_) = self.session.store_document(&params.text_document) {
-            if let Err(DocumentError::FailedToParse(diagnostics)) =
-                self.session.parse_document(&url)
-            {
-                self.client
-                    .publish_diagnostics(params.text_document.uri, diagnostics, None)
-                    .await;
-            }
-        };
-    }
-
-    async fn did_change(&self, params: lsp::DidChangeTextDocumentParams) {
-        self.log_info_message("File changed").await;
-        self.session
-            .update_text_document(&params.text_document.uri, params.content_changes)
-            .unwrap();
-    }
-
-    async fn did_save(&self, params: lsp::DidSaveTextDocumentParams) {
-        self.log_info_message("File saved").await;
-
-        let url = params.text_document.uri.clone();
-        self.client.publish_diagnostics(url, vec![], None).await;
-
-        if let Err(DocumentError::FailedToParse(diagnostics)) =
-            self.session.parse_document(&params.text_document.uri)
+        if let Some(diagnostics) =
+            capabilities::text_sync::handle_open_file(self.session.clone(), &params)
         {
             self.client
                 .publish_diagnostics(params.text_document.uri, diagnostics, None)
                 .await;
-        } else {
-            match self.session.get_tokens_from_file(&params.text_document.uri) {
-                Some(tokens) => {
-                    self.log_info_message(&format!("len is {} - {:?}", tokens.len(), tokens))
-                        .await
-                }
-                _ => {}
-            }
+        }
+    }
+
+    async fn did_change(&self, params: lsp::DidChangeTextDocumentParams) {
+        let _ = capabilities::text_sync::handle_change_file(self.session.clone(), params);
+    }
+
+    async fn did_save(&self, params: lsp::DidSaveTextDocumentParams) {
+        let url = params.text_document.uri.clone();
+        self.client.publish_diagnostics(url, vec![], None).await;
+
+        if let Some(diagnostics) =
+            capabilities::text_sync::handle_save_file(self.session.clone(), &params)
+        {
+            self.client
+                .publish_diagnostics(params.text_document.uri, diagnostics, None)
+                .await;
         }
     }
 
     async fn did_close(&self, params: lsp::DidCloseTextDocumentParams) {
-        self.log_info_message("Closing a document").await;
-
-        match self.session.remove_document(&params.text_document.uri) {
-            Ok(_) => self.log_info_message("Document closed").await,
-            _ => self.log_info_message("Document previously closed").await,
-        };
+        let _ = capabilities::text_sync::handle_close_file(self.session.clone(), params);
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
-        let position = params.text_document_position_params.position;
-        let url = &params.text_document_position_params.text_document.uri;
-
-        match self.session.get_token_from_position(url, position) {
-            Some(token) => Ok(capabilities::hover::get_hover_data(token)),
-            _ => Ok(None),
-        }
+        Ok(capabilities::hover::get_hover_data(
+            self.session.clone(),
+            params,
+        ))
     }
 
     async fn completion(
@@ -161,7 +127,6 @@ impl LanguageServer for Backend {
         &self,
         params: lsp::DocumentSymbolParams,
     ) -> jsonrpc::Result<Option<lsp::DocumentSymbolResponse>> {
-        self.log_info_message("requesting a symbol").await;
         Ok(capabilities::document_symbol::document_symbol(
             self.session.clone(),
             params.text_document.uri,
@@ -178,15 +143,14 @@ impl LanguageServer for Backend {
         ))
     }
 
-    // Completion
     async fn document_highlight(
-        // 1. find exact value of the highlight
-        // 2. find it's matches in the document - convert to Range
-        // 3. return the Vector of those ranges
         &self,
-        _params: lsp::DocumentHighlightParams,
+        params: lsp::DocumentHighlightParams,
     ) -> jsonrpc::Result<Option<Vec<lsp::DocumentHighlight>>> {
-        Ok(None)
+        Ok(capabilities::highlight::get_highlights(
+            self.session.clone(),
+            params,
+        ))
     }
 
     async fn goto_definition(
