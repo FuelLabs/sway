@@ -1426,3 +1426,16 @@ pub(crate) enum OrganizationalOp {
     //
     JumpIfNotEq(RegisterId, RegisterId, Label),
 }
+
+
+impl OrganizationalOp {
+    pub(crate) fn registers(&mut self) -> HashSet<&mut RegisterId> {
+        use OrganizationalOp::*;
+        (match self {
+            RMove(ref mut r1, ref mut r2) => vec![r1, r2],
+            Label(_) | Comment | Jump(_) => vec![],
+            Ld(r1, _) => vec![r1],
+            JumpIfNotEq(r1, r2, _l) => vec![r1, r2]
+        }).into_iter().collect()
+    }
+}

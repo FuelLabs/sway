@@ -149,26 +149,31 @@ impl<'sc> AbstractInstructionSet<'sc> {
         let mut pool = RegisterPool::init();
         for (op, registers) in op_register_mapping {
             let new_registers: Option<Vec<_>> = registers
-                .into_iter()
-                .map(|reg| (reg, pool.get_register()))
+                .iter()
+                .map(|reg| pool.get_register())
                 .collect();
             let new_registers = match new_registers {
-                a @ (_, Some(_)) => a,
+                Some(a) => registers.into_iter().zip(a.into_iter()).collect::<Vec<_>>(),
                 _ => todo!("Return out of registers error"),
             };
             // if the virtual register is never read again, then we can
             // return this virtual register back into the pool
-
+            new_registers.iter().for_each(|(virtual_reg, real_reg)| {
+                if virtual_register_is_never_accessed_again(&virtual_reg, op_register_mapping.as_slice()) {
+                    pool.return_register_to_pool(*real_reg);
+                }
+            });
+            
             // TODO:
             // properly parse reserved registers and handle them in asm expressions
             // do not pull from the pool for reserved registers
-            //
+            // Rename RegisterId to VirtualRegister
         }
         todo!()
     }
 }
 
-fn register_is_never_read_again(reg: &Register, ops: &[(Op, Vec<Register>)]) -> bool {
+fn virtual_register_is_never_accessed_again(reg: &RegisterId, ops: &[(Op, std::collections::HashSet<&mut RegisterId>)]) -> bool {
     todo!()
 }
 struct RegisterPool {
