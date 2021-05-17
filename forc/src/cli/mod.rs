@@ -3,6 +3,16 @@ use structopt::StructOpt;
 mod commands;
 use self::commands::{analysis, benchmark, build, coverage, deploy, init, publish, serve, test};
 
+use analysis::Command as AnalysisCommand;
+use benchmark::Command as BenchmarkCommand;
+use build::Command as BuildCommand;
+use coverage::Command as CoverageCommand;
+use deploy::Command as DeployCommand;
+use init::Command as InitCommand;
+use publish::Command as PublishCommand;
+use serve::Command as ServeCommand;
+use test::Command as TestCommand;
+
 #[derive(Debug, StructOpt)]
 #[structopt(name = "forc", about = "Fuel HLL Orchestrator")]
 struct Opt {
@@ -13,15 +23,15 @@ struct Opt {
 
 #[derive(Debug, StructOpt)]
 enum Forc {
-    Analysis(analysis::Command),
-    Benchmark(benchmark::Command),
-    Build(build::Command),
-    Coverage(coverage::Command),
-    Deploy(deploy::Command),
-    Init(init::Command),
-    Publish(publish::Command),
-    Serve(serve::Command),
-    Test(test::Command),
+    Analysis(AnalysisCommand),
+    Benchmark(BenchmarkCommand),
+    Build(BuildCommand),
+    Coverage(CoverageCommand),
+    Deploy(DeployCommand),
+    Init(InitCommand),
+    Publish(PublishCommand),
+    Serve(ServeCommand),
+    Test(TestCommand),
 }
 
 pub(crate) fn run_cli() -> Result<(), String> {
