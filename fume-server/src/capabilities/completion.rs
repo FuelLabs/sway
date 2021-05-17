@@ -11,21 +11,19 @@ pub fn get_completion(
 ) -> Option<CompletionResponse> {
     let url = params.text_document_position.text_document.uri;
 
-    if let Some(tokens) = session.get_tokens_from_file(&url) {
-        let items = get_completion_items(tokens);
-        Some(CompletionResponse::Array(items))
-    } else {
-        None
+    match session.get_completion_items(&url) {
+        Some(items) => Some(CompletionResponse::Array(items)),
+        _ => None,
     }
 }
 
-fn get_completion_items(tokens: Vec<Token>) -> Vec<CompletionItem> {
+pub fn to_completion_items(tokens: &Vec<Token>) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
     for token in tokens {
         if token.expression_type == ExpressionType::Declaration {
             let item = CompletionItem {
-                label: token.name,
+                label: token.name.clone(),
                 kind: get_kind(&token.token_type),
                 ..Default::default()
             };

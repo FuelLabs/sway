@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 mod cli;
-mod utils;
 pub mod ops;
+mod utils;
 
 pub use utils::constants::*;

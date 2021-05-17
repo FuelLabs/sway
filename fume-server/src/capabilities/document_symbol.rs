@@ -8,24 +8,26 @@ use crate::core::{
 };
 
 pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
-    match session.get_tokens_from_file(&url) {
-        Some(tokens) => {
-            let mut symbols: Vec<SymbolInformation> = vec![];
-
-            for token in tokens {
-                let symbol = create_symbol_info(token, url.clone());
-                symbols.push(symbol)
-            }
-
-            Some(DocumentSymbolResponse::Flat(symbols))
-        }
+    match session.get_symbol_information(&url) {
+        Some(symbols) => Some(DocumentSymbolResponse::Flat(symbols)),
         _ => None,
     }
 }
 
-fn create_symbol_info(token: Token, url: Url) -> SymbolInformation {
+pub fn to_symbol_information(tokens: &Vec<Token>, url: Url) -> Vec<SymbolInformation> {
+    let mut symbols: Vec<SymbolInformation> = vec![];
+
+    for token in tokens {
+        let symbol = create_symbol_info(token, url.clone());
+        symbols.push(symbol)
+    }
+
+    symbols
+}
+
+fn create_symbol_info(token: &Token, url: Url) -> SymbolInformation {
     SymbolInformation {
-        name: token.name,
+        name: token.name.clone(),
         kind: get_kind(&token.token_type),
         location: Location::new(url, token.range),
         tags: None,

@@ -9,16 +9,13 @@ pub fn get_highlights(
     let url = params.text_document_position_params.text_document.uri;
     let position = params.text_document_position_params.position;
 
-    match session.get_token_at_position(&url, position) {
-        Some(token) => match session.get_token_ranges(&url, &token.name) {
-            Some(ranges) => Some(
-                ranges
-                    .into_iter()
-                    .map(|range| DocumentHighlight { range, kind: None })
-                    .collect(),
-            ),
-            _ => None,
-        },
+    match session.get_token_ranges(&url, position) {
+        Some(ranges) => Some(
+            ranges
+                .into_iter()
+                .map(|range| DocumentHighlight { range, kind: None })
+                .collect(),
+        ),
         _ => None,
     }
 }

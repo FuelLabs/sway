@@ -10,8 +10,8 @@ use lsp::{
     InitializeParams, InitializeResult, MessageType, OneOf,
 };
 
+use crate::capabilities;
 use crate::core::session::Session;
-use crate::{capabilities};
 
 #[derive(Debug)]
 pub struct Backend {

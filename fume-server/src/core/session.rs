@@ -1,5 +1,10 @@
 use dashmap::DashMap;
-use lspower::lsp::{Position, Range, TextDocumentContentChangeEvent, TextDocumentItem, Url};
+use lspower::lsp::{
+    CompletionItem, GotoDefinitionResponse, Hover, Position, Range, SemanticToken,
+    SymbolInformation, TextDocumentContentChangeEvent, TextDocumentItem, Url,
+};
+
+use crate::capabilities;
 
 use super::{
     document::{DocumentError, TextDocument},
@@ -60,44 +65,87 @@ impl Session {
     }
 
     // Token
-    pub fn get_token_at_position(&self, url: &Url, position: Position) -> Option<Token> {
-        match self.documents.get(url) {
-            Some(document) => document.get_token_at_position(position),
-            _ => None,
-        }
-    }
-
-    pub fn get_token_ranges(&self, url: &Url, name: &str) -> Option<Vec<Range>> {
-        match self.documents.get(url) {
-            Some(document) => {
+    pub fn get_token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
+        if let Some(document) = self.documents.get(url) {
+            if let Some(token) = document.get_token_at_position(position) {
                 let result = document
-                    .get_all_tokens_by_single_name(name)
+                    .get_all_tokens_by_single_name(&token.name)
                     .unwrap()
                     .iter()
                     .map(|token| token.range)
                     .collect();
-                Some(result)
+
+                return Some(result);
             }
-            _ => None,
         }
+
+        None
     }
 
-    pub fn get_token_by_name_and_expression_type(
+    pub fn get_token_hover_content(&self, url: &Url, position: Position) -> Option<Hover> {
+        if let Some(document) = self.documents.get(url) {
+            if let Some(token) = document.get_token_at_position(position) {
+                return Some(capabilities::hover::to_hover_content(token));
+            }
+        }
+
+        None
+    }
+
+    pub fn get_token_definition_response(
         &self,
-        url: &Url,
-        name: &str,
-        definition_type: ExpressionType,
-    ) -> Option<Token> {
-        match self.documents.get(url) {
-            Some(document) => document.get_token_by_name_and_expression_type(name, definition_type),
-            _ => None,
+        url: Url,
+        position: Position,
+    ) -> Option<GotoDefinitionResponse> {
+        if let Some(document) = self.documents.get(&url) {
+            if let Some(token) = document.get_token_at_position(position) {
+                if token.expression_type == ExpressionType::Declaration {
+                    return Some(capabilities::go_to::to_definition_response(url, token));
+                } else {
+                    if let Some(other_token) = document.get_token_by_name_and_expression_type(
+                        &token.name,
+                        ExpressionType::Declaration,
+                    ) {
+                        return Some(capabilities::go_to::to_definition_response(
+                            url,
+                            other_token,
+                        ));
+                    }
+                }
+            }
         }
+
+        None
     }
 
-    pub fn get_tokens_from_file(&self, url: &Url) -> Option<Vec<Token>> {
-        match self.documents.get(url) {
-            Some(document) => Some(document.get_tokens()),
-            _ => None,
+    pub fn get_completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
+        if let Some(document) = self.documents.get(url) {
+            return Some(capabilities::completion::to_completion_items(
+                document.get_tokens(),
+            ));
         }
+
+        None
+    }
+
+    pub fn get_semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
+        if let Some(document) = self.documents.get(url) {
+            return Some(capabilities::semantic_tokens::to_semantic_tokes(
+                document.get_tokens(),
+            ));
+        }
+
+        None
+    }
+
+    pub fn get_symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
+        if let Some(document) = self.documents.get(url) {
+            return Some(capabilities::document_symbol::to_symbol_information(
+                document.get_tokens(),
+                url.clone(),
+            ));
+        }
+
+        None
     }
 }

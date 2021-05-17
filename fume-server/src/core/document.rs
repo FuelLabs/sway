@@ -35,14 +35,14 @@ impl TextDocument {
         }
     }
 
-    pub fn get_token_at_position(&self, position: Position) -> Option<Token> {
+    pub fn get_token_at_position(&self, position: Position) -> Option<&Token> {
         let line = position.line;
 
         if let Some(indices) = self.lines.get(&line) {
             for index in indices {
                 let token = &self.tokens[*index];
                 if token.is_within_character_range(position.character) {
-                    return Some(token.clone());
+                    return Some(token);
                 }
             }
         }
@@ -63,20 +63,20 @@ impl TextDocument {
         &self,
         name: &str,
         expression_type: ExpressionType,
-    ) -> Option<Token> {
+    ) -> Option<&Token> {
         if let Some(indices) = self.values.get(name) {
             for index in indices {
                 let token = &self.tokens[*index];
                 if token.expression_type == expression_type {
-                    return Some(self.tokens[*index].clone());
+                    return Some(token);
                 }
             }
         }
         None
     }
 
-    pub fn get_tokens(&self) -> Vec<Token> {
-        self.tokens.clone()
+    pub fn get_tokens(&self) -> &Vec<Token> {
+        &self.tokens
     }
 
     pub fn parse(&mut self) -> Result<(), DocumentError> {

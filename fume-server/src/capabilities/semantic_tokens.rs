@@ -16,18 +16,10 @@ pub fn get_semantic_tokens_full(
 ) -> Option<SemanticTokensResult> {
     let url = params.text_document.uri;
 
-    match session.get_tokens_from_file(&url) {
-        Some(tokens) => {
-            if tokens.is_empty() {
+    match session.get_semantic_tokens(&url) {
+        Some(semantic_tokens) => {
+            if semantic_tokens.is_empty() {
                 return None;
-            }
-
-            let mut semantic_tokens: Vec<SemanticToken> =
-                vec![create_semantic_token(&tokens[0], None)];
-
-            for i in 1..tokens.len() {
-                let semantic_token = create_semantic_token(&tokens[i], Some(&tokens[i - 1]));
-                semantic_tokens.push(semantic_token);
             }
 
             Some(SemanticTokensResult::Tokens(SemanticTokens {
@@ -37,6 +29,21 @@ pub fn get_semantic_tokens_full(
         }
         _ => None,
     }
+}
+
+pub fn to_semantic_tokes(tokens: &Vec<Token>) -> Vec<SemanticToken> {
+    if tokens.is_empty() {
+        return vec![];
+    }
+
+    let mut semantic_tokens: Vec<SemanticToken> = vec![create_semantic_token(&tokens[0], None)];
+
+    for i in 1..tokens.len() {
+        let semantic_token = create_semantic_token(&tokens[i], Some(&tokens[i - 1]));
+        semantic_tokens.push(semantic_token);
+    }
+
+    semantic_tokens
 }
 
 fn create_semantic_token(next_token: &Token, prev_token: Option<&Token>) -> SemanticToken {
