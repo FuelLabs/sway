@@ -791,12 +791,7 @@ fn connect_expression<'sc>(
             graph.add_edge(this_ix, field_ix, "".into());
             Ok(vec![this_ix])
         }
-        AsmExpression {
-            registers,
-            body,
-            returns,
-            whole_block_span,
-        } => {
+        AsmExpression { .. } => {
             let asm_node = graph.add_node("Inline asm".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, asm_node, "".into());
