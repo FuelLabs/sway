@@ -352,25 +352,32 @@ impl<'sc> TypedExpression<'sc> {
                 let typed_registers = asm
                     .registers
                     .into_iter()
-                    .map(|AsmRegisterDeclaration { name, initializer }| {
-                        TypedAsmRegisterDeclaration {
-                            name,
-                            initializer: initializer.map(|initializer| {
-                                type_check!(
-                                    TypedExpression::type_check(
-                                        initializer.clone(),
-                                        namespace,
-                                        None,
-                                        "",
-                                        self_type
-                                    ),
-                                    error_recovery_expr(initializer.span()),
-                                    warnings,
-                                    errors
-                                )
-                            }),
-                        }
-                    })
+                    .map(
+                        |AsmRegisterDeclaration {
+                             name,
+                             initializer,
+                             name_span,
+                         }| {
+                            TypedAsmRegisterDeclaration {
+                                name_span: name_span.clone(),
+                                name,
+                                initializer: initializer.map(|initializer| {
+                                    type_check!(
+                                        TypedExpression::type_check(
+                                            initializer.clone(),
+                                            namespace,
+                                            None,
+                                            "",
+                                            self_type
+                                        ),
+                                        error_recovery_expr(initializer.span()),
+                                        warnings,
+                                        errors
+                                    )
+                                }),
+                            }
+                        },
+                    )
                     .collect();
                 TypedExpression {
                     expression: TypedExpressionVariant::AsmExpression {

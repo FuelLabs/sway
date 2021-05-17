@@ -85,8 +85,20 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             // registers from the sequencer for replacement
             let mut mapping_of_real_registers_to_declared_names: HashMap<&str, RegisterId> =
                 Default::default();
-            for TypedAsmRegisterDeclaration { name, initializer } in registers {
+            for TypedAsmRegisterDeclaration {
+                name,
+                initializer,
+                name_span,
+            } in registers
+            {
                 let register = register_sequencer.next();
+                assert_or_warn!(
+                    ConstantRegister::parse_register_name(name).is_none(),
+                    warnings,
+                    name_span.clone(),
+                    Warning::ShadowingReservedRegister { reg_name: name }
+                );
+
                 mapping_of_real_registers_to_declared_names.insert(name, register.clone());
                 // evaluate each register's initializer
                 if let Some(initializer) = initializer {

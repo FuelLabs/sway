@@ -22,7 +22,7 @@ pub use declaration::{
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
 pub(crate) use expression::*;
 use impl_trait::implementation_of_trait;
-use return_statement::TypedReturnStatement;
+pub(crate) use return_statement::TypedReturnStatement;
 pub(crate) use while_loop::TypedWhileLoop;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
