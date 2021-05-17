@@ -429,7 +429,7 @@ pub enum CompileError<'sc> {
     ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
     #[error("Expected block to implicitly return a value.")]
     ExpectedImplicitReturnFromBlock { span: Span<'sc> },
-    #[error("This register was not initialized in the initialization section of the ASM expression. Initialized registers are: {initialized_registers}")]
+    #[error("This register was not initialized in the initialization section of the ASM expression. Initialized registers are: [{initialized_registers}]")]
     UnknownRegister {
         span: Span<'sc>,
         initialized_registers: String,
