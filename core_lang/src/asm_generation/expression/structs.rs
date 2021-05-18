@@ -81,13 +81,13 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         };
         // since the size of `this_allocation` is bound by the size of 2^24, we know that
         // downcasting to a u32 is safe.
-        // However, since we may change the twenty four bits to something else, we want to check anyway
+        // However, since we may change the twenty four bits to something else, we want to check
+        // anyway
         let val_as_u32: u32 = match this_allocation.try_into() {
             Ok(o) => o,
             Err(_) => {
                 errors.push(CompileError::Unimplemented(
-                    "This struct is too large, and would \
-                not fit in one call frame extension.",
+                    "This struct is too large, and would not fit in one call frame extension.",
                     struct_name.span.clone(),
                 ));
                 return err(warnings, errors);

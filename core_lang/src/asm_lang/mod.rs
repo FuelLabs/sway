@@ -51,8 +51,8 @@ pub(crate) struct Op<'sc> {
 }
 
 impl<'sc> Op<'sc> {
-    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held within the
-    /// [RegisterId] `destination_address`
+    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held
+    /// within the [RegisterId] `destination_address`
     pub(crate) fn write_register_to_memory(
         destination_address: RegisterId,
         value_to_write: RegisterId,
@@ -65,8 +65,8 @@ impl<'sc> Op<'sc> {
             owning_span: Some(span),
         }
     }
-    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held within the
-    /// [RegisterId] `destination_address`, with the provided comment.
+    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held
+    /// within the [RegisterId] `destination_address`, with the provided comment.
     pub(crate) fn write_register_to_memory_comment(
         destination_address: RegisterId,
         value_to_write: RegisterId,

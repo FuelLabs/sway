@@ -42,16 +42,20 @@ impl<'sc> TypeInfo<'sc> {
     /// This function just passes all the trivial types through to a [ResolvedType].
     pub(crate) fn to_resolved(&self) -> MaybeResolvedType<'sc> {
         match self {
-            TypeInfo::Custom { .. } | TypeInfo::SelfType => panic!("Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for more details."),
+            TypeInfo::Custom { .. } | TypeInfo::SelfType => panic!(
+                "Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for \
+                 more details."
+            ),
             TypeInfo::Boolean => MaybeResolvedType::Resolved(ResolvedType::Boolean),
             TypeInfo::String => MaybeResolvedType::Resolved(ResolvedType::String),
-            TypeInfo::UnsignedInteger(bits) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(*bits)),
+            TypeInfo::UnsignedInteger(bits) => {
+                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(*bits))
+            }
             TypeInfo::Numeric => MaybeResolvedType::Partial(PartiallyResolvedType::Numeric),
             TypeInfo::Unit => MaybeResolvedType::Resolved(ResolvedType::Unit),
             TypeInfo::Byte => MaybeResolvedType::Resolved(ResolvedType::Byte),
             TypeInfo::Byte32 => MaybeResolvedType::Resolved(ResolvedType::Byte32),
-            TypeInfo::ErrorRecovery => MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-
+            TypeInfo::ErrorRecovery => MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
         }
     }
     pub(crate) fn parse_from_pair(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
