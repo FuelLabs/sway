@@ -16,9 +16,9 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     // step 0: construct 2 jump labels: to the else, and to after the else.
     // step 1: evaluate the condition
-    // step 2: conditional jump -- if the condition is false, jump to the else label. If there is no else, jump to the end.
-    // step 2: add jump to after the else from the end of the `then` branch
-    //         to recap, the asm order is: condition evaluation,
+    // step 2: conditional jump -- if the condition is false, jump to the else label. If there is no
+    // else, jump to the end. step 2: add jump to after the else from the end of the `then`
+    // branch         to recap, the asm order is: condition evaluation,
     //         conditional jump to else or after else,
     //         then branch,
     //         move then result to return register

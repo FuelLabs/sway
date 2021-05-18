@@ -375,7 +375,10 @@ pub fn compile<'sc, 'manifest>(
                 exports: o,
             },
             // Default to compiling an empty library if there is no code or invalid state
-            _ => unimplemented!("Multiple contracts, libraries, scripts, or predicates in a single file are unsupported."),
+            _ => unimplemented!(
+                "Multiple contracts, libraries, scripts, or predicates in a single file are \
+                 unsupported."
+            ),
         }
     } else {
         CompilationResult::Failure { errors, warnings }
@@ -502,7 +505,13 @@ fn parse_root_from_pairs<'sc>(
                 }
             }
             Rule::library => {
-                fuel_ast.library_exports.push((library_name.expect("Safe unwrap, because the core_lang enforces the library keyword is followed by a name. This is an invariant"), parse_tree));
+                fuel_ast.library_exports.push((
+                    library_name.expect(
+                        "Safe unwrap, because the core_lang enforces the library keyword is \
+                         followed by a name. This is an invariant",
+                    ),
+                    parse_tree,
+                ));
             }
             Rule::EOI => (),
             a => errors.push(CompileError::InvalidTopLevelItem(a, block.as_span())),

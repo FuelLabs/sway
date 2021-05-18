@@ -25,8 +25,8 @@ use while_loop::convert_while_loop_to_asm;
 // have a new unique identifier. For example, two separate invocations of `+` will result in 4
 // registers being used for arguments and 2 for outputs.
 //
-// After that, the level 0 bytecode will go through a process where register use is minified, producing level 1 bytecode. This process
-// is as such:
+// After that, the level 0 bytecode will go through a process where register use is minified,
+// producing level 1 bytecode. This process is as such:
 //
 // 1. Detect the last time a register is read. After that, it can be reused and recycled to fit the
 //    needs of the next "level 0 bytecode" register
@@ -295,8 +295,14 @@ impl<'sc> AsmNamespace<'sc> {
     ) -> CompileResult<'sc, &RegisterId> {
         match self.variables.get(&var_name) {
             Some(o) => ok(o, vec![], vec![]),
-            None => err(vec![], vec![CompileError::Internal ("Unknown variable in assembly generation. This should have been an error during type checking.",  var_name.span.clone() )])
-
+            None => err(
+                vec![],
+                vec![CompileError::Internal(
+                    "Unknown variable in assembly generation. This should have been an error \
+                     during type checking.",
+                    var_name.span.clone(),
+                )],
+            ),
         }
     }
 }

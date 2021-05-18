@@ -22,18 +22,17 @@
 //!
 //! # # Terms
 //! # # # Node
-//! A node is any [crate::semantic_analysis::TypedAstNode], with some [crate::semantic_analysis::TypedAstNodeContent].
-//! # # # Dominating nodes
+//! A node is any [crate::semantic_analysis::TypedAstNode], with some
+//! [crate::semantic_analysis::TypedAstNodeContent]. # # # Dominating nodes
 //! A dominating node is a node which all previous nodes pass through. These are what we are
 //! concerned about in control flow analysis. More formally,
-//! A node _M_ dominates a node _N_ if every path from the entry that reaches node _N_ has to pass through node _M_.
-//! # # # Reachability
+//! A node _M_ dominates a node _N_ if every path from the entry that reaches node _N_ has to pass
+//! through node _M_. # # # Reachability
 //! A node _N_ is reachable if there is a path to it from any one of the tree's entry points.
 //! # # # Entry Points
 //! The entry points to an AST depend on what type of AST it is. If it is a predicate or script,
 //! then the main function is the sole entry point. If it is a library or contract, then public
 //! functions or declarations are entry points.
-//!
 mod analyze_return_paths;
 mod dead_code_analysis;
 mod flow_graph;

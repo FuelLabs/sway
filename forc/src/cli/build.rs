@@ -83,7 +83,13 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let dep_path = match dep_path {
         Some(p) => p,
-        None => return Err("Only simple path imports are supported right now. Please supply a path relative to the manifest file.".into())
+        None => {
+            return Err(
+                "Only simple path imports are supported right now. Please supply a path relative \
+                 to the manifest file."
+                    .into(),
+            )
+        }
     };
 
     // dependency paths are relative to the path of the project being compiled

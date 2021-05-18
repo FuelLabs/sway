@@ -21,7 +21,8 @@ pub(crate) fn convert_decl_to_asm<'sc>(
         }
         // a trait declaration also does not have any asm directly generated from it
         TypedDeclaration::TraitDeclaration(_) => ok(vec![], vec![], vec![]),
-        // since all functions are inlined (for now -- shortcut), we also don't need to do anything for this.
+        // since all functions are inlined (for now -- shortcut), we also don't need to do anything
+        // for this.
         TypedDeclaration::ImplTrait { .. } => ok(vec![], vec![], vec![]),
         // once again the declaration of a type has no inherent asm, only instantiations
         TypedDeclaration::StructDeclaration(_) => ok(vec![], vec![], vec![]),
