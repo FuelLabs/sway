@@ -138,7 +138,7 @@ while_loop =  {while_keyword ~ expr ~ code_block}
 
 // asm inlining
 asm_expression           =  {asm_keyword ~ asm_registers ~ "{" ~ asm_op* ~ asm_register? ~ (":" ~ type_name)? ~ "}"}
-asm_registers            =  {"(" ~ asm_register_declaration ~ ("," ~ asm_register_declaration)* ~ ")"}
+asm_registers            =  {"(" ~ (asm_register_declaration ~ ("," ~ asm_register_declaration)*)? ~ ")"}
 // should we allow expressions to be directly assigned to registers, or only
 // already declared variables? i'm unsure
 asm_register_declaration =  {ident ~ (":" ~ expr)?}

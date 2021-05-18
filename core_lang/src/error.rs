@@ -204,6 +204,9 @@ pub enum Warning<'sc> {
     },
     DeadMethod,
     StructFieldNeverRead,
+    ShadowingReservedRegister {
+        reg_name: &'sc str,
+    },
 }
 
 impl<'sc> Warning<'sc> {
@@ -282,6 +285,7 @@ impl<'sc> Warning<'sc> {
             DeadTrait => "This trait is never implemented.".into(),
             DeadMethod => "This method is never called.".into(),
             StructFieldNeverRead => "This struct field is never accessed.".into(),
+            ShadowingReservedRegister { reg_name } => format!("This register declaration shadows the reserved register, \"{}\".", reg_name)
         }
     }
 }

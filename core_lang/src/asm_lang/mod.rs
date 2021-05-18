@@ -247,10 +247,10 @@ impl<'sc> Op<'sc> {
 
     pub(crate) fn parse_opcode(
         name: &Ident<'sc>,
-        args: &[&RegisterId],
+        args: &[RegisterId],
         immediate: Option<ImmediateValue>,
     ) -> CompileResult<'sc, Opcode> {
-        Opcode::parse(name, args, immediate)
+        Opcode::parse(name, args.iter().collect::<Vec<_>>().as_slice(), immediate)
     }
 }
 
@@ -1198,6 +1198,29 @@ impl fmt::Display for ConstantRegister {
             Flags => "$flag",
         };
         write!(f, "{}", text)
+    }
+}
+
+impl ConstantRegister {
+    pub(crate) fn parse_register_name(raw: &str) -> Option<ConstantRegister> {
+        use ConstantRegister::*;
+        Some(match raw {
+            "zero" => Zero,
+            "one" => One,
+            "of" => Overflow,
+            "pc" => ProgramCounter,
+            "ssp" => StackStartPointer,
+            "sp" => StackPointer,
+            "fp" => FramePointer,
+            "hp" => HeapPointer,
+            "err" => Error,
+            "ggas" => GlobalGas,
+            "cgas" => ContextGas,
+            "bal" => Balance,
+            "is" => InstructionStart,
+            "flag" => Flags,
+            _ => return None,
+        })
     }
 }
 
