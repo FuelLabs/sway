@@ -125,7 +125,7 @@ impl TextDocument {
             Err(_) => match parser::parse(&self.text) {
                 parser::CompileResult::Err { warnings, errors } => {
                     Err(DocumentError::FailedToParse(
-                        capabilities::diagnostic::perform_diagnostics(warnings, errors),
+                        capabilities::diagnostic::get_diagnostics(warnings, errors),
                     ))
                 }
                 _ => Ok(()),

@@ -3,7 +3,7 @@ use lspower::lsp::{self};
 
 use parser::{CompileError, CompileWarning};
 
-pub fn perform_diagnostics(
+pub fn get_diagnostics(
     warnings: Vec<CompileWarning>,
     errors: Vec<CompileError>,
 ) -> Vec<Diagnostic> {
