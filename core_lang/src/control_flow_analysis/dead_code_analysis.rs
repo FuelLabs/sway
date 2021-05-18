@@ -6,7 +6,7 @@ use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
     parse_tree::Visibility,
     semantic_analysis::ast_node::{
-        TypedExpressionVariant, TypedStructDeclaration, TypedTraitDeclaration,
+        TypedExpressionVariant, TypedReturnStatement, TypedStructDeclaration, TypedTraitDeclaration,
     },
     CompileError, Ident, TreeType,
 };
@@ -190,11 +190,51 @@ fn connect_node<'sc>(
     //    let mut graph = graph.clone();
     let span = node.span.clone();
     Ok(match &node.content {
-        TypedAstNodeContent::ReturnStatement(_)
-        | TypedAstNodeContent::ImplicitReturnExpression(_) => {
+        TypedAstNodeContent::ReturnStatement(TypedReturnStatement { expr }) => {
             let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
+            }
+            // evaluate the expression
+
+            let return_contents = connect_expression(
+                &expr.expression,
+                graph,
+                &[this_index],
+                exit_node,
+                "",
+                tree_type,
+                expr.span.clone(),
+            )?;
+            for leaf in return_contents {
+                graph.add_edge(this_index, leaf, "".into());
+            }
+            // connect return to the exit node
+            if let Some(exit_node) = exit_node {
+                graph.add_edge(this_index, exit_node, "return".into());
+                (vec![], None)
+            } else {
+                (vec![], None)
+            }
+        }
+        TypedAstNodeContent::ImplicitReturnExpression(expr) => {
+            let this_index = graph.add_node(node.into());
+            for leaf_ix in leaves {
+                graph.add_edge(*leaf_ix, this_index, "".into());
+            }
+            // evaluate the expression
+
+            let return_contents = connect_expression(
+                &expr.expression,
+                graph,
+                &[this_index],
+                exit_node,
+                "",
+                tree_type,
+                expr.span.clone(),
+            )?;
+            for leaf in return_contents {
+                graph.add_edge(this_index, leaf, "".into());
             }
             // connect return to the exit node
             if let Some(exit_node) = exit_node {
@@ -751,7 +791,15 @@ fn connect_expression<'sc>(
             graph.add_edge(this_ix, field_ix, "".into());
             Ok(vec![this_ix])
         }
-        _a => {
+        AsmExpression { .. } => {
+            let asm_node = graph.add_node("Inline asm".into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, asm_node, "".into());
+            }
+            Ok(vec![asm_node])
+        }
+        a => {
+            println!("Unimplemented: {:?}", a);
             return Err(CompileError::Unimplemented(
                 "Unimplemented dead code analysis for this.",
                 expression_span,

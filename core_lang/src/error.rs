@@ -204,6 +204,9 @@ pub enum Warning<'sc> {
     },
     DeadMethod,
     StructFieldNeverRead,
+    ShadowingReservedRegister {
+        reg_name: &'sc str,
+    },
 }
 
 impl<'sc> Warning<'sc> {
@@ -228,7 +231,8 @@ impl<'sc> Warning<'sc> {
             DeadEnumVariant { variant_name } => format!("Enum variant {} is never constructed.", variant_name),
             DeadTrait => "This trait is never implemented.".into(),
             DeadMethod => "This method is never called.".into(),
-            StructFieldNeverRead => "This struct field is never accessed.".into()
+            StructFieldNeverRead => "This struct field is never accessed.".into(),
+            ShadowingReservedRegister { reg_name } => format!("This register declaration shadows the reserved register, \"{}\".", reg_name)
         }
     }
 }
@@ -429,7 +433,7 @@ pub enum CompileError<'sc> {
     ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
     #[error("Expected block to implicitly return a value.")]
     ExpectedImplicitReturnFromBlock { span: Span<'sc> },
-    #[error("This register was not initialized in the initialization section of the ASM expression. Initialized registers are: {initialized_registers}")]
+    #[error("This register was not initialized in the initialization section of the ASM expression. Initialized registers are: [{initialized_registers}]")]
     UnknownRegister {
         span: Span<'sc>,
         initialized_registers: String,

@@ -85,8 +85,20 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             // registers from the sequencer for replacement
             let mut mapping_of_real_registers_to_declared_names: HashMap<&str, RegisterId> =
                 Default::default();
-            for TypedAsmRegisterDeclaration { name, initializer } in registers {
+            for TypedAsmRegisterDeclaration {
+                name,
+                initializer,
+                name_span,
+            } in registers
+            {
                 let register = register_sequencer.next();
+                assert_or_warn!(
+                    ConstantRegister::parse_register_name(name).is_none(),
+                    warnings,
+                    name_span.clone(),
+                    Warning::ShadowingReservedRegister { reg_name: name }
+                );
+
                 mapping_of_real_registers_to_declared_names.insert(name, register.clone());
                 // evaluate each register's initializer
                 if let Some(initializer) = initializer {
@@ -111,7 +123,10 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     .op_args
                     .iter()
                     .map(|x| -> Result<_, CompileError> {
-                        match mapping_of_real_registers_to_declared_names.get(x.primary_name) {
+                        match realize_register(
+                            x.primary_name,
+                            &mapping_of_real_registers_to_declared_names,
+                        ) {
                             Some(o) => Ok(o),
                             None => Err(CompileError::UnknownRegister {
                                 span: x.span.clone(),
@@ -134,7 +149,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         }
                         Ok(o) => Some(o),
                     })
-                    .collect::<Vec<&RegisterId>>();
+                    .collect::<Vec<RegisterId>>();
 
                 // parse the actual op and registers
                 let opcode = type_check!(
@@ -153,9 +168,10 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             match (returns, return_register) {
                 (Some((asm_reg, asm_reg_span)), return_reg) => {
                     // lookup and replace the return register
-                    let mapped_asm_ret = match mapping_of_real_registers_to_declared_names
-                        .get(asm_reg.name.as_str())
-                    {
+                    let mapped_asm_ret = match realize_register(
+                        asm_reg.name.as_str(),
+                        &mapping_of_real_registers_to_declared_names,
+                    ) {
                         Some(reg) => reg,
                         None => {
                             errors.push(CompileError::UnknownRegister {
@@ -236,6 +252,21 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             ));
             err(warnings, errors)
         }
+    }
+}
+
+/// Takes a virtual register ID and either locates it in the register mapping, finds it is a reserved register,
+/// or finds nothing and returns `None`.
+fn realize_register(
+    register_name: &str,
+    mapping_of_real_registers_to_declared_names: &HashMap<&str, RegisterId>,
+) -> Option<RegisterId> {
+    match mapping_of_real_registers_to_declared_names.get(register_name) {
+        Some(x) => Some(x.clone()),
+        None => match ConstantRegister::parse_register_name(register_name) {
+            Some(x) => Some(RegisterId::Constant(x)),
+            None => None,
+        },
     }
 }
 
