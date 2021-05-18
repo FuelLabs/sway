@@ -18,7 +18,9 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
     // step 1: evaluate the condition
     // step 2: conditional jump -- if the condition is false, jump to the else label. If there is no
     // else, jump to the end. step 2: add jump to after the else from the end of the `then`
-    // branch         to recap, the asm order is: condition evaluation,
+    // branch
+    //
+    // to recap, the asm order is: condition evaluation,
     //         conditional jump to else or after else,
     //         then branch,
     //         move then result to return register
