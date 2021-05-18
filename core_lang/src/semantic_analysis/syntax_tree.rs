@@ -122,7 +122,7 @@ impl<'sc> TypedParseTree<'sc> {
             }
             assert!(
                 next_pass_nodes.len() < num_failed_nodes,
-                "This collection should be monotonically decreasing in size."
+                "This collection should be strictly monotonically decreasing in size."
             );
             num_failed_nodes = next_pass_nodes.len();
         }
