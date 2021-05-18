@@ -9,6 +9,7 @@ use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
 use pest::Span;
 use std::{collections::HashSet, fmt};
+use fuel_asm::Opcode;
 
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
