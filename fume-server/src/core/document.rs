@@ -81,7 +81,7 @@ impl TextDocument {
     pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
         self.sync_text_with_content();
         self.clear_tokens();
-        self.clear_lines();
+        self.clear_hash_maps();
 
         match self.parse_tokens_from_text() {
             Ok((tokens, diagnostics)) => {
@@ -189,8 +189,9 @@ impl TextDocument {
         self.text = self.content.to_string();
     }
 
-    fn clear_lines(&mut self) {
+    fn clear_hash_maps(&mut self) {
         self.lines = HashMap::new();
+        self.values = HashMap::new();
     }
 
     fn clear_tokens(&mut self) {
