@@ -180,8 +180,6 @@ pub enum DeclarationType {
     Enum,
     Trait,
     Struct,
-    ImplTrait,
-    ImplSelf,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
