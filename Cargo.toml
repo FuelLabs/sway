@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["core_lang", "forc", "test_suite", "parser", "fume-server"]
+members = ["core_lang", "forc", "test_suite", "fume-server"]
 
