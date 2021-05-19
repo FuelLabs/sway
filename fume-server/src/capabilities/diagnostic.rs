@@ -1,7 +1,7 @@
 use lsp::{Diagnostic, DiagnosticSeverity, Position, Range};
 use lspower::lsp::{self};
 
-use parser::{CompileError, CompileWarning};
+use core_lang::{CompileError, CompileWarning};
 
 pub fn get_diagnostics(
     warnings: Vec<CompileWarning>,

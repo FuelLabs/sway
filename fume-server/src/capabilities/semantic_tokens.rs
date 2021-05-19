@@ -1,6 +1,6 @@
 use crate::core::{
     session::Session,
-    token::{Token, TokenType},
+    token::{ContentType, DeclarationType, Token},
 };
 use lspower::lsp::{
     SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
@@ -49,7 +49,7 @@ pub fn to_semantic_tokes(tokens: &Vec<Token>) -> Vec<SemanticToken> {
 fn create_semantic_token(next_token: &Token, prev_token: Option<&Token>) -> SemanticToken {
     // TODO - improve with modifiers
     let token_modifiers_bitset = 0;
-    let token_type = get_type(&next_token.token_type);
+    let token_type = get_type(&next_token.content_type);
     let length = next_token.length;
 
     let next_token_start_char = next_token.range.start.character;
@@ -74,15 +74,19 @@ fn create_semantic_token(next_token: &Token, prev_token: Option<&Token>) -> Sema
     }
 }
 
-fn get_type(token_type: &TokenType) -> u32 {
-    match token_type {
-        TokenType::Function => 1,
-        TokenType::Library => 3,
-        TokenType::Variable => 9,
-        TokenType::Enum => 10,
-        TokenType::Struct => 11,
-        TokenType::Trait => 12,
-        _ => 9,
+fn get_type(content_type: &ContentType) -> u32 {
+    if let ContentType::Declaration(dec) = content_type {
+        match dec {
+            DeclarationType::Function => 1,
+            DeclarationType::Library => 3,
+            DeclarationType::Variable => 9,
+            DeclarationType::Enum => 10,
+            DeclarationType::Struct => 11,
+            DeclarationType::Trait => 12,
+            _ => 9,
+        }
+    } else {
+        9
     }
 }
 

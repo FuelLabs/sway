@@ -1,15 +1,12 @@
 use dashmap::DashMap;
 use lspower::lsp::{
-    CompletionItem, GotoDefinitionResponse, Hover, Position, Range, SemanticToken,
+    CompletionItem, Diagnostic, GotoDefinitionResponse, Hover, Position, Range, SemanticToken,
     SymbolInformation, TextDocumentContentChangeEvent, TextDocumentItem, Url,
 };
 
 use crate::capabilities;
 
-use super::{
-    document::{DocumentError, TextDocument},
-    token::{ExpressionType, Token},
-};
+use super::document::{DocumentError, TextDocument};
 
 #[derive(Debug)]
 pub struct Session {
@@ -41,7 +38,7 @@ impl Session {
         }
     }
 
-    pub fn parse_document(&self, url: &Url) -> Result<(), DocumentError> {
+    pub fn parse_document(&self, url: &Url) -> Result<Vec<Diagnostic>, DocumentError> {
         match self.documents.get_mut(&url) {
             Some(ref mut document) => document.parse(),
             _ => Err(DocumentError::DocumentNotFound),
@@ -99,13 +96,10 @@ impl Session {
     ) -> Option<GotoDefinitionResponse> {
         if let Some(document) = self.documents.get(&url) {
             if let Some(token) = document.get_token_at_position(position) {
-                if token.expression_type == ExpressionType::Declaration {
+                if token.is_initial_declaration() {
                     return Some(capabilities::go_to::to_definition_response(url, token));
                 } else {
-                    if let Some(other_token) = document.get_token_by_name_and_expression_type(
-                        &token.name,
-                        ExpressionType::Declaration,
-                    ) {
+                    if let Some(other_token) = document.get_declared_token(&token.name) {
                         return Some(capabilities::go_to::to_definition_response(
                             url,
                             other_token,

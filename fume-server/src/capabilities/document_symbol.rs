@@ -4,7 +4,7 @@ use lspower::lsp::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKi
 
 use crate::core::{
     session::Session,
-    token::{Token, TokenType},
+    token::{ContentType, DeclarationType, Token},
 };
 
 pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
@@ -28,7 +28,7 @@ pub fn to_symbol_information(tokens: &Vec<Token>, url: Url) -> Vec<SymbolInforma
 fn create_symbol_info(token: &Token, url: Url) -> SymbolInformation {
     SymbolInformation {
         name: token.name.clone(),
-        kind: get_kind(&token.token_type),
+        kind: get_kind(&token.content_type),
         location: Location::new(url, token.range),
         tags: None,
         container_name: None,
@@ -36,14 +36,18 @@ fn create_symbol_info(token: &Token, url: Url) -> SymbolInformation {
     }
 }
 
-fn get_kind(token_type: &TokenType) -> SymbolKind {
-    match token_type {
-        TokenType::Enum => SymbolKind::Enum,
-        TokenType::Function => SymbolKind::Function,
-        TokenType::Library => SymbolKind::Module,
-        TokenType::Struct => SymbolKind::Struct,
-        TokenType::Variable => SymbolKind::Variable,
-        TokenType::Trait => SymbolKind::Interface,
-        _ => SymbolKind::Unknown,
+fn get_kind(content_type: &ContentType) -> SymbolKind {
+    if let ContentType::Declaration(dec) = content_type {
+        match dec {
+            DeclarationType::Enum => SymbolKind::Enum,
+            DeclarationType::Function => SymbolKind::Function,
+            DeclarationType::Library => SymbolKind::Module,
+            DeclarationType::Struct => SymbolKind::Struct,
+            DeclarationType::Variable => SymbolKind::Variable,
+            DeclarationType::Trait => SymbolKind::Interface,
+            _ => SymbolKind::Unknown,
+        }
+    } else {
+        SymbolKind::Unknown
     }
 }

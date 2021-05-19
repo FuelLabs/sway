@@ -1,31 +1,25 @@
+use core_lang::{
+    AstNode, AstNodeContent, Declaration, Expression, Ident, Span, VariableDeclaration,
+};
 use lspower::lsp::{Position, Range};
-use parser::{Rule, Span};
-use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct Token {
     pub range: Range,
-    pub token_type: TokenType,
-    pub expression_type: ExpressionType,
+    pub content_type: ContentType,
     pub name: String,
     pub line_start: u32,
     pub length: u32,
 }
 
 impl Token {
-    pub fn new(
-        span: Span,
-        name: String,
-        token_type: TokenType,
-        expression_type: ExpressionType,
-    ) -> Self {
-        let range = get_range(&span);
+    pub fn new(span: Span, name: String, content_type: ContentType) -> Self {
+        let range = get_range_from_span(&span);
 
         Self {
             range,
-            token_type,
             name,
-            expression_type,
+            content_type,
             line_start: range.start.line,
             length: range.end.character - range.start.character + 1,
         }
@@ -39,91 +33,129 @@ impl Token {
     pub fn get_line_start(&self) -> u32 {
         self.line_start
     }
-}
 
-pub fn pair_rule_to_token(pair: &Pair<Rule>) -> Option<Token> {
-    // TODO
-    // add more rules
-    let span = pair.as_span();
+    pub fn from_variable(variable: &VariableDeclaration) -> Self {
+        let ident = &variable.name;
+        let span = ident.span.clone();
+        let name = ident.primary_name;
+        // todo
+        // we could add type of variable as well? from type_ascription: TypeInfo field
+        Token::new(
+            span,
+            name.into(),
+            ContentType::Declaration(DeclarationType::Variable),
+        )
+    }
 
-    match pair.as_rule() {
-        Rule::library_name => {
-            let library_name = pair.as_str().into();
-            Some(Token::new(
-                span,
-                library_name,
-                TokenType::Library,
-                ExpressionType::Declaration,
-            ))
+    pub fn from_ident(ident: Ident, content_type: ContentType) -> Self {
+        Token::new(ident.span.clone(), ident.primary_name.into(), content_type)
+    }
+
+    pub fn is_initial_declaration(&self) -> bool {
+        if let ContentType::Declaration(ref dec) = self.content_type {
+            if &DeclarationType::Reassignment == dec {
+                return false;
+            }
+            return true;
         }
-        Rule::var_name => {
-            let var_name = pair.as_str().into();
-            Some(Token::new(
-                span,
-                var_name,
-                TokenType::Variable,
-                ExpressionType::Declaration,
-            ))
-        }
-        Rule::fn_decl_name => {
-            let func_name = pair.as_str().into();
-            Some(Token::new(
-                span,
-                func_name,
-                TokenType::Function,
-                ExpressionType::Declaration,
-            ))
-        }
-        Rule::enum_name => {
-            let enum_name = pair.as_str().into();
-            Some(Token::new(
-                span,
-                enum_name,
-                TokenType::Enum,
-                ExpressionType::Declaration,
-            ))
-        }
-        Rule::trait_name => {
-            let trait_name = pair.as_str().into();
-            Some(Token::new(
-                span,
-                trait_name,
-                TokenType::Trait,
-                ExpressionType::Declaration,
-            ))
-        }
-        Rule::struct_name => {
-            let struct_name = pair.as_str().into();
-            Some(Token::new(
-                span,
-                struct_name,
-                TokenType::Struct,
-                ExpressionType::Declaration,
-            ))
-        }
-        Rule::fn_name => {
-            let fn_name = pair.as_str().into();
-            Some(Token::new(
-                span,
-                fn_name,
-                TokenType::Function,
-                ExpressionType::Usage,
-            ))
-        }
-        Rule::var_exp => {
-            let var_name = pair.as_str().into();
-            Some(Token::new(
-                span,
-                var_name,
-                TokenType::Variable,
-                ExpressionType::Usage,
-            ))
-        }
-        _ => None,
+
+        false
     }
 }
 
-fn get_range(span: &Span) -> Range {
+pub fn traverse_node(node: AstNode, tokens: &mut Vec<Token>) {
+    match node.content {
+        AstNodeContent::Declaration(dec) => handle_declaration(dec, tokens),
+        AstNodeContent::Expression(exp) => handle_expression(exp, tokens),
+        // TODO
+        // handle other content types
+        _ => {}
+    };
+}
+
+fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
+    match declaration {
+        Declaration::VariableDeclaration(variable) => {
+            tokens.push(Token::from_variable(&variable));
+            handle_expression(variable.body, tokens);
+        }
+        Declaration::FunctionDeclaration(func) => {
+            let ident = func.name;
+            let token =
+                Token::from_ident(ident, ContentType::Declaration(DeclarationType::Function));
+            tokens.push(token);
+
+            for node in func.body.contents {
+                traverse_node(node, tokens);
+            }
+        }
+        Declaration::Reassignment(reassignment) => {
+            let ident = reassignment.lhs;
+            let token = Token::from_ident(
+                ident,
+                ContentType::Declaration(DeclarationType::Reassignment),
+            );
+            tokens.push(token);
+
+            handle_expression(reassignment.rhs, tokens);
+        }
+
+        Declaration::TraitDeclaration(trait_dec) => {
+            let ident = trait_dec.name;
+            let token = Token::from_ident(ident, ContentType::Declaration(DeclarationType::Trait));
+            tokens.push(token);
+
+            // todo
+            // traverse methods: Vec<FunctionDeclaration<'sc>> field as well ?
+        }
+        Declaration::StructDeclaration(struct_dec) => {
+            let ident = struct_dec.name;
+            let token = Token::from_ident(ident, ContentType::Declaration(DeclarationType::Struct));
+            tokens.push(token);
+        }
+        Declaration::EnumDeclaration(enum_dec) => {
+            let ident = enum_dec.name;
+            let token = Token::from_ident(ident, ContentType::Declaration(DeclarationType::Enum));
+            tokens.push(token);
+        }
+        _ => {}
+    };
+}
+
+fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
+    match exp {
+        Expression::CodeBlock {
+            span: _span,
+            contents,
+        } => {
+            let nodes = contents.contents;
+
+            for node in nodes {
+                traverse_node(node, tokens);
+            }
+        }
+        Expression::FunctionApplication {
+            name,
+            span: _span,
+            arguments: _arguments,
+        } => {
+            let ident = name.suffix;
+            let token = Token::from_ident(
+                ident,
+                ContentType::Expression(ExpressionType::FunctionApplication),
+            );
+            tokens.push(token);
+
+            // TODO
+            // perform a for/in on arguments ?
+        }
+        // TODO
+        // handle other expressions
+        _ => {}
+    }
+}
+
+fn get_range_from_span(span: &Span) -> Range {
     let start = span.start_pos().line_col();
     let end = span.end_pos().line_col();
 
@@ -139,20 +171,26 @@ fn get_range(span: &Span) -> Range {
     }
 }
 
-// TODO
-// add more types
-#[derive(Debug, Clone, PartialEq)]
-pub enum TokenType {
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum DeclarationType {
     Library,
     Variable,
     Function,
+    Reassignment,
     Enum,
     Trait,
     Struct,
+    ImplTrait,
+    ImplSelf,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum ExpressionType {
+    FunctionApplication,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ExpressionType {
-    Declaration,
-    Usage,
+pub enum ContentType {
+    Declaration(DeclarationType),
+    Expression(ExpressionType),
 }

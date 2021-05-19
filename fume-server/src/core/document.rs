@@ -1,13 +1,16 @@
 use std::collections::HashMap;
 
+use core_lang::{parse, CompileResult};
 use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent, TextDocumentItem};
-use parser::{self, HllParser, Rule};
-use pest::Parser;
+
 use ropey::Rope;
 
-use crate::capabilities;
+use crate::{
+    capabilities,
+    core::token::{traverse_node, DeclarationType},
+};
 
-use super::token::{pair_rule_to_token, ExpressionType, Token};
+use super::token::{ContentType, Token};
 
 #[derive(Debug)]
 pub struct TextDocument {
@@ -59,15 +62,11 @@ impl TextDocument {
         }
     }
 
-    pub fn get_token_by_name_and_expression_type(
-        &self,
-        name: &str,
-        expression_type: ExpressionType,
-    ) -> Option<&Token> {
+    pub fn get_declared_token(&self, name: &str) -> Option<&Token> {
         if let Some(indices) = self.values.get(name) {
             for index in indices {
                 let token = &self.tokens[*index];
-                if token.expression_type == expression_type {
+                if token.is_initial_declaration() {
                     return Some(token);
                 }
             }
@@ -79,57 +78,17 @@ impl TextDocument {
         &self.tokens
     }
 
-    pub fn parse(&mut self) -> Result<(), DocumentError> {
+    pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
         self.sync_text_with_content();
         self.clear_tokens();
         self.clear_lines();
 
-        // TODO
-        // improve parsing flow
-        match HllParser::parse(Rule::program, &self.text) {
-            Ok(pairs) => {
-                for pair in pairs.flatten() {
-                    if let Some(token) = pair_rule_to_token(&pair) {
-                        let line = token.get_line_start();
-                        let token_name = token.name.clone();
-
-                        // insert to tokens
-                        self.tokens.push(token);
-
-                        let token_index = self.tokens.len() - 1;
-
-                        // insert index into hashmap for lines
-                        match self.lines.get_mut(&line) {
-                            Some(v) => {
-                                v.push(token_index);
-                            }
-                            None => {
-                                self.lines.insert(line, vec![token_index]);
-                            }
-                        }
-
-                        // insert index into hashmap for names
-                        match self.values.get_mut(&token_name) {
-                            Some(v) => {
-                                v.push(token_index);
-                            }
-                            None => {
-                                self.values.insert(token_name, vec![token_index]);
-                            }
-                        }
-                    }
-                }
-
-                Ok(())
+        match self.parse_tokens_from_text() {
+            Ok((tokens, diagnostics)) => {
+                self.store_tokens(tokens);
+                Ok(diagnostics)
             }
-            Err(_) => match parser::parse(&self.text) {
-                parser::CompileResult::Err { warnings, errors } => {
-                    Err(DocumentError::FailedToParse(
-                        capabilities::diagnostic::get_diagnostics(warnings, errors),
-                    ))
-                }
-                _ => Ok(()),
-            },
+            Err(diagnostics) => Err(DocumentError::FailedToParse(diagnostics)),
         }
     }
 
@@ -143,6 +102,89 @@ impl TextDocument {
 
 // private methods
 impl TextDocument {
+    fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
+        match parse(&self.text) {
+            CompileResult::Err { warnings, errors } => {
+                Err(capabilities::diagnostic::get_diagnostics(warnings, errors))
+            }
+            CompileResult::Ok {
+                value,
+                warnings,
+                errors,
+            } => {
+                let mut tokens = vec![];
+
+                for (ident, parse_tree) in value.library_exports {
+                    // TODO
+                    // Is library name necessary to store for the LSP?
+                    let token = Token::from_ident(
+                        ident,
+                        ContentType::Declaration(DeclarationType::Library),
+                    );
+                    tokens.push(token);
+                    for node in parse_tree.root_nodes {
+                        traverse_node(node, &mut tokens);
+                    }
+                }
+
+                if let Some(script) = value.script_ast {
+                    for node in script.root_nodes {
+                        traverse_node(node, &mut tokens);
+                    }
+                }
+
+                if let Some(contract) = value.contract_ast {
+                    for node in contract.root_nodes {
+                        traverse_node(node, &mut tokens);
+                    }
+                }
+
+                if let Some(predicate) = value.predicate_ast {
+                    for node in predicate.root_nodes {
+                        traverse_node(node, &mut tokens);
+                    }
+                }
+
+                Ok((
+                    tokens,
+                    capabilities::diagnostic::get_diagnostics(warnings, errors),
+                ))
+            }
+        }
+    }
+
+    fn store_tokens(&mut self, tokens: Vec<Token>) {
+        self.tokens = Vec::with_capacity(tokens.len());
+
+        for (index, token) in tokens.into_iter().enumerate() {
+            let line = token.get_line_start();
+            let token_name = token.name.clone();
+
+            // insert to tokens
+            self.tokens.push(token);
+
+            // insert index into hashmap for lines
+            match self.lines.get_mut(&line) {
+                Some(v) => {
+                    v.push(index);
+                }
+                None => {
+                    self.lines.insert(line, vec![index]);
+                }
+            }
+
+            // insert index into hashmap for names
+            match self.values.get_mut(&token_name) {
+                Some(v) => {
+                    v.push(index);
+                }
+                None => {
+                    self.values.insert(token_name, vec![index]);
+                }
+            }
+        }
+    }
+
     fn sync_text_with_content(&mut self) {
         self.text = self.content.to_string();
     }

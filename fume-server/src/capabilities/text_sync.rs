@@ -15,14 +15,20 @@ pub fn handle_open_file(
     params: &DidOpenTextDocumentParams,
 ) -> Option<Vec<Diagnostic>> {
     if let Ok(_) = session.store_document(&params.text_document) {
-        if let Err(DocumentError::FailedToParse(diagnostics)) =
-            session.parse_document(&params.text_document.uri)
-        {
-            return Some(diagnostics);
+        match session.parse_document(&params.text_document.uri) {
+            Ok(diagnostics) => {
+                if diagnostics.is_empty() {
+                    None
+                } else {
+                    Some(diagnostics)
+                }
+            }
+            Err(DocumentError::FailedToParse(diagnostics)) => Some(diagnostics),
+            _ => None,
         }
+    } else {
+        None
     }
-
-    None
 }
 
 pub fn handle_change_file(
@@ -36,13 +42,17 @@ pub fn handle_save_file(
     session: Arc<Session>,
     params: &DidSaveTextDocumentParams,
 ) -> Option<Vec<Diagnostic>> {
-    if let Err(DocumentError::FailedToParse(diagnostics)) =
-        session.parse_document(&params.text_document.uri)
-    {
-        return Some(diagnostics);
+    match session.parse_document(&params.text_document.uri) {
+        Ok(diagnostics) => {
+            if diagnostics.is_empty() {
+                None
+            } else {
+                Some(diagnostics)
+            }
+        }
+        Err(DocumentError::FailedToParse(diagnostics)) => Some(diagnostics),
+        _ => None,
     }
-
-    None
 }
 
 pub fn handle_close_file(

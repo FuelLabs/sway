@@ -13,7 +13,7 @@ pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hove
 pub fn to_hover_content(token: &Token) -> Hover {
     Hover {
         contents: HoverContents::Markup(MarkupContent {
-            value: format!("{:?} : {}", token.token_type, token.name),
+            value: format!("{:?} : {}", token.content_type, token.name),
             kind: MarkupKind::PlainText,
         }),
         range: Some(token.range),
