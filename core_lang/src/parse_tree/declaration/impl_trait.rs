@@ -5,7 +5,7 @@ use pest::iterators::Pair;
 use pest::Span;
 
 #[derive(Debug, Clone)]
-pub(crate) struct ImplTrait<'sc> {
+pub struct ImplTrait<'sc> {
     pub(crate) trait_name: CallPath<'sc>,
     pub(crate) type_implementing_for: TypeInfo<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
@@ -18,7 +18,7 @@ pub(crate) struct ImplTrait<'sc> {
 /// An impl of methods without a trait
 /// like `impl MyType { fn foo { .. } }`
 #[derive(Debug, Clone)]
-pub(crate) struct ImplSelf<'sc> {
+pub struct ImplSelf<'sc> {
     pub(crate) type_implementing_for: TypeInfo<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
     pub(crate) functions: Vec<FunctionDeclaration<'sc>>,

@@ -11,7 +11,7 @@ use super::Visibility;
 
 #[derive(Debug, Clone)]
 pub struct StructDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
+    pub name: Ident<'sc>,
     pub(crate) fields: Vec<StructField<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) visibility: Visibility,

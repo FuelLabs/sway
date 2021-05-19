@@ -12,7 +12,7 @@ use crate::utils::join_spans;
 pub(crate) use asm::*;
 
 #[derive(Debug, Clone)]
-pub(crate) enum Expression<'sc> {
+pub enum Expression<'sc> {
     Literal {
         value: Literal<'sc>,
         span: Span<'sc>,
@@ -110,7 +110,7 @@ pub(crate) enum Expression<'sc> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct StructExpressionField<'sc> {
+pub struct StructExpressionField<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) value: Expression<'sc>,
     pub(crate) span: Span<'sc>,
@@ -633,7 +633,7 @@ impl<'sc> Expression<'sc> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct MatchBranch<'sc> {
+pub struct MatchBranch<'sc> {
     pub(crate) condition: MatchCondition<'sc>,
     pub(crate) result: Expression<'sc>,
     pub(crate) span: Span<'sc>,
@@ -727,7 +727,7 @@ impl<'sc> MatchBranch<'sc> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum UnaryOp {
+pub enum UnaryOp {
     Not,
     Ref,
     Deref,

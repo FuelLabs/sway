@@ -6,7 +6,7 @@ use crate::{
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub(crate) struct WhileLoop<'sc> {
+pub struct WhileLoop<'sc> {
     pub(crate) condition: Expression<'sc>,
     pub(crate) body: CodeBlock<'sc>,
 }

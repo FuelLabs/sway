@@ -4,13 +4,13 @@ use crate::Rule;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub(crate) enum ImportType<'sc> {
+pub enum ImportType<'sc> {
     Star,
     Item(Ident<'sc>),
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct UseStatement<'sc> {
+pub struct UseStatement<'sc> {
     pub(crate) call_path: Vec<Ident<'sc>>,
     pub(crate) import_type: ImportType<'sc>,
 }
