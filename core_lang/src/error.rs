@@ -451,6 +451,14 @@ pub enum CompileError<'sc> {
     UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
     #[error("Unable to infer concrete type for partial type \"{ty}\". Type must be known at this point. Try providing an annotation or using a concrete type.")]
     TypeMustBeKnown { ty: String, span: Span<'sc> },
+    #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
+    Immediate06TooLarge { val: u64, span: Span<'sc> },
+    #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
+    Immediate12TooLarge { val: u64, span: Span<'sc> },
+    #[error("The value \"{val}\" is too large to fit in this 18-bit immediate spot.")]
+    Immediate18TooLarge { val: u64, span: Span<'sc> },
+    #[error("The value \"{val}\" is too large to fit in this 24-bit immediate spot.")]
+    Immediate24TooLarge { val: u64, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -588,6 +596,10 @@ impl<'sc> CompileError<'sc> {
             UnknownEnumVariant { span, .. } => span,
             UnrecognizedOp { span, .. } => span,
             TypeMustBeKnown { span, .. } => span,
+            Immediate06TooLarge { span, .. } => span,
+            Immediate12TooLarge { span, .. } => span,
+            Immediate18TooLarge { span, .. } => span,
+            Immediate24TooLarge { span, .. } => span,
         }
     }
 

@@ -7,54 +7,58 @@
 
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
-use fuel_asm::Opcode;
 use pest::Span;
 use std::str::FromStr;
 use std::{collections::HashSet, fmt};
+mod virtual_ops;
+use virtual_ops::{
+    VirtualImmediate06, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+    VirtualRegister,
+};
 
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
 
-impl From<&AsmRegister> for RegisterId {
+impl From<&AsmRegister> for VirtualRegister {
     fn from(o: &AsmRegister) -> Self {
-        RegisterId::Virtual(o.name.clone())
+        VirtualRegister::Virtual(o.name.clone())
     }
 }
 
 #[derive(Clone)]
 pub(crate) struct Op<'sc> {
-    pub(crate) opcode: Either<Opcode, OrganizationalOp>,
-    /// A descriptive comment for debugging
+    pub(crate) opcode: Either<VirtualOp, OrganizationalOp>,
+    /// A descriptive comment for ASM readability
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span<'sc>>,
 }
 
 impl<'sc> Op<'sc> {
-    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held within the
-    /// [RegisterId] `destination_address`
+    /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
+    /// [VirtualRegister] `destination_address`
     pub(crate) fn write_register_to_memory(
-        destination_address: RegisterId,
-        value_to_write: RegisterId,
-        offset: ImmediateValue,
+        destination_address: VirtualRegister,
+        value_to_write: VirtualRegister,
+        offset: VirtualImmediate12,
         span: Span<'sc>,
     ) -> Self {
         Op {
-            opcode: Either::Left(Opcode::SW(destination_address, value_to_write, offset)),
+            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
             comment: String::new(),
             owning_span: Some(span),
         }
     }
-    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held within the
-    /// [RegisterId] `destination_address`, with the provided comment.
+    /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
+    /// [VirtualRegister] `destination_address`, with the provided comment.
     pub(crate) fn write_register_to_memory_comment(
-        destination_address: RegisterId,
-        value_to_write: RegisterId,
-        offset: ImmediateValue,
+        destination_address: VirtualRegister,
+        value_to_write: VirtualRegister,
+        offset: VirtualImmediateValue,
         span: Span<'sc>,
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(Opcode::SW(destination_address, value_to_write, offset)),
+            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
             comment: comment.into(),
             owning_span: Some(span),
         }
@@ -62,19 +66,19 @@ impl<'sc> Op<'sc> {
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
     pub(crate) fn unowned_stack_allocate_memory(size_to_allocate_in_words: u32) -> Self {
         Op {
-            opcode: Either::Left(Opcode::CFEI(size_to_allocate_in_words)),
+            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_words)),
             comment: String::new(),
             owning_span: None,
         }
     }
-    pub(crate) fn unowned_new_with_comment(opcode: Opcode, comment: impl Into<String>) -> Self {
+    pub(crate) fn unowned_new_with_comment(opcode: VirtualOp, comment: impl Into<String>) -> Self {
         Op {
             opcode: Either::Left(opcode),
             comment: comment.into(),
             owning_span: None,
         }
     }
-    pub(crate) fn new(opcode: Opcode, owning_span: Span<'sc>) -> Self {
+    pub(crate) fn new(opcode: VirtualOp, owning_span: Span<'sc>) -> Self {
         Op {
             opcode: Either::Left(opcode),
             comment: String::new(),
@@ -82,7 +86,7 @@ impl<'sc> Op<'sc> {
         }
     }
     pub(crate) fn new_with_comment(
-        opcode: Opcode,
+        opcode: VirtualOp,
         owning_span: Span<'sc>,
         comment: impl Into<String>,
     ) -> Self {
@@ -102,9 +106,9 @@ impl<'sc> Op<'sc> {
             owning_span: Some(owning_span),
         }
     }
-    /// Loads the data from [DataId] `data` into [RegisterId] `reg`.
+    /// Loads the data from [DataId] `data` into [VirtualRegister] `reg`.
     pub(crate) fn unowned_load_data_comment(
-        reg: RegisterId,
+        reg: VirtualRegister,
         data: DataId,
         comment: impl Into<String>,
     ) -> Self {
@@ -149,16 +153,20 @@ impl<'sc> Op<'sc> {
     }
 
     /// Moves the register in the second argument into the register in the first argument
-    pub(crate) fn register_move(r1: RegisterId, r2: RegisterId, owning_span: Span<'sc>) -> Self {
+    pub(crate) fn register_move(
+        r1: VirtualRegister,
+        r2: VirtualRegister,
+        owning_span: Span<'sc>,
+    ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            opcode: Either::Left(VirtualOp::RMove(r1, r2)),
             comment: String::new(),
             owning_span: Some(owning_span),
         }
     }
 
     /// Moves the register in the second argument into the register in the first argument
-    pub(crate) fn unowned_register_move(r1: RegisterId, r2: RegisterId) -> Self {
+    pub(crate) fn unowned_register_move(r1: VirtualRegister, r2: VirtualRegister) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
             comment: String::new(),
@@ -166,8 +174,8 @@ impl<'sc> Op<'sc> {
         }
     }
     pub(crate) fn register_move_comment(
-        r1: RegisterId,
-        r2: RegisterId,
+        r1: VirtualRegister,
+        r2: VirtualRegister,
         owning_span: Span<'sc>,
         comment: impl Into<String>,
     ) -> Self {
@@ -180,8 +188,8 @@ impl<'sc> Op<'sc> {
 
     /// Moves the register in the second argument into the register in the first argument
     pub(crate) fn unowned_register_move_comment(
-        r1: RegisterId,
-        r2: RegisterId,
+        r1: VirtualRegister,
+        r2: VirtualRegister,
         comment: impl Into<String>,
     ) -> Self {
         Op {
@@ -215,8 +223,12 @@ impl<'sc> Op<'sc> {
         }
     }
 
-    /// Jumps to [Label] `label`  if the given [RegisterId] `reg1` is not equal to `reg0`.
-    pub(crate) fn jump_if_not_equal(reg0: RegisterId, reg1: RegisterId, label: Label) -> Self {
+    /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg1` is not equal to `reg0`.
+    pub(crate) fn jump_if_not_equal(
+        reg0: VirtualRegister,
+        reg1: VirtualRegister,
+        label: Label,
+    ) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::JumpIfNotEq(reg0, reg1, label)),
             comment: String::new(),
@@ -226,181 +238,10 @@ impl<'sc> Op<'sc> {
 
     pub(crate) fn parse_opcode(
         name: &Ident<'sc>,
-        args: &[&RegisterId],
-        immediate: Option<ImmediateValue>,
-    ) -> CompileResult<'sc, Opcode> {
-        Opcode::parse(name, args, immediate)
-    }
-}
-
-impl Into<RegisterId> for &RegisterId {
-    fn into(self) -> RegisterId {
-        self.clone()
-    }
-}
-
-trait Parsable {
-    fn parse<'sc>(
-        name: &Ident<'sc>,
-        args: &[&RegisterId],
-        immediate: Option<ImmediateValue>,
-    ) -> CompileResult<'sc, Opcode>;
-    fn registers(&mut self) -> HashSet<&mut RegisterId>;
-}
-
-impl Parsable for Opcode {
-    /// If this name matches an opcode and there are the correct number and
-    /// type of arguments, parse the given inputs into an opcode.
-    fn parse<'sc>(
-        name: &Ident<'sc>,
-        args: &[&RegisterId],
-        immediate: Option<ImmediateValue>,
-    ) -> CompileResult<'sc, Opcode> {
-        let name = name.primary_name.to_uppercase();
-        let op = match Opcode::from_str(&name) {
-            Ok(o) => o,
-            Err(e) => todo!("Error parsing op"),
-        };
-        ok(op, vec![], vec![])
-    }
-    fn registers(&mut self) -> HashSet<&mut RegisterId> {
-        todo!()
-        /*
-        let regs: Vec<&mut RegisterId> = match self {
-            Add(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Addi(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            And(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Andi(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Div(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Divi(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Mod(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Modi(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Eq(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Gt(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Mult(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Multi(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Noop() => vec![],
-            Not(ref mut r1, ref mut r2) => vec![r1, r2],
-            Or(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Ori(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Sll(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Sllv(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Sltiu(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Sltu(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Sra(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Srl(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Srlv(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Srav(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Sub(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Subi(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Xor(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Xori(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Exp(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Expi(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            CIMV(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            CTMV(ref mut r1, ref mut r2) => vec![r1, r2],
-            Ji(_imm) => vec![],
-            Jnzi(ref mut r1, _imm) => vec![r1],
-            Ret(ref mut r1) => vec![r1],
-            Cfei(_imm) => vec![],
-            Cfs(ref mut r1) => vec![r1],
-            Lb(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Lw(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Malloc(ref mut r1) => vec![r1],
-            MemClearImmediate(ref mut r1, _imm) => vec![r1],
-            MemCp(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            MemEq(ref mut r1, ref mut r2, ref mut r3, ref mut r4) => vec![r1, r2, r3, r4],
-            Sb(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            Sw(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            BlockHash(ref mut r1, ref mut r2) => vec![r1, r2],
-            BlockHeight(ref mut r1) => vec![r1],
-            Call(ref mut r1, ref mut r2, ref mut r3, ref mut r4) => vec![r1, r2, r3, r4],
-            CodeCopy(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
-            CodeRoot(ref mut r1, ref mut r2) => vec![r1, r2],
-            Codesize(ref mut r1, ref mut r2) => vec![r1, r2],
-            Coinbase(ref mut r1) => vec![r1],
-            LoadCode(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            SLoadCode(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Log(ref mut r1, ref mut r2, ref mut r3, ref mut r4) => vec![r1, r2, r3, r4],
-            Revert(ref mut r1) => vec![r1],
-            Srw(ref mut r1, ref mut r2) => vec![r1, r2],
-            Srwx(ref mut r1, ref mut r2) => vec![r1, r2],
-            Sww(ref mut r1, ref mut r2) => vec![r1, r2],
-            Swwx(ref mut r1, ref mut r2) => vec![r1, r2],
-            Transfer(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            TransferOut(ref mut r1, ref mut r2, ref mut r3, ref mut r4) => vec![r1, r2, r3, r4],
-            Ecrecover(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Keccak256(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Sha256(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
-            Flag(ref mut r1) => vec![r1],
-        };
-
-        regs.into_iter().collect()
-        */
-    }
-}
-
-// internal representation for register ids
-// simpler to represent as usize since it avoids casts
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
-pub enum RegisterId {
-    Virtual(String),
-    Constant(ConstantRegister),
-}
-
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
-/// These are the special registers defined in the spec
-pub enum ConstantRegister {
-    Zero,
-    One,
-    Overflow,
-    ProgramCounter,
-    StackStartPointer,
-    StackPointer,
-    FramePointer,
-    HeapPointer,
-    Error,
-    GlobalGas,
-    ContextGas,
-    Balance,
-    InstructionStart,
-    Flags,
-}
-
-impl fmt::Display for ConstantRegister {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use ConstantRegister::*;
-        let text = match self {
-            Zero => "$zero",
-            One => "$one",
-            Overflow => "$of",
-            ProgramCounter => "$pc",
-            StackStartPointer => "$ssp",
-            StackPointer => "$sp",
-            FramePointer => "$fp",
-            HeapPointer => "$hp",
-            Error => "$err",
-            GlobalGas => "$ggas",
-            ContextGas => "$cgas",
-            Balance => "$bal",
-            InstructionStart => "$is",
-            Flags => "$flag",
-        };
-        write!(f, "{}", text)
-    }
-}
-
-// Immediate Value.
-pub type ImmediateValue = u32;
-
-impl fmt::Display for RegisterId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RegisterId::Virtual(name) => write!(f, "$r{}", name),
-            RegisterId::Constant(name) => {
-                write!(f, "{}", name)
-            }
-        }
+        args: &[&VirtualRegister],
+        immediate: Option<u64>,
+    ) -> CompileResult<'sc, VirtualOp> {
+        VirtualOp::parse(name, args, immediate)
     }
 }
 
@@ -417,7 +258,7 @@ impl fmt::Display for Op<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         todo!()
         /*
-        use Opcode::*;
+        use VirtualOp::*;
         use OrganizationalOp::*;
         let op_str = match &self.opcode {
             Either::Left(opcode) => match opcode {
@@ -464,7 +305,7 @@ impl fmt::Display for Op<'_> {
                 Lb(a, b, c) => format!("lb {} {} {}", a, b, c),
                 Lw(a, b, c) => format!("lw {} {} {}", a, b, c),
                 Malloc(a) => format!("malloc {}", a),
-                MemClearImmediate(a, b) => format!("memcleari {} {}", a, b),
+                MemClearVirtualImmediate(a, b) => format!("memcleari {} {}", a, b),
                 MemCp(a, b, c) => format!("memcp {} {} {}", a, b, c),
                 MemEq(a, b, c, d) => format!("memeq {} {} {} {}", a, b, c, d),
                 Sb(a, b, c) => format!("sb {} {} {}", a, b, c),
@@ -525,8 +366,6 @@ pub(crate) struct Label(pub(crate) usize);
 // these do not reflect actual ops in the VM and will be compiled to bytecode
 #[derive(Clone)]
 pub(crate) enum OrganizationalOp {
-    // copies the second register into the first register
-    RMove(RegisterId, RegisterId),
     // Labels the code for jumps, will later be interpreted into offsets
     Label(Label),
     // Just a comment that will be inserted into the asm without an op
@@ -535,19 +374,15 @@ pub(crate) enum OrganizationalOp {
     Jump(Label),
     // Loads from the data section into a register
     // "load data"
-    Ld(RegisterId, DataId),
-    //
-    JumpIfNotEq(RegisterId, RegisterId, Label),
+    Ld(VirtualRegister, DataId),
 }
 
 impl OrganizationalOp {
-    pub(crate) fn registers(&mut self) -> HashSet<&mut RegisterId> {
+    pub(crate) fn registers(&mut self) -> HashSet<&mut VirtualRegister> {
         use OrganizationalOp::*;
         (match self {
-            RMove(ref mut r1, ref mut r2) => vec![r1, r2],
             Label(_) | Comment | Jump(_) => vec![],
             Ld(r1, _) => vec![r1],
-            JumpIfNotEq(r1, r2, _l) => vec![r1, r2],
         })
         .into_iter()
         .collect()
