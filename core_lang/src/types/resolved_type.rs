@@ -5,8 +5,8 @@ use pest::Span;
 /// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
 /// Type symbols are ambiguous in the beginning of compilation, as any custom symbol could be
 /// an enum, struct, or generic type name. This enum is similar to [TypeInfo], except it lacks
-/// the capability to be `TypeInfo::Custom`, i.e., pending this resolution of whether it is generic or a
-/// known type. This allows us to ensure structurally that no unresolved types bleed into the
+/// the capability to be `TypeInfo::Custom`, i.e., pending this resolution of whether it is generic
+/// or a known type. This allows us to ensure structurally that no unresolved types bleed into the
 /// syntax tree.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum MaybeResolvedType<'sc> {

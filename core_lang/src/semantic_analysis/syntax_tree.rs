@@ -5,6 +5,7 @@ use crate::{
     error::*,
     types::{MaybeResolvedType, ResolvedType},
 };
+use std::collections::VecDeque;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TreeType {
@@ -68,26 +69,66 @@ impl<'sc> TypedParseTree<'sc> {
         tree_type: TreeType,
     ) -> CompileResult<'sc, Self> {
         let mut initial_namespace = initial_namespace.clone();
-        let typed_tree = parsed
-            .root_nodes
-            .into_iter()
-            .map(|node| {
-                TypedAstNode::type_check(
-                    node,
-                    &mut initial_namespace,
-                    None,
-                    "",
-                    // TODO only allow impl traits on contract trees, do something else
-                    // for other tree types
-                    &MaybeResolvedType::Resolved(ResolvedType::Contract),
-                )
-            })
-            .collect::<Vec<CompileResult<_>>>();
-
-        let mut typed_tree_nodes = Vec::new();
+        let mut successful_nodes = vec![];
+        let mut next_pass_nodes: VecDeque<_> = parsed.root_nodes.into_iter().collect();
+        let mut num_failed_nodes = next_pass_nodes.len();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        for res in typed_tree {
+        while num_failed_nodes > 0 {
+            let nodes = next_pass_nodes
+                .clone()
+                .into_iter()
+                .map(|node| {
+                    (
+                        node.clone(),
+                        TypedAstNode::type_check(
+                            node,
+                            &mut initial_namespace,
+                            None,
+                            "",
+                            // TODO only allow impl traits on contract trees, do something else
+                            // for other tree types
+                            &MaybeResolvedType::Resolved(ResolvedType::Contract),
+                        ),
+                    )
+                })
+                .collect::<Vec<(_, CompileResult<_>)>>();
+            next_pass_nodes = Default::default();
+
+            for (node, res) in nodes.clone() {
+                match res {
+                    CompileResult::Ok { ref errors, .. } if errors.is_empty() => {
+                        successful_nodes.push(res)
+                    }
+                    _ => next_pass_nodes.push_front(node),
+                }
+            }
+            // If we did not solve any issues, i.e. the same number of nodes failed,
+            // then this is a genuine error and so we break.
+            if next_pass_nodes.len() == num_failed_nodes {
+                for (_, failed_node_res) in nodes {
+                    match failed_node_res {
+                        CompileResult::Ok { .. } => unreachable!(),
+                        CompileResult::Err {
+                            errors: mut l_e,
+                            warnings: mut l_w,
+                        } => {
+                            errors.append(&mut l_e);
+                            warnings.append(&mut l_w);
+                        }
+                    }
+                }
+                break;
+            }
+            assert!(
+                next_pass_nodes.len() < num_failed_nodes,
+                "This collection should be strictly monotonically decreasing in size."
+            );
+            num_failed_nodes = next_pass_nodes.len();
+        }
+
+        let mut typed_tree_nodes = Vec::new();
+        for res in successful_nodes {
             match res {
                 CompileResult::Ok {
                     value: node,

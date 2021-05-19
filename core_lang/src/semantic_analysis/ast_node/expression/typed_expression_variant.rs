@@ -64,6 +64,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
 pub(crate) struct TypedAsmRegisterDeclaration<'sc> {
     pub(crate) initializer: Option<TypedExpression<'sc>>,
     pub(crate) name: &'sc str,
+    pub(crate) name_span: Span<'sc>,
 }
 
 impl<'sc> TypedExpressionVariant<'sc> {

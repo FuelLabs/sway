@@ -51,8 +51,8 @@ pub(crate) struct Op<'sc> {
 }
 
 impl<'sc> Op<'sc> {
-    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held within the
-    /// [RegisterId] `destination_address`
+    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held
+    /// within the [RegisterId] `destination_address`
     pub(crate) fn write_register_to_memory(
         destination_address: RegisterId,
         value_to_write: RegisterId,
@@ -65,8 +65,8 @@ impl<'sc> Op<'sc> {
             owning_span: Some(span),
         }
     }
-    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held within the
-    /// [RegisterId] `destination_address`, with the provided comment.
+    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held
+    /// within the [RegisterId] `destination_address`, with the provided comment.
     pub(crate) fn write_register_to_memory_comment(
         destination_address: RegisterId,
         value_to_write: RegisterId,
@@ -247,10 +247,10 @@ impl<'sc> Op<'sc> {
 
     pub(crate) fn parse_opcode(
         name: &Ident<'sc>,
-        args: &[&RegisterId],
+        args: &[RegisterId],
         immediate: Option<ImmediateValue>,
     ) -> CompileResult<'sc, Opcode> {
-        Opcode::parse(name, args, immediate)
+        Opcode::parse(name, args.iter().collect::<Vec<_>>().as_slice(), immediate)
     }
 }
 
@@ -1198,6 +1198,29 @@ impl fmt::Display for ConstantRegister {
             Flags => "$flag",
         };
         write!(f, "{}", text)
+    }
+}
+
+impl ConstantRegister {
+    pub(crate) fn parse_register_name(raw: &str) -> Option<ConstantRegister> {
+        use ConstantRegister::*;
+        Some(match raw {
+            "zero" => Zero,
+            "one" => One,
+            "of" => Overflow,
+            "pc" => ProgramCounter,
+            "ssp" => StackStartPointer,
+            "sp" => StackPointer,
+            "fp" => FramePointer,
+            "hp" => HeapPointer,
+            "err" => Error,
+            "ggas" => GlobalGas,
+            "cgas" => ContextGas,
+            "bal" => Balance,
+            "is" => InstructionStart,
+            "flag" => Flags,
+            _ => return None,
+        })
     }
 }
 
