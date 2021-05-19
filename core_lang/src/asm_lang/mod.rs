@@ -7,35 +7,13 @@
 
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
-use pest::Span;
-use std::{collections::HashSet, fmt};
 use fuel_asm::Opcode;
+use pest::Span;
+use std::str::FromStr;
+use std::{collections::HashSet, fmt};
 
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
-
-#[macro_export]
-macro_rules! opcodes {
-    (
-        $(
-            $op:ident ( $($inits:ident),* ) = $val:expr
-        ),+
-    ) => {
-        #[derive(Clone, PartialEq, Debug)]
-        pub enum Opcode {
-            $(
-                #[warn(unused_must_use)]
-                $op( $($inits),* ),
-            )+
-        }
-
-        $(
-            #[allow(non_upper_case_globals)]
-            const $op:u32 = $val;
-        )+
-
-    }
-}
 
 impl From<&AsmRegister> for RegisterId {
     fn from(o: &AsmRegister) -> Self {
@@ -61,7 +39,7 @@ impl<'sc> Op<'sc> {
         span: Span<'sc>,
     ) -> Self {
         Op {
-            opcode: Either::Left(Opcode::Sw(destination_address, value_to_write, offset)),
+            opcode: Either::Left(Opcode::SW(destination_address, value_to_write, offset)),
             comment: String::new(),
             owning_span: Some(span),
         }
@@ -76,7 +54,7 @@ impl<'sc> Op<'sc> {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(Opcode::Sw(destination_address, value_to_write, offset)),
+            opcode: Either::Left(Opcode::SW(destination_address, value_to_write, offset)),
             comment: comment.into(),
             owning_span: Some(span),
         }
@@ -84,7 +62,7 @@ impl<'sc> Op<'sc> {
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
     pub(crate) fn unowned_stack_allocate_memory(size_to_allocate_in_words: u32) -> Self {
         Op {
-            opcode: Either::Left(Opcode::Cfei(size_to_allocate_in_words)),
+            opcode: Either::Left(Opcode::CFEI(size_to_allocate_in_words)),
             comment: String::new(),
             owning_span: None,
         }
@@ -261,824 +239,33 @@ impl Into<RegisterId> for &RegisterId {
     }
 }
 
-impl Opcode {
+trait Parsable {
+    fn parse<'sc>(
+        name: &Ident<'sc>,
+        args: &[&RegisterId],
+        immediate: Option<ImmediateValue>,
+    ) -> CompileResult<'sc, Opcode>;
+    fn registers(&mut self) -> HashSet<&mut RegisterId>;
+}
+
+impl Parsable for Opcode {
     /// If this name matches an opcode and there are the correct number and
     /// type of arguments, parse the given inputs into an opcode.
-    pub(crate) fn parse<'sc>(
+    fn parse<'sc>(
         name: &Ident<'sc>,
         args: &[&RegisterId],
         immediate: Option<ImmediateValue>,
     ) -> CompileResult<'sc, Opcode> {
-        use Opcode::*;
-        let op = match name.primary_name {
-            "add" => {
-                if args.len() == 3 {
-                    Add(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "addi" => {
-                if args.len() == 3 {
-                    Addi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "and" => {
-                if args.len() == 3 {
-                    And(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "andi" => {
-                if args.len() == 3 {
-                    Andi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "div" => {
-                if args.len() == 3 {
-                    Div(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "divi" => {
-                if args.len() == 3 {
-                    Divi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "mod" => {
-                if args.len() == 3 {
-                    Mod(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "modi" => {
-                if args.len() == 3 {
-                    Modi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "eq" => {
-                if args.len() == 3 {
-                    Eq(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "gt" => {
-                if args.len() == 3 {
-                    Gt(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "mult" => {
-                if args.len() == 3 {
-                    Mult(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "multi" => {
-                if args.len() == 3 {
-                    Multi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "noop" => {
-                if args.len() == 0 {
-                    Noop()
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "not" => {
-                if args.len() == 2 {
-                    Not(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "or" => {
-                if args.len() == 3 {
-                    Or(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ori" => {
-                if args.len() == 3 {
-                    Ori(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sll" => {
-                if args.len() == 3 {
-                    Sll(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sllv" => {
-                if args.len() == 3 {
-                    Sllv(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sltiu" => {
-                if args.len() == 3 {
-                    Sltiu(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sltu" => {
-                if args.len() == 3 {
-                    Sltu(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sra" => {
-                if args.len() == 3 {
-                    Sra(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srl" => {
-                if args.len() == 3 {
-                    Srl(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srlv" => {
-                if args.len() == 3 {
-                    Srlv(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srav" => {
-                if args.len() == 3 {
-                    Srav(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sub" => {
-                if args.len() == 3 {
-                    Sub(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "subi" => {
-                if args.len() == 3 {
-                    Subi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "xor" => {
-                if args.len() == 3 {
-                    Xor(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "xori" => {
-                if args.len() == 3 {
-                    Xori(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "exp" => {
-                if args.len() == 3 {
-                    Exp(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "expi" => {
-                if args.len() == 3 {
-                    Expi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "cimv" => {
-                if args.len() == 3 {
-                    CIMV(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ctmv" => {
-                if args.len() == 2 {
-                    CTMV(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ji" => {
-                if args.len() == 1 {
-                    Ji(match immediate {
-                        Some(i) => i,
-                        None => {
-                            return err(
-                                vec![],
-                                vec![CompileError::MissingImmediate {
-                                    span: name.span.clone(),
-                                }],
-                            )
-                        }
-                    })
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "jnzi" => {
-                if args.len() == 2 {
-                    Jnzi(
-                        args[0].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ret" => {
-                if args.len() == 1 {
-                    Ret(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "cfei" => {
-                if args.len() == 1 {
-                    Cfei(match immediate {
-                        Some(i) => i,
-                        None => {
-                            return err(
-                                vec![],
-                                vec![CompileError::MissingImmediate {
-                                    span: name.span.clone(),
-                                }],
-                            )
-                        }
-                    })
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "cfs" => {
-                if args.len() == 1 {
-                    Cfs(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "lb" => {
-                if args.len() == 3 {
-                    Lb(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "lw" => {
-                if args.len() == 3 {
-                    Lw(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "malloc" => {
-                if args.len() == 1 {
-                    Malloc(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "memcleari" => {
-                if args.len() == 2 {
-                    MemClearImmediate(
-                        args[0].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "memcp" => {
-                if args.len() == 2 {
-                    MemCp(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "memeq" => {
-                if args.len() == 4 {
-                    MemEq(
-                        args[0].into(),
-                        args[1].into(),
-                        args[2].into(),
-                        args[3].into(),
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sb" => {
-                if args.len() == 3 {
-                    Sb(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sw" => {
-                if args.len() == 3 {
-                    Sw(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "blockhash" => {
-                if args.len() == 2 {
-                    BlockHash(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "blockheight" => {
-                if args.len() == 1 {
-                    BlockHeight(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "call" => {
-                if args.len() == 4 {
-                    Call(
-                        args[0].into(),
-                        args[1].into(),
-                        args[2].into(),
-                        args[3].into(),
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "codecopy" => {
-                if args.len() == 3 {
-                    CodeCopy(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "coderoot" => {
-                if args.len() == 2 {
-                    CodeRoot(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "codesize" => {
-                if args.len() == 2 {
-                    Codesize(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "coinbase" => {
-                if args.len() == 1 {
-                    Coinbase(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "loadcode" => {
-                if args.len() == 3 {
-                    LoadCode(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sloadcode" => {
-                if args.len() == 3 {
-                    SLoadCode(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "log" => {
-                if args.len() == 4 {
-                    Log(
-                        args[0].into(),
-                        args[1].into(),
-                        args[2].into(),
-                        args[3].into(),
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "revert" => {
-                if args.len() == 1 {
-                    Revert(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srw" => {
-                if args.len() == 2 {
-                    Srw(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srwx" => {
-                if args.len() == 2 {
-                    Srwx(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sww" => {
-                if args.len() == 2 {
-                    Sww(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "swwx" => {
-                if args.len() == 2 {
-                    Swwx(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "transfer" => {
-                if args.len() == 3 {
-                    Transfer(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "transferout" => {
-                if args.len() == 4 {
-                    TransferOut(
-                        args[0].into(),
-                        args[1].into(),
-                        args[2].into(),
-                        args[3].into(),
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ecrecover" => {
-                if args.len() == 3 {
-                    Ecrecover(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "keccak256" => {
-                if args.len() == 3 {
-                    Keccak256(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sha256" => {
-                if args.len() == 3 {
-                    Sha256(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "flag" => {
-                if args.len() == 1 {
-                    Flag(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            other => {
-                return err(
-                    vec![],
-                    vec![CompileError::UnrecognizedOp {
-                        op_name: other,
-                        span: name.clone().span,
-                    }],
-                )
-            }
+        let name = name.primary_name.to_uppercase();
+        let op = match Opcode::from_str(&name) {
+            Ok(o) => o,
+            Err(e) => todo!("Error parsing op"),
         };
         ok(op, vec![], vec![])
     }
-    pub(crate) fn registers(&mut self) -> HashSet<&mut RegisterId> {
-        use Opcode::*;
+    fn registers(&mut self) -> HashSet<&mut RegisterId> {
+        todo!()
+        /*
         let regs: Vec<&mut RegisterId> = match self {
             Add(ref mut r1, ref mut r2, ref mut r3) => vec![r1, r2, r3],
             Addi(ref mut r1, ref mut r2, _imm) => vec![r1, r2],
@@ -1149,6 +336,7 @@ impl Opcode {
         };
 
         regs.into_iter().collect()
+        */
     }
 }
 
@@ -1205,85 +393,6 @@ impl fmt::Display for ConstantRegister {
 // Immediate Value.
 pub type ImmediateValue = u32;
 
-opcodes! {
-    // Arithmetic and Logic.
-    Add(RegisterId, RegisterId, RegisterId) = 0,
-    Addi(RegisterId, RegisterId, ImmediateValue) = 1,
-    And(RegisterId, RegisterId, RegisterId) = 2,
-    Andi(RegisterId, RegisterId, ImmediateValue) = 3,
-    Div(RegisterId, RegisterId, RegisterId) = 4,
-    Divi(RegisterId, RegisterId, ImmediateValue) = 5,
-    Mod(RegisterId, RegisterId, RegisterId) = 6,
-    Modi(RegisterId, RegisterId, ImmediateValue) = 7,
-    Eq(RegisterId, RegisterId, RegisterId) = 8,
-    Gt(RegisterId, RegisterId, RegisterId) = 9,
-    Mult(RegisterId, RegisterId, RegisterId) = 10,
-    Multi(RegisterId, RegisterId, ImmediateValue) = 11,
-    Noop() = 12,
-    Not(RegisterId, RegisterId) = 13,
-    Or(RegisterId, RegisterId, RegisterId) = 14,
-    Ori(RegisterId, RegisterId, ImmediateValue) = 15,
-    Sll(RegisterId, RegisterId, ImmediateValue) = 16,
-    Sllv(RegisterId, RegisterId, RegisterId) = 17,
-    Sltiu(RegisterId, RegisterId, ImmediateValue) = 18,
-    Sltu(RegisterId, RegisterId, RegisterId) = 19,
-    Sra(RegisterId, RegisterId, ImmediateValue) = 20,
-    Srl(RegisterId, RegisterId, ImmediateValue) = 21,
-    Srlv(RegisterId, RegisterId, RegisterId) = 22,
-    Srav(RegisterId, RegisterId, RegisterId) = 23,
-    Sub(RegisterId, RegisterId, RegisterId) = 24,
-    Subi(RegisterId, RegisterId, ImmediateValue) = 25,
-    Xor(RegisterId, RegisterId, RegisterId) = 26,
-    Xori(RegisterId, RegisterId, ImmediateValue) = 27,
-    Exp(RegisterId, RegisterId, RegisterId) = 28,
-    Expi(RegisterId, RegisterId, ImmediateValue) = 29,
-
-    // Control Flow Opcodes.
-    CIMV(RegisterId, RegisterId, ImmediateValue) = 50,
-    CTMV(RegisterId, RegisterId) = 51,
-    Ji(ImmediateValue) = 52,
-    Jnzi(RegisterId, ImmediateValue) = 53,
-    Ret(RegisterId) = 54,
-
-    // Memory opcodes.
-    Cfei(ImmediateValue) = 60,
-    Cfs(RegisterId) = 61,
-    Lb(RegisterId, RegisterId, ImmediateValue) = 62,
-    Lw(RegisterId, RegisterId, ImmediateValue) = 63,
-    Malloc(RegisterId) = 64,
-    MemClearImmediate(RegisterId, ImmediateValue) = 65,
-    MemCp(RegisterId, RegisterId, RegisterId) = 66,
-    MemEq(RegisterId, RegisterId, RegisterId, RegisterId) = 67,
-    Sb(RegisterId, RegisterId, ImmediateValue) = 68,
-    Sw(RegisterId, RegisterId, ImmediateValue) = 69,
-
-    // Contract Opcodes.
-    BlockHash(RegisterId, RegisterId) = 80,
-    BlockHeight(RegisterId) = 81,
-    Call(RegisterId, RegisterId, RegisterId, RegisterId) = 82,
-    CodeCopy(RegisterId, RegisterId, ImmediateValue) = 83,
-    CodeRoot(RegisterId, RegisterId) = 84,
-    Codesize(RegisterId, RegisterId) = 85,
-    Coinbase(RegisterId) = 86,
-    LoadCode(RegisterId, RegisterId, RegisterId) = 87,
-    SLoadCode(RegisterId, RegisterId, RegisterId) = 88,
-    Log(RegisterId, RegisterId, RegisterId, RegisterId) = 89,
-    Revert(RegisterId) = 90,
-    Srw(RegisterId, RegisterId) = 91,
-    Srwx(RegisterId, RegisterId) = 92,
-    Sww(RegisterId, RegisterId) = 93,
-    Swwx(RegisterId, RegisterId) = 94,
-    Transfer(RegisterId, RegisterId, RegisterId) = 95,
-    TransferOut(RegisterId, RegisterId, RegisterId, RegisterId) = 96,
-
-    // Cryptographic Opcodes.
-    Ecrecover(RegisterId, RegisterId, RegisterId) = 110,
-    Keccak256(RegisterId, RegisterId, RegisterId) = 111,
-    Sha256(RegisterId, RegisterId, RegisterId) = 112,
-
-    // Additional Opcodes.
-    Flag(RegisterId) = 130
-}
 impl fmt::Display for RegisterId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -1306,6 +415,8 @@ impl fmt::Display for Op<'_> {
     // below code was constructed with vim macros -- easier to regenerate rather than rewrite.
     // @alex if you want to change the format and save yourself the pain.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+        /*
         use Opcode::*;
         use OrganizationalOp::*;
         let op_str = match &self.opcode {
@@ -1403,6 +514,7 @@ impl fmt::Display for Op<'_> {
         }
 
         write!(f, "{}", op_and_comment)
+            */
     }
 }
 
@@ -1428,7 +540,6 @@ pub(crate) enum OrganizationalOp {
     JumpIfNotEq(RegisterId, RegisterId, Label),
 }
 
-
 impl OrganizationalOp {
     pub(crate) fn registers(&mut self) -> HashSet<&mut RegisterId> {
         use OrganizationalOp::*;
@@ -1436,7 +547,9 @@ impl OrganizationalOp {
             RMove(ref mut r1, ref mut r2) => vec![r1, r2],
             Label(_) | Comment | Jump(_) => vec![],
             Ld(r1, _) => vec![r1],
-            JumpIfNotEq(r1, r2, _l) => vec![r1, r2]
-        }).into_iter().collect()
+            JumpIfNotEq(r1, r2, _l) => vec![r1, r2],
+        })
+        .into_iter()
+        .collect()
     }
 }
