@@ -37,6 +37,7 @@ jobs:
     - name: Build
       uses: actions-rs/cargo@v1
       with:
+        profile: minimal
         command: build
         args: --verbose
 
