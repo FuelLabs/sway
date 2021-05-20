@@ -82,7 +82,6 @@ static ENUM: u32 = 10;
 static STRUCT: u32 = 11;
 static TRAIT: u32 = 12;
 
-
 fn get_type(content_type: &ContentType) -> u32 {
     if let ContentType::Declaration(dec) = content_type {
         match dec {
