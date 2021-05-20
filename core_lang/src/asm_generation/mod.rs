@@ -128,65 +128,41 @@ impl<'sc> AbstractInstructionSet<'sc> {
         AbstractInstructionSet { ops: buf2 }
     }
 
-    fn allocate_registers(mut self) -> InstructionSet<'sc> {
+    fn allocate_registers(self) -> InstructionSet<'sc> {
         // Eventually, we will use a cool graph-coloring algorithm.
         // For now, just keep a pool of registers and return
         // registers when they are not read anymore
 
         // construct a mapping from every op to the registers it uses
-        /*
-                let mut op_register_mapping = self
-                    .ops
-                    .iter_mut()
-                    .map(|op| {
-                        (
-                            op.clone(),
-                            match op.opcode {
-                                Either::Left(mut opc) => opc.registers(),
-                                Either::Right(mut orgop) => todo!(),
-                            },
-                        )
-                    })
-                    .collect::<Vec<_>>();
-
-                // get registers from the pool.
-                let mut pool = RegisterPool::init();
-                for (op, registers) in op_register_mapping {
-                    let new_registers: Option<Vec<_>> =
-                        registers.iter().map(|reg| pool.get_register()).collect();
-                    let new_registers = match new_registers {
-                        Some(a) => registers.into_iter().zip(a.into_iter()).collect::<Vec<_>>(),
-                        _ => todo!("Return out of registers error"),
-                    };
-                    // if the virtual register is never read again, then we can
-                    // return this virtual register back into the pool
-                    new_registers.iter().for_each(|(virtual_reg, real_reg)| {
-                        if virtual_register_is_never_accessed_again(
-                            &virtual_reg,
-                            op_register_mapping.as_slice(),
-                        ) {
-                            pool.return_register_to_pool(*real_reg);
+        let mut op_register_mapping = self
+            .ops
+            .into_iter()
+            .map(|op| {
+                (
+                    op.clone(),
+                    match op.opcode {
+                        Either::Left(opc) => {
+                            opc.registers().into_iter().map(|x| x.clone()).collect()
                         }
-                    });
+                        Either::Right(_orgop) => todo!(),
+                    },
+                )
+            })
+            .collect::<Vec<_>>();
 
-                    // TODO:
-                    // properly parse reserved registers and handle them in asm expressions
-                    // do not pull from the pool for reserved registers
-                    // Rename VirtualRegister to VirtualRegister
-                }
-        */
+        // get registers from the pool.
+        let mut pool = RegisterPool::init();
+        for (op, registers) in &op_register_mapping {
+            let allocated_op = match op.opcode {
+                Either::Left(ref op) => op.allocate_registers(&mut pool, &op_register_mapping),
+                Either::Right(ref _org_op) => todo!("convert org op to real op"),
+            };
+        }
         todo!()
     }
 }
 
-fn virtual_register_is_never_accessed_again(
-    reg: &VirtualRegister,
-    ops: &[(Op, std::collections::HashSet<&mut VirtualRegister>)],
-) -> bool {
-    todo!()
-}
-
-struct RegisterPool {
+pub(crate) struct RegisterPool {
     available_registers: Vec<AllocatedRegister>,
 }
 
@@ -200,11 +176,11 @@ impl RegisterPool {
         }
     }
 
-    fn get_register(&mut self) -> Option<AllocatedRegister> {
+    pub(crate) fn get_register(&mut self) -> Option<AllocatedRegister> {
         self.available_registers.pop()
     }
 
-    fn return_register_to_pool(&mut self, item_to_return: AllocatedRegister) {
+    pub(crate) fn return_register_to_pool(&mut self, item_to_return: AllocatedRegister) {
         self.available_registers.push(item_to_return);
     }
 }

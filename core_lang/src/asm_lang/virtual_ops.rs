@@ -4,8 +4,14 @@
 //! The immediate types are used to safely construct numbers that are within their bounds, and the
 //! ops are clones of the actual opcodes, but with the safe primitives as arguments.
 
+use super::{
+    allocated_ops::{AllocatedOp, AllocatedRegister},
+    Op,
+};
+use crate::asm_generation::RegisterPool;
 use crate::{error::*, Ident};
 use pest::Span;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::fmt;
 
@@ -1308,9 +1314,61 @@ impl VirtualOp {
     pub(crate) fn parse<'sc>(name: &Ident<'sc>, args: &[&str]) -> CompileResult<'sc, Self> {
         todo!()
     }
-    pub(crate) fn registers(&self) -> Vec<VirtualRegister> {
+    pub(crate) fn registers(&self) -> HashSet<&VirtualRegister> {
         todo!()
     }
+
+    pub(crate) fn allocate_registers(
+        &self,
+        pool: &mut RegisterPool,
+        op_register_mapping: &[(Op, HashSet<VirtualRegister>)],
+    ) -> AllocatedOp {
+        let virtual_registers = self.registers();
+        let register_allocation_result = virtual_registers
+            .clone()
+            .into_iter()
+            .map(|x| (x, pool.get_register()))
+            .map(|(x, res)| match res {
+                Some(res) => Some((x, res)),
+                None => None,
+            })
+            .collect::<Option<Vec<_>>>();
+
+        // Maps virtual registers to their allocated equivalent
+        let mut mapping = HashMap::default();
+        match register_allocation_result {
+            Some(o) => {
+                for (key, val) in o {
+                    mapping.insert(key, val);
+                }
+            }
+            None => todo!("Out of registers error"),
+        };
+
+        for reg in virtual_registers {
+            if virtual_register_is_never_accessed_again(reg, &op_register_mapping) {
+                pool.return_register_to_pool(mapping.get(reg).unwrap().clone());
+            }
+        }
+
+        use VirtualOp::*;
+        match self {
+            ADD(reg1, reg2, reg3) => AllocatedOp::ADD(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            _ => todo!(),
+        }
+    }
+}
+
+/// An unchecked function which serves as a convenience for looking up register mappings
+fn map_reg(
+    mapping: &HashMap<&VirtualRegister, AllocatedRegister>,
+    reg: &VirtualRegister,
+) -> AllocatedRegister {
+    mapping.get(reg).unwrap().clone()
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -1320,4 +1378,10 @@ impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, ".{}", self.0)
     }
+}
+fn virtual_register_is_never_accessed_again(
+    reg: &VirtualRegister,
+    ops: &[(Op, std::collections::HashSet<VirtualRegister>)],
+) -> bool {
+    todo!()
 }
