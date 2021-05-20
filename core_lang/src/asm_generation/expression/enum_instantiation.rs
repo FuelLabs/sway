@@ -1,6 +1,11 @@
-use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
+use crate::asm_generation::{
+    compiler_constants::*, convert_expression_to_asm, AsmNamespace, RegisterSequencer,
+};
 use crate::asm_lang::{
-    virtual_ops::{ConstantRegister, VirtualImmediate12, VirtualOp, VirtualRegister},
+    virtual_ops::{
+        ConstantRegister, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+        VirtualRegister,
+    },
     Op,
 };
 use crate::error::*;
@@ -43,21 +48,31 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
         "load $sp for enum pointer",
     ));
     let size_of_enum = 1 /* tag */ + decl.as_type().stack_size_of();
-    let size_of_enum: u32 = match u32::try_from(size_of_enum) {
-        Ok(o) if o < 16777216 /* 2^24 */ => o,
-        _ => {
-            errors.push(CompileError::Unimplemented(
-                "Stack variables which exceed 2^24 (16777216) words in size are not supported yet.",
-                decl.clone().span,
-            ));
-            return err(warnings, errors);
-        }
-    };
+    if size_of_enum < EIGHTEEN_BITS {
+        errors.push(CompileError::Unimplemented(
+            "Stack variables which exceed 2^18 words in size are not supported yet.",
+            decl.clone().span,
+        ));
+        return err(warnings, errors);
+    }
 
-    asm_buf.push(Op::unowned_stack_allocate_memory(size_of_enum));
+    asm_buf.push(Op::unowned_stack_allocate_memory(
+        VirtualImmediate24::new_unchecked(
+            size_of_enum,
+            "this size is manually checked to be lower than 2^24",
+        ),
+    ));
     // initialize all the memory to 0
+    // there are only 18 bits of immediate in MCLI so we need to do this in multiple passes,
+    // This is not yet implemented, so instead we just limit enum size to 2^18 words
     asm_buf.push(Op::new(
-        VirtualOp::MCLI(pointer_register.clone(), size_of_enum),
+        VirtualOp::MCLI(
+            pointer_register.clone(),
+            VirtualImmediate18::new_unchecked(
+                size_of_enum,
+                "the enum was manually checked to be under 2^18 words in size",
+            ),
+        ),
         decl.clone().span,
     ));
     // write the tag

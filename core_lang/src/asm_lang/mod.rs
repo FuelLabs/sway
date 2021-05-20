@@ -15,6 +15,7 @@ use virtual_ops::{
     VirtualOp, VirtualRegister,
 };
 
+pub(crate) mod allocated_ops;
 pub(crate) mod virtual_ops;
 
 /// The column where the ; for comments starts
@@ -241,7 +242,8 @@ impl<'sc> Op<'sc> {
 
     pub(crate) fn parse_opcode(
         name: &Ident<'sc>,
-        args: &[&Ident<'sc>],
+        args: &[&VirtualRegister],
+        immediate: &Option<Ident<'sc>>,
     ) -> CompileResult<'sc, VirtualOp> {
         todo!()
     }

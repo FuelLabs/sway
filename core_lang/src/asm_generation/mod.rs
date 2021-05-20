@@ -1,7 +1,11 @@
 use std::{collections::HashMap, fmt};
 
 use crate::{
-    asm_lang::{Label, Op, OrganizationalOp, RegisterId},
+    asm_lang::{
+        allocated_ops::AllocatedRegister,
+        virtual_ops::{Label, VirtualOp, VirtualRegister},
+        Op, OrganizationalOp,
+    },
     error::*,
     parse_tree::Literal,
     semantic_analysis::{TypedAstNode, TypedAstNodeContent, TypedParseTree},
@@ -130,83 +134,77 @@ impl<'sc> AbstractInstructionSet<'sc> {
         // registers when they are not read anymore
 
         // construct a mapping from every op to the registers it uses
-        let mut op_register_mapping = self
-            .ops
-            .iter_mut()
-            .map(|op| {
-                (
-                    op.clone(),
-                    match op.opcode {
-                        Either::Left(mut opc) => opc.registers(),
-                        Either::Right(mut orgop) => todo!(),
-                    },
-                )
-            })
-            .collect::<Vec<_>>();
+        /*
+                let mut op_register_mapping = self
+                    .ops
+                    .iter_mut()
+                    .map(|op| {
+                        (
+                            op.clone(),
+                            match op.opcode {
+                                Either::Left(mut opc) => opc.registers(),
+                                Either::Right(mut orgop) => todo!(),
+                            },
+                        )
+                    })
+                    .collect::<Vec<_>>();
 
-        // get registers from the pool.
-        // if the registers are never read again, return them to the pool.
-        let mut pool = RegisterPool::init();
-        for (op, registers) in op_register_mapping {
-            let new_registers: Option<Vec<_>> =
-                registers.iter().map(|reg| pool.get_register()).collect();
-            let new_registers = match new_registers {
-                Some(a) => registers.into_iter().zip(a.into_iter()).collect::<Vec<_>>(),
-                _ => todo!("Return out of registers error"),
-            };
-            // if the virtual register is never read again, then we can
-            // return this virtual register back into the pool
-            new_registers.iter().for_each(|(virtual_reg, real_reg)| {
-                todo!()
-                /*
-                if virtual_register_is_never_accessed_again(
-                    &virtual_reg,
-                    op_register_mapping.as_slice(),
-                ) {
-                    pool.return_register_to_pool(*real_reg);
+                // get registers from the pool.
+                let mut pool = RegisterPool::init();
+                for (op, registers) in op_register_mapping {
+                    let new_registers: Option<Vec<_>> =
+                        registers.iter().map(|reg| pool.get_register()).collect();
+                    let new_registers = match new_registers {
+                        Some(a) => registers.into_iter().zip(a.into_iter()).collect::<Vec<_>>(),
+                        _ => todo!("Return out of registers error"),
+                    };
+                    // if the virtual register is never read again, then we can
+                    // return this virtual register back into the pool
+                    new_registers.iter().for_each(|(virtual_reg, real_reg)| {
+                        if virtual_register_is_never_accessed_again(
+                            &virtual_reg,
+                            op_register_mapping.as_slice(),
+                        ) {
+                            pool.return_register_to_pool(*real_reg);
+                        }
+                    });
+
+                    // TODO:
+                    // properly parse reserved registers and handle them in asm expressions
+                    // do not pull from the pool for reserved registers
+                    // Rename VirtualRegister to VirtualRegister
                 }
-                */
-            });
-
-            // TODO:
-            // properly parse reserved registers and handle them in asm expressions
-            // do not pull from the pool for reserved registers
-            // Rename RegisterId to VirtualRegister
-        }
+        */
         todo!()
     }
 }
 
 fn virtual_register_is_never_accessed_again(
-    reg: &RegisterId,
-    ops: &[(Op, std::collections::HashSet<&mut RegisterId>)],
+    reg: &VirtualRegister,
+    ops: &[(Op, std::collections::HashSet<&mut VirtualRegister>)],
 ) -> bool {
     todo!()
 }
-struct RegisterPool {
-    available_registers: Vec<Register>,
-}
 
-enum Register {
-    Free(u8),
-    Reserved(u8),
+struct RegisterPool {
+    available_registers: Vec<AllocatedRegister>,
 }
 
 impl RegisterPool {
     fn init() -> Self {
-        let mut register_pool: Vec<Register> = (compiler_constants::NUM_FREE_REGISTERS..0)
-            .map(|x| Register::Free(x))
+        let mut register_pool: Vec<AllocatedRegister> = (compiler_constants::NUM_FREE_REGISTERS..0)
+            .map(|x| AllocatedRegister::Allocated(x))
             .collect();
         Self {
             available_registers: register_pool,
         }
     }
 
-    fn get_register(&mut self) -> Option<Register> {
+    fn get_register(&mut self) -> Option<AllocatedRegister> {
         self.available_registers.pop()
     }
 
-    fn return_register_to_pool(&mut self, item_to_return: Register) {
+    fn return_register_to_pool(&mut self, item_to_return: AllocatedRegister) {
         self.available_registers.push(item_to_return);
     }
 }
@@ -215,7 +213,7 @@ impl RegisterPool {
 fn label_is_used<'sc>(buf: &[Op<'sc>], label: &Label) -> bool {
     buf.iter().any(|Op { ref opcode, .. }| match opcode {
         Either::Right(OrganizationalOp::Jump(ref l)) if label == l => true,
-        Either::Right(OrganizationalOp::JumpIfNotEq(_reg0, _reg1, ref l)) if label == l => true,
+        Either::Left(VirtualOp::JNEI(_reg0, _reg1, ref l)) if label == l => true,
         _ => false,
     })
 }
@@ -363,7 +361,7 @@ impl fmt::Display for InstructionSet<'_> {
 #[derive(Default, Clone)]
 pub(crate) struct AsmNamespace<'sc> {
     data_section: DataSection<'sc>,
-    variables: HashMap<Ident<'sc>, RegisterId>,
+    variables: HashMap<Ident<'sc>, VirtualRegister>,
 }
 
 /// An address which refers to a value in the data section of the asm.
@@ -377,7 +375,11 @@ impl fmt::Display for DataId {
 }
 
 impl<'sc> AsmNamespace<'sc> {
-    pub(crate) fn insert_variable(&mut self, var_name: Ident<'sc>, register_location: RegisterId) {
+    pub(crate) fn insert_variable(
+        &mut self,
+        var_name: Ident<'sc>,
+        register_location: VirtualRegister,
+    ) {
         self.variables.insert(var_name, register_location);
     }
     pub(crate) fn insert_data_value(&mut self, data: &Data<'sc>) -> DataId {
@@ -397,7 +399,7 @@ impl<'sc> AsmNamespace<'sc> {
     pub(crate) fn look_up_variable(
         &self,
         var_name: &Ident<'sc>,
-    ) -> CompileResult<'sc, &RegisterId> {
+    ) -> CompileResult<'sc, &VirtualRegister> {
         match self.variables.get(&var_name) {
             Some(o) => ok(o, vec![], vec![]),
             None => err(vec![], vec![CompileError::Internal ("Unknown variable in assembly generation. This should have been an error during type checking.",  var_name.span.clone() )])
@@ -598,7 +600,7 @@ fn convert_node_to_asm<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
     // Where to put the return value of this node, if it is needed.
-    return_register: Option<&RegisterId>,
+    return_register: Option<&VirtualRegister>,
 ) -> CompileResult<'sc, NodeAsmResult<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];

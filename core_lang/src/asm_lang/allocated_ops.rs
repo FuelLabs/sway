@@ -1,200 +1,44 @@
 //! This module contains abstracted versions of bytecode primitives that the compiler uses to
 //! ensure correctness and safety.
 //!
-//! The immediate types are used to safely construct numbers that are within their bounds, and the
-//! ops are clones of the actual opcodes, but with the safe primitives as arguments.
+//! These ops are different from [VirtualOp]s in that they contain allocated registers, i.e. at
+//! most 48 free registers plus reserved registers. These ops can be safely directly converted to
+//! bytecode.
+//!
+//!
+//! It is unfortunate that there are copies of our opcodes in multiple places, but this ensures the
+//! best type safety. It can be macro'd someday.
 
-use crate::{error::*, Ident};
-use pest::Span;
-use std::convert::TryInto;
+use super::virtual_ops::*;
 use std::fmt;
 
 /// Represents virtual registers that have yet to be allocated.
 /// Note that only the Virtual variant will be allocated, and the Constant variant refers to
 /// reserved registers.
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
-pub enum VirtualRegister {
-    Virtual(String),
-    Constant(ConstantRegister),
+pub enum AllocatedRegister {
+    Allocated(u8),
+    Constant(super::virtual_ops::ConstantRegister),
 }
 
-impl Into<VirtualRegister> for &VirtualRegister {
-    fn into(self) -> VirtualRegister {
-        self.clone()
-    }
-}
-
-impl fmt::Display for VirtualRegister {
+impl fmt::Display for AllocatedRegister {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            VirtualRegister::Virtual(name) => write!(f, "$r{}", name),
-            VirtualRegister::Constant(name) => {
+            AllocatedRegister::Allocated(name) => write!(f, "$r{}", name),
+            AllocatedRegister::Constant(name) => {
                 write!(f, "{}", name)
             }
         }
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
-/// These are the special registers defined in the spec
-pub enum ConstantRegister {
-    Zero,
-    One,
-    Overflow,
-    ProgramCounter,
-    StackStartPointer,
-    StackPointer,
-    FramePointer,
-    HeapPointer,
-    Error,
-    GlobalGas,
-    ContextGas,
-    Balance,
-    InstructionStart,
-    Flags,
-}
-
-impl fmt::Display for ConstantRegister {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use ConstantRegister::*;
-        let text = match self {
-            Zero => "$zero",
-            One => "$one",
-            Overflow => "$of",
-            ProgramCounter => "$pc",
-            StackStartPointer => "$ssp",
-            StackPointer => "$sp",
-            FramePointer => "$fp",
-            HeapPointer => "$hp",
-            Error => "$err",
-            GlobalGas => "$ggas",
-            ContextGas => "$cgas",
-            Balance => "$bal",
-            InstructionStart => "$is",
-            Flags => "$flag",
-        };
-        write!(f, "{}", text)
-    }
-}
-
-/// 6-bits immediate value type
-#[derive(Clone)]
-pub struct VirtualImmediate06 {
-    value: u8,
-}
-
-impl VirtualImmediate06 {
-    fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
-        if raw > 0b111_111 {
-            return Err(CompileError::Immediate06TooLarge {
-                val: raw,
-                span: err_msg_span,
-            });
-        } else {
-            Ok(Self {
-                value: raw.try_into().unwrap(),
-            })
-        }
-    }
-}
-
-/// 12-bits immediate value type
-#[derive(Clone)]
-pub struct VirtualImmediate12 {
-    value: u16,
-}
-
-impl VirtualImmediate12 {
-    pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
-        if raw > 0b111_111_111_111 {
-            return Err(CompileError::Immediate12TooLarge {
-                val: raw,
-                span: err_msg_span,
-            });
-        } else {
-            Ok(Self {
-                value: raw.try_into().unwrap(),
-            })
-        }
-    }
-    /// This method should only be used if the size of the raw value has already been manually
-    /// checked.
-    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
-    /// error at a higher level, probably via an internal compiler error or similar.
-    /// A panic message is still required, just in case the programmer has made an error.
-    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
-        Self {
-            value: raw.try_into().expect(&(msg.into())),
-        }
-    }
-}
-
-/// 18-bits immediate value type
-#[derive(Clone)]
-pub struct VirtualImmediate18 {
-    value: u32,
-}
-impl VirtualImmediate18 {
-    fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
-        if raw > 0b111_111_111_111_111_111 {
-            return Err(CompileError::Immediate18TooLarge {
-                val: raw,
-                span: err_msg_span,
-            });
-        } else {
-            Ok(Self {
-                value: raw.try_into().unwrap(),
-            })
-        }
-    }
-    /// This method should only be used if the size of the raw value has already been manually
-    /// checked.
-    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
-    /// error at a higher level, probably via an internal compiler error or similar.
-    /// A panic message is still required, just in case the programmer has made an error.
-    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
-        Self {
-            value: raw.try_into().expect(&(msg.into())),
-        }
-    }
-}
-
-/// 24-bits immediate value type
-#[derive(Clone)]
-pub struct VirtualImmediate24 {
-    value: u32,
-}
-impl VirtualImmediate24 {
-    fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
-        if raw > 0b111_111_111_111_111_111_111_111 {
-            return Err(CompileError::Immediate24TooLarge {
-                val: raw,
-                span: err_msg_span,
-            });
-        } else {
-            Ok(Self {
-                value: raw.try_into().unwrap(),
-            })
-        }
-    }
-    /// This method should only be used if the size of the raw value has already been manually
-    /// checked.
-    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
-    /// error at a higher level, probably via an internal compiler error or similar.
-    /// A panic message is still required, just in case the programmer has made an error.
-    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
-        Self {
-            value: raw.try_into().expect(&(msg.into())),
-        }
-    }
-}
-
-/// This enum is unfortunately a redundancy of the [fuel_asm::Opcode] enum. This variant, however,
-/// allows me to use the compiler's internal [VirtualRegister] types and maintain type safety
-/// between virtual ops and the real opcodes. A bit of copy/paste seemed worth it for that safety,
+/// This enum is unfortunately a redundancy of the [fuel_asm::Opcode] and [crate::VirtualOp] enums. This variant, however,
+/// allows me to use the compiler's internal [AllocatedRegister] types and maintain type safety
+/// between virtual ops and those which have gone through register allocation.
+/// A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
 #[derive(Clone)]
-pub(crate) enum VirtualOp {
+pub(crate) enum AllocatedOp {
     /// Adds two registers.
     ///
     /// | Operation   | ```$rA = $rB + $rC;``` |
@@ -207,7 +51,7 @@ pub(crate) enum VirtualOp {
     /// #### Execution
     /// `$of` is assigned the overflow of the operation.
     /// `$err` is cleared.
-    ADD(VirtualRegister, VirtualRegister, VirtualRegister),
+    ADD(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Adds a register and an immediate value.
     ///
@@ -221,7 +65,7 @@ pub(crate) enum VirtualOp {
     /// #### Execution
     /// `$of` is assigned the overflow of the operation.
     /// `$err` is cleared.
-    ADDI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    ADDI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Bitwise ANDs two registers.
     ///
@@ -234,7 +78,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Execution
     /// `$of` and `$err` are cleared.
-    AND(VirtualRegister, VirtualRegister, VirtualRegister),
+    AND(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Bitwise ANDs a register and an immediate value.
     ///
@@ -248,7 +92,7 @@ pub(crate) enum VirtualOp {
     /// #### Execution
     /// `imm` is extended to 64 bits, with the high 52 bits set to `0`.
     /// `$of` and `$err` are cleared.
-    ANDI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    ANDI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Divides two registers.
     ///
@@ -263,7 +107,7 @@ pub(crate) enum VirtualOp {
     /// If `$rC == 0`, `$rA` is cleared and `$err` is set to `true`.
     /// Otherwise, `$err` is cleared.
     /// `$of` is cleared.
-    DIV(VirtualRegister, VirtualRegister, VirtualRegister),
+    DIV(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Divides a register and an immediate value.
     ///
@@ -278,7 +122,7 @@ pub(crate) enum VirtualOp {
     /// If `imm == 0`, `$rA` is cleared and `$err` is set to `true`.
     /// Otherwise, `$err` is cleared.
     /// `$of` is cleared.
-    DIVI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    DIVI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Compares two registers for equality.
     ///
@@ -291,7 +135,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Execution
     /// `$of` and `$err` are cleared.
-    EQ(VirtualRegister, VirtualRegister, VirtualRegister),
+    EQ(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Raises one register to the power of another.
     ///
@@ -306,7 +150,7 @@ pub(crate) enum VirtualOp {
     /// If the result cannot fit in 8 bytes, `$of` is set to `1`, otherwise
     /// `$of` is cleared.
     /// `$err` is cleared.
-    EXP(VirtualRegister, VirtualRegister, VirtualRegister),
+    EXP(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Raises one register to the power of an immediate value.
     ///
@@ -321,7 +165,7 @@ pub(crate) enum VirtualOp {
     /// If the result cannot fit in 8 bytes, `$of` is set to `1`, otherwise
     /// `$of` is cleared.
     /// `$err` is cleared.
-    EXPI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    EXPI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Compares two registers for greater-than.
     ///
@@ -334,7 +178,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Execution
     /// `$of` and `$err` are cleared.
-    GT(VirtualRegister, VirtualRegister, VirtualRegister),
+    GT(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// The (integer) logarithm base `$rC` of `$rB`.
     ///
@@ -353,7 +197,7 @@ pub(crate) enum VirtualOp {
     /// `true`.
     ///
     /// Otherwise, `$of` and `$err` are cleared.
-    MLOG(VirtualRegister, VirtualRegister, VirtualRegister),
+    MLOG(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// The (integer) `$rC`th root of `$rB`.
     ///
@@ -369,7 +213,7 @@ pub(crate) enum VirtualOp {
     /// `true`.
     ///
     /// Otherwise, `$of` and `$err` are cleared.
-    MROO(VirtualRegister, VirtualRegister, VirtualRegister),
+    MROO(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Modulo remainder of two registers.
     ///
@@ -385,7 +229,7 @@ pub(crate) enum VirtualOp {
     /// `true`.
     ///
     /// Otherwise, `$of` and `$err` are cleared.
-    MOD(VirtualRegister, VirtualRegister, VirtualRegister),
+    MOD(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Modulo remainder of a register and an immediate value.
     ///
@@ -401,7 +245,7 @@ pub(crate) enum VirtualOp {
     /// `true`.
     ///
     /// Otherwise, `$of` and `$err` are cleared.
-    MODI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    MODI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Copy from one register to another.
     ///
@@ -415,7 +259,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Execution
     /// `$of` and `$err` are cleared.
-    MOVE(VirtualRegister, VirtualRegister),
+    MOVE(AllocatedRegister, AllocatedRegister),
 
     /// Multiplies two registers.
     ///
@@ -430,7 +274,7 @@ pub(crate) enum VirtualOp {
     /// `$of` is assigned the overflow of the operation.
     ///
     /// `$err` is cleared.
-    MUL(VirtualRegister, VirtualRegister, VirtualRegister),
+    MUL(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Multiplies a register and an immediate value.
     ///
@@ -445,7 +289,7 @@ pub(crate) enum VirtualOp {
     /// `$of` is assigned the overflow of the operation.
     ///
     /// `$err` is cleared.
-    MULI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    MULI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Bitwise NOT a register.
     ///
@@ -458,7 +302,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Execution
     /// `$of` and `$err` are cleared.
-    NOT(VirtualRegister, VirtualRegister),
+    NOT(AllocatedRegister, AllocatedRegister),
 
     /// Bitwise ORs two registers.
     ///
@@ -471,7 +315,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Execution
     /// `$of` and `$err` are cleared.
-    OR(VirtualRegister, VirtualRegister, VirtualRegister),
+    OR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Bitwise ORs a register and an immediate value.
     ///
@@ -486,7 +330,7 @@ pub(crate) enum VirtualOp {
     /// `imm` is extended to 64 bits, with the high 52 bits set to `0`.
     ///
     /// `$of` and `$err` are cleared.
-    ORI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    ORI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Left shifts a register by a register.
     ///
@@ -502,7 +346,7 @@ pub(crate) enum VirtualOp {
     /// `$of` is assigned the overflow of the operation.
     ///
     /// `$err` is cleared.
-    SLL(VirtualRegister, VirtualRegister, VirtualRegister),
+    SLL(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Left shifts a register by an immediate value.
     ///
@@ -518,7 +362,7 @@ pub(crate) enum VirtualOp {
     /// `$of` is assigned the overflow of the operation.
     ///
     /// `$err` is cleared.
-    SLLI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    SLLI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Right shifts a register by a register.
     ///
@@ -535,7 +379,7 @@ pub(crate) enum VirtualOp {
     /// high byte of a 128-bit register.
     ///
     /// `$err` is cleared.
-    SRL(VirtualRegister, VirtualRegister, VirtualRegister),
+    SRL(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Right shifts a register by an immediate value.
     ///
@@ -552,7 +396,7 @@ pub(crate) enum VirtualOp {
     /// high byte of a 128-bit register.
     ///
     /// `$err` is cleared.
-    SRLI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    SRLI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Subtracts two registers.
     ///
@@ -569,7 +413,7 @@ pub(crate) enum VirtualOp {
     /// high byte of a 128-bit register.
     ///
     /// `$err` is cleared.
-    SUB(VirtualRegister, VirtualRegister, VirtualRegister),
+    SUB(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Subtracts a register and an immediate value.
     ///
@@ -586,7 +430,7 @@ pub(crate) enum VirtualOp {
     /// high byte of a 128-bit register.
     ///
     /// `$err` is cleared.
-    SUBI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    SUBI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Bitwise XORs two registers.
     ///
@@ -600,7 +444,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Execution
     /// `$of` and `$err` are cleared.
-    XOR(VirtualRegister, VirtualRegister, VirtualRegister),
+    XOR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Bitwise XORs a register and an immediate value.
     ///
@@ -614,7 +458,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Execution
     /// `$of` and `$err` are cleared.
-    XORI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    XORI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Set `$rA` to `true` if the `$rC <= tx.input[$rB].maturity`.
     ///
@@ -633,7 +477,7 @@ pub(crate) enum VirtualOp {
     /// Otherwise, advance the program counter `$pc` by `4`.
     ///
     /// See also: [BIP-112](https://github.com/bitcoin/bips/blob/master/bip-0112.mediawiki) and [CLTV](#cltv-check-lock-time-verify).
-    CIMV(VirtualRegister, VirtualRegister, VirtualRegister),
+    CIMV(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Set `$rA` to `true` if `$rB <= tx.maturity`.
     ///
@@ -649,7 +493,7 @@ pub(crate) enum VirtualOp {
     /// Otherwise, advance the program counter `$pc` by `4`.
     ///
     /// See also: [BIP-65](https://github.com/bitcoin/bips/blob/master/bip-0065.mediawiki) and [Bitcoin's Time Locks](https://prestwi.ch/bitcoin-time-locks).
-    CTMV(VirtualRegister, VirtualRegister),
+    CTMV(AllocatedRegister, AllocatedRegister),
 
     /// Jumps to the code instruction offset by `imm`.
     ///
@@ -670,7 +514,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Panics
     /// - `$is + imm * 4 > VM_MAX_RAM - 1`
-    JNEI(VirtualRegister, VirtualRegister, Label),
+    JNEI(AllocatedRegister, AllocatedRegister, Label),
 
     /// Returns from [context](./main.md#contexts) with value `$rA`.
     ///
@@ -690,7 +534,7 @@ pub(crate) enum VirtualOp {
     /// `$cgas`. Afterwards, set the following registers:
     ///
     /// 1. `$pc = $pc + 4` (advance program counter from where we called)
-    RET(VirtualRegister),
+    RET(AllocatedRegister),
 
     /// Extend the current call frame's stack by an immediate value.
     ///
@@ -726,7 +570,7 @@ pub(crate) enum VirtualOp {
     /// - `$rA` is a [reserved register](./main.md#semantics)
     /// - `$rB + imm + 1` overflows
     /// - `$rB + imm + 1 > VM_MAX_RAM`
-    LB(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    LB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// A word is loaded from the specified address offset by `imm`.
     /// | Operation   | ```$rA = MEM[$rB + imm, 8];```
@@ -737,7 +581,7 @@ pub(crate) enum VirtualOp {
     /// - `$rA` is a [reserved register](./main.md#semantics)
     /// - `$rB + imm + 8` overflows
     /// - `$rB + imm + 8 > VM_MAX_RAM`
-    LW(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    LW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Allocate a number of bytes from the heap.
     ///
@@ -749,7 +593,7 @@ pub(crate) enum VirtualOp {
     /// #### Panics
     /// - `$hp - $rA` underflows
     /// - `$hp - $rA < $sp`
-    ALOC(VirtualRegister),
+    ALOC(AllocatedRegister),
 
     /// Clear bytes in memory.
     ///
@@ -763,7 +607,7 @@ pub(crate) enum VirtualOp {
     /// - `$rB > MEM_MAX_ACCESS_SIZE`
     /// - The memory range `MEM[$rA, $rB]`  does not pass [ownership
     ///   check](./main.md#ownership)
-    MCL(VirtualRegister, VirtualRegister),
+    MCL(AllocatedRegister, AllocatedRegister),
 
     /// Clear bytes in memory.
     ///
@@ -777,7 +621,7 @@ pub(crate) enum VirtualOp {
     /// - `imm > MEM_MAX_ACCESS_SIZE`
     /// - The memory range `MEM[$rA, imm]`  does not pass [ownership
     ///   check](./main.md#ownership)
-    MCLI(VirtualRegister, VirtualImmediate18),
+    MCLI(AllocatedRegister, VirtualImmediate18),
 
     /// Copy bytes in memory.
     ///
@@ -794,7 +638,7 @@ pub(crate) enum VirtualOp {
     /// - The memory ranges `MEM[$rA, $rC]` and `MEM[$rB, $rC]` overlap
     /// - The memory range `MEM[$rA, $rC]`  does not pass [ownership
     ///   check](./main.md#ownership)
-    MCP(VirtualRegister, VirtualRegister, VirtualRegister),
+    MCP(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Compare bytes in memory.
     ///
@@ -810,10 +654,10 @@ pub(crate) enum VirtualOp {
     /// - `$rC + $rD > VM_MAX_RAM`
     /// - `$rD > MEM_MAX_ACCESS_SIZE`
     MEQ(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
     ),
 
     /// The least significant byte of `$rB` is stored at the address `$rA`
@@ -828,7 +672,7 @@ pub(crate) enum VirtualOp {
     /// - `$rA + imm + 1 > VM_MAX_RAM`
     /// - The memory range `MEM[$rA + imm, 1]`  does not pass [ownership
     ///   check](./main.md#ownership)
-    SB(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    SB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// The value of `$rB` is stored at the address `$rA` offset by `imm`.
     ///
@@ -841,7 +685,7 @@ pub(crate) enum VirtualOp {
     /// - `$rA + imm + 8 > VM_MAX_RAM`
     /// - The memory range `MEM[$rA + imm, 8]`  does not pass [ownership
     ///   check](./main.md#ownership)
-    SW(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    SW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Get block header hash.
     ///
@@ -857,7 +701,7 @@ pub(crate) enum VirtualOp {
     ///
     /// Block header hashes for blocks with height greater than or equal to
     /// current block height are zero (`0x00**32`).
-    BHSH(VirtualRegister, VirtualRegister),
+    BHSH(AllocatedRegister, AllocatedRegister),
 
     /// Get Fuel block height.
     ///
@@ -867,7 +711,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Panics
     /// - `$rA` is a [reserved register](./main.md#semantics)
-    BHEI(VirtualRegister),
+    BHEI(AllocatedRegister),
 
     /// Burn `$rA` coins of the current contract's color.
     ///
@@ -884,7 +728,7 @@ pub(crate) enum VirtualOp {
     /// `MEM[$fp, 32]` by `$rA`.
     ///
     /// This modifies the `balanceRoot` field of the appropriate output.
-    BURN(VirtualRegister),
+    BURN(AllocatedRegister),
 
     /// Call contract.
     ///
@@ -926,10 +770,10 @@ pub(crate) enum VirtualOp {
     ///
     /// This modifies the `balanceRoot` field of the appropriate output(s).
     CALL(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
     ),
 
     /// Copy `$rD` bytes of code starting at `$rC` for contract with ID equal to
@@ -951,10 +795,10 @@ pub(crate) enum VirtualOp {
     /// - `$rD > MEM_MAX_ACCESS_SIZE`
     /// - Contract with ID `MEM[$rB, 32]` is not in `tx.inputs`
     CCP(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
     ),
 
     /// Set the 32 bytes in memory starting at `$rA` to the code root for
@@ -975,7 +819,7 @@ pub(crate) enum VirtualOp {
     ///
     /// Code root compuration is defined
     /// [here](../protocol/identifiers.md#contract-id).
-    CROO(VirtualRegister, VirtualRegister),
+    CROO(AllocatedRegister, AllocatedRegister),
 
     /// Set `$rA` to the size of the code for contract with ID equal to the 32
     /// bytes in memory starting at `$rB`.
@@ -989,7 +833,7 @@ pub(crate) enum VirtualOp {
     /// - `$rB + 32` overflows
     /// - `$rB + 32 > VM_MAX_RAM`
     /// - Contract with ID `MEM[$rB, 32]` is not in `tx.inputs`
-    CSIZ(VirtualRegister, VirtualRegister),
+    CSIZ(AllocatedRegister, AllocatedRegister),
 
     /// Get block proposer address.
     ///
@@ -1002,7 +846,7 @@ pub(crate) enum VirtualOp {
     /// - `$rA + 32 > VM_MAX_RAM`
     /// - The memory range `MEM[$rA, 32]`  does not pass [ownership
     ///   check](./main.md#ownership)
-    CB(VirtualRegister),
+    CB(AllocatedRegister),
 
     /// Copy `$rC` bytes of code starting at `$rB` for contract with ID equal to
     /// the 32 bytes in memory starting at `$rA` into memory starting at `$ssp`.
@@ -1030,7 +874,7 @@ pub(crate) enum VirtualOp {
     /// This opcode can be used to concatenate the code of multiple contracts
     /// together. It can only be used when the stack area of the call frame is
     /// unused (i.e. prior to being used).
-    LDC(VirtualRegister, VirtualRegister, VirtualRegister),
+    LDC(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Log an event. This is a no-op.
     ///
@@ -1038,10 +882,10 @@ pub(crate) enum VirtualOp {
     /// | Syntax      | `log $rA, $rB, $rC, $rD`       |
     /// | Encoding    | `0x00 rA rB rC rD`             |
     LOG(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
     ),
 
     /// Mint `$rA` coins of the current contract's color.
@@ -1059,7 +903,7 @@ pub(crate) enum VirtualOp {
     /// `MEM[$fp, 32]` by `$rA`.
     ///
     /// This modifies the `balanceRoot` field of the appropriate output.
-    MINT(VirtualRegister),
+    MINT(AllocatedRegister),
 
     /// Halt execution, reverting state changes and returning value in `$rA`.
     ///
@@ -1076,7 +920,7 @@ pub(crate) enum VirtualOp {
     /// 1. All [OutputContractConditional](../protocol/tx_format.md#
     /// outputcontractconditional) outputs will have `contractID`, `amount`, and
     /// `stateRoot` of zero.
-    RVRT(VirtualRegister),
+    RVRT(AllocatedRegister),
 
     /// Copy `$rC` bytes of code starting at `$rB` for contract with static
     /// index `$rA` into memory starting at `$ssp`.
@@ -1105,7 +949,7 @@ pub(crate) enum VirtualOp {
     /// This opcode can be used to concatenate the code of multiple contracts
     /// together. It can only be used when the stack area of the call frame is
     /// unused (i.e. prior to being used).
-    SLDC(VirtualRegister, VirtualRegister, VirtualRegister),
+    SLDC(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// A word is read from the current contract's state.
     ///
@@ -1119,7 +963,7 @@ pub(crate) enum VirtualOp {
     /// - `$rB + 32` overflows
     /// - `$rB + 32 > VM_MAX_RAM`
     /// - `$fp == 0` (in the script context)
-    SRW(VirtualRegister, VirtualRegister),
+    SRW(AllocatedRegister, AllocatedRegister),
 
     /// 32 bytes is read from the current contract's state.
     ///
@@ -1136,7 +980,7 @@ pub(crate) enum VirtualOp {
     /// - The memory range `MEM[$rA, 32]`  does not pass [ownership
     ///   check](./main.md#ownership)
     /// - `$fp == 0` (in the script context)
-    SRWQ(VirtualRegister, VirtualRegister),
+    SRWQ(AllocatedRegister, AllocatedRegister),
 
     /// A word is written to the current contract's state.
     ///
@@ -1148,7 +992,7 @@ pub(crate) enum VirtualOp {
     /// - `$rA + 32` overflows
     /// - `$rA + 32 > VM_MAX_RAM`
     /// - `$fp == 0` (in the script context)
-    SWW(VirtualRegister, VirtualRegister),
+    SWW(AllocatedRegister, AllocatedRegister),
 
     /// 32 bytes is written to the current contract's state.
     ///
@@ -1162,7 +1006,7 @@ pub(crate) enum VirtualOp {
     /// - `$rA + 32 > VM_MAX_RAM`
     /// - `$rB + 32 > VM_MAX_RAM`
     /// - `$fp == 0` (in the script context)
-    SWWQ(VirtualRegister, VirtualRegister),
+    SWWQ(AllocatedRegister, AllocatedRegister),
 
     /// Transfer `$rB` coins with color at `$rC` to contract with ID at `$rA`.
     ///
@@ -1191,7 +1035,7 @@ pub(crate) enum VirtualOp {
     /// `MEM[$fp, 32]` by `$rB`.
     ///
     /// This modifies the `balanceRoot` field of the appropriate output(s).
-    TR(VirtualRegister, VirtualRegister, VirtualRegister),
+    TR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Transfer `$rC` coins with color at `$rD` to address at `$rA`, with
     /// output `$rB`. | Operation   | ```transferout(MEM[$rA, 32], $rB, $rC,
@@ -1224,10 +1068,10 @@ pub(crate) enum VirtualOp {
     ///
     /// This modifies the `balanceRoot` field of the appropriate output(s).
     TRO(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
     ),
 
     /// The 64-byte public key (x, y) recovered from 64-byte
@@ -1249,7 +1093,7 @@ pub(crate) enum VirtualOp {
     ///
     /// To get the address, hash the public key with
     /// [SHA-2-256](#sha256-sha-2-256).
-    ECR(VirtualRegister, VirtualRegister, VirtualRegister),
+    ECR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// The keccak-256 hash of `$rC` bytes starting at `$rB`.
     ///
@@ -1265,7 +1109,7 @@ pub(crate) enum VirtualOp {
     /// - The memory range `MEM[$rA, 32]`  does not pass [ownership
     ///   check](./main.md#ownership)
     /// - `$rC > MEM_MAX_ACCESS_SIZE`
-    K256(VirtualRegister, VirtualRegister, VirtualRegister),
+    K256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// The SHA-2-256 hash of `$rC` bytes starting at `$rB`.
     ///
@@ -1281,7 +1125,7 @@ pub(crate) enum VirtualOp {
     /// - The memory range `MEM[$rA, 32]`  does not pass [ownership
     ///   check](./main.md#ownership)
     /// - `$rC > MEM_MAX_ACCESS_SIZE`
-    S256(VirtualRegister, VirtualRegister, VirtualRegister),
+    S256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
 
     /// Performs no operation.
     ///
@@ -1297,27 +1141,8 @@ pub(crate) enum VirtualOp {
     /// | Operation   | ```$flag = $rA;```    |
     /// | Syntax      | `flag $rA`            |
     /// | Encoding    | `0x00 rA - - -`       |
-    FLAG(VirtualRegister),
+    FLAG(AllocatedRegister),
 
     /// Undefined opcode, potentially from inconsistent serialization
     Undefined,
-}
-
-impl VirtualOp {
-    /// Given an op name and a list of arguments, parse them into a [VirtualOp]
-    pub(crate) fn parse<'sc>(name: &Ident<'sc>, args: &[&str]) -> CompileResult<'sc, Self> {
-        todo!()
-    }
-    pub(crate) fn registers(&self) -> Vec<VirtualRegister> {
-        todo!()
-    }
-}
-
-#[derive(Clone, Eq, PartialEq)]
-/// A label for a spot in the bytecode, to be later compiled to an offset.
-pub(crate) struct Label(pub(crate) usize);
-impl fmt::Display for Label {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".{}", self.0)
-    }
 }
