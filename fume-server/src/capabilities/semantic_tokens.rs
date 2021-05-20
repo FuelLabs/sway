@@ -74,19 +74,29 @@ fn create_semantic_token(next_token: &Token, prev_token: Option<&Token>) -> Sema
     }
 }
 
+// these values should reflect indexes in `token_types`
+static FUNCTION: u32 = 1;
+static LIBRARY: u32 = 3;
+static VARIABLE: u32 = 9;
+static ENUM: u32 = 10;
+static STRUCT: u32 = 11;
+static TRAIT: u32 = 12;
+
+
 fn get_type(content_type: &ContentType) -> u32 {
     if let ContentType::Declaration(dec) = content_type {
         match dec {
-            DeclarationType::Function => 1,
-            DeclarationType::Library => 3,
-            DeclarationType::Variable => 9,
-            DeclarationType::Enum => 10,
-            DeclarationType::Struct => 11,
-            DeclarationType::Trait => 12,
-            _ => 9,
+            DeclarationType::Function => FUNCTION,
+            DeclarationType::Library => LIBRARY,
+            DeclarationType::Variable => VARIABLE,
+            DeclarationType::Enum => ENUM,
+            DeclarationType::Struct => STRUCT,
+            DeclarationType::Trait => TRAIT,
+            _ => VARIABLE,
         }
     } else {
-        9
+        // currently we return `variable` type as default
+        VARIABLE
     }
 }
 
