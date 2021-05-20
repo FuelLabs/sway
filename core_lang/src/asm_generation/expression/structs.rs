@@ -1,13 +1,15 @@
 //! This module contains the logic for struct layout in memory and instantiation.
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
-    asm_lang::{ConstantRegister, Op, RegisterId},
+    asm_lang::{
+        virtual_ops::{ConstantRegister, VirtualImmediate12, VirtualImmediate24, VirtualRegister},
+        Op,
+    },
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
     types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     CompileResult, Ident,
 };
-use std::convert::TryInto;
 
 pub(crate) fn convert_struct_expression_to_asm<'sc>(
     struct_name: &Ident<'sc>,
@@ -62,38 +64,31 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     let struct_beginning_pointer = register_sequencer.next();
     asm_buf.push(Op::unowned_register_move(
         struct_beginning_pointer.clone(),
-        RegisterId::Constant(ConstantRegister::StackPointer),
+        VirtualRegister::Constant(ConstantRegister::StackPointer),
     ));
 
     // step 2
     // decide how many call frame extensions are needed based on the size of the struct
     // and how many bits can be put in a single cfei op
-    let twenty_four_bits = 0b111111111111111111111111;
-    let number_of_allocations_necessary = (total_size / twenty_four_bits) + 1;
+    // limit struct size to 12 bits for now, for simplicity
+    let twelve_bits = 0b111_111_111_111;
+    let number_of_allocations_necessary = (total_size / twelve_bits) + 1;
 
     // construct the allocation ops
     for allocation_index in 0..number_of_allocations_necessary {
-        let left_to_allocate = total_size - (allocation_index * twenty_four_bits);
-        let this_allocation = if left_to_allocate > twenty_four_bits {
-            twenty_four_bits
+        let left_to_allocate = total_size - (allocation_index * twelve_bits);
+        let this_allocation = if left_to_allocate > twelve_bits {
+            twelve_bits
         } else {
             left_to_allocate
         };
-        // since the size of `this_allocation` is bound by the size of 2^24, we know that
-        // downcasting to a u32 is safe.
-        // However, since we may change the twenty four bits to something else, we want to check anyway
-        let val_as_u32: u32 = match this_allocation.try_into() {
-            Ok(o) => o,
-            Err(_) => {
-                errors.push(CompileError::Unimplemented(
-                    "This struct is too large, and would \
-                not fit in one call frame extension.",
-                    struct_name.span.clone(),
-                ));
-                return err(warnings, errors);
-            }
-        };
-        asm_buf.push(Op::unowned_stack_allocate_memory(val_as_u32));
+        // we call `new_unchecked` here because we have validated the size is okay above
+        asm_buf.push(Op::unowned_stack_allocate_memory(
+            VirtualImmediate24::new_unchecked(
+                this_allocation,
+                "struct size was checked manually to be within 12 bits",
+            ),
+        ));
     }
 
     // step 3
@@ -124,7 +119,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         asm_buf.push(Op::write_register_to_memory(
             struct_beginning_pointer.clone(),
             return_register,
-            offset,
+            VirtualImmediate12::new_unchecked(offset, "the whole struct is less than 12 bits so every individual field should be as well."),
             name.span.clone(),
         ));
         // TODO: if the struct needs multiple allocations, this offset could exceed the size of the
@@ -134,7 +129,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         // from john about the above: As a TODO, maybe let's just restrict the maximum size of
         // something (I don't know exactly what) at the consensus level so this case is guaranteed
         // to never be hit.
-        offset += value_stack_size as u32;
+        offset += value_stack_size;
     }
 
     ok(asm_buf, warnings, errors)

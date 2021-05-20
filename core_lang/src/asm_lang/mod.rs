@@ -10,11 +10,12 @@ use either::Either;
 use pest::Span;
 use std::str::FromStr;
 use std::{collections::HashSet, fmt};
-mod virtual_ops;
 use virtual_ops::{
-    VirtualImmediate06, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
-    VirtualRegister,
+    Label, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+    VirtualOp, VirtualRegister,
 };
+
+pub(crate) mod virtual_ops;
 
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
@@ -53,7 +54,7 @@ impl<'sc> Op<'sc> {
     pub(crate) fn write_register_to_memory_comment(
         destination_address: VirtualRegister,
         value_to_write: VirtualRegister,
-        offset: VirtualImmediateValue,
+        offset: VirtualImmediate12,
         span: Span<'sc>,
         comment: impl Into<String>,
     ) -> Self {
@@ -64,7 +65,9 @@ impl<'sc> Op<'sc> {
         }
     }
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
-    pub(crate) fn unowned_stack_allocate_memory(size_to_allocate_in_words: u32) -> Self {
+    pub(crate) fn unowned_stack_allocate_memory(
+        size_to_allocate_in_words: VirtualImmediate24,
+    ) -> Self {
         Op {
             opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_words)),
             comment: String::new(),
@@ -159,7 +162,7 @@ impl<'sc> Op<'sc> {
         owning_span: Span<'sc>,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::RMove(r1, r2)),
+            opcode: Either::Left(VirtualOp::MOVE(r1, r2)),
             comment: String::new(),
             owning_span: Some(owning_span),
         }
@@ -168,7 +171,7 @@ impl<'sc> Op<'sc> {
     /// Moves the register in the second argument into the register in the first argument
     pub(crate) fn unowned_register_move(r1: VirtualRegister, r2: VirtualRegister) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            opcode: Either::Left(VirtualOp::MOVE(r1, r2)),
             comment: String::new(),
             owning_span: None,
         }
@@ -180,7 +183,7 @@ impl<'sc> Op<'sc> {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            opcode: Either::Left(VirtualOp::MOVE(r1, r2)),
             comment: comment.into(),
             owning_span: Some(owning_span),
         }
@@ -193,7 +196,7 @@ impl<'sc> Op<'sc> {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            opcode: Either::Left(VirtualOp::MOVE(r1, r2)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -230,7 +233,7 @@ impl<'sc> Op<'sc> {
         label: Label,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(reg0, reg1, label)),
+            opcode: Either::Left(VirtualOp::JNEI(reg0, reg1, label)),
             comment: String::new(),
             owning_span: None,
         }
@@ -238,16 +241,9 @@ impl<'sc> Op<'sc> {
 
     pub(crate) fn parse_opcode(
         name: &Ident<'sc>,
-        args: &[&VirtualRegister],
-        immediate: Option<u64>,
+        args: &[&Ident<'sc>],
     ) -> CompileResult<'sc, VirtualOp> {
-        VirtualOp::parse(name, args, immediate)
-    }
-}
-
-impl fmt::Display for Label {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".{}", self.0)
+        todo!()
     }
 }
 
@@ -358,9 +354,6 @@ impl fmt::Display for Op<'_> {
             */
     }
 }
-
-#[derive(Clone, Eq, PartialEq)]
-pub(crate) struct Label(pub(crate) usize);
 
 // Convenience opcodes for the compiler -- will be optimized out or removed
 // these do not reflect actual ops in the VM and will be compiled to bytecode

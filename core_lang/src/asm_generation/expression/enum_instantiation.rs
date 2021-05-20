@@ -1,5 +1,8 @@
 use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
-use crate::asm_lang::{ConstantRegister, Op, RegisterId};
+use crate::asm_lang::{
+    virtual_ops::{ConstantRegister, VirtualImmediate12, VirtualOp, VirtualRegister},
+    Op,
+};
 use crate::error::*;
 use crate::semantic_analysis::ast_node::TypedEnumDeclaration;
 use crate::semantic_analysis::TypedExpression;
@@ -13,7 +16,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     _variant_name: &Ident<'sc>,
     tag: usize,
     contents: &Option<Box<TypedExpression<'sc>>>,
-    return_register: &RegisterId,
+    return_register: &VirtualRegister,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
@@ -36,7 +39,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     // copy stack pointer into pointer register
     asm_buf.push(Op::unowned_register_move_comment(
         pointer_register.clone(),
-        RegisterId::Constant(ConstantRegister::StackPointer),
+        VirtualRegister::Constant(ConstantRegister::StackPointer),
         "load $sp for enum pointer",
     ));
     let size_of_enum = 1 /* tag */ + decl.as_type().stack_size_of();
@@ -54,7 +57,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     asm_buf.push(Op::unowned_stack_allocate_memory(size_of_enum));
     // initialize all the memory to 0
     asm_buf.push(Op::new(
-        Opcode::MCLI(pointer_register.clone(), size_of_enum),
+        VirtualOp::MCLI(pointer_register.clone(), size_of_enum),
         decl.clone().span,
     ));
     // write the tag
@@ -62,7 +65,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     asm_buf.push(Op::write_register_to_memory(
         pointer_register.clone(),
         tag_register.clone(),
-        0,
+        VirtualImmediate12::new_unchecked(0, "constant num; infallible"),
         decl.clone().span,
     ));
 
@@ -87,7 +90,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
         asm_buf.push(Op::write_register_to_memory_comment(
             pointer_register.clone(),
             return_register.clone(),
-            1, /* offset by 1 because the tag was already written */
+            VirtualImmediate12::new_unchecked(1, "this is the constant 1; infallible"), // offset by 1 because the tag was already written
             instantiation.span.clone(),
             format!("{} enum contents", decl.name.primary_name),
         ));

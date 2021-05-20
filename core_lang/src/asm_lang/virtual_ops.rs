@@ -1,5 +1,8 @@
 //! This module contains abstracted versions of bytecode primitives that the compiler uses to
 //! ensure correctness and safety.
+//!
+//! The immediate types are used to safely construct numbers that are within their bounds, and the
+//! ops are clones of the actual opcodes, but with the safe primitives as arguments.
 
 use crate::{error::*, Ident};
 use pest::Span;
@@ -100,8 +103,9 @@ impl VirtualImmediate06 {
 pub struct VirtualImmediate12 {
     value: u16,
 }
+
 impl VirtualImmediate12 {
-    fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
         if raw > 0b111_111_111_111 {
             return Err(CompileError::Immediate12TooLarge {
                 val: raw,
@@ -111,6 +115,16 @@ impl VirtualImmediate12 {
             Ok(Self {
                 value: raw.try_into().unwrap(),
             })
+        }
+    }
+    /// This method should only be used if the size of the raw value has already been manually
+    /// checked.
+    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
+    /// error at a higher level, probably via an internal compiler error or similar.
+    /// A panic message is still required, just in case the programmer has made an error.
+    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
+        Self {
+            value: raw.try_into().expect(&(msg.into())),
         }
     }
 }
@@ -151,6 +165,16 @@ impl VirtualImmediate24 {
             Ok(Self {
                 value: raw.try_into().unwrap(),
             })
+        }
+    }
+    /// This method should only be used if the size of the raw value has already been manually
+    /// checked.
+    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
+    /// error at a higher level, probably via an internal compiler error or similar.
+    /// A panic message is still required, just in case the programmer has made an error.
+    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
+        Self {
+            value: raw.try_into().expect(&(msg.into())),
         }
     }
 }
@@ -636,7 +660,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Panics
     /// - `$is + imm * 4 > VM_MAX_RAM - 1`
-    JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    JNEI(VirtualRegister, VirtualRegister, Label),
 
     /// Returns from [context](./main.md#contexts) with value `$rA`.
     ///
@@ -1270,7 +1294,16 @@ pub(crate) enum VirtualOp {
 }
 
 impl VirtualOp {
-    pub(crate) fn parse<'sc>(name: &Ident<'sc>, args: &[VirtualRegister], immediate: Option<u64>) {
+    pub(crate) fn parse<'sc>(name: &Ident<'sc>, args: &[&str]) -> CompileResult<'sc, Self> {
         todo!()
+    }
+}
+
+#[derive(Clone, Eq, PartialEq)]
+/// A label for a spot in the bytecode, to be later compiled to an offset.
+pub(crate) struct Label(pub(crate) usize);
+impl fmt::Display for Label {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, ".{}", self.0)
     }
 }
