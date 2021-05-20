@@ -8,7 +8,6 @@
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
 use pest::Span;
-use std::str::FromStr;
 use std::{collections::HashSet, fmt};
 use virtual_ops::{
     Label, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
@@ -245,7 +244,25 @@ impl<'sc> Op<'sc> {
         args: &[&VirtualRegister],
         immediate: &Option<Ident<'sc>>,
     ) -> CompileResult<'sc, VirtualOp> {
-        todo!()
+        match name.primary_name.to_lowercase().as_str() {
+            "add" => {
+                let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
+                    (Some(reg), Some(reg2), Some(reg3)) => (*reg, *reg2, *reg3),
+                    _ => todo!("Not enough registers error"),
+                };
+                match immediate {
+                    None => (),
+                    Some(_) => todo!("Err unnecessary immediate"),
+                };
+
+                ok(
+                    VirtualOp::ADD(reg.clone(), reg2.clone(), reg3.clone()),
+                    vec![],
+                    vec![],
+                )
+            }
+            _ => todo!(),
+        }
     }
 }
 
