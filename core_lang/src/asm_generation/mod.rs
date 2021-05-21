@@ -170,7 +170,7 @@ pub(crate) struct RegisterPool {
 
 impl RegisterPool {
     fn init() -> Self {
-        let mut register_pool: Vec<AllocatedRegister> = (compiler_constants::NUM_FREE_REGISTERS..0)
+        let mut register_pool: Vec<AllocatedRegister> = (0..compiler_constants::NUM_FREE_REGISTERS)
             .map(|x| AllocatedRegister::Allocated(x))
             .collect();
         Self {
