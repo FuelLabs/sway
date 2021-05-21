@@ -90,7 +90,7 @@ pub struct VirtualImmediate06 {
 }
 
 impl VirtualImmediate06 {
-    fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
         if raw > 0b111_111 {
             return Err(CompileError::Immediate06TooLarge {
                 val: raw,
@@ -141,7 +141,7 @@ pub struct VirtualImmediate18 {
     value: u32,
 }
 impl VirtualImmediate18 {
-    fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
         if raw > 0b111_111_111_111_111_111 {
             return Err(CompileError::Immediate18TooLarge {
                 val: raw,
@@ -171,7 +171,7 @@ pub struct VirtualImmediate24 {
     value: u32,
 }
 impl VirtualImmediate24 {
-    fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
+    pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
         if raw > 0b111_111_111_111_111_111_111_111 {
             return Err(CompileError::Immediate24TooLarge {
                 val: raw,

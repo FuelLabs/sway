@@ -459,6 +459,8 @@ pub enum CompileError<'sc> {
     Immediate18TooLarge { val: u64, span: Span<'sc> },
     #[error("The value \"{val}\" is too large to fit in this 24-bit immediate spot.")]
     Immediate24TooLarge { val: u64, span: Span<'sc> },
+    #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
+    DisallowedJnei { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -600,6 +602,7 @@ impl<'sc> CompileError<'sc> {
             Immediate12TooLarge { span, .. } => span,
             Immediate18TooLarge { span, .. } => span,
             Immediate24TooLarge { span, .. } => span,
+            DisallowedJnei { span, .. } => span,
         }
     }
 

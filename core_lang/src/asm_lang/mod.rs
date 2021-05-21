@@ -246,80 +246,701 @@ impl<'sc> Op<'sc> {
     ) -> CompileResult<'sc, VirtualOp> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        ok(match name.primary_name.to_lowercase().as_str() {
-            "add" => {
-		let (r1, r2, r3) = type_check!(three_regs(args, immediate), return err(warnings, errors), warnings, errors);
-		VirtualOp::ADD(r1, r2, r3)
-            }
-            "addi" => {
-		let (r1, r2, imm) = type_check!(two_regs_imm_12(args, immediate), return err(warnings, errors), warnings, errors);
-		VirtualOp::ADDI(r1, r2, imm)
-            }
-            "and" => {
-		let (r1, r2, r3) = type_check!(three_regs(args, immediate), return err(warnings, errors), warnings, errors);
-		VirtualOp::AND(r1, r2, r3)
-            }
-            "andi" => {
-		let (r1, r2, imm) = type_check!(two_regs_imm_12(args, immediate), return err(warnings, errors), warnings, errors);
-		VirtualOp::ANDI(r1, r2, imm)
-            }
-            _ => todo!(),
-        }, warnings, errors)
+        ok(
+            match name.primary_name.to_lowercase().as_str() {
+                "add" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ADD(r1, r2, r3)
+                }
+                "addi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ADDI(r1, r2, imm)
+                }
+                "and" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::AND(r1, r2, r3)
+                }
+                "andi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ANDI(r1, r2, imm)
+                }
+                "div" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::DIV(r1, r2, r3)
+                }
+                "divi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::DIVI(r1, r2, imm)
+                }
+                "eq" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::EQ(r1, r2, r3)
+                }
+                "exp" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::EXP(r1, r2, r3)
+                }
+                "expi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::EXPI(r1, r2, imm)
+                }
+                "gt" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::GT(r1, r2, r3)
+                }
+                "mlog" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MLOG(r1, r2, r3)
+                }
+                "mroo" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MROO(r1, r2, r3)
+                }
+                "mod" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MOD(r1, r2, r3)
+                }
+                "modi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MODI(r1, r2, imm)
+                }
+                "move" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MOVE(r1, r2)
+                }
+                "mul" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MUL(r1, r2, r3)
+                }
+                "muli" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MULI(r1, r2, imm)
+                }
+                "not" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::NOT(r1, r2)
+                }
+                "or" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::OR(r1, r2, r3)
+                }
+                "ori" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ORI(r1, r2, imm)
+                }
+                "sll" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SLL(r1, r2, r3)
+                }
+                "slli" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SLLI(r1, r2, imm)
+                }
+                "srl" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SRL(r1, r2, r3)
+                }
+                "srli" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SRLI(r1, r2, imm)
+                }
+                "sub" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SUB(r1, r2, r3)
+                }
+                "subi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SUBI(r1, r2, imm)
+                }
+                "xor" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XOR(r1, r2, r3)
+                }
+                "xori" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XORI(r1, r2, imm)
+                }
+                "cimv" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CIMV(r1, r2, r3)
+                }
+                "ctmv" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CTMV(r1, r2)
+                }
+                "ji" => {
+                    let imm = type_check!(
+                        single_imm_24(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::JI(imm)
+                }
+                "jnei" => {
+                    errors.push(CompileError::DisallowedJnei {
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+                "ret" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::RET(r1)
+                }
+                "cfei" => {
+                    let imm = type_check!(
+                        single_imm_24(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CFEI(imm)
+                }
+                "cfsi" => {
+                    let imm = type_check!(
+                        single_imm_24(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CFSI(imm)
+                }
+                "lb" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LB(r1, r2, imm)
+                }
+                "lw" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LW(r1, r2, imm)
+                }
+                "aloc" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ALOC(r1)
+                }
+                "mcl" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MCL(r1, r2)
+                }
+                "mcli" => {
+                    let (r1, imm) = type_check!(
+                        single_reg_imm_18(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MCLI(r1, imm)
+                }
+                "mcp" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MCP(r1, r2, r3)
+                }
+                "meq" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MEQ(r1, r2, r3, r4)
+                }
+                "sb" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SB(r1, r2, imm)
+                }
+                "sw" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SW(r1, r2, imm)
+                }
+                "bhsh" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BHSH(r1, r2)
+                }
+                "bhei" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BHEI(r1)
+                }
+                "burn" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BURN(r1)
+                }
+                "call" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CALL(r1, r2, r3, r4)
+                }
+                "ccp" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CCP(r1, r2, r3, r4)
+                }
+                "croo" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CROO(r1, r2)
+                }
+                "csiz" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CSIZ(r1, r2)
+                }
+                "cb" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CB(r1)
+                }
+                "ldc" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LDC(r1, r2, r3)
+                }
+                "log" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LOG(r1, r2, r3, r4)
+                }
+                _ => todo!(),
+            },
+            warnings,
+            errors,
+        )
     }
 }
 
-fn three_regs<'sc>(args: &[&VirtualRegister], immediate: &Option<Ident<'sc>>) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualRegister)> {
-let mut warnings = vec![];
-let mut errors = vec![];
+fn single_reg<'sc>(
+    args: &[&VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+) -> CompileResult<'sc, VirtualRegister> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 1 {
+        todo!("Unnecessary registers err")
+    }
 
-                let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
-                    (Some(reg), Some(reg2), Some(reg3)) => (*reg, *reg2, *reg3),
-                    _ => todo!("Not enough registers error"),
-                };
-                match immediate {
-                    None => (),
-                    Some(_) => todo!("Err unnecessary immediate"),
-                };
+    let reg = match args.get(0) {
+        Some(reg) => *reg,
+        _ => todo!("Not enough registers error"),
+    };
+    match immediate {
+        None => (),
+        Some(_) => todo!("Err unnecessary immediate"),
+    };
 
-                ok(
-                    (reg.clone(), reg2.clone(), reg3.clone()),
-warnings,
-errors
-                )
+    ok(reg.clone(), warnings, errors)
 }
-fn two_regs_imm_12<'sc>(args: &[&VirtualRegister], immediate: &Option<Ident<'sc>>) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualImmediate12)> {
-let mut warnings = vec![];
-let mut errors = vec![];
-                let (reg, reg2) = match (args.get(0), args.get(1)) {
-                    (Some(reg), Some(reg2)) => (*reg, *reg2),
-                    _ => todo!("Not enough registers error"),
-                };
-                let (imm, imm_span): (u64, _) = match immediate {
-                    None => todo!("Err missing immediate"),
-                    Some(i) => match i.primary_name.parse() {
-                        Ok(o) => (o, i.span.clone()),
-                        Err(_) => {
-                            errors.push(CompileError::InvalidImmediateValue {
-                                span: i.span.clone(),
-                            });
-                            return err(warnings, errors);
-                        }
-                    },
-                };
 
-                let imm = match VirtualImmediate12::new(imm, imm_span) {
-                    Ok(o) => o,
-                    Err(e) => {
-                        errors.push(e);
-                        return err(warnings, errors);
-                    }
-                };
+fn two_regs<'sc>(
+    args: &[&VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+) -> CompileResult<'sc, (VirtualRegister, VirtualRegister)> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 2 {
+        todo!("Unnecessary registers err")
+    }
 
-                ok(
-                  (reg.clone(), reg2.clone(), imm),
-warnings,
-errors
-                )
+    let (reg, reg2) = match (args.get(0), args.get(1)) {
+        (Some(reg), Some(reg2)) => (*reg, *reg2),
+        _ => todo!("Not enough registers error"),
+    };
+    match immediate {
+        None => (),
+        Some(_) => todo!("Err unnecessary immediate"),
+    };
+
+    ok((reg.clone(), reg2.clone()), warnings, errors)
+}
+
+fn four_regs<'sc>(
+    args: &[&VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+) -> CompileResult<
+    'sc,
+    (
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 4 {
+        todo!("Unnecessary registers err");
+    }
+
+    let (reg, reg2, reg3, reg4) = match (args.get(0), args.get(1), args.get(2), args.get(3)) {
+        (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (*reg, *reg2, *reg3, *reg4),
+        _ => todo!("Not enough registers error"),
+    };
+    match immediate {
+        None => (),
+        Some(_) => todo!("Err unnecessary immediate"),
+    };
+
+    ok(
+        (reg.clone(), reg2.clone(), reg3.clone(), reg4.clone()),
+        warnings,
+        errors,
+    )
+}
+
+fn three_regs<'sc>(
+    args: &[&VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualRegister)> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 3 {
+        todo!("Unnecessary registers err");
+    }
+
+    let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
+        (Some(reg), Some(reg2), Some(reg3)) => (*reg, *reg2, *reg3),
+        _ => todo!("Not enough registers error"),
+    };
+    match immediate {
+        None => (),
+        Some(_) => todo!("Err unnecessary immediate"),
+    };
+
+    ok((reg.clone(), reg2.clone(), reg3.clone()), warnings, errors)
+}
+fn single_imm_24<'sc>(
+    args: &[&VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+) -> CompileResult<'sc, VirtualImmediate24> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 0 {
+        todo!("Unnecessary registers err");
+    }
+    let (imm, imm_span): (u64, _) = match immediate {
+        None => todo!("Err missing immediate"),
+        Some(i) => match i.primary_name.parse() {
+            Ok(o) => (o, i.span.clone()),
+            Err(_) => {
+                errors.push(CompileError::InvalidImmediateValue {
+                    span: i.span.clone(),
+                });
+                return err(warnings, errors);
+            }
+        },
+    };
+
+    let imm = match VirtualImmediate24::new(imm, imm_span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+
+    ok(imm, warnings, errors)
+}
+fn single_reg_imm_18<'sc>(
+    args: &[&VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+) -> CompileResult<'sc, (VirtualRegister, VirtualImmediate18)> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 1 {
+        todo!("Unnecessary registers err");
+    }
+    let reg = match args.get(0) {
+        Some(reg) => *reg,
+        _ => todo!("Not enough registers error"),
+    };
+    let (imm, imm_span): (u64, _) = match immediate {
+        None => todo!("Err missing immediate"),
+        Some(i) => match i.primary_name.parse() {
+            Ok(o) => (o, i.span.clone()),
+            Err(_) => {
+                errors.push(CompileError::InvalidImmediateValue {
+                    span: i.span.clone(),
+                });
+                return err(warnings, errors);
+            }
+        },
+    };
+
+    let imm = match VirtualImmediate18::new(imm, imm_span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+
+    ok((reg.clone(), imm), warnings, errors)
+}
+fn two_regs_imm_12<'sc>(
+    args: &[&VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualImmediate12)> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 2 {
+        todo!("Unnecessary registers err");
+    }
+    let (reg, reg2) = match (args.get(0), args.get(1)) {
+        (Some(reg), Some(reg2)) => (*reg, *reg2),
+        _ => todo!("Not enough registers error"),
+    };
+    let (imm, imm_span): (u64, _) = match immediate {
+        None => todo!("Err missing immediate"),
+        Some(i) => match i.primary_name.parse() {
+            Ok(o) => (o, i.span.clone()),
+            Err(_) => {
+                errors.push(CompileError::InvalidImmediateValue {
+                    span: i.span.clone(),
+                });
+                return err(warnings, errors);
+            }
+        },
+    };
+
+    let imm = match VirtualImmediate12::new(imm, imm_span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+
+    ok((reg.clone(), reg2.clone(), imm), warnings, errors)
 }
 
 impl fmt::Display for Op<'_> {
