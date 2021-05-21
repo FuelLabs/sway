@@ -1310,12 +1310,21 @@ pub(crate) enum VirtualOp {
 }
 
 impl VirtualOp {
-    /// Given an op name and a list of arguments, parse them into a [VirtualOp]
-    pub(crate) fn parse<'sc>(name: &Ident<'sc>, args: &[&str]) -> CompileResult<'sc, Self> {
-        todo!()
-    }
     pub(crate) fn registers(&self) -> HashSet<&VirtualRegister> {
-        todo!()
+        use VirtualOp::*;
+        (match self {
+            ADD(r1, r2, r3) => vec![r1, r2, r3],
+            ADDI(r1, r2, _i) => vec![r1, r2],
+            AND(r1, r2, r3) => vec![r1, r2, r3],
+            ANDI(r1, r2, _i) => vec![r1, r2],
+            DIV(r1, r2, r3) => vec![r1, r2, r3],
+            DIVI(r1, r2, _i) => vec![r1, r2],
+            EQ(r1, r2, r3) => vec![r1, r2, r3],
+
+            _ => todo!(),
+        })
+        .into_iter()
+        .collect()
     }
 
     pub(crate) fn allocate_registers(
