@@ -244,8 +244,34 @@ impl<'sc> Op<'sc> {
         args: &[&VirtualRegister],
         immediate: &Option<Ident<'sc>>,
     ) -> CompileResult<'sc, VirtualOp> {
-        match name.primary_name.to_lowercase().as_str() {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        ok(match name.primary_name.to_lowercase().as_str() {
             "add" => {
+		let (r1, r2, r3) = type_check!(three_regs(args, immediate), return err(warnings, errors), warnings, errors);
+		VirtualOp::ADD(r1, r2, r3)
+            }
+            "addi" => {
+		let (r1, r2, imm) = type_check!(two_regs_imm_12(args, immediate), return err(warnings, errors), warnings, errors);
+		VirtualOp::ADDI(r1, r2, imm)
+            }
+            "and" => {
+		let (r1, r2, r3) = type_check!(three_regs(args, immediate), return err(warnings, errors), warnings, errors);
+		VirtualOp::AND(r1, r2, r3)
+            }
+            "andi" => {
+		let (r1, r2, imm) = type_check!(two_regs_imm_12(args, immediate), return err(warnings, errors), warnings, errors);
+		VirtualOp::ANDI(r1, r2, imm)
+            }
+            _ => todo!(),
+        }, warnings, errors)
+    }
+}
+
+fn three_regs<'sc>(args: &[&VirtualRegister], immediate: &Option<Ident<'sc>>) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualRegister)> {
+let mut warnings = vec![];
+let mut errors = vec![];
+
                 let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
                     (Some(reg), Some(reg2), Some(reg3)) => (*reg, *reg2, *reg3),
                     _ => todo!("Not enough registers error"),
@@ -256,14 +282,44 @@ impl<'sc> Op<'sc> {
                 };
 
                 ok(
-                    VirtualOp::ADD(reg.clone(), reg2.clone(), reg3.clone()),
-                    vec![],
-                    vec![],
+                    (reg.clone(), reg2.clone(), reg3.clone()),
+warnings,
+errors
                 )
-            }
-            _ => todo!(),
-        }
-    }
+}
+fn two_regs_imm_12<'sc>(args: &[&VirtualRegister], immediate: &Option<Ident<'sc>>) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualImmediate12)> {
+let mut warnings = vec![];
+let mut errors = vec![];
+                let (reg, reg2) = match (args.get(0), args.get(1)) {
+                    (Some(reg), Some(reg2)) => (*reg, *reg2),
+                    _ => todo!("Not enough registers error"),
+                };
+                let (imm, imm_span): (u64, _) = match immediate {
+                    None => todo!("Err missing immediate"),
+                    Some(i) => match i.primary_name.parse() {
+                        Ok(o) => (o, i.span.clone()),
+                        Err(_) => {
+                            errors.push(CompileError::InvalidImmediateValue {
+                                span: i.span.clone(),
+                            });
+                            return err(warnings, errors);
+                        }
+                    },
+                };
+
+                let imm = match VirtualImmediate12::new(imm, imm_span) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        errors.push(e);
+                        return err(warnings, errors);
+                    }
+                };
+
+                ok(
+                  (reg.clone(), reg2.clone(), imm),
+warnings,
+errors
+                )
 }
 
 impl fmt::Display for Op<'_> {
@@ -390,7 +446,7 @@ pub(crate) enum OrganizationalOp {
 }
 
 impl OrganizationalOp {
-    pub(crate) fn registers(&mut self) -> HashSet<&mut VirtualRegister> {
+    pub(crate) fn registers(&self) -> HashSet<&VirtualRegister> {
         use OrganizationalOp::*;
         (match self {
             Label(_) | Comment | Jump(_) => vec![],

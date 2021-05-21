@@ -144,7 +144,9 @@ impl<'sc> AbstractInstructionSet<'sc> {
                         Either::Left(opc) => {
                             opc.registers().into_iter().map(|x| x.clone()).collect()
                         }
-                        Either::Right(_orgop) => todo!(),
+                        Either::Right(orgop) => {
+                            orgop.registers().into_iter().map(|x| x.clone()).collect()
+                        }
                     },
                 )
             })
