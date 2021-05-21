@@ -141,7 +141,12 @@ pub(crate) fn convert_expression_to_asm<'sc>(
 
                 // parse the actual op and registers
                 let opcode = type_check!(
-                    Op::parse_opcode(&op.op_name, replaced_registers.as_slice(), &op.immediate),
+                    Op::parse_opcode(
+                        &op.op_name,
+                        replaced_registers.as_slice(),
+                        &op.immediate,
+                        op.span.clone()
+                    ),
                     continue,
                     warnings,
                     errors

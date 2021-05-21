@@ -461,6 +461,14 @@ pub enum CompileError<'sc> {
     Immediate24TooLarge { val: u64, span: Span<'sc> },
     #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
     DisallowedJnei { span: Span<'sc> },
+    #[error(
+        "This op expects {expected} registers as arguments, but you provided {received} registers."
+    )]
+    IncorrectNumberOfAsmRegisters {
+        span: Span<'sc>,
+        expected: usize,
+        received: usize,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -603,6 +611,7 @@ impl<'sc> CompileError<'sc> {
             Immediate18TooLarge { span, .. } => span,
             Immediate24TooLarge { span, .. } => span,
             DisallowedJnei { span, .. } => span,
+            IncorrectNumberOfAsmRegisters { span, .. } => span,
         }
     }
 

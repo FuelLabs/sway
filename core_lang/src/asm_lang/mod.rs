@@ -243,14 +243,15 @@ impl<'sc> Op<'sc> {
         name: &Ident<'sc>,
         args: &[&VirtualRegister],
         immediate: &Option<Ident<'sc>>,
+        whole_op_span: Span<'sc>,
     ) -> CompileResult<'sc, VirtualOp> {
         let mut warnings = vec![];
         let mut errors = vec![];
         ok(
-            match name.primary_name.to_lowercase().as_str() {
+            match name.primary_name {
                 "add" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -259,7 +260,7 @@ impl<'sc> Op<'sc> {
                 }
                 "addi" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -268,7 +269,7 @@ impl<'sc> Op<'sc> {
                 }
                 "and" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -277,7 +278,7 @@ impl<'sc> Op<'sc> {
                 }
                 "andi" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -286,7 +287,7 @@ impl<'sc> Op<'sc> {
                 }
                 "div" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -295,7 +296,7 @@ impl<'sc> Op<'sc> {
                 }
                 "divi" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -304,7 +305,7 @@ impl<'sc> Op<'sc> {
                 }
                 "eq" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -313,7 +314,7 @@ impl<'sc> Op<'sc> {
                 }
                 "exp" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -322,7 +323,7 @@ impl<'sc> Op<'sc> {
                 }
                 "expi" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -331,7 +332,7 @@ impl<'sc> Op<'sc> {
                 }
                 "gt" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -340,7 +341,7 @@ impl<'sc> Op<'sc> {
                 }
                 "mlog" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -349,7 +350,7 @@ impl<'sc> Op<'sc> {
                 }
                 "mroo" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -358,7 +359,7 @@ impl<'sc> Op<'sc> {
                 }
                 "mod" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -367,7 +368,7 @@ impl<'sc> Op<'sc> {
                 }
                 "modi" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -376,7 +377,7 @@ impl<'sc> Op<'sc> {
                 }
                 "move" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -385,7 +386,7 @@ impl<'sc> Op<'sc> {
                 }
                 "mul" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -394,7 +395,7 @@ impl<'sc> Op<'sc> {
                 }
                 "muli" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -403,7 +404,7 @@ impl<'sc> Op<'sc> {
                 }
                 "not" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -412,7 +413,7 @@ impl<'sc> Op<'sc> {
                 }
                 "or" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -421,7 +422,7 @@ impl<'sc> Op<'sc> {
                 }
                 "ori" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -430,7 +431,7 @@ impl<'sc> Op<'sc> {
                 }
                 "sll" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -439,7 +440,7 @@ impl<'sc> Op<'sc> {
                 }
                 "slli" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -448,7 +449,7 @@ impl<'sc> Op<'sc> {
                 }
                 "srl" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -457,7 +458,7 @@ impl<'sc> Op<'sc> {
                 }
                 "srli" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -466,7 +467,7 @@ impl<'sc> Op<'sc> {
                 }
                 "sub" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -475,7 +476,7 @@ impl<'sc> Op<'sc> {
                 }
                 "subi" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -484,7 +485,7 @@ impl<'sc> Op<'sc> {
                 }
                 "xor" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -493,7 +494,7 @@ impl<'sc> Op<'sc> {
                 }
                 "xori" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -502,7 +503,7 @@ impl<'sc> Op<'sc> {
                 }
                 "cimv" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -511,7 +512,7 @@ impl<'sc> Op<'sc> {
                 }
                 "ctmv" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -520,7 +521,7 @@ impl<'sc> Op<'sc> {
                 }
                 "ji" => {
                     let imm = type_check!(
-                        single_imm_24(args, immediate),
+                        single_imm_24(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -535,7 +536,7 @@ impl<'sc> Op<'sc> {
                 }
                 "ret" => {
                     let r1 = type_check!(
-                        single_reg(args, immediate),
+                        single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -544,7 +545,7 @@ impl<'sc> Op<'sc> {
                 }
                 "cfei" => {
                     let imm = type_check!(
-                        single_imm_24(args, immediate),
+                        single_imm_24(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -553,7 +554,7 @@ impl<'sc> Op<'sc> {
                 }
                 "cfsi" => {
                     let imm = type_check!(
-                        single_imm_24(args, immediate),
+                        single_imm_24(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -562,7 +563,7 @@ impl<'sc> Op<'sc> {
                 }
                 "lb" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -571,7 +572,7 @@ impl<'sc> Op<'sc> {
                 }
                 "lw" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -580,7 +581,7 @@ impl<'sc> Op<'sc> {
                 }
                 "aloc" => {
                     let r1 = type_check!(
-                        single_reg(args, immediate),
+                        single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -589,7 +590,7 @@ impl<'sc> Op<'sc> {
                 }
                 "mcl" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -598,7 +599,7 @@ impl<'sc> Op<'sc> {
                 }
                 "mcli" => {
                     let (r1, imm) = type_check!(
-                        single_reg_imm_18(args, immediate),
+                        single_reg_imm_18(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -607,7 +608,7 @@ impl<'sc> Op<'sc> {
                 }
                 "mcp" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -616,7 +617,7 @@ impl<'sc> Op<'sc> {
                 }
                 "meq" => {
                     let (r1, r2, r3, r4) = type_check!(
-                        four_regs(args, immediate),
+                        four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -625,7 +626,7 @@ impl<'sc> Op<'sc> {
                 }
                 "sb" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -634,7 +635,7 @@ impl<'sc> Op<'sc> {
                 }
                 "sw" => {
                     let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate),
+                        two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -643,7 +644,7 @@ impl<'sc> Op<'sc> {
                 }
                 "bhsh" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -652,7 +653,7 @@ impl<'sc> Op<'sc> {
                 }
                 "bhei" => {
                     let r1 = type_check!(
-                        single_reg(args, immediate),
+                        single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -661,7 +662,7 @@ impl<'sc> Op<'sc> {
                 }
                 "burn" => {
                     let r1 = type_check!(
-                        single_reg(args, immediate),
+                        single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -670,7 +671,7 @@ impl<'sc> Op<'sc> {
                 }
                 "call" => {
                     let (r1, r2, r3, r4) = type_check!(
-                        four_regs(args, immediate),
+                        four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -679,7 +680,7 @@ impl<'sc> Op<'sc> {
                 }
                 "ccp" => {
                     let (r1, r2, r3, r4) = type_check!(
-                        four_regs(args, immediate),
+                        four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -688,7 +689,7 @@ impl<'sc> Op<'sc> {
                 }
                 "croo" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -697,7 +698,7 @@ impl<'sc> Op<'sc> {
                 }
                 "csiz" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -706,7 +707,7 @@ impl<'sc> Op<'sc> {
                 }
                 "cb" => {
                     let r1 = type_check!(
-                        single_reg(args, immediate),
+                        single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -715,7 +716,7 @@ impl<'sc> Op<'sc> {
                 }
                 "ldc" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -724,7 +725,7 @@ impl<'sc> Op<'sc> {
                 }
                 "log" => {
                     let (r1, r2, r3, r4) = type_check!(
-                        four_regs(args, immediate),
+                        four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -733,7 +734,7 @@ impl<'sc> Op<'sc> {
                 }
                 "mint" => {
                     let r1 = type_check!(
-                        single_reg(args, immediate),
+                        single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -742,7 +743,7 @@ impl<'sc> Op<'sc> {
                 }
                 "rvrt" => {
                     let r1 = type_check!(
-                        single_reg(args, immediate),
+                        single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -751,7 +752,7 @@ impl<'sc> Op<'sc> {
                 }
                 "sldc" => {
                     let (r1, r2, r3) = type_check!(
-                        three_regs(args, immediate),
+                        three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -760,7 +761,7 @@ impl<'sc> Op<'sc> {
                 }
                 "srw" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -769,7 +770,7 @@ impl<'sc> Op<'sc> {
                 }
                 "srwq" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -778,7 +779,7 @@ impl<'sc> Op<'sc> {
                 }
                 "sww" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -787,14 +788,76 @@ impl<'sc> Op<'sc> {
                 }
                 "swwq" => {
                     let (r1, r2) = type_check!(
-                        two_regs(args, immediate),
+                        two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     VirtualOp::SWWQ(r1, r2)
                 }
-                _ => todo!(),
+                "tr" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::TR(r1, r2, r3)
+                }
+                "tro" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::TRO(r1, r2, r3, r4)
+                }
+                "ecr" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ECR(r1, r2, r3)
+                }
+                "k256" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::K256(r1, r2, r3)
+                }
+                "s256" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::S256(r1, r2, r3)
+                }
+                "noop" => VirtualOp::NOOP,
+                "flag" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::FLAG(r1)
+                }
+
+                other => {
+                    errors.push(CompileError::UnrecognizedOp {
+                        op_name: other,
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
             },
             warnings,
             errors,
@@ -805,11 +868,16 @@ impl<'sc> Op<'sc> {
 fn single_reg<'sc>(
     args: &[&VirtualRegister],
     immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, VirtualRegister> {
     let mut warnings = vec![];
     let mut errors = vec![];
     if args.len() > 1 {
-        todo!("Unnecessary registers err")
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            expected: 1,
+            received: args.len(),
+            span: whole_op_span,
+        });
     }
 
     let reg = match args.get(0) {
@@ -827,6 +895,7 @@ fn single_reg<'sc>(
 fn two_regs<'sc>(
     args: &[&VirtualRegister],
     immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualRegister)> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -849,6 +918,7 @@ fn two_regs<'sc>(
 fn four_regs<'sc>(
     args: &[&VirtualRegister],
     immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
 ) -> CompileResult<
     'sc,
     (
@@ -883,6 +953,7 @@ fn four_regs<'sc>(
 fn three_regs<'sc>(
     args: &[&VirtualRegister],
     immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualRegister)> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -904,6 +975,7 @@ fn three_regs<'sc>(
 fn single_imm_24<'sc>(
     args: &[&VirtualRegister],
     immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, VirtualImmediate24> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -936,6 +1008,7 @@ fn single_imm_24<'sc>(
 fn single_reg_imm_18<'sc>(
     args: &[&VirtualRegister],
     immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualImmediate18)> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -972,6 +1045,7 @@ fn single_reg_imm_18<'sc>(
 fn two_regs_imm_12<'sc>(
     args: &[&VirtualRegister],
     immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualImmediate12)> {
     let mut warnings = vec![];
     let mut errors = vec![];
