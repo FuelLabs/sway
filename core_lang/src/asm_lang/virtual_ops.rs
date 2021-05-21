@@ -676,7 +676,7 @@ pub(crate) enum VirtualOp {
     ///
     /// #### Panics
     /// - `$is + imm * 4 > VM_MAX_RAM - 1`
-    JNEI(VirtualRegister, VirtualRegister, Label),
+    JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
 
     /// Returns from [context](./main.md#contexts) with value `$rA`.
     ///

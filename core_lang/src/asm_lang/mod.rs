@@ -233,7 +233,7 @@ impl<'sc> Op<'sc> {
         label: Label,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::JNEI(reg0, reg1, label)),
+            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(reg0, reg1, label)),
             comment: String::new(),
             owning_span: None,
         }
@@ -520,13 +520,10 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CTMV(r1, r2)
                 }
                 "ji" => {
-                    let imm = type_check!(
-                        single_imm_24(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::JI(imm)
+                    errors.push(CompileError::DisallowedJi {
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
                 }
                 "jnei" => {
                     errors.push(CompileError::DisallowedJnei {
@@ -1198,6 +1195,8 @@ pub(crate) enum OrganizationalOp {
     Comment,
     // Jumps to a label
     Jump(Label),
+    // Jumps to a label
+    JumpIfNotEq(VirtualRegister, VirtualRegister, Label),
     // Loads from the data section into a register
     // "load data"
     Ld(VirtualRegister, DataId),
@@ -1209,6 +1208,7 @@ impl OrganizationalOp {
         (match self {
             Label(_) | Comment | Jump(_) => vec![],
             Ld(r1, _) => vec![r1],
+            JumpIfNotEq(r1, r2, _) => vec![r1, r2],
         })
         .into_iter()
         .collect()

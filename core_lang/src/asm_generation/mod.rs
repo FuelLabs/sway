@@ -191,7 +191,7 @@ impl RegisterPool {
 fn label_is_used<'sc>(buf: &[Op<'sc>], label: &Label) -> bool {
     buf.iter().any(|Op { ref opcode, .. }| match opcode {
         Either::Right(OrganizationalOp::Jump(ref l)) if label == l => true,
-        Either::Left(VirtualOp::JNEI(_reg0, _reg1, ref l)) if label == l => true,
+        Either::Right(OrganizationalOp::JumpIfNotEq(_reg0, _reg1, ref l)) if label == l => true,
         _ => false,
     })
 }
@@ -236,11 +236,11 @@ impl fmt::Display for HllAsmSet<'_> {
             HllAsmSet::ScriptMain {
                 data_section,
                 program_section,
-            } => write!(f, "{}\n{}", data_section, program_section),
+            } => write!(f, "{}\n{}", program_section, data_section),
             HllAsmSet::PredicateMain {
                 data_section,
                 program_section,
-            } => write!(f, "{}\n{}", data_section, program_section),
+            } => write!(f, "{}\n{}", program_section, data_section),
             HllAsmSet::ContractAbi { .. } => write!(f, "TODO contract ABI asm is unimplemented"),
             // Libraries do not directly generate any asm.
             HllAsmSet::Library => write!(f, ""),
@@ -254,11 +254,11 @@ impl fmt::Display for JumpOptimizedAsmSet<'_> {
             JumpOptimizedAsmSet::ScriptMain {
                 data_section,
                 program_section,
-            } => write!(f, "{}\n{}", data_section, program_section),
+            } => write!(f, "{}\n{}", program_section, data_section),
             JumpOptimizedAsmSet::PredicateMain {
                 data_section,
                 program_section,
-            } => write!(f, "{}\n{}", data_section, program_section),
+            } => write!(f, "{}\n{}", program_section, data_section),
             JumpOptimizedAsmSet::ContractAbi { .. } => {
                 write!(f, "TODO contract ABI asm is unimplemented")
             }
@@ -274,11 +274,11 @@ impl fmt::Display for RegisterAllocatedAsmSet<'_> {
             RegisterAllocatedAsmSet::ScriptMain {
                 data_section,
                 program_section,
-            } => write!(f, "{}\n{}", data_section, program_section),
+            } => write!(f, "{}\n{}", program_section, data_section),
             RegisterAllocatedAsmSet::PredicateMain {
                 data_section,
                 program_section,
-            } => write!(f, "{}\n{}", data_section, program_section),
+            } => write!(f, "{}\n{}", program_section, data_section),
             RegisterAllocatedAsmSet::ContractAbi { .. } => {
                 write!(f, "TODO contract ABI asm is unimplemented")
             }
@@ -294,11 +294,11 @@ impl fmt::Display for FinalizedAsm<'_> {
             FinalizedAsm::ScriptMain {
                 data_section,
                 program_section,
-            } => write!(f, "{}\n{}", data_section, program_section),
+            } => write!(f, "{}\n{}", program_section, data_section),
             FinalizedAsm::PredicateMain {
                 data_section,
                 program_section,
-            } => write!(f, "{}\n{}", data_section, program_section),
+            } => write!(f, "{}\n{}", program_section, data_section),
             FinalizedAsm::ContractAbi { .. } => {
                 write!(f, "TODO contract ABI asm is unimplemented")
             }

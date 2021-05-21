@@ -462,6 +462,10 @@ pub enum CompileError<'sc> {
     #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
     DisallowedJnei { span: Span<'sc> },
     #[error(
+        "The opcode \"ji\" is not valid in inline assembly. Try using function calls instead."
+    )]
+    DisallowedJi { span: Span<'sc> },
+    #[error(
         "This op expects {expected} registers as arguments, but you provided {received} registers."
     )]
     IncorrectNumberOfAsmRegisters {
@@ -611,6 +615,7 @@ impl<'sc> CompileError<'sc> {
             Immediate18TooLarge { span, .. } => span,
             Immediate24TooLarge { span, .. } => span,
             DisallowedJnei { span, .. } => span,
+            DisallowedJi { span, .. } => span,
             IncorrectNumberOfAsmRegisters { span, .. } => span,
         }
     }

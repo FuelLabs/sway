@@ -514,7 +514,7 @@ pub(crate) enum AllocatedOp {
     ///
     /// #### Panics
     /// - `$is + imm * 4 > VM_MAX_RAM - 1`
-    JNEI(AllocatedRegister, AllocatedRegister, Label),
+    JNEI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
     /// Returns from [context](./main.md#contexts) with value `$rA`.
     ///
