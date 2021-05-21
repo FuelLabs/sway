@@ -731,6 +731,69 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::LOG(r1, r2, r3, r4)
                 }
+                "mint" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MINT(r1)
+                }
+                "rvrt" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::RVRT(r1)
+                }
+                "sldc" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SLDC(r1, r2, r3)
+                }
+                "srw" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SRW(r1, r2)
+                }
+                "srwq" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SRWQ(r1, r2)
+                }
+                "sww" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SWW(r1, r2)
+                }
+                "swwq" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SWWQ(r1, r2)
+                }
                 _ => todo!(),
             },
             warnings,
