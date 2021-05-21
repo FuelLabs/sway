@@ -49,6 +49,6 @@ pub struct DependencyDetails {
 fn try_parse() {
     println!(
         "{:#?}",
-        toml::from_str::<Manifest>(&crate::defaults::default_manifest("test_proj".into())).unwrap()
+        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj".into())).unwrap()
     )
 }

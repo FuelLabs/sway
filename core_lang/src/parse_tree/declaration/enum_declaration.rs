@@ -11,7 +11,7 @@ use pest::iterators::Pair;
 use pest::Span;
 #[derive(Debug, Clone)]
 pub struct EnumDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
+    pub name: Ident<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) variants: Vec<EnumVariant<'sc>>,
     pub(crate) span: Span<'sc>,

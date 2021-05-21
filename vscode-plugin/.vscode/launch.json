@@ -1,0 +1,43 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "lldb",
+			"request": "attach",
+			"name": "Fume Server",
+			"program": "${workspaceFolder}/../target/debug/fume-server",
+			"targetCreateCommands": [
+				"target create ${workspaceFolder}/../target/debug/fume-server"
+			],
+			"processCreateCommands": [
+				"settings set target.run-args value1 value2 value3",
+				"process launch"
+			]
+		},
+		{
+			"type": "extensionHost",
+			"request": "launch",
+			"name": "Launch Client",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
+			"outFiles": [
+				"${workspaceRoot}/client/out/**/*.js"
+			],
+			"preLaunchTask": {
+				"type": "npm",
+				"script": "watch"
+			}
+		},
+	],
+	"compounds": [
+		{
+			"name": "Client + Server",
+			"configurations": [
+				"Launch Client",
+				"Fume Server"
+			]
+		}
+	]
+}

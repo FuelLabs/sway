@@ -1,20 +1,19 @@
 [package]
-name    = "forc"
-version = "0.1.0"
 authors = ["Alex Hansen <alex.hansen@fuel.sh>"]
 edition = "2018"
+name = "forc"
 rust = "1.50"
-
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-core_lang   = { path = "../core_lang" }
-structopt   = "0.3"
+core_lang = {path = "../core_lang"}
+line-col = "0.2"
+pest = "2.1"
+serde = {version = "1.0", features = ["derive"]}
 source-span = "2.4"
-termcolor   = "1.1"
-line-col    = "0.2"
-toml        = "0.5"
-serde       = { version = "1.0", features = ["derive"] }
-whoami      = "1.1"
-pest        = "2.1"
+structopt = "0.3"
+termcolor = "1.1"
+toml = "0.5"
+whoami = "1.1"

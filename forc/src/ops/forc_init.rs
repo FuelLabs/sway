@@ -1,3 +1,4 @@
+use crate::utils::{constants, defaults};
 use std::fs;
 
 pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::error::Error>> {
@@ -6,14 +7,14 @@ pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::
 
     // insert default manifest file
     fs::write(
-        format!("{}/{}", project_name, crate::constants::MANIFEST_FILE_NAME),
-        crate::defaults::default_manifest(&project_name),
+        format!("{}/{}", project_name, constants::MANIFEST_FILE_NAME),
+        defaults::default_manifest(&project_name),
     )?;
 
     // insert default main function
     fs::write(
         format!("{}/src/main.fm", project_name),
-        crate::defaults::default_program(),
+        defaults::default_program(),
     )?;
 
     Ok(())

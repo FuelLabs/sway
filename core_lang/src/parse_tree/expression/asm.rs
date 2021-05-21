@@ -9,7 +9,7 @@ use super::Expression;
 use crate::types::IntegerBits;
 
 #[derive(Debug, Clone)]
-pub(crate) struct AsmExpression<'sc> {
+pub struct AsmExpression<'sc> {
     pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
     pub(crate) body: Vec<AsmOp<'sc>>,
     pub(crate) returns: Option<(AsmRegister, Span<'sc>)>,

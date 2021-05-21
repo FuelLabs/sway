@@ -9,8 +9,8 @@ use pest::iterators::Pair;
 use pest::Span;
 
 #[derive(Debug, Clone)]
-pub(crate) struct TraitDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub struct TraitDeclaration<'sc> {
+    pub name: Ident<'sc>,
     pub(crate) interface_surface: Vec<TraitFn<'sc>>,
     pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,

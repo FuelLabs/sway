@@ -22,10 +22,10 @@ impl Visibility {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct FunctionDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub struct FunctionDeclaration<'sc> {
+    pub name: Ident<'sc>,
     pub(crate) visibility: Visibility,
-    pub(crate) body: CodeBlock<'sc>,
+    pub body: CodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub(crate) span: pest::Span<'sc>,
     pub(crate) return_type: TypeInfo<'sc>,

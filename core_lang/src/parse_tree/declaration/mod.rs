@@ -14,7 +14,7 @@ pub(crate) use reassignment::*;
 pub(crate) use struct_declaration::*;
 pub(crate) use trait_declaration::*;
 pub(crate) use type_parameter::*;
-pub(crate) use variable_declaration::*;
+pub use variable_declaration::*;
 
 use crate::error::*;
 use crate::parse_tree::Expression;
@@ -24,7 +24,7 @@ use crate::Ident;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub(crate) enum Declaration<'sc> {
+pub enum Declaration<'sc> {
     VariableDeclaration(VariableDeclaration<'sc>),
     FunctionDeclaration(FunctionDeclaration<'sc>),
     TraitDeclaration(TraitDeclaration<'sc>),

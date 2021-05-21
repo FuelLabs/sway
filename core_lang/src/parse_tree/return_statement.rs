@@ -4,7 +4,7 @@ use crate::{CompileResult, Expression};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub(crate) struct ReturnStatement<'sc> {
+pub struct ReturnStatement<'sc> {
     pub(crate) expr: Expression<'sc>,
 }
 

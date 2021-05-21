@@ -6,7 +6,7 @@ use source_span::{
 use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
-use crate::manifest::{Dependency, DependencyDetails, Manifest};
+use crate::utils::manifest::{Dependency, DependencyDetails, Manifest};
 use core_lang::{CompilationResult, LibraryExports, Namespace};
 use std::{fs, path::PathBuf};
 
@@ -54,7 +54,7 @@ fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
     let mut path = fs::canonicalize(starter_path.clone()).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
-        path.push(crate::constants::MANIFEST_FILE_NAME);
+        path.push(crate::utils::constants::MANIFEST_FILE_NAME);
         if path.exists() {
             path.pop();
             return Some(path);
@@ -126,7 +126,7 @@ fn compile_dependency_lib<'source, 'manifest>(
 fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     let manifest_path = {
         let mut man = manifest_dir.clone();
-        man.push(crate::constants::MANIFEST_FILE_NAME);
+        man.push(crate::utils::constants::MANIFEST_FILE_NAME);
         man
     };
     let manifest_path_str = format!("{:?}", manifest_path);
@@ -197,6 +197,7 @@ fn compile_library<'source, 'manifest>(
         }
     }
 }
+
 fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,

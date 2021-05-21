@@ -6,11 +6,11 @@ use pest::iterators::Pair;
 use pest::Span;
 
 #[derive(Debug, Clone)]
-pub(crate) struct Reassignment<'sc> {
+pub struct Reassignment<'sc> {
     // the thing being reassigned
-    pub(crate) lhs: Ident<'sc>,
+    pub lhs: Ident<'sc>,
     // the expression that is being assigned to the lhs
-    pub(crate) rhs: Expression<'sc>,
+    pub rhs: Expression<'sc>,
     pub(crate) span: Span<'sc>,
 }
 
