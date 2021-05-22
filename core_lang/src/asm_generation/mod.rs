@@ -16,7 +16,7 @@ use crate::{
 };
 use either::Either;
 
-mod compiler_constants;
+pub(crate) mod compiler_constants;
 mod declaration;
 mod expression;
 mod register_sequencer;
