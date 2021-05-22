@@ -89,7 +89,7 @@ pub struct RealizedAbstractInstructionSet<'sc> {
 }
 
 impl<'sc> RealizedAbstractInstructionSet<'sc> {
-    fn allocate_registers(self) -> InstructionSet {
+    fn allocate_registers(self) -> InstructionSet<'sc> {
         // Eventually, we will use a cool graph-coloring algorithm.
         // For now, just keep a pool of registers and return
         // registers when they are not read anymore
@@ -114,18 +114,21 @@ impl<'sc> RealizedAbstractInstructionSet<'sc> {
         let mut pool = RegisterPool::init();
         let mut buf = vec![];
         for (ix, (op, _)) in op_register_mapping.iter().enumerate() {
-            buf.push(
-                op.opcode
+            buf.push(AllocatedOp {
+                opcode: op
+                    .opcode
                     .allocate_registers(&mut pool, &op_register_mapping, ix),
-            )
+                comment: op.comment.clone(),
+                owning_span: op.owning_span.clone(),
+            })
         }
         InstructionSet { ops: buf }
     }
 }
 
 /// An [InstructionSet] is produced by allocating registers on an [AbstractInstructionSet].
-pub struct InstructionSet {
-    ops: Vec<AllocatedOp>,
+pub struct InstructionSet<'sc> {
+    ops: Vec<AllocatedOp<'sc>>,
 }
 
 type Data<'sc> = Literal<'sc>;
@@ -359,7 +362,7 @@ impl fmt::Display for JumpOptimizedAsmSet<'_> {
     }
 }
 
-impl fmt::Display for RegisterAllocatedAsmSet {
+impl<'sc> fmt::Display for RegisterAllocatedAsmSet<'sc> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             RegisterAllocatedAsmSet::ScriptMain { program_section } => {
@@ -377,7 +380,7 @@ impl fmt::Display for RegisterAllocatedAsmSet {
     }
 }
 
-impl fmt::Display for FinalizedAsm {
+impl<'sc> fmt::Display for FinalizedAsm<'sc> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FinalizedAsm::ScriptMain { program_section } => write!(f, "{}", program_section,),
@@ -405,14 +408,14 @@ impl fmt::Display for AbstractInstructionSet<'_> {
     }
 }
 
-impl fmt::Display for InstructionSet {
+impl<'sc> fmt::Display for InstructionSet<'sc> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             ".program:\n{}",
             self.ops
                 .iter()
-                .map(|x| format!("{}", todo!()))
+                .map(|x| format!("{}", x))
                 .collect::<Vec<_>>()
                 .join("\n")
         )
@@ -559,7 +562,7 @@ impl<'sc> HllAsmSet<'sc> {
 }
 
 impl<'sc> JumpOptimizedAsmSet<'sc> {
-    fn allocate_registers(self) -> RegisterAllocatedAsmSet {
+    fn allocate_registers(self) -> RegisterAllocatedAsmSet<'sc> {
         // TODO implement this -- noop for now
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
@@ -600,16 +603,20 @@ pub enum JumpOptimizedAsmSet<'sc> {
     Library,
 }
 /// Represents an ASM set which has had registers allocated
-pub enum RegisterAllocatedAsmSet {
+pub enum RegisterAllocatedAsmSet<'sc> {
     ContractAbi,
-    ScriptMain { program_section: InstructionSet },
-    PredicateMain { program_section: InstructionSet },
+    ScriptMain {
+        program_section: InstructionSet<'sc>,
+    },
+    PredicateMain {
+        program_section: InstructionSet<'sc>,
+    },
     // Libraries do not generate any asm.
     Library,
 }
 
-impl<'sc> RegisterAllocatedAsmSet {
-    fn optimize(self) -> FinalizedAsm {
+impl<'sc> RegisterAllocatedAsmSet<'sc> {
+    fn optimize(self) -> FinalizedAsm<'sc> {
         // TODO implement this -- noop for now
         match self {
             RegisterAllocatedAsmSet::Library => FinalizedAsm::Library,
@@ -626,10 +633,14 @@ impl<'sc> RegisterAllocatedAsmSet {
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
-pub enum FinalizedAsm {
+pub enum FinalizedAsm<'sc> {
     ContractAbi,
-    ScriptMain { program_section: InstructionSet },
-    PredicateMain { program_section: InstructionSet },
+    ScriptMain {
+        program_section: InstructionSet<'sc>,
+    },
+    PredicateMain {
+        program_section: InstructionSet<'sc>,
+    },
     // Libraries do not generate any asm.
     Library,
 }

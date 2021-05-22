@@ -196,7 +196,7 @@ fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
-) -> Result<core_lang::FinalizedAsm, String> {
+) -> Result<core_lang::FinalizedAsm<'source>, String> {
     let res = core_lang::compile(&source, namespace);
     match res {
         CompilationResult::ScriptAsm { asm, warnings } => {

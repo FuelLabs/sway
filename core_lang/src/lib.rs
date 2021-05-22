@@ -121,15 +121,15 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
 
 pub enum CompilationResult<'sc> {
     ContractAbi {
-        abi: HashMap<usize, FinalizedAsm>,
+        abi: HashMap<usize, FinalizedAsm<'sc>>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     ScriptAsm {
-        asm: FinalizedAsm,
+        asm: FinalizedAsm<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     PredicateAsm {
-        asm: FinalizedAsm,
+        asm: FinalizedAsm<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Library {

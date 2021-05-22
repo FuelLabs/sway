@@ -5,7 +5,7 @@
 //! ops are clones of the actual opcodes, but with the safe primitives as arguments.
 
 use super::{
-    allocated_ops::{AllocatedOp, AllocatedRegister},
+    allocated_ops::{AllocatedOp, AllocatedOpcode, AllocatedRegister},
     Op, RealizedOp,
 };
 use crate::asm_generation::RegisterPool;
@@ -103,6 +103,11 @@ impl VirtualImmediate06 {
         }
     }
 }
+impl fmt::Display for VirtualImmediate06 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "i{}", self.value)
+    }
+}
 
 /// 12-bits immediate value type
 #[derive(Clone)]
@@ -132,6 +137,11 @@ impl VirtualImmediate12 {
         Self {
             value: raw.try_into().expect(&(msg.into())),
         }
+    }
+}
+impl fmt::Display for VirtualImmediate12 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "i{}", self.value)
     }
 }
 
@@ -164,6 +174,11 @@ impl VirtualImmediate18 {
         }
     }
 }
+impl fmt::Display for VirtualImmediate18 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "i{}", self.value)
+    }
+}
 
 /// 24-bits immediate value type
 #[derive(Clone)]
@@ -192,6 +207,11 @@ impl VirtualImmediate24 {
         Self {
             value: raw.try_into().expect(&(msg.into())),
         }
+    }
+}
+impl fmt::Display for VirtualImmediate24 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "i{}", self.value)
     }
 }
 
@@ -1392,7 +1412,7 @@ impl VirtualOp {
         pool: &mut RegisterPool,
         op_register_mapping: &[(RealizedOp, HashSet<VirtualRegister>)],
         ix: usize,
-    ) -> AllocatedOp {
+    ) -> AllocatedOpcode {
         let virtual_registers = self.registers();
         let register_allocation_result = virtual_registers
             .clone()
@@ -1423,256 +1443,278 @@ impl VirtualOp {
 
         use VirtualOp::*;
         match self {
-            ADD(reg1, reg2, reg3) => AllocatedOp::ADD(
+            ADD(reg1, reg2, reg3) => AllocatedOpcode::ADD(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            ADDI(reg1, reg2, imm) => AllocatedOp::ADDI(
+            ADDI(reg1, reg2, imm) => AllocatedOpcode::ADDI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            AND(reg1, reg2, reg3) => AllocatedOp::AND(
+            AND(reg1, reg2, reg3) => AllocatedOpcode::AND(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            ANDI(reg1, reg2, imm) => AllocatedOp::ANDI(
+            ANDI(reg1, reg2, imm) => AllocatedOpcode::ANDI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            DIV(reg1, reg2, reg3) => AllocatedOp::DIV(
+            DIV(reg1, reg2, reg3) => AllocatedOpcode::DIV(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            DIVI(reg1, reg2, imm) => AllocatedOp::DIVI(
+            DIVI(reg1, reg2, imm) => AllocatedOpcode::DIVI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            EQ(reg1, reg2, reg3) => AllocatedOp::EQ(
+            EQ(reg1, reg2, reg3) => AllocatedOpcode::EQ(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            EXP(reg1, reg2, reg3) => AllocatedOp::EXP(
+            EXP(reg1, reg2, reg3) => AllocatedOpcode::EXP(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            EXPI(reg1, reg2, imm) => AllocatedOp::EXPI(
+            EXPI(reg1, reg2, imm) => AllocatedOpcode::EXPI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            GT(reg1, reg2, reg3) => AllocatedOp::GT(
+            GT(reg1, reg2, reg3) => AllocatedOpcode::GT(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            MLOG(reg1, reg2, reg3) => AllocatedOp::MLOG(
+            MLOG(reg1, reg2, reg3) => AllocatedOpcode::MLOG(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            MROO(reg1, reg2, reg3) => AllocatedOp::MROO(
+            MROO(reg1, reg2, reg3) => AllocatedOpcode::MROO(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            MOD(reg1, reg2, reg3) => AllocatedOp::MOD(
+            MOD(reg1, reg2, reg3) => AllocatedOpcode::MOD(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            MODI(reg1, reg2, imm) => AllocatedOp::MODI(
+            MODI(reg1, reg2, imm) => AllocatedOpcode::MODI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            MOVE(reg1, reg2) => AllocatedOp::MOVE(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            MUL(reg1, reg2, reg3) => AllocatedOp::MUL(
+            MOVE(reg1, reg2) => {
+                AllocatedOpcode::MOVE(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            MUL(reg1, reg2, reg3) => AllocatedOpcode::MUL(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            MULI(reg1, reg2, imm) => AllocatedOp::MULI(
+            MULI(reg1, reg2, imm) => AllocatedOpcode::MULI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            NOT(reg1, reg2) => AllocatedOp::NOT(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            OR(reg1, reg2, reg3) => AllocatedOp::OR(
+            NOT(reg1, reg2) => {
+                AllocatedOpcode::NOT(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            OR(reg1, reg2, reg3) => AllocatedOpcode::OR(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            ORI(reg1, reg2, imm) => AllocatedOp::ORI(
+            ORI(reg1, reg2, imm) => AllocatedOpcode::ORI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            SLL(reg1, reg2, reg3) => AllocatedOp::SLL(
+            SLL(reg1, reg2, reg3) => AllocatedOpcode::SLL(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            SLLI(reg1, reg2, imm) => AllocatedOp::SLLI(
+            SLLI(reg1, reg2, imm) => AllocatedOpcode::SLLI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            SRL(reg1, reg2, reg3) => AllocatedOp::SRL(
+            SRL(reg1, reg2, reg3) => AllocatedOpcode::SRL(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            SRLI(reg1, reg2, imm) => AllocatedOp::SRLI(
+            SRLI(reg1, reg2, imm) => AllocatedOpcode::SRLI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            SUB(reg1, reg2, reg3) => AllocatedOp::SUB(
+            SUB(reg1, reg2, reg3) => AllocatedOpcode::SUB(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            SUBI(reg1, reg2, imm) => AllocatedOp::SUBI(
+            SUBI(reg1, reg2, imm) => AllocatedOpcode::SUBI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            XOR(reg1, reg2, reg3) => AllocatedOp::XOR(
+            XOR(reg1, reg2, reg3) => AllocatedOpcode::XOR(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            XORI(reg1, reg2, imm) => AllocatedOp::XORI(
+            XORI(reg1, reg2, imm) => AllocatedOpcode::XORI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            CIMV(reg1, reg2, reg3) => AllocatedOp::CIMV(
+            CIMV(reg1, reg2, reg3) => AllocatedOpcode::CIMV(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            CTMV(reg1, reg2) => AllocatedOp::CTMV(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            JI(imm) => AllocatedOp::JI(imm.clone()),
-            JNEI(reg1, reg2, imm) => AllocatedOp::JNEI(
+            CTMV(reg1, reg2) => {
+                AllocatedOpcode::CTMV(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            JI(imm) => AllocatedOpcode::JI(imm.clone()),
+            JNEI(reg1, reg2, imm) => AllocatedOpcode::JNEI(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            RET(reg) => AllocatedOp::RET(map_reg(&mapping, reg)),
-            CFEI(imm) => AllocatedOp::CFEI(imm.clone()),
-            CFSI(imm) => AllocatedOp::CFSI(imm.clone()),
-            LB(reg1, reg2, imm) => AllocatedOp::LB(
+            RET(reg) => AllocatedOpcode::RET(map_reg(&mapping, reg)),
+            CFEI(imm) => AllocatedOpcode::CFEI(imm.clone()),
+            CFSI(imm) => AllocatedOpcode::CFSI(imm.clone()),
+            LB(reg1, reg2, imm) => AllocatedOpcode::LB(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            LW(reg1, reg2, imm) => AllocatedOp::LW(
+            LW(reg1, reg2, imm) => AllocatedOpcode::LW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            ALOC(reg) => AllocatedOp::ALOC(map_reg(&mapping, reg)),
-            MCL(reg1, reg2) => AllocatedOp::MCL(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            MCLI(reg1, imm) => AllocatedOp::MCLI(map_reg(&mapping, reg1), imm.clone()),
-            MCP(reg1, reg2, reg3) => AllocatedOp::MCP(
+            ALOC(reg) => AllocatedOpcode::ALOC(map_reg(&mapping, reg)),
+            MCL(reg1, reg2) => {
+                AllocatedOpcode::MCL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            MCLI(reg1, imm) => AllocatedOpcode::MCLI(map_reg(&mapping, reg1), imm.clone()),
+            MCP(reg1, reg2, reg3) => AllocatedOpcode::MCP(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            MEQ(reg1, reg2, reg3, reg4) => AllocatedOp::MEQ(
+            MEQ(reg1, reg2, reg3, reg4) => AllocatedOpcode::MEQ(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
-            SB(reg1, reg2, imm) => AllocatedOp::SB(
+            SB(reg1, reg2, imm) => AllocatedOpcode::SB(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            SW(reg1, reg2, imm) => AllocatedOp::SW(
+            SW(reg1, reg2, imm) => AllocatedOpcode::SW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            BHSH(reg1, reg2) => AllocatedOp::BHSH(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            BHEI(reg1) => AllocatedOp::BHEI(map_reg(&mapping, reg1)),
-            BURN(reg1) => AllocatedOp::BURN(map_reg(&mapping, reg1)),
-            CALL(reg1, reg2, reg3, reg4) => AllocatedOp::CALL(
+            BHSH(reg1, reg2) => {
+                AllocatedOpcode::BHSH(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            BHEI(reg1) => AllocatedOpcode::BHEI(map_reg(&mapping, reg1)),
+            BURN(reg1) => AllocatedOpcode::BURN(map_reg(&mapping, reg1)),
+            CALL(reg1, reg2, reg3, reg4) => AllocatedOpcode::CALL(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
-            CCP(reg1, reg2, reg3, reg4) => AllocatedOp::CCP(
+            CCP(reg1, reg2, reg3, reg4) => AllocatedOpcode::CCP(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
-            CROO(reg1, reg2) => AllocatedOp::CROO(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            CSIZ(reg1, reg2) => AllocatedOp::CSIZ(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            CB(reg1) => AllocatedOp::CB(map_reg(&mapping, reg1)),
-            LDC(reg1, reg2, reg3) => AllocatedOp::LDC(
+            CROO(reg1, reg2) => {
+                AllocatedOpcode::CROO(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            CSIZ(reg1, reg2) => {
+                AllocatedOpcode::CSIZ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            CB(reg1) => AllocatedOpcode::CB(map_reg(&mapping, reg1)),
+            LDC(reg1, reg2, reg3) => AllocatedOpcode::LDC(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            LOG(reg1, reg2, reg3, reg4) => AllocatedOp::LOG(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-                map_reg(&mapping, reg4),
-            ),
-            MINT(reg1) => AllocatedOp::MINT(map_reg(&mapping, reg1)),
-            RVRT(reg1) => AllocatedOp::RVRT(map_reg(&mapping, reg1)),
-            SLDC(reg1, reg2, reg3) => AllocatedOp::SLDC(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-            ),
-            SRW(reg1, reg2) => AllocatedOp::SRW(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            SRWQ(reg1, reg2) => AllocatedOp::SRWQ(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            SWW(reg1, reg2) => AllocatedOp::SWW(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            SWWQ(reg1, reg2) => AllocatedOp::SWWQ(map_reg(&mapping, reg1), map_reg(&mapping, reg2)),
-            TR(reg1, reg2, reg3) => AllocatedOp::TR(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-            ),
-            TRO(reg1, reg2, reg3, reg4) => AllocatedOp::TRO(
+            LOG(reg1, reg2, reg3, reg4) => AllocatedOpcode::LOG(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
-            ECR(reg1, reg2, reg3) => AllocatedOp::ECR(
+            MINT(reg1) => AllocatedOpcode::MINT(map_reg(&mapping, reg1)),
+            RVRT(reg1) => AllocatedOpcode::RVRT(map_reg(&mapping, reg1)),
+            SLDC(reg1, reg2, reg3) => AllocatedOpcode::SLDC(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            K256(reg1, reg2, reg3) => AllocatedOp::K256(
+            SRW(reg1, reg2) => {
+                AllocatedOpcode::SRW(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            SRWQ(reg1, reg2) => {
+                AllocatedOpcode::SRWQ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            SWW(reg1, reg2) => {
+                AllocatedOpcode::SWW(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            SWWQ(reg1, reg2) => {
+                AllocatedOpcode::SWWQ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            TR(reg1, reg2, reg3) => AllocatedOpcode::TR(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            S256(reg1, reg2, reg3) => AllocatedOp::S256(
+            TRO(reg1, reg2, reg3, reg4) => AllocatedOpcode::TRO(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
+            ECR(reg1, reg2, reg3) => AllocatedOpcode::ECR(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            NOOP => AllocatedOp::NOOP,
-            FLAG(reg) => AllocatedOp::FLAG(map_reg(&mapping, reg)),
-            Undefined => AllocatedOp::Undefined,
+            K256(reg1, reg2, reg3) => AllocatedOpcode::K256(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            S256(reg1, reg2, reg3) => AllocatedOpcode::S256(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            NOOP => AllocatedOpcode::NOOP,
+            FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
+            Undefined => AllocatedOpcode::Undefined,
         }
     }
 }
