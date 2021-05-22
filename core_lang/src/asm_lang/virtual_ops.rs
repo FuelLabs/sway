@@ -5,11 +5,11 @@
 //! ops are clones of the actual opcodes, but with the safe primitives as arguments.
 
 use super::{
-    allocated_ops::{AllocatedOp, AllocatedOpcode, AllocatedRegister},
-    Op, RealizedOp,
+    allocated_ops::{AllocatedOpcode, AllocatedRegister},
+    RealizedOp,
 };
 use crate::asm_generation::RegisterPool;
-use crate::{error::*, Ident};
+use crate::error::*;
 use pest::Span;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;

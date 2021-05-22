@@ -95,7 +95,7 @@ impl<'sc> RealizedAbstractInstructionSet<'sc> {
         // registers when they are not read anymore
 
         // construct a mapping from every op to the registers it uses
-        let mut op_register_mapping = self
+        let op_register_mapping = self
             .ops
             .into_iter()
             .map(|op| {

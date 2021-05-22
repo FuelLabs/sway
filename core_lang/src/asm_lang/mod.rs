@@ -10,7 +10,7 @@ use either::Either;
 use pest::Span;
 use std::{collections::HashSet, fmt};
 use virtual_ops::{
-    ConstantRegister, Label, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
+    ConstantRegister, Label, VirtualImmediate12, VirtualImmediate18,
     VirtualImmediate24, VirtualOp, VirtualRegister,
 };
 
@@ -875,7 +875,7 @@ fn single_reg<'sc>(
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, VirtualRegister> {
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 1 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
@@ -913,7 +913,7 @@ fn two_regs<'sc>(
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualRegister)> {
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 2 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
@@ -957,7 +957,7 @@ fn four_regs<'sc>(
         VirtualRegister,
     ),
 > {
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 4 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
@@ -1025,7 +1025,7 @@ fn three_regs<'sc>(
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualRegister)> {
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 3 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
@@ -1062,7 +1062,7 @@ fn single_imm_24<'sc>(
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, VirtualImmediate24> {
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 0 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
@@ -1104,7 +1104,7 @@ fn single_reg_imm_18<'sc>(
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualImmediate18)> {
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 1 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
@@ -1157,7 +1157,7 @@ fn two_regs_imm_12<'sc>(
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualImmediate12)> {
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 2 {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
