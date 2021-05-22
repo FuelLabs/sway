@@ -6,7 +6,7 @@
 
 use super::{
     allocated_ops::{AllocatedOp, AllocatedRegister},
-    Op,
+    Op, RealizedOp,
 };
 use crate::asm_generation::RegisterPool;
 use crate::{error::*, Ident};
@@ -1390,7 +1390,8 @@ impl VirtualOp {
     pub(crate) fn allocate_registers(
         &self,
         pool: &mut RegisterPool,
-        op_register_mapping: &[(Op, HashSet<VirtualRegister>)],
+        op_register_mapping: &[(RealizedOp, HashSet<VirtualRegister>)],
+        ix: usize,
     ) -> AllocatedOp {
         let virtual_registers = self.registers();
         let register_allocation_result = virtual_registers
@@ -1415,7 +1416,7 @@ impl VirtualOp {
         };
 
         for reg in virtual_registers {
-            if virtual_register_is_never_accessed_again(reg, &op_register_mapping) {
+            if virtual_register_is_never_accessed_again(reg, &op_register_mapping[ix + 1..]) {
                 pool.return_register_to_pool(mapping.get(reg).unwrap().clone());
             }
         }
@@ -1684,7 +1685,7 @@ fn map_reg(
     mapping.get(reg).unwrap().clone()
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 /// A label for a spot in the bytecode, to be later compiled to an offset.
 pub(crate) struct Label(pub(crate) usize);
 impl fmt::Display for Label {
@@ -1694,7 +1695,7 @@ impl fmt::Display for Label {
 }
 fn virtual_register_is_never_accessed_again(
     reg: &VirtualRegister,
-    ops: &[(Op, std::collections::HashSet<VirtualRegister>)],
+    ops: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
 ) -> bool {
     !ops.iter().any(|(_, regs)| regs.contains(reg))
 }

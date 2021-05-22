@@ -1,3 +1,4 @@
+use crate::asm_lang::virtual_ops::VirtualImmediate12;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::CompileError;
@@ -18,6 +19,24 @@ pub(crate) enum Literal<'sc> {
 }
 
 impl<'sc> Literal<'sc> {
+    // This function is very bad. Because I don't know how to do data sections right now, I just OR
+    // data against 0.
+    pub(crate) fn force_to_imm(&self) -> VirtualImmediate12 {
+        // please make sure this function dies quickly
+        use Literal::*;
+        match self {
+            U8(num) => VirtualImmediate12::new_unchecked(*num as u64, "the bad force_to_imm func"),
+            U16(num) => VirtualImmediate12::new_unchecked(*num as u64, "the bad force_to_imm func"),
+            U32(num) => VirtualImmediate12::new_unchecked(*num as u64, "the bad force_to_imm func"),
+            U64(num) => VirtualImmediate12::new_unchecked(*num, "the bad force_to_imm func"),
+            String(..) => panic!("Strings can't go in an immediate"),
+            Boolean(b) => VirtualImmediate12::new_unchecked(*b as u64, "the bad force_to_imm func"),
+            Byte(num) => {
+                VirtualImmediate12::new_unchecked(*num as u64, "the bad force_to_imm func")
+            }
+            Byte32(..) => panic!("byte32 can't fit in an immediate"),
+        }
+    }
     pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> CompileResult<'sc, (Self, Span<'sc>)> {
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
