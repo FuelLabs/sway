@@ -19,6 +19,12 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    - name: Setup SSH agent
+      uses: webfactory/ssh-agent@v0.5.2
+      with:
+        ssh-private-key: |
+          ${{ secrets.PRIVATE_KEY_FUEL_ASM }}
+
     - name: Install toolchain
       uses: actions-rs/toolchain@v1
       with:
