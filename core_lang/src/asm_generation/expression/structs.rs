@@ -71,7 +71,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     // decide how many call frame extensions are needed based on the size of the struct
     // and how many bits can be put in a single cfei op
     // limit struct size to 12 bits for now, for simplicity
-    let twelve_bits = 0b111_111_111_111;
+    let twelve_bits = compiler_constants::TWELVE_BITS;
     let number_of_allocations_necessary = (total_size / twelve_bits) + 1;
 
     // construct the allocation ops

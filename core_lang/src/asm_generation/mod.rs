@@ -280,6 +280,8 @@ impl RegisterPool {
         }
     }
 
+    /// Checks if any currently used registers are no longer in use, updates the pool,
+    /// and grabs an available register.
     pub(crate) fn get_register(
         &mut self,
         virtual_register: &VirtualRegister,
