@@ -615,6 +615,8 @@ pub enum CompileError<'sc> {
     },
     #[error("This op does not take an immediate value.")]
     UnnecessaryImmediate { span: Span<'sc> },
+    #[error("This reference is ambiguous, and could refer to either a module or an enum of the same name. Try qualifying the name with a path.")]
+    AmbiguousPath { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -763,6 +765,7 @@ impl<'sc> CompileError<'sc> {
             DisallowedJi { span, .. } => span,
             IncorrectNumberOfAsmRegisters { span, .. } => span,
             UnnecessaryImmediate { span, .. } => span,
+            AmbiguousPath { span, .. } => span,
         }
     }
 

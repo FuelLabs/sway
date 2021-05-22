@@ -1432,7 +1432,9 @@ impl VirtualOp {
                     mapping.insert(key, val);
                 }
             }
-            None => todo!("Out of registers error"),
+            None => {
+                unimplemented!("The allocator cannot resolve a register mapping for this program. This is a temporary artifact of the extremely early stage version of this language. Try to lower the number of variables you use.")
+            }
         };
 
         use VirtualOp::*;

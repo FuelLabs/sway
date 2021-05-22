@@ -684,11 +684,20 @@ impl<'sc> TypedExpression<'sc> {
                 // enum instantiation
                 let this_thing: Either<TypedDeclaration, TypedExpression> =
                     match (module_result, enum_module_combined_result) {
-                        (Some(_module), Some(_enum_res)) => todo!("Ambiguous reference error"),
+                        (Some(_module), Some(_enum_res)) => {
+                            errors.push(CompileError::AmbiguousPath { span: span.clone() });
+                            return err(warnings, errors);
+                        }
                         (Some(module), None) => {
                             match module.get_symbol(&call_path.suffix).cloned() {
                                 Some(decl) => Either::Left(decl),
-                                None => todo!("symbol not found in module error"),
+                                None => {
+                                    errors.push(CompileError::SymbolNotFound {
+                                        name: call_path.suffix.primary_name,
+                                        span: call_path.suffix.span.clone(),
+                                    });
+                                    return err(warnings, errors);
+                                }
                             }
                         }
                         (None, Some(enum_decl)) => Either::Right(type_check!(
