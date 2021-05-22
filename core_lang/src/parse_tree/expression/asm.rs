@@ -8,7 +8,7 @@ use super::Expression;
 use crate::types::IntegerBits;
 
 #[derive(Debug, Clone)]
-pub(crate) struct AsmExpression<'sc> {
+pub struct AsmExpression<'sc> {
     pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
     pub(crate) body: Vec<AsmOp<'sc>>,
     pub(crate) returns: Option<(AsmRegister, Span<'sc>)>,
@@ -160,6 +160,7 @@ impl<'sc> AsmOp<'sc> {
 pub(crate) struct AsmRegisterDeclaration<'sc> {
     pub(crate) name: &'sc str,
     pub(crate) initializer: Option<Expression<'sc>>,
+    pub(crate) name_span: Span<'sc>,
 }
 
 impl<'sc> AsmRegisterDeclaration<'sc> {
@@ -187,6 +188,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
             };
             reg_buf.push(AsmRegisterDeclaration {
                 name: reg_name.as_str(),
+                name_span: reg_name.as_span(),
                 initializer,
             })
         }

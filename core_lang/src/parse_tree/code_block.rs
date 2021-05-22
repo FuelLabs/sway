@@ -10,8 +10,8 @@ use pest::Span;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub(crate) struct CodeBlock<'sc> {
-    pub(crate) contents: Vec<AstNode<'sc>>,
+pub struct CodeBlock<'sc> {
+    pub contents: Vec<AstNode<'sc>>,
     pub(crate) scope: HashMap<&'sc str, Declaration<'sc>>,
     pub(crate) whole_block_span: Span<'sc>,
 }

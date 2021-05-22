@@ -1,30 +1,31 @@
-script {
+script;
 use std::*;
 use std::ops::Eq;
-  struct Rgb {
-    red: u64,
-    green: u64,
-    blue: u64,
+
+struct Rgb {
+  red: u64,
+  green: u64,
+  blue: u64,
+}
+
+trait Color {
+  fn rgb(self) -> Rgb;
+}
+
+enum PrimaryColor {
+   Red : (),
+   Green : (),
+   Blue : ()
+}
+
+impl std::ops::Eq for PrimaryColor {
+  fn equals(self, other: Self) -> bool {
+   asm(r1: self, r2: other, r3) {
+      eq r3 r1 r2;
+      r3: bool
+    }
   }
-
-    trait Color {
-      fn rgb(self) -> Rgb;
-    }
-
-    enum PrimaryColor {
-       Red : (),
-       Green : (),
-       Blue : ()
-    }
-
-    impl std::ops::Eq for PrimaryColor {
-      fn equals(self, other: Self) -> bool {
-       asm(r1: self, r2: other, r3) {
-          eq r3 r1 r2;
-          r3: bool
-        }
-      }
-    }
+}
 
 impl Color for PrimaryColor {
   // TODO: when we support match statements, change this to a match statement
@@ -52,20 +53,25 @@ impl Color for PrimaryColor {
     }
     // TODO remove this else when exhaustive ifs are checked for
      else {
-       Rgb {
-         red: 0,
-         green: 0,
-         blue: 0,
-       }
-     }
-   }
+      Rgb {
+        red: 0,
+        green: 0,
+        blue: 0,
+      }
+    }
+  }
 }
 
-  fn main() {
-    let first_color: PrimaryColor = PrimaryColor::Green;
-    let test = first_color == PrimaryColor::Green;
-    // Specifically, when we call methods in the below way, `self` is undefined
-    let rgb: Rgb = first_color.rgb();
-      // let z = 5 == 2;
-    }
+fn main() {
+  let first_color: PrimaryColor = PrimaryColor::Green;
+  let test = first_color == PrimaryColor::Green;
+  // Specifically, when we call methods in the below way, `self` is undefined
+  let rgb: Rgb = first_color.rgb();
+  // now, going to test the register pool by using over 48 registers
+  let second_color = PrimaryColor::Blue;
+  let second_rgb = second_color.rgb();
+  let second_color = PrimaryColor::Blue;
+  let second_rgb = second_color.rgb();
+  let second_color = PrimaryColor::Blue;
+  let second_rgb = second_color.rgb();
 }

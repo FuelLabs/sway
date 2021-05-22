@@ -198,10 +198,9 @@ mod test {
     fn trait_decl_unimplemented_method() {
         let parsed = HllParser::parse(
             Rule::program,
-            r#"script {
+            r#"script;
                 trait MyTrait {
                     fn some_method_you_need_to_implement(x: i32) -> i32;
-                }
             }"#,
         );
         // this parse should fail since parens are wrong
@@ -218,7 +217,7 @@ mod test {
         let parsed = HllParser::parse(
             Rule::program,
             r#"
-           predicate {
+           predicate;
             trait MyTrait {
                 fn some_method_you_need_to_implement(x: i32) -> i32;
             } {
@@ -228,7 +227,6 @@ mod test {
                 }
                 }
 
-            }
             "#,
         );
         // this parse should fail since parens are wrong
@@ -261,12 +259,12 @@ mod test {
         let parsed = HllParser::parse(
             Rule::program,
             r#"
-            contract {
+            contract;
                 use otherlibrary::packagename;
                 fn main(){
                 let x = 5;
                 return x;
-                }
+                
             }
             "#,
         );
@@ -284,12 +282,11 @@ mod test {
         let parsed = HllParser::parse(
             Rule::program,
             r#"
-            script {
+            script;
                 fn main(){
                     let x = 0b01011010;
                     let y = 0xAF;
                     return 0;
-                }
             }"#,
         );
         // this parse should fail since parens are wrong
@@ -307,17 +304,48 @@ mod test {
         let parsed = HllParser::parse(
             Rule::program,
             r#"
-            predicate {
+            predicate;
                 fn main(){
                     let x = 0b01011010;
                     // 32 bytes in a bytes32
                     let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
                     return x;
                 }
-            }
             "#,
         );
         // this parse should fail since parens are wrong
+        dbg!(&parsed);
+        match parsed {
+            Err(e) => {
+                println!("{:#?}", e);
+                panic!()
+            }
+            Ok(_) => (),
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn multiple_programs() {
+        let parsed = HllParser::parse(
+            Rule::program,
+            r#"
+            predicate;
+                fn main(){
+                    let x = 0b01011010;
+                    // 32 bytes in a bytes32
+                    let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
+                    return x;
+                }
+            predicate;
+                fn main(){
+                    let x = 0b01011010;
+                    // 32 bytes in a bytes32
+                    let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
+                    return x;
+                }
+            "#,
+        );
         dbg!(&parsed);
         match parsed {
             Err(e) => {

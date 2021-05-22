@@ -7,8 +7,8 @@ use pest::Span;
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CallPath<'sc> {
-    pub(crate) prefixes: Vec<Ident<'sc>>,
-    pub(crate) suffix: Ident<'sc>,
+    pub prefixes: Vec<Ident<'sc>>,
+    pub suffix: Ident<'sc>,
 }
 
 impl<'sc> std::convert::From<Ident<'sc>> for CallPath<'sc> {

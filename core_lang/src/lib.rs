@@ -11,7 +11,7 @@ mod parse_tree;
 mod parser;
 mod semantic_analysis;
 
-use crate::parse_tree::*;
+pub use crate::parse_tree::*;
 use crate::parser::{HllParser, Rule};
 use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
@@ -20,10 +20,9 @@ use pest::iterators::Pair;
 use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
 use std::collections::HashMap;
-
 pub(crate) mod types;
 pub(crate) mod utils;
-pub(crate) use crate::parse_tree::{Expression, UseStatement, WhileLoop};
+pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
@@ -59,18 +58,18 @@ pub struct ParseTree<'sc> {
     /// In a typical programming language, you might have a single root node for your syntax tree.
     /// In this language however, we want to expose multiple public functions at the root
     /// level so the tree is multi-root.
-    root_nodes: Vec<AstNode<'sc>>,
-    span: Span<'sc>,
+    pub root_nodes: Vec<AstNode<'sc>>,
+    pub span: Span<'sc>,
 }
 
 #[derive(Debug, Clone)]
-struct AstNode<'sc> {
-    content: AstNodeContent<'sc>,
-    span: Span<'sc>,
+pub struct AstNode<'sc> {
+    pub content: AstNodeContent<'sc>,
+    pub span: Span<'sc>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum AstNodeContent<'sc> {
+pub enum AstNodeContent<'sc> {
     UseStatement(UseStatement<'sc>),
     ReturnStatement(ReturnStatement<'sc>),
     Declaration(Declaration<'sc>),
@@ -375,7 +374,10 @@ pub fn compile<'sc, 'manifest>(
                 exports: o,
             },
             // Default to compiling an empty library if there is no code or invalid state
-            _ => unimplemented!("Multiple contracts, libraries, scripts, or predicates in a single file are unsupported."),
+            _ => unimplemented!(
+                "Multiple contracts, libraries, scripts, or predicates in a single file are \
+                 unsupported."
+            ),
         }
     } else {
         CompilationResult::Failure { errors, warnings }
@@ -502,7 +504,13 @@ fn parse_root_from_pairs<'sc>(
                 }
             }
             Rule::library => {
-                fuel_ast.library_exports.push((library_name.expect("Safe unwrap, because the core_lang enforces the library keyword is followed by a name. This is an invariant"), parse_tree));
+                fuel_ast.library_exports.push((
+                    library_name.expect(
+                        "Safe unwrap, because the core_lang enforces the library keyword is \
+                         followed by a name. This is an invariant",
+                    ),
+                    parse_tree,
+                ));
             }
             Rule::EOI => (),
             a => errors.push(CompileError::InvalidTopLevelItem(a, block.as_span())),
@@ -516,7 +524,7 @@ fn parse_root_from_pairs<'sc>(
 fn test_basic_prog() {
     let prog = parse(
         r#"
-        contract {
+        contract;
 
     enum yo
     <T>
@@ -595,9 +603,6 @@ fn test_basic_prog() {
          func_app(my_args, (so_many_args))];
         return 5;
     }
-
-    }
-
     "#,
     );
     dbg!(&prog);
@@ -607,12 +612,11 @@ fn test_basic_prog() {
 fn test_parenthesized() {
     let prog = parse(
         r#"
-        contract {
+        contract;
         pub fn abi_func() -> unit {
             let x = (5 + 6 / (1 + (2 / 1) + 4));
             return;
         }
-   }
     "#,
     );
     prog.unwrap();

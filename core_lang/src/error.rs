@@ -90,7 +90,7 @@ pub(crate) fn ok<'sc, T>(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CompileResult<'sc, T> {
     Ok {
         value: T,
@@ -204,31 +204,91 @@ pub enum Warning<'sc> {
     },
     DeadMethod,
     StructFieldNeverRead,
+    ShadowingReservedRegister {
+        reg_name: &'sc str,
+    },
 }
 
 impl<'sc> Warning<'sc> {
     fn to_string(&self) -> String {
         use Warning::*;
         match self {
-            NonClassCaseStructName{ struct_name } => format!("Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \"{}\".", struct_name, to_class_case(struct_name)),
-            NonClassCaseTraitName{ name } => format!("Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \"{}\".", name, to_class_case(name)),
-            NonClassCaseEnumName{ enum_name} => format!("Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase name, like \"{}\".", enum_name, to_class_case(enum_name)),
-            NonSnakeCaseStructFieldName { field_name } => format!("Struct field name \"{}\" is not idiomatic. Struct field names should have a snake_case name, like \"{}\".", field_name, to_snake_case(field_name)),
-            NonClassCaseEnumVariantName { variant_name } => format!("Enum variant name \"{}\" is not idiomatic. Enum variant names should be ClassCase, like \"{}\".", variant_name, to_class_case(variant_name)),
-            NonSnakeCaseFunctionName { name } => format!("Function name \"{}\" is not idiomatic. Function names should be snake_case, like \"{}\".", name, to_snake_case(name)),
-            LossOfPrecision { initial_type, cast_to } => format!("This cast, from type {} to type {}, will lose precision.", initial_type.friendly_type_str(), cast_to.friendly_type_str()),
-            UnusedReturnValue { r#type } => format!("This returns a value of type {}, which is not assigned to anything and is ignored.", r#type.friendly_type_str()),
-            SimilarMethodFound { lib, module, name } => format!("A method with the same name was found for type {} in dependency \"{}::{}\". Traits must be in scope in order to access their methods. ", name, lib, module),
-            OverridesOtherSymbol { name } => format!("This import would override another symbol with the same name \"{}\" in this namespace.", name),
-            OverridingTraitImplementation  => format!("This trait implementation overrides another one that was previously defined."),
-            DeadDeclaration  => "This declaration is never used.".into(),
-            DeadStructDeclaration  => "This struct is never instantiated.".into(),
-            DeadFunctionDeclaration  => "This function is never called.".into(),
+            NonClassCaseStructName { struct_name } => format!(
+                "Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \
+                 \"{}\".",
+                struct_name,
+                to_class_case(struct_name)
+            ),
+            NonClassCaseTraitName { name } => format!(
+                "Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \
+                 \"{}\".",
+                name,
+                to_class_case(name)
+            ),
+            NonClassCaseEnumName { enum_name } => format!(
+                "Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase \
+                 name, like \"{}\".",
+                enum_name,
+                to_class_case(enum_name)
+            ),
+            NonSnakeCaseStructFieldName { field_name } => format!(
+                "Struct field name \"{}\" is not idiomatic. Struct field names should have a \
+                 snake_case name, like \"{}\".",
+                field_name,
+                to_snake_case(field_name)
+            ),
+            NonClassCaseEnumVariantName { variant_name } => format!(
+                "Enum variant name \"{}\" is not idiomatic. Enum variant names should be \
+                 ClassCase, like \"{}\".",
+                variant_name,
+                to_class_case(variant_name)
+            ),
+            NonSnakeCaseFunctionName { name } => format!(
+                "Function name \"{}\" is not idiomatic. Function names should be snake_case, like \
+                 \"{}\".",
+                name,
+                to_snake_case(name)
+            ),
+            LossOfPrecision {
+                initial_type,
+                cast_to,
+            } => format!(
+                "This cast, from type {} to type {}, will lose precision.",
+                initial_type.friendly_type_str(),
+                cast_to.friendly_type_str()
+            ),
+            UnusedReturnValue { r#type } => format!(
+                "This returns a value of type {}, which is not assigned to anything and is \
+                 ignored.",
+                r#type.friendly_type_str()
+            ),
+            SimilarMethodFound { lib, module, name } => format!(
+                "A method with the same name was found for type {} in dependency \"{}::{}\". \
+                 Traits must be in scope in order to access their methods. ",
+                name, lib, module
+            ),
+            OverridesOtherSymbol { name } => format!(
+                "This import would override another symbol with the same name \"{}\" in this \
+                 namespace.",
+                name
+            ),
+            OverridingTraitImplementation => format!(
+                "This trait implementation overrides another one that was previously defined."
+            ),
+            DeadDeclaration => "This declaration is never used.".into(),
+            DeadStructDeclaration => "This struct is never instantiated.".into(),
+            DeadFunctionDeclaration => "This function is never called.".into(),
             UnreachableCode => "This code is unreachable.".into(),
-            DeadEnumVariant { variant_name } => format!("Enum variant {} is never constructed.", variant_name),
+            DeadEnumVariant { variant_name } => {
+                format!("Enum variant {} is never constructed.", variant_name)
+            }
             DeadTrait => "This trait is never implemented.".into(),
             DeadMethod => "This method is never called.".into(),
-            StructFieldNeverRead => "This struct field is never accessed.".into()
+            StructFieldNeverRead => "This struct field is never accessed.".into(),
+            ShadowingReservedRegister { reg_name } => format!(
+                "This register declaration shadows the reserved register, \"{}\".",
+                reg_name
+            ),
         }
     }
 }
@@ -247,7 +307,10 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
         what_it_is: &'static str,
     },
-    #[error("Identifier \"{name}\" was called as if it was a function, but it is actually a {what_it_is}.")]
+    #[error(
+        "Identifier \"{name}\" was called as if it was a function, but it is actually a \
+         {what_it_is}."
+    )]
     NotAFunction {
         name: &'sc str,
         span: Span<'sc>,
@@ -262,38 +325,69 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
         err: pest::error::Error<Rule>,
     },
-    #[error("Invalid top-level item: {0:?}. A program should consist of a contract, script, or predicate at the top level.")]
+    #[error(
+        "Invalid top-level item: {0:?}. A program should consist of a contract, script, or \
+         predicate at the top level."
+    )]
     InvalidTopLevelItem(Rule, Span<'sc>),
-    #[error("Internal compiler error: {0}\nPlease file an issue on the repository and include the code that triggered this error.")]
+    #[error(
+        "Internal compiler error: {0}\nPlease file an issue on the repository and include the \
+         code that triggered this error."
+    )]
     Internal(&'static str, Span<'sc>),
     #[error("Unimplemented feature: {0:?}")]
     UnimplementedRule(Rule, Span<'sc>),
-    #[error("Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)")]
+    #[error(
+        "Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 \
+         binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)"
+    )]
     InvalidByteLiteralLength { byte_length: usize, span: Span<'sc> },
     #[error("Expected an expression to follow operator \"{op}\"")]
     ExpectedExprAfterOp { op: &'sc str, span: Span<'sc> },
     #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
     ExpectedOp { op: &'sc str, span: Span<'sc> },
-    #[error("Where clause was specified but there are no generic type parameters. Where clauses can only be applied to generic type parameters.")]
+    #[error(
+        "Where clause was specified but there are no generic type parameters. Where clauses can \
+         only be applied to generic type parameters."
+    )]
     UnexpectedWhereClause(Span<'sc>),
-    #[error("Specified generic type in where clause \"{type_name}\" not found in generic type arguments of function.")]
+    #[error(
+        "Specified generic type in where clause \"{type_name}\" not found in generic type \
+         arguments of function."
+    )]
     UndeclaredGenericTypeInWhereClause {
         type_name: &'sc str,
         span: Span<'sc>,
     },
-    #[error("Program contains multiple contracts. A valid program should only contain at most one contract.")]
+    #[error(
+        "Program contains multiple contracts. A valid program should only contain at most one \
+         contract."
+    )]
     MultipleContracts(Span<'sc>),
-    #[error("Program contains multiple scripts. A valid program should only contain at most one script.")]
+    #[error(
+        "Program contains multiple scripts. A valid program should only contain at most one \
+         script."
+    )]
     MultipleScripts(Span<'sc>),
-    #[error("Program contains multiple predicates. A valid program should only contain at most one predicate.")]
+    #[error(
+        "Program contains multiple predicates. A valid program should only contain at most one \
+         predicate."
+    )]
     MultiplePredicates(Span<'sc>),
-    #[error("Trait constraint was applied to generic type that is not in scope. Trait \"{trait_name}\" cannot constrain type \"{type_name}\" because that type does not exist in this scope.")]
+    #[error(
+        "Trait constraint was applied to generic type that is not in scope. Trait \
+         \"{trait_name}\" cannot constrain type \"{type_name}\" because that type does not exist \
+         in this scope."
+    )]
     ConstrainedNonExistentType {
         trait_name: &'sc str,
         type_name: &'sc str,
         span: Span<'sc>,
     },
-    #[error("Predicate definition contains multiple main functions. Multiple functions in the same scope cannot have the same name.")]
+    #[error(
+        "Predicate definition contains multiple main functions. Multiple functions in the same \
+         scope cannot have the same name."
+    )]
     MultiplePredicateMainFunctions(Span<'sc>),
     #[error(
         "Predicate declaration contains no main function. Predicates require a main function."
@@ -303,9 +397,15 @@ pub enum CompileError<'sc> {
     PredicateMainDoesNotReturnBool(Span<'sc>),
     #[error("Script declaration contains no main function. Scripts require a main function.")]
     NoScriptMainFunction(Span<'sc>),
-    #[error("Script definition contains multiple main functions. Multiple functions in the same scope cannot have the same name.")]
+    #[error(
+        "Script definition contains multiple main functions. Multiple functions in the same scope \
+         cannot have the same name."
+    )]
     MultipleScriptMainFunctions(Span<'sc>),
-    #[error("Attempted to reassign to a symbol that is not a variable. Symbol {name} is not a mutable variable, it is a {kind}.")]
+    #[error(
+        "Attempted to reassign to a symbol that is not a variable. Symbol {name} is not a mutable \
+         variable, it is a {kind}."
+    )]
     ReassignmentToNonVariable {
         name: &'sc str,
         kind: &'sc str,
@@ -313,7 +413,11 @@ pub enum CompileError<'sc> {
     },
     #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
     AssignmentToNonMutable(&'sc str, Span<'sc>),
-    #[error("Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in the function signature? For example: \n`fn {fn_name}<{comma_separated_generic_params}>({args}) -> ... `")]
+    #[error(
+        "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
+         the function signature? For example: \n`fn \
+         {fn_name}<{comma_separated_generic_params}>({args}) -> ... `"
+    )]
     TypeParameterNotInTypeScope {
         name: &'sc str,
         span: Span<'sc>,
@@ -326,7 +430,8 @@ pub enum CompileError<'sc> {
     )]
     MultipleImmediates(Span<'sc>),
     #[error(
-        "Expected type {expected}, but found type {given}. The definition of this function must match the one in the trait declaration."
+        "Expected type {expected}, but found type {given}. The definition of this function must \
+         match the one in the trait declaration."
     )]
     MismatchedTypeInTrait {
         span: Span<'sc>,
@@ -354,17 +459,29 @@ pub enum CompileError<'sc> {
         expected: usize,
         span: Span<'sc>,
     },
-    #[error("Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import it?")]
+    #[error(
+        "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
+         it?"
+    )]
     StructNotFound { name: &'sc str, span: Span<'sc> },
-    #[error("The name \"{name}\" does not refer to a struct, but this is an attempted struct declaration.")]
+    #[error(
+        "The name \"{name}\" does not refer to a struct, but this is an attempted struct \
+         declaration."
+    )]
     DeclaredNonStructAsStruct { name: &'sc str, span: Span<'sc> },
-    #[error("Attempted to access field \"{field_name}\" of non-struct \"{name}\". Field accesses are only valid on structs.")]
+    #[error(
+        "Attempted to access field \"{field_name}\" of non-struct \"{name}\". Field accesses are \
+         only valid on structs."
+    )]
     AccessedFieldOfNonStruct {
         field_name: &'sc str,
         name: &'sc str,
         span: Span<'sc>,
     },
-    #[error("Attempted to access a method on something that has no methods. \"{name}\" is a {thing}, not a type with methods.")]
+    #[error(
+        "Attempted to access a method on something that has no methods. \"{name}\" is a {thing}, \
+         not a type with methods."
+    )]
     MethodOnNonValue {
         name: &'sc str,
         thing: &'sc str,
@@ -398,28 +515,43 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
         actually: String,
     },
-    #[error("Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n {available_fields}")]
+    #[error(
+        "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
+         {available_fields}"
+    )]
     FieldNotFound {
         field_name: &'sc str,
         available_fields: String,
         struct_name: &'sc str,
         span: Span<'sc>,
     },
-    #[error("Could not find symbol {name} in this scope.")]
+    #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { span: Span<'sc>, name: &'sc str },
-    #[error("Because this if expression's value is used, an \"else\" branch is required and it must return type \"{r#type}\"")]
+    #[error(
+        "Because this if expression's value is used, an \"else\" branch is required and it must \
+         return type \"{r#type}\""
+    )]
     NoElseBranch { span: Span<'sc>, r#type: String },
     #[error("Use of type `Self` outside of a context in which `Self` refers to a type.")]
     UnqualifiedSelfType { span: Span<'sc> },
-    #[error("Symbol \"{name}\" does not refer to a type, it refers to a {actually_is}. It cannot be used in this position.")]
+    #[error(
+        "Symbol \"{name}\" does not refer to a type, it refers to a {actually_is}. It cannot be \
+         used in this position."
+    )]
     NotAType {
         span: Span<'sc>,
         name: String,
         actually_is: String,
     },
-    #[error("This enum variant requires an instantiation expression. Try initializing it with arguments in parentheses.")]
+    #[error(
+        "This enum variant requires an instantiation expression. Try initializing it with \
+         arguments in parentheses."
+    )]
     MissingEnumInstantiator { span: Span<'sc> },
-    #[error("This path must return a value of type \"{ty}\" from function \"{function_name}\", but it does not.")]
+    #[error(
+        "This path must return a value of type \"{ty}\" from function \"{function_name}\", but it \
+         does not."
+    )]
     PathDoesNotReturn {
         span: Span<'sc>,
         ty: String,
@@ -429,7 +561,10 @@ pub enum CompileError<'sc> {
     ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
     #[error("Expected block to implicitly return a value.")]
     ExpectedImplicitReturnFromBlock { span: Span<'sc> },
-    #[error("This register was not initialized in the initialization section of the ASM expression. Initialized registers are: {initialized_registers}")]
+    #[error(
+        "This register was not initialized in the initialization section of the ASM expression. \
+         Initialized registers are: {initialized_registers}"
+    )]
     UnknownRegister {
         span: Span<'sc>,
         initialized_registers: String,
@@ -438,8 +573,10 @@ pub enum CompileError<'sc> {
     MissingImmediate { span: Span<'sc> },
     #[error("This immediate value is invalid.")]
     InvalidImmediateValue { span: Span<'sc> },
-    #[error("This expression was expected to return a value but no return register was specified. Provide a register \
-    in the implicit return position of this asm expression to return it.")]
+    #[error(
+        "This expression was expected to return a value but no return register was specified. \
+         Provide a register in the implicit return position of this asm expression to return it."
+    )]
     InvalidAssemblyMismatchedReturn { span: Span<'sc> },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
     UnknownEnumVariant {
@@ -449,7 +586,10 @@ pub enum CompileError<'sc> {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
-    #[error("Unable to infer concrete type for partial type \"{ty}\". Type must be known at this point. Try providing an annotation or using a concrete type.")]
+    #[error(
+        "Unable to infer concrete type for partial type \"{ty}\". Type must be known at this \
+         point. Try providing an annotation or using a concrete type."
+    )]
     TypeMustBeKnown { ty: String, span: Span<'sc> },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span<'sc> },
@@ -483,7 +623,10 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
 
 #[derive(Error, Debug, Clone)]
 pub enum TypeError<'sc> {
-    #[error("Mismatched types: Expected type {expected} but found type {received}. Type {received} is not castable to type {expected}.\n help: {help_text}")]
+    #[error(
+        "Mismatched types: Expected type {expected} but found type {received}. Type {received} is \
+         not castable to type {expected}.\n help: {help_text}"
+    )]
     MismatchedType {
         expected: String,
         received: String,

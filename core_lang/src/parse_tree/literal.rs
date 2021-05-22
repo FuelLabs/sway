@@ -7,7 +7,7 @@ use pest::Span;
 use std::convert::TryInto;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) enum Literal<'sc> {
+pub enum Literal<'sc> {
     U8(u8),
     U16(u16),
     U32(u32),

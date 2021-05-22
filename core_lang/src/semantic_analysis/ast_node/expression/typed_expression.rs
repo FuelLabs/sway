@@ -123,8 +123,10 @@ impl<'sc> TypedExpression<'sc> {
                                 arg.clone(),
                                 &namespace,
                                 Some(param.r#type.clone()),
-                                "The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration.",
-                                self_type
+                                "The argument that has been provided to this function's type does \
+                                 not match the declared type of the parameter in the function \
+                                 declaration.",
+                                self_type,
                             );
                             let arg = match res {
                                 CompileResult::Ok {
@@ -151,8 +153,9 @@ impl<'sc> TypedExpression<'sc> {
                         TypedExpression {
                             return_type: return_type.clone(),
                             // now check the function call return type
-                            // FEATURE this IsConstant can be true if the function itself is constant-able
-                            // const functions would be an advanced feature and are not supported right
+                            // FEATURE this IsConstant can be true if the function itself is
+                            // constant-able const functions would be an
+                            // advanced feature and are not supported right
                             // now
                             is_constant: IsConstant::No,
                             expression: TypedExpressionVariant::FunctionApplication {
@@ -175,8 +178,7 @@ impl<'sc> TypedExpression<'sc> {
             }
             Expression::MatchExpression { span, .. } => {
                 errors.push(CompileError::Unimplemented(
-                    "Match expressions and pattern \
-                matching have not been implemented.",
+                    "Match expressions and pattern matching have not been implemented.",
                     span,
                 ));
                 return err(warnings, errors);
@@ -272,7 +274,8 @@ impl<'sc> TypedExpression<'sc> {
                         whole_block_span: span.clone(),
                     }),
                     return_type: block_return_type,
-                    is_constant: IsConstant::No, // TODO if all elements of block are constant then this is constant
+                    is_constant: IsConstant::No, /* TODO if all elements of block are constant
+                                                  * then this is constant */
                     span,
                 }
             }
@@ -352,25 +355,32 @@ impl<'sc> TypedExpression<'sc> {
                 let typed_registers = asm
                     .registers
                     .into_iter()
-                    .map(|AsmRegisterDeclaration { name, initializer }| {
-                        TypedAsmRegisterDeclaration {
-                            name,
-                            initializer: initializer.map(|initializer| {
-                                type_check!(
-                                    TypedExpression::type_check(
-                                        initializer.clone(),
-                                        namespace,
-                                        None,
-                                        "",
-                                        self_type
-                                    ),
-                                    error_recovery_expr(initializer.span()),
-                                    warnings,
-                                    errors
-                                )
-                            }),
-                        }
-                    })
+                    .map(
+                        |AsmRegisterDeclaration {
+                             name,
+                             initializer,
+                             name_span,
+                         }| {
+                            TypedAsmRegisterDeclaration {
+                                name_span: name_span.clone(),
+                                name,
+                                initializer: initializer.map(|initializer| {
+                                    type_check!(
+                                        TypedExpression::type_check(
+                                            initializer.clone(),
+                                            namespace,
+                                            None,
+                                            "",
+                                            self_type
+                                        ),
+                                        error_recovery_expr(initializer.span()),
+                                        warnings,
+                                        errors
+                                    )
+                                }),
+                            }
+                        },
+                    )
                     .collect();
                 TypedExpression {
                     expression: TypedExpressionVariant::AsmExpression {
@@ -441,7 +451,8 @@ impl<'sc> TypedExpression<'sc> {
                             expr_field.value,
                             &namespace,
                             Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
-                            "Struct field's type must match up with the type specified in its declaration.",
+                            "Struct field's type must match up with the type specified in its \
+                             declaration.",
                             self_type
                         ),
                         continue,
@@ -488,8 +499,9 @@ impl<'sc> TypedExpression<'sc> {
                 name_parts,
                 span,
             } => {
-                // this must be >= 2, or else the core_lang would not have matched it. asserting that
-                // invariant here, since it is an assumption that is acted upon later.
+                // this must be >= 2, or else the core_lang would not have matched it. asserting
+                // that invariant here, since it is an assumption that is acted upon
+                // later.
                 assert!(name_parts.len() >= 2);
                 let (return_type, resolved_type_of_parent) = type_check!(
                     namespace.find_subfield_type(&name_parts),
@@ -592,18 +604,22 @@ impl<'sc> TypedExpression<'sc> {
                 let zipped = method.parameters.iter().zip(arguments.iter());
                 let mut typed_arg_buf = vec![];
                 for (TypedFunctionParameter { r#type, name, .. }, arg) in zipped {
-                    typed_arg_buf.push((name.clone(), type_check!(
-                        TypedExpression::type_check(
-                            arg.clone(),
-                            &namespace,
-                            Some(r#type.clone()),
-                            "Function argument must be of the same type declared in the function declaration.",
-                            self_type
+                    typed_arg_buf.push((
+                        name.clone(),
+                        type_check!(
+                            TypedExpression::type_check(
+                                arg.clone(),
+                                &namespace,
+                                Some(r#type.clone()),
+                                "Function argument must be of the same type declared in the \
+                                 function declaration.",
+                                self_type
+                            ),
+                            continue,
+                            warnings,
+                            errors
                         ),
-                        continue,
-                        warnings,
-                        errors
-                    )));
+                    ));
                 }
 
                 TypedExpression {
@@ -688,12 +704,22 @@ impl<'sc> TypedExpression<'sc> {
                             warnings,
                             errors
                         )),
-                        (None, None) => todo!("symbol not found error"),
+                        (None, None) => {
+                            errors.push(CompileError::SymbolNotFound {
+                                span,
+                                name: call_path.suffix.primary_name,
+                            });
+                            return err(warnings, errors);
+                        }
                     };
 
                 match this_thing {
                     Either::Left(_) => {
-                        errors.push(CompileError::Unimplemented("Unable to refer to declarations in other modules directly. Try importing it instead.", span));
+                        errors.push(CompileError::Unimplemented(
+                            "Unable to refer to declarations in other modules directly. Try \
+                             importing it instead.",
+                            span,
+                        ));
                         return err(warnings, errors);
                     }
                     Either::Right(expr) => expr,

@@ -6,7 +6,7 @@ use source_span::{
 use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
-use crate::manifest::{Dependency, DependencyDetails, Manifest};
+use crate::utils::manifest::{Dependency, DependencyDetails, Manifest};
 use core_lang::{CompilationResult, LibraryExports, Namespace};
 use std::{fs, path::PathBuf};
 
@@ -54,7 +54,7 @@ fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
     let mut path = fs::canonicalize(starter_path.clone()).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
-        path.push(crate::constants::MANIFEST_FILE_NAME);
+        path.push(crate::utils::constants::MANIFEST_FILE_NAME);
         if path.exists() {
             path.pop();
             return Some(path);
@@ -81,10 +81,15 @@ fn compile_dependency_lib<'source, 'manifest>(
         Dependency::Detailed(DependencyDetails { path, .. }) => path,
     };
 
-    let dep_path = match dep_path {
-        Some(p) => p,
-        None => return Err("Only simple path imports are supported right now. Please supply a path relative to the manifest file.".into())
-    };
+    let dep_path =
+        match dep_path {
+            Some(p) => p,
+            None => return Err(
+                "Only simple path imports are supported right now. Please supply a path relative \
+                 to the manifest file."
+                    .into(),
+            ),
+        };
 
     // dependency paths are relative to the path of the project being compiled
     let mut project_path = project_path.clone();
@@ -121,7 +126,7 @@ fn compile_dependency_lib<'source, 'manifest>(
 fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     let manifest_path = {
         let mut man = manifest_dir.clone();
-        man.push(crate::constants::MANIFEST_FILE_NAME);
+        man.push(crate::utils::constants::MANIFEST_FILE_NAME);
         man
     };
     let manifest_path_str = format!("{:?}", manifest_path);
@@ -192,6 +197,7 @@ fn compile_library<'source, 'manifest>(
         }
     }
 }
+
 fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
@@ -348,7 +354,7 @@ fn format_err(input: &str, err: core_lang::CompileError) {
     let (start_pos, end_pos) = err.span();
     let lookup = LineColLookup::new(input);
     let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(end_pos - 1);
+    let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
 
     let err_start = Position::new(start_line - 1, start_col - 1);
     let err_end = Position::new(end_line - 1, end_col - 1);

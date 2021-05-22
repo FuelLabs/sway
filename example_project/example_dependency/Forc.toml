@@ -1,0 +1,8 @@
+[project]
+author  = "Alex Hansen"
+license = "MIT"
+name = "example_dependency"
+entry = "main.fm"
+
+
+[dependencies]

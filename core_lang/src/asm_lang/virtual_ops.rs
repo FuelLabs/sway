@@ -1417,7 +1417,7 @@ impl VirtualOp {
         let register_allocation_result = virtual_registers
             .clone()
             .into_iter()
-            .map(|x| (x, pool.get_register()))
+            .map(|x| (x, pool.get_register(x, &op_register_mapping[ix + 1..])))
             .map(|(x, res)| match res {
                 Some(res) => Some((x, res)),
                 None => None,
@@ -1434,12 +1434,6 @@ impl VirtualOp {
             }
             None => todo!("Out of registers error"),
         };
-
-        for reg in virtual_registers {
-            if virtual_register_is_never_accessed_again(reg, &op_register_mapping[ix + 1..]) {
-                pool.return_register_to_pool(mapping.get(reg).unwrap().clone());
-            }
-        }
 
         use VirtualOp::*;
         match self {
@@ -1734,10 +1728,4 @@ impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, ".{}", self.0)
     }
-}
-fn virtual_register_is_never_accessed_again(
-    reg: &VirtualRegister,
-    ops: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
-) -> bool {
-    !ops.iter().any(|(_, regs)| regs.contains(reg))
 }

@@ -32,8 +32,8 @@ use while_loop::convert_while_loop_to_asm;
 // have a new unique identifier. For example, two separate invocations of `+` will result in 4
 // registers being used for arguments and 2 for outputs.
 //
-// After that, the level 0 bytecode will go through a process where register use is minified, producing level 1 bytecode. This process
-// is as such:
+// After that, the level 0 bytecode will go through a process where register use is minified,
+// producing level 1 bytecode. This process is as such:
 //
 // 1. Detect the last time a register is read. After that, it can be reused and recycled to fit the
 //    needs of the next "level 0 bytecode" register
@@ -257,28 +257,65 @@ impl<'sc> AbstractInstructionSet<'sc> {
     }
 }
 
+struct RegisterAllocationStatus {
+    reg: AllocatedRegister,
+    in_use: Option<VirtualRegister>,
+}
 pub(crate) struct RegisterPool {
-    available_registers: Vec<AllocatedRegister>,
+    registers: Vec<RegisterAllocationStatus>,
 }
 
 impl RegisterPool {
     fn init() -> Self {
-        let register_pool: Vec<AllocatedRegister> = (0..compiler_constants::NUM_FREE_REGISTERS)
+        let register_pool: Vec<RegisterAllocationStatus> = (0
+            ..compiler_constants::NUM_FREE_REGISTERS)
             .rev()
-            .map(|x| AllocatedRegister::Allocated(x))
+            .map(|x| RegisterAllocationStatus {
+                reg: AllocatedRegister::Allocated(x),
+                in_use: None,
+            })
             .collect();
         Self {
-            available_registers: register_pool,
+            registers: register_pool,
         }
     }
 
-    pub(crate) fn get_register(&mut self) -> Option<AllocatedRegister> {
-        self.available_registers.pop()
+    pub(crate) fn get_register(
+        &mut self,
+        virtual_register: &VirtualRegister,
+        op_register_mapping: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
+    ) -> Option<AllocatedRegister> {
+        // scan to see if any of the old ones are no longer in use
+        for RegisterAllocationStatus { in_use, .. } in
+            self.registers.iter_mut().filter(|r| r.in_use.is_some())
+        {
+            if virtual_register_is_never_accessed_again(
+                in_use.as_ref().unwrap(),
+                op_register_mapping,
+            ) {
+                *in_use = None;
+            }
+        }
+        // find the next unused register, return it, flip assign it
+        let next_available = self
+            .registers
+            .iter_mut()
+            .find(|RegisterAllocationStatus { in_use, .. }| in_use.is_none());
+        match next_available {
+            Some(RegisterAllocationStatus { in_use, reg }) => {
+                *in_use = Some(virtual_register.clone());
+                Some(reg.clone())
+            }
+            None => None,
+        }
     }
+}
 
-    pub(crate) fn return_register_to_pool(&mut self, item_to_return: AllocatedRegister) {
-        self.available_registers.push(item_to_return);
-    }
+fn virtual_register_is_never_accessed_again(
+    reg: &VirtualRegister,
+    ops: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
+) -> bool {
+    !ops.iter().any(|(_, regs)| regs.contains(reg))
 }
 
 /// helper function to check if a label is used in a given buffer of ops
@@ -466,8 +503,14 @@ impl<'sc> AsmNamespace<'sc> {
     ) -> CompileResult<'sc, &VirtualRegister> {
         match self.variables.get(&var_name) {
             Some(o) => ok(o, vec![], vec![]),
-            None => err(vec![], vec![CompileError::Internal ("Unknown variable in assembly generation. This should have been an error during type checking.",  var_name.span.clone() )])
-
+            None => err(
+                vec![],
+                vec![CompileError::Internal(
+                    "Unknown variable in assembly generation. This should have been an error \
+                     during type checking.",
+                    var_name.span.clone(),
+                )],
+            ),
         }
     }
 }

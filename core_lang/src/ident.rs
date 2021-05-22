@@ -5,12 +5,12 @@ use pest::Span;
 use std::hash::{Hash, Hasher};
 #[derive(Debug, Clone)]
 pub struct Ident<'sc> {
-    pub(crate) primary_name: &'sc str,
+    pub primary_name: &'sc str,
     // sub-names are the stuff after periods
     // like x.test.thing.method()
     // `test`, `thing`, and `method` are sub-names
     // the primary name is `x`
-    pub(crate) span: Span<'sc>,
+    pub span: Span<'sc>,
 }
 
 // custom implementation of Hash so that namespacing isn't reliant on the span itself, which will

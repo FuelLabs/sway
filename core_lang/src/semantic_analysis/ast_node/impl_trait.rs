@@ -104,7 +104,8 @@ pub(crate) fn implementation_of_trait<'sc>(
                                 .zip(fn_decl.parameters.iter())
                                 .find_map(|(fn_decl_param, trait_param)| {
                                     let mut errors = vec![];
-                                    // TODO use trait constraints as part of the type here to implement trait constraint solver */
+                                    // TODO use trait constraints as part of the type here to
+                                    // implement trait constraint solver */
                                     if let MaybeResolvedType::Partial(
                                         PartiallyResolvedType::Generic { .. },
                                     ) = fn_decl_param.r#type

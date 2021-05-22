@@ -1,0 +1,400 @@
+{
+	"name": "fume",
+	"scopeName": "source.fume",
+	"patterns": [
+		{
+			"comment": "Implementation",
+			"begin": "\\b(impl)\\b",
+			"end": "\\{",
+			"beginCaptures": {
+				"1": {
+					"name": "storage.type.fume"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#block_comment"
+				},
+				{
+					"include": "#line_comment"
+				},
+				{
+					"include": "#sigils"
+				},
+				{
+					"include": "#mut"
+				},
+				{
+					"include": "#core_types"
+				},
+				{
+					"include": "#type_params"
+				},
+				{
+					"include": "#where"
+				},
+				{
+					"name": "storage.type.fume",
+					"match": "\\bfor\\b"
+				},
+				{
+					"include": "#type"
+				}
+			]
+		},
+		{
+			"include": "#block_doc_comment"
+		},
+		{
+			"include": "#block_comment"
+		},
+		{
+			"include": "#line_doc_comment"
+		},
+		{
+			"include": "#line_comment"
+		},
+		{
+			"comment": "Integer literal (decimal)",
+			"name": "constant.numeric.integer.fume",
+			"match": "\\b[0-9][0-9_]*([u](8|16|32|64|128))?\\b"
+		},
+		{
+			"comment": "Integer literal (hexadecimal)",
+			"name": "constant.numeric.integer.hexadecimal.fume",
+			"match": "\\b0x[a-fA-F0-9_]+([u](8|16|32|64|128))?\\b"
+		},
+		{
+			"comment": "Integer literal (binary)",
+			"name": "constant.numeric.integer.binary.fume",
+			"match": "\\b0b[01_]+([u](8|16|32|64|128))?\\b"
+		},
+		{
+			"comment": "Boolean constant",
+			"name": "constant.language.boolean.fume",
+			"match": "\\b(true|false)\\b"
+		},
+		{
+			"comment": "Control keyword",
+			"name": "keyword.control.fume",
+			"match": "\\b(else|if|for|match|return|while)\\b"
+		},
+		{
+			"comment": "Keyword",
+			"name": "keyword.other.fume",
+			"match": "\\b(deref|let|ref|use|asm)\\b"
+		},
+		{
+			"include": "#sigils"
+		},
+		{
+			"include": "#self"
+		},
+		{
+			"include": "#mut"
+		},
+		{
+			"include": "#impl"
+		},
+		{
+			"include": "#pub"
+		},
+		{
+			"comment": "Miscellaneous operator",
+			"name": "keyword.operator.misc.fume",
+			"match": "(=>|::|->\\?)"
+		},
+		{
+			"comment": "Comparison operator",
+			"name": "keyword.operator.comparison.fume",
+			"match": "(&&|\\|\\||==|!=)"
+		},
+		{
+			"comment": "Assignment operator",
+			"name": "keyword.operator.assignment.fume",
+			"match": "(\\+=|-=|/=|\\*=|%=|\\^=|&=|\\|=|<<=|>>=|=)"
+		},
+		{
+			"comment": "Arithmetic operator",
+			"name": "keyword.operator.arithmetic.fume",
+			"match": "(!|\\+|-|/|\\*|%|\\^|&|\\||<<|>>)"
+		},
+		{
+			"comment": "Comparison operator (second group because of regex precedence)",
+			"name": "keyword.operator.comparison.fume",
+			"match": "(<=|>=|<|>)"
+		},
+		{
+			"include": "#core_types"
+		},
+		{
+			"comment": "Function call",
+			"match": "\\b([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*\\(",
+			"captures": {
+				"1": {
+					"name": "entity.name.function.fume"
+				}
+			}
+		},
+		{
+			"comment": "Function call with type parameters",
+			"begin": "\\b([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)\\s*(::)(?=\\s*<.*>\\s*\\()",
+			"end": "\\(",
+			"captures": {
+				"1": {
+					"name": "entity.name.function.fume"
+				},
+				"2": {
+					"name": "keyword.operator.misc.fume"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#type_params"
+				}
+			]
+		},
+		{
+			"comment": "Function definition",
+			"begin": "\\b(fn)\\s+([A-Za-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+)",
+			"end": "[\\{;]",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.other.fn.fume"
+				},
+				"2": {
+					"name": "entity.name.function.fume"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#block_comment"
+				},
+				{
+					"include": "#line_comment"
+				},
+				{
+					"include": "#sigils"
+				},
+				{
+					"include": "#self"
+				},
+				{
+					"include": "#mut"
+				},
+				{
+					"include": "#impl"
+				},
+				{
+					"include": "#core_types"
+				},
+				{
+					"include": "#type_params"
+				},
+				{
+					"include": "#where"
+				},
+				{
+					"comment": "Function arguments",
+					"match": "\bfn\b",
+					"name": "keyword.other.fn.fume"
+				}
+			]
+		},
+		{
+			"comment": "Top level declaration",
+			"begin": "\\b(library|contract|script|predicate)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+			"end": "[\\{\\(;]",
+			"beginCaptures": {
+				"1": {
+					"name": "storage.type.fume"
+				},
+				"2": {
+					"name": "entity.name.type.fume"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#block_comment"
+				},
+				{
+					"include": "#line_comment"
+				},
+				{
+					"include": "#impl"
+				},
+				{
+					"include": "#type_params"
+				},
+				{
+					"include": "#core_types"
+				},
+				{
+					"include": "#pub"
+				},
+				{
+					"include": "#where"
+				}
+			]
+		},
+		{
+			"comment": "Type declaration",
+			"begin": "\\b(enum|struct|trait)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+			"end": "[\\{\\(;]",
+			"beginCaptures": {
+				"1": {
+					"name": "storage.type.fume"
+				},
+				"2": {
+					"name": "entity.name.type.fume"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#block_comment"
+				},
+				{
+					"include": "#line_comment"
+				},
+				{
+					"include": "#type_params"
+				},
+				{
+					"include": "#core_types"
+				},
+				{
+					"include": "#pub"
+				},
+				{
+					"include": "#where"
+				}
+			]
+		}
+	],
+	"repository": {
+		"block_doc_comment": {
+			"comment": "Block documentation comment",
+			"name": "comment.block.documentation.fume",
+			"begin": "/\\*[\\*!](?![\\*/])",
+			"end": "\\*/",
+			"patterns": [
+				{
+					"include": "#block_doc_comment"
+				},
+				{
+					"include": "#block_comment"
+				}
+			]
+		},
+		"block_comment": {
+			"comment": "Block comment",
+			"name": "comment.block.fume",
+			"begin": "/\\*",
+			"end": "\\*/",
+			"patterns": [
+				{
+					"include": "#block_doc_comment"
+				},
+				{
+					"include": "#block_comment"
+				}
+			]
+		},
+		"line_doc_comment": {
+			"comment": "Single-line documentation comment",
+			"name": "comment.line.documentation.fume",
+			"begin": "//[!/](?=[^/])",
+			"end": "$"
+		},
+		"line_comment": {
+			"comment": "Single-line comment",
+			"name": "comment.line.double-slash.fume",
+			"begin": "//",
+			"end": "$"
+		},
+		"escaped_character": {
+			"name": "constant.character.escape.fume",
+			"match": "\\\\(x[0-9A-Fa-f]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.)"
+		},
+		"string_literal": {
+			"comment": "Double-quote string literal",
+			"name": "string.quoted.double.fume",
+			"begin": "b?\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"include": "#escaped_character"
+				}
+			]
+		},
+		"sigils": {
+			"comment": "Sigil",
+			"name": "keyword.operator.sigil.fume",
+			"match": "[&*](?=[a-zA-Z0-9_\\(\\[\\|\\\"]+)"
+		},
+		"self": {
+			"comment": "Self variable",
+			"name": "variable.language.fume",
+			"match": "\\bself\\b"
+		},
+		"mut": {
+			"comment": "Mutable storage modifier",
+			"name": "storage.modifier.mut.fume",
+			"match": "\\bmut\\b"
+		},
+		"impl": {
+			"comment": "Existential type modifier",
+			"name": "storage.modifier.impl.fume",
+			"match": "\\bimpl\\b"
+		},
+		"pub": {
+			"comment": "Visibility modifier",
+			"name": "storage.modifier.visibility.fume",
+			"match": "\\bpub\\b"
+		},
+		"where": {
+			"comment": "Generic where clause",
+			"name": "keyword.other.where.fume",
+			"match": "\\bwhere\\b"
+		},
+		"core_types": {
+			"comment": "Built-in/core type",
+			"name": "support.type.primitive.fume",
+			"match": "\\b(bool|char|u8|u16|u32|u64|u128|string|Self)\\b"
+		},
+		"type": {
+			"comment": "A type",
+			"name": "entity.name.type.fume",
+			"match": "\\b([A-Za-z][_A-Za-z0-9]*|_[_A-Za-z0-9]+)\\b"
+		},
+		"type_params": {
+			"comment": "Type parameters",
+			"name": "meta.type_params.fume",
+			"begin": "<(?![=<])",
+			"end": "(?<![-])>",
+			"patterns": [
+				{
+					"include": "#block_comment"
+				},
+				{
+					"include": "#line_comment"
+				},
+				{
+					"include": "#sigils"
+				},
+				{
+					"include": "#mut"
+				},
+				{
+					"include": "#impl"
+				},
+				{
+					"include": "#core_types"
+				},
+				{
+					"include": "#type_params"
+				}
+			]
+		}
+	}
+}

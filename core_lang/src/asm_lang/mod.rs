@@ -10,8 +10,8 @@ use either::Either;
 use pest::Span;
 use std::{collections::HashSet, fmt};
 use virtual_ops::{
-    Label, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
-    VirtualOp, VirtualRegister,
+    ConstantRegister, Label, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
+    VirtualImmediate24, VirtualOp, VirtualRegister,
 };
 
 pub(crate) mod allocated_ops;
@@ -249,7 +249,7 @@ impl<'sc> Op<'sc> {
 
     pub(crate) fn parse_opcode(
         name: &Ident<'sc>,
-        args: &[&VirtualRegister],
+        args: &[VirtualRegister],
         immediate: &Option<Ident<'sc>>,
         whole_op_span: Span<'sc>,
     ) -> CompileResult<'sc, VirtualOp> {
@@ -871,7 +871,7 @@ impl<'sc> Op<'sc> {
 }
 
 fn single_reg<'sc>(
-    args: &[&VirtualRegister],
+    args: &[VirtualRegister],
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, VirtualRegister> {
@@ -886,7 +886,7 @@ fn single_reg<'sc>(
     }
 
     let reg = match args.get(0) {
-        Some(reg) => *reg,
+        Some(reg) => reg,
         _ => todo!("Not enough registers error"),
     };
     match immediate {
@@ -898,7 +898,7 @@ fn single_reg<'sc>(
 }
 
 fn two_regs<'sc>(
-    args: &[&VirtualRegister],
+    args: &[VirtualRegister],
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualRegister)> {
@@ -909,7 +909,7 @@ fn two_regs<'sc>(
     }
 
     let (reg, reg2) = match (args.get(0), args.get(1)) {
-        (Some(reg), Some(reg2)) => (*reg, *reg2),
+        (Some(reg), Some(reg2)) => (reg, reg2),
         _ => todo!("Not enough registers error"),
     };
     match immediate {
@@ -921,7 +921,7 @@ fn two_regs<'sc>(
 }
 
 fn four_regs<'sc>(
-    args: &[&VirtualRegister],
+    args: &[VirtualRegister],
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<
@@ -940,13 +940,39 @@ fn four_regs<'sc>(
     }
 
     let (reg, reg2, reg3, reg4) = match (args.get(0), args.get(1), args.get(2), args.get(3)) {
-        (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (*reg, *reg2, *reg3, *reg4),
+        (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
         _ => todo!("Not enough registers error"),
     };
     match immediate {
         None => (),
         Some(_) => todo!("Err unnecessary immediate"),
     };
+
+    impl ConstantRegister {
+        pub(crate) fn parse_register_name(raw: &str) -> Option<ConstantRegister> {
+            use ConstantRegister::*;
+            Some(match raw {
+                "zero" => Zero,
+                "one" => One,
+                "of" => Overflow,
+                "pc" => ProgramCounter,
+                "ssp" => StackStartPointer,
+                "sp" => StackPointer,
+                "fp" => FramePointer,
+                "hp" => HeapPointer,
+                "err" => Error,
+                "ggas" => GlobalGas,
+                "cgas" => ContextGas,
+                "bal" => Balance,
+                "is" => InstructionStart,
+                "flag" => Flags,
+                _ => return None,
+            })
+        }
+    }
+
+    // Immediate Value.
+    pub type ImmediateValue = u32;
 
     ok(
         (reg.clone(), reg2.clone(), reg3.clone(), reg4.clone()),
@@ -956,7 +982,7 @@ fn four_regs<'sc>(
 }
 
 fn three_regs<'sc>(
-    args: &[&VirtualRegister],
+    args: &[VirtualRegister],
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualRegister)> {
@@ -967,7 +993,7 @@ fn three_regs<'sc>(
     }
 
     let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
-        (Some(reg), Some(reg2), Some(reg3)) => (*reg, *reg2, *reg3),
+        (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
         _ => todo!("Not enough registers error"),
     };
     match immediate {
@@ -978,7 +1004,7 @@ fn three_regs<'sc>(
     ok((reg.clone(), reg2.clone(), reg3.clone()), warnings, errors)
 }
 fn single_imm_24<'sc>(
-    args: &[&VirtualRegister],
+    args: &[VirtualRegister],
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, VirtualImmediate24> {
@@ -1011,7 +1037,7 @@ fn single_imm_24<'sc>(
     ok(imm, warnings, errors)
 }
 fn single_reg_imm_18<'sc>(
-    args: &[&VirtualRegister],
+    args: &[VirtualRegister],
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualImmediate18)> {
@@ -1021,7 +1047,7 @@ fn single_reg_imm_18<'sc>(
         todo!("Unnecessary registers err");
     }
     let reg = match args.get(0) {
-        Some(reg) => *reg,
+        Some(reg) => reg,
         _ => todo!("Not enough registers error"),
     };
     let (imm, imm_span): (u64, _) = match immediate {
@@ -1048,7 +1074,7 @@ fn single_reg_imm_18<'sc>(
     ok((reg.clone(), imm), warnings, errors)
 }
 fn two_regs_imm_12<'sc>(
-    args: &[&VirtualRegister],
+    args: &[VirtualRegister],
     immediate: &Option<Ident<'sc>>,
     whole_op_span: Span<'sc>,
 ) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualImmediate12)> {
@@ -1058,7 +1084,7 @@ fn two_regs_imm_12<'sc>(
         todo!("Unnecessary registers err");
     }
     let (reg, reg2) = match (args.get(0), args.get(1)) {
-        (Some(reg), Some(reg2)) => (*reg, *reg2),
+        (Some(reg), Some(reg2)) => (reg, reg2),
         _ => todo!("Not enough registers error"),
     };
     let (imm, imm_span): (u64, _) = match immediate {
