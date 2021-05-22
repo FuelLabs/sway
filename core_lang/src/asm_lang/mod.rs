@@ -881,17 +881,28 @@ fn single_reg<'sc>(
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
             expected: 1,
             received: args.len(),
-            span: whole_op_span,
+            span: whole_op_span.clone(),
         });
     }
 
     let reg = match args.get(0) {
         Some(reg) => reg,
-        _ => todo!("Not enough registers error"),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 1,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
     };
     match immediate {
         None => (),
-        Some(_) => todo!("Err unnecessary immediate"),
+        Some(i) => {
+            errors.push(CompileError::UnnecessaryImmediate {
+                span: i.span.clone(),
+            });
+        }
     };
 
     ok(reg.clone(), warnings, errors)
@@ -905,16 +916,29 @@ fn two_regs<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     if args.len() > 2 {
-        todo!("Unnecessary registers err")
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 2,
+            received: args.len(),
+        });
     }
 
     let (reg, reg2) = match (args.get(0), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
-        _ => todo!("Not enough registers error"),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 2,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
     };
     match immediate {
         None => (),
-        Some(_) => todo!("Err unnecessary immediate"),
+        Some(i) => errors.push(CompileError::UnnecessaryImmediate {
+            span: i.span.clone(),
+        }),
     };
 
     ok((reg.clone(), reg2.clone()), warnings, errors)
@@ -936,16 +960,31 @@ fn four_regs<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     if args.len() > 4 {
-        todo!("Unnecessary registers err");
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 4,
+            received: args.len(),
+        });
     }
 
     let (reg, reg2, reg3, reg4) = match (args.get(0), args.get(1), args.get(2), args.get(3)) {
         (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
-        _ => todo!("Not enough registers error"),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 1,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
     };
     match immediate {
         None => (),
-        Some(_) => todo!("Err unnecessary immediate"),
+        Some(i) => {
+            errors.push(CompileError::MissingImmediate {
+                span: i.span.clone(),
+            });
+        }
     };
 
     impl ConstantRegister {
@@ -989,16 +1028,31 @@ fn three_regs<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     if args.len() > 3 {
-        todo!("Unnecessary registers err");
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 3,
+            received: args.len(),
+        });
     }
 
     let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
         (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
-        _ => todo!("Not enough registers error"),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 3,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
     };
     match immediate {
         None => (),
-        Some(_) => todo!("Err unnecessary immediate"),
+        Some(i) => {
+            errors.push(CompileError::UnnecessaryImmediate {
+                span: i.span.clone(),
+            });
+        }
     };
 
     ok((reg.clone(), reg2.clone(), reg3.clone()), warnings, errors)
@@ -1011,10 +1065,19 @@ fn single_imm_24<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     if args.len() > 0 {
-        todo!("Unnecessary registers err");
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 0,
+            received: args.len(),
+        });
     }
     let (imm, imm_span): (u64, _) = match immediate {
-        None => todo!("Err missing immediate"),
+        None => {
+            errors.push(CompileError::MissingImmediate {
+                span: whole_op_span.clone(),
+            });
+            return err(warnings, errors);
+        }
         Some(i) => match i.primary_name.parse() {
             Ok(o) => (o, i.span.clone()),
             Err(_) => {
@@ -1044,14 +1107,30 @@ fn single_reg_imm_18<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     if args.len() > 1 {
-        todo!("Unnecessary registers err");
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 1,
+            received: args.len(),
+        });
     }
     let reg = match args.get(0) {
         Some(reg) => reg,
-        _ => todo!("Not enough registers error"),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 1,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
     };
     let (imm, imm_span): (u64, _) = match immediate {
-        None => todo!("Err missing immediate"),
+        None => {
+            errors.push(CompileError::MissingImmediate {
+                span: whole_op_span.clone(),
+            });
+            return err(warnings, errors);
+        }
         Some(i) => match i.primary_name.parse() {
             Ok(o) => (o, i.span.clone()),
             Err(_) => {
@@ -1081,14 +1160,30 @@ fn two_regs_imm_12<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     if args.len() > 2 {
-        todo!("Unnecessary registers err");
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 2,
+            received: args.len(),
+        });
     }
     let (reg, reg2) = match (args.get(0), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
-        _ => todo!("Not enough registers error"),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 2,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
     };
     let (imm, imm_span): (u64, _) = match immediate {
-        None => todo!("Err missing immediate"),
+        None => {
+            errors.push(CompileError::MissingImmediate {
+                span: whole_op_span.clone(),
+            });
+            return err(warnings, errors);
+        }
         Some(i) => match i.primary_name.parse() {
             Ok(o) => (o, i.span.clone()),
             Err(_) => {

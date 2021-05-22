@@ -613,6 +613,8 @@ pub enum CompileError<'sc> {
         expected: usize,
         received: usize,
     },
+    #[error("This op does not take an immediate value.")]
+    UnnecessaryImmediate { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -760,6 +762,7 @@ impl<'sc> CompileError<'sc> {
             DisallowedJnei { span, .. } => span,
             DisallowedJi { span, .. } => span,
             IncorrectNumberOfAsmRegisters { span, .. } => span,
+            UnnecessaryImmediate { span, .. } => span,
         }
     }
 
