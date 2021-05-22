@@ -78,6 +78,12 @@ pub enum HllAsmSet<'sc> {
 pub struct AbstractInstructionSet<'sc> {
     ops: Vec<Op<'sc>>,
 }
+
+/// "Realized" here refers to labels -- there are no more organizational 
+/// ops or labels. In this struct, they are all "realized" to offsets.
+pub struct RealizedAbstractInstructionSet<'sc> {
+    ops: Vec<RealizedOp<'sc>>,
+}
 /// An [InstructionSet] is produced by allocating registers on an [AbstractInstructionSet].
 pub struct InstructionSet<'sc> {
     ops: Vec<Op<'sc>>,
@@ -127,6 +133,8 @@ impl<'sc> AbstractInstructionSet<'sc> {
 
         AbstractInstructionSet { ops: buf2 }
     }
+
+    fn realize_labels
 
     fn allocate_registers(self) -> InstructionSet<'sc> {
         // Eventually, we will use a cool graph-coloring algorithm.

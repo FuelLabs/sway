@@ -34,6 +34,16 @@ pub(crate) struct Op<'sc> {
     pub(crate) owning_span: Option<Span<'sc>>,
 }
 
+
+#[derive(Clone)]
+pub(crate) struct RealizedOp<'sc> {
+    pub(crate) opcode: VirtualOp, OrganizationalOp,
+    /// A descriptive comment for ASM readability
+    pub(crate) comment: String,
+    pub(crate) owning_span: Option<Span<'sc>>,
+}
+
+
 impl<'sc> Op<'sc> {
     /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
     /// [VirtualRegister] `destination_address`
