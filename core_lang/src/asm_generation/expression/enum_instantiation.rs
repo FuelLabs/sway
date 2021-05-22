@@ -14,8 +14,6 @@ use crate::semantic_analysis::TypedExpression;
 use crate::Literal;
 use crate::{CompileResult, Ident};
 
-
-
 pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     decl: &TypedEnumDeclaration<'sc>,
     _variant_name: &Ident<'sc>,

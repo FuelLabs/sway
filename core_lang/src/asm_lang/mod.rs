@@ -10,8 +10,8 @@ use either::Either;
 use pest::Span;
 use std::{collections::HashSet, fmt};
 use virtual_ops::{
-    ConstantRegister, Label, VirtualImmediate12, VirtualImmediate18,
-    VirtualImmediate24, VirtualOp, VirtualRegister,
+    ConstantRegister, Label, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+    VirtualRegister,
 };
 
 pub(crate) mod allocated_ops;
