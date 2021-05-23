@@ -591,6 +591,32 @@ pub enum CompileError<'sc> {
          point. Try providing an annotation or using a concrete type."
     )]
     TypeMustBeKnown { ty: String, span: Span<'sc> },
+    #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
+    Immediate06TooLarge { val: u64, span: Span<'sc> },
+    #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
+    Immediate12TooLarge { val: u64, span: Span<'sc> },
+    #[error("The value \"{val}\" is too large to fit in this 18-bit immediate spot.")]
+    Immediate18TooLarge { val: u64, span: Span<'sc> },
+    #[error("The value \"{val}\" is too large to fit in this 24-bit immediate spot.")]
+    Immediate24TooLarge { val: u64, span: Span<'sc> },
+    #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
+    DisallowedJnei { span: Span<'sc> },
+    #[error(
+        "The opcode \"ji\" is not valid in inline assembly. Try using function calls instead."
+    )]
+    DisallowedJi { span: Span<'sc> },
+    #[error(
+        "This op expects {expected} registers as arguments, but you provided {received} registers."
+    )]
+    IncorrectNumberOfAsmRegisters {
+        span: Span<'sc>,
+        expected: usize,
+        received: usize,
+    },
+    #[error("This op does not take an immediate value.")]
+    UnnecessaryImmediate { span: Span<'sc> },
+    #[error("This reference is ambiguous, and could refer to either a module or an enum of the same name. Try qualifying the name with a path.")]
+    AmbiguousPath { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -731,6 +757,15 @@ impl<'sc> CompileError<'sc> {
             UnknownEnumVariant { span, .. } => span,
             UnrecognizedOp { span, .. } => span,
             TypeMustBeKnown { span, .. } => span,
+            Immediate06TooLarge { span, .. } => span,
+            Immediate12TooLarge { span, .. } => span,
+            Immediate18TooLarge { span, .. } => span,
+            Immediate24TooLarge { span, .. } => span,
+            DisallowedJnei { span, .. } => span,
+            DisallowedJi { span, .. } => span,
+            IncorrectNumberOfAsmRegisters { span, .. } => span,
+            UnnecessaryImmediate { span, .. } => span,
+            AmbiguousPath { span, .. } => span,
         }
     }
 

@@ -1,5 +1,8 @@
 use super::*;
-use crate::{asm_lang::*, parse_tree::CallPath};
+use crate::{
+    asm_lang::{virtual_ops::VirtualRegister, *},
+    parse_tree::CallPath,
+};
 use crate::{
     parse_tree::Literal,
     semantic_analysis::{
@@ -23,7 +26,7 @@ use subfield::convert_subfield_expression_to_asm;
 pub(crate) fn convert_expression_to_asm<'sc>(
     exp: &TypedExpression<'sc>,
     namespace: &mut AsmNamespace<'sc>,
-    return_register: &RegisterId,
+    return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut warnings = vec![];
@@ -83,7 +86,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             let mut errors = vec![];
             // Keep track of the mapping from the declared names of the registers to the actual
             // registers from the sequencer for replacement
-            let mut mapping_of_real_registers_to_declared_names: HashMap<&str, RegisterId> =
+            let mut mapping_of_real_registers_to_declared_names: HashMap<&str, VirtualRegister> =
                 Default::default();
             for TypedAsmRegisterDeclaration {
                 name,
@@ -149,11 +152,16 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         }
                         Ok(o) => Some(o),
                     })
-                    .collect::<Vec<RegisterId>>();
+                    .collect::<Vec<VirtualRegister>>();
 
                 // parse the actual op and registers
                 let opcode = type_check!(
-                    Op::parse_opcode(&op.op_name, replaced_registers.as_slice(), op.immediate),
+                    Op::parse_opcode(
+                        &op.op_name,
+                        replaced_registers.as_slice(),
+                        &op.immediate,
+                        op.span.clone()
+                    ),
                     continue,
                     warnings,
                     errors
@@ -259,12 +267,12 @@ pub(crate) fn convert_expression_to_asm<'sc>(
 /// or finds nothing and returns `None`.
 fn realize_register(
     register_name: &str,
-    mapping_of_real_registers_to_declared_names: &HashMap<&str, RegisterId>,
-) -> Option<RegisterId> {
+    mapping_of_real_registers_to_declared_names: &HashMap<&str, VirtualRegister>,
+) -> Option<VirtualRegister> {
     match mapping_of_real_registers_to_declared_names.get(register_name) {
         Some(x) => Some(x.clone()),
         None => match ConstantRegister::parse_register_name(register_name) {
-            Some(x) => Some(RegisterId::Constant(x)),
+            Some(x) => Some(VirtualRegister::Constant(x)),
             None => None,
         },
     }
@@ -275,7 +283,7 @@ pub(crate) fn convert_code_block_to_asm<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
     // Where to put the return value of this code block, if there was any.
-    return_register: Option<&RegisterId>,
+    return_register: Option<&VirtualRegister>,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut asm_buf: Vec<Op> = vec![];
     let mut warnings = vec![];
@@ -305,11 +313,11 @@ pub(crate) fn convert_code_block_to_asm<'sc>(
     ok(asm_buf, warnings, errors)
 }
 
-/// Initializes [Literal] `lit` into [RegisterId] `return_register`.
+/// Initializes [Literal] `lit` into [VirtualRegister] `return_register`.
 fn convert_literal_to_asm<'sc>(
     lit: &Literal<'sc>,
     namespace: &mut AsmNamespace<'sc>,
-    return_register: &RegisterId,
+    return_register: &VirtualRegister,
     _register_sequencer: &mut RegisterSequencer,
     span: Span<'sc>,
 ) -> Vec<Op<'sc>> {
@@ -329,7 +337,7 @@ fn convert_fn_app_to_asm<'sc>(
     arguments: &[(Ident<'sc>, TypedExpression<'sc>)],
     function_body: &TypedCodeBlock<'sc>,
     parent_namespace: &mut AsmNamespace<'sc>,
-    return_register: &RegisterId,
+    return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut warnings = vec![];
@@ -338,7 +346,7 @@ fn convert_fn_app_to_asm<'sc>(
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
     let mut namespace = parent_namespace.clone();
-    let mut args_and_registers: HashMap<Ident<'sc>, RegisterId> = Default::default();
+    let mut args_and_registers: HashMap<Ident<'sc>, VirtualRegister> = Default::default();
     // evaluate every expression being passed into the function
     for (name, arg) in arguments {
         let return_register = register_sequencer.next();

@@ -9,93 +9,87 @@ use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
 use pest::Span;
 use std::{collections::HashSet, fmt};
+use virtual_ops::{
+    ConstantRegister, Label, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+    VirtualRegister,
+};
+
+pub(crate) mod allocated_ops;
+pub(crate) mod virtual_ops;
 
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
 
-#[macro_export]
-macro_rules! opcodes {
-    (
-        $(
-            $op:ident ( $($inits:ident),* ) = $val:expr
-        ),+
-    ) => {
-        #[derive(Clone, PartialEq, Debug)]
-        pub enum Opcode {
-            $(
-                #[warn(unused_must_use)]
-                $op( $($inits),* ),
-            )+
-        }
-
-        $(
-            #[allow(non_upper_case_globals)]
-            const $op:u32 = $val;
-        )+
-
-    }
-}
-
-impl From<&AsmRegister> for RegisterId {
+impl From<&AsmRegister> for VirtualRegister {
     fn from(o: &AsmRegister) -> Self {
-        RegisterId::Virtual(o.name.clone())
+        VirtualRegister::Virtual(o.name.clone())
     }
 }
 
 #[derive(Clone)]
 pub(crate) struct Op<'sc> {
-    pub(crate) opcode: Either<Opcode, OrganizationalOp>,
-    /// A descriptive comment for debugging
+    pub(crate) opcode: Either<VirtualOp, OrganizationalOp>,
+    /// A descriptive comment for ASM readability
+    pub(crate) comment: String,
+    pub(crate) owning_span: Option<Span<'sc>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct RealizedOp<'sc> {
+    pub(crate) opcode: VirtualOp,
+    /// A descriptive comment for ASM readability
     pub(crate) comment: String,
     pub(crate) owning_span: Option<Span<'sc>>,
 }
 
 impl<'sc> Op<'sc> {
-    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held
-    /// within the [RegisterId] `destination_address`
+    /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
+    /// [VirtualRegister] `destination_address`
     pub(crate) fn write_register_to_memory(
-        destination_address: RegisterId,
-        value_to_write: RegisterId,
-        offset: ImmediateValue,
+        destination_address: VirtualRegister,
+        value_to_write: VirtualRegister,
+        offset: VirtualImmediate12,
         span: Span<'sc>,
     ) -> Self {
         Op {
-            opcode: Either::Left(Opcode::Sw(destination_address, value_to_write, offset)),
+            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
             comment: String::new(),
             owning_span: Some(span),
         }
     }
-    /// Write value in given [RegisterId] `value_to_write` to given memory address that is held
-    /// within the [RegisterId] `destination_address`, with the provided comment.
+    /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
+    /// [VirtualRegister] `destination_address`, with the provided comment.
     pub(crate) fn write_register_to_memory_comment(
-        destination_address: RegisterId,
-        value_to_write: RegisterId,
-        offset: ImmediateValue,
+        destination_address: VirtualRegister,
+        value_to_write: VirtualRegister,
+        offset: VirtualImmediate12,
         span: Span<'sc>,
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(Opcode::Sw(destination_address, value_to_write, offset)),
+            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
             comment: comment.into(),
             owning_span: Some(span),
         }
     }
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
-    pub(crate) fn unowned_stack_allocate_memory(size_to_allocate_in_words: u32) -> Self {
+    pub(crate) fn unowned_stack_allocate_memory(
+        size_to_allocate_in_words: VirtualImmediate24,
+    ) -> Self {
         Op {
-            opcode: Either::Left(Opcode::Cfei(size_to_allocate_in_words)),
+            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_words)),
             comment: String::new(),
             owning_span: None,
         }
     }
-    pub(crate) fn unowned_new_with_comment(opcode: Opcode, comment: impl Into<String>) -> Self {
+    pub(crate) fn unowned_new_with_comment(opcode: VirtualOp, comment: impl Into<String>) -> Self {
         Op {
             opcode: Either::Left(opcode),
             comment: comment.into(),
             owning_span: None,
         }
     }
-    pub(crate) fn new(opcode: Opcode, owning_span: Span<'sc>) -> Self {
+    pub(crate) fn new(opcode: VirtualOp, owning_span: Span<'sc>) -> Self {
         Op {
             opcode: Either::Left(opcode),
             comment: String::new(),
@@ -103,7 +97,7 @@ impl<'sc> Op<'sc> {
         }
     }
     pub(crate) fn new_with_comment(
-        opcode: Opcode,
+        opcode: VirtualOp,
         owning_span: Span<'sc>,
         comment: impl Into<String>,
     ) -> Self {
@@ -123,9 +117,9 @@ impl<'sc> Op<'sc> {
             owning_span: Some(owning_span),
         }
     }
-    /// Loads the data from [DataId] `data` into [RegisterId] `reg`.
+    /// Loads the data from [DataId] `data` into [VirtualRegister] `reg`.
     pub(crate) fn unowned_load_data_comment(
-        reg: RegisterId,
+        reg: VirtualRegister,
         data: DataId,
         comment: impl Into<String>,
     ) -> Self {
@@ -170,30 +164,34 @@ impl<'sc> Op<'sc> {
     }
 
     /// Moves the register in the second argument into the register in the first argument
-    pub(crate) fn register_move(r1: RegisterId, r2: RegisterId, owning_span: Span<'sc>) -> Self {
+    pub(crate) fn register_move(
+        r1: VirtualRegister,
+        r2: VirtualRegister,
+        owning_span: Span<'sc>,
+    ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            opcode: Either::Left(VirtualOp::MOVE(r1, r2)),
             comment: String::new(),
             owning_span: Some(owning_span),
         }
     }
 
     /// Moves the register in the second argument into the register in the first argument
-    pub(crate) fn unowned_register_move(r1: RegisterId, r2: RegisterId) -> Self {
+    pub(crate) fn unowned_register_move(r1: VirtualRegister, r2: VirtualRegister) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            opcode: Either::Left(VirtualOp::MOVE(r1, r2)),
             comment: String::new(),
             owning_span: None,
         }
     }
     pub(crate) fn register_move_comment(
-        r1: RegisterId,
-        r2: RegisterId,
+        r1: VirtualRegister,
+        r2: VirtualRegister,
         owning_span: Span<'sc>,
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            opcode: Either::Left(VirtualOp::MOVE(r1, r2)),
             comment: comment.into(),
             owning_span: Some(owning_span),
         }
@@ -201,12 +199,12 @@ impl<'sc> Op<'sc> {
 
     /// Moves the register in the second argument into the register in the first argument
     pub(crate) fn unowned_register_move_comment(
-        r1: RegisterId,
-        r2: RegisterId,
+        r1: VirtualRegister,
+        r2: VirtualRegister,
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::RMove(r1, r2)),
+            opcode: Either::Left(VirtualOp::MOVE(r1, r2)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -236,8 +234,12 @@ impl<'sc> Op<'sc> {
         }
     }
 
-    /// Jumps to [Label] `label`  if the given [RegisterId] `reg1` is not equal to `reg0`.
-    pub(crate) fn jump_if_not_equal(reg0: RegisterId, reg1: RegisterId, label: Label) -> Self {
+    /// Jumps to [Label] `label`  if the given [VirtualRegister] `reg1` is not equal to `reg0`.
+    pub(crate) fn jump_if_not_equal(
+        reg0: VirtualRegister,
+        reg1: VirtualRegister,
+        label: Label,
+    ) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::JumpIfNotEq(reg0, reg1, label)),
             comment: String::new(),
@@ -247,1167 +249,1041 @@ impl<'sc> Op<'sc> {
 
     pub(crate) fn parse_opcode(
         name: &Ident<'sc>,
-        args: &[RegisterId],
-        immediate: Option<ImmediateValue>,
-    ) -> CompileResult<'sc, Opcode> {
-        Opcode::parse(name, args.iter().collect::<Vec<_>>().as_slice(), immediate)
-    }
-}
+        args: &[VirtualRegister],
+        immediate: &Option<Ident<'sc>>,
+        whole_op_span: Span<'sc>,
+    ) -> CompileResult<'sc, VirtualOp> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        ok(
+            match name.primary_name {
+                "add" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ADD(r1, r2, r3)
+                }
+                "addi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ADDI(r1, r2, imm)
+                }
+                "and" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::AND(r1, r2, r3)
+                }
+                "andi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ANDI(r1, r2, imm)
+                }
+                "div" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::DIV(r1, r2, r3)
+                }
+                "divi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::DIVI(r1, r2, imm)
+                }
+                "eq" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::EQ(r1, r2, r3)
+                }
+                "exp" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::EXP(r1, r2, r3)
+                }
+                "expi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::EXPI(r1, r2, imm)
+                }
+                "gt" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::GT(r1, r2, r3)
+                }
+                "mlog" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MLOG(r1, r2, r3)
+                }
+                "mroo" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MROO(r1, r2, r3)
+                }
+                "mod" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MOD(r1, r2, r3)
+                }
+                "modi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MODI(r1, r2, imm)
+                }
+                "move" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MOVE(r1, r2)
+                }
+                "mul" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MUL(r1, r2, r3)
+                }
+                "muli" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MULI(r1, r2, imm)
+                }
+                "not" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::NOT(r1, r2)
+                }
+                "or" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::OR(r1, r2, r3)
+                }
+                "ori" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ORI(r1, r2, imm)
+                }
+                "sll" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SLL(r1, r2, r3)
+                }
+                "slli" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SLLI(r1, r2, imm)
+                }
+                "srl" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SRL(r1, r2, r3)
+                }
+                "srli" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SRLI(r1, r2, imm)
+                }
+                "sub" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SUB(r1, r2, r3)
+                }
+                "subi" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SUBI(r1, r2, imm)
+                }
+                "xor" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XOR(r1, r2, r3)
+                }
+                "xori" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XORI(r1, r2, imm)
+                }
+                "cimv" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CIMV(r1, r2, r3)
+                }
+                "ctmv" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CTMV(r1, r2)
+                }
+                "ji" => {
+                    errors.push(CompileError::DisallowedJi {
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+                "jnei" => {
+                    errors.push(CompileError::DisallowedJnei {
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+                "ret" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::RET(r1)
+                }
+                "cfei" => {
+                    let imm = type_check!(
+                        single_imm_24(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CFEI(imm)
+                }
+                "cfsi" => {
+                    let imm = type_check!(
+                        single_imm_24(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CFSI(imm)
+                }
+                "lb" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LB(r1, r2, imm)
+                }
+                "lw" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LW(r1, r2, imm)
+                }
+                "aloc" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ALOC(r1)
+                }
+                "mcl" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MCL(r1, r2)
+                }
+                "mcli" => {
+                    let (r1, imm) = type_check!(
+                        single_reg_imm_18(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MCLI(r1, imm)
+                }
+                "mcp" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MCP(r1, r2, r3)
+                }
+                "meq" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MEQ(r1, r2, r3, r4)
+                }
+                "sb" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SB(r1, r2, imm)
+                }
+                "sw" => {
+                    let (r1, r2, imm) = type_check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SW(r1, r2, imm)
+                }
+                "bhsh" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BHSH(r1, r2)
+                }
+                "bhei" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BHEI(r1)
+                }
+                "burn" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BURN(r1)
+                }
+                "call" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CALL(r1, r2, r3, r4)
+                }
+                "ccp" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CCP(r1, r2, r3, r4)
+                }
+                "croo" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CROO(r1, r2)
+                }
+                "csiz" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CSIZ(r1, r2)
+                }
+                "cb" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::CB(r1)
+                }
+                "ldc" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LDC(r1, r2, r3)
+                }
+                "log" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LOG(r1, r2, r3, r4)
+                }
+                "mint" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MINT(r1)
+                }
+                "rvrt" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::RVRT(r1)
+                }
+                "sldc" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SLDC(r1, r2, r3)
+                }
+                "srw" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SRW(r1, r2)
+                }
+                "srwq" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SRWQ(r1, r2)
+                }
+                "sww" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SWW(r1, r2)
+                }
+                "swwq" => {
+                    let (r1, r2) = type_check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::SWWQ(r1, r2)
+                }
+                "tr" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::TR(r1, r2, r3)
+                }
+                "tro" => {
+                    let (r1, r2, r3, r4) = type_check!(
+                        four_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::TRO(r1, r2, r3, r4)
+                }
+                "ecr" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::ECR(r1, r2, r3)
+                }
+                "k256" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::K256(r1, r2, r3)
+                }
+                "s256" => {
+                    let (r1, r2, r3) = type_check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::S256(r1, r2, r3)
+                }
+                "noop" => VirtualOp::NOOP,
+                "flag" => {
+                    let r1 = type_check!(
+                        single_reg(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::FLAG(r1)
+                }
 
-impl Into<RegisterId> for &RegisterId {
-    fn into(self) -> RegisterId {
-        self.clone()
-    }
-}
-
-impl Opcode {
-    /// If this name matches an opcode and there are the correct number and
-    /// type of arguments, parse the given inputs into an opcode.
-    pub(crate) fn parse<'sc>(
-        name: &Ident<'sc>,
-        args: &[&RegisterId],
-        immediate: Option<ImmediateValue>,
-    ) -> CompileResult<'sc, Opcode> {
-        use Opcode::*;
-        let op = match name.primary_name {
-            "add" => {
-                if args.len() == 3 {
-                    Add(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "addi" => {
-                if args.len() == 3 {
-                    Addi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "and" => {
-                if args.len() == 3 {
-                    And(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "andi" => {
-                if args.len() == 3 {
-                    Andi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "div" => {
-                if args.len() == 3 {
-                    Div(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "divi" => {
-                if args.len() == 3 {
-                    Divi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "mod" => {
-                if args.len() == 3 {
-                    Mod(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "modi" => {
-                if args.len() == 3 {
-                    Modi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "eq" => {
-                if args.len() == 3 {
-                    Eq(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "gt" => {
-                if args.len() == 3 {
-                    Gt(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "mult" => {
-                if args.len() == 3 {
-                    Mult(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "multi" => {
-                if args.len() == 3 {
-                    Multi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "noop" => {
-                if args.len() == 0 {
-                    Noop()
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "not" => {
-                if args.len() == 2 {
-                    Not(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "or" => {
-                if args.len() == 3 {
-                    Or(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ori" => {
-                if args.len() == 3 {
-                    Ori(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sll" => {
-                if args.len() == 3 {
-                    Sll(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sllv" => {
-                if args.len() == 3 {
-                    Sllv(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sltiu" => {
-                if args.len() == 3 {
-                    Sltiu(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sltu" => {
-                if args.len() == 3 {
-                    Sltu(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sra" => {
-                if args.len() == 3 {
-                    Sra(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srl" => {
-                if args.len() == 3 {
-                    Srl(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srlv" => {
-                if args.len() == 3 {
-                    Srlv(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srav" => {
-                if args.len() == 3 {
-                    Srav(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sub" => {
-                if args.len() == 3 {
-                    Sub(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "subi" => {
-                if args.len() == 3 {
-                    Subi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "xor" => {
-                if args.len() == 3 {
-                    Xor(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "xori" => {
-                if args.len() == 3 {
-                    Xori(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "exp" => {
-                if args.len() == 3 {
-                    Exp(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "expi" => {
-                if args.len() == 3 {
-                    Expi(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "cimv" => {
-                if args.len() == 3 {
-                    CIMV(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ctmv" => {
-                if args.len() == 2 {
-                    CTMV(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ji" => {
-                if args.len() == 1 {
-                    Ji(match immediate {
-                        Some(i) => i,
-                        None => {
-                            return err(
-                                vec![],
-                                vec![CompileError::MissingImmediate {
-                                    span: name.span.clone(),
-                                }],
-                            )
-                        }
-                    })
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "jnzi" => {
-                if args.len() == 2 {
-                    Jnzi(
-                        args[0].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ret" => {
-                if args.len() == 1 {
-                    Ret(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "cfei" => {
-                if args.len() == 1 {
-                    Cfei(match immediate {
-                        Some(i) => i,
-                        None => {
-                            return err(
-                                vec![],
-                                vec![CompileError::MissingImmediate {
-                                    span: name.span.clone(),
-                                }],
-                            )
-                        }
-                    })
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "cfs" => {
-                if args.len() == 1 {
-                    Cfs(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "lb" => {
-                if args.len() == 3 {
-                    Lb(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "lw" => {
-                if args.len() == 3 {
-                    Lw(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "malloc" => {
-                if args.len() == 1 {
-                    Malloc(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "memcleari" => {
-                if args.len() == 2 {
-                    MemClearImmediate(
-                        args[0].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "memcp" => {
-                if args.len() == 2 {
-                    MemCp(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "memeq" => {
-                if args.len() == 4 {
-                    MemEq(
-                        args[0].into(),
-                        args[1].into(),
-                        args[2].into(),
-                        args[3].into(),
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sb" => {
-                if args.len() == 3 {
-                    Sb(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sw" => {
-                if args.len() == 3 {
-                    Sw(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "blockhash" => {
-                if args.len() == 2 {
-                    BlockHash(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "blockheight" => {
-                if args.len() == 1 {
-                    BlockHeight(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "call" => {
-                if args.len() == 4 {
-                    Call(
-                        args[0].into(),
-                        args[1].into(),
-                        args[2].into(),
-                        args[3].into(),
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "codecopy" => {
-                if args.len() == 3 {
-                    CodeCopy(
-                        args[0].into(),
-                        args[1].into(),
-                        match immediate {
-                            Some(i) => i,
-                            None => {
-                                return err(
-                                    vec![],
-                                    vec![CompileError::MissingImmediate {
-                                        span: name.span.clone(),
-                                    }],
-                                )
-                            }
-                        },
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "coderoot" => {
-                if args.len() == 2 {
-                    CodeRoot(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "codesize" => {
-                if args.len() == 2 {
-                    Codesize(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "coinbase" => {
-                if args.len() == 1 {
-                    Coinbase(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "loadcode" => {
-                if args.len() == 3 {
-                    LoadCode(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sloadcode" => {
-                if args.len() == 3 {
-                    SLoadCode(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "log" => {
-                if args.len() == 4 {
-                    Log(
-                        args[0].into(),
-                        args[1].into(),
-                        args[2].into(),
-                        args[3].into(),
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "revert" => {
-                if args.len() == 1 {
-                    Revert(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srw" => {
-                if args.len() == 2 {
-                    Srw(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "srwx" => {
-                if args.len() == 2 {
-                    Srwx(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sww" => {
-                if args.len() == 2 {
-                    Sww(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "swwx" => {
-                if args.len() == 2 {
-                    Swwx(args[0].into(), args[1].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "transfer" => {
-                if args.len() == 3 {
-                    Transfer(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "transferout" => {
-                if args.len() == 4 {
-                    TransferOut(
-                        args[0].into(),
-                        args[1].into(),
-                        args[2].into(),
-                        args[3].into(),
-                    )
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "ecrecover" => {
-                if args.len() == 3 {
-                    Ecrecover(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "keccak256" => {
-                if args.len() == 3 {
-                    Keccak256(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "sha256" => {
-                if args.len() == 3 {
-                    Sha256(args[0].into(), args[1].into(), args[2].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            "flag" => {
-                if args.len() == 1 {
-                    Flag(args[0].into())
-                } else {
-                    todo!("ArgMismatchError")
-                }
-            }
-            other => {
-                return err(
-                    vec![],
-                    vec![CompileError::UnrecognizedOp {
+                other => {
+                    errors.push(CompileError::UnrecognizedOp {
                         op_name: other,
-                        span: name.clone().span,
-                    }],
-                )
-            }
-        };
-        ok(op, vec![], vec![])
-    }
-    pub(crate) fn get_register_names(&self) -> HashSet<&RegisterId> {
-        use Opcode::*;
-        let regs: Vec<&RegisterId> = match self {
-            Add(r1, r2, r3) => vec![r1, r2, r3],
-            Addi(r1, r2, _imm) => vec![r1, r2],
-            And(r1, r2, r3) => vec![r1, r2, r3],
-            Andi(r1, r2, _imm) => vec![r1, r2],
-            Div(r1, r2, r3) => vec![r1, r2, r3],
-            Divi(r1, r2, _imm) => vec![r1, r2],
-            Mod(r1, r2, r3) => vec![r1, r2, r3],
-            Modi(r1, r2, _imm) => vec![r1, r2],
-            Eq(r1, r2, r3) => vec![r1, r2, r3],
-            Gt(r1, r2, r3) => vec![r1, r2, r3],
-            Mult(r1, r2, r3) => vec![r1, r2, r3],
-            Multi(r1, r2, _imm) => vec![r1, r2],
-            Noop() => vec![],
-            Not(r1, r2) => vec![r1, r2],
-            Or(r1, r2, r3) => vec![r1, r2, r3],
-            Ori(r1, r2, _imm) => vec![r1, r2],
-            Sll(r1, r2, _imm) => vec![r1, r2],
-            Sllv(r1, r2, r3) => vec![r1, r2, r3],
-            Sltiu(r1, r2, _imm) => vec![r1, r2],
-            Sltu(r1, r2, r3) => vec![r1, r2, r3],
-            Sra(r1, r2, _imm) => vec![r1, r2],
-            Srl(r1, r2, _imm) => vec![r1, r2],
-            Srlv(r1, r2, r3) => vec![r1, r2, r3],
-            Srav(r1, r2, r3) => vec![r1, r2, r3],
-            Sub(r1, r2, r3) => vec![r1, r2, r3],
-            Subi(r1, r2, _imm) => vec![r1, r2],
-            Xor(r1, r2, r3) => vec![r1, r2, r3],
-            Xori(r1, r2, _imm) => vec![r1, r2],
-            Exp(r1, r2, r3) => vec![r1, r2, r3],
-            Expi(r1, r2, _imm) => vec![r1, r2],
-            CIMV(r1, r2, _imm) => vec![r1, r2],
-            CTMV(r1, r2) => vec![r1, r2],
-            Ji(_imm) => vec![],
-            Jnzi(r1, _imm) => vec![r1],
-            Ret(r1) => vec![r1],
-            Cfei(_imm) => vec![],
-            Cfs(r1) => vec![r1],
-            Lb(r1, r2, _imm) => vec![r1, r2],
-            Lw(r1, r2, _imm) => vec![r1, r2],
-            Malloc(r1) => vec![r1],
-            MemClearImmediate(r1, _imm) => vec![r1],
-            MemCp(r1, r2, r3) => vec![r1, r2, r3],
-            MemEq(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
-            Sb(r1, r2, _imm) => vec![r1, r2],
-            Sw(r1, r2, _imm) => vec![r1, r2],
-            BlockHash(r1, r2) => vec![r1, r2],
-            BlockHeight(r1) => vec![r1],
-            Call(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
-            CodeCopy(r1, r2, _imm) => vec![r1, r2],
-            CodeRoot(r1, r2) => vec![r1, r2],
-            Codesize(r1, r2) => vec![r1, r2],
-            Coinbase(r1) => vec![r1],
-            LoadCode(r1, r2, r3) => vec![r1, r2, r3],
-            SLoadCode(r1, r2, r3) => vec![r1, r2, r3],
-            Log(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
-            Revert(r1) => vec![r1],
-            Srw(r1, r2) => vec![r1, r2],
-            Srwx(r1, r2) => vec![r1, r2],
-            Sww(r1, r2) => vec![r1, r2],
-            Swwx(r1, r2) => vec![r1, r2],
-            Transfer(r1, r2, r3) => vec![r1, r2, r3],
-            TransferOut(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
-            Ecrecover(r1, r2, r3) => vec![r1, r2, r3],
-            Keccak256(r1, r2, r3) => vec![r1, r2, r3],
-            Sha256(r1, r2, r3) => vec![r1, r2, r3],
-            Flag(r1) => vec![r1],
-        };
-
-        regs.into_iter().collect()
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+            },
+            warnings,
+            errors,
+        )
     }
 }
 
-// internal representation for register ids
-// simpler to represent as usize since it avoids casts
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
-pub enum RegisterId {
-    Virtual(String),
-    Constant(ConstantRegister),
-}
-
-#[derive(Hash, PartialEq, Eq, Debug, Clone)]
-/// These are the special registers defined in the spec
-pub enum ConstantRegister {
-    Zero,
-    One,
-    Overflow,
-    ProgramCounter,
-    StackStartPointer,
-    StackPointer,
-    FramePointer,
-    HeapPointer,
-    Error,
-    GlobalGas,
-    ContextGas,
-    Balance,
-    InstructionStart,
-    Flags,
-}
-
-impl fmt::Display for ConstantRegister {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use ConstantRegister::*;
-        let text = match self {
-            Zero => "$zero",
-            One => "$one",
-            Overflow => "$of",
-            ProgramCounter => "$pc",
-            StackStartPointer => "$ssp",
-            StackPointer => "$sp",
-            FramePointer => "$fp",
-            HeapPointer => "$hp",
-            Error => "$err",
-            GlobalGas => "$ggas",
-            ContextGas => "$cgas",
-            Balance => "$bal",
-            InstructionStart => "$is",
-            Flags => "$flag",
-        };
-        write!(f, "{}", text)
+fn single_reg<'sc>(
+    args: &[VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
+) -> CompileResult<'sc, VirtualRegister> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 1 {
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            expected: 1,
+            received: args.len(),
+            span: whole_op_span.clone(),
+        });
     }
+
+    let reg = match args.get(0) {
+        Some(reg) => reg,
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 1,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
+    };
+    match immediate {
+        None => (),
+        Some(i) => {
+            errors.push(CompileError::UnnecessaryImmediate {
+                span: i.span.clone(),
+            });
+        }
+    };
+
+    ok(reg.clone(), warnings, errors)
 }
 
-impl ConstantRegister {
-    pub(crate) fn parse_register_name(raw: &str) -> Option<ConstantRegister> {
-        use ConstantRegister::*;
-        Some(match raw {
-            "zero" => Zero,
-            "one" => One,
-            "of" => Overflow,
-            "pc" => ProgramCounter,
-            "ssp" => StackStartPointer,
-            "sp" => StackPointer,
-            "fp" => FramePointer,
-            "hp" => HeapPointer,
-            "err" => Error,
-            "ggas" => GlobalGas,
-            "cgas" => ContextGas,
-            "bal" => Balance,
-            "is" => InstructionStart,
-            "flag" => Flags,
-            _ => return None,
-        })
+fn two_regs<'sc>(
+    args: &[VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
+) -> CompileResult<'sc, (VirtualRegister, VirtualRegister)> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 2 {
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 2,
+            received: args.len(),
+        });
     }
+
+    let (reg, reg2) = match (args.get(0), args.get(1)) {
+        (Some(reg), Some(reg2)) => (reg, reg2),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 2,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
+    };
+    match immediate {
+        None => (),
+        Some(i) => errors.push(CompileError::UnnecessaryImmediate {
+            span: i.span.clone(),
+        }),
+    };
+
+    ok((reg.clone(), reg2.clone()), warnings, errors)
 }
 
-// Immediate Value.
-pub type ImmediateValue = u32;
+fn four_regs<'sc>(
+    args: &[VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
+) -> CompileResult<
+    'sc,
+    (
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 4 {
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 4,
+            received: args.len(),
+        });
+    }
 
-opcodes! {
-    // Arithmetic and Logic.
-    Add(RegisterId, RegisterId, RegisterId) = 0,
-    Addi(RegisterId, RegisterId, ImmediateValue) = 1,
-    And(RegisterId, RegisterId, RegisterId) = 2,
-    Andi(RegisterId, RegisterId, ImmediateValue) = 3,
-    Div(RegisterId, RegisterId, RegisterId) = 4,
-    Divi(RegisterId, RegisterId, ImmediateValue) = 5,
-    Mod(RegisterId, RegisterId, RegisterId) = 6,
-    Modi(RegisterId, RegisterId, ImmediateValue) = 7,
-    Eq(RegisterId, RegisterId, RegisterId) = 8,
-    Gt(RegisterId, RegisterId, RegisterId) = 9,
-    Mult(RegisterId, RegisterId, RegisterId) = 10,
-    Multi(RegisterId, RegisterId, ImmediateValue) = 11,
-    Noop() = 12,
-    Not(RegisterId, RegisterId) = 13,
-    Or(RegisterId, RegisterId, RegisterId) = 14,
-    Ori(RegisterId, RegisterId, ImmediateValue) = 15,
-    Sll(RegisterId, RegisterId, ImmediateValue) = 16,
-    Sllv(RegisterId, RegisterId, RegisterId) = 17,
-    Sltiu(RegisterId, RegisterId, ImmediateValue) = 18,
-    Sltu(RegisterId, RegisterId, RegisterId) = 19,
-    Sra(RegisterId, RegisterId, ImmediateValue) = 20,
-    Srl(RegisterId, RegisterId, ImmediateValue) = 21,
-    Srlv(RegisterId, RegisterId, RegisterId) = 22,
-    Srav(RegisterId, RegisterId, RegisterId) = 23,
-    Sub(RegisterId, RegisterId, RegisterId) = 24,
-    Subi(RegisterId, RegisterId, ImmediateValue) = 25,
-    Xor(RegisterId, RegisterId, RegisterId) = 26,
-    Xori(RegisterId, RegisterId, ImmediateValue) = 27,
-    Exp(RegisterId, RegisterId, RegisterId) = 28,
-    Expi(RegisterId, RegisterId, ImmediateValue) = 29,
+    let (reg, reg2, reg3, reg4) = match (args.get(0), args.get(1), args.get(2), args.get(3)) {
+        (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 1,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
+    };
+    match immediate {
+        None => (),
+        Some(i) => {
+            errors.push(CompileError::MissingImmediate {
+                span: i.span.clone(),
+            });
+        }
+    };
 
-    // Control Flow Opcodes.
-    CIMV(RegisterId, RegisterId, ImmediateValue) = 50,
-    CTMV(RegisterId, RegisterId) = 51,
-    Ji(ImmediateValue) = 52,
-    Jnzi(RegisterId, ImmediateValue) = 53,
-    Ret(RegisterId) = 54,
-
-    // Memory opcodes.
-    Cfei(ImmediateValue) = 60,
-    Cfs(RegisterId) = 61,
-    Lb(RegisterId, RegisterId, ImmediateValue) = 62,
-    Lw(RegisterId, RegisterId, ImmediateValue) = 63,
-    Malloc(RegisterId) = 64,
-    MemClearImmediate(RegisterId, ImmediateValue) = 65,
-    MemCp(RegisterId, RegisterId, RegisterId) = 66,
-    MemEq(RegisterId, RegisterId, RegisterId, RegisterId) = 67,
-    Sb(RegisterId, RegisterId, ImmediateValue) = 68,
-    Sw(RegisterId, RegisterId, ImmediateValue) = 69,
-
-    // Contract Opcodes.
-    BlockHash(RegisterId, RegisterId) = 80,
-    BlockHeight(RegisterId) = 81,
-    Call(RegisterId, RegisterId, RegisterId, RegisterId) = 82,
-    CodeCopy(RegisterId, RegisterId, ImmediateValue) = 83,
-    CodeRoot(RegisterId, RegisterId) = 84,
-    Codesize(RegisterId, RegisterId) = 85,
-    Coinbase(RegisterId) = 86,
-    LoadCode(RegisterId, RegisterId, RegisterId) = 87,
-    SLoadCode(RegisterId, RegisterId, RegisterId) = 88,
-    Log(RegisterId, RegisterId, RegisterId, RegisterId) = 89,
-    Revert(RegisterId) = 90,
-    Srw(RegisterId, RegisterId) = 91,
-    Srwx(RegisterId, RegisterId) = 92,
-    Sww(RegisterId, RegisterId) = 93,
-    Swwx(RegisterId, RegisterId) = 94,
-    Transfer(RegisterId, RegisterId, RegisterId) = 95,
-    TransferOut(RegisterId, RegisterId, RegisterId, RegisterId) = 96,
-
-    // Cryptographic Opcodes.
-    Ecrecover(RegisterId, RegisterId, RegisterId) = 110,
-    Keccak256(RegisterId, RegisterId, RegisterId) = 111,
-    Sha256(RegisterId, RegisterId, RegisterId) = 112,
-
-    // Additional Opcodes.
-    Flag(RegisterId) = 130
-}
-impl fmt::Display for RegisterId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            RegisterId::Virtual(name) => write!(f, "$r{}", name),
-            RegisterId::Constant(name) => {
-                write!(f, "{}", name)
-            }
+    impl ConstantRegister {
+        pub(crate) fn parse_register_name(raw: &str) -> Option<ConstantRegister> {
+            use ConstantRegister::*;
+            Some(match raw {
+                "zero" => Zero,
+                "one" => One,
+                "of" => Overflow,
+                "pc" => ProgramCounter,
+                "ssp" => StackStartPointer,
+                "sp" => StackPointer,
+                "fp" => FramePointer,
+                "hp" => HeapPointer,
+                "err" => Error,
+                "ggas" => GlobalGas,
+                "cgas" => ContextGas,
+                "bal" => Balance,
+                "is" => InstructionStart,
+                "flag" => Flags,
+                _ => return None,
+            })
         }
     }
+
+    // Immediate Value.
+    pub type ImmediateValue = u32;
+
+    ok(
+        (reg.clone(), reg2.clone(), reg3.clone(), reg4.clone()),
+        warnings,
+        errors,
+    )
 }
 
-impl fmt::Display for Label {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".{}", self.0)
+fn three_regs<'sc>(
+    args: &[VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
+) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualRegister)> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 3 {
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 3,
+            received: args.len(),
+        });
     }
+
+    let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
+        (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 3,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
+    };
+    match immediate {
+        None => (),
+        Some(i) => {
+            errors.push(CompileError::UnnecessaryImmediate {
+                span: i.span.clone(),
+            });
+        }
+    };
+
+    ok((reg.clone(), reg2.clone(), reg3.clone()), warnings, errors)
+}
+fn single_imm_24<'sc>(
+    args: &[VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
+) -> CompileResult<'sc, VirtualImmediate24> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 0 {
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 0,
+            received: args.len(),
+        });
+    }
+    let (imm, imm_span): (u64, _) = match immediate {
+        None => {
+            errors.push(CompileError::MissingImmediate {
+                span: whole_op_span.clone(),
+            });
+            return err(warnings, errors);
+        }
+        Some(i) => match i.primary_name.parse() {
+            Ok(o) => (o, i.span.clone()),
+            Err(_) => {
+                errors.push(CompileError::InvalidImmediateValue {
+                    span: i.span.clone(),
+                });
+                return err(warnings, errors);
+            }
+        },
+    };
+
+    let imm = match VirtualImmediate24::new(imm, imm_span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+
+    ok(imm, warnings, errors)
+}
+fn single_reg_imm_18<'sc>(
+    args: &[VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
+) -> CompileResult<'sc, (VirtualRegister, VirtualImmediate18)> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 1 {
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 1,
+            received: args.len(),
+        });
+    }
+    let reg = match args.get(0) {
+        Some(reg) => reg,
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 1,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
+    };
+    let (imm, imm_span): (u64, _) = match immediate {
+        None => {
+            errors.push(CompileError::MissingImmediate {
+                span: whole_op_span.clone(),
+            });
+            return err(warnings, errors);
+        }
+        Some(i) => match i.primary_name.parse() {
+            Ok(o) => (o, i.span.clone()),
+            Err(_) => {
+                errors.push(CompileError::InvalidImmediateValue {
+                    span: i.span.clone(),
+                });
+                return err(warnings, errors);
+            }
+        },
+    };
+
+    let imm = match VirtualImmediate18::new(imm, imm_span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+
+    ok((reg.clone(), imm), warnings, errors)
+}
+fn two_regs_imm_12<'sc>(
+    args: &[VirtualRegister],
+    immediate: &Option<Ident<'sc>>,
+    whole_op_span: Span<'sc>,
+) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualImmediate12)> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    if args.len() > 2 {
+        errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+            span: whole_op_span.clone(),
+            expected: 2,
+            received: args.len(),
+        });
+    }
+    let (reg, reg2) = match (args.get(0), args.get(1)) {
+        (Some(reg), Some(reg2)) => (reg, reg2),
+        _ => {
+            errors.push(CompileError::IncorrectNumberOfAsmRegisters {
+                span: whole_op_span.clone(),
+                expected: 2,
+                received: args.len(),
+            });
+            return err(warnings, errors);
+        }
+    };
+    let (imm, imm_span): (u64, _) = match immediate {
+        None => {
+            errors.push(CompileError::MissingImmediate {
+                span: whole_op_span.clone(),
+            });
+            return err(warnings, errors);
+        }
+        Some(i) => match i.primary_name.parse() {
+            Ok(o) => (o, i.span.clone()),
+            Err(_) => {
+                errors.push(CompileError::InvalidImmediateValue {
+                    span: i.span.clone(),
+                });
+                return err(warnings, errors);
+            }
+        },
+    };
+
+    let imm = match VirtualImmediate12::new(imm, imm_span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
+
+    ok((reg.clone(), reg2.clone(), imm), warnings, errors)
 }
 
 impl fmt::Display for Op<'_> {
-    // very clunky but lets us tweak assembly language most easily
-    // below code was constructed with vim macros -- easier to regenerate rather than rewrite.
-    // @alex if you want to change the format and save yourself the pain.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Opcode::*;
         use OrganizationalOp::*;
+        use VirtualOp::*;
         let op_str = match &self.opcode {
             Either::Left(opcode) => match opcode {
-                Add(a, b, c) => format!("add {} {} {}", a, b, c),
-                Addi(a, b, c) => format!("addi {} {} {}", a, b, c),
-                And(a, b, c) => format!("and {} {} {}", a, b, c),
-                Andi(a, b, c) => format!("andi {} {} {}", a, b, c),
-                Div(a, b, c) => format!("div {} {} {}", a, b, c),
-                Divi(a, b, c) => format!("divi {} {} {}", a, b, c),
-                Mod(a, b, c) => format!("mod {} {} {}", a, b, c),
-                Modi(a, b, c) => format!("modi {} {} {}", a, b, c),
-                Eq(a, b, c) => format!("eq {} {} {}", a, b, c),
-                Gt(a, b, c) => format!("gt {} {} {}", a, b, c),
-                Mult(a, b, c) => format!("mult {} {} {}", a, b, c),
-                Multi(a, b, c) => format!("multi {} {} {}", a, b, c),
-                Noop() => "noop".to_string(),
-                Not(a, b) => format!("not {} {}", a, b),
-                Or(a, b, c) => format!("or {} {} {}", a, b, c),
-                Ori(a, b, c) => format!("ori {} {} {}", a, b, c),
-                Sll(a, b, c) => format!("sll {} {} {}", a, b, c),
-                Sllv(a, b, c) => format!("sllv {} {} {}", a, b, c),
-                Sltiu(a, b, c) => format!("sltiu {} {} {}", a, b, c),
-
-                Sltu(a, b, c) => format!("sltu {} {} {}", a, b, c),
-                Sra(a, b, c) => format!("sra {} {} {}", a, b, c),
-                Srl(a, b, c) => format!("srl {} {} {}", a, b, c),
-                Srlv(a, b, c) => format!("srlv {} {} {}", a, b, c),
-                Srav(a, b, c) => format!("srav {} {} {}", a, b, c),
-                Sub(a, b, c) => format!("sub {} {} {}", a, b, c),
-                Subi(a, b, c) => format!("subi {} {} {}", a, b, c),
-                Xor(a, b, c) => format!("xor {} {} {}", a, b, c),
-                Xori(a, b, c) => format!("xori {} {} {}", a, b, c),
-                Exp(a, b, c) => format!("exp {} {} {}", a, b, c),
-                Expi(a, b, c) => format!("expi {} {} {}", a, b, c),
-
+                ADD(a, b, c) => format!("add {} {} {}", a, b, c),
+                ADDI(a, b, c) => format!("addi {} {} {}", a, b, c),
+                AND(a, b, c) => format!("and {} {} {}", a, b, c),
+                ANDI(a, b, c) => format!("andi {} {} {}", a, b, c),
+                DIV(a, b, c) => format!("div {} {} {}", a, b, c),
+                DIVI(a, b, c) => format!("divi {} {} {}", a, b, c),
+                EQ(a, b, c) => format!("eq {} {} {}", a, b, c),
+                EXP(a, b, c) => format!("exp {} {} {}", a, b, c),
+                EXPI(a, b, c) => format!("expi {} {} {}", a, b, c),
+                GT(a, b, c) => format!("gt {} {} {}", a, b, c),
+                MLOG(a, b, c) => format!("mlog {} {} {}", a, b, c),
+                MROO(a, b, c) => format!("mroo {} {} {}", a, b, c),
+                MOD(a, b, c) => format!("mod {} {} {}", a, b, c),
+                MODI(a, b, c) => format!("modi {} {} {}", a, b, c),
+                MOVE(a, b) => format!("move {} {}", a, b),
+                MUL(a, b, c) => format!("mul {} {} {}", a, b, c),
+                MULI(a, b, c) => format!("muli {} {} {}", a, b, c),
+                NOT(a, b) => format!("not {} {}", a, b),
+                OR(a, b, c) => format!("or {} {} {}", a, b, c),
+                ORI(a, b, c) => format!("ori {} {} {}", a, b, c),
+                SLL(a, b, c) => format!("sll {} {} {}", a, b, c),
+                SLLI(a, b, c) => format!("slli {} {} {}", a, b, c),
+                SRL(a, b, c) => format!("srl {} {} {}", a, b, c),
+                SRLI(a, b, c) => format!("srli {} {} {}", a, b, c),
+                SUB(a, b, c) => format!("sub {} {} {}", a, b, c),
+                SUBI(a, b, c) => format!("subi {} {} {}", a, b, c),
+                XOR(a, b, c) => format!("xor {} {} {}", a, b, c),
+                XORI(a, b, c) => format!("xori {} {} {}", a, b, c),
                 CIMV(a, b, c) => format!("cimv {} {} {}", a, b, c),
                 CTMV(a, b) => format!("ctmv {} {}", a, b),
-                Ji(a) => format!("ji {}", a),
-                Jnzi(a, b) => format!("jnzi {} {}", a, b),
-                Ret(a) => format!("ret {}", a),
-
-                Cfei(a) => format!("cfei {}", a),
-                Cfs(a) => format!("cfs {}", a),
-                Lb(a, b, c) => format!("lb {} {} {}", a, b, c),
-                Lw(a, b, c) => format!("lw {} {} {}", a, b, c),
-                Malloc(a) => format!("malloc {}", a),
-                MemClearImmediate(a, b) => format!("memcleari {} {}", a, b),
-                MemCp(a, b, c) => format!("memcp {} {} {}", a, b, c),
-                MemEq(a, b, c, d) => format!("memeq {} {} {} {}", a, b, c, d),
-                Sb(a, b, c) => format!("sb {} {} {}", a, b, c),
-                Sw(a, b, c) => format!("sw {} {} {}", a, b, c),
-
-                BlockHash(a, b) => format!("blockhash {} {}", a, b),
-                BlockHeight(a) => format!("blockheight {}", a),
-                Call(a, b, c, d) => format!("call {} {} {} {}", a, b, c, d),
-                CodeCopy(a, b, c) => format!("codecopy {} {} {}", a, b, c),
-                CodeRoot(a, b) => format!("coderoot {} {}", a, b),
-                Codesize(a, b) => format!("codesize {} {}", a, b),
-                Coinbase(a) => format!("coinbase {}", a),
-                LoadCode(a, b, c) => format!("loadcode {} {} {}", a, b, c),
-                SLoadCode(a, b, c) => format!("sloadcode {} {} {}", a, b, c),
-                Log(a, b, c, d) => format!("log {} {} {} {}", a, b, c, d),
-                Revert(a) => format!("revert {}", a),
-                Srw(a, b) => format!("srw {} {}", a, b),
-                Srwx(a, b) => format!("srwx {} {}", a, b),
-                Sww(a, b) => format!("sww {} {}", a, b),
-                Swwx(a, b) => format!("swwx {} {}", a, b),
-                Transfer(a, b, c) => format!("transfer {} {} {}", a, b, c),
-                TransferOut(a, b, c, d) => format!("transferout {} {} {} {}", a, b, c, d),
-
-                Ecrecover(a, b, c) => format!("ecrecover {} {} {}", a, b, c),
-                Keccak256(a, b, c) => format!("keccak256 {} {} {}", a, b, c),
-                Sha256(a, b, c) => format!("sha256 {} {} {}", a, b, c),
-
-                Flag(a) => format!("flag {}", a),
+                JI(a) => format!("ji {}", a),
+                JNEI(a, b, c) => format!("jnei {} {} {}", a, b, c),
+                RET(a) => format!("ret {}", a),
+                CFEI(a) => format!("cfei {}", a),
+                CFSI(a) => format!("cfsi {}", a),
+                LB(a, b, c) => format!("lb {} {} {}", a, b, c),
+                LW(a, b, c) => format!("lw {} {} {}", a, b, c),
+                ALOC(a) => format!("aloc {}", a),
+                MCL(a, b) => format!("mcl {} {}", a, b),
+                MCLI(a, b) => format!("mcli {} {}", a, b),
+                MCP(a, b, c) => format!("mcp {} {} {}", a, b, c),
+                MEQ(a, b, c, d) => format!("meq {} {} {} {}", a, b, c, d),
+                SB(a, b, c) => format!("sb {} {} {}", a, b, c),
+                SW(a, b, c) => format!("sw {} {} {}", a, b, c),
+                BHSH(a, b) => format!("bhsh {} {}", a, b),
+                BHEI(a) => format!("bhei {}", a),
+                BURN(a) => format!("burn {}", a),
+                CALL(a, b, c, d) => format!("call {} {} {} {}", a, b, c, d),
+                CCP(a, b, c, d) => format!("ccp {} {} {} {}", a, b, c, d),
+                CROO(a, b) => format!("croo {} {}", a, b),
+                CSIZ(a, b) => format!("csiz {} {}", a, b),
+                CB(a) => format!("cb {}", a),
+                LDC(a, b, c) => format!("ldc {} {} {}", a, b, c),
+                LOG(a, b, c, d) => format!("log {} {} {} {}", a, b, c, d),
+                MINT(a) => format!("mint {}", a),
+                RVRT(a) => format!("rvrt {}", a),
+                SLDC(a, b, c) => format!("sldc {} {} {}", a, b, c),
+                SRW(a, b) => format!("srw {} {}", a, b),
+                SRWQ(a, b) => format!("srwq {} {}", a, b),
+                SWW(a, b) => format!("sww {} {}", a, b),
+                SWWQ(a, b) => format!("swwq {} {}", a, b),
+                TR(a, b, c) => format!("tr {} {} {}", a, b, c),
+                TRO(a, b, c, d) => format!("tro {} {} {} {}", a, b, c, d),
+                ECR(a, b, c) => format!("ecr {} {} {}", a, b, c),
+                K256(a, b, c) => format!("k256 {} {} {}", a, b, c),
+                S256(a, b, c) => format!("s256 {} {} {}", a, b, c),
+                NOOP => "noop".to_string(),
+                FLAG(a) => format!("flag {}", a),
+                Undefined => format!("undefined op"),
             },
             Either::Right(opcode) => match opcode {
                 Label(l) => format!("{}", l),
-                RMove(r1, r2) => format!("move {} {}", r1, r2),
                 Comment => "".into(),
                 Jump(label) => format!("jump {}", label),
                 Ld(register, data_id) => format!("ld {} {}", register, data_id),
@@ -1428,24 +1304,32 @@ impl fmt::Display for Op<'_> {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
-pub(crate) struct Label(pub(crate) usize);
-
 // Convenience opcodes for the compiler -- will be optimized out or removed
 // these do not reflect actual ops in the VM and will be compiled to bytecode
 #[derive(Clone)]
 pub(crate) enum OrganizationalOp {
-    // copies the second register into the first register
-    RMove(RegisterId, RegisterId),
     // Labels the code for jumps, will later be interpreted into offsets
     Label(Label),
     // Just a comment that will be inserted into the asm without an op
     Comment,
     // Jumps to a label
     Jump(Label),
+    // Jumps to a label
+    JumpIfNotEq(VirtualRegister, VirtualRegister, Label),
     // Loads from the data section into a register
     // "load data"
-    Ld(RegisterId, DataId),
-    //
-    JumpIfNotEq(RegisterId, RegisterId, Label),
+    Ld(VirtualRegister, DataId),
+}
+
+impl OrganizationalOp {
+    pub(crate) fn registers(&self) -> HashSet<&VirtualRegister> {
+        use OrganizationalOp::*;
+        (match self {
+            Label(_) | Comment | Jump(_) => vec![],
+            Ld(r1, _) => vec![r1],
+            JumpIfNotEq(r1, r2, _) => vec![r1, r2],
+        })
+        .into_iter()
+        .collect()
+    }
 }

@@ -1,5 +1,8 @@
 use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
-use crate::asm_lang::{ConstantRegister, Op, RegisterId};
+use crate::asm_lang::{
+    virtual_ops::{ConstantRegister, VirtualRegister},
+    Op,
+};
 use crate::error::*;
 
 use crate::semantic_analysis::TypedExpression;
@@ -10,7 +13,7 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
     condition: &TypedExpression<'sc>,
     then: &TypedExpression<'sc>,
     r#else: &Option<Box<TypedExpression<'sc>>>,
-    return_register: &RegisterId,
+    return_register: &VirtualRegister,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
@@ -50,7 +53,7 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
     // if the condition is not true, jump to the else branch (if there is one).
     asm_buf.push(Op::jump_if_not_equal(
         condition_result.clone(),
-        RegisterId::Constant(ConstantRegister::One),
+        VirtualRegister::Constant(ConstantRegister::One),
         if r#else.is_some() {
             else_label.clone()
         } else {

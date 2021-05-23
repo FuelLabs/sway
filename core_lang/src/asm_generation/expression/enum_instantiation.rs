@@ -1,18 +1,25 @@
-use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
-use crate::asm_lang::{ConstantRegister, Op, Opcode, RegisterId};
+use crate::asm_generation::{
+    compiler_constants::*, convert_expression_to_asm, AsmNamespace, RegisterSequencer,
+};
+use crate::asm_lang::{
+    virtual_ops::{
+        ConstantRegister, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+        VirtualRegister,
+    },
+    Op,
+};
 use crate::error::*;
 use crate::semantic_analysis::ast_node::TypedEnumDeclaration;
 use crate::semantic_analysis::TypedExpression;
 use crate::Literal;
 use crate::{CompileResult, Ident};
-use std::convert::TryFrom;
 
 pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     decl: &TypedEnumDeclaration<'sc>,
     _variant_name: &Ident<'sc>,
     tag: usize,
     contents: &Option<Box<TypedExpression<'sc>>>,
-    return_register: &RegisterId,
+    return_register: &VirtualRegister,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
@@ -35,25 +42,35 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     // copy stack pointer into pointer register
     asm_buf.push(Op::unowned_register_move_comment(
         pointer_register.clone(),
-        RegisterId::Constant(ConstantRegister::StackPointer),
+        VirtualRegister::Constant(ConstantRegister::StackPointer),
         "load $sp for enum pointer",
     ));
     let size_of_enum = 1 /* tag */ + decl.as_type().stack_size_of();
-    let size_of_enum: u32 = match u32::try_from(size_of_enum) {
-        Ok(o) if o < 16777216 /* 2^24 */ => o,
-        _ => {
-            errors.push(CompileError::Unimplemented(
-                "Stack variables which exceed 2^24 (16777216) words in size are not supported yet.",
-                decl.clone().span,
-            ));
-            return err(warnings, errors);
-        }
-    };
+    if size_of_enum > EIGHTEEN_BITS {
+        errors.push(CompileError::Unimplemented(
+            "Stack variables which exceed 2^18 words in size are not supported yet.",
+            decl.clone().span,
+        ));
+        return err(warnings, errors);
+    }
 
-    asm_buf.push(Op::unowned_stack_allocate_memory(size_of_enum));
+    asm_buf.push(Op::unowned_stack_allocate_memory(
+        VirtualImmediate24::new_unchecked(
+            size_of_enum,
+            "this size is manually checked to be lower than 2^24",
+        ),
+    ));
     // initialize all the memory to 0
+    // there are only 18 bits of immediate in MCLI so we need to do this in multiple passes,
+    // This is not yet implemented, so instead we just limit enum size to 2^18 words
     asm_buf.push(Op::new(
-        Opcode::MemClearImmediate(pointer_register.clone(), size_of_enum),
+        VirtualOp::MCLI(
+            pointer_register.clone(),
+            VirtualImmediate18::new_unchecked(
+                size_of_enum,
+                "the enum was manually checked to be under 2^18 words in size",
+            ),
+        ),
         decl.clone().span,
     ));
     // write the tag
@@ -61,7 +78,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     asm_buf.push(Op::write_register_to_memory(
         pointer_register.clone(),
         tag_register.clone(),
-        0,
+        VirtualImmediate12::new_unchecked(0, "constant num; infallible"),
         decl.clone().span,
     ));
 
@@ -86,7 +103,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
         asm_buf.push(Op::write_register_to_memory_comment(
             pointer_register.clone(),
             return_register.clone(),
-            1, /* offset by 1 because the tag was already written */
+            VirtualImmediate12::new_unchecked(1, "this is the constant 1; infallible"), // offset by 1 because the tag was already written
             instantiation.span.clone(),
             format!("{} enum contents", decl.name.primary_name),
         ));

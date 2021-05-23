@@ -1,4 +1,3 @@
-use crate::asm_lang::ImmediateValue;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::{Ident, TypeInfo};
@@ -86,7 +85,7 @@ pub(crate) struct AsmOp<'sc> {
     pub(crate) op_name: Ident<'sc>,
     pub(crate) op_args: Vec<Ident<'sc>>,
     pub(crate) span: Span<'sc>,
-    pub(crate) immediate: Option<ImmediateValue>,
+    pub(crate) immediate: Option<Ident<'sc>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -136,16 +135,10 @@ impl<'sc> AsmOp<'sc> {
                     });
                 }
                 Rule::asm_immediate => {
-                    let imm: ImmediateValue = match pair.as_str().parse() {
-                        Ok(o) => o,
-                        Err(_e) => {
-                            errors.push(CompileError::InvalidImmediateValue {
-                                span: pair.as_span(),
-                            });
-                            return err(warnings, errors);
-                        }
-                    };
-                    immediate_value = Some(imm);
+                    immediate_value = Some(Ident {
+                        primary_name: pair.as_str().trim(),
+                        span: pair.as_span(),
+                    });
                 }
                 _ => unreachable!(),
             }
