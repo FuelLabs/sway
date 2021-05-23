@@ -60,6 +60,28 @@ pub enum ConstantRegister {
     Flags,
 }
 
+impl ConstantRegister {
+    pub(crate) fn to_register_id(&self) -> fuel_asm::RegisterId {
+        use ConstantRegister::*;
+        match self {
+            Zero => 0,
+            One => 1,
+            Overflow => 2,
+            ProgramCounter => 3,
+            StackStartPointer => 4,
+            StackPointer => 5,
+            FramePointer => 6,
+            HeapPointer => 7,
+            Error => 8,
+            GlobalGas => 9,
+            ContextGas => 10,
+            Balance => 11,
+            InstructionStart => 12,
+            Flags => 13,
+        }
+    }
+}
+
 impl fmt::Display for ConstantRegister {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use ConstantRegister::*;
@@ -86,7 +108,7 @@ impl fmt::Display for ConstantRegister {
 /// 6-bits immediate value type
 #[derive(Clone)]
 pub struct VirtualImmediate06 {
-    value: u8,
+    pub(crate) value: u8,
 }
 
 impl VirtualImmediate06 {
@@ -112,7 +134,7 @@ impl fmt::Display for VirtualImmediate06 {
 /// 12-bits immediate value type
 #[derive(Clone)]
 pub struct VirtualImmediate12 {
-    value: u16,
+    pub(crate) value: u16,
 }
 
 impl VirtualImmediate12 {
@@ -148,7 +170,7 @@ impl fmt::Display for VirtualImmediate12 {
 /// 18-bits immediate value type
 #[derive(Clone)]
 pub struct VirtualImmediate18 {
-    value: u32,
+    pub(crate) value: u32,
 }
 impl VirtualImmediate18 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
@@ -183,7 +205,7 @@ impl fmt::Display for VirtualImmediate18 {
 /// 24-bits immediate value type
 #[derive(Clone)]
 pub struct VirtualImmediate24 {
-    value: u32,
+    pub(crate) value: u32,
 }
 impl VirtualImmediate24 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
