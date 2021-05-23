@@ -19,11 +19,13 @@ use either::Either;
 pub(crate) mod compiler_constants;
 mod declaration;
 mod expression;
+mod finalized_asm;
 mod register_sequencer;
 mod while_loop;
 
 pub(crate) use declaration::*;
 pub(crate) use expression::*;
+pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
 
 use while_loop::convert_while_loop_to_asm;
@@ -676,19 +678,6 @@ impl<'sc> RegisterAllocatedAsmSet<'sc> {
     }
 }
 
-/// Represents an ASM set which has had register allocation, jump elimination, and optimization
-/// applied to it
-pub enum FinalizedAsm<'sc> {
-    ContractAbi,
-    ScriptMain {
-        program_section: InstructionSet<'sc>,
-    },
-    PredicateMain {
-        program_section: InstructionSet<'sc>,
-    },
-    // Libraries do not generate any asm.
-    Library,
-}
 pub(crate) enum NodeAsmResult<'sc> {
     JustAsm(Vec<Op<'sc>>),
     ReturnStatement { asm: Vec<Op<'sc>> },

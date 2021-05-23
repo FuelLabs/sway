@@ -19,7 +19,6 @@ use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
-use std::collections::HashMap;
 pub(crate) mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
@@ -119,15 +118,7 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
 }
 
 pub enum CompilationResult<'sc> {
-    ContractAbi {
-        abi: HashMap<usize, FinalizedAsm<'sc>>,
-        warnings: Vec<CompileWarning<'sc>>,
-    },
-    ScriptAsm {
-        asm: FinalizedAsm<'sc>,
-        warnings: Vec<CompileWarning<'sc>>,
-    },
-    PredicateAsm {
+    Success {
         asm: FinalizedAsm<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
@@ -355,17 +346,18 @@ pub fn compile<'sc, 'manifest>(
     if errors.is_empty() {
         // TODO move this check earlier and don't compile all of them if there is only one
         match (predicate_asm, contract_asm, script_asm, library_exports) {
-            (Some(pred), None, None, o) if o.trees.is_empty() => CompilationResult::PredicateAsm {
+            (Some(pred), None, None, o) if o.trees.is_empty() => CompilationResult::Success {
                 asm: pred,
                 warnings,
             },
             (None, Some(_contract), None, o) if o.trees.is_empty() => {
-                CompilationResult::ContractAbi {
-                    abi: Default::default(),
-                    warnings,
-                }
+                errors.push(CompileError::Unimplemented(
+                    "Contracts are not implemented yet. ",
+                    Span::new(input, 0, input.len() - 1).unwrap(),
+                ));
+                return CompilationResult::Failure { errors, warnings };
             }
-            (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::ScriptAsm {
+            (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::Success {
                 asm: script,
                 warnings,
             },
