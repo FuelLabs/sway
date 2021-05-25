@@ -6,7 +6,7 @@
 
 use super::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
-    RealizedOp,
+    DataId, RealizedOp,
 };
 use crate::asm_generation::RegisterPool;
 use crate::error::*;
@@ -279,7 +279,7 @@ pub(crate) enum VirtualOp {
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    LW(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    LW(VirtualRegister, DataId),
     ALOC(VirtualRegister),
     MCL(VirtualRegister, VirtualRegister),
     MCLI(VirtualRegister, VirtualImmediate18),
@@ -379,7 +379,7 @@ impl VirtualOp {
             CFEI(_imm) => vec![],
             CFSI(_imm) => vec![],
             LB(r1, r2, _i) => vec![r1, r2],
-            LW(r1, r2, _i) => vec![r1, r2],
+            LW(r1, _i) => vec![r1],
             ALOC(_imm) => vec![],
             MCL(r1, r2) => vec![r1, r2],
             MCLI(r1, _imm) => vec![r1],
@@ -607,11 +607,7 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            LW(reg1, reg2, imm) => AllocatedOpcode::LW(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
+            LW(reg1, imm) => AllocatedOpcode::LW(map_reg(&mapping, reg1), imm.clone()),
             ALOC(reg) => AllocatedOpcode::ALOC(map_reg(&mapping, reg)),
             MCL(reg1, reg2) => {
                 AllocatedOpcode::MCL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))

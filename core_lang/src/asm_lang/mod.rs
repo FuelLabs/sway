@@ -124,7 +124,7 @@ impl<'sc> Op<'sc> {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Ld(reg, data)),
+            opcode: Either::Left(VirtualOp::LW(reg, data)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -576,13 +576,10 @@ impl<'sc> Op<'sc> {
                     VirtualOp::LB(r1, r2, imm)
                 }
                 "lw" => {
-                    let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::LW(r1, r2, imm)
+                    errors.push(CompileError::DisallowedLw {
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
                 }
                 "aloc" => {
                     let r1 = type_check!(
@@ -1248,7 +1245,7 @@ impl fmt::Display for Op<'_> {
                 CFEI(a) => format!("cfei {}", a),
                 CFSI(a) => format!("cfsi {}", a),
                 LB(a, b, c) => format!("lb {} {} {}", a, b, c),
-                LW(a, b, c) => format!("lw {} {} {}", a, b, c),
+                LW(a, b) => format!("lw {} {}", a, b),
                 ALOC(a) => format!("aloc {}", a),
                 MCL(a, b) => format!("mcl {} {}", a, b),
                 MCLI(a, b) => format!("mcli {} {}", a, b),
@@ -1286,7 +1283,6 @@ impl fmt::Display for Op<'_> {
                 Label(l) => format!("{}", l),
                 Comment => "".into(),
                 Jump(label) => format!("jump {}", label),
-                Ld(register, data_id) => format!("ld {} {}", register, data_id),
                 JumpIfNotEq(reg0, reg1, label) => format!("jnei {} {} {}", reg0, reg1, label),
             },
         };
@@ -1316,9 +1312,6 @@ pub(crate) enum OrganizationalOp {
     Jump(Label),
     // Jumps to a label
     JumpIfNotEq(VirtualRegister, VirtualRegister, Label),
-    // Loads from the data section into a register
-    // "load data"
-    Ld(VirtualRegister, DataId),
 }
 
 impl OrganizationalOp {
@@ -1326,7 +1319,6 @@ impl OrganizationalOp {
         use OrganizationalOp::*;
         (match self {
             Label(_) | Comment | Jump(_) => vec![],
-            Ld(r1, _) => vec![r1],
             JumpIfNotEq(r1, r2, _) => vec![r1, r2],
         })
         .into_iter()

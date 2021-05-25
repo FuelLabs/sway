@@ -131,6 +131,19 @@ pub enum CompilationResult<'sc> {
         errors: Vec<CompileError<'sc>>,
     },
 }
+pub enum BytecodeCompilationResult<'sc> {
+    Success {
+        bytes: Vec<u8>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Library {
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Failure {
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+    },
+}
 
 fn get_start(err: &pest::error::Error<Rule>) -> usize {
     match err.location {
@@ -146,7 +159,7 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
     }
 }
 
-pub fn compile<'sc, 'manifest>(
+pub fn compile_to_asm<'sc, 'manifest>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
 ) -> CompilationResult<'sc> {
@@ -373,6 +386,48 @@ pub fn compile<'sc, 'manifest>(
         }
     } else {
         CompilationResult::Failure { errors, warnings }
+    }
+}
+pub fn compile_to_bytecode<'sc, 'manifest>(
+    input: &'sc str,
+    initial_namespace: &Namespace<'sc>,
+) -> BytecodeCompilationResult<'sc> {
+    match compile_to_asm(input, initial_namespace) {
+        CompilationResult::Success { asm, mut warnings } => {
+            let bytes = match asm.to_bytecode() {
+                CompileResult::Ok {
+                    value,
+                    warnings: mut l_w,
+                    errors,
+                } if errors.is_empty() => {
+                    warnings.append(&mut l_w);
+                    value
+                }
+                CompileResult::Ok {
+                    value,
+                    warnings: mut l_w,
+                    errors,
+                } => {
+                    warnings.append(&mut l_w);
+                    return BytecodeCompilationResult::Failure { warnings, errors };
+                }
+                CompileResult::Err {
+                    warnings: mut l_w,
+                    errors,
+                } => {
+                    warnings.append(&mut l_w);
+                    return BytecodeCompilationResult::Failure { warnings, errors };
+                }
+            };
+            BytecodeCompilationResult::Success { bytes, warnings }
+        }
+        CompilationResult::Failure { warnings, errors } => {
+            BytecodeCompilationResult::Failure { warnings, errors }
+        }
+        CompilationResult::Library {
+            warnings,
+            exports: _exports,
+        } => BytecodeCompilationResult::Library { warnings },
     }
 }
 

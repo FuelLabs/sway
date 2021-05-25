@@ -180,7 +180,7 @@ impl<'sc> AbstractInstructionSet<'sc> {
 
     /// Runs two passes -- one to get the instruction offsets of the labels
     /// and one to replace the labels in the organizational ops
-    fn realize_labels(self, data_section: &DataSection) -> RealizedAbstractInstructionSet<'sc> {
+    fn realize_labels(self) -> RealizedAbstractInstructionSet<'sc> {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
         for op in &self.ops {
@@ -189,7 +189,6 @@ impl<'sc> AbstractInstructionSet<'sc> {
                     label_namespace.insert(lab, counter);
                 }
                 // these ops will end up being exactly one op, so the counter goes up one
-                Either::Right(OrganizationalOp::Ld(..)) => counter += 2,
                 Either::Right(OrganizationalOp::Jump(..))
                 | Either::Right(OrganizationalOp::JumpIfNotEq(..))
                 | Either::Left(_) => {
@@ -213,19 +212,6 @@ impl<'sc> AbstractInstructionSet<'sc> {
                     comment,
                 }),
                 Either::Right(org_op) => match org_op {
-                    OrganizationalOp::Ld(reg, data_lab) => {
-                        let data = data_section.value_pairs[data_lab.0 as usize].clone();
-                        // TODO force_to_imm() is very very bad. see it for details
-                        realized_ops.push(RealizedOp {
-                            opcode: VirtualOp::ORI(
-                                reg,
-                                VirtualRegister::Constant(ConstantRegister::Zero),
-                                data.force_to_imm(),
-                            ),
-                            owning_span,
-                            comment,
-                        });
-                    }
                     OrganizationalOp::Jump(ref lab) => {
                         let offset = label_namespace.get(lab).unwrap();
                         let imm = VirtualImmediate24::new_unchecked(
@@ -271,7 +257,6 @@ impl RegisterPool {
     fn init() -> Self {
         let register_pool: Vec<RegisterAllocationStatus> = (0
             ..compiler_constants::NUM_FREE_REGISTERS)
-            .rev()
             .map(|x| RegisterAllocationStatus {
                 reg: AllocatedRegister::Allocated(x),
                 in_use: None,
@@ -335,6 +320,27 @@ fn label_is_used<'sc>(buf: &[Op<'sc>], label: &Label) -> bool {
 pub struct DataSection<'sc> {
     /// the data to be put in the data section of the asm
     value_pairs: Vec<Data<'sc>>,
+}
+
+impl<'sc> DataSection<'sc> {
+    /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
+    /// in words.
+    pub(crate) fn offset_to_id(&self, id: &DataId) -> usize {
+        self.value_pairs
+            .iter()
+            .take(id.0 as usize)
+            .map(|x| x.as_type().stack_size_of())
+            .sum::<u64>() as usize
+    }
+
+    pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
+        // not the exact right capacity but serves as a lower bound
+        let mut buf = Vec::with_capacity(self.value_pairs.len());
+        for val in &self.value_pairs {
+            buf.append(&mut val.to_bytes());
+        }
+        buf
+    }
 }
 
 impl fmt::Display for DataSection<'_> {
@@ -406,11 +412,17 @@ impl fmt::Display for JumpOptimizedAsmSet<'_> {
 impl<'sc> fmt::Display for RegisterAllocatedAsmSet<'sc> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RegisterAllocatedAsmSet::ScriptMain { program_section } => {
-                write!(f, "{}", program_section)
+            RegisterAllocatedAsmSet::ScriptMain {
+                program_section,
+                data_section,
+            } => {
+                write!(f, "{}\n{}", program_section, data_section)
             }
-            RegisterAllocatedAsmSet::PredicateMain { program_section } => {
-                write!(f, "{}", program_section)
+            RegisterAllocatedAsmSet::PredicateMain {
+                program_section,
+                data_section,
+            } => {
+                write!(f, "{}\n{}", program_section, data_section)
             }
             RegisterAllocatedAsmSet::ContractAbi { .. } => {
                 write!(f, "TODO contract ABI asm is unimplemented")
@@ -424,8 +436,14 @@ impl<'sc> fmt::Display for RegisterAllocatedAsmSet<'sc> {
 impl<'sc> fmt::Display for FinalizedAsm<'sc> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FinalizedAsm::ScriptMain { program_section } => write!(f, "{}", program_section,),
-            FinalizedAsm::PredicateMain { program_section } => write!(f, "{}", program_section,),
+            FinalizedAsm::ScriptMain {
+                program_section,
+                data_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
+            FinalizedAsm::PredicateMain {
+                program_section,
+                data_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
             FinalizedAsm::ContractAbi { .. } => {
                 write!(f, "TODO contract ABI asm is unimplemented")
             }
@@ -530,18 +548,25 @@ pub(crate) fn compile_ast_to_asm<'sc>(
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = vec![];
             // start generating from the main function
+            let return_register = register_sequencer.next();
             let mut body = type_check!(
                 convert_code_block_to_asm(
                     &main_function.body,
                     &mut namespace,
                     &mut register_sequencer,
-                    None,
+                    // TODO validate that this isn't just implicit returns?
+                    Some(&return_register),
                 ),
                 vec![],
                 warnings,
                 errors
             );
             asm_buf.append(&mut body);
+            asm_buf.push(Op {
+                owning_span: None,
+                opcode: Either::Left(VirtualOp::RET(return_register)),
+                comment: "main fn return value".into(),
+            });
 
             HllAsmSet::ScriptMain {
                 program_section: AbstractInstructionSet { ops: asm_buf },
@@ -617,18 +642,18 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 data_section,
                 program_section,
             } => RegisterAllocatedAsmSet::ScriptMain {
+                data_section,
                 program_section: program_section
                     .clone()
-                    .realize_labels(&data_section)
+                    .realize_labels()
                     .allocate_registers(),
             },
             JumpOptimizedAsmSet::PredicateMain {
                 data_section,
                 program_section,
             } => RegisterAllocatedAsmSet::PredicateMain {
-                program_section: program_section
-                    .realize_labels(&data_section)
-                    .allocate_registers(),
+                data_section,
+                program_section: program_section.realize_labels().allocate_registers(),
             },
             JumpOptimizedAsmSet::ContractAbi => RegisterAllocatedAsmSet::ContractAbi,
         }
@@ -653,9 +678,11 @@ pub enum JumpOptimizedAsmSet<'sc> {
 pub enum RegisterAllocatedAsmSet<'sc> {
     ContractAbi,
     ScriptMain {
+        data_section: DataSection<'sc>,
         program_section: InstructionSet<'sc>,
     },
     PredicateMain {
+        data_section: DataSection<'sc>,
         program_section: InstructionSet<'sc>,
     },
     // Libraries do not generate any asm.
@@ -667,12 +694,20 @@ impl<'sc> RegisterAllocatedAsmSet<'sc> {
         // TODO implement this -- noop for now
         match self {
             RegisterAllocatedAsmSet::Library => FinalizedAsm::Library,
-            RegisterAllocatedAsmSet::ScriptMain { program_section } => {
-                FinalizedAsm::ScriptMain { program_section }
-            }
-            RegisterAllocatedAsmSet::PredicateMain { program_section } => {
-                FinalizedAsm::PredicateMain { program_section }
-            }
+            RegisterAllocatedAsmSet::ScriptMain {
+                program_section,
+                data_section,
+            } => FinalizedAsm::ScriptMain {
+                program_section,
+                data_section,
+            },
+            RegisterAllocatedAsmSet::PredicateMain {
+                program_section,
+                data_section,
+            } => FinalizedAsm::PredicateMain {
+                program_section,
+                data_section,
+            },
             RegisterAllocatedAsmSet::ContractAbi => FinalizedAsm::ContractAbi,
         }
     }

@@ -36,7 +36,9 @@ impl<'sc> TypedExpression<'sc> {
         let mut typed_expression = match other {
             Expression::Literal { value: lit, span } => {
                 let return_type = match lit {
-                    Literal::String(_) => MaybeResolvedType::Resolved(ResolvedType::String),
+                    Literal::String(s) => {
+                        MaybeResolvedType::Resolved(ResolvedType::Str(s.len() as u64))
+                    }
                     Literal::U8(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
                         IntegerBits::Eight,
                     )),

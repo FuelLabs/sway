@@ -7,7 +7,7 @@ use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::utils::manifest::{Dependency, DependencyDetails, Manifest};
-use core_lang::{CompilationResult, LibraryExports, Namespace};
+use core_lang::{BytecodeCompilationResult, CompilationResult, LibraryExports, Namespace};
 use std::{fs, path::PathBuf};
 
 pub fn build(path: Option<String>) -> Result<(), String> {
@@ -44,7 +44,7 @@ pub fn build(path: Option<String>) -> Result<(), String> {
     let main_file = get_main_file(&manifest, &manifest_dir)?;
     let main = compile(main_file, &manifest.project.name, &namespace)?;
 
-    println!("Generated assembly was: \n{}", main);
+    println!("Bytecode size is {} bytes.", main.len() / 4);
 
     Ok(())
 }
@@ -150,7 +150,7 @@ fn compile_library<'source, 'manifest>(
     proj_name: &str,
     namespace: &Namespace<'source>,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = core_lang::compile(&source, namespace);
+    let res = core_lang::compile_to_asm(&source, namespace);
     match res {
         CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
@@ -202,10 +202,10 @@ fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
-) -> Result<core_lang::FinalizedAsm<'source>, String> {
-    let res = core_lang::compile(&source, namespace);
+) -> Result<Vec<u8>, String> {
+    let res = core_lang::compile_to_bytecode(&source, namespace);
     match res {
-        CompilationResult::ScriptAsm { asm, warnings } => {
+        BytecodeCompilationResult::Success { bytes, warnings } => {
             for ref warning in warnings.iter() {
                 format_warning(&source, warning);
             }
@@ -223,52 +223,9 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(asm)
+            Ok(bytes)
         }
-        CompilationResult::PredicateAsm { asm, warnings } => {
-            for ref warning in warnings.iter() {
-                format_warning(&source, warning);
-            }
-            if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled predicate {:?}.", proj_name));
-            } else {
-                let _ = write_yellow(&format!(
-                    "Compiled predicate {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
-            Ok(asm)
-        }
-        CompilationResult::ContractAbi { abi: _, warnings } => {
-            for ref warning in warnings.iter() {
-                format_warning(&source, warning);
-            }
-            if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled contract {:?}.", proj_name));
-            } else {
-                let _ = write_yellow(&format!(
-                    "Compiled contract {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
-            Ok(core_lang::FinalizedAsm::ContractAbi)
-        }
-        CompilationResult::Library {
-            exports: _,
-            warnings,
-        } => {
+        BytecodeCompilationResult::Library { warnings } => {
             for ref warning in warnings.iter() {
                 format_warning(&source, warning);
             }
@@ -286,9 +243,9 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(core_lang::FinalizedAsm::Library)
+            Ok(vec![])
         }
-        CompilationResult::Failure { errors, warnings } => {
+        BytecodeCompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {

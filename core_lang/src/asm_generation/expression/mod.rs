@@ -325,7 +325,7 @@ fn convert_literal_to_asm<'sc>(
     let data_id = namespace.insert_data_value(lit);
     // then get that literal id and use it to make a load word op
     vec![Op {
-        opcode: either::Either::Right(OrganizationalOp::Ld(return_register.clone(), data_id)),
+        opcode: either::Either::Left(VirtualOp::LW(return_register.clone(), data_id)),
         comment: "literal instantiation".into(),
         owning_span: Some(span),
     }]

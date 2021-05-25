@@ -10,6 +10,9 @@
 //! best type safety. It can be macro'd someday.
 
 use super::virtual_ops::*;
+use super::DataId;
+use crate::asm_generation::DataSection;
+use fuel_asm::Opcode as VmOp;
 use pest::Span;
 use std::fmt;
 
@@ -86,7 +89,7 @@ pub(crate) enum AllocatedOpcode {
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
-    LW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    LW(AllocatedRegister, DataId),
     ALOC(AllocatedRegister),
     MCL(AllocatedRegister, AllocatedRegister),
     MCLI(AllocatedRegister, VirtualImmediate18),
@@ -195,7 +198,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             CFEI(a)         => format!("cfei {}", a),
             CFSI(a)         => format!("cfsi {}", a),
             LB(a, b, c)     => format!("lb   {} {} {}", a, b, c),
-            LW(a, b, c)     => format!("lw   {} {} {}", a, b, c),
+            LW(a, b)        => format!("lw   {} {}", a, b),
             ALOC(a)         => format!("aloc {}", a),
             MCL(a, b)       => format!("mcl  {} {}", a, b),
             MCLI(a, b)      => format!("mcli {} {}", a, b),
@@ -244,8 +247,11 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
 }
 
 impl<'sc> AllocatedOp<'sc> {
-    fn to_fuel_asm(&self) -> fuel_asm::Opcode {
-        use fuel_asm::Opcode as VmOp;
+    pub(crate) fn to_fuel_asm(
+        &self,
+        offset_to_data_section: &VirtualImmediate12,
+        data_section: &DataSection,
+    ) -> fuel_asm::Opcode {
         use AllocatedOpcode::*;
         #[rustfmt::skip]
          let fuel_op = match &self.opcode {
@@ -285,7 +291,7 @@ impl<'sc> AllocatedOp<'sc> {
             CFEI(a)         => VmOp::CFEI(a.value),
             CFSI(a)         => VmOp::CFSI(a.value),
             LB  (a, b, c)   => VmOp::LB  (a.to_register_id(), b.to_register_id(), c.value),
-            LW  (a, b, c)   => VmOp::LW  (a.to_register_id(), b.to_register_id(), c.value),
+            LW  (a, b)      => realize_lw(a, b, offset_to_data_section, data_section), 
             ALOC(a)         => VmOp::ALOC(a.to_register_id()),
             MCL (a, b)      => VmOp::MCL (a.to_register_id(), b.to_register_id()),
             MCLI(a, b)      => VmOp::MCLI(a.to_register_id(), b.value),
@@ -321,4 +327,11 @@ impl<'sc> AllocatedOp<'sc> {
          };
         fuel_op
     }
+}
+
+fn realize_lw(dest: &AllocatedRegister, data_id: &DataId, offset_to_data_section: &VirtualImmediate12, data_section: &DataSection) -> VmOp {
+    let dest = dest.to_register_id();
+    let offset = data_section.offset_to_id(data_id);
+    // Calculate how many words of data there are in the dta section before this item
+    VmOp::LW  (dest,  offset, offset_to_data_section.value)
 }
