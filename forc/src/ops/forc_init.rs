@@ -13,7 +13,7 @@ pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::
 
     // insert default main function
     fs::write(
-        format!("{}/src/main.fm", project_name),
+        format!("{}/src/main.sw", project_name),
         defaults::default_program(),
     )?;
 
