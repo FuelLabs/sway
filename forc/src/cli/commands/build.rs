@@ -11,5 +11,9 @@ pub(crate) struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> Result<(), String> {
-    forc_build::build(command.path)
+    if command.asm {
+        forc_build::print_asm(command.path)
+    } else {
+        forc_build::build(command.path)
+    }
 }

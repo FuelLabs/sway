@@ -150,6 +150,7 @@ pub(crate) enum AllocatedOpcode {
     FLAG(AllocatedRegister),
     Undefined,
     DataSectionOffsetPlaceholder,
+    DataSectionRegisterLoadPlaceholder 
 }
 
 #[derive(Clone)]
@@ -234,7 +235,8 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             NOOP            => "noop".to_string(),
             FLAG(a)         => format!("flag {}", a),
             Undefined       => format!("undefined op"),
-            DataSectionOffsetPlaceholder => "data section offset placeholder".into()
+            DataSectionOffsetPlaceholder => "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]".into(),
+            DataSectionRegisterLoadPlaceholder => "lw   $ds $is 1".into()
         };
         // we want the comment to always be COMMENT_START_COLUMN characters offset to the right
         // to not interfere with the ASM but to be aligned
@@ -330,7 +332,8 @@ impl<'sc> AllocatedOp<'sc> {
             NOOP            => VmOp::NOOP,
             FLAG(a)         => VmOp::FLAG(a.to_register_id()),
             Undefined       => VmOp::Undefined,
-            DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes())
+            DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes()),
+            DataSectionRegisterLoadPlaceholder => VmOp::LW(crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER() as fuel_asm::RegisterId, ConstantRegister::InstructionStart.to_register_id(), 1),
          });
         fuel_op
     }

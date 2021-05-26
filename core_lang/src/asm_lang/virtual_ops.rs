@@ -736,7 +736,9 @@ impl VirtualOp {
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             Undefined => AllocatedOpcode::Undefined,
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
-            DataSectionRegisterLoadPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
+            DataSectionRegisterLoadPlaceholder => {
+                AllocatedOpcode::DataSectionRegisterLoadPlaceholder
+            }
         }
     }
 }
