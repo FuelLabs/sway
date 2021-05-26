@@ -73,6 +73,7 @@ impl<'sc> TypedParseTree<'sc> {
         let mut next_pass_nodes: VecDeque<_> = parsed.root_nodes.into_iter().collect();
         let mut num_failed_nodes = next_pass_nodes.len();
         let mut warnings = Vec::new();
+        let mut is_first_pass = true;
         let mut errors = Vec::new();
         while num_failed_nodes > 0 {
             let nodes = next_pass_nodes
@@ -105,10 +106,17 @@ impl<'sc> TypedParseTree<'sc> {
             }
             // If we did not solve any issues, i.e. the same number of nodes failed,
             // then this is a genuine error and so we break.
-            if next_pass_nodes.len() == num_failed_nodes {
+            if next_pass_nodes.len() == num_failed_nodes && !is_first_pass {
                 for (_, failed_node_res) in nodes {
                     match failed_node_res {
-                        CompileResult::Ok { .. } => unreachable!(),
+                        CompileResult::Ok {
+                            errors: mut l_e,
+                            warnings: mut l_w,
+                            ..
+                        } => {
+                            errors.append(&mut l_e);
+                            warnings.append(&mut l_w);
+                        }
                         CompileResult::Err {
                             errors: mut l_e,
                             warnings: mut l_w,
@@ -120,6 +128,7 @@ impl<'sc> TypedParseTree<'sc> {
                 }
                 break;
             }
+            is_first_pass = false;
             assert!(
                 next_pass_nodes.len() < num_failed_nodes,
                 "This collection should be strictly monotonically decreasing in size."

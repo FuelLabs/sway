@@ -7,8 +7,49 @@ use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::utils::manifest::{Dependency, DependencyDetails, Manifest};
-use core_lang::{BytecodeCompilationResult, CompilationResult, LibraryExports, Namespace};
+use core_lang::{
+    BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports, Namespace,
+};
 use std::{fs, path::PathBuf};
+
+pub fn print_asm(path: Option<String>) -> Result<(), String> {
+    // find manifest directory, even if in subdirectory
+    let this_dir = if let Some(path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().unwrap()
+    };
+    let manifest_dir = match find_manifest_dir(&this_dir) {
+        Some(dir) => dir,
+        None => {
+            return Err(format!(
+                "No manifest file found in this directory or any parent directories of it: {:?}",
+                this_dir
+            ))
+        }
+    };
+    let manifest = read_manifest(&manifest_dir)?;
+
+    let mut namespace: Namespace = Default::default();
+    if let Some(ref deps) = manifest.dependencies {
+        for (dependency_name, dependency_details) in deps.iter() {
+            compile_dependency_lib(
+                &this_dir,
+                &dependency_name,
+                &dependency_details,
+                &mut namespace,
+            )?;
+        }
+    }
+
+    // now, compile this program with all of its dependencies
+    let main_file = get_main_file(&manifest, &manifest_dir)?;
+    let main = compile_to_asm(main_file, &manifest.project.name, &namespace)?;
+
+    println!("{}", main);
+
+    Ok(())
+}
 
 pub fn build(path: Option<String>) -> Result<(), String> {
     // find manifest directory, even if in subdirectory
@@ -369,4 +410,70 @@ fn get_main_file(
     let main_file = Box::new(main_file);
     let main_file: &'static mut String = Box::leak(main_file);
     return Ok(main_file);
+}
+fn compile_to_asm<'source, 'manifest>(
+    source: &'source str,
+    proj_name: &str,
+    namespace: &Namespace<'source>,
+) -> Result<FinalizedAsm<'source>, String> {
+    let res = core_lang::compile_to_asm(&source, namespace);
+    match res {
+        CompilationResult::Success { asm, warnings } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled script {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled script {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(asm)
+        }
+        CompilationResult::Library { warnings, .. } => {
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+            if warnings.is_empty() {
+                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+            } else {
+                let _ = write_yellow(&format!(
+                    "Compiled library {:?} with {} {}.",
+                    proj_name,
+                    warnings.len(),
+                    if warnings.len() > 1 {
+                        "warnings"
+                    } else {
+                        "warning"
+                    }
+                ));
+            }
+            Ok(FinalizedAsm::Library)
+        }
+        CompilationResult::Failure { errors, warnings } => {
+            let e_len = errors.len();
+
+            for ref warning in warnings.iter() {
+                format_warning(&source, warning);
+            }
+
+            errors.into_iter().for_each(|e| format_err(&source, e));
+
+            write_red(format!(
+                "Aborting due to {} {}.",
+                e_len,
+                if e_len > 1 { "errors" } else { "error" }
+            ))
+            .unwrap();
+            Err(format!("Failed to compile {}", proj_name))
+        }
+    }
 }
