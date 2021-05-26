@@ -821,25 +821,47 @@ fn convert_node_to_asm<'sc>(
 /// WORD OP
 /// 1    JI program_start
 /// -    NOOP
-/// 2    DATA_START (0-32)
+/// 2    DATA_START (0-32) (in bytes, offset from $is)
 /// -    DATA_START (32-64)
-///      .program_start:
+/// -           (absolute address)  (offset in words)
+/// 3    LW $ds $is                 1
+/// -    ADD $ds $ds $is
+/// 4    .program_start:
 fn build_preamble(register_sequencer: &mut RegisterSequencer) -> Vec<Op<'static>> {
     let mut buf = Vec::new();
     let label = register_sequencer.get_label();
+    // word 1
     buf.push(Op::jump_to_label(label.clone()));
+    // word 1.5
     buf.push(Op {
         opcode: Either::Left(VirtualOp::NOOP),
         comment: "".into(),
         owning_span: None,
     });
-
+    // word 2 -- full word u64 placeholder
     buf.push(Op {
         opcode: Either::Right(OrganizationalOp::DataSectionOffsetPlaceholder),
         comment: "data section offset".into(),
         owning_span: None,
     });
+    // word 3 -- load the data offset into $ds
+    buf.push(Op {
+        opcode: Either::Left(VirtualOp::DataSectionRegisterLoadPlaceholder),
+        comment: "".into(),
+        owning_span: None,
+    });
+    // word 3.5 -- add $ds $ds $is
+    buf.push(Op {
+        opcode: Either::Left(VirtualOp::ADD(
+            VirtualRegister::Constant(ConstantRegister::DataSectionStart),
+            VirtualRegister::Constant(ConstantRegister::DataSectionStart),
+            VirtualRegister::Constant(ConstantRegister::InstructionStart),
+        )),
+        comment: "".into(),
+        owning_span: None,
+    });
 
+    // word 3
     buf.push(Op::unowned_jump_label_comment(label, "end of metadata"));
     buf
 }

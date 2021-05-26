@@ -12,6 +12,8 @@
 use super::virtual_ops::*;
 use super::DataId;
 use crate::asm_generation::DataSection;
+use crate::error::*;
+use either::Either;
 use fuel_asm::Opcode as VmOp;
 use pest::Span;
 use std::fmt;
@@ -248,15 +250,17 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
     }
 }
 
+type DoubleWideData = [u8; 8];
+
 impl<'sc> AllocatedOp<'sc> {
     pub(crate) fn to_fuel_asm(
         &self,
-        offset_to_data_section: &VirtualImmediate12,
+        offset_to_data_section: u64,
         data_section: &DataSection,
-    ) -> fuel_asm::Opcode {
+    ) -> Either<fuel_asm::Opcode, DoubleWideData> {
         use AllocatedOpcode::*;
         #[rustfmt::skip]
-         let fuel_op = match &self.opcode {
+         let fuel_op = Either::Left(match &self.opcode {
             ADD (a, b, c)   => VmOp::ADD (a.to_register_id(), b.to_register_id(), c.to_register_id()),
             ADDI(a, b, c)   => VmOp::ADDI(a.to_register_id(), b.to_register_id(), c.value),
             AND (a, b, c)   => VmOp::AND (a.to_register_id(), b.to_register_id(), c.to_register_id()),
@@ -326,15 +330,27 @@ impl<'sc> AllocatedOp<'sc> {
             NOOP            => VmOp::NOOP,
             FLAG(a)         => VmOp::FLAG(a.to_register_id()),
             Undefined       => VmOp::Undefined,
-            DataSectionOffsetPlaceholder => todo!()
-         };
+            DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes())
+         });
         fuel_op
     }
 }
 
-fn realize_lw(dest: &AllocatedRegister, data_id: &DataId, offset_to_data_section: &VirtualImmediate12, data_section: &DataSection) -> VmOp {
+fn realize_lw(
+    dest: &AllocatedRegister,
+    data_id: &DataId,
+    offset_to_data_section: u64,
+    data_section: &DataSection,
+) -> VmOp {
     let dest = dest.to_register_id();
-    let offset = data_section.offset_to_id(data_id);
-    // Calculate how many words of data there are in the dta section before this item
-    VmOp::LW  (dest,  offset, offset_to_data_section.value)
+    let offset = data_section.offset_to_id(data_id) as u64;
+    let offset = match VirtualImmediate12::new(offset, Span::new(" ", 0, 0).unwrap()) {
+        Ok ( value ) => value,
+        Err  (_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
+    };
+    VmOp::LW(
+        dest,
+        crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER() as usize,
+        offset.value,
+    )
 }

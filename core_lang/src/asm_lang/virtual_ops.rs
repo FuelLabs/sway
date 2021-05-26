@@ -44,6 +44,7 @@ impl fmt::Display for VirtualRegister {
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 /// These are the special registers defined in the spec
 pub enum ConstantRegister {
+    // Below are VM-reserved registers
     Zero,
     One,
     Overflow,
@@ -58,6 +59,8 @@ pub enum ConstantRegister {
     Balance,
     InstructionStart,
     Flags,
+    // Below are compiler-reserved registers
+    DataSectionStart,
 }
 
 impl ConstantRegister {
@@ -78,6 +81,10 @@ impl ConstantRegister {
             Balance => 11,
             InstructionStart => 12,
             Flags => 13,
+            DataSectionStart => {
+                (crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER())
+                    as fuel_asm::RegisterId
+            }
         }
     }
 }
@@ -100,6 +107,7 @@ impl fmt::Display for ConstantRegister {
             Balance => "$bal",
             InstructionStart => "$is",
             Flags => "$flag",
+            DataSectionStart => "$ds",
         };
         write!(f, "{}", text)
     }
@@ -279,6 +287,10 @@ pub(crate) enum VirtualOp {
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    // LW takes a virtual register and a DataId, which points to a labeled piece
+    // of data in the data section. Note that the ASM op corresponding to a LW is
+    // subtly complex: $rB is in bytes and points to some mem address. The immediate
+    // third argument is a _word_ offset from that byte address.
     LW(VirtualRegister, DataId),
     ALOC(VirtualRegister),
     MCL(VirtualRegister, VirtualRegister),
@@ -338,6 +350,7 @@ pub(crate) enum VirtualOp {
     FLAG(VirtualRegister),
     Undefined,
     DataSectionOffsetPlaceholder,
+    DataSectionRegisterLoadPlaceholder,
 }
 
 impl VirtualOp {
@@ -413,6 +426,10 @@ impl VirtualOp {
             NOOP => vec![],
             FLAG(r1) => vec![r1],
             Undefined | DataSectionOffsetPlaceholder => vec![],
+            DataSectionRegisterLoadPlaceholder => vec![
+                &VirtualRegister::Constant(ConstantRegister::DataSectionStart),
+                &VirtualRegister::Constant(ConstantRegister::InstructionStart),
+            ],
         })
         .into_iter()
         .collect()
@@ -719,6 +736,7 @@ impl VirtualOp {
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             Undefined => AllocatedOpcode::Undefined,
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
+            DataSectionRegisterLoadPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
         }
     }
 }

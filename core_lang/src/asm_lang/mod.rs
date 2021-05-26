@@ -1002,6 +1002,7 @@ fn four_regs<'sc>(
                 "bal" => Balance,
                 "is" => InstructionStart,
                 "flag" => Flags,
+                "ds" => DataSectionStart,
                 _ => return None,
             })
         }
@@ -1279,6 +1280,9 @@ impl fmt::Display for Op<'_> {
                 FLAG(a) => format!("flag {}", a),
                 Undefined => format!("undefined op"),
                 VirtualOp::DataSectionOffsetPlaceholder => "data section offset placeholder".into(),
+                DataSectionRegisterLoadPlaceholder => {
+                    "data section register load placeholder".into()
+                }
             },
             Either::Right(opcode) => match opcode {
                 Label(l) => format!("{}", l),
