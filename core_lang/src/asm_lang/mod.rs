@@ -1278,12 +1278,16 @@ impl fmt::Display for Op<'_> {
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 Undefined => format!("undefined op"),
+                VirtualOp::DataSectionOffsetPlaceholder => "data section offset placeholder".into(),
             },
             Either::Right(opcode) => match opcode {
                 Label(l) => format!("{}", l),
                 Comment => "".into(),
                 Jump(label) => format!("jump {}", label),
                 JumpIfNotEq(reg0, reg1, label) => format!("jnei {} {} {}", reg0, reg1, label),
+                OrganizationalOp::DataSectionOffsetPlaceholder => {
+                    format!("data section offset placeholder")
+                }
             },
         };
         // we want the comment to always be 40 characters offset to the right
@@ -1312,13 +1316,15 @@ pub(crate) enum OrganizationalOp {
     Jump(Label),
     // Jumps to a label
     JumpIfNotEq(VirtualRegister, VirtualRegister, Label),
+    // placeholder for the DataSection offset to go
+    DataSectionOffsetPlaceholder,
 }
 
 impl OrganizationalOp {
     pub(crate) fn registers(&self) -> HashSet<&VirtualRegister> {
         use OrganizationalOp::*;
         (match self {
-            Label(_) | Comment | Jump(_) => vec![],
+            Label(_) | Comment | Jump(_) | DataSectionOffsetPlaceholder => vec![],
             JumpIfNotEq(r1, r2, _) => vec![r1, r2],
         })
         .into_iter()

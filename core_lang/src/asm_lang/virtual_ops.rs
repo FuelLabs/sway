@@ -337,6 +337,7 @@ pub(crate) enum VirtualOp {
     NOOP,
     FLAG(VirtualRegister),
     Undefined,
+    DataSectionOffsetPlaceholder,
 }
 
 impl VirtualOp {
@@ -411,7 +412,7 @@ impl VirtualOp {
             S256(r1, r2, r3) => vec![r1, r2, r3],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
-            Undefined => vec![],
+            Undefined | DataSectionOffsetPlaceholder => vec![],
         })
         .into_iter()
         .collect()
@@ -717,6 +718,7 @@ impl VirtualOp {
             NOOP => AllocatedOpcode::NOOP,
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             Undefined => AllocatedOpcode::Undefined,
+            DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
         }
     }
 }

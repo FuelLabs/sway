@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+};
 
 use crate::{
     asm_lang::{
@@ -195,6 +198,11 @@ impl<'sc> AbstractInstructionSet<'sc> {
                     counter += 1;
                 }
                 Either::Right(OrganizationalOp::Comment) => (),
+                Either::Right(OrganizationalOp::DataSectionOffsetPlaceholder) => {
+                    // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
+                    // to load the data, which loads a whole word, so for now this is 2.
+                    counter += 2
+                }
             }
         }
 
@@ -236,6 +244,13 @@ impl<'sc> AbstractInstructionSet<'sc> {
                             comment,
                         });
                     }
+                    OrganizationalOp::DataSectionOffsetPlaceholder => {
+                        realized_ops.push(RealizedOp {
+                            opcode: VirtualOp::DataSectionOffsetPlaceholder,
+                            owning_span: None,
+                            comment: String::new(),
+                        });
+                    }
                     OrganizationalOp::Comment => continue,
                     OrganizationalOp::Label(..) => continue,
                 },
@@ -256,7 +271,8 @@ pub(crate) struct RegisterPool {
 impl RegisterPool {
     fn init() -> Self {
         let register_pool: Vec<RegisterAllocationStatus> = (0
-            ..compiler_constants::NUM_FREE_REGISTERS)
+            // - 1 because we reserve the final register for the data_section begin
+            ..compiler_constants::NUM_FREE_REGISTERS - 1)
             .map(|x| RegisterAllocationStatus {
                 reg: AllocatedRegister::Allocated(x),
                 in_use: None,
@@ -546,7 +562,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
     let asm = match ast {
         TypedParseTree::Script { main_function, .. } => {
             let mut namespace: AsmNamespace = Default::default();
-            let mut asm_buf = vec![];
+            let mut asm_buf = build_preamble(&mut register_sequencer);
             // start generating from the main function
             let return_register = register_sequencer.next();
             let mut body = type_check!(
@@ -695,19 +711,41 @@ impl<'sc> RegisterAllocatedAsmSet<'sc> {
         match self {
             RegisterAllocatedAsmSet::Library => FinalizedAsm::Library,
             RegisterAllocatedAsmSet::ScriptMain {
-                program_section,
+                mut program_section,
                 data_section,
-            } => FinalizedAsm::ScriptMain {
-                program_section,
-                data_section,
-            },
+            } => {
+                // ensure there's an even number of ops so the
+                // data section offset is valid
+                if program_section.ops.len() % 2 != 0 {
+                    program_section.ops.push(AllocatedOp {
+                        opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
+                        comment: "word-alignment of data section".into(),
+                        owning_span: None,
+                    });
+                }
+                FinalizedAsm::ScriptMain {
+                    program_section,
+                    data_section,
+                }
+            }
             RegisterAllocatedAsmSet::PredicateMain {
-                program_section,
+                mut program_section,
                 data_section,
-            } => FinalizedAsm::PredicateMain {
-                program_section,
-                data_section,
-            },
+            } => {
+                // ensure there's an even number of ops so the
+                // data section offset is valid
+                if program_section.ops.len() % 2 != 0 {
+                    program_section.ops.push(AllocatedOp {
+                        opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
+                        comment: "word-alignment of data section".into(),
+                        owning_span: None,
+                    });
+                }
+                FinalizedAsm::PredicateMain {
+                    program_section,
+                    data_section,
+                }
+            }
             RegisterAllocatedAsmSet::ContractAbi => FinalizedAsm::ContractAbi,
         }
     }
@@ -775,4 +813,33 @@ fn convert_node_to_asm<'sc>(
             return err(warnings, errors);
         }
     }
+}
+
+/// Builds the asm preamble, which includes metadata and a jump past the metadata.
+/// Right now, it looks like this:
+///
+/// WORD OP
+/// 1    JI program_start
+/// -    NOOP
+/// 2    DATA_START (0-32)
+/// -    DATA_START (32-64)
+///      .program_start:
+fn build_preamble(register_sequencer: &mut RegisterSequencer) -> Vec<Op<'static>> {
+    let mut buf = Vec::new();
+    let label = register_sequencer.get_label();
+    buf.push(Op::jump_to_label(label.clone()));
+    buf.push(Op {
+        opcode: Either::Left(VirtualOp::NOOP),
+        comment: "".into(),
+        owning_span: None,
+    });
+
+    buf.push(Op {
+        opcode: Either::Right(OrganizationalOp::DataSectionOffsetPlaceholder),
+        comment: "data section offset".into(),
+        owning_span: None,
+    });
+
+    buf.push(Op::unowned_jump_label_comment(label, "end of metadata"));
+    buf
 }
