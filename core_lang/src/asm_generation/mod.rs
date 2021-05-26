@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 use crate::{
     asm_lang::{

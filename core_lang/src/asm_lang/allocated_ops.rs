@@ -12,7 +12,6 @@
 use super::virtual_ops::*;
 use super::DataId;
 use crate::asm_generation::DataSection;
-use crate::error::*;
 use either::Either;
 use fuel_asm::Opcode as VmOp;
 use pest::Span;
@@ -299,7 +298,7 @@ impl<'sc> AllocatedOp<'sc> {
             CFEI(a)         => VmOp::CFEI(a.value),
             CFSI(a)         => VmOp::CFSI(a.value),
             LB  (a, b, c)   => VmOp::LB  (a.to_register_id(), b.to_register_id(), c.value),
-            LW  (a, b)      => realize_lw(a, b, offset_to_data_section, data_section), 
+            LW  (a, b)      => realize_lw(a, b, data_section), 
             ALOC(a)         => VmOp::ALOC(a.to_register_id()),
             MCL (a, b)      => VmOp::MCL (a.to_register_id(), b.to_register_id()),
             MCLI(a, b)      => VmOp::MCLI(a.to_register_id(), b.value),
@@ -342,7 +341,6 @@ impl<'sc> AllocatedOp<'sc> {
 fn realize_lw(
     dest: &AllocatedRegister,
     data_id: &DataId,
-    offset_to_data_section: u64,
     data_section: &DataSection,
 ) -> VmOp {
     let dest = dest.to_register_id();

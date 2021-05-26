@@ -1,5 +1,4 @@
 use super::{DataSection, InstructionSet};
-use crate::asm_lang::virtual_ops::VirtualImmediate12;
 use crate::error::*;
 use either::Either;
 use std::io::Write;

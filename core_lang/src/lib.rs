@@ -404,9 +404,9 @@ pub fn compile_to_bytecode<'sc, 'manifest>(
                     value
                 }
                 CompileResult::Ok {
-                    value,
                     warnings: mut l_w,
                     errors,
+                    ..
                 } => {
                     warnings.append(&mut l_w);
                     return BytecodeCompilationResult::Failure { warnings, errors };

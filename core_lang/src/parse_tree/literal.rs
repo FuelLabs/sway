@@ -1,4 +1,3 @@
-use crate::asm_lang::virtual_ops::VirtualImmediate12;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::types::{IntegerBits, ResolvedType};
