@@ -51,7 +51,7 @@ pub fn print_asm(path: Option<String>) -> Result<(), String> {
     Ok(())
 }
 
-pub fn build(path: Option<String>) -> Result<(), String> {
+pub fn build(path: Option<String>) -> Result<Vec<u8>, String> {
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(path) = path {
         PathBuf::from(path)
@@ -87,7 +87,7 @@ pub fn build(path: Option<String>) -> Result<(), String> {
 
     println!("Bytecode size is {} bytes.", main.len() / 4);
 
-    Ok(())
+    Ok(main)
 }
 
 /// Continually go up in the file tree until a manifest (Forc.toml) is found.

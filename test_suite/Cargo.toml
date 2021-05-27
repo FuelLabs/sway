@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 forc = { path = "../forc" }
+fuel-tx = { path = "../../fuel-tx" }
+fuel-vm-rust = { path = "../../fuel-core" }
