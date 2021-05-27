@@ -20,7 +20,7 @@ use std::fmt;
 const COMMENT_START_COLUMN: usize = 30;
 
 /// Represents registers that have gone through register allocation. The value in the [Allocated]
-/// variant is guaranteed to be between 0 and [compiler_constants::NUM_FREE_REGISTERS].
+/// variant is guaranteed to be between 0 and [compiler_constants::NUM_ALLOCATABLE_REGISTERS].
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum AllocatedRegister {
     Allocated(u8),

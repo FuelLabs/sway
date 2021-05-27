@@ -269,7 +269,7 @@ impl RegisterPool {
     fn init() -> Self {
         let register_pool: Vec<RegisterAllocationStatus> = (0
             // - 1 because we reserve the final register for the data_section begin
-            ..compiler_constants::NUM_FREE_REGISTERS - 1)
+            ..compiler_constants::NUM_ALLOCATABLE_REGISTERS())
             .map(|x| RegisterAllocationStatus {
                 reg: AllocatedRegister::Allocated(x),
                 in_use: None,
