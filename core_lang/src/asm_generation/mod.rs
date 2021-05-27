@@ -287,6 +287,15 @@ impl RegisterPool {
         virtual_register: &VirtualRegister,
         op_register_mapping: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
     ) -> Option<AllocatedRegister> {
+        // check if this register has already been allocated for
+        if let a @ Some(_) = self.registers.iter().find_map(
+            |RegisterAllocationStatus { reg, in_use }| match in_use {
+                Some(x) if x == virtual_register => Some(reg),
+                _ => None,
+            },
+        ) {
+            return a.cloned();
+        }
         // scan to see if any of the old ones are no longer in use
         for RegisterAllocationStatus { in_use, .. } in
             self.registers.iter_mut().filter(|r| r.in_use.is_some())
@@ -298,7 +307,7 @@ impl RegisterPool {
                 *in_use = None;
             }
         }
-        // find the next unused register, return it, flip assign it
+        // find the next unused register, return it, assign it
         let next_available = self
             .registers
             .iter_mut()

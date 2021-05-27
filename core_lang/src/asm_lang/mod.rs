@@ -1323,6 +1323,23 @@ pub(crate) enum OrganizationalOp {
     // placeholder for the DataSection offset to go
     DataSectionOffsetPlaceholder,
 }
+impl fmt::Display for OrganizationalOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use OrganizationalOp::*;
+        write!(
+            f,
+            "{}",
+            match self {
+                Label(lab) => format!("{}", lab),
+                Jump(lab) => format!("ji  {}", lab),
+                Comment => "".into(),
+                JumpIfNotEq(r1, r2, lab) => format!("jnei {} {} {}", r1, r2, lab),
+                DataSectionOffsetPlaceholder =>
+                    "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
+            }
+        )
+    }
+}
 
 impl OrganizationalOp {
     pub(crate) fn registers(&self) -> HashSet<&VirtualRegister> {

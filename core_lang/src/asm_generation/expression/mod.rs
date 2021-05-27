@@ -333,7 +333,7 @@ fn convert_literal_to_asm<'sc>(
 
 /// For now, all functions are handled by inlining at the time of application.
 fn convert_fn_app_to_asm<'sc>(
-    _name: &CallPath<'sc>,
+    name: &CallPath<'sc>,
     arguments: &[(Ident<'sc>, TypedExpression<'sc>)],
     function_body: &TypedCodeBlock<'sc>,
     parent_namespace: &mut AsmNamespace<'sc>,
@@ -342,7 +342,10 @@ fn convert_fn_app_to_asm<'sc>(
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let mut asm_buf = vec![];
+    let mut asm_buf = vec![Op::new_comment(format!(
+        "{} fn call",
+        name.suffix.primary_name
+    ))];
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
     let mut namespace = parent_namespace.clone();
