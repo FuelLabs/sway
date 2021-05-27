@@ -445,7 +445,12 @@ impl VirtualOp {
         let register_allocation_result = virtual_registers
             .clone()
             .into_iter()
-            .map(|x| (x, pool.get_register(x, &op_register_mapping[ix + 1..])))
+            .map(|x| match x {
+                VirtualRegister::Constant(c) => (x, Some(AllocatedRegister::Constant(c.clone()))),
+                VirtualRegister::Virtual(_) => {
+                    (x, pool.get_register(x, &op_register_mapping[ix + 1..]))
+                }
+            })
             .map(|(x, res)| match res {
                 Some(res) => Some((x, res)),
                 None => None,

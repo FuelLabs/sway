@@ -572,11 +572,15 @@ impl<'sc> TypedExpression<'sc> {
                     ) {
                         Some(o) => o,
                         None => {
-                            errors.push(CompileError::MethodNotFound {
-                                span: method_name.suffix.clone().span,
-                                method_name: method_name.suffix.clone().primary_name,
-                                type_name: parent_expr.return_type.friendly_type_str(),
-                            });
+                            if parent_expr.return_type
+                                != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                            {
+                                errors.push(CompileError::MethodNotFound {
+                                    span: method_name.suffix.clone().span,
+                                    method_name: method_name.suffix.clone().primary_name,
+                                    type_name: parent_expr.return_type.friendly_type_str(),
+                                });
+                            }
                             return err(warnings, errors);
                         }
                     }
