@@ -158,6 +158,8 @@ impl<'sc> AbstractInstructionSet<'sc> {
             }
             buf.push(self.ops[i].clone());
         }
+        // the last item cannot sequentially jump by definition so we add it in here
+        self.ops.last().map(|x| buf.push(x.clone()));
 
         // scan through the jumps and remove any labels that are unused
         // this could of course be N instead of 2N if i did this in the above for loop.
@@ -657,7 +659,6 @@ impl<'sc> HllAsmSet<'sc> {
 
 impl<'sc> JumpOptimizedAsmSet<'sc> {
     fn allocate_registers(self) -> RegisterAllocatedAsmSet<'sc> {
-        // TODO implement this -- noop for now
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
             JumpOptimizedAsmSet::ScriptMain {
