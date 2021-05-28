@@ -80,7 +80,7 @@ pub fn build(path: Option<String>) -> Result<(), String> {
     let main_file = get_main_file(&manifest, &manifest_dir)?;
     let main = compile(main_file, &manifest.project.name, &namespace)?;
 
-    println!("Bytecode size is {} bytes.", main.len() / 4);
+    println!("Bytecode size is {} bytes.", main.len());
 
     Ok(())
 }

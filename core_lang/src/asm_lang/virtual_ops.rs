@@ -65,22 +65,23 @@ pub enum ConstantRegister {
 
 impl ConstantRegister {
     pub(crate) fn to_register_id(&self) -> fuel_asm::RegisterId {
+        use fuel_vm_rust::consts::*;
         use ConstantRegister::*;
         match self {
-            Zero => 0,
-            One => 1,
-            Overflow => 2,
-            ProgramCounter => 3,
-            StackStartPointer => 4,
-            StackPointer => 5,
-            FramePointer => 6,
-            HeapPointer => 7,
-            Error => 8,
-            GlobalGas => 9,
-            ContextGas => 10,
-            Balance => 11,
-            InstructionStart => 12,
-            Flags => 13,
+            Zero => REG_ZERO,
+            One => REG_ONE,
+            Overflow => REG_OF,
+            ProgramCounter => REG_PC,
+            StackStartPointer => REG_SSP,
+            StackPointer => REG_SP,
+            FramePointer => REG_FP,
+            HeapPointer => REG_HP,
+            Error => REG_ERR,
+            GlobalGas => REG_GGAS,
+            ContextGas => REG_CGAS,
+            Balance => REG_BAL,
+            InstructionStart => REG_IS,
+            Flags => REG_FLAG,
             DataSectionStart => {
                 (crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER)
                     as fuel_asm::RegisterId
