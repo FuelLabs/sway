@@ -10,13 +10,17 @@
 //! best type safety. It can be macro'd someday.
 
 use super::virtual_ops::*;
+use super::DataId;
+use crate::asm_generation::DataSection;
+use either::Either;
+use fuel_asm::Opcode as VmOp;
 use pest::Span;
 use std::fmt;
 
 const COMMENT_START_COLUMN: usize = 30;
 
 /// Represents registers that have gone through register allocation. The value in the [Allocated]
-/// variant is guaranteed to be between 0 and [compiler_constants::NUM_FREE_REGISTERS].
+/// variant is guaranteed to be between 0 and [compiler_constants::NUM_ALLOCATABLE_REGISTERS].
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum AllocatedRegister {
     Allocated(u8),
@@ -30,6 +34,15 @@ impl fmt::Display for AllocatedRegister {
             AllocatedRegister::Constant(name) => {
                 write!(f, "{}", name)
             }
+        }
+    }
+}
+
+impl AllocatedRegister {
+    fn to_register_id(&self) -> fuel_asm::RegisterId {
+        match self {
+            AllocatedRegister::Allocated(a) => (a + 16) as fuel_asm::RegisterId,
+            AllocatedRegister::Constant(constant) => constant.to_register_id(),
         }
     }
 }
@@ -77,7 +90,7 @@ pub(crate) enum AllocatedOpcode {
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
-    LW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    LW(AllocatedRegister, DataId),
     ALOC(AllocatedRegister),
     MCL(AllocatedRegister, AllocatedRegister),
     MCLI(AllocatedRegister, VirtualImmediate18),
@@ -135,6 +148,8 @@ pub(crate) enum AllocatedOpcode {
     NOOP,
     FLAG(AllocatedRegister),
     Undefined,
+    DataSectionOffsetPlaceholder,
+    DataSectionRegisterLoadPlaceholder,
 }
 
 #[derive(Clone)]
@@ -186,7 +201,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             CFEI(a)         => format!("cfei {}", a),
             CFSI(a)         => format!("cfsi {}", a),
             LB(a, b, c)     => format!("lb   {} {} {}", a, b, c),
-            LW(a, b, c)     => format!("lw   {} {} {}", a, b, c),
+            LW(a, b)        => format!("lw   {} {}", a, b),
             ALOC(a)         => format!("aloc {}", a),
             MCL(a, b)       => format!("mcl  {} {}", a, b),
             MCLI(a, b)      => format!("mcli {} {}", a, b),
@@ -219,6 +234,8 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             NOOP            => "noop".to_string(),
             FLAG(a)         => format!("flag {}", a),
             Undefined       => format!("undefined op"),
+            DataSectionOffsetPlaceholder => "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]".into(),
+            DataSectionRegisterLoadPlaceholder => "lw   $ds $is 1".into()
         };
         // we want the comment to always be COMMENT_START_COLUMN characters offset to the right
         // to not interfere with the ASM but to be aligned
@@ -232,4 +249,105 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
 
         write!(f, "{}", op_and_comment)
     }
+}
+
+type DoubleWideData = [u8; 8];
+
+impl<'sc> AllocatedOp<'sc> {
+    pub(crate) fn to_fuel_asm(
+        &self,
+        offset_to_data_section: u64,
+        data_section: &DataSection,
+    ) -> Either<fuel_asm::Opcode, DoubleWideData> {
+        use AllocatedOpcode::*;
+        #[rustfmt::skip]
+         let fuel_op = Either::Left(match &self.opcode {
+            ADD (a, b, c)   => VmOp::ADD (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            ADDI(a, b, c)   => VmOp::ADDI(a.to_register_id(), b.to_register_id(), c.value),
+            AND (a, b, c)   => VmOp::AND (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            ANDI(a, b, c)   => VmOp::ANDI(a.to_register_id(), b.to_register_id(), c.value),
+            DIV (a, b, c)   => VmOp::DIV (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            DIVI(a, b, c)   => VmOp::DIVI(a.to_register_id(), b.to_register_id(), c.value),
+            EQ  (a, b, c)   => VmOp::EQ  (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            EXP (a, b, c)   => VmOp::EXP (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            EXPI(a, b, c)   => VmOp::EXPI(a.to_register_id(), b.to_register_id(), c.value),
+            GT  (a, b, c)   => VmOp::GT  (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            MLOG(a, b, c)   => VmOp::MLOG(a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            MROO(a, b, c)   => VmOp::MROO(a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            MOD (a, b, c)   => VmOp::MOD (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            MODI(a, b, c)   => VmOp::MODI(a.to_register_id(), b.to_register_id(), c.value),
+            MOVE(a, b)      => VmOp::MOVE(a.to_register_id(), b.to_register_id()),
+            MUL (a, b, c)   => VmOp::MUL (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            MULI(a, b, c)   => VmOp::MULI(a.to_register_id(), b.to_register_id(), c.value),
+            NOT (a, b)      => VmOp::NOT (a.to_register_id(), b.to_register_id()),
+            OR  (a, b, c)   => VmOp::OR  (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            ORI (a, b, c)   => VmOp::ORI (a.to_register_id(), b.to_register_id(), c.value),
+            SLL (a, b, c)   => VmOp::SLL (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            SLLI(a, b, c)   => VmOp::SLLI(a.to_register_id(), b.to_register_id(), c.value),
+            SRL (a, b, c)   => VmOp::SRL (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            SRLI(a, b, c)   => VmOp::SRLI(a.to_register_id(), b.to_register_id(), c.value),
+            SUB (a, b, c)   => VmOp::SUB (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            SUBI(a, b, c)   => VmOp::SUBI(a.to_register_id(), b.to_register_id(), c.value),
+            XOR (a, b, c)   => VmOp::XOR (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            XORI(a, b, c)   => VmOp::XORI(a.to_register_id(), b.to_register_id(), c.value),
+            CIMV(a, b, c)   => VmOp::CIMV(a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            CTMV(a, b)      => VmOp::CTMV(a.to_register_id(), b.to_register_id()),
+            JI  (a)         => VmOp::JI  (a.value),
+            JNEI(a, b, c)   => VmOp::JNEI(a.to_register_id(), b.to_register_id(), c.value),
+            RET (a)         => VmOp::RET (a.to_register_id()),
+            CFEI(a)         => VmOp::CFEI(a.value),
+            CFSI(a)         => VmOp::CFSI(a.value),
+            LB  (a, b, c)   => VmOp::LB  (a.to_register_id(), b.to_register_id(), c.value),
+            LW  (a, b)      => realize_lw(a, b, data_section),
+            ALOC(a)         => VmOp::ALOC(a.to_register_id()),
+            MCL (a, b)      => VmOp::MCL (a.to_register_id(), b.to_register_id()),
+            MCLI(a, b)      => VmOp::MCLI(a.to_register_id(), b.value),
+            MCP (a, b, c)   => VmOp::MCP (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            MEQ (a, b, c, d)=> VmOp::MEQ (a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
+            SB  (a, b, c)   => VmOp::SB  (a.to_register_id(), b.to_register_id(), c.value),
+            SW  (a, b, c)   => VmOp::SW  (a.to_register_id(), b.to_register_id(), c.value),
+            BHSH(a, b)      => VmOp::BHSH(a.to_register_id(), b.to_register_id()),
+            BHEI(a)         => VmOp::BHEI(a.to_register_id()),
+            BURN(a)         => VmOp::BURN(a.to_register_id()),
+            CALL(a, b, c, d)=> VmOp::CALL(a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
+            CCP (a, b, c, d)=> VmOp::CCP (a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
+            CROO(a, b)      => VmOp::CROO(a.to_register_id(), b.to_register_id()),
+            CSIZ(a, b)      => VmOp::CSIZ(a.to_register_id(), b.to_register_id()),
+            CB  (a)         => VmOp::CB  (a.to_register_id()),
+            LDC (a, b, c)   => VmOp::LDC (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            LOG (a, b, c, d)=> VmOp::LOG (a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
+            MINT(a)         => VmOp::MINT(a.to_register_id()),
+            RVRT(a)         => VmOp::RVRT(a.to_register_id()),
+            SLDC(a, b, c)   => VmOp::SLDC(a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            SRW (a, b)      => VmOp::SRW (a.to_register_id(), b.to_register_id()),
+            SRWQ(a, b)      => VmOp::SRWQ(a.to_register_id(), b.to_register_id()),
+            SWW (a, b)      => VmOp::SWW (a.to_register_id(), b.to_register_id()),
+            SWWQ(a, b)      => VmOp::SWWQ(a.to_register_id(), b.to_register_id()),
+            TR  (a, b, c)   => VmOp::TR  (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            TRO (a, b, c, d)=> VmOp::TRO (a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
+            ECR (a, b, c)   => VmOp::ECR (a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            K256(a, b, c)   => VmOp::K256(a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            S256(a, b, c)   => VmOp::S256(a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            NOOP            => VmOp::NOOP,
+            FLAG(a)         => VmOp::FLAG(a.to_register_id()),
+            Undefined       => VmOp::Undefined,
+            DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes()),
+            DataSectionRegisterLoadPlaceholder => VmOp::LW(crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER() as fuel_asm::RegisterId, ConstantRegister::InstructionStart.to_register_id(), 1),
+         });
+        fuel_op
+    }
+}
+
+fn realize_lw(dest: &AllocatedRegister, data_id: &DataId, data_section: &DataSection) -> VmOp {
+    let dest = dest.to_register_id();
+    let offset = data_section.offset_to_id(data_id) as u64;
+    let offset = match VirtualImmediate12::new(offset, Span::new(" ", 0, 0).unwrap()) {
+        Ok ( value ) => value,
+        Err  (_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
+    };
+    VmOp::LW(
+        dest,
+        crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER() as usize,
+        offset.value,
+    )
 }

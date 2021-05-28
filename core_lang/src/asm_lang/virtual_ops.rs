@@ -6,7 +6,7 @@
 
 use super::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
-    RealizedOp,
+    DataId, RealizedOp,
 };
 use crate::asm_generation::RegisterPool;
 use crate::error::*;
@@ -44,6 +44,7 @@ impl fmt::Display for VirtualRegister {
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 /// These are the special registers defined in the spec
 pub enum ConstantRegister {
+    // Below are VM-reserved registers
     Zero,
     One,
     Overflow,
@@ -58,6 +59,34 @@ pub enum ConstantRegister {
     Balance,
     InstructionStart,
     Flags,
+    // Below are compiler-reserved registers
+    DataSectionStart,
+}
+
+impl ConstantRegister {
+    pub(crate) fn to_register_id(&self) -> fuel_asm::RegisterId {
+        use ConstantRegister::*;
+        match self {
+            Zero => 0,
+            One => 1,
+            Overflow => 2,
+            ProgramCounter => 3,
+            StackStartPointer => 4,
+            StackPointer => 5,
+            FramePointer => 6,
+            HeapPointer => 7,
+            Error => 8,
+            GlobalGas => 9,
+            ContextGas => 10,
+            Balance => 11,
+            InstructionStart => 12,
+            Flags => 13,
+            DataSectionStart => {
+                (crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER())
+                    as fuel_asm::RegisterId
+            }
+        }
+    }
 }
 
 impl fmt::Display for ConstantRegister {
@@ -78,6 +107,7 @@ impl fmt::Display for ConstantRegister {
             Balance => "$bal",
             InstructionStart => "$is",
             Flags => "$flag",
+            DataSectionStart => "$ds",
         };
         write!(f, "{}", text)
     }
@@ -86,7 +116,7 @@ impl fmt::Display for ConstantRegister {
 /// 6-bits immediate value type
 #[derive(Clone)]
 pub struct VirtualImmediate06 {
-    value: u8,
+    pub(crate) value: u8,
 }
 
 impl VirtualImmediate06 {
@@ -112,7 +142,7 @@ impl fmt::Display for VirtualImmediate06 {
 /// 12-bits immediate value type
 #[derive(Clone)]
 pub struct VirtualImmediate12 {
-    value: u16,
+    pub(crate) value: u16,
 }
 
 impl VirtualImmediate12 {
@@ -148,7 +178,7 @@ impl fmt::Display for VirtualImmediate12 {
 /// 18-bits immediate value type
 #[derive(Clone)]
 pub struct VirtualImmediate18 {
-    value: u32,
+    pub(crate) value: u32,
 }
 impl VirtualImmediate18 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
@@ -183,7 +213,7 @@ impl fmt::Display for VirtualImmediate18 {
 /// 24-bits immediate value type
 #[derive(Clone)]
 pub struct VirtualImmediate24 {
-    value: u32,
+    pub(crate) value: u32,
 }
 impl VirtualImmediate24 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
@@ -257,7 +287,11 @@ pub(crate) enum VirtualOp {
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    LW(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    // LW takes a virtual register and a DataId, which points to a labeled piece
+    // of data in the data section. Note that the ASM op corresponding to a LW is
+    // subtly complex: $rB is in bytes and points to some mem address. The immediate
+    // third argument is a _word_ offset from that byte address.
+    LW(VirtualRegister, DataId),
     ALOC(VirtualRegister),
     MCL(VirtualRegister, VirtualRegister),
     MCLI(VirtualRegister, VirtualImmediate18),
@@ -315,6 +349,8 @@ pub(crate) enum VirtualOp {
     NOOP,
     FLAG(VirtualRegister),
     Undefined,
+    DataSectionOffsetPlaceholder,
+    DataSectionRegisterLoadPlaceholder,
 }
 
 impl VirtualOp {
@@ -357,7 +393,7 @@ impl VirtualOp {
             CFEI(_imm) => vec![],
             CFSI(_imm) => vec![],
             LB(r1, r2, _i) => vec![r1, r2],
-            LW(r1, r2, _i) => vec![r1, r2],
+            LW(r1, _i) => vec![r1],
             ALOC(_imm) => vec![],
             MCL(r1, r2) => vec![r1, r2],
             MCLI(r1, _imm) => vec![r1],
@@ -389,7 +425,11 @@ impl VirtualOp {
             S256(r1, r2, r3) => vec![r1, r2, r3],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
-            Undefined => vec![],
+            Undefined | DataSectionOffsetPlaceholder => vec![],
+            DataSectionRegisterLoadPlaceholder => vec![
+                &VirtualRegister::Constant(ConstantRegister::DataSectionStart),
+                &VirtualRegister::Constant(ConstantRegister::InstructionStart),
+            ],
         })
         .into_iter()
         .collect()
@@ -405,7 +445,12 @@ impl VirtualOp {
         let register_allocation_result = virtual_registers
             .clone()
             .into_iter()
-            .map(|x| (x, pool.get_register(x, &op_register_mapping[ix + 1..])))
+            .map(|x| match x {
+                VirtualRegister::Constant(c) => (x, Some(AllocatedRegister::Constant(c.clone()))),
+                VirtualRegister::Virtual(_) => {
+                    (x, pool.get_register(x, &op_register_mapping[ix + 1..]))
+                }
+            })
             .map(|(x, res)| match res {
                 Some(res) => Some((x, res)),
                 None => None,
@@ -585,11 +630,7 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            LW(reg1, reg2, imm) => AllocatedOpcode::LW(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
+            LW(reg1, imm) => AllocatedOpcode::LW(map_reg(&mapping, reg1), imm.clone()),
             ALOC(reg) => AllocatedOpcode::ALOC(map_reg(&mapping, reg)),
             MCL(reg1, reg2) => {
                 AllocatedOpcode::MCL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
@@ -699,6 +740,10 @@ impl VirtualOp {
             NOOP => AllocatedOpcode::NOOP,
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             Undefined => AllocatedOpcode::Undefined,
+            DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
+            DataSectionRegisterLoadPlaceholder => {
+                AllocatedOpcode::DataSectionRegisterLoadPlaceholder
+            }
         }
     }
 }

@@ -36,7 +36,9 @@ impl<'sc> TypedExpression<'sc> {
         let mut typed_expression = match other {
             Expression::Literal { value: lit, span } => {
                 let return_type = match lit {
-                    Literal::String(_) => MaybeResolvedType::Resolved(ResolvedType::String),
+                    Literal::String(s) => {
+                        MaybeResolvedType::Resolved(ResolvedType::Str(s.len() as u64))
+                    }
                     Literal::U8(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
                         IntegerBits::Eight,
                     )),
@@ -570,11 +572,15 @@ impl<'sc> TypedExpression<'sc> {
                     ) {
                         Some(o) => o,
                         None => {
-                            errors.push(CompileError::MethodNotFound {
-                                span: method_name.suffix.clone().span,
-                                method_name: method_name.suffix.clone().primary_name,
-                                type_name: parent_expr.return_type.friendly_type_str(),
-                            });
+                            if parent_expr.return_type
+                                != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                            {
+                                errors.push(CompileError::MethodNotFound {
+                                    span: method_name.suffix.clone().span,
+                                    method_name: method_name.suffix.clone().primary_name,
+                                    type_name: parent_expr.return_type.friendly_type_str(),
+                                });
+                            }
                             return err(warnings, errors);
                         }
                     }
