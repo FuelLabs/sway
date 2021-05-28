@@ -82,7 +82,7 @@ impl ConstantRegister {
             InstructionStart => 12,
             Flags => 13,
             DataSectionStart => {
-                (crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER())
+                (crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER)
                     as fuel_asm::RegisterId
             }
         }

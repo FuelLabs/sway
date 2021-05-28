@@ -269,7 +269,7 @@ impl RegisterPool {
     fn init() -> Self {
         let register_pool: Vec<RegisterAllocationStatus> = (0
             // - 1 because we reserve the final register for the data_section begin
-            ..compiler_constants::NUM_ALLOCATABLE_REGISTERS())
+            ..compiler_constants::NUM_ALLOCATABLE_REGISTERS)
             .map(|x| RegisterAllocationStatus {
                 reg: AllocatedRegister::Allocated(x),
                 in_use: None,
@@ -568,7 +568,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
     let asm = match ast {
         TypedParseTree::Script { main_function, .. } => {
             let mut namespace: AsmNamespace = Default::default();
-            let mut asm_buf = build_preamble(&mut register_sequencer);
+            let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
             // start generating from the main function
             let return_register = register_sequencer.next();
             let mut body = type_check!(
@@ -722,7 +722,7 @@ impl<'sc> RegisterAllocatedAsmSet<'sc> {
             } => {
                 // ensure there's an even number of ops so the
                 // data section offset is valid
-                if program_section.ops.len() % 2 != 0 {
+                if program_section.ops.len() & 1 == 0 {
                     program_section.ops.push(AllocatedOp {
                         opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
                         comment: "word-alignment of data section".into(),
@@ -740,7 +740,7 @@ impl<'sc> RegisterAllocatedAsmSet<'sc> {
             } => {
                 // ensure there's an even number of ops so the
                 // data section offset is valid
-                if program_section.ops.len() % 2 != 0 {
+                if program_section.ops.len() & 1 == 0 {
                     program_section.ops.push(AllocatedOp {
                         opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
                         comment: "word-alignment of data section".into(),
@@ -833,41 +833,40 @@ fn convert_node_to_asm<'sc>(
 /// 3    LW $ds $is                 1
 /// -    ADD $ds $ds $is
 /// 4    .program_start:
-fn build_preamble(register_sequencer: &mut RegisterSequencer) -> Vec<Op<'static>> {
-    let mut buf = Vec::new();
+fn build_preamble(register_sequencer: &mut RegisterSequencer) -> [Op<'static>; 6] {
     let label = register_sequencer.get_label();
-    // word 1
-    buf.push(Op::jump_to_label(label.clone()));
-    // word 1.5
-    buf.push(Op {
-        opcode: Either::Left(VirtualOp::NOOP),
-        comment: "".into(),
-        owning_span: None,
-    });
-    // word 2 -- full word u64 placeholder
-    buf.push(Op {
-        opcode: Either::Right(OrganizationalOp::DataSectionOffsetPlaceholder),
-        comment: "data section offset".into(),
-        owning_span: None,
-    });
-    // word 3 -- load the data offset into $ds
-    buf.push(Op {
-        opcode: Either::Left(VirtualOp::DataSectionRegisterLoadPlaceholder),
-        comment: "".into(),
-        owning_span: None,
-    });
-    // word 3.5 -- add $ds $ds $is
-    buf.push(Op {
-        opcode: Either::Left(VirtualOp::ADD(
-            VirtualRegister::Constant(ConstantRegister::DataSectionStart),
-            VirtualRegister::Constant(ConstantRegister::DataSectionStart),
-            VirtualRegister::Constant(ConstantRegister::InstructionStart),
-        )),
-        comment: "".into(),
-        owning_span: None,
-    });
-
-    // word 3
-    buf.push(Op::unowned_jump_label_comment(label, "end of metadata"));
-    buf
+    [
+        // word 1
+        Op::jump_to_label(label.clone()),
+        // word 1.5
+        Op {
+            opcode: Either::Left(VirtualOp::NOOP),
+            comment: "".into(),
+            owning_span: None,
+        },
+        // word 2 -- full word u64 placeholder
+        Op {
+            opcode: Either::Right(OrganizationalOp::DataSectionOffsetPlaceholder),
+            comment: "data section offset".into(),
+            owning_span: None,
+        },
+        // word 3 -- load the data offset into $ds
+        Op {
+            opcode: Either::Left(VirtualOp::DataSectionRegisterLoadPlaceholder),
+            comment: "".into(),
+            owning_span: None,
+        },
+        // word 3.5 -- add $ds $ds $is
+        Op {
+            opcode: Either::Left(VirtualOp::ADD(
+                VirtualRegister::Constant(ConstantRegister::DataSectionStart),
+                VirtualRegister::Constant(ConstantRegister::DataSectionStart),
+                VirtualRegister::Constant(ConstantRegister::InstructionStart),
+            )),
+            comment: "".into(),
+            owning_span: None,
+        },
+        // word 3
+        Op::unowned_jump_label_comment(label, "end of metadata"),
+    ]
 }

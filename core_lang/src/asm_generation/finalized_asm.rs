@@ -39,9 +39,17 @@ fn to_bytecode<'sc>(
     program_section: &InstructionSet<'sc>,
     data_section: &DataSection<'sc>,
 ) -> CompileResult<'sc, Vec<u8>> {
+    let mut errors = vec![];
+    if program_section.ops.len() & 1 != 0 {
+        errors.push(CompileError::Internal(
+            "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
+            pest::Span::new(" ", 0, 0).unwrap(),
+        ));
+        return err(vec![], errors);
+    }
     // The below invariant is introduced to word-align the data section.
     // A noop is inserted in ASM generation if there is an odd number of ops.
-    assert_eq!(program_section.ops.len() % 2, 0);
+    assert_eq!(program_section.ops.len() & 1, 0);
     let offset_to_data_section = (program_section.ops.len() * 4) as u64;
 
     // each op is four bytes, so the length of the buf is then number of ops times four.
@@ -66,5 +74,5 @@ fn to_bytecode<'sc>(
 
     buf.append(&mut data_section);
 
-    ok(buf, vec![], vec![])
+    ok(buf, vec![], errors)
 }

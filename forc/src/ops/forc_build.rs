@@ -19,15 +19,10 @@ pub fn print_asm(path: Option<String>) -> Result<(), String> {
     } else {
         std::env::current_dir().unwrap()
     };
-    let manifest_dir = match find_manifest_dir(&this_dir) {
-        Some(dir) => dir,
-        None => {
-            return Err(format!(
-                "No manifest file found in this directory or any parent directories of it: {:?}",
-                this_dir
-            ))
-        }
-    };
+    let manifest_dir = find_manifest_dir(&this_dir).ok_or(format!(
+        "No manifest file found in this directory or any parent directories of it: {:?}",
+        this_dir
+    ))?;
     let manifest = read_manifest(&manifest_dir)?;
 
     let mut namespace: Namespace = Default::default();
