@@ -722,7 +722,7 @@ impl<'sc> RegisterAllocatedAsmSet<'sc> {
             } => {
                 // ensure there's an even number of ops so the
                 // data section offset is valid
-                if program_section.ops.len() & 1 == 0 {
+                if program_section.ops.len() & 1 != 0 {
                     program_section.ops.push(AllocatedOp {
                         opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
                         comment: "word-alignment of data section".into(),
@@ -740,7 +740,7 @@ impl<'sc> RegisterAllocatedAsmSet<'sc> {
             } => {
                 // ensure there's an even number of ops so the
                 // data section offset is valid
-                if program_section.ops.len() & 1 == 0 {
+                if program_section.ops.len() & 1 != 0 {
                     program_section.ops.push(AllocatedOp {
                         opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
                         comment: "word-alignment of data section".into(),
