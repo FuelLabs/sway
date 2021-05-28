@@ -1,7 +1,7 @@
 use super::{DataSection, InstructionSet};
 use crate::error::*;
 use either::Either;
-use std::io::Write;
+use std::io::Read;
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
 pub enum FinalizedAsm<'sc> {
@@ -17,7 +17,6 @@ pub enum FinalizedAsm<'sc> {
     // Libraries do not generate any asm.
     Library,
 }
-
 impl<'sc> FinalizedAsm<'sc> {
     pub(crate) fn to_bytecode(&self) -> CompileResult<'sc, Vec<u8>> {
         use FinalizedAsm::*;
@@ -45,19 +44,22 @@ fn to_bytecode<'sc>(
     let offset_to_data_section = (program_section.ops.len() * 4) as u64;
 
     // each op is four bytes, so the length of the buf is then number of ops times four.
-    let mut buf = vec![0; program_section.ops.len() * 4];
+    let mut buf = vec![0; (program_section.ops.len() * 4) + 4];
 
-    for (ix, op) in program_section.ops.iter().enumerate() {
+    let mut half_word_ix = 0;
+    for op in program_section.ops.iter() {
         let op = op.to_fuel_asm(offset_to_data_section, data_section);
         match op {
             Either::Right(data) => {
                 for i in 0..data.len() {
-                    buf[ix + i] = data[i];
+                    buf[(half_word_ix * 4) + i] = data[i];
                 }
+                half_word_ix += 2;
             }
             Either::Left(mut op) => {
-                op.write(&buf[ix * 4..])
+                op.read(&mut buf[half_word_ix * 4..])
                     .expect("Failed to write to in-memory buffer.");
+                half_word_ix += 1;
             }
         }
     }
