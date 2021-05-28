@@ -6,19 +6,33 @@ use fuel_vm_rust::interpreter::Interpreter;
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
 pub(crate) fn runs_in_vm(file_name: &str) -> bool {
-    let bytes = compile_to_bytes(file_name);
-    let transaction = Transaction::Script {
-        gas_price: 0,
-        gas_limit: u64::MAX,
-        maturity: 0,
-        script: bytes,
-        script_data: vec![],
-        inputs: vec![],
-        outputs: vec![],
-        witnesses: vec![],
-    };
-
-    Interpreter::execute_tx(transaction).is_ok()
+    let script = compile_to_bytes(file_name);
+    let gas_price = 10;
+    let gas_limit = 10000;
+    let maturity = 100;
+    let script_data = vec![];
+    let inputs = vec![];
+    let outputs = vec![];
+    let witness = vec![];
+    let tx = Transaction::script(
+        gas_price,
+        gas_limit,
+        maturity,
+        script,
+        script_data,
+        inputs,
+        outputs,
+        witness,
+    );
+    let block_height = (u32::MAX >> 1) as u64;
+    tx.validate(block_height).unwrap();
+    match Interpreter::execute_tx(tx) {
+        Ok(_) => true,
+        Err(e) => {
+            println!("Failed: {}", e);
+            false
+        }
+    }
 }
 
 /// Returns `true` if a file compiled without any errors or warnings,

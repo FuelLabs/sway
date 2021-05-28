@@ -5,7 +5,7 @@ pub fn run() {
     assert!(project_names.into_iter().all(|name| {
         let result = crate::e2e_vm_tests::harness::runs_in_vm(name);
         if !result {
-            println!("Failure: {} should have compiled.", name);
+            println!("E2E Failure: {} should have run in the VM.", name);
             false
         } else {
             true
