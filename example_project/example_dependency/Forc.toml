@@ -2,7 +2,7 @@
 author  = "Alex Hansen"
 license = "MIT"
 name = "example_dependency"
-entry = "main.fm"
+entry = "main.sw"
 
 
 [dependencies]

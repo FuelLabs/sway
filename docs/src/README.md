@@ -1,1 +1,1 @@
-# The Fume Programming Language
+# The Sway Programming Language

@@ -2,7 +2,7 @@
 author  = "Alexander Hansen <alex.hansen@fuel.sh>"
 license = "MIT"
 name = "script_1"
-entry = "main.fm"
+entry = "main.sw"
 
 
 [dependencies]

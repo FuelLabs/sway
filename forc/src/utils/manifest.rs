@@ -22,7 +22,7 @@ pub struct Project {
 }
 
 fn default_entry() -> String {
-    "main.fm".into()
+    "main.sw".into()
 }
 
 #[derive(Deserialize, Debug)]
