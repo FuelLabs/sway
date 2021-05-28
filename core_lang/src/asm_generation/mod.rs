@@ -829,8 +829,7 @@ fn convert_node_to_asm<'sc>(
 /// -    NOOP
 /// 2    DATA_START (0-32) (in bytes, offset from $is)
 /// -    DATA_START (32-64)
-/// -           (absolute address)  (offset in words)
-/// 3    LW $ds $is                 1
+/// 3    LW $ds $is               1 (where 1 is in words and $is is a byte address to base off of)
 /// -    ADD $ds $ds $is
 /// 4    .program_start:
 fn build_preamble(register_sequencer: &mut RegisterSequencer) -> [Op<'static>; 6] {
