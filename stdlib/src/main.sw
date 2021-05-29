@@ -1,4 +1,5 @@
 library ops;
+
 // Math ops
 
 pub trait Add {
@@ -241,3 +242,32 @@ impl Ord for u64 {
   }
 }
 
+impl Ord for u32 {
+  fn cmp(self, other: Self) -> Ordering {
+    let is_greater_than = asm(r1: self, r2: other, r3) {
+        gt r3 r1 r2;
+        r3: bool
+    };
+    if is_greater_than { Ordering::Greater } else { Ordering::LessOrEqual }
+  }
+}
+
+impl Ord for u16 {
+  fn cmp(self, other: Self) -> Ordering {
+    let is_greater_than = asm(r1: self, r2: other, r3) {
+        gt r3 r1 r2;
+        r3: bool
+    };
+    if is_greater_than { Ordering::Greater } else { Ordering::LessOrEqual }
+  }
+}
+
+impl Ord for u8 {
+  fn cmp(self, other: Self) -> Ordering {
+    let is_greater_than = asm(r1: self, r2: other, r3) {
+        gt r3 r1 r2;
+        r3: bool
+    };
+    if is_greater_than { Ordering::Greater } else { Ordering::LessOrEqual }
+  }
+}
