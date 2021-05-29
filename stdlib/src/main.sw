@@ -221,19 +221,13 @@ impl Eq for Ordering {
 pub trait Ord {
   fn cmp(self, other: Self) -> Ordering;
 } {
-  fn less_than(self, other: Self) -> bool {
+  fn less_or_equal(self, other: Self) -> bool {
     let res = self.cmp(other);
-    asm (r1: res, r2: Ordering::LessOrEqual, r3) {
-      eq r3 r1 r2;
-      r3: bool
-    }
+    res.equals(Ordering::LessOrEqual)
   }
   fn greater_than(self, other: Self) -> bool {
     let res = self.cmp(other);
-    asm (r1: res, r2: Ordering::Greater, r3) {
-      eq r3 r1 r2;
-      r3: bool
-    }
+    res.equals(Ordering::Greater)
   }
 }
 
