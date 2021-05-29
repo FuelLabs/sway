@@ -10,13 +10,6 @@ pub(crate) const TWELVE_BITS: u64 = 0b111_111_111_111;
 /// So far, the compiler-reserved registers are:
 /// 1. DATA_SECTION_BEGIN
 const NUM_COMPILER_RESERVED_REGISTERS: u8 = 1;
-
-#[allow(non_snake_case)]
-pub(crate) const fn DATA_SECTION_REGISTER() -> u8 {
-    NUM_FREE_REGISTERS - 2
-}
-
-#[allow(non_snake_case)]
-pub(crate) const fn NUM_ALLOCATABLE_REGISTERS() -> u8 {
-    NUM_FREE_REGISTERS - NUM_COMPILER_RESERVED_REGISTERS
-}
+pub(crate) const DATA_SECTION_REGISTER: u8 = NUM_FREE_REGISTERS - 2;
+pub(crate) const NUM_ALLOCATABLE_REGISTERS: u8 =
+    NUM_FREE_REGISTERS - NUM_COMPILER_RESERVED_REGISTERS;

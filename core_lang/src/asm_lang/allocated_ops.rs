@@ -332,7 +332,7 @@ impl<'sc> AllocatedOp<'sc> {
             FLAG(a)         => VmOp::FLAG(a.to_register_id()),
             Undefined       => VmOp::Undefined,
             DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes()),
-            DataSectionRegisterLoadPlaceholder => VmOp::LW(crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER() as fuel_asm::RegisterId, ConstantRegister::InstructionStart.to_register_id(), 1),
+            DataSectionRegisterLoadPlaceholder => VmOp::LW(crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as fuel_asm::RegisterId, ConstantRegister::InstructionStart.to_register_id(), 1),
          });
         fuel_op
     }
@@ -347,7 +347,7 @@ fn realize_lw(dest: &AllocatedRegister, data_id: &DataId, data_section: &DataSec
     };
     VmOp::LW(
         dest,
-        crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER() as usize,
+        crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as usize,
         offset.value,
     )
 }
