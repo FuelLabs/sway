@@ -1,6 +1,6 @@
 library ops;
 
-include chain;
+include chain/gas;
 
 pub trait Add {
     fn add(self, other: Self) -> Self;
