@@ -96,8 +96,11 @@ impl<'sc> TypedAstNode<'sc> {
                     };
                     TypedAstNodeContent::SideEffect
                 }
-                AstNodeContent::IncludeStatement(a) => {
-                    todo!("Do something with this import: {:?}", a)
+                AstNodeContent::IncludeStatement(ref a) => {
+                    // Import the file, parse it, put it in the namespace under the module name (alias or
+                    // last part of the import by default)
+                    let _ = type_check!(import_new_file(a, namespace), return err(warnings, errors), warnings, errors);
+                    TypedAstNodeContent::SideEffect
                 }
                 AstNodeContent::Declaration(a) => {
                     TypedAstNodeContent::Declaration(match a {
@@ -617,4 +620,8 @@ impl<'sc> TypedAstNode<'sc> {
 
         ok(node, warnings, errors)
     }
+}
+
+fn import_new_file<'sc>(statement: &IncludeStatement<'sc>, namespace: &mut Namespace<'sc>) -> CompileResult<'sc, ()> {
+    todo!()
 }

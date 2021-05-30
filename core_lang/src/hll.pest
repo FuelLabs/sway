@@ -29,8 +29,8 @@ script       =  {"script" ~ ";" ~ (control_flow|declaration|use_statement|includ
 predicate    =  {"predicate" ~ ";" ~ (control_flow|declaration|use_statement|include_statement)*}
 
 // including other files
-include_statement = { include_keyword ~ ident ~ ("/" ~ ident)* ~ ";"}
-
+include_statement = { include_keyword ~ ident ~ ("/" ~ ident)* ~ alias? ~ ";"}
+alias             = { "as" ~ ident }
 // expressions
 expr_inner               = _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|delineated_path|method_exp|subfield_exp|var_exp|array_exp|match_expression|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}

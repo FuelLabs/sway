@@ -1,6 +1,6 @@
 library ops;
 
-include chain/gas;
+include chain/gas as blockchain;
 
 pub trait Add {
     fn add(self, other: Self) -> Self;
