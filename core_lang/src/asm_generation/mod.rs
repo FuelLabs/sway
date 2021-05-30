@@ -19,11 +19,13 @@ use either::Either;
 pub(crate) mod compiler_constants;
 mod declaration;
 mod expression;
+mod finalized_asm;
 mod register_sequencer;
 mod while_loop;
 
 pub(crate) use declaration::*;
 pub(crate) use expression::*;
+pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
 
 use while_loop::convert_while_loop_to_asm;
@@ -178,7 +180,7 @@ impl<'sc> AbstractInstructionSet<'sc> {
 
     /// Runs two passes -- one to get the instruction offsets of the labels
     /// and one to replace the labels in the organizational ops
-    fn realize_labels(self, data_section: &DataSection) -> RealizedAbstractInstructionSet<'sc> {
+    fn realize_labels(self) -> RealizedAbstractInstructionSet<'sc> {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
         for op in &self.ops {
@@ -187,13 +189,17 @@ impl<'sc> AbstractInstructionSet<'sc> {
                     label_namespace.insert(lab, counter);
                 }
                 // these ops will end up being exactly one op, so the counter goes up one
-                Either::Right(OrganizationalOp::Ld(..)) => counter += 2,
                 Either::Right(OrganizationalOp::Jump(..))
                 | Either::Right(OrganizationalOp::JumpIfNotEq(..))
                 | Either::Left(_) => {
                     counter += 1;
                 }
                 Either::Right(OrganizationalOp::Comment) => (),
+                Either::Right(OrganizationalOp::DataSectionOffsetPlaceholder) => {
+                    // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
+                    // to load the data, which loads a whole word, so for now this is 2.
+                    counter += 2
+                }
             }
         }
 
@@ -211,19 +217,6 @@ impl<'sc> AbstractInstructionSet<'sc> {
                     comment,
                 }),
                 Either::Right(org_op) => match org_op {
-                    OrganizationalOp::Ld(reg, data_lab) => {
-                        let data = data_section.value_pairs[data_lab.0 as usize].clone();
-                        // TODO force_to_imm() is very very bad. see it for details
-                        realized_ops.push(RealizedOp {
-                            opcode: VirtualOp::ORI(
-                                reg,
-                                VirtualRegister::Constant(ConstantRegister::Zero),
-                                data.force_to_imm(),
-                            ),
-                            owning_span,
-                            comment,
-                        });
-                    }
                     OrganizationalOp::Jump(ref lab) => {
                         let offset = label_namespace.get(lab).unwrap();
                         let imm = VirtualImmediate24::new_unchecked(
@@ -248,6 +241,13 @@ impl<'sc> AbstractInstructionSet<'sc> {
                             comment,
                         });
                     }
+                    OrganizationalOp::DataSectionOffsetPlaceholder => {
+                        realized_ops.push(RealizedOp {
+                            opcode: VirtualOp::DataSectionOffsetPlaceholder,
+                            owning_span: None,
+                            comment: String::new(),
+                        });
+                    }
                     OrganizationalOp::Comment => continue,
                     OrganizationalOp::Label(..) => continue,
                 },
@@ -268,8 +268,8 @@ pub(crate) struct RegisterPool {
 impl RegisterPool {
     fn init() -> Self {
         let register_pool: Vec<RegisterAllocationStatus> = (0
-            ..compiler_constants::NUM_FREE_REGISTERS)
-            .rev()
+            // - 1 because we reserve the final register for the data_section begin
+            ..compiler_constants::NUM_ALLOCATABLE_REGISTERS)
             .map(|x| RegisterAllocationStatus {
                 reg: AllocatedRegister::Allocated(x),
                 in_use: None,
@@ -287,6 +287,15 @@ impl RegisterPool {
         virtual_register: &VirtualRegister,
         op_register_mapping: &[(RealizedOp, std::collections::HashSet<VirtualRegister>)],
     ) -> Option<AllocatedRegister> {
+        // check if this register has already been allocated for
+        if let a @ Some(_) = self.registers.iter().find_map(
+            |RegisterAllocationStatus { reg, in_use }| match in_use {
+                Some(x) if x == virtual_register => Some(reg),
+                _ => None,
+            },
+        ) {
+            return a.cloned();
+        }
         // scan to see if any of the old ones are no longer in use
         for RegisterAllocationStatus { in_use, .. } in
             self.registers.iter_mut().filter(|r| r.in_use.is_some())
@@ -298,7 +307,7 @@ impl RegisterPool {
                 *in_use = None;
             }
         }
-        // find the next unused register, return it, flip assign it
+        // find the next unused register, return it, assign it
         let next_available = self
             .registers
             .iter_mut()
@@ -333,6 +342,27 @@ fn label_is_used<'sc>(buf: &[Op<'sc>], label: &Label) -> bool {
 pub struct DataSection<'sc> {
     /// the data to be put in the data section of the asm
     value_pairs: Vec<Data<'sc>>,
+}
+
+impl<'sc> DataSection<'sc> {
+    /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
+    /// in words.
+    pub(crate) fn offset_to_id(&self, id: &DataId) -> usize {
+        self.value_pairs
+            .iter()
+            .take(id.0 as usize)
+            .map(|x| x.as_type().stack_size_of())
+            .sum::<u64>() as usize
+    }
+
+    pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
+        // not the exact right capacity but serves as a lower bound
+        let mut buf = Vec::with_capacity(self.value_pairs.len());
+        for val in &self.value_pairs {
+            buf.append(&mut val.to_bytes());
+        }
+        buf
+    }
 }
 
 impl fmt::Display for DataSection<'_> {
@@ -404,11 +434,17 @@ impl fmt::Display for JumpOptimizedAsmSet<'_> {
 impl<'sc> fmt::Display for RegisterAllocatedAsmSet<'sc> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RegisterAllocatedAsmSet::ScriptMain { program_section } => {
-                write!(f, "{}", program_section)
+            RegisterAllocatedAsmSet::ScriptMain {
+                program_section,
+                data_section,
+            } => {
+                write!(f, "{}\n{}", program_section, data_section)
             }
-            RegisterAllocatedAsmSet::PredicateMain { program_section } => {
-                write!(f, "{}", program_section)
+            RegisterAllocatedAsmSet::PredicateMain {
+                program_section,
+                data_section,
+            } => {
+                write!(f, "{}\n{}", program_section, data_section)
             }
             RegisterAllocatedAsmSet::ContractAbi { .. } => {
                 write!(f, "TODO contract ABI asm is unimplemented")
@@ -422,8 +458,14 @@ impl<'sc> fmt::Display for RegisterAllocatedAsmSet<'sc> {
 impl<'sc> fmt::Display for FinalizedAsm<'sc> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FinalizedAsm::ScriptMain { program_section } => write!(f, "{}", program_section,),
-            FinalizedAsm::PredicateMain { program_section } => write!(f, "{}", program_section,),
+            FinalizedAsm::ScriptMain {
+                program_section,
+                data_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
+            FinalizedAsm::PredicateMain {
+                program_section,
+                data_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
             FinalizedAsm::ContractAbi { .. } => {
                 write!(f, "TODO contract ABI asm is unimplemented")
             }
@@ -526,20 +568,27 @@ pub(crate) fn compile_ast_to_asm<'sc>(
     let asm = match ast {
         TypedParseTree::Script { main_function, .. } => {
             let mut namespace: AsmNamespace = Default::default();
-            let mut asm_buf = vec![];
+            let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
             // start generating from the main function
+            let return_register = register_sequencer.next();
             let mut body = type_check!(
                 convert_code_block_to_asm(
                     &main_function.body,
                     &mut namespace,
                     &mut register_sequencer,
-                    None,
+                    // TODO validate that this isn't just implicit returns?
+                    Some(&return_register),
                 ),
                 vec![],
                 warnings,
                 errors
             );
             asm_buf.append(&mut body);
+            asm_buf.push(Op {
+                owning_span: None,
+                opcode: Either::Left(VirtualOp::RET(return_register)),
+                comment: "main fn return value".into(),
+            });
 
             HllAsmSet::ScriptMain {
                 program_section: AbstractInstructionSet { ops: asm_buf },
@@ -615,18 +664,18 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 data_section,
                 program_section,
             } => RegisterAllocatedAsmSet::ScriptMain {
+                data_section,
                 program_section: program_section
                     .clone()
-                    .realize_labels(&data_section)
+                    .realize_labels()
                     .allocate_registers(),
             },
             JumpOptimizedAsmSet::PredicateMain {
                 data_section,
                 program_section,
             } => RegisterAllocatedAsmSet::PredicateMain {
-                program_section: program_section
-                    .realize_labels(&data_section)
-                    .allocate_registers(),
+                data_section,
+                program_section: program_section.realize_labels().allocate_registers(),
             },
             JumpOptimizedAsmSet::ContractAbi => RegisterAllocatedAsmSet::ContractAbi,
         }
@@ -651,9 +700,11 @@ pub enum JumpOptimizedAsmSet<'sc> {
 pub enum RegisterAllocatedAsmSet<'sc> {
     ContractAbi,
     ScriptMain {
+        data_section: DataSection<'sc>,
         program_section: InstructionSet<'sc>,
     },
     PredicateMain {
+        data_section: DataSection<'sc>,
         program_section: InstructionSet<'sc>,
     },
     // Libraries do not generate any asm.
@@ -665,30 +716,47 @@ impl<'sc> RegisterAllocatedAsmSet<'sc> {
         // TODO implement this -- noop for now
         match self {
             RegisterAllocatedAsmSet::Library => FinalizedAsm::Library,
-            RegisterAllocatedAsmSet::ScriptMain { program_section } => {
-                FinalizedAsm::ScriptMain { program_section }
+            RegisterAllocatedAsmSet::ScriptMain {
+                mut program_section,
+                data_section,
+            } => {
+                // ensure there's an even number of ops so the
+                // data section offset is valid
+                if program_section.ops.len() & 1 != 0 {
+                    program_section.ops.push(AllocatedOp {
+                        opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
+                        comment: "word-alignment of data section".into(),
+                        owning_span: None,
+                    });
+                }
+                FinalizedAsm::ScriptMain {
+                    program_section,
+                    data_section,
+                }
             }
-            RegisterAllocatedAsmSet::PredicateMain { program_section } => {
-                FinalizedAsm::PredicateMain { program_section }
+            RegisterAllocatedAsmSet::PredicateMain {
+                mut program_section,
+                data_section,
+            } => {
+                // ensure there's an even number of ops so the
+                // data section offset is valid
+                if program_section.ops.len() & 1 != 0 {
+                    program_section.ops.push(AllocatedOp {
+                        opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
+                        comment: "word-alignment of data section".into(),
+                        owning_span: None,
+                    });
+                }
+                FinalizedAsm::PredicateMain {
+                    program_section,
+                    data_section,
+                }
             }
             RegisterAllocatedAsmSet::ContractAbi => FinalizedAsm::ContractAbi,
         }
     }
 }
 
-/// Represents an ASM set which has had register allocation, jump elimination, and optimization
-/// applied to it
-pub enum FinalizedAsm<'sc> {
-    ContractAbi,
-    ScriptMain {
-        program_section: InstructionSet<'sc>,
-    },
-    PredicateMain {
-        program_section: InstructionSet<'sc>,
-    },
-    // Libraries do not generate any asm.
-    Library,
-}
 pub(crate) enum NodeAsmResult<'sc> {
     JustAsm(Vec<Op<'sc>>),
     ReturnStatement { asm: Vec<Op<'sc>> },
@@ -751,4 +819,53 @@ fn convert_node_to_asm<'sc>(
             return err(warnings, errors);
         }
     }
+}
+
+/// Builds the asm preamble, which includes metadata and a jump past the metadata.
+/// Right now, it looks like this:
+///
+/// WORD OP
+/// 1    JI program_start
+/// -    NOOP
+/// 2    DATA_START (0-32) (in bytes, offset from $is)
+/// -    DATA_START (32-64)
+/// 3    LW $ds $is               1 (where 1 is in words and $is is a byte address to base off of)
+/// -    ADD $ds $ds $is
+/// 4    .program_start:
+fn build_preamble(register_sequencer: &mut RegisterSequencer) -> [Op<'static>; 6] {
+    let label = register_sequencer.get_label();
+    [
+        // word 1
+        Op::jump_to_label(label.clone()),
+        // word 1.5
+        Op {
+            opcode: Either::Left(VirtualOp::NOOP),
+            comment: "".into(),
+            owning_span: None,
+        },
+        // word 2 -- full word u64 placeholder
+        Op {
+            opcode: Either::Right(OrganizationalOp::DataSectionOffsetPlaceholder),
+            comment: "data section offset".into(),
+            owning_span: None,
+        },
+        // word 3 -- load the data offset into $ds
+        Op {
+            opcode: Either::Left(VirtualOp::DataSectionRegisterLoadPlaceholder),
+            comment: "".into(),
+            owning_span: None,
+        },
+        // word 3.5 -- add $ds $ds $is
+        Op {
+            opcode: Either::Left(VirtualOp::ADD(
+                VirtualRegister::Constant(ConstantRegister::DataSectionStart),
+                VirtualRegister::Constant(ConstantRegister::DataSectionStart),
+                VirtualRegister::Constant(ConstantRegister::InstructionStart),
+            )),
+            comment: "".into(),
+            owning_span: None,
+        },
+        // word 3
+        Op::unowned_jump_label_comment(label, "end of metadata"),
+    ]
 }

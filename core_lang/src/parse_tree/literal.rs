@@ -1,6 +1,6 @@
-use crate::asm_lang::virtual_ops::VirtualImmediate12;
 use crate::error::*;
 use crate::parser::Rule;
+use crate::types::{IntegerBits, ResolvedType};
 use crate::CompileError;
 use pest::iterators::Pair;
 use pest::Span;
@@ -19,22 +19,17 @@ pub enum Literal<'sc> {
 }
 
 impl<'sc> Literal<'sc> {
-    // This function is very bad. Because I don't know how to do data sections right now, I just OR
-    // data against 0.
-    pub(crate) fn force_to_imm(&self) -> VirtualImmediate12 {
-        // please make sure this function dies quickly
+    pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
         use Literal::*;
         match self {
-            U8(num) => VirtualImmediate12::new_unchecked(*num as u64, "the bad force_to_imm func"),
-            U16(num) => VirtualImmediate12::new_unchecked(*num as u64, "the bad force_to_imm func"),
-            U32(num) => VirtualImmediate12::new_unchecked(*num as u64, "the bad force_to_imm func"),
-            U64(num) => VirtualImmediate12::new_unchecked(*num, "the bad force_to_imm func"),
-            String(..) => panic!("Strings can't go in an immediate"),
-            Boolean(b) => VirtualImmediate12::new_unchecked(*b as u64, "the bad force_to_imm func"),
-            Byte(num) => {
-                VirtualImmediate12::new_unchecked(*num as u64, "the bad force_to_imm func")
-            }
-            Byte32(..) => panic!("byte32 can't fit in an immediate"),
+            U8(_) => ResolvedType::UnsignedInteger(IntegerBits::Eight),
+            U16(_) => ResolvedType::UnsignedInteger(IntegerBits::Sixteen),
+            U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
+            U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+            String(inner) => ResolvedType::Str(inner.len() as u64),
+            Boolean(_) => ResolvedType::Boolean,
+            Byte(_) => ResolvedType::Byte,
+            Byte32(_) => ResolvedType::Byte32,
         }
     }
     pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> CompileResult<'sc, (Self, Span<'sc>)> {
@@ -147,6 +142,18 @@ impl<'sc> Literal<'sc> {
         match parsed {
             Ok(lit) => ok((lit, span), Vec::new(), Vec::new()),
             Err(compile_err) => err(Vec::new(), vec![compile_err]),
+        }
+    }
+    pub(crate) fn to_bytes(&self) -> Vec<u8> {
+        use Literal::*;
+        match self {
+            // TODO are we big endian?
+            U8(val) => val.to_be_bytes().to_vec(),
+            U16(val) => val.to_be_bytes().to_vec(),
+            U32(val) => val.to_be_bytes().to_vec(),
+            U64(val) => val.to_be_bytes().to_vec(),
+            Boolean(b) => (if *b { 1u64 } else { 0u64 }).to_be_bytes().to_vec(),
+            a => todo!("{:?}", a),
         }
     }
 }

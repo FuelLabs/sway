@@ -15,7 +15,8 @@ pub enum MaybeResolvedType<'sc> {
 }
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ResolvedType<'sc> {
-    String,
+    /// The number in a `Str` represents its size, which must be known at compile time
+    Str(u64),
     UnsignedInteger(IntegerBits),
     Boolean,
     Unit,
@@ -185,7 +186,7 @@ impl<'sc> ResolvedType<'sc> {
     pub(crate) fn friendly_type_str(&self) -> String {
         use ResolvedType::*;
         match self {
-            String => "String".into(),
+            Str(len) => format!("str[{}]", len),
             UnsignedInteger(bits) => {
                 use IntegerBits::*;
                 match bits {
@@ -218,8 +219,8 @@ impl<'sc> ResolvedType<'sc> {
     /// This is _in words_!
     pub(crate) fn stack_size_of(&self) -> u64 {
         match self {
-            // the pointer to the beginning of the string is 64 bits
-            ResolvedType::String => 1,
+            // Each char is a word, so the size is the num of characters
+            ResolvedType::Str(len) => *len,
             // Since things are unpacked, all unsigned integers are 64 bits.....for now
             ResolvedType::UnsignedInteger(_) => 1,
             ResolvedType::Boolean => 1,
