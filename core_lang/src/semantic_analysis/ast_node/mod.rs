@@ -92,10 +92,12 @@ impl<'sc> TypedAstNode<'sc> {
                 AstNodeContent::UseStatement(a) => {
                     match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path),
-
                         ImportType::Item(s) => namespace.item_import(a.call_path, &s, None),
                     };
                     TypedAstNodeContent::SideEffect
+                }
+                AstNodeContent::IncludeStatement(a) => {
+                    todo!("Do something with this import: {:?}", a)
                 }
                 AstNodeContent::Declaration(a) => {
                     TypedAstNodeContent::Declaration(match a {

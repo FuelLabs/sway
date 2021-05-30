@@ -75,6 +75,7 @@ pub enum AstNodeContent<'sc> {
     Expression(Expression<'sc>),
     ImplicitReturnExpression(Expression<'sc>),
     WhileLoop(WhileLoop<'sc>),
+    IncludeStatement(IncludeStatement<'sc>)
 }
 
 impl<'sc> ParseTree<'sc> {
@@ -524,6 +525,14 @@ fn parse_root_from_pairs<'sc>(
                         lib_pair,
                         continue
                     ));
+                }
+                Rule::include_statement => {
+                    // parse the include statement into a reference to a specific file
+                    let include_statement = eval!(IncludeStatement::parse_from_pair, warnings, errors, pair, continue);
+                    parse_tree.push(AstNode {
+                        content: AstNodeContent::IncludeStatement(include_statement),
+                        span: pair.as_span()
+                    });
                 }
                 _ => unreachable!("{:?}", pair.as_str()),
             }
