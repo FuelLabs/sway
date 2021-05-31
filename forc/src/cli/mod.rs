@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 
 mod commands;
-use self::commands::{analysis, benchmark, build, coverage, deploy, init, publish, serve, test};
+use self::commands::{analysis, benchmark, build, coverage, deploy, init, publish, serve, test, mvprun};
 
 use analysis::Command as AnalysisCommand;
 use benchmark::Command as BenchmarkCommand;
@@ -12,6 +12,7 @@ use init::Command as InitCommand;
 use publish::Command as PublishCommand;
 use serve::Command as ServeCommand;
 use test::Command as TestCommand;
+use mvprun::Command as MvprunCommand;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "forc", about = "Fuel HLL Orchestrator")]
@@ -29,6 +30,7 @@ enum Forc {
     Coverage(CoverageCommand),
     Deploy(DeployCommand),
     Init(InitCommand),
+    Mvprun(MvprunCommand),
     Publish(PublishCommand),
     Serve(ServeCommand),
     Test(TestCommand),
@@ -43,6 +45,7 @@ pub(crate) fn run_cli() -> Result<(), String> {
         Forc::Coverage(command) => coverage::exec(command),
         Forc::Deploy(command) => deploy::exec(command),
         Forc::Init(command) => init::exec(command),
+        Forc::Mvprun(command) => mvprun::exec(command),
         Forc::Publish(command) => publish::exec(command),
         Forc::Serve(command) => serve::exec(command),
         Forc::Test(command) => test::exec(command),

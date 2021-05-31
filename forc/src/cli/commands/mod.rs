@@ -7,3 +7,4 @@ pub mod init;
 pub mod publish;
 pub mod serve;
 pub mod test;
+pub mod mvprun;
