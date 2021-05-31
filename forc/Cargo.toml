@@ -9,6 +9,9 @@ version = "0.1.0"
 
 [dependencies]
 core_lang = {path = "../core_lang"}
+fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
+fuel-core = { git = "ssh://git@github.com/FuelLabs/fuel-core.git" }
+hex = "0.4.3"
 line-col = "0.2"
 pest = "2.1"
 serde = {version = "1.0", features = ["derive"]}
@@ -17,6 +20,3 @@ structopt = "0.3"
 termcolor = "1.1"
 toml = "0.5"
 whoami = "1.1"
-hex = "0.4.3"
-fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
-fuel-core = { git = "ssh://git@github.com/FuelLabs/fuel-core.git" }
