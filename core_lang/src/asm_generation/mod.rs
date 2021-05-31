@@ -348,20 +348,20 @@ pub struct DataSection<'sc> {
 
 impl<'sc> DataSection<'sc> {
     /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
-    /// in words.
+    /// in bytes.
     pub(crate) fn offset_to_id(&self, id: &DataId) -> usize {
         self.value_pairs
             .iter()
             .take(id.0 as usize)
-            .map(|x| x.as_type().stack_size_of())
-            .sum::<u64>() as usize
+            .map(|x| x.to_bytes().len())
+            .sum()
     }
 
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
         // not the exact right capacity but serves as a lower bound
         let mut buf = Vec::with_capacity(self.value_pairs.len());
         for val in &self.value_pairs {
-            buf.append(&mut val.to_bytes());
+            buf.append(&mut val.to_bytes().to_vec());
         }
         buf
     }
@@ -812,6 +812,31 @@ fn convert_node_to_asm<'sc>(
                 errors,
             )
         }
+        TypedAstNodeContent::ReturnStatement(exp) => {
+            // if a return register was specified, we use it. If not, we generate a register but
+            // it is going to get thrown away later (in coalescing) as it is never read
+            let return_register = if let Some(return_register) = return_register {
+                return_register.clone()
+            } else {
+                register_sequencer.next()
+            };
+            let ops = type_check!(
+                convert_expression_to_asm(
+                    &exp.expr,
+                    namespace,
+                    &return_register,
+                    register_sequencer
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(
+                NodeAsmResult::ReturnStatement { asm: ops },
+                warnings,
+                errors,
+            )
+        }
         _ => {
             errors.push(CompileError::Unimplemented(
                 "The ASM for this construct has not been written yet.",
@@ -850,6 +875,7 @@ fn build_preamble(register_sequencer: &mut RegisterSequencer) -> [Op<'static>; 6
             comment: "data section offset".into(),
             owning_span: None,
         },
+        Op::unowned_jump_label_comment(label, "end of metadata"),
         // word 3 -- load the data offset into $ds
         Op {
             opcode: Either::Left(VirtualOp::DataSectionRegisterLoadPlaceholder),
@@ -866,7 +892,5 @@ fn build_preamble(register_sequencer: &mut RegisterSequencer) -> [Op<'static>; 6
             comment: "".into(),
             owning_span: None,
         },
-        // word 3
-        Op::unowned_jump_label_comment(label, "end of metadata"),
     ]
 }

@@ -1,4 +1,4 @@
-script;
+predicate;
 struct Rgb {
   red: u64,
   green: u64,

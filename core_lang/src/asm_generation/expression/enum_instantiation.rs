@@ -56,7 +56,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
 
     asm_buf.push(Op::unowned_stack_allocate_memory(
         VirtualImmediate24::new_unchecked(
-            size_of_enum,
+            size_of_enum * 8,
             "this size is manually checked to be lower than 2^24",
         ),
     ));
