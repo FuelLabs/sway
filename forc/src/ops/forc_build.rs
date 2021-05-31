@@ -19,15 +19,10 @@ pub fn print_asm(path: Option<String>) -> Result<(), String> {
     } else {
         std::env::current_dir().unwrap()
     };
-    let manifest_dir = match find_manifest_dir(&this_dir) {
-        Some(dir) => dir,
-        None => {
-            return Err(format!(
-                "No manifest file found in this directory or any parent directories of it: {:?}",
-                this_dir
-            ))
-        }
-    };
+    let manifest_dir = find_manifest_dir(&this_dir).ok_or(format!(
+        "No manifest file found in this directory or any parent directories of it: {:?}",
+        this_dir
+    ))?;
     let manifest = read_manifest(&manifest_dir)?;
 
     let mut namespace: Namespace = Default::default();
@@ -85,7 +80,7 @@ pub fn build(path: Option<String>) -> Result<(), String> {
     let main_file = get_main_file(&manifest, &manifest_dir)?;
     let main = compile(main_file, &manifest.project.name, &namespace)?;
 
-    println!("Bytecode size is {} bytes.", main.len() / 4);
+    println!("Bytecode size is {} bytes.", main.len());
 
     Ok(())
 }

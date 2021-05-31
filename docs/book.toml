@@ -3,10 +3,10 @@ authors = ["John Adler"]
 language = "en"
 multilingual = false
 src = "src"
-title = "The Fume Programming Language"
+title = "The Sway Programming Language"
 
 [output.html]
-git-repository-url = "https://github.com/FuelLabs/fuel-vm-hll"
+git-repository-url = "https://github.com/FuelLabs/sway"
 
 [rust]
 edition = "2018"
