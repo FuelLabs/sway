@@ -1,7 +1,9 @@
 use structopt::StructOpt;
 
 mod commands;
-use self::commands::{analysis, benchmark, build, coverage, deploy, init, publish, serve, test, mvprun};
+use self::commands::{
+    analysis, benchmark, build, coverage, deploy, init, mvprun, publish, serve, test,
+};
 
 use analysis::Command as AnalysisCommand;
 use benchmark::Command as BenchmarkCommand;
@@ -9,10 +11,10 @@ use build::Command as BuildCommand;
 use coverage::Command as CoverageCommand;
 use deploy::Command as DeployCommand;
 use init::Command as InitCommand;
+use mvprun::Command as MvprunCommand;
 use publish::Command as PublishCommand;
 use serve::Command as ServeCommand;
 use test::Command as TestCommand;
-use mvprun::Command as MvprunCommand;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "forc", about = "Fuel HLL Orchestrator")]
