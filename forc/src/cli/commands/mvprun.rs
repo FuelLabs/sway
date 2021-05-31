@@ -1,5 +1,5 @@
-use fuel_tx::Transaction;
 use fuel_core::interpreter::Interpreter;
+use fuel_tx::Transaction;
 use structopt::{self, StructOpt};
 
 use crate::ops::forc_build;
