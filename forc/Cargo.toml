@@ -19,4 +19,4 @@ toml = "0.5"
 whoami = "1.1"
 hex = "0.4.3"
 fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
-fuel-vm-rust = { git = "ssh://git@github.com/FuelLabs/fuel-core.git" }
+fuel-core = { git = "ssh://git@github.com/FuelLabs/fuel-core.git" }
