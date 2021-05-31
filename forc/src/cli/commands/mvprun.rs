@@ -1,5 +1,5 @@
 use fuel_tx::Transaction;
-use fuel_vm_rust::interpreter::Interpreter;
+use fuel_core::interpreter::Interpreter;
 use structopt::{self, StructOpt};
 
 use crate::ops::forc_build;
@@ -7,11 +7,12 @@ use crate::ops::forc_build;
 #[derive(Debug, StructOpt)]
 pub(crate) struct Command {
     #[structopt(short = "d", long = "data")]
-    pub data: String,
+    pub data: Option<String>,
 }
 
 pub(crate) fn exec(command: Command) -> Result<(), String> {
-    let data = format_hex_data(&command.data);
+    let input_data = &command.data.unwrap_or("".into());
+    let data = format_hex_data(input_data);
     let script_data = hex::decode(data).expect("Invalid hex");
 
     let project_path = "../example_project/fuel_project".into();
