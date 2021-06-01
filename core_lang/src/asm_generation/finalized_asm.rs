@@ -66,7 +66,6 @@ fn to_bytecode<'sc>(
                 half_word_ix += 2;
             }
             Either::Left(mut op) => {
-                println!("Serializing {:?}", op);
                 op.read(&mut buf[half_word_ix * 4..])
                     .expect("Failed to write to in-memory buffer.");
                 half_word_ix += 1;

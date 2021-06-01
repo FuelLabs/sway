@@ -5,7 +5,7 @@ use fuel_vm_rust::interpreter::Interpreter;
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
-pub(crate) fn runs_in_vm(file_name: &str) -> bool {
+pub(crate) fn runs_in_vm(file_name: &str) {
     let script = compile_to_bytes(file_name);
     let gas_price = 10;
     let gas_limit = 10000;
@@ -26,13 +26,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> bool {
     );
     let block_height = (u32::MAX >> 1) as u64;
     tx.validate(block_height).unwrap();
-    match Interpreter::execute_tx(tx) {
-        Ok(_) => true,
-        Err(e) => {
-            println!("Failed: {}", e);
-            false
-        }
-    }
+    Interpreter::execute_tx(tx).unwrap();
 }
 
 /// Returns `true` if a file compiled without any errors or warnings,

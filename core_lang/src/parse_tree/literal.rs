@@ -19,6 +19,7 @@ pub enum Literal<'sc> {
 }
 
 impl<'sc> Literal<'sc> {
+    #[allow(dead_code)]
     pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
         use Literal::*;
         match self {
