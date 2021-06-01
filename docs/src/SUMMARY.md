@@ -1,6 +1,6 @@
 # Summary
 
-[The Fume Programming Language](./README.md)
+[The Sway Programming Language](./README.md)
 
 - [Getting Started](./c01/README.md)
   - [Installation](./c01/s01.md)

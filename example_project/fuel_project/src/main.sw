@@ -1,18 +1,24 @@
-script;
+predicate;
 struct Rgb {
   red: u64,
   green: u64,
   blue: u64,
 }
 
-trait Color {
-  fn rgb(self) -> Rgb;
-}
 
 enum PrimaryColor {
    Red : (),
    Green : (),
    Blue : ()
+}
+
+impl std::ops::Eq for PrimaryColor {
+  fn equals(self, other: Self) -> bool {
+    asm(r1: self, r2: other, r3) {
+      eq r3 r1 r2;
+      r3: bool
+    }
+  }
 }
 
 impl Color for PrimaryColor {
@@ -53,3 +59,8 @@ fn main() {
   let first_color = PrimaryColor::Green;
   let rgb: Rgb = first_color.rgb();
 }
+
+trait Color {
+  fn rgb(self) -> Rgb;
+}
+

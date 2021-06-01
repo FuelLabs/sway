@@ -1,8 +1,8 @@
 [project]
 author  = "Alexander Hansen <alex.hansen@fuel.sh>"
 license = "MIT"
-name = "script_1"
-entry = "main.fm"
+name = "script_3"
+entry = "main.sw"
 
 
 [dependencies]

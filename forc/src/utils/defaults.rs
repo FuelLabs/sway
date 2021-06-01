@@ -8,7 +8,7 @@ pub(crate) fn default_manifest(project_name: &str) -> String {
 author  = "{}"
 license = "MIT"
 name = "{}"
-entry = "main.fm"
+entry = "main.sw"
 
 
 [dependencies]

@@ -3,11 +3,12 @@ use crate::error::*;
 use crate::types::PartiallyResolvedType;
 use crate::{Ident, Rule};
 use pest::iterators::Pair;
+use std::iter::FromIterator;
 
 /// Type information without an associated value, used for type inferencing and definition.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeInfo<'sc> {
-    String,
+    Str(u64),
     UnsignedInteger(IntegerBits),
     Boolean,
     /// A custom type could be a struct or similar if the name is in scope,
@@ -47,7 +48,7 @@ impl<'sc> TypeInfo<'sc> {
                  more details."
             ),
             TypeInfo::Boolean => MaybeResolvedType::Resolved(ResolvedType::Boolean),
-            TypeInfo::String => MaybeResolvedType::Resolved(ResolvedType::String),
+            TypeInfo::Str(len) => MaybeResolvedType::Resolved(ResolvedType::Str(*len)),
             TypeInfo::UnsignedInteger(bits) => {
                 MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(*bits))
             }
@@ -72,12 +73,17 @@ impl<'sc> TypeInfo<'sc> {
                 "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
                 "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
                 "bool" => TypeInfo::Boolean,
-                "string" => TypeInfo::String,
                 "unit" => TypeInfo::Unit,
                 "byte" => TypeInfo::Byte,
                 "byte32" => TypeInfo::Byte32,
                 "Self" | "self" => TypeInfo::SelfType,
                 "()" => TypeInfo::Unit,
+                a if a.contains("str[") => type_check!(
+                    parse_str_type(a, input.as_span()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
                 _other => TypeInfo::Custom {
                     name: eval!(
                         Ident::parse_from_pair,
@@ -91,5 +97,55 @@ impl<'sc> TypeInfo<'sc> {
             warnings,
             errors,
         )
+    }
+}
+
+fn parse_str_type<'sc>(raw: &'sc str, span: pest::Span<'sc>) -> CompileResult<'sc, TypeInfo<'sc>> {
+    if raw.starts_with("str[") {
+        let mut rest = raw.split_at("str[".len()).1.chars().collect::<Vec<_>>();
+        if let Some(']') = rest.pop() {
+            if let Ok(num) = String::from_iter(rest).parse() {
+                return ok(TypeInfo::Str(num), vec![], vec![]);
+            }
+        }
+        return err(vec![], vec![CompileError::InvalidStrType { raw, span }]);
+    }
+    return err(vec![], vec![CompileError::UnknownType { span }]);
+}
+
+#[test]
+fn test_str_parse() {
+    match parse_str_type("str[20]", pest::Span::new("", 0, 0).unwrap()) {
+        CompileResult::Ok { value, .. } if value == TypeInfo::Str(20) => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type("str[]", pest::Span::new("", 0, 0).unwrap()) {
+        CompileResult::Err { .. } => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type("str[ab]", pest::Span::new("", 0, 0).unwrap()) {
+        CompileResult::Err { .. } => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type("str [ab]", pest::Span::new("", 0, 0).unwrap()) {
+        CompileResult::Err { .. } => (),
+        _ => panic!("failed test"),
+    }
+
+    match parse_str_type("not even a str[ type", pest::Span::new("", 0, 0).unwrap()) {
+        CompileResult::Err { .. } => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type("", pest::Span::new("", 0, 0).unwrap()) {
+        CompileResult::Err { .. } => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type("20", pest::Span::new("", 0, 0).unwrap()) {
+        CompileResult::Err { .. } => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type("[20]", pest::Span::new("", 0, 0).unwrap()) {
+        CompileResult::Err { .. } => (),
+        _ => panic!("failed test"),
     }
 }

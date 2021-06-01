@@ -19,7 +19,6 @@ use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
-use std::collections::HashMap;
 pub(crate) mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
@@ -119,20 +118,25 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
 }
 
 pub enum CompilationResult<'sc> {
-    ContractAbi {
-        abi: HashMap<usize, FinalizedAsm<'sc>>,
-        warnings: Vec<CompileWarning<'sc>>,
-    },
-    ScriptAsm {
-        asm: FinalizedAsm<'sc>,
-        warnings: Vec<CompileWarning<'sc>>,
-    },
-    PredicateAsm {
+    Success {
         asm: FinalizedAsm<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Library {
         exports: LibraryExports<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Failure {
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+    },
+}
+pub enum BytecodeCompilationResult<'sc> {
+    Success {
+        bytes: Vec<u8>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Library {
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -155,7 +159,7 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
     }
 }
 
-pub fn compile<'sc, 'manifest>(
+pub fn compile_to_asm<'sc, 'manifest>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
 ) -> CompilationResult<'sc> {
@@ -355,17 +359,18 @@ pub fn compile<'sc, 'manifest>(
     if errors.is_empty() {
         // TODO move this check earlier and don't compile all of them if there is only one
         match (predicate_asm, contract_asm, script_asm, library_exports) {
-            (Some(pred), None, None, o) if o.trees.is_empty() => CompilationResult::PredicateAsm {
+            (Some(pred), None, None, o) if o.trees.is_empty() => CompilationResult::Success {
                 asm: pred,
                 warnings,
             },
             (None, Some(_contract), None, o) if o.trees.is_empty() => {
-                CompilationResult::ContractAbi {
-                    abi: Default::default(),
-                    warnings,
-                }
+                errors.push(CompileError::Unimplemented(
+                    "Contracts are not implemented yet. ",
+                    Span::new(input, 0, input.len() - 1).unwrap(),
+                ));
+                return CompilationResult::Failure { errors, warnings };
             }
-            (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::ScriptAsm {
+            (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::Success {
                 asm: script,
                 warnings,
             },
@@ -381,6 +386,48 @@ pub fn compile<'sc, 'manifest>(
         }
     } else {
         CompilationResult::Failure { errors, warnings }
+    }
+}
+pub fn compile_to_bytecode<'sc, 'manifest>(
+    input: &'sc str,
+    initial_namespace: &Namespace<'sc>,
+) -> BytecodeCompilationResult<'sc> {
+    match compile_to_asm(input, initial_namespace) {
+        CompilationResult::Success { asm, mut warnings } => {
+            let bytes = match asm.to_bytecode() {
+                CompileResult::Ok {
+                    value,
+                    warnings: mut l_w,
+                    errors,
+                } if errors.is_empty() => {
+                    warnings.append(&mut l_w);
+                    value
+                }
+                CompileResult::Ok {
+                    warnings: mut l_w,
+                    errors,
+                    ..
+                } => {
+                    warnings.append(&mut l_w);
+                    return BytecodeCompilationResult::Failure { warnings, errors };
+                }
+                CompileResult::Err {
+                    warnings: mut l_w,
+                    errors,
+                } => {
+                    warnings.append(&mut l_w);
+                    return BytecodeCompilationResult::Failure { warnings, errors };
+                }
+            };
+            BytecodeCompilationResult::Success { bytes, warnings }
+        }
+        CompilationResult::Failure { warnings, errors } => {
+            BytecodeCompilationResult::Failure { warnings, errors }
+        }
+        CompilationResult::Library {
+            warnings,
+            exports: _exports,
+        } => BytecodeCompilationResult::Library { warnings },
     }
 }
 

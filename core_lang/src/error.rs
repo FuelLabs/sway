@@ -606,6 +606,10 @@ pub enum CompileError<'sc> {
     )]
     DisallowedJi { span: Span<'sc> },
     #[error(
+        "The opcode \"lw\" is not valid in inline assembly. Try assigning a static value to a variable instead."
+    )]
+    DisallowedLw { span: Span<'sc> },
+    #[error(
         "This op expects {expected} registers as arguments, but you provided {received} registers."
     )]
     IncorrectNumberOfAsmRegisters {
@@ -617,6 +621,12 @@ pub enum CompileError<'sc> {
     UnnecessaryImmediate { span: Span<'sc> },
     #[error("This reference is ambiguous, and could refer to either a module or an enum of the same name. Try qualifying the name with a path.")]
     AmbiguousPath { span: Span<'sc> },
+    #[error("This value is not valid within a \"str\" type.")]
+    InvalidStrType { raw: &'sc str, span: Span<'sc> },
+    #[error("Unknown type name.")]
+    UnknownType { span: Span<'sc> },
+    #[error("Bytecode can only support programs with up to 2^12 words worth of opcodes. Try refactoring into contract calls? This is a temporary error and will be implemented in the future.")]
+    TooManyInstructions { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -763,9 +773,13 @@ impl<'sc> CompileError<'sc> {
             Immediate24TooLarge { span, .. } => span,
             DisallowedJnei { span, .. } => span,
             DisallowedJi { span, .. } => span,
+            DisallowedLw { span, .. } => span,
             IncorrectNumberOfAsmRegisters { span, .. } => span,
             UnnecessaryImmediate { span, .. } => span,
             AmbiguousPath { span, .. } => span,
+            UnknownType { span, .. } => span,
+            InvalidStrType { span, .. } => span,
+            TooManyInstructions { span, .. } => span,
         }
     }
 

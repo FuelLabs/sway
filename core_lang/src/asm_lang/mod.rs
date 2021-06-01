@@ -124,7 +124,7 @@ impl<'sc> Op<'sc> {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Right(OrganizationalOp::Ld(reg, data)),
+            opcode: Either::Left(VirtualOp::LW(reg, data)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -576,13 +576,10 @@ impl<'sc> Op<'sc> {
                     VirtualOp::LB(r1, r2, imm)
                 }
                 "lw" => {
-                    let (r1, r2, imm) = type_check!(
-                        two_regs_imm_12(args, immediate, whole_op_span),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    VirtualOp::LW(r1, r2, imm)
+                    errors.push(CompileError::DisallowedLw {
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
                 }
                 "aloc" => {
                     let r1 = type_check!(
@@ -1005,6 +1002,7 @@ fn four_regs<'sc>(
                 "bal" => Balance,
                 "is" => InstructionStart,
                 "flag" => Flags,
+                "ds" => DataSectionStart,
                 _ => return None,
             })
         }
@@ -1248,7 +1246,7 @@ impl fmt::Display for Op<'_> {
                 CFEI(a) => format!("cfei {}", a),
                 CFSI(a) => format!("cfsi {}", a),
                 LB(a, b, c) => format!("lb {} {} {}", a, b, c),
-                LW(a, b, c) => format!("lw {} {} {}", a, b, c),
+                LW(a, b) => format!("lw {} {}", a, b),
                 ALOC(a) => format!("aloc {}", a),
                 MCL(a, b) => format!("mcl {} {}", a, b),
                 MCLI(a, b) => format!("mcli {} {}", a, b),
@@ -1281,13 +1279,19 @@ impl fmt::Display for Op<'_> {
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 Undefined => format!("undefined op"),
+                VirtualOp::DataSectionOffsetPlaceholder => "data section offset placeholder".into(),
+                DataSectionRegisterLoadPlaceholder => {
+                    "data section register load placeholder".into()
+                }
             },
             Either::Right(opcode) => match opcode {
                 Label(l) => format!("{}", l),
                 Comment => "".into(),
                 Jump(label) => format!("jump {}", label),
-                Ld(register, data_id) => format!("ld {} {}", register, data_id),
                 JumpIfNotEq(reg0, reg1, label) => format!("jnei {} {} {}", reg0, reg1, label),
+                OrganizationalOp::DataSectionOffsetPlaceholder => {
+                    format!("data section offset placeholder")
+                }
             },
         };
         // we want the comment to always be 40 characters offset to the right
@@ -1316,17 +1320,32 @@ pub(crate) enum OrganizationalOp {
     Jump(Label),
     // Jumps to a label
     JumpIfNotEq(VirtualRegister, VirtualRegister, Label),
-    // Loads from the data section into a register
-    // "load data"
-    Ld(VirtualRegister, DataId),
+    // placeholder for the DataSection offset to go
+    DataSectionOffsetPlaceholder,
+}
+impl fmt::Display for OrganizationalOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use OrganizationalOp::*;
+        write!(
+            f,
+            "{}",
+            match self {
+                Label(lab) => format!("{}", lab),
+                Jump(lab) => format!("ji  {}", lab),
+                Comment => "".into(),
+                JumpIfNotEq(r1, r2, lab) => format!("jnei {} {} {}", r1, r2, lab),
+                DataSectionOffsetPlaceholder =>
+                    "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
+            }
+        )
+    }
 }
 
 impl OrganizationalOp {
     pub(crate) fn registers(&self) -> HashSet<&VirtualRegister> {
         use OrganizationalOp::*;
         (match self {
-            Label(_) | Comment | Jump(_) => vec![],
-            Ld(r1, _) => vec![r1],
+            Label(_) | Comment | Jump(_) | DataSectionOffsetPlaceholder => vec![],
             JumpIfNotEq(r1, r2, _) => vec![r1, r2],
         })
         .into_iter()
