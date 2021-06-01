@@ -223,7 +223,7 @@ dependencies = [
  "Inflector",
  "either",
  "fuel-asm",
- "fuel-vm-rust 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-core.git)",
+ "fuel-vm-rust",
  "pest",
  "pest_derive",
  "petgraph",
@@ -339,18 +339,6 @@ dependencies = [
  "fuel-asm",
  "itertools",
  "sha2",
-]
-
-[[package]]
-name = "fuel-vm-rust"
-version = "0.1.0"
-dependencies = [
- "fuel-asm",
- "fuel-tx",
- "itertools",
- "secp256k1",
- "sha3",
- "tracing",
 ]
 
 [[package]]
@@ -1163,7 +1151,7 @@ dependencies = [
  "forc",
  "fuel-asm",
  "fuel-tx",
- "fuel-vm-rust 0.1.0",
+ "fuel-vm-rust",
 ]
 
 [[package]]
