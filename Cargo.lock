@@ -300,6 +300,7 @@ name = "forc"
 version = "0.1.0"
 dependencies = [
  "core_lang",
+ "fuel-asm",
  "line-col",
  "pest",
  "serde",
