@@ -7,6 +7,14 @@ pub trait Subtract {
   fn subtract(self, other: Self) -> Self;
 }
 
+pub trait Multiply {
+  fn multiply(self, other: Self) -> Self;
+}
+
+pub trait Divide {
+  fn divide(self, other: Self) -> Self;
+}
+
 impl Subtract for u64 {
   fn subtract(self, other: Self) -> Self {
     // TODO write asm
