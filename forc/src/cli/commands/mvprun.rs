@@ -8,6 +8,9 @@ use crate::ops::forc_build;
 pub(crate) struct Command {
     #[structopt(short = "d", long = "data")]
     pub data: Option<String>,
+
+    #[structopt(short = "p", long = "path", default_value = "./")]
+    pub path: String,
 }
 
 pub(crate) fn exec(command: Command) -> Result<(), String> {
@@ -15,9 +18,7 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
     let data = format_hex_data(input_data);
     let script_data = hex::decode(data).expect("Invalid hex");
 
-    let project_path = "../example_project/fuel_project".into();
-
-    match forc_build::build(Some(project_path)) {
+    match forc_build::build(Some(command.path)) {
         Ok(script) => {
             let tx = create_tx_with_script_and_data(script, script_data);
             let vm = Interpreter::execute_tx(tx).expect("Invalid tx");
