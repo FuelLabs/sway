@@ -14,7 +14,7 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
     if command.asm {
         forc_build::print_asm(command.path)
     } else {
-        forc_build::build(command.path);
+        forc_build::build(command.path)?;
         Ok(())
     }
 }

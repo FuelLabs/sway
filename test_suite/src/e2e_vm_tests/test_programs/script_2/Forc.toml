@@ -1,7 +1,7 @@
 [project]
 author  = "Alexander Hansen <alex.hansen@fuel.sh>"
 license = "MIT"
-name = "script_1"
+name = "script_2"
 entry = "main.sw"
 
 
