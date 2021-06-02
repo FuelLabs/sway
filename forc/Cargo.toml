@@ -17,3 +17,5 @@ structopt = "0.3"
 termcolor = "1.1"
 toml = "0.5"
 whoami = "1.1"
+fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
+term-table = "1.3"

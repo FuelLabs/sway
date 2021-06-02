@@ -1,8 +1,10 @@
+use crate::cli::BuildCommand;
 use line_col::LineColLookup;
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
+use std::fs::File;
 use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
@@ -39,14 +41,16 @@ pub fn print_asm(path: Option<String>) -> Result<(), String> {
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-    let main = compile_to_asm(main_file, &manifest.project.name, &namespace)?;
-
-    println!("{}", main);
 
     Ok(())
 }
 
-pub fn build(path: Option<String>) -> Result<Vec<u8>, String> {
+pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
+    let BuildCommand {
+        path,
+        binary_outfile,
+        print_asm,
+    } = command;
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(path) = path {
         PathBuf::from(path)
@@ -78,7 +82,16 @@ pub fn build(path: Option<String>) -> Result<Vec<u8>, String> {
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
+    if print_asm {
+        let main = compile_to_asm(main_file, &manifest.project.name, &namespace)?;
+        println!("{}", main);
+    }
+
     let main = compile(main_file, &manifest.project.name, &namespace)?;
+    if let Some(outfile) = binary_outfile {
+        let mut file = File::create(outfile).map_err(|e| e.to_string())?;
+        file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
+    }
 
     println!("Bytecode size is {} bytes.", main.len());
 

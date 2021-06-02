@@ -1,4 +1,5 @@
 use forc;
+use forc::cli::BuildCommand;
 
 use fuel_core::interpreter::Interpreter;
 use fuel_tx::Transaction;
@@ -34,17 +35,13 @@ pub(crate) fn runs_in_vm(file_name: &str) {
 pub(crate) fn compile_to_bytes(file_name: &str) -> Vec<u8> {
     println!("Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let res = forc::ops::forc_build::build(Some(format!(
-        "{}/src/e2e_vm_tests/test_programs/{}",
-        manifest_dir, file_name
-    )));
-    match res {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            panic!(
-                "TEST FAILURE: Project \"{}\" failed to compile. ",
-                file_name
-            );
-        }
-    }
+    forc::ops::forc_build::build(BuildCommand {
+        path: Some(format!(
+            "{}/src/e2e_vm_tests/test_programs/{}",
+            manifest_dir, file_name
+        )),
+        print_asm: false,
+        binary_outfile: None,
+    })
+    .unwrap()
 }

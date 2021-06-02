@@ -300,11 +300,13 @@ name = "forc"
 version = "0.1.0"
 dependencies = [
  "core_lang",
+ "fuel-asm",
  "line-col",
  "pest",
  "serde",
  "source-span",
  "structopt",
+ "term-table",
  "termcolor",
  "toml",
  "whoami",
@@ -469,9 +471,9 @@ checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
 
 [[package]]
 name = "heck"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87cbf45460356b7deeb5e3415b5563308c0a9b057c85e12b06ad551f98d0a6ac"
+checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
 dependencies = [
  "unicode-segmentation",
 ]
@@ -1124,6 +1126,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "term-table"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "914a870243a0cf929e7c9b288fac886734c69d70e9c7854c421cf4272db631f3"
+dependencies = [
+ "lazy_static 1.4.0",
+ "regex",
+ "unicode-width",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1325,9 +1338,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33717dca7ac877f497014e10d73f3acf948c342bee31b5ca7892faf94ccc6b49"
+checksum = "d54590932941a9e9266f0832deed84ebe1bf2e4c9e4a3554d393d18f5e854bf9"
 dependencies = [
  "tinyvec",
 ]
