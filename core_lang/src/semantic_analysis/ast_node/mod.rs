@@ -202,7 +202,10 @@ impl<'sc> TypedAstNode<'sc> {
                                     suffix: name.clone(),
                                 },
                                 MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
-                                interface_surface.iter().map(|x| x.to_dummy_func()).collect(),
+                                interface_surface
+                                    .iter()
+                                    .map(|x| x.to_dummy_func())
+                                    .collect(),
                             );
                             for FunctionDeclaration {
                                 body,
