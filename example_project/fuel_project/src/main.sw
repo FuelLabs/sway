@@ -55,7 +55,7 @@ impl Color for PrimaryColor {
   }
 }
 
-fn main()  {
+fn main() {
   let first_color = PrimaryColor::Green;
   let rgb: Rgb = first_color.rgb();
 }
@@ -63,4 +63,3 @@ fn main()  {
 trait Color {
   fn rgb(self) -> Rgb;
 }
-
