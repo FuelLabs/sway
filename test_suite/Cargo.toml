@@ -9,5 +9,5 @@ edition = "2018"
 [dependencies]
 forc = { path = "../forc" }
 fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
-fuel-vm-rust = { git = "ssh://git@github.com/FuelLabs/fuel-core.git" }
+fuel-core = { git = "ssh://git@github.com/FuelLabs/fuel-core.git" }
 fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
