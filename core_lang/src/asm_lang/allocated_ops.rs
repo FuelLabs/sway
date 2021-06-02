@@ -340,7 +340,8 @@ impl<'sc> AllocatedOp<'sc> {
 
 fn realize_lw(dest: &AllocatedRegister, data_id: &DataId, data_section: &DataSection) -> VmOp {
     let dest = dest.to_register_id();
-    let offset = data_section.offset_to_id(data_id) as u64;
+    // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
+    let offset = (data_section.offset_to_id(data_id) / 8) as u64;
     let offset = match VirtualImmediate12::new(offset, Span::new(" ", 0, 0).unwrap()) {
         Ok ( value ) => value,
         Err  (_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
