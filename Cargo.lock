@@ -306,6 +306,7 @@ dependencies = [
  "serde",
  "source-span",
  "structopt",
+ "term-table",
  "termcolor",
  "toml",
  "whoami",
@@ -1122,6 +1123,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
+]
+
+[[package]]
+name = "term-table"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "914a870243a0cf929e7c9b288fac886734c69d70e9c7854c421cf4272db631f3"
+dependencies = [
+ "lazy_static 1.4.0",
+ "regex",
+ "unicode-width",
 ]
 
 [[package]]

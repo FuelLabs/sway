@@ -7,7 +7,7 @@ use self::commands::{
 
 use analysis::Command as AnalysisCommand;
 use benchmark::Command as BenchmarkCommand;
-use build::Command as BuildCommand;
+pub use build::Command as BuildCommand;
 use coverage::Command as CoverageCommand;
 use deploy::Command as DeployCommand;
 use init::Command as InitCommand;

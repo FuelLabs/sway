@@ -1,4 +1,4 @@
-predicate;
+script;
 struct Rgb {
   red: u64,
   green: u64,
@@ -55,7 +55,7 @@ impl Color for PrimaryColor {
   }
 }
 
-fn main() {
+fn main()  {
   let first_color = PrimaryColor::Green;
   let rgb: Rgb = first_color.rgb();
 }
