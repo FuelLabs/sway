@@ -64,7 +64,7 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
         };
         table.add_row(Row::new(vec![
             TableCell::new_with_alignment(word_ix, 1, Alignment::Right),
-            TableCell::new(word_ix * 32),
+            TableCell::new(word_ix * 4),
             TableCell::new(format!("{:?}", instruction.1)),
             TableCell::new(format!("{:?}", instruction.0)),
             TableCell::new(notes),
