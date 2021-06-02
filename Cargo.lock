@@ -334,6 +334,18 @@ version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#2a0c2f8482434f438bea47fb7f0b08408a29112c"
 
 [[package]]
+name = "fuel-core"
+version = "0.1.0"
+dependencies = [
+ "fuel-asm",
+ "fuel-tx",
+ "itertools",
+ "secp256k1",
+ "sha3",
+ "tracing",
+]
+
+[[package]]
 name = "fuel-tx"
 version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#47c98bc74ac0e3a753fcb3a73850db1095de0fab"
@@ -1163,8 +1175,8 @@ version = "0.1.0"
 dependencies = [
  "forc",
  "fuel-asm",
+ "fuel-core",
  "fuel-tx",
- "fuel-vm-rust",
 ]
 
 [[package]]

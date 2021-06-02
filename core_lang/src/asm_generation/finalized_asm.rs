@@ -50,6 +50,7 @@ fn to_bytecode<'sc>(
     // The below invariant is introduced to word-align the data section.
     // A noop is inserted in ASM generation if there is an odd number of ops.
     assert_eq!(program_section.ops.len() & 1, 0);
+    // this points at the byte (*4*8) address immediately following (+1) the last instruction
     let offset_to_data_section = ((program_section.ops.len() + 1) * 4 * 8) as u64;
 
     // each op is four bytes, so the length of the buf is then number of ops times four.
