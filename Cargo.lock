@@ -223,7 +223,7 @@ dependencies = [
  "Inflector",
  "either",
  "fuel-asm",
- "fuel-vm-rust",
+ "fuel-core",
  "pest",
  "pest_derive",
  "petgraph",
@@ -331,11 +331,12 @@ checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#2a0c2f8482434f438bea47fb7f0b08408a29112c"
+source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#73a80acf5220e47aff893f76f1e50249e9843cf0"
 
 [[package]]
 name = "fuel-core"
 version = "0.1.0"
+source = "git+ssh://git@github.com/FuelLabs/fuel-core.git#425e3b76fdff80333765072084581ea23fc4c319"
 dependencies = [
  "fuel-asm",
  "fuel-tx",
@@ -348,24 +349,11 @@ dependencies = [
 [[package]]
 name = "fuel-tx"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#47c98bc74ac0e3a753fcb3a73850db1095de0fab"
+source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#3d567fba12306b62d27f081650015b8bd56c3a3d"
 dependencies = [
  "fuel-asm",
  "itertools",
  "sha2",
-]
-
-[[package]]
-name = "fuel-vm-rust"
-version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-core.git#34d7066aaf448d5e22ef0eec56df5f1dd0d578f7"
-dependencies = [
- "fuel-asm",
- "fuel-tx",
- "itertools",
- "secp256k1",
- "sha3",
- "tracing",
 ]
 
 [[package]]
@@ -483,9 +471,9 @@ checksum = "d7afe4a420e3fe79967a00898cc1f4db7c8a49a9333a29f8a4bd76a253d5cd04"
 
 [[package]]
 name = "heck"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87cbf45460356b7deeb5e3415b5563308c0a9b057c85e12b06ad551f98d0a6ac"
+checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
 dependencies = [
  "unicode-segmentation",
 ]
@@ -1350,9 +1338,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33717dca7ac877f497014e10d73f3acf948c342bee31b5ca7892faf94ccc6b49"
+checksum = "d54590932941a9e9266f0832deed84ebe1bf2e4c9e4a3554d393d18f5e854bf9"
 dependencies = [
  "tinyvec",
 ]
