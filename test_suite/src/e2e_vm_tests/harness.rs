@@ -3,6 +3,7 @@ use forc::cli::BuildCommand;
 
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
+use fuel_vm::prelude::MemoryStorage;
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
@@ -27,7 +28,8 @@ pub(crate) fn runs_in_vm(file_name: &str) {
     );
     let block_height = (u32::MAX >> 1) as u64;
     tx.validate(block_height).unwrap();
-    Interpreter::execute_tx(tx).unwrap();
+    let storage = MemoryStorage::default();
+    Interpreter::execute_tx(storage, tx).unwrap();
 }
 
 /// Returns `true` if a file compiled without any errors or warnings,
