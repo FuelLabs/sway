@@ -837,7 +837,27 @@ fn convert_node_to_asm<'sc>(
                 errors,
             )
         }
-        _ => {
+        TypedAstNodeContent::Expression(ref typed_expr) => {
+            let return_register = if let Some(return_register) = return_register {
+                return_register.clone()
+            } else {
+                register_sequencer.next()
+            };
+            let asm = type_check!(
+                convert_expression_to_asm(
+                    typed_expr,
+                    namespace,
+                    &return_register,
+                    register_sequencer
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(NodeAsmResult::JustAsm(asm), warnings, errors)
+        }
+        a => {
+            println!("Unimplemented: {:?}", a);
             errors.push(CompileError::Unimplemented(
                 "The ASM for this construct has not been written yet.",
                 node.clone().span,

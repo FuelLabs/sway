@@ -32,7 +32,8 @@ expr_inner               = _{literal_value|if_exp|parenthesized_expression|asm_e
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 // // op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
-func_app                 =  {fn_name ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")"}
+func_app                 =  {fn_name ~ fn_args}
+fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 fn_name                  =  {var_exp}
 var_exp                  =  {unary_op? ~ var_name_ident}
 method_exp               =  {subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")"}
@@ -107,7 +108,8 @@ fn_decl_param      =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
 fn_decl_param_name =  {ident}
 return_type        =  {ident}
 fn_decl_name       =  {ident}
-type_name          =  {(ident ~ type_params?)|unit}
+type_name          =  {(str_type|ident ~ type_params?)|unit}
+str_type           =  { "str" ~ "[" ~ basic_integer ~ "]" }
 trait_bounds       =  {"where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)*}
 generic_type_param = @{ident}
 
