@@ -16,4 +16,4 @@ Inflector = "0.11"
 petgraph = "0.5"
 uuid-b64 = "0.1"
 fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
-fuel-core = { git = "ssh://git@github.com/FuelLabs/fuel-core.git" }
+fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }

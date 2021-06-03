@@ -1,8 +1,8 @@
 use forc;
 use forc::cli::BuildCommand;
 
-use fuel_core::interpreter::Interpreter;
 use fuel_tx::Transaction;
+use fuel_vm::interpreter::Interpreter;
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
