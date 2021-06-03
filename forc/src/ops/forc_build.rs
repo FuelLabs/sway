@@ -14,37 +14,6 @@ use core_lang::{
 };
 use std::{fs, path::PathBuf};
 
-pub fn print_asm(path: Option<String>) -> Result<(), String> {
-    // find manifest directory, even if in subdirectory
-    let this_dir = if let Some(path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir().unwrap()
-    };
-    let manifest_dir = find_manifest_dir(&this_dir).ok_or(format!(
-        "No manifest file found in this directory or any parent directories of it: {:?}",
-        this_dir
-    ))?;
-    let manifest = read_manifest(&manifest_dir)?;
-
-    let mut namespace: Namespace = Default::default();
-    if let Some(ref deps) = manifest.dependencies {
-        for (dependency_name, dependency_details) in deps.iter() {
-            compile_dependency_lib(
-                &this_dir,
-                &dependency_name,
-                &dependency_details,
-                &mut namespace,
-            )?;
-        }
-    }
-
-    // now, compile this program with all of its dependencies
-    let main_file = get_main_file(&manifest, &manifest_dir)?;
-
-    Ok(())
-}
-
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let BuildCommand {
         path,
