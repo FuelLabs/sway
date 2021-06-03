@@ -63,4 +63,3 @@ fn main() {
 trait Color {
   fn rgb(self) -> Rgb;
 }
-

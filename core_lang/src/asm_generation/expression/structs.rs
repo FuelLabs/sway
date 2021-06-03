@@ -85,7 +85,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         // we call `new_unchecked` here because we have validated the size is okay above
         asm_buf.push(Op::unowned_stack_allocate_memory(
             VirtualImmediate24::new_unchecked(
-                this_allocation,
+                this_allocation * 8, // this_allocation is words but this op takes bytes
                 "struct size was checked manually to be within 12 bits",
             ),
         ));

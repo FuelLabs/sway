@@ -412,12 +412,11 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     }
 }
 
-impl <'sc> TypedTraitFn <'sc> {
+impl<'sc> TypedTraitFn<'sc> {
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.
     pub(crate) fn to_dummy_func(&self) -> TypedFunctionDeclaration<'sc> {
-
         TypedFunctionDeclaration {
             name: self.name.clone(),
             body: TypedCodeBlock {

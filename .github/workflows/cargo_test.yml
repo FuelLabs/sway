@@ -26,12 +26,13 @@ jobs:
         ssh-private-key: |
           ${{ secrets.PRIVATE_KEY_FUEL_ASM }}
           ${{ secrets.PRIVATE_KEY_FUEL_TX }}
+          ${{ secrets.PRIVATE_KEY_FUEL_VM }}
 
     - name: Install toolchain
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: 1.50.0
+        toolchain: 1.52.0
         override: true
 
     - name: Install rustfmt

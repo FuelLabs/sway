@@ -1,7 +1,8 @@
 script;
 // This test tests two-pass compilation and allowing usages before declarations.
 
-fn main() {
+fn main() -> bool {
+  let a = 42;
   // fn before decl
   let x = the_number_five();
   // enum before decl
@@ -11,6 +12,7 @@ fn main() {
     a: true,
     b: false
   };
+  return true;
 }
 
 struct FuelStruct {
