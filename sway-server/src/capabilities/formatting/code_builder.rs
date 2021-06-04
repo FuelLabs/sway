@@ -43,6 +43,11 @@ impl CodeBuilder {
 
         let mut code_line = self.get_unfinished_code_line_or_new();
 
+        // handle multiline string
+        if code_line.is_string {
+            code_line.push_char('\n');
+        }
+
         let line = if !code_line.is_string {
             line.trim()
         } else {
