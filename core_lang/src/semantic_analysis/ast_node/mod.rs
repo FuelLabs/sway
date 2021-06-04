@@ -99,7 +99,12 @@ impl<'sc> TypedAstNode<'sc> {
                 AstNodeContent::IncludeStatement(ref a) => {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
-                    let _ = type_check!(import_new_file(a, namespace), return err(warnings, errors), warnings, errors);
+                    let _ = type_check!(
+                        import_new_file(a, namespace),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
                     TypedAstNodeContent::SideEffect
                 }
                 AstNodeContent::Declaration(a) => {
@@ -625,6 +630,54 @@ impl<'sc> TypedAstNode<'sc> {
     }
 }
 
-fn import_new_file<'sc>(statement: &IncludeStatement<'sc>, namespace: &mut Namespace<'sc>) -> CompileResult<'sc, ()> {
-    todo!()
+fn import_new_file<'sc>(
+    statement: &IncludeStatement<'sc>,
+    namespace: &mut Namespace<'sc>,
+    build_config: BuildConfig,
+) -> CompileResult<'sc, ()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let file_path = format!(
+        "{}.{}",
+        statement.file_path,
+        crate::constants::DEFAULT_FILE_EXTENSION
+    );
+    let path = std::path::Path::new(&file_path);
+    let res = if path.exists() {
+        std::fs::read_to_string(statement.file_path)
+    } else {
+        todo!("File not found err")
+    };
+
+    let file_as_string = match res {
+        Ok(o) => o,
+        Err(e) => todo!("error reading file"),
+    };
+
+    // TODO: put all things in the namespace "up" one level
+    let dep_namespace = namespace.clone();
+    // :)
+    let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
+    let compiled = crate::compile_to_asm(&static_file_string, &dep_namespace);
+
+    match compiled {
+        crate::CompilationResult::Library {
+            exports,
+            warnings: mut l_w,
+        } => {
+            warnings.append(&mut l_w);
+            let module_name = if let Some(ref alias) = statement.alias {
+                alias.primary_name.to_string()
+            } else if let Some(name) = path.file_name() {
+                name.to_string_lossy().to_string()
+            } else {
+                todo!("no file name? so this probably unreachable")
+            };
+            namespace.insert_module(module_name, exports.namespace);
+        }
+        _ => todo!("handler err and non-lib"),
+    }
+
+    todo!();
+    ok((), warnings, errors)
 }

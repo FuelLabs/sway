@@ -5,6 +5,7 @@ mod error;
 
 mod asm_generation;
 mod asm_lang;
+pub mod constants;
 mod control_flow_analysis;
 mod ident;
 mod parse_tree;
@@ -75,7 +76,7 @@ pub enum AstNodeContent<'sc> {
     Expression(Expression<'sc>),
     ImplicitReturnExpression(Expression<'sc>),
     WhileLoop(WhileLoop<'sc>),
-    IncludeStatement(IncludeStatement<'sc>)
+    IncludeStatement(IncludeStatement<'sc>),
 }
 
 impl<'sc> ParseTree<'sc> {
@@ -528,10 +529,16 @@ fn parse_root_from_pairs<'sc>(
                 }
                 Rule::include_statement => {
                     // parse the include statement into a reference to a specific file
-                    let include_statement = eval!(IncludeStatement::parse_from_pair, warnings, errors, pair, continue);
+                    let include_statement = eval!(
+                        IncludeStatement::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair,
+                        continue
+                    );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::IncludeStatement(include_statement),
-                        span: pair.as_span()
+                        span: pair.as_span(),
                     });
                 }
                 _ => unreachable!("{:?}", pair.as_str()),

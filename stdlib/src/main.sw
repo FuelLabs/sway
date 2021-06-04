@@ -2,6 +2,8 @@ library ops;
 
 // Math ops
 
+dep bytecode as bc;
+
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
