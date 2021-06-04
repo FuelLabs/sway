@@ -633,7 +633,7 @@ impl<'sc> TypedAstNode<'sc> {
 fn import_new_file<'sc>(
     statement: &IncludeStatement<'sc>,
     namespace: &mut Namespace<'sc>,
-    build_config: BuildConfig,
+    build_config: &BuildConfig,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
