@@ -307,7 +307,6 @@ impl CodeBuilder {
                 self.edits.push(CodeLine::empty_line());
             }
         } else {
-            // todo: what about strings ?
             if code_line.was_previously_stored {
                 self.edits.push(code_line);
             } else {
