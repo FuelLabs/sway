@@ -26,7 +26,7 @@ impl<'sc> IncludeStatement<'sc> {
 
         for item in path_to_file_raw {
             if item.as_rule() == Rule::file_path {
-                file_path = Some(item.as_str());
+                file_path = Some(item.as_str().trim());
                 path_span = Some(item.as_span());
             } else if item.as_rule() == Rule::alias {
                 let alias_parsed = eval!(

@@ -1,4 +1,5 @@
 use super::*;
+use crate::build_config::BuildConfig;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
@@ -29,6 +30,7 @@ impl<'sc> TypedExpression<'sc> {
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -129,6 +131,7 @@ impl<'sc> TypedExpression<'sc> {
                                  not match the declared type of the parameter in the function \
                                  declaration.",
                                 self_type,
+                                build_config,
                             );
                             let arg = match res {
                                 CompileResult::Ok {
@@ -245,7 +248,8 @@ impl<'sc> TypedExpression<'sc> {
                         &namespace,
                         type_annotation.clone(),
                         help_text.clone(),
-                        self_type
+                        self_type,
+                        build_config
                     ),
                     (
                         TypedCodeBlock {
@@ -295,7 +299,8 @@ impl<'sc> TypedExpression<'sc> {
                         &namespace,
                         Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                         "The condition of an if expression must be a boolean expression.",
-                        self_type
+                        self_type,
+                        build_config
                     ),
                     error_recovery_expr(condition.span()),
                     warnings,
@@ -307,7 +312,8 @@ impl<'sc> TypedExpression<'sc> {
                         &namespace,
                         type_annotation.clone(),
                         "",
-                        self_type
+                        self_type,
+                        build_config
                     ),
                     error_recovery_expr(then.span()),
                     warnings,
@@ -320,7 +326,8 @@ impl<'sc> TypedExpression<'sc> {
                             namespace,
                             Some(then.return_type.clone()),
                             "",
-                            self_type
+                            self_type,
+                            build_config
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -373,7 +380,8 @@ impl<'sc> TypedExpression<'sc> {
                                             namespace,
                                             None,
                                             "",
-                                            self_type
+                                            self_type,
+                                            build_config
                                         ),
                                         error_recovery_expr(initializer.span()),
                                         warnings,
@@ -455,7 +463,8 @@ impl<'sc> TypedExpression<'sc> {
                             Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
                             "Struct field's type must match up with the type specified in its \
                              declaration.",
-                            self_type
+                            self_type,
+                            build_config
                         ),
                         continue,
                         warnings,
@@ -547,6 +556,7 @@ impl<'sc> TypedExpression<'sc> {
                         None,
                         "",
                         self_type,
+                        build_config,
                     ) {
                         CompileResult::Ok {
                             value,
@@ -619,7 +629,8 @@ impl<'sc> TypedExpression<'sc> {
                                 Some(r#type.clone()),
                                 "Function argument must be of the same type declared in the \
                                  function declaration.",
-                                self_type
+                                self_type,
+                                build_config,
                             ),
                             continue,
                             warnings,
@@ -713,7 +724,8 @@ impl<'sc> TypedExpression<'sc> {
                                 instantiator,
                                 type_arguments,
                                 namespace,
-                                self_type
+                                self_type,
+                                build_config
                             ),
                             return err(warnings, errors),
                             warnings,

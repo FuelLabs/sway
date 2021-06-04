@@ -1,4 +1,5 @@
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
+use crate::build_config::BuildConfig;
 use crate::semantic_analysis::Namespace;
 use crate::ParseTree;
 use crate::{
@@ -67,6 +68,7 @@ impl<'sc> TypedParseTree<'sc> {
         parsed: ParseTree<'sc>,
         initial_namespace: Namespace<'sc>,
         tree_type: TreeType,
+        build_config: &BuildConfig,
     ) -> CompileResult<'sc, Self> {
         let mut initial_namespace = initial_namespace.clone();
         let mut successful_nodes = vec![];
@@ -90,6 +92,7 @@ impl<'sc> TypedParseTree<'sc> {
                             // TODO only allow impl traits on contract trees, do something else
                             // for other tree types
                             &MaybeResolvedType::Resolved(ResolvedType::Contract),
+                            build_config,
                         ),
                     )
                 })

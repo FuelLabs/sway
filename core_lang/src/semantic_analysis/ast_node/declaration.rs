@@ -4,6 +4,7 @@ use super::{
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::{
+    build_config::BuildConfig,
     error::*,
     types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
@@ -242,6 +243,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // If there are any `Self` types in this declaration,
         // resolve them to this type.
         self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -287,7 +289,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 &namespace,
                 Some(return_type.clone()),
                 "Function body's return type does not match up with its return type annotation.",
-                self_type
+                self_type,
+                build_config
             ),
             (
                 TypedCodeBlock {

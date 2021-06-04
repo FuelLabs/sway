@@ -2,6 +2,7 @@ use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::ImplTrait;
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::{
+    build_config::BuildConfig,
     error::*,
     types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
@@ -10,6 +11,7 @@ use crate::{
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
+    build_config: &BuildConfig,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -61,7 +63,8 @@ pub(crate) fn implementation_of_trait<'sc>(
                         &namespace,
                         None,
                         "",
-                        &self_type
+                        &self_type,
+                        build_config
                     ),
                     continue,
                     warnings,

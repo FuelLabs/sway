@@ -10,7 +10,8 @@ use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteC
 
 use crate::utils::manifest::{Dependency, DependencyDetails, Manifest};
 use core_lang::{
-    BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports, Namespace,
+    BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
+    Namespace,
 };
 use std::{fs, path::PathBuf};
 
@@ -35,6 +36,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
             ))
         }
     };
+    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone());
     let manifest = read_manifest(&manifest_dir)?;
 
     let mut namespace: Namespace = Default::default();
@@ -52,11 +54,16 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
     if print_asm {
-        let main = compile_to_asm(main_file, &manifest.project.name, &namespace)?;
+        let main = compile_to_asm(
+            main_file,
+            &manifest.project.name,
+            &namespace,
+            build_config.clone(),
+        )?;
         println!("{}", main);
     }
 
-    let main = compile(main_file, &manifest.project.name, &namespace)?;
+    let main = compile(main_file, &manifest.project.name, &namespace, build_config)?;
     if let Some(outfile) = binary_outfile {
         let mut file = File::create(outfile).map_err(|e| e.to_string())?;
         file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
@@ -120,6 +127,8 @@ fn compile_dependency_lib<'source, 'manifest>(
         None => return Err("Manifest not found for dependency.".into()),
     };
 
+    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone());
+
     let manifest_of_dep = read_manifest(&manifest_dir)?;
 
     // The part below here is just a massive shortcut to get the standard library working
@@ -133,7 +142,12 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
-    let compiled = compile_library(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
+    let compiled = compile_library(
+        main_file,
+        &manifest_of_dep.project.name,
+        &namespace.clone(),
+        build_config.clone(),
+    )?;
 
     namespace.insert_module(dependency_name.to_string(), compiled.namespace);
 
@@ -167,8 +181,9 @@ fn compile_library<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
+    build_config: BuildConfig,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = core_lang::compile_to_asm(&source, namespace);
+    let res = core_lang::compile_to_asm(&source, namespace, build_config);
     match res {
         CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
@@ -220,8 +235,9 @@ fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
+    build_config: BuildConfig,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(&source, namespace);
+    let res = core_lang::compile_to_bytecode(&source, namespace, build_config);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             for ref warning in warnings.iter() {
@@ -392,8 +408,9 @@ fn compile_to_asm<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
+    build_config: BuildConfig,
 ) -> Result<FinalizedAsm<'source>, String> {
-    let res = core_lang::compile_to_asm(&source, namespace);
+    let res = core_lang::compile_to_asm(&source, namespace, build_config);
     match res {
         CompilationResult::Success { asm, warnings } => {
             for ref warning in warnings.iter() {

@@ -17,6 +17,7 @@ pub use crate::parse_tree::*;
 use crate::parser::{HllParser, Rule};
 use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
+pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
 use pest::iterators::Pair;
 use pest::Parser;
@@ -165,6 +166,7 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
 pub fn compile_to_asm<'sc, 'manifest>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
+    build_config: BuildConfig,
 ) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -177,7 +179,12 @@ pub fn compile_to_asm<'sc, 'manifest>(
     );
 
     let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
-        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Contract) {
+        match TypedParseTree::type_check(
+            tree,
+            initial_namespace.clone(),
+            TreeType::Contract,
+            &build_config,
+        ) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -200,7 +207,12 @@ pub fn compile_to_asm<'sc, 'manifest>(
         None
     };
     let predicate_ast: Option<_> = if let Some(tree) = parse_tree.predicate_ast {
-        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Predicate) {
+        match TypedParseTree::type_check(
+            tree,
+            initial_namespace.clone(),
+            TreeType::Predicate,
+            &build_config,
+        ) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -223,7 +235,12 @@ pub fn compile_to_asm<'sc, 'manifest>(
         None
     };
     let script_ast: Option<_> = if let Some(tree) = parse_tree.script_ast {
-        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Script) {
+        match TypedParseTree::type_check(
+            tree,
+            initial_namespace.clone(),
+            TreeType::Script,
+            &build_config,
+        ) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -250,8 +267,12 @@ pub fn compile_to_asm<'sc, 'manifest>(
             .library_exports
             .into_iter()
             .filter_map(|(name, tree)| {
-                match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Library)
-                {
+                match TypedParseTree::type_check(
+                    tree,
+                    initial_namespace.clone(),
+                    TreeType::Library,
+                    &build_config,
+                ) {
                     CompileResult::Ok {
                         warnings: mut l_w,
                         errors: mut l_e,
@@ -381,6 +402,9 @@ pub fn compile_to_asm<'sc, 'manifest>(
                 warnings,
                 exports: o,
             },
+            (None, None, None, o) if o.trees.is_empty() => {
+                todo!("do we want empty files to be valid programs?")
+            }
             // Default to compiling an empty library if there is no code or invalid state
             _ => unimplemented!(
                 "Multiple contracts, libraries, scripts, or predicates in a single file are \
@@ -394,8 +418,9 @@ pub fn compile_to_asm<'sc, 'manifest>(
 pub fn compile_to_bytecode<'sc, 'manifest>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
+    build_config: BuildConfig,
 ) -> BytecodeCompilationResult<'sc> {
-    match compile_to_asm(input, initial_namespace) {
+    match compile_to_asm(input, initial_namespace, build_config) {
         CompilationResult::Success { asm, mut warnings } => {
             let bytes = match asm.to_bytecode() {
                 CompileResult::Ok {

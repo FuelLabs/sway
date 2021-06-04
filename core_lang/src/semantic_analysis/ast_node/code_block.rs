@@ -1,4 +1,5 @@
 use super::*;
+use crate::build_config::BuildConfig;
 use crate::types::MaybeResolvedType;
 use crate::CodeBlock;
 
@@ -16,6 +17,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
     ) -> CompileResult<'sc, (Self, Option<MaybeResolvedType<'sc>>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -39,6 +41,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 type_annotation.clone(),
                 help_text.clone(),
                 self_type,
+                build_config,
             ) {
                 CompileResult::Ok {
                     value,

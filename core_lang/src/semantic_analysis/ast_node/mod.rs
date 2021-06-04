@@ -1,3 +1,4 @@
+use crate::build_config::BuildConfig;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
@@ -83,6 +84,7 @@ impl<'sc> TypedAstNode<'sc> {
         return_type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String>,
         self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -100,7 +102,7 @@ impl<'sc> TypedAstNode<'sc> {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
                     let _ = type_check!(
-                        import_new_file(a, namespace),
+                        import_new_file(a, namespace, build_config),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -130,7 +132,8 @@ impl<'sc> TypedAstNode<'sc> {
                                             .map(|x| x.friendly_type_str())
                                             .unwrap_or("none".into())
                                     ),
-                                    self_type
+                                    self_type,
+                                    build_config
                                 ),
                                 error_recovery_expr(name.span.clone()),
                                 warnings,
@@ -159,7 +162,12 @@ impl<'sc> TypedAstNode<'sc> {
                         Declaration::FunctionDeclaration(fn_decl) => {
                             let decl = type_check!(
                                 TypedFunctionDeclaration::type_check(
-                                    fn_decl, &namespace, None, "", self_type
+                                    fn_decl,
+                                    &namespace,
+                                    None,
+                                    "",
+                                    self_type,
+                                    build_config
                                 ),
                                 return err(warnings, errors),
                                 warnings,
@@ -332,7 +340,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         Some(return_type.clone()),
                                         "Trait method body's return type does not match up with \
                                          its return type annotation.",
-                                        self_type
+                                        self_type,
+                                        build_config
                                     ),
                                     continue,
                                     warnings,
@@ -407,7 +416,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     &namespace,
                                     Some(thing_to_reassign.return_type.clone()),
                                     "You can only reassign a value of the same type to a variable.",
-                                    self_type
+                                    self_type,
+                                    build_config
                                 ),
                                 error_recovery_expr(span),
                                 warnings,
@@ -417,7 +427,7 @@ impl<'sc> TypedAstNode<'sc> {
                             TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs })
                         }
                         Declaration::ImplTrait(impl_trait) => type_check!(
-                            implementation_of_trait(impl_trait, namespace),
+                            implementation_of_trait(impl_trait, namespace, build_config),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -461,7 +471,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         &namespace,
                                         None,
                                         "",
-                                        &type_implementing_for_resolved
+                                        &type_implementing_for_resolved,
+                                        build_config
                                     ),
                                     continue,
                                     warnings,
@@ -523,7 +534,14 @@ impl<'sc> TypedAstNode<'sc> {
                 }
                 AstNodeContent::Expression(a) => {
                     let inner = type_check!(
-                        TypedExpression::type_check(a.clone(), &namespace, None, "", self_type),
+                        TypedExpression::type_check(
+                            a.clone(),
+                            &namespace,
+                            None,
+                            "",
+                            self_type,
+                            build_config
+                        ),
                         error_recovery_expr(a.span()),
                         warnings,
                         errors
@@ -539,7 +557,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 return_type_annotation,
                                 "Returned value must match up with the function return type \
                                  annotation.",
-                                self_type
+                                self_type,
+                                build_config
                             ),
                             error_recovery_expr(expr.span()),
                             warnings,
@@ -557,7 +576,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 "Implicit return must match up with block's type. {}",
                                 help_text.into()
                             ),
-                            self_type
+                            self_type,
+                            build_config
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -572,7 +592,8 @@ impl<'sc> TypedAstNode<'sc> {
                             &namespace,
                             Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
-                            self_type
+                            self_type,
+                            build_config
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -586,7 +607,8 @@ impl<'sc> TypedAstNode<'sc> {
                             "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
-                            self_type
+                            self_type,
+                            build_config
                         ),
                         (
                             TypedCodeBlock {
@@ -642,23 +664,28 @@ fn import_new_file<'sc>(
         statement.file_path,
         crate::constants::DEFAULT_FILE_EXTENSION
     );
-    let path = std::path::Path::new(&file_path);
+    let mut path = build_config.dir_of_code.clone();
+    let this_dep = std::path::Path::new(&file_path);
+    path.push(this_dep);
+    println!("trying to read {:?}", path);
     let res = if path.exists() {
-        std::fs::read_to_string(statement.file_path)
+        std::fs::read_to_string(path.clone())
     } else {
         todo!("File not found err")
     };
 
     let file_as_string = match res {
         Ok(o) => o,
-        Err(e) => todo!("error reading file"),
+        Err(e) => todo!("error reading file: {:?}", e),
     };
 
     // TODO: put all things in the namespace "up" one level
     let dep_namespace = namespace.clone();
     // :)
     let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
-    let compiled = crate::compile_to_asm(&static_file_string, &dep_namespace);
+    let mut dep_config = build_config.clone();
+    dep_config.dir_of_code.push(path.clone());
+    let compiled = crate::compile_to_asm(&static_file_string, &dep_namespace, dep_config);
 
     match compiled {
         crate::CompilationResult::Library {
@@ -678,6 +705,5 @@ fn import_new_file<'sc>(
         _ => todo!("handler err and non-lib"),
     }
 
-    todo!();
     ok((), warnings, errors)
 }
