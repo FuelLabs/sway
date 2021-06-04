@@ -57,6 +57,7 @@ impl LanguageServer for Backend {
                     ..Default::default()
                 }),
                 document_highlight_provider: Some(OneOf::Left(true)),
+                document_formatting_provider: Some(OneOf::Left(true)),
                 ..lsp::ServerCapabilities::default()
             },
         })
@@ -158,6 +159,16 @@ impl LanguageServer for Backend {
         params: lsp::GotoDefinitionParams,
     ) -> jsonrpc::Result<Option<lsp::GotoDefinitionResponse>> {
         Ok(capabilities::go_to::go_to_definition(
+            self.session.clone(),
+            params,
+        ))
+    }
+
+    async fn formatting(
+        &self,
+        params: lsp::DocumentFormattingParams,
+    ) -> jsonrpc::Result<Option<Vec<lsp::TextEdit>>> {
+        Ok(capabilities::formatting::format_document(
             self.session.clone(),
             params,
         ))

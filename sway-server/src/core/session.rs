@@ -1,10 +1,11 @@
 use dashmap::DashMap;
 use lspower::lsp::{
-    CompletionItem, Diagnostic, GotoDefinitionResponse, Hover, Position, Range, SemanticToken,
-    SymbolInformation, TextDocumentContentChangeEvent, TextDocumentItem, Url,
+    CompletionItem, Diagnostic, FormattingOptions, GotoDefinitionResponse, Hover, Position, Range,
+    SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextDocumentItem, TextEdit,
+    Url,
 };
 
-use crate::capabilities;
+use crate::capabilities::{self, formatting::get_format_text_edits};
 
 use super::document::{DocumentError, TextDocument};
 
@@ -141,5 +142,13 @@ impl Session {
         }
 
         None
+    }
+
+    pub fn format_text(&self, url: &Url, options: FormattingOptions) -> Option<Vec<TextEdit>> {
+        if let Some(document) = self.documents.get(url) {
+            get_format_text_edits(document.get_text(), options)
+        } else {
+            None
+        }
     }
 }

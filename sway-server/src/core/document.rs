@@ -98,6 +98,10 @@ impl TextDocument {
         self.content.remove(edit.start_index..edit.end_index);
         self.content.insert(edit.start_index, edit.change_text);
     }
+
+    pub fn get_text(&self) -> &str {
+        &self.text
+    }
 }
 
 // private methods
