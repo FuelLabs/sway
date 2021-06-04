@@ -37,22 +37,23 @@ impl CodeBuilder {
     }
 
     pub fn format_and_add(&mut self, line: &str) {
-        if is_comment(line) {
-            return self.add_line(CodeLine::new(line.into()));
-        }
-
         let mut code_line = self.get_unfinished_code_line_or_new();
-
-        // handle multiline string
-        if code_line.is_string {
-            code_line.push_char('\n');
-        }
 
         let line = if !code_line.is_string {
             line.trim()
         } else {
             line
         };
+
+        if is_comment(line) {
+            code_line.push_str(line);
+            return self.complete_and_add_line(code_line);
+        }
+
+        // handle multiline string
+        if code_line.is_string {
+            code_line.push_char('\n');
+        }
 
         let mut iter = line.chars().enumerate().peekable();
 
