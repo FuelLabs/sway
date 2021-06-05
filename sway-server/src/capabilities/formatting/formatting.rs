@@ -34,7 +34,7 @@ fn build_edits(text: &str, options: FormattingOptions) -> Vec<TextEdit> {
     let lines: Vec<&str> = text.split("\n").collect();
     let length_of_lines = lines.len();
 
-    // todo: handle length lines of code
+    // todo: handle lengthy lines of code
     for line in lines {
         code_builder.format_and_add(line);
     }
