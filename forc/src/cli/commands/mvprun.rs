@@ -3,6 +3,8 @@ use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::MemoryStorage;
 use structopt::{self, StructOpt};
 
+use super::build::Command as BuildCommand;
+
 use crate::ops::forc_build;
 
 #[derive(Debug, StructOpt)]
@@ -19,7 +21,12 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
     let data = format_hex_data(input_data);
     let script_data = hex::decode(data).expect("Invalid hex");
 
-    match forc_build::build(Some(command.path)) {
+    let build_command = BuildCommand {
+        path: Some(command.path),
+        print_asm: false,
+        binary_outfile: None,
+    };
+    match forc_build::build(build_command) {
         Ok(script) => {
             let tx = create_tx_with_script_and_data(script, script_data);
             let storage = MemoryStorage::default();
