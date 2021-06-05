@@ -268,9 +268,9 @@ impl<'sc> Expression<'sc> {
                     func_app_parts.next().unwrap(),
                     return err(warnings, errors)
                 );
-                let arguments = func_app_parts.next();
+                let arguments = func_app_parts.next().unwrap();
                 let mut arguments_buf = Vec::new();
-                for argument in arguments {
+                for argument in arguments.into_inner() {
                     let arg = eval!(
                         Expression::parse_from_pair,
                         warnings,

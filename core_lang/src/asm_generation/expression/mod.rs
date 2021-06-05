@@ -253,7 +253,9 @@ pub(crate) fn convert_expression_to_asm<'sc>(
         TypedExpressionVariant::CodeBlock(block) => {
             convert_code_block_to_asm(block, namespace, register_sequencer, Some(return_register))
         }
-        _ => {
+        TypedExpressionVariant::Unit => ok(vec![], warnings, errors),
+        a => {
+            println!("unimplemented: {:?}", a);
             errors.push(CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this.",
                 exp.span.clone(),
