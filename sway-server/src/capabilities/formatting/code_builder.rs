@@ -5,7 +5,14 @@ use std::{
 
 use lspower::lsp::{Position, Range, TextEdit};
 
-use super::code_line::CodeLine;
+use super::parse_helpers::{clean_all_incoming_whitespace, is_comment};
+use super::{
+    code_line::CodeLine,
+    parse_helpers::{
+        handle_ampersand_case, handle_assignment_case, handle_colon_case, handle_dash_case,
+        handle_pipe_case, handle_string_case, handle_whitespace_case,
+    },
+};
 
 #[derive(Debug)]
 pub struct CodeBuilder {
@@ -23,19 +30,30 @@ impl CodeBuilder {
         }
     }
 
-    fn get_unfinished_code_line_or_new(&mut self) -> CodeLine {
-        match self.edits.last() {
-            Some(code_line) => {
-                if code_line.is_completed {
-                    CodeLine::default()
-                } else {
-                    self.edits.pop().unwrap()
-                }
+    pub fn to_text_edit(&mut self, text_lines_count: usize) -> Vec<TextEdit> {
+        let line_end = std::cmp::max(self.edits.len(), text_lines_count) as u32;
+
+        // add new line at the end if needed
+        if let Some(code_line) = self.edits.last() {
+            if !code_line.is_empty() {
+                self.edits.push(CodeLine::empty_line())
             }
-            None => CodeLine::default(),
         }
+
+        let main_edit = TextEdit {
+            range: Range::new(Position::new(0, 0), Position::new(line_end as u32, 0)),
+            new_text: self
+                .edits
+                .iter()
+                .map(|code_line| code_line.text.clone())
+                .collect::<Vec<String>>()
+                .join("\n"),
+        };
+
+        vec![main_edit]
     }
 
+    /// formats line of code and adds it to Vec<CodeLine>
     pub fn format_and_add(&mut self, line: &str) {
         let mut code_line = self.get_unfinished_code_line_or_new();
 
@@ -45,6 +63,7 @@ impl CodeBuilder {
             line
         };
 
+        // handle comment
         if is_comment(line) {
             code_line.push_str(line);
             return self.complete_and_add_line(code_line);
@@ -59,146 +78,18 @@ impl CodeBuilder {
 
         loop {
             if let Some((_, current_char)) = iter.next() {
-                // if it's a string just keep pushing the characters
                 if code_line.is_string {
-                    code_line.push_char(current_char);
-                    if current_char == '"' {
-                        let previous_char = code_line.text.chars().last().unwrap_or(' ');
-                        // end of the string
-                        if previous_char != '\\' {
-                            code_line.end_string();
-                        }
-                    }
+                    handle_string_case(&mut code_line, current_char);
                 } else {
                     match current_char {
-                        ' ' => {
-                            // clean all incoming extra whitespace
-                            while let Some((_, next_char)) = iter.peek() {
-                                if *next_char == ' ' {
-                                    iter.next();
-                                } else {
-                                    break;
-                                }
-                            }
-
-                            if let Some((_, next_char)) = iter.peek() {
-                                let next_char = *next_char;
-
-                                match next_char {
-                                    '(' | ';' | ':' => {} // do nothing, handle it in next turn
-                                    _ => {
-                                        // add whitespace if it is not already there
-                                        code_line.append_with_whitespace("");
-                                    }
-                                }
-                            }
-                        }
-
-                        // handle equality/assignment
-                        '=' => {
-                            if let Some((_, next_char)) = iter.peek() {
-                                let next_char = *next_char;
-                                if next_char == '=' {
-                                    // it's equality operator
-                                    code_line.append_with_whitespace("== ");
-                                    iter.next();
-                                } else if next_char == '>' {
-                                    // it's fat arrow
-                                    code_line.append_with_whitespace("=> ");
-                                    iter.next();
-                                } else {
-                                    // it's assignment
-                                    code_line.append_with_whitespace("= ");
-                                }
-                            } else {
-                                code_line.append_with_whitespace("= ");
-                            }
-                        }
-
-                        // handle line breakers
-                        '{' => {
-                            code_line.append_with_whitespace("{");
-                            code_line.complete();
-                            self.complete_and_add_line(code_line);
-                            self.indent();
-
-                            // if there is more -  push to new line!
-                            return self.continue_to_next_line(line, iter);
-                        }
-                        '}' => {
-                            // if there was something prior to this, move to new line
-                            if !code_line.text.is_empty() {
-                                self.complete_and_add_line(code_line);
-                            }
-
-                            self.outdent();
-
-                            // clean all incoming extra whitespace
-                            while let Some((_, next_char)) = iter.peek() {
-                                if *next_char == ' ' {
-                                    iter.next();
-                                } else {
-                                    break;
-                                }
-                            }
-
-                            match iter.peek() {
-                                Some((_, ';')) => {
-                                    // check is there an ';' and add it after '}'
-                                    self.complete_and_add_line(CodeLine::new("};".into()));
-                                    iter.next();
-                                    return self.continue_to_next_line(line, iter);
-                                }
-                                Some(c) => {
-                                    // if there is more -  push to new line!
-                                    return self.continue_to_next_line(line, iter);
-                                }
-                                None => {
-                                    return self.complete_and_add_line(CodeLine::new("}".into()));
-                                }
-                            }
-                        }
-
-                        ';' => {
-                            code_line.push_char(';');
-                            self.handle_semicolon_case(code_line);
-
-                            // if there is more - push to new line!
-                            return self.continue_to_next_line(line, iter);
-                        }
-
-                        ':' => {
-                            if let Some((_, next_char)) = iter.peek() {
-                                let next_char = *next_char;
-                                if next_char == ':' {
-                                    // it's :: operator
-                                    code_line.push_str("::");
-                                    iter.next();
-                                } else {
-                                    code_line.push_str(": ");
-                                }
-                            } else {
-                                code_line.push_str(": ");
-                            }
-                        }
+                        ' ' => handle_whitespace_case(&mut code_line, &mut iter),
+                        '=' => handle_assignment_case(&mut code_line, &mut iter),
+                        ':' => handle_colon_case(&mut code_line, &mut iter),
+                        '-' => handle_dash_case(&mut code_line, &mut iter),
+                        '|' => handle_pipe_case(&mut code_line, &mut iter),
+                        '&' => handle_ampersand_case(&mut code_line, &mut iter),
 
                         ',' => code_line.push_str(", "),
-
-                        // handle operators
-                        '-' => {
-                            if let Some((_, next_char)) = iter.peek() {
-                                if *next_char == '>' {
-                                    // it's a return arrow
-                                    code_line.append_with_whitespace("-> ");
-                                    iter.next();
-                                } else {
-                                    // it's just a single '-'
-                                    code_line.append_with_whitespace("- ");
-                                }
-                            } else {
-                                code_line.append_with_whitespace("- ");
-                            }
-                        }
                         '+' => code_line.append_with_whitespace("+ "),
                         '*' => code_line.append_with_whitespace("* "),
                         '/' => code_line.append_with_whitespace("- "),
@@ -206,41 +97,45 @@ impl CodeBuilder {
                         '^' => code_line.append_with_whitespace("^ "),
                         '!' => code_line.append_with_whitespace("!"),
 
-                        '|' => {
-                            if let Some((_, next_char)) = iter.peek() {
-                                if *next_char == '|' {
-                                    // it's OR operator
-                                    code_line.append_with_whitespace("|| ");
-                                    iter.next();
-                                } else {
-                                    // it's just a single '|'
-                                    code_line.append_with_whitespace("| ");
-                                }
-                            } else {
-                                code_line.append_with_whitespace("| ");
-                            }
-                        }
-
-                        '&' => {
-                            if let Some((_, next_char)) = iter.peek() {
-                                if *next_char == '&' {
-                                    // it's AND operator
-                                    code_line.append_with_whitespace("&& ");
-                                    iter.next();
-                                } else {
-                                    // it's just a single '&'
-                                    code_line.append_with_whitespace("& ");
-                                }
-                            } else {
-                                code_line.append_with_whitespace("& ");
-                            }
-                        }
+                        // handle beginning of the string
                         '"' => {
                             if !code_line.is_string {
                                 code_line.push_char(current_char);
                                 code_line.become_string();
                             }
                         }
+
+                        // handle line breakers ';', '{' AND '}'
+                        ';' => {
+                            code_line.push_char(';');
+                            self.handle_semicolon_case(code_line);
+
+                            // if there is more - move to new line!
+                            return self.move_rest_to_new_line(line, iter);
+                        }
+
+                        '{' => {
+                            code_line.append_with_whitespace("{");
+                            self.complete_and_add_line(code_line);
+                            self.indent();
+
+                            // if there is more - move to new line!
+                            return self.move_rest_to_new_line(line, iter);
+                        }
+
+                        '}' => {
+                            // if there was something prior to this, move to new line
+                            if !code_line.is_empty() {
+                                self.complete_and_add_line(code_line);
+                            }
+
+                            self.outdent();
+                            clean_all_incoming_whitespace(&mut iter);
+
+                            return self.handle_close_brace(line, iter);
+                        }
+
+                        // add the rest
                         _ => code_line.push_char(current_char),
                     }
                 }
@@ -250,6 +145,20 @@ impl CodeBuilder {
         }
 
         self.add_line(code_line);
+    }
+
+    /// if previous line is not completed get it, otherwise start a new one
+    fn get_unfinished_code_line_or_new(&mut self) -> CodeLine {
+        match self.edits.last() {
+            Some(code_line) => {
+                if code_line.is_completed {
+                    CodeLine::default()
+                } else {
+                    self.edits.pop().unwrap()
+                }
+            }
+            None => CodeLine::default(),
+        }
     }
 
     fn handle_semicolon_case(&mut self, code_line: CodeLine) {
@@ -272,7 +181,27 @@ impl CodeBuilder {
         }
     }
 
-    fn continue_to_next_line(&mut self, line: &str, iter: Peekable<Enumerate<Chars>>) {
+    fn handle_close_brace(&mut self, line: &str, iter: Peekable<Enumerate<Chars>>) {
+        let mut iter = iter;
+
+        match iter.peek() {
+            // check is there a ';' and add it after '}'
+            Some((_, ';')) => {
+                self.complete_and_add_line(CodeLine::new("};".into()));
+                iter.next();
+                self.move_rest_to_new_line(line, iter);
+            }
+            // if there is more - move to new line!
+            Some(_) => {
+                self.move_rest_to_new_line(line, iter);
+            }
+            None => {
+                self.complete_and_add_line(CodeLine::new("}".into()));
+            }
+        }
+    }
+
+    fn move_rest_to_new_line(&mut self, line: &str, iter: Peekable<Enumerate<Chars>>) {
         let mut iter = iter;
 
         if iter.peek().is_some() {
@@ -292,15 +221,13 @@ impl CodeBuilder {
     fn add_line(&mut self, code_line: CodeLine) {
         let mut code_line = code_line;
 
-        if code_line.text.len() == 0 {
+        if code_line.is_empty() {
             // don't add more than one new empty line!
             if self
                 .edits
                 .last()
                 .unwrap_or(&CodeLine::empty_line())
-                .text
-                .len()
-                == 0
+                .is_empty()
             {
                 return;
             } else {
@@ -331,36 +258,4 @@ impl CodeBuilder {
         let times = (self.tab_size * self.indent_level) as usize;
         " ".repeat(times)
     }
-
-    pub fn to_text_edit(&mut self, text_lines_count: usize) -> Vec<TextEdit> {
-        let line_end = if self.edits.len() > text_lines_count {
-            self.edits.len()
-        } else {
-            text_lines_count
-        };
-
-        // add new line at the end if needed
-        if let Some(code_line) = self.edits.last() {
-            if !code_line.text.is_empty() {
-                self.edits.push(CodeLine::empty_line())
-            }
-        }
-
-        let main_edit = TextEdit {
-            range: Range::new(Position::new(0, 0), Position::new(line_end as u32, 0)),
-            new_text: self
-                .edits
-                .iter()
-                .map(|code_line| code_line.text.clone())
-                .collect::<Vec<String>>()
-                .join("\n"),
-        };
-
-        vec![main_edit]
-    }
-}
-
-fn is_comment(line: &str) -> bool {
-    let mut chars = line.chars();
-    chars.next() == Some('/') && chars.next() == Some('/')
 }

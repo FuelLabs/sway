@@ -73,4 +73,8 @@ impl CodeLine {
 
         self.push_str(value);
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.text.is_empty()
+    }
 }
