@@ -118,7 +118,6 @@ impl CodeBuilder {
                         }
 
                         '}' => return self.handle_close_brace(line, code_line, iter),
-                        
 
                         // add the rest
                         _ => code_line.push_char(current_char),
@@ -146,7 +145,12 @@ impl CodeBuilder {
         }
     }
 
-    fn handle_semicolon_case(&mut self, line: &str, code_line: CodeLine, iter: Peekable<Enumerate<Chars>>) {
+    fn handle_semicolon_case(
+        &mut self,
+        line: &str,
+        code_line: CodeLine,
+        iter: Peekable<Enumerate<Chars>>,
+    ) {
         let mut code_line = code_line;
         code_line.push_char(';');
 
@@ -171,7 +175,12 @@ impl CodeBuilder {
         self.move_rest_to_new_line(line, iter);
     }
 
-    fn handle_close_brace(&mut self, line: &str, code_line: CodeLine, iter: Peekable<Enumerate<Chars>>) {
+    fn handle_close_brace(
+        &mut self,
+        line: &str,
+        code_line: CodeLine,
+        iter: Peekable<Enumerate<Chars>>,
+    ) {
         let mut iter = iter;
 
         // if there was something prior to '}', add as separate line
