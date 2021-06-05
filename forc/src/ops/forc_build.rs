@@ -187,7 +187,7 @@ fn compile_library<'source, 'manifest>(
     match res {
         CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled library {:?}.", proj_name));
@@ -209,10 +209,10 @@ fn compile_library<'source, 'manifest>(
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
 
-            errors.into_iter().for_each(|e| format_err(&source, e));
+            errors.into_iter().for_each(|e| format_err(e));
 
             write_red(format!(
                 "Aborting due to {} {}.",
@@ -241,7 +241,7 @@ fn compile<'source, 'manifest>(
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled script {:?}.", proj_name));
@@ -261,7 +261,7 @@ fn compile<'source, 'manifest>(
         }
         BytecodeCompilationResult::Library { warnings } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled library {:?}.", proj_name));
@@ -283,10 +283,10 @@ fn compile<'source, 'manifest>(
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
 
-            errors.into_iter().for_each(|e| format_err(&source, e));
+            errors.into_iter().for_each(|e| format_err(e));
 
             write_red(format!(
                 "Aborting due to {} {}.",
@@ -299,7 +299,8 @@ fn compile<'source, 'manifest>(
     }
 }
 
-fn format_warning(input: &str, err: &core_lang::CompileWarning) {
+fn format_warning(err: &core_lang::CompileWarning) {
+    let input = err.span.input();
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;
@@ -330,7 +331,8 @@ fn format_warning(input: &str, err: &core_lang::CompileWarning) {
     println!("{}", formatted);
 }
 
-fn format_err(input: &str, err: core_lang::CompileError) {
+fn format_err(err: core_lang::CompileError) {
+    let input = err.pest_span().input();
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;
@@ -368,7 +370,9 @@ fn write_red(txt: String) -> io::Result<()> {
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Red)))?;
     writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)
+    bufwtr.print(&buffer)?;
+    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
+    Ok(())
 }
 
 fn write_green(txt: &str) -> io::Result<()> {
@@ -376,7 +380,9 @@ fn write_green(txt: &str) -> io::Result<()> {
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Green)))?;
     writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)
+    bufwtr.print(&buffer)?;
+    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
+    Ok(())
 }
 
 fn write_yellow(txt: &str) -> io::Result<()> {
@@ -384,7 +390,9 @@ fn write_yellow(txt: &str) -> io::Result<()> {
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Yellow)))?;
     writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)
+    bufwtr.print(&buffer)?;
+    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
+    Ok(())
 }
 
 fn get_main_file(
@@ -414,7 +422,7 @@ fn compile_to_asm<'source, 'manifest>(
     match res {
         CompilationResult::Success { asm, warnings } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled script {:?}.", proj_name));
@@ -434,7 +442,7 @@ fn compile_to_asm<'source, 'manifest>(
         }
         CompilationResult::Library { warnings, .. } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled library {:?}.", proj_name));
@@ -456,10 +464,10 @@ fn compile_to_asm<'source, 'manifest>(
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
 
-            errors.into_iter().for_each(|e| format_err(&source, e));
+            errors.into_iter().for_each(|e| format_err(e));
 
             write_red(format!(
                 "Aborting due to {} {}.",
