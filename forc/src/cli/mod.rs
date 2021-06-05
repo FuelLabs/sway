@@ -2,7 +2,8 @@ use structopt::StructOpt;
 
 mod commands;
 use self::commands::{
-    analysis, benchmark, build, coverage, deploy, init, parse_bytecode, publish, serve, test,
+    analysis, benchmark, build, coverage, deploy, init, mvprun, parse_bytecode, publish, serve,
+    test,
 };
 
 use analysis::Command as AnalysisCommand;
@@ -11,6 +12,7 @@ pub use build::Command as BuildCommand;
 use coverage::Command as CoverageCommand;
 use deploy::Command as DeployCommand;
 use init::Command as InitCommand;
+use mvprun::Command as MvprunCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 use publish::Command as PublishCommand;
 use serve::Command as ServeCommand;

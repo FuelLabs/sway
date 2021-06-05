@@ -10,7 +10,7 @@ version = "0.1.0"
 [dependencies]
 core_lang = {path = "../core_lang"}
 fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
-fuel-core = { git = "ssh://git@github.com/FuelLabs/fuel-core.git" }
+fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
 hex = "0.4.3"
 line-col = "0.2"
 pest = "2.1"

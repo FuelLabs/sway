@@ -1,5 +1,6 @@
-use fuel_core::interpreter::Interpreter;
 use fuel_tx::Transaction;
+use fuel_vm::interpreter::Interpreter;
+use fuel_vm::prelude::MemoryStorage;
 use structopt::{self, StructOpt};
 
 use crate::ops::forc_build;
@@ -21,7 +22,8 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
     match forc_build::build(Some(command.path)) {
         Ok(script) => {
             let tx = create_tx_with_script_and_data(script, script_data);
-            let vm = Interpreter::execute_tx(tx).expect("Invalid tx");
+            let storage = MemoryStorage::default();
+            let vm = Interpreter::execute_tx(storage, tx).expect("Invalid tx");
             println!("{:?}", vm.log());
         }
         Err(e) => println!("{}", e),

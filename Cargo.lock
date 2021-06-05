@@ -301,6 +301,9 @@ version = "0.1.0"
 dependencies = [
  "core_lang",
  "fuel-asm",
+ "fuel-tx",
+ "fuel-vm",
+ "hex",
  "line-col",
  "pest",
  "serde",
@@ -331,15 +334,14 @@ checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#73a80acf5220e47aff893f76f1e50249e9843cf0"
+source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#a26fbb180508a1c727eaa74fe049fb7e67f87d0c"
 
 [[package]]
-name = "fuel-core"
+name = "fuel-tx"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#d9345fc71d80ad95e45cf247ffab6b17c0d3d632"
+source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#4913ab7515ba62a3d78f713631b2acf01c39c115"
 dependencies = [
  "fuel-asm",
- "fuel-tx",
  "itertools",
  "rand 0.8.3",
  "sha2",
@@ -351,8 +353,11 @@ version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#16a8f97587f0688ab17c292418008ef7589f9bae"
 dependencies = [
  "fuel-asm",
+ "fuel-tx",
  "itertools",
- "sha2",
+ "secp256k1",
+ "sha3",
+ "tracing",
 ]
 
 [[package]]
@@ -1225,7 +1230,6 @@ version = "0.1.0"
 dependencies = [
  "forc",
  "fuel-asm",
- "fuel-core",
  "fuel-tx",
  "fuel-vm",
 ]
