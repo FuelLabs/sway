@@ -146,24 +146,27 @@ impl<'sc> Literal<'sc> {
         }
     }
     /// Converts a literal to a big-endian representation. This is padded to words.
-    pub(crate) fn to_bytes(&self) -> [u8; 8] {
+    pub(crate) fn to_bytes(&self) -> Vec<u8> {
         use Literal::*;
         match self {
-            U8(val) => [0, 0, 0, 0, 0, 0, 0, val.to_be_bytes()[0]],
+            U8(val) => vec![0, 0, 0, 0, 0, 0, 0, val.to_be_bytes()[0]],
             U16(val) => {
                 let bytes = val.to_be_bytes();
-                [0, 0, 0, 0, 0, 0, bytes[0], bytes[1]]
+                vec![0, 0, 0, 0, 0, 0, bytes[0], bytes[1]]
             }
             U32(val) => {
                 let bytes = val.to_be_bytes();
-                [0, 0, 0, 0, bytes[0], bytes[1], bytes[2], bytes[3]]
+                vec![0, 0, 0, 0, bytes[0], bytes[1], bytes[2], bytes[3]]
             }
-            U64(val) => val.to_be_bytes(),
+            U64(val) => val.to_be_bytes().to_vec(),
             Boolean(b) => {
                 let bytes = (if *b { 1u64 } else { 0u64 }).to_be_bytes();
-                [0, 0, 0, 0, 0, 0, 0, bytes[0]]
+                vec![0, 0, 0, 0, 0, 0, 0, bytes[0]]
             }
-            a => todo!("{:?}", a),
+            // assume utf8 for now
+            String(st) => st.to_string().into_bytes(),
+            Byte(b) => vec![0, 0, 0, 0, 0, 0, 0, b.to_be_bytes()[0]],
+            Byte32(b) => b.to_vec(),
         }
     }
 }

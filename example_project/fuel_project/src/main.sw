@@ -1,4 +1,4 @@
-predicate;
+script;
 struct Rgb {
   red: u64,
   green: u64,
@@ -63,4 +63,3 @@ fn main() {
 trait Color {
   fn rgb(self) -> Rgb;
 }
-

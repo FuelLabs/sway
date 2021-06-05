@@ -171,28 +171,42 @@ impl<'sc> TypedAstNode<'sc> {
                         }) => {
                             let mut methods_buf = Vec::new();
                             let interface_surface = interface_surface
-                        .into_iter()
-                        .map(|TraitFn {
-                             name,
-                              parameters,
-                              return_type,
-                              return_type_span
-                             }| TypedTraitFn {
-                            name,
-                            return_type_span,
-                            parameters: parameters
-                                .into_iter()
-                                .map(|FunctionParameter { name, r#type, type_span }|
-                                    TypedFunctionParameter {
-                                         name,
-                                         r#type: namespace.resolve_type(&r#type, 
-                                            &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)),
-                                             type_span }
-                                ).collect(),
-                            return_type: namespace.resolve_type(&return_type,
-                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
-                            )
-                        }).collect::<Vec<_>>();
+                            .into_iter()
+                            .map(|TraitFn {
+                                name,
+                                parameters,
+                                return_type,
+                                return_type_span
+                                }| TypedTraitFn {
+                                name,
+                                return_type_span,
+                                parameters: parameters
+                                    .into_iter()
+                                    .map(|FunctionParameter { name, r#type, type_span }|
+                                        TypedFunctionParameter {
+                                            name,
+                                            r#type: namespace.resolve_type(&r#type, 
+                                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)),
+                                                type_span }
+                                    ).collect(),
+                                return_type: namespace.resolve_type(&return_type,
+                                    &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
+                                )
+                            }).collect::<Vec<_>>();
+                            let mut l_namespace = namespace.clone();
+                            // insert placeholder functions representing the interface surface
+                            // to allow methods to use those functions
+                            l_namespace.insert_trait_implementation(
+                                CallPath {
+                                    prefixes: vec![],
+                                    suffix: name.clone(),
+                                },
+                                MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                                interface_surface
+                                    .iter()
+                                    .map(|x| x.to_dummy_func())
+                                    .collect(),
+                            );
                             for FunctionDeclaration {
                                 body,
                                 name: fn_name,
@@ -204,7 +218,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 ..
                             } in methods
                             {
-                                let mut namespace = namespace.clone();
+                                let mut namespace = l_namespace.clone();
                                 parameters.clone().into_iter().for_each(
                                     |FunctionParameter { name, r#type, .. }| {
                                         let r#type = namespace.resolve_type(
@@ -298,6 +312,7 @@ impl<'sc> TypedAstNode<'sc> {
                                         },
                                     )
                                     .collect::<Vec<_>>();
+
                                 // TODO check code block implicit return
                                 let return_type = namespace.resolve_type(&return_type, self_type);
                                 let (body, _code_block_implicit_return) = type_check!(
