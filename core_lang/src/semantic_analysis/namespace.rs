@@ -19,7 +19,7 @@ pub struct Namespace<'sc> {
     implemented_traits:
         HashMap<(Ident<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
-    modules: HashMap<ModuleName, Namespace<'sc>>,
+    pub(crate) modules: HashMap<ModuleName, Namespace<'sc>>,
 }
 
 impl<'sc> Namespace<'sc> {
@@ -96,7 +96,7 @@ impl<'sc> Namespace<'sc> {
     }
     /// Given a path to a module, import everything from it and merge it into this namespace.
     /// This is used when an import path contains an asterisk.
-    pub(crate) fn star_import(&mut self, idents: Vec<Ident<'sc>>) -> CompileResult<()> {
+    pub(crate) fn star_import(&mut self, idents: Vec<Ident<'sc>>) -> CompileResult<'sc, ()> {
         let idents_buf = idents.into_iter();
         let mut namespace = self.clone();
         for ident in idents_buf {
@@ -124,7 +124,7 @@ impl<'sc> Namespace<'sc> {
         item: &Ident<'sc>,
         // TODO support aliasing in grammar -- see alias
         alias: Option<Ident<'sc>>,
-    ) -> CompileResult<()> {
+    ) -> CompileResult<'sc, ()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let namespace = type_check!(
@@ -180,6 +180,10 @@ impl<'sc> Namespace<'sc> {
         for ((name, typ), trait_impl) in &other.implemented_traits {
             self.implemented_traits
                 .insert((name.clone(), typ.clone()), trait_impl.clone());
+        }
+
+        for (mod_name, namespace) in &other.modules {
+            self.modules.insert(mod_name.clone(), namespace.clone());
         }
     }
 

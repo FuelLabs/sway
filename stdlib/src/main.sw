@@ -2,10 +2,12 @@ library ops;
 
 // Math ops
 
-dep bytecode as bc;
+dep bytecode as my_dep;
 
-use bytecode::ADependency;
+use my_dep::ADependency;
 
+// TODO:
+// make dead code analysis work across files
 
 pub trait Add {
     fn add(self, other: Self) -> Self;

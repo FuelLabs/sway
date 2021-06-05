@@ -92,10 +92,25 @@ impl<'sc> TypedAstNode<'sc> {
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    match a.import_type {
+                    let res = match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path),
                         ImportType::Item(s) => namespace.item_import(a.call_path, &s, None),
                     };
+                    match res {
+                        CompileResult::Ok {
+                            warnings: mut l_w, ..
+                        } => {
+                            warnings.append(&mut l_w);
+                        }
+                        CompileResult::Err {
+                            warnings: mut l_w,
+                            errors: mut l_e,
+                            ..
+                        } => {
+                            warnings.append(&mut l_w);
+                            errors.append(&mut l_e);
+                        }
+                    }
                     TypedAstNodeContent::SideEffect
                 }
                 AstNodeContent::IncludeStatement(ref a) => {
@@ -658,7 +673,7 @@ fn import_new_file<'sc>(
     build_config: &BuildConfig,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
-    let mut errors = vec![];
+    let errors = vec![];
     let file_path = format!(
         "{}.{}",
         statement.file_path,
@@ -689,18 +704,29 @@ fn import_new_file<'sc>(
 
     match compiled {
         crate::CompilationResult::Library {
-            exports,
+            mut exports,
             warnings: mut l_w,
         } => {
             warnings.append(&mut l_w);
-            let module_name = if let Some(ref alias) = statement.alias {
-                alias.primary_name.to_string()
-            } else if let Some(name) = path.file_name() {
-                name.to_string_lossy().to_string()
-            } else {
-                todo!("no file name? so this probably unreachable")
-            };
-            namespace.insert_module(module_name, exports.namespace);
+            // since this was an import of a single file, it should have exactly 1 library export
+            // as an invariant.
+            assert_eq!(exports.namespace.modules.len(), 1);
+            exports.namespace.modules = exports
+                .namespace
+                .modules
+                .into_iter()
+                .map(|(name, content)| {
+                    (
+                        if let Some(ref alias) = statement.alias {
+                            alias.primary_name.to_string()
+                        } else {
+                            name
+                        },
+                        content,
+                    )
+                })
+                .collect();
+            namespace.merge_namespaces(&exports.namespace);
         }
         _ => todo!("handler err and non-lib"),
     }
