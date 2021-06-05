@@ -106,13 +106,7 @@ impl CodeBuilder {
                         }
 
                         // handle line breakers ';', '{' AND '}'
-                        ';' => {
-                            code_line.push_char(';');
-                            self.handle_semicolon_case(code_line);
-
-                            // if there is more - move to new line!
-                            return self.move_rest_to_new_line(line, iter);
-                        }
+                        ';' => return self.handle_semicolon_case(line, code_line, iter),
 
                         '{' => {
                             code_line.append_with_whitespace("{");
@@ -123,17 +117,8 @@ impl CodeBuilder {
                             return self.move_rest_to_new_line(line, iter);
                         }
 
-                        '}' => {
-                            // if there was something prior to this, move to new line
-                            if !code_line.is_empty() {
-                                self.complete_and_add_line(code_line);
-                            }
-
-                            self.outdent();
-                            clean_all_incoming_whitespace(&mut iter);
-
-                            return self.handle_close_brace(line, iter);
-                        }
+                        '}' => return self.handle_close_brace(line, code_line, iter),
+                        
 
                         // add the rest
                         _ => code_line.push_char(current_char),
@@ -161,7 +146,10 @@ impl CodeBuilder {
         }
     }
 
-    fn handle_semicolon_case(&mut self, code_line: CodeLine) {
+    fn handle_semicolon_case(&mut self, line: &str, code_line: CodeLine, iter: Peekable<Enumerate<Chars>>) {
+        let mut code_line = code_line;
+        code_line.push_char(';');
+
         if code_line.text == ";" {
             if let Some(previous_code_line) = self.edits.last() {
                 // case when '}' was separated from ';' by one or more new lines
@@ -179,10 +167,20 @@ impl CodeBuilder {
         } else {
             self.complete_and_add_line(code_line);
         }
+
+        self.move_rest_to_new_line(line, iter);
     }
 
-    fn handle_close_brace(&mut self, line: &str, iter: Peekable<Enumerate<Chars>>) {
+    fn handle_close_brace(&mut self, line: &str, code_line: CodeLine, iter: Peekable<Enumerate<Chars>>) {
         let mut iter = iter;
+
+        // if there was something prior to '}', add as separate line
+        if !code_line.is_empty() {
+            self.complete_and_add_line(code_line);
+        }
+
+        self.outdent();
+        clean_all_incoming_whitespace(&mut iter);
 
         match iter.peek() {
             // check is there a ';' and add it after '}'
