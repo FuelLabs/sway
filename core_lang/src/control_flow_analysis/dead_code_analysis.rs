@@ -170,6 +170,16 @@ impl<'sc> ControlFlowGraph<'sc> {
                     }) => true,
                     ControlFlowGraphNode::ProgramNode(TypedAstNode {
                         content:
+                            TypedAstNodeContent::Declaration(TypedDeclaration::StructDeclaration(
+                                TypedStructDeclaration {
+                                    visibility: Visibility::Public,
+                                    ..
+                                },
+                            )),
+                        ..
+                    }) => true,
+                    ControlFlowGraphNode::ProgramNode(TypedAstNode {
+                        content:
                             TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { .. }),
                         ..
                     }) => true,
@@ -177,6 +187,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                 })
                 .collect(),
         };
+        graph.visualize();
         Ok(graph)
     }
 }

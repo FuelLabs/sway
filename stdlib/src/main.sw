@@ -1,7 +1,6 @@
 library ops;
 
 // Math ops
-
 dep bytecode as my_dep;
 
 use my_dep::ADependency;

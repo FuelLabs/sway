@@ -163,6 +163,21 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
     }
 }
 
+/// For internal compiler use.
+/// Compiles an included file and returns its control flow and dead code graphs.
+/// These graphs are merged into the parent program's graphs for accurate analysis.
+pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
+    input: &'sc str,
+    initial_namespace: &Namespace<'sc>,
+    build_config: BuildConfig,
+) -> (
+    CompilationResult<'sc>,
+    ControlFlowGraph<'sc>,
+    ControlFlowGraph<'sc>,
+) {
+    todo!()
+}
+
 pub fn compile_to_asm<'sc, 'manifest>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,

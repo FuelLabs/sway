@@ -700,9 +700,10 @@ fn import_new_file<'sc>(
     let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
     let mut dep_config = build_config.clone();
     dep_config.dir_of_code.push(path.clone());
-    let compiled = crate::compile_to_asm(&static_file_string, &dep_namespace, dep_config);
+    let (compile_result, dead_code_graph, control_flow_graph) =
+        crate::compile_inner_dependency(&static_file_string, &dep_namespace, dep_config);
 
-    match compiled {
+    match compile_result {
         crate::CompilationResult::Library {
             mut exports,
             warnings: mut l_w,
