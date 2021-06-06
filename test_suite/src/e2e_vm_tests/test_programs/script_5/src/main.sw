@@ -14,28 +14,5 @@ fn main() -> bool {
   let foo = Foo {
     foo: "foo",
   };
-}
-
-struct FuelStruct {
-  a: bool,
-  b: bool
-}
-
-fn the_number_five() -> u64 {
-  5
-}
-
-enum AnEnum {
-  Variant: (),
-}
-
-// trait before decl 
-impl FuelTrait for u64 {
-  fn foo() -> bool {
-    true
-  }
-}
-
-trait FuelTrait {
-  fn foo() -> bool;
+  return true;
 }

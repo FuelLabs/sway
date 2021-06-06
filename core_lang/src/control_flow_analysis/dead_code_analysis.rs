@@ -805,6 +805,7 @@ fn connect_expression<'sc>(
             }
             Ok(vec![asm_node])
         }
+        Unit => Ok(vec![]),
         a => {
             println!("Unimplemented: {:?}", a);
             return Err(CompileError::Unimplemented(
