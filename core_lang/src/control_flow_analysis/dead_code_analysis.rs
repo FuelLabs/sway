@@ -99,22 +99,19 @@ impl<'sc> ControlFlowGraph<'sc> {
             })
             .collect()
     }
-    /// Constructs a graph that is designed to identify unused declarations and sections of code.
-    pub(crate) fn construct_dead_code_graph(
+
+    pub(crate) fn append_to_dead_code_graph(
         ast: &TypedParseTree<'sc>,
         tree_type: TreeType,
-    ) -> Result<Self, CompileError<'sc>> {
-        let mut graph = ControlFlowGraph {
-            graph: Graph::new(),
-            entry_points: vec![],
-            namespace: Default::default(),
-        };
+        graph: &mut ControlFlowGraph<'sc>,
+        // the `Result` return is just to handle `Unimplemented` errors
+    ) -> Result<(), CompileError<'sc>> {
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
         for ast_entrypoint in ast.all_nodes().iter() {
             let (l_leaves, _new_exit_node) =
-                connect_node(ast_entrypoint, &mut graph, &leaves, exit_node, tree_type)?;
+                connect_node(ast_entrypoint, graph, &leaves, exit_node, tree_type)?;
 
             leaves = l_leaves;
         }
@@ -187,8 +184,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                 })
                 .collect(),
         };
-        graph.visualize();
-        Ok(graph)
+        Ok(())
     }
 }
 fn connect_node<'sc>(

@@ -1,6 +1,7 @@
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
+use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::{
@@ -244,6 +245,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // resolve them to this type.
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -290,7 +292,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 Some(return_type.clone()),
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
-                build_config
+                build_config,
+                dead_code_graph
             ),
             (
                 TypedCodeBlock {

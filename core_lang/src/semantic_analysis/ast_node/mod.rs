@@ -1,7 +1,7 @@
 use crate::build_config::BuildConfig;
-use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
+use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
@@ -85,6 +85,7 @@ impl<'sc> TypedAstNode<'sc> {
         help_text: impl Into<String>,
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -117,7 +118,7 @@ impl<'sc> TypedAstNode<'sc> {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
                     let _ = type_check!(
-                        import_new_file(a, namespace, build_config),
+                        import_new_file(a, namespace, build_config, dead_code_graph),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -148,7 +149,8 @@ impl<'sc> TypedAstNode<'sc> {
                                             .unwrap_or("none".into())
                                     ),
                                     self_type,
-                                    build_config
+                                    build_config,
+                                    dead_code_graph
                                 ),
                                 error_recovery_expr(name.span.clone()),
                                 warnings,
@@ -182,7 +184,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     None,
                                     "",
                                     self_type,
-                                    build_config
+                                    build_config,
+                                    dead_code_graph
                                 ),
                                 return err(warnings, errors),
                                 warnings,
@@ -356,7 +359,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         "Trait method body's return type does not match up with \
                                          its return type annotation.",
                                         self_type,
-                                        build_config
+                                        build_config,
+                                        dead_code_graph,
                                     ),
                                     continue,
                                     warnings,
@@ -432,7 +436,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     Some(thing_to_reassign.return_type.clone()),
                                     "You can only reassign a value of the same type to a variable.",
                                     self_type,
-                                    build_config
+                                    build_config,
+                                    dead_code_graph
                                 ),
                                 error_recovery_expr(span),
                                 warnings,
@@ -442,7 +447,12 @@ impl<'sc> TypedAstNode<'sc> {
                             TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs })
                         }
                         Declaration::ImplTrait(impl_trait) => type_check!(
-                            implementation_of_trait(impl_trait, namespace, build_config),
+                            implementation_of_trait(
+                                impl_trait,
+                                namespace,
+                                build_config,
+                                dead_code_graph
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -487,7 +497,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         None,
                                         "",
                                         &type_implementing_for_resolved,
-                                        build_config
+                                        build_config,
+                                        dead_code_graph
                                     ),
                                     continue,
                                     warnings,
@@ -555,7 +566,8 @@ impl<'sc> TypedAstNode<'sc> {
                             None,
                             "",
                             self_type,
-                            build_config
+                            build_config,
+                            dead_code_graph
                         ),
                         error_recovery_expr(a.span()),
                         warnings,
@@ -573,7 +585,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 "Returned value must match up with the function return type \
                                  annotation.",
                                 self_type,
-                                build_config
+                                build_config,
+                                dead_code_graph
                             ),
                             error_recovery_expr(expr.span()),
                             warnings,
@@ -592,7 +605,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 help_text.into()
                             ),
                             self_type,
-                            build_config
+                            build_config,
+                            dead_code_graph
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -608,7 +622,8 @@ impl<'sc> TypedAstNode<'sc> {
                             Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
-                            build_config
+                            build_config,
+                            dead_code_graph
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -623,7 +638,8 @@ impl<'sc> TypedAstNode<'sc> {
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
                             self_type,
-                            build_config
+                            build_config,
+                            dead_code_graph,
                         ),
                         (
                             TypedCodeBlock {
@@ -667,13 +683,16 @@ impl<'sc> TypedAstNode<'sc> {
     }
 }
 
+/// Imports a new file, populates the given [Namespace] with its content,
+/// and appends the module's content to the control flow graph for later analysis.
 fn import_new_file<'sc>(
     statement: &IncludeStatement<'sc>,
     namespace: &mut Namespace<'sc>,
     build_config: &BuildConfig,
+    dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
-    let errors = vec![];
+    let mut errors = vec![];
     let file_path = format!(
         "{}.{}",
         statement.file_path,
@@ -694,43 +713,44 @@ fn import_new_file<'sc>(
         Err(e) => todo!("error reading file: {:?}", e),
     };
 
-    // TODO: put all things in the namespace "up" one level
     let dep_namespace = namespace.clone();
     // :)
     let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
     let mut dep_config = build_config.clone();
     dep_config.dir_of_code.push(path.clone());
-    let (compile_result, dead_code_graph, control_flow_graph) =
-        crate::compile_inner_dependency(&static_file_string, &dep_namespace, dep_config);
+    let crate::InnerDependencyCompileResult {
+        mut library_exports,
+    } = type_check!(
+        crate::compile_inner_dependency(
+            &static_file_string,
+            &dep_namespace,
+            dep_config,
+            dead_code_graph
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-    match compile_result {
-        crate::CompilationResult::Library {
-            mut exports,
-            warnings: mut l_w,
-        } => {
-            warnings.append(&mut l_w);
-            // since this was an import of a single file, it should have exactly 1 library export
-            // as an invariant.
-            assert_eq!(exports.namespace.modules.len(), 1);
-            exports.namespace.modules = exports
-                .namespace
-                .modules
-                .into_iter()
-                .map(|(name, content)| {
-                    (
-                        if let Some(ref alias) = statement.alias {
-                            alias.primary_name.to_string()
-                        } else {
-                            name
-                        },
-                        content,
-                    )
-                })
-                .collect();
-            namespace.merge_namespaces(&exports.namespace);
-        }
-        _ => todo!("handler err and non-lib"),
-    }
+    // since this was an import of a single file, it should have exactly 1 library export
+    // as an invariant.
+    assert_eq!(library_exports.namespace.modules.len(), 1);
+    library_exports.namespace.modules = library_exports
+        .namespace
+        .modules
+        .into_iter()
+        .map(|(name, content)| {
+            (
+                if let Some(ref alias) = statement.alias {
+                    alias.primary_name.to_string()
+                } else {
+                    name
+                },
+                content,
+            )
+        })
+        .collect();
+    namespace.merge_namespaces(&library_exports.namespace);
 
     ok((), warnings, errors)
 }

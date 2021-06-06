@@ -1,5 +1,6 @@
 use super::*;
 use crate::build_config::BuildConfig;
+use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
@@ -31,6 +32,7 @@ impl<'sc> TypedExpression<'sc> {
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -132,6 +134,7 @@ impl<'sc> TypedExpression<'sc> {
                                  declaration.",
                                 self_type,
                                 build_config,
+                                dead_code_graph,
                             );
                             let arg = match res {
                                 CompileResult::Ok {
@@ -249,7 +252,8 @@ impl<'sc> TypedExpression<'sc> {
                         type_annotation.clone(),
                         help_text.clone(),
                         self_type,
-                        build_config
+                        build_config,
+                        dead_code_graph,
                     ),
                     (
                         TypedCodeBlock {
@@ -300,7 +304,8 @@ impl<'sc> TypedExpression<'sc> {
                         Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                         "The condition of an if expression must be a boolean expression.",
                         self_type,
-                        build_config
+                        build_config,
+                        dead_code_graph
                     ),
                     error_recovery_expr(condition.span()),
                     warnings,
@@ -313,7 +318,8 @@ impl<'sc> TypedExpression<'sc> {
                         type_annotation.clone(),
                         "",
                         self_type,
-                        build_config
+                        build_config,
+                        dead_code_graph
                     ),
                     error_recovery_expr(then.span()),
                     warnings,
@@ -327,7 +333,8 @@ impl<'sc> TypedExpression<'sc> {
                             Some(then.return_type.clone()),
                             "",
                             self_type,
-                            build_config
+                            build_config,
+                            dead_code_graph
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -381,7 +388,8 @@ impl<'sc> TypedExpression<'sc> {
                                             None,
                                             "",
                                             self_type,
-                                            build_config
+                                            build_config,
+                                            dead_code_graph
                                         ),
                                         error_recovery_expr(initializer.span()),
                                         warnings,
@@ -464,7 +472,8 @@ impl<'sc> TypedExpression<'sc> {
                             "Struct field's type must match up with the type specified in its \
                              declaration.",
                             self_type,
-                            build_config
+                            build_config,
+                            dead_code_graph
                         ),
                         continue,
                         warnings,
@@ -557,6 +566,7 @@ impl<'sc> TypedExpression<'sc> {
                         "",
                         self_type,
                         build_config,
+                        dead_code_graph,
                     ) {
                         CompileResult::Ok {
                             value,
@@ -631,6 +641,7 @@ impl<'sc> TypedExpression<'sc> {
                                  function declaration.",
                                 self_type,
                                 build_config,
+                                dead_code_graph
                             ),
                             continue,
                             warnings,
@@ -725,7 +736,8 @@ impl<'sc> TypedExpression<'sc> {
                                 type_arguments,
                                 namespace,
                                 self_type,
-                                build_config
+                                build_config,
+                                dead_code_graph
                             ),
                             return err(warnings, errors),
                             warnings,

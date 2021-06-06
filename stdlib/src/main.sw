@@ -1,22 +1,11 @@
 library ops;
 
-// Math ops
-dep bytecode as my_dep;
-
-use my_dep::ADependency;
-
-// TODO:
-// make dead code analysis work across files
-
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
 
 impl Add for u64 {
      fn add(self, other: Self) -> Self {
-     let x: ADependency  = ADependency {
-        a: 0b11110000,
-     };
         asm(r1: self, r2: other, r3) {
             add r3 r2 r1;
             r3: u64

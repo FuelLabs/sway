@@ -1,5 +1,6 @@
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
 use crate::build_config::BuildConfig;
+use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::Namespace;
 use crate::ParseTree;
 use crate::{
@@ -69,6 +70,7 @@ impl<'sc> TypedParseTree<'sc> {
         initial_namespace: Namespace<'sc>,
         tree_type: TreeType,
         build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Self> {
         let mut initial_namespace = initial_namespace.clone();
         let mut successful_nodes = vec![];
@@ -93,6 +95,7 @@ impl<'sc> TypedParseTree<'sc> {
                             // for other tree types
                             &MaybeResolvedType::Resolved(ResolvedType::Contract),
                             build_config,
+                            dead_code_graph,
                         ),
                     )
                 })
