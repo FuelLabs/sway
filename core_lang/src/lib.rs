@@ -248,13 +248,6 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
         errors.append(&mut graph.analyze_return_paths());
     }
 
-    // If there are errors, display them now before performing control flow analysis.
-    // It is necessary that the syntax tree is well-formed for control flow analysis
-    // to be correct.
-    if !errors.is_empty() {
-        return err(warnings, errors);
-    }
-
     for tree in &library_exports.trees {
         // The dead code will be analyzed later wholistically with the rest of the program
         // since we can't tell what is dead and what isn't just from looking at this file
