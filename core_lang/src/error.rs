@@ -627,6 +627,8 @@ pub enum CompileError<'sc> {
     UnknownType { span: Span<'sc> },
     #[error("Bytecode can only support programs with up to 2^12 words worth of opcodes. Try refactoring into contract calls? This is a temporary error and will be implemented in the future.")]
     TooManyInstructions { span: Span<'sc> },
+    #[error("No valid Sway file (.sw) was found at {file_path}")]
+    FileNotFound { span: Span<'sc>, file_path: String },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -780,6 +782,7 @@ impl<'sc> CompileError<'sc> {
             UnknownType { span, .. } => span,
             InvalidStrType { span, .. } => span,
             TooManyInstructions { span, .. } => span,
+            FileNotFound { span, .. } => span,
         }
     }
 

@@ -552,7 +552,7 @@ impl<'sc> TypedExpression<'sc> {
                     // if subfield exp is empty, then we are calling a method using either ::
                     // syntax or an operator
                     let ns = type_check!(
-                        namespace.find_module(&method_name.prefixes),
+                        namespace.find_module(&method_name.prefixes, false),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -679,7 +679,10 @@ impl<'sc> TypedExpression<'sc> {
                 // Instead, we try to resolve both paths.
                 // If only one exists, then we use that one. Otherwise, if both exist, it is
                 // an ambiguous reference error.
-                let module_result = namespace.find_module(&call_path.prefixes).ok().cloned();
+                let module_result = namespace
+                    .find_module(&call_path.prefixes, false)
+                    .ok()
+                    .cloned();
                 /*
                 let enum_result_result = {
                     // an enum could be combined with a module path
@@ -699,7 +702,7 @@ impl<'sc> TypedExpression<'sc> {
                     let (module_path, enum_name) =
                         call_path.prefixes.split_at(call_path.prefixes.len() - 1);
                     let enum_name = enum_name[0].clone();
-                    let namespace = namespace.find_module(module_path);
+                    let namespace = namespace.find_module(module_path, false);
                     let namespace = namespace.ok();
                     namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
                 };

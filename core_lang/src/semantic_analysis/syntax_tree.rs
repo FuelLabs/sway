@@ -135,10 +135,13 @@ impl<'sc> TypedParseTree<'sc> {
                 break;
             }
             is_first_pass = false;
-            assert!(
-                next_pass_nodes.len() < num_failed_nodes,
-                "This collection should be strictly monotonically decreasing in size."
-            );
+            if !(next_pass_nodes.len() < num_failed_nodes) {
+                errors.push(CompileError::Internal(
+                    "Error nodes did not decrease monotonically in multi-pass compilation.",
+                    pest::Span::new(" ", 0, 0).unwrap(),
+                ));
+                return err(warnings, errors);
+            }
             num_failed_nodes = next_pass_nodes.len();
         }
 

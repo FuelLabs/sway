@@ -13,15 +13,24 @@ pub enum ImportType<'sc> {
 pub struct UseStatement<'sc> {
     pub(crate) call_path: Vec<Ident<'sc>>,
     pub(crate) import_type: ImportType<'sc>,
+    // If `is_absolute` is true, then this use statement is an absolute path from
+    // the project root namespace. If not, then it is relative to the current namespace.
+    pub(crate) is_absolute: bool,
 }
 
 impl<'sc> UseStatement<'sc> {
     pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
-        let mut stmt = pair.into_inner();
+        let mut stmt = pair.into_inner().next().unwrap();
+        let is_absolute = stmt.as_rule() == Rule::absolute_use_statement;
+        let mut stmt = stmt.into_inner();
         let _use_keyword = stmt.next();
-        let import_path = stmt.next().unwrap();
+        let import_path = if is_absolute {
+            stmt.skip(1).next().expect("Guaranteed by grammar")
+        } else {
+            stmt.next().expect("Guaranteed by grammar")
+        };
         let mut import_path_buf = vec![];
         let mut import_path_vec = import_path.into_inner().collect::<Vec<_>>();
         let last_item = import_path_vec.pop().unwrap();
@@ -58,6 +67,7 @@ impl<'sc> UseStatement<'sc> {
             UseStatement {
                 call_path: import_path_buf,
                 import_type,
+                is_absolute,
             },
             Vec::new(),
             Vec::new(),

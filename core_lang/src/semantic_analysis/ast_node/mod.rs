@@ -6,6 +6,7 @@ use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
+use std::path::Path;
 
 mod code_block;
 mod declaration;
@@ -94,8 +95,10 @@ impl<'sc> TypedAstNode<'sc> {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
                     let res = match a.import_type {
-                        ImportType::Star => namespace.star_import(a.call_path),
-                        ImportType::Item(s) => namespace.item_import(a.call_path, &s, None),
+                        ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
+                        ImportType::Item(s) => {
+                            namespace.item_import(a.call_path, &s, None, a.is_absolute)
+                        }
                     };
                     match res {
                         CompileResult::Ok {
@@ -693,19 +696,19 @@ fn import_new_file<'sc>(
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let file_path = format!(
-        "{}.{}",
-        statement.file_path,
-        crate::constants::DEFAULT_FILE_EXTENSION
-    );
-    let mut path = build_config.dir_of_code.clone();
-    let this_dep = std::path::Path::new(&file_path);
-    path.push(this_dep);
-    println!("trying to read {:?}", path);
-    let res = if path.exists() {
-        std::fs::read_to_string(path.clone())
+    let file_path = Path::new(statement.file_path);
+    let file_path = file_path.with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
+
+    let mut canonical_path = build_config.dir_of_code.clone();
+    canonical_path.push(file_path);
+    let res = if canonical_path.exists() {
+        std::fs::read_to_string(canonical_path.clone())
     } else {
-        todo!("File not found err")
+        errors.push(CompileError::FileNotFound {
+            span: statement.path_span.clone(),
+            file_path: canonical_path.to_string_lossy().to_string(),
+        });
+        return ok((), warnings, errors);
     };
 
     let file_as_string = match res {
@@ -713,11 +716,18 @@ fn import_new_file<'sc>(
         Err(e) => todo!("error reading file: {:?}", e),
     };
 
-    let dep_namespace = namespace.clone();
+    let mut dep_namespace = namespace.clone();
+    if dep_namespace.crate_namespace.is_none() {
+        dep_namespace.crate_namespace = Box::new(Some(namespace.clone()));
+    }
     // :)
     let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
     let mut dep_config = build_config.clone();
-    dep_config.dir_of_code.push(path.clone());
+    let dep_path = {
+        canonical_path.pop();
+        canonical_path
+    };
+    dep_config.dir_of_code = dep_path;
     let crate::InnerDependencyCompileResult {
         mut library_exports,
     } = type_check!(

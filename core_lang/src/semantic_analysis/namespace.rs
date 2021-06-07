@@ -20,6 +20,9 @@ pub struct Namespace<'sc> {
         HashMap<(Ident<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     pub(crate) modules: HashMap<ModuleName, Namespace<'sc>>,
+    /// The crate namespace, to be used in absolute importing. This is `None` if the current
+    /// namespace _is_ the root namespace.
+    pub(crate) crate_namespace: Box<Option<Namespace<'sc>>>,
 }
 
 impl<'sc> Namespace<'sc> {
@@ -96,9 +99,26 @@ impl<'sc> Namespace<'sc> {
     }
     /// Given a path to a module, import everything from it and merge it into this namespace.
     /// This is used when an import path contains an asterisk.
-    pub(crate) fn star_import(&mut self, idents: Vec<Ident<'sc>>) -> CompileResult<'sc, ()> {
+    pub(crate) fn star_import(
+        &mut self,
+        idents: Vec<Ident<'sc>>,
+        is_absolute: bool,
+    ) -> CompileResult<'sc, ()> {
         let idents_buf = idents.into_iter();
-        let mut namespace = self.clone();
+        let mut namespace = if is_absolute {
+            if let Some(ns) = &*self.crate_namespace {
+                // this is an absolute import and this is a submodule, so we want the
+                // crate global namespace here
+                ns.clone()
+            } else {
+                // this is an absolute import and we are in the root module, so we want
+                // this namespace
+                self.clone()
+            }
+        } else {
+            // this is not an absolute import so we use this namespace
+            self.clone()
+        };
         for ident in idents_buf {
             match namespace.modules.get(ident.primary_name) {
                 Some(o) => namespace = o.clone(),
@@ -124,11 +144,12 @@ impl<'sc> Namespace<'sc> {
         item: &Ident<'sc>,
         // TODO support aliasing in grammar -- see alias
         alias: Option<Ident<'sc>>,
+        is_absolute: bool,
     ) -> CompileResult<'sc, ()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let namespace = type_check!(
-            self.find_module(&path),
+            self.find_module(&path, is_absolute),
             return err(warnings, errors),
             warnings,
             errors
@@ -220,7 +241,7 @@ impl<'sc> Namespace<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = type_check!(
-            self.find_module(&path.prefixes),
+            self.find_module(&path.prefixes, false),
             return err(warnings, errors),
             warnings,
             errors
@@ -238,8 +259,24 @@ impl<'sc> Namespace<'sc> {
         }
     }
 
-    pub(crate) fn find_module(&self, path: &[Ident<'sc>]) -> CompileResult<'sc, Namespace<'sc>> {
-        let mut namespace = self.clone();
+    pub(crate) fn find_module(
+        &self,
+        path: &[Ident<'sc>],
+        is_absolute: bool,
+    ) -> CompileResult<'sc, Namespace<'sc>> {
+        let mut namespace = if is_absolute {
+            if let Some(ns) = &*self.crate_namespace {
+                // this is an absolute import and this is a submodule, so we want the
+                // crate global namespace here
+                ns.clone()
+            } else {
+                // this is an absolute import and we are in the root module, so we want
+                // this namespace
+                self.clone()
+            }
+        } else {
+            self.clone()
+        };
         let mut errors = vec![];
         let warnings = vec![];
         for ident in path {
