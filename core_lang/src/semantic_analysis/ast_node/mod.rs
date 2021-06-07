@@ -713,11 +713,18 @@ fn import_new_file<'sc>(
 
     let file_as_string = match res {
         Ok(o) => o,
-        Err(e) => todo!("error reading file: {:?}", e),
+        Err(e) => {
+            errors.push(CompileError::FileCouldNotBeRead {
+                span: statement.path_span.clone(),
+                file_path: canonical_path.to_string_lossy().to_string(),
+                stringified_error: e.to_string(),
+            });
+            return ok((), warnings, errors);
+        }
     };
 
     let mut dep_namespace = namespace.clone();
-    if dep_namespace.crate_namespace.is_none() {
+    if namespace.crate_namespace.is_none() {
         dep_namespace.crate_namespace = Box::new(Some(namespace.clone()));
     }
     // :)
@@ -737,7 +744,12 @@ fn import_new_file<'sc>(
             dep_config,
             dead_code_graph
         ),
-        return err(warnings, errors),
+        crate::InnerDependencyCompileResult {
+            library_exports: crate::LibraryExports {
+                namespace: Namespace::default(),
+                trees: vec![]
+            }
+        },
         warnings,
         errors
     );

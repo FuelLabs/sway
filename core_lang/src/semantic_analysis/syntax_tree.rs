@@ -102,12 +102,26 @@ impl<'sc> TypedParseTree<'sc> {
                 .collect::<Vec<(_, CompileResult<_>)>>();
             next_pass_nodes = Default::default();
 
+            // If we hit the internal "non-decreasing error nodes" error, this helps
+            // show what went wrong right beforehand.
+            let mut errors_from_this_pass = vec![];
             for (node, res) in nodes.clone() {
                 match res {
                     CompileResult::Ok { ref errors, .. } if errors.is_empty() => {
                         successful_nodes.push(res)
                     }
-                    _ => next_pass_nodes.push_front(node),
+                    CompileResult::Err {
+                        errors: mut l_e, ..
+                    } => {
+                        errors_from_this_pass.append(&mut l_e);
+                        next_pass_nodes.push_front(node);
+                    }
+                    CompileResult::Ok {
+                        errors: mut l_e, ..
+                    } => {
+                        errors_from_this_pass.append(&mut l_e);
+                        next_pass_nodes.push_front(node);
+                    }
                 }
             }
             // If we did not solve any issues, i.e. the same number of nodes failed,
@@ -140,6 +154,7 @@ impl<'sc> TypedParseTree<'sc> {
                     "Error nodes did not decrease monotonically in multi-pass compilation.",
                     pest::Span::new(" ", 0, 0).unwrap(),
                 ));
+                errors.append(&mut errors_from_this_pass);
                 return err(warnings, errors);
             }
             num_failed_nodes = next_pass_nodes.len();

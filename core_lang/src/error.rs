@@ -629,6 +629,14 @@ pub enum CompileError<'sc> {
     TooManyInstructions { span: Span<'sc> },
     #[error("No valid Sway file (.sw) was found at {file_path}")]
     FileNotFound { span: Span<'sc>, file_path: String },
+    #[error("The file {file_path} could not be read: {stringified_error}")]
+    FileCouldNotBeRead {
+        span: Span<'sc>,
+        file_path: String,
+        stringified_error: String,
+    },
+    #[error("This imported file must be a library. It must start with \"library <name>\", where \"name\" is the name of the library/module this file contains.")]
+    ImportMustBeLibrary { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -783,6 +791,8 @@ impl<'sc> CompileError<'sc> {
             InvalidStrType { span, .. } => span,
             TooManyInstructions { span, .. } => span,
             FileNotFound { span, .. } => span,
+            FileCouldNotBeRead { span, .. } => span,
+            ImportMustBeLibrary { span, .. } => span,
         }
     }
 

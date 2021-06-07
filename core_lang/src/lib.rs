@@ -190,7 +190,12 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
         parse_tree.contract_ast,
     ) {
         (None, None, None) => (),
-        _ => todo!("Error: included files must be named libraries"),
+        _ => {
+            errors.push(CompileError::ImportMustBeLibrary {
+                span: Span::new(input, 0, 0).unwrap(),
+            });
+            return err(warnings, errors);
+        }
     }
     let library_exports: LibraryExports = {
         let res: Vec<_> = parse_tree

@@ -22,7 +22,7 @@ impl<'sc> UseStatement<'sc> {
     pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
-        let mut stmt = pair.into_inner().next().unwrap();
+        let stmt = pair.into_inner().next().unwrap();
         let is_absolute = stmt.as_rule() == Rule::absolute_use_statement;
         let mut stmt = stmt.into_inner();
         let _use_keyword = stmt.next();
