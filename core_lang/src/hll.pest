@@ -41,7 +41,9 @@ func_app                 =  {fn_name ~ fn_args}
 fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 fn_name                  =  {var_exp}
 var_exp                  =  {unary_op? ~ var_name_ident}
-method_exp               =  {subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")"}
+method_exp               =  {fully_qualified_method|subfield_method}
+subfield_method          =  {subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")"}
+fully_qualified_method   =  {delineated_path}
 subfield_exp             =  {(call_item ~ ".")+ ~ call_item}
 call_item                =  {ident}
 delineated_path          =  {path_component ~ ("(" ~ expr ~ ")")?}
@@ -104,7 +106,7 @@ enum_fields       =  {enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name
 enum_name         =  {ident}
 enum_field_name   =  {ident}
 
-impl_self =  {impl_keyword ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
+impl_self =  {impl_keyword ~ type_params? ~ type_name ~  trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // // fn declaration
 fn_decl_params     =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}

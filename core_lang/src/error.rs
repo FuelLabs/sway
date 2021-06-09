@@ -586,10 +586,7 @@ pub enum CompileError<'sc> {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
-    #[error(
-        "Unable to infer concrete type for partial type \"{ty}\". Type must be known at this \
-         point. Try providing an annotation or using a concrete type."
-    )]
+    #[error("Unknown type \"{ty}\".")]
     TypeMustBeKnown { ty: String, span: Span<'sc> },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span<'sc> },

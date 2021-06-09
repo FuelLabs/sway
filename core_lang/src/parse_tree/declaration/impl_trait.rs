@@ -133,6 +133,7 @@ impl<'sc> ImplSelf<'sc> {
         } else {
             None
         };
+        dbg!(&type_params_pair);
         let type_pair = iter.next().unwrap();
         let type_name_span = type_pair.as_span();
 

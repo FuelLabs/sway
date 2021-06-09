@@ -493,6 +493,8 @@ impl<'sc> Expression<'sc> {
             Rule::method_exp => {
                 let whole_exp_span = expr.as_span();
                 let mut parts = expr.into_inner();
+                todo!("match on the rule of the exp and either parse it as a subfield exp or a call path from\
+                a type");
                 let subfield_exp = parts.next().unwrap();
                 assert_eq!(subfield_exp.as_rule(), Rule::subfield_exp);
                 // remove the last field from the subfield exp, since it is the method name

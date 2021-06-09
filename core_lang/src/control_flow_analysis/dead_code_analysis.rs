@@ -375,9 +375,7 @@ fn connect_declaration<'sc>(
             connect_impl_trait(&trait_name, graph, methods, entry_node, tree_type)?;
             Ok(vec![])
         }
-        SideEffect | ErrorRecovery => {
-            unreachable!("These are error cases and should be removed in the type checking stage. ")
-        }
+        SideEffect | ErrorRecovery => Ok(vec![]),
     }
 }
 

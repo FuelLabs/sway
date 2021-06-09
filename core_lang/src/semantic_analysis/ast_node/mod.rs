@@ -744,19 +744,11 @@ fn import_new_file<'sc>(
             dep_config,
             dead_code_graph
         ),
-        crate::InnerDependencyCompileResult {
-            library_exports: crate::LibraryExports {
-                namespace: Namespace::default(),
-                trees: vec![]
-            }
-        },
+        return err(warnings, errors),
         warnings,
         errors
     );
 
-    // since this was an import of a single file, it should have exactly 1 library export
-    // as an invariant.
-    assert_eq!(library_exports.namespace.modules.len(), 1);
     library_exports.namespace.modules = library_exports
         .namespace
         .modules
