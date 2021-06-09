@@ -493,77 +493,82 @@ impl<'sc> Expression<'sc> {
             Rule::method_exp => {
                 let whole_exp_span = expr.as_span();
                 let mut parts = expr.into_inner();
-                let subfield_exp = parts.next().unwrap();
-                assert_eq!(subfield_exp.as_rule(), Rule::subfield_exp);
-                // remove the last field from the subfield exp, since it is the method name
-                // the different parts of the exp
-                // e.g.
-                // if the method_exp is a.b.c.add()
-                // then these parts are
-                // ["a", "b", "c", "add"]
-                let mut name_parts = subfield_exp.into_inner().collect::<Vec<_>>();
-                let method_name = eval!(
-                    CallPath::parse_from_pair,
-                    warnings,
-                    errors,
-                    name_parts.pop().unwrap(),
-                    return err(warnings, errors)
-                );
-                let function_arguments = parts
-                    .next()
-                    .map(|x| x.into_inner().collect::<Vec<_>>())
-                    .unwrap_or_else(|| vec![]);
-                let mut arguments_buf = VecDeque::new();
-                for argument in function_arguments {
-                    let arg = eval!(
-                        Expression::parse_from_pair_inner,
-                        warnings,
-                        errors,
-                        argument,
-                        Expression::Unit {
-                            span: argument.as_span()
+                let pair = parts.next().unwrap();
+                match pair.as_rule() {
+                    Rule::subfield_exp => {
+                        let subfield_exp = pair;
+                        // remove the last field from the subfield exp, since it is the method name
+                        // the different parts of the exp
+                        // e.g.
+                        // if the method_exp is a.b.c.add()
+                        // then these parts are
+                        // ["a", "b", "c", "add"]
+                        let mut name_parts = subfield_exp.into_inner().collect::<Vec<_>>();
+                        let method_name = eval!(
+                            CallPath::parse_from_pair,
+                            warnings,
+                            errors,
+                            name_parts.pop().unwrap(),
+                            return err(warnings, errors)
+                        );
+                        let function_arguments = parts
+                            .next()
+                            .map(|x| x.into_inner().collect::<Vec<_>>())
+                            .unwrap_or_else(|| vec![]);
+                        let mut arguments_buf = VecDeque::new();
+                        for argument in function_arguments {
+                            let arg = eval!(
+                                Expression::parse_from_pair_inner,
+                                warnings,
+                                errors,
+                                argument,
+                                Expression::Unit {
+                                    span: argument.as_span()
+                                }
+                            );
+                            arguments_buf.push_back(arg);
                         }
-                    );
-                    arguments_buf.push_back(arg);
-                }
-                let mut name_parts_buf = Vec::new();
-                for name_part in name_parts {
-                    let name = eval!(
-                        Ident::parse_from_pair,
-                        warnings,
-                        errors,
-                        name_part,
-                        continue
-                    );
-                    name_parts_buf.push(name);
-                }
+                        let mut name_parts_buf = Vec::new();
+                        for name_part in name_parts {
+                            let name = eval!(
+                                Ident::parse_from_pair,
+                                warnings,
+                                errors,
+                                name_part,
+                                continue
+                            );
+                            name_parts_buf.push(name);
+                        }
 
-                if name_parts_buf.len() == 1 {
-                    // then the first argument is a variable expression
-                    arguments_buf.push_front(Expression::VariableExpression {
-                        unary_op: None, // TODO
-                        name: name_parts_buf[0].clone(),
-                        span: name_parts_buf[0].clone().span,
-                    });
-                } else {
-                    // then it is a subfield expression
-                    // then the first argument is a variable expression
-                    arguments_buf.push_front(Expression::SubfieldExpression {
-                        name_parts: name_parts_buf.clone(),
-                        unary_op: None, // TODO
-                        span: name_parts_buf
-                            .clone()
-                            .into_iter()
-                            .fold(name_parts_buf[0].clone().span, |acc, this| {
-                                join_spans(acc, this.span)
-                            }),
-                    });
-                }
-                Expression::MethodApplication {
-                    subfield_exp: vec![],
-                    method_name,
-                    arguments: arguments_buf.into_iter().collect(),
-                    span: whole_exp_span,
+                        if name_parts_buf.len() == 1 {
+                            // then the first argument is a variable expression
+                            arguments_buf.push_front(Expression::VariableExpression {
+                                unary_op: None, // TODO
+                                name: name_parts_buf[0].clone(),
+                                span: name_parts_buf[0].clone().span,
+                            });
+                        } else {
+                            // then it is a subfield expression
+                            // then the first argument is a variable expression
+                            arguments_buf.push_front(Expression::SubfieldExpression {
+                                name_parts: name_parts_buf.clone(),
+                                unary_op: None, // TODO
+                                span: name_parts_buf
+                                    .clone()
+                                    .into_iter()
+                                    .fold(name_parts_buf[0].clone().span, |acc, this| {
+                                        join_spans(acc, this.span)
+                                    }),
+                            });
+                        }
+                        Expression::MethodApplication {
+                            subfield_exp: vec![],
+                            method_name,
+                            arguments: arguments_buf.into_iter().collect(),
+                            span: whole_exp_span,
+                        }
+                    }
+                    a => todo!("{:?}", a),
                 }
             }
             Rule::subfield_exp => eval!(

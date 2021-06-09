@@ -684,6 +684,16 @@ impl<'sc> TypedExpression<'sc> {
                     .ok()
                     .cloned();
                 /*
+                let type_method_result = {
+                    let (module_path, type_name) =
+                        call_path.prefixes.split_at(call_path.prefixes.len() - 1);
+                    let type_name = type_name[0].clone();
+                    let namespace = namespace.find_module(module_path, false).ok();
+                    namespace
+                        .map(|ns| ns.find_method_for_type_ident(&type_name, call_path.suffix))
+                        .flatten()
+                };*/
+                /*
                 let enum_result_result = {
                     // an enum could be combined with a module path
                     // e.g.
@@ -747,7 +757,8 @@ impl<'sc> TypedExpression<'sc> {
                             errors
                         )),
                         (None, None) => {
-                            todo!("Figure out why methods are not being found here");
+                            dbg!(&call_path);
+                            dbg!(&args);
                             errors.push(CompileError::SymbolNotFound {
                                 span,
                                 name: call_path.suffix.primary_name,

@@ -15,7 +15,7 @@ struct RawVec {
 
 impl<T> Vec<T> where T: Sized {
   fn new() -> Self {
-    let item_size = T::heap_size_of();
+    let item_size = ~T::heap_size_of();
     Vec { buf: RawVec::new(item_size), len: 1 }
   }
 }
