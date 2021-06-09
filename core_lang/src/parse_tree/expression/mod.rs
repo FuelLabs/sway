@@ -1,6 +1,6 @@
 use crate::error::*;
 use crate::parse_tree::{CallPath, Literal};
-use crate::parser::Rule;
+use crate::{parser::Rule, types::TypeInfo};
 use crate::{CodeBlock, Ident};
 use either::Either;
 use pest::iterators::Pair;
@@ -10,6 +10,30 @@ use std::collections::{HashMap, VecDeque};
 mod asm;
 use crate::utils::join_spans;
 pub(crate) use asm::*;
+
+pub(crate) enum MethodApplication<'sc> {
+    DotApplied {
+        method_name: Ident<'sc>,
+        self_expr: Box<Expression<'sc>>,
+        arguments: Vec<Expression<'sc>>,
+        span: Span<'sc>,
+    },
+    FullyQualified {
+        method_name: Ident<'sc>,
+        type_name: TypeInfo<'sc>,
+        arguments: Vec<Expression<'sc>>,
+        span: Span<'sc>,
+    },
+}
+
+impl<'sc> MethodApplication<'sc> {
+    pub(crate) fn span(&self) -> &Span<'sc> {
+        match self {
+            DotApplied { span, .. } => span,
+            FullyQualified { span, .. } => span,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
@@ -63,12 +87,7 @@ pub enum Expression<'sc> {
         span: Span<'sc>,
         asm: AsmExpression<'sc>,
     },
-    MethodApplication {
-        subfield_exp: Vec<Ident<'sc>>,
-        method_name: CallPath<'sc>,
-        arguments: Vec<Expression<'sc>>,
-        span: Span<'sc>,
-    },
+    MethodApplication(MethodApplication<'sc>),
     /// A subfield expression is anything of the form:
     /// ```ignore
     /// <ident>.<ident>
@@ -105,7 +124,7 @@ pub enum Expression<'sc> {
         call_path: CallPath<'sc>,
         args: Vec<Expression<'sc>>,
         span: Span<'sc>,
-        type_arguments: Vec<crate::types::TypeInfo<'sc>>,
+        type_arguments: Vec<TypeInfo<'sc>>,
     },
 }
 
@@ -131,7 +150,7 @@ impl<'sc> Expression<'sc> {
             ParenthesizedExpression { span, .. } => span,
             IfExp { span, .. } => span,
             AsmExpression { span, .. } => span,
-            MethodApplication { span, .. } => span,
+            MethodApplication { m_app } => m_app.span(),
             SubfieldExpression { span, .. } => span,
             DelineatedPath { span, .. } => span,
         })
@@ -568,7 +587,74 @@ impl<'sc> Expression<'sc> {
                             span: whole_exp_span,
                         }
                     }
-                    a => todo!("{:?}", a),
+                    Rule::fully_qualified_method => {
+                        dbg!(&pair);
+                        let mut path_parts_buf = vec![];
+                        let mut type_name = None;
+                        let mut method_name = None;
+                        let mut arguments = None;
+                        for pair in pair.into_inner() {
+                            match pair.as_rule() {
+                                Rule::path_separator => (),
+                                Rule::path_ident => {
+                                    path_parts_buf.push(eval!(
+                                        Ident::parse_from_pair,
+                                        warnings,
+                                        errors,
+                                        pair,
+                                        continue
+                                    ));
+                                }
+                                Rule::type_name => {
+                                    type_name = Some(pair);
+                                }
+                                Rule::call_item => {
+                                    method_name = Some(pair);
+                                }
+                                Rule::fn_args => {
+                                    arguments = Some(pair);
+                                }
+                                a => unreachable!("guaranteed by grammar: {:?}", a),
+                            }
+                        }
+                        let type_name = eval!(
+                            TypeInfo::parse_from_pair,
+                            warnings,
+                            errors,
+                            type_name.expect("guaranteed by grammar"),
+                            TypeInfo::ErrorRecovery
+                        );
+
+                        // parse the method name into a call path
+                        let method_name = MethodName {
+                            module_prefixes: path_parts_buf,
+                            type_suffix: Some(type_name),
+                            method_name: method_name.expect("guaranteed by grammar"),
+                        };
+
+                        let mut arguments_buf = vec![];
+                        // evaluate  the arguments passed in to the method
+                        for argument in arguments {
+                            let arg = eval!(
+                                Expression::parse_from_pair_inner,
+                                warnings,
+                                errors,
+                                argument,
+                                Expression::Unit {
+                                    span: argument.as_span()
+                                }
+                            );
+                            arguments_buf.push(arg);
+                        }
+
+                        Expression::MethodApplication {
+                            subfield_exp: vec![],
+                            method_name: todo!("call path with type name"),
+                            arguments: arguments_buf,
+                            span: whole_exp_span,
+                        }
+                    }
+                    a => unreachable!("{:?}", a),
                 }
             }
             Rule::subfield_exp => eval!(

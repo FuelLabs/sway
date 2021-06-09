@@ -1,6 +1,6 @@
-use crate::error::*;
 use crate::parser::Rule;
 use crate::Ident;
+use crate::{error::*, types::TypeInfo};
 use pest::iterators::Pair;
 use pest::Span;
 
@@ -8,6 +8,7 @@ use pest::Span;
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct CallPath<'sc> {
     pub prefixes: Vec<Ident<'sc>>,
+    pub type_suffix: Option<TypeInfo<'sc>>,
     pub suffix: Ident<'sc>,
 }
 
@@ -16,6 +17,7 @@ impl<'sc> std::convert::From<Ident<'sc>> for CallPath<'sc> {
         CallPath {
             prefixes: vec![],
             suffix: other,
+            type_suffix: None,
         }
     }
 }
@@ -38,22 +40,40 @@ impl<'sc> CallPath<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut pairs_buf = vec![];
+        let mut type_suffix = None;
         for pair in pair.clone().into_inner() {
-            if pair.as_rule() != Rule::path_separator {
-                pairs_buf.push(eval!(
+            match pair.as_rule() {
+                Rule::type_name => {
+                    type_suffix = Some(eval!(
+                        TypeInfo::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair,
+                        TypeInfo::ErrorRecovery
+                    ))
+                }
+                Rule::path_separator => (),
+                _ => pairs_buf.push(eval!(
                     Ident::parse_from_pair,
                     warnings,
                     errors,
                     pair,
                     continue
-                ));
+                )),
             }
         }
         assert!(pairs_buf.len() > 0);
         let suffix = pairs_buf.pop().unwrap();
         let prefixes = pairs_buf;
 
-        // TODO eventually we want to be able to call methods with colon-delineated syntax
-        ok(CallPath { prefixes, suffix }, warnings, errors)
+        ok(
+            CallPath {
+                prefixes,
+                type_suffix,
+                suffix,
+            },
+            warnings,
+            errors,
+        )
     }
 }

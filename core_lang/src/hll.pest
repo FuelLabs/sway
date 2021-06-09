@@ -33,7 +33,7 @@ file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { "as" ~ ident }
 // expressions
-expr_inner               = _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|delineated_path|method_exp|method_exp|var_exp|array_exp|match_expression|unit}
+expr_inner               = _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|method_exp|delineated_path|var_exp|array_exp|match_expression|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 // // op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
