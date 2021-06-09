@@ -8,8 +8,9 @@ rust = "1.50"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pest = "2.0"
+#pest = "2.0"
 pest_derive = "2.0"
+pest = { git = "https://github.com/sezna/pest.git" , rev = "8aa58791f759daf4caee26e8560e862df5a6afb7" }
 thiserror = "1.0"
 either = "1.6"
 Inflector = "0.11"

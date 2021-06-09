@@ -17,16 +17,21 @@ block_comment_open  =  {"/*"}
 block_comment_close =  {"*/"}
 fn_returns          =  {"->"}
 path_separator      =  {"::"}
+include_keyword     =  { "dep" }
 
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
 
-library      =  {"library" ~ library_name ~ ";" ~ (control_flow|declaration|use_statement)* }
+library      =  {"library" ~ library_name ~ ";" ~ (control_flow|declaration|use_statement|include_statement)* }
 library_name =  {ident}
-contract     =  {"contract" ~ ";" ~ (control_flow|declaration|use_statement)*}
-script       =  {"script" ~ ";" ~ (control_flow|declaration|use_statement)*}
-predicate    =  {"predicate" ~ ";" ~ (control_flow|declaration|use_statement)*}
+contract     =  {"contract" ~ ";" ~ (control_flow|declaration|use_statement|include_statement)*}
+script       =  {"script" ~ ";" ~ (control_flow|declaration|use_statement|include_statement)*}
+predicate    =  {"predicate" ~ ";" ~ (control_flow|declaration|use_statement|include_statement)*}
 
+// including other files
+file_path         = { ident ~ ("/" ~ ident)* }
+include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
+alias             = { "as" ~ ident }
 // expressions
 expr_inner               = _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|delineated_path|method_exp|subfield_exp|var_exp|array_exp|match_expression|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
@@ -131,9 +136,11 @@ impl_trait    =  {impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~
 
 // imports
 
-use_statement =  {use_keyword ~ import_path ~ ";"}
-import_path   =  {ident ~ (path_separator ~ (ident|star))*}
-star          =  {"*"}
+use_statement           =  {relative_use_statement | absolute_use_statement}
+relative_use_statement  =  {use_keyword ~ import_path ~ ";"}
+absolute_use_statement  =  {use_keyword ~ path_separator ~ import_path ~ ";"}
+import_path             =  {ident ~ (path_separator ~ (ident|star))*}
+star                    =  {"*"}
 
 // loops
 while_loop =  {while_keyword ~ expr ~ code_block}

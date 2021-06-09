@@ -1,7 +1,5 @@
 library ops;
 
-// Math ops
-
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
