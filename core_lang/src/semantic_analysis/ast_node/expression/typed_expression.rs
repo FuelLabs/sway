@@ -670,7 +670,7 @@ impl<'sc> TypedExpression<'sc> {
             Expression::DelineatedPath {
                 call_path,
                 span,
-                instantiator,
+                args,
                 type_arguments,
             } => {
                 // The first step is to determine if the call path refers to a module or an enum.
@@ -735,7 +735,7 @@ impl<'sc> TypedExpression<'sc> {
                             instantiate_enum(
                                 enum_decl,
                                 call_path.suffix,
-                                instantiator,
+                                args,
                                 type_arguments,
                                 namespace,
                                 self_type,
@@ -747,6 +747,7 @@ impl<'sc> TypedExpression<'sc> {
                             errors
                         )),
                         (None, None) => {
+                            todo!("Figure out why methods are not being found here");
                             errors.push(CompileError::SymbolNotFound {
                                 span,
                                 name: call_path.suffix.primary_name,

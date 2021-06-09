@@ -103,7 +103,7 @@ pub enum Expression<'sc> {
     /// ```
     DelineatedPath {
         call_path: CallPath<'sc>,
-        instantiator: Option<Box<Expression<'sc>>>,
+        args: Vec<Expression<'sc>>,
         span: Span<'sc>,
         type_arguments: Vec<crate::types::TypeInfo<'sc>>,
     },
@@ -493,8 +493,6 @@ impl<'sc> Expression<'sc> {
             Rule::method_exp => {
                 let whole_exp_span = expr.as_span();
                 let mut parts = expr.into_inner();
-                todo!("match on the rule of the exp and either parse it as a subfield exp or a call path from\
-                a type");
                 let subfield_exp = parts.next().unwrap();
                 assert_eq!(subfield_exp.as_rule(), Rule::subfield_exp);
                 // remove the last field from the subfield exp, since it is the method name
@@ -590,23 +588,28 @@ impl<'sc> Expression<'sc> {
                     return err(warnings, errors)
                 );
 
-                let instantiator = if let Some(inst) = instantiator {
-                    Some(Box::new(eval!(
-                        Expression::parse_from_pair_inner,
-                        warnings,
-                        errors,
-                        inst.into_inner().next().unwrap(),
-                        return err(warnings, errors)
-                    )))
+                let args = if let Some(inst) = instantiator {
+                    let mut buf = vec![];
+                    for exp in inst.into_inner() {
+                        let exp = eval!(
+                            Expression::parse_from_pair,
+                            warnings,
+                            errors,
+                            exp,
+                            return err(warnings, errors)
+                        );
+                        buf.push(exp);
+                    }
+                    buf
                 } else {
-                    None
+                    vec![]
                 };
 
                 // if there is an expression in parenthesis, that is the instantiator.
 
                 Expression::DelineatedPath {
                     call_path: path,
-                    instantiator,
+                    args,
                     span,
                     // Eventually, when we support generic enums, we want to be able to parse type
                     // arguments on the enum name and throw them in here. TODO

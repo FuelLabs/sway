@@ -638,6 +638,10 @@ pub enum CompileError<'sc> {
     },
     #[error("This imported file must be a library. It must start with \"library <name>\", where \"name\" is the name of the library this file contains.")]
     ImportMustBeLibrary { span: Span<'sc> },
+    #[error("An enum instantiaton cannot contain more than one value. This should be a single value of type {ty}.")]
+    MoreThanOneEnumInstantiator { span: Span<'sc>, ty: String },
+    #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
+    UnnecessaryEnumInstantiator { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -794,6 +798,8 @@ impl<'sc> CompileError<'sc> {
             FileNotFound { span, .. } => span,
             FileCouldNotBeRead { span, .. } => span,
             ImportMustBeLibrary { span, .. } => span,
+            MoreThanOneEnumInstantiator { span, .. } => span,
+            UnnecessaryEnumInstantiator { span, .. } => span,
         }
     }
 

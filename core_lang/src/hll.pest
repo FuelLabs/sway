@@ -41,12 +41,10 @@ func_app                 =  {fn_name ~ fn_args}
 fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 fn_name                  =  {var_exp}
 var_exp                  =  {unary_op? ~ var_name_ident}
-method_exp               =  {fully_qualified_method|subfield_method}
-subfield_method          =  {subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")"}
-fully_qualified_method   =  {delineated_path}
+method_exp               =  {subfield_exp ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")"}
 subfield_exp             =  {(call_item ~ ".")+ ~ call_item}
 call_item                =  {ident}
-delineated_path          =  {path_component ~ ("(" ~ expr ~ ")")?}
+delineated_path          =  {path_component ~ fn_args?}
 path_component           =  {path_ident ~ (path_separator ~ path_ident)+}
 path_ident               =  {ident}
 

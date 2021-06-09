@@ -26,7 +26,8 @@ impl RawVec {
     let ptr = asm(r1: init_size_bytes) {
       aloc r1;
       hp: u64
-    }
+    };
+
   }
 }
 
