@@ -1,6 +1,7 @@
 use super::{
     ast_node::{
-        TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedVariableDeclaration,
+        TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
+        TypedVariableDeclaration,
     },
     TypedExpression,
 };
@@ -12,12 +13,13 @@ use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
 use std::collections::HashMap;
 
 type ModuleName = String;
+type TraitName<'a> = Ident<'a>;
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
     symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
     implemented_traits:
-        HashMap<(Ident<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
+        HashMap<(TraitName<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     pub(crate) modules: HashMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
@@ -486,8 +488,77 @@ impl<'sc> Namespace<'sc> {
         methods
     }
 
-    pub(crate) fn insert_trait_methods(&mut self, type_param: Vec<crate::TypeParameter<'sc>>) {
-        todo!("Find the trait in the type param and insert it given the type name")
+    fn find_trait_methods(
+        &self,
+        trait_name: &Ident<'sc>,
+    ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
+        let (methods, interface_surface) = match self.symbols.iter().find_map(|(_, x)| match x {
+            TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
+                name,
+                methods,
+                interface_surface,
+                ..
+            }) => {
+                if name == trait_name {
+                    Some((methods, interface_surface))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }) {
+            Some(o) => o,
+            None => {
+                return err(
+                    vec![],
+                    vec![CompileError::TraitNotFound {
+                        name: trait_name.primary_name,
+                        span: trait_name.span.clone(),
+                    }],
+                )
+            }
+        };
+
+        ok(
+            [
+                methods.into_iter().cloned().collect::<Vec<_>>(),
+                interface_surface
+                    .into_iter()
+                    .map(|x| x.to_dummy_func())
+                    .collect(),
+            ]
+            .concat(),
+            vec![],
+            vec![],
+        )
+    }
+
+    pub(crate) fn insert_trait_methods(&mut self, type_params: &[crate::TypeParameter<'sc>]) {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        for crate::TypeParameter {
+            name,
+            trait_constraints,
+            ..
+        } in type_params
+        {
+            let r#type = self.resolve_type_without_self(name);
+            for trait_constraint in trait_constraints {
+                let methods_for_trait = type_check!(
+                    self.find_trait_methods(&trait_constraint.name),
+                    continue,
+                    warnings,
+                    errors
+                );
+                // insert the type into the namespace
+                self.implemented_traits.insert(
+                    (trait_constraint.name.clone(), r#type.clone()),
+                    methods_for_trait,
+                );
+                //implemented_traits:
+                //    HashMap<(TraitName<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
+            }
+        }
     }
 
     pub(crate) fn find_method_for_type(

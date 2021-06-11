@@ -118,7 +118,7 @@ fn_decl_name       =  {ident}
 type_name          =  {(str_type|ident ~ type_params?)|unit}
 str_type           =  { "str" ~ "[" ~ basic_integer ~ "]" }
 trait_bounds       =  {"where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)*}
-generic_type_param = @{ident}
+generic_type_param =  {ident}
 
 // statements
 // // statements are basically non-expressions that don't alter the namespace like declarations do

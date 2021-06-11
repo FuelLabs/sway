@@ -669,7 +669,6 @@ impl<'sc> TypedExpression<'sc> {
 
                 // zip parameters to arguments to perform type checking
                 let zipped = method.parameters.iter().zip(arguments.iter());
-                dbg!(&zipped);
                 let mut typed_arg_buf = vec![];
                 for (TypedFunctionParameter { r#type, name, .. }, arg) in zipped {
                     typed_arg_buf.push((

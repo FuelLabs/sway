@@ -314,7 +314,13 @@ impl<'sc> TypedAstNode<'sc> {
                                         );
                                         if type_parameters
                                             .iter()
-                                            .find(|x| x.name == name.primary_name)
+                                            .find(|TypeParameter { name: this_name, .. }| {
+                                                if let TypeInfo::Custom { name: this_name } = this_name {
+                                                    this_name.primary_name == name.primary_name
+                                                } else {
+                                                    false
+                                                }
+                                            })
                                             .is_none()
                                         {
                                             errors.push(
@@ -472,6 +478,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 namespace.resolve_type_without_self(&type_implementing_for);
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
+                            namespace.insert_trait_methods(&type_arguments[..]);
                             for mut fn_decl in functions.into_iter() {
                                 let mut type_arguments = type_arguments.clone();
                                 // add generic params from impl trait into function type params

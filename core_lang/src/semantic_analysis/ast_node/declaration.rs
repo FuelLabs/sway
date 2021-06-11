@@ -1,7 +1,6 @@
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
-use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::{
@@ -10,6 +9,7 @@ use crate::{
     types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
 };
+use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
 use pest::Span;
 
 #[derive(Clone, Debug)]
@@ -348,7 +348,17 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 );
                 if type_parameters
                     .iter()
-                    .find(|x| x.name == name.primary_name)
+                    .find(
+                        |TypeParameter {
+                             name: this_name, ..
+                         }| {
+                            if let TypeInfo::Custom { name: this_name } = this_name {
+                                this_name.primary_name == name.primary_name
+                            } else {
+                                false
+                            }
+                        },
+                    )
                     .is_none()
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {

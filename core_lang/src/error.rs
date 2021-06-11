@@ -642,6 +642,8 @@ pub enum CompileError<'sc> {
     MoreThanOneEnumInstantiator { span: Span<'sc>, ty: String },
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span<'sc> },
+    #[error("Trait \"{name}\" does not exist in this scope.")]
+    TraitNotFound { name: &'sc str, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -800,6 +802,7 @@ impl<'sc> CompileError<'sc> {
             ImportMustBeLibrary { span, .. } => span,
             MoreThanOneEnumInstantiator { span, .. } => span,
             UnnecessaryEnumInstantiator { span, .. } => span,
+            TraitNotFound { span, .. } => span,
         }
     }
 
