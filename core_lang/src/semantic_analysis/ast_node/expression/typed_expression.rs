@@ -552,7 +552,6 @@ impl<'sc> TypedExpression<'sc> {
                     MethodName::FromModule {
                         call_path: ref method_name,
                     } => {
-                        println!("from module : {:?}", method_name);
                         if subfield_exp.is_empty() {
                             // if subfield exp is empty, then we are calling a method using either ::
                             // syntax or an operator
@@ -636,7 +635,6 @@ impl<'sc> TypedExpression<'sc> {
                         ref type_name,
                         ref call_path,
                     } => {
-                        println!("from type {:?} {:?}", type_name, call_path);
                         if !subfield_exp.is_empty() {
                             unreachable!("This should not happen, according to the grammar");
                         }
@@ -649,7 +647,6 @@ impl<'sc> TypedExpression<'sc> {
                             warnings,
                             errors
                         );
-                        dbg!(&ns);
                         let type_name = ns.resolve_type(&type_name, self_type);
                         // a method is defined by the type name specified
                         match ns.find_method_for_type(&type_name, call_path.suffix.clone()) {

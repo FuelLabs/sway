@@ -486,6 +486,10 @@ impl<'sc> Namespace<'sc> {
         methods
     }
 
+    pub(crate) fn insert_trait_methods(&mut self, type_param: Vec<crate::TypeParameter<'sc>>) {
+        todo!("Find the trait in the type param and insert it given the type name")
+    }
+
     pub(crate) fn find_method_for_type(
         &self,
         r#type: &MaybeResolvedType<'sc>,

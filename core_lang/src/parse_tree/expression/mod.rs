@@ -538,7 +538,7 @@ impl<'sc> Expression<'sc> {
                         let mut arguments_buf = VecDeque::new();
                         for argument in function_arguments {
                             let arg = eval!(
-                                Expression::parse_from_pair_inner,
+                                Expression::parse_from_pair,
                                 warnings,
                                 errors,
                                 argument,
@@ -647,7 +647,7 @@ impl<'sc> Expression<'sc> {
                         if let Some(arguments) = arguments {
                             for argument in arguments.into_inner() {
                                 let arg = eval!(
-                                    Expression::parse_from_pair_inner,
+                                    Expression::parse_from_pair,
                                     warnings,
                                     errors,
                                     argument,
