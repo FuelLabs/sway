@@ -11,26 +11,22 @@ mod asm;
 use crate::utils::join_spans;
 pub(crate) use asm::*;
 
-pub(crate) enum MethodApplication<'sc> {
-    DotApplied {
-        method_name: Ident<'sc>,
-        self_expr: Box<Expression<'sc>>,
-        arguments: Vec<Expression<'sc>>,
-        span: Span<'sc>,
-    },
-    FullyQualified {
-        method_name: Ident<'sc>,
+#[derive(Debug, Clone)]
+pub enum MethodName<'sc> {
+    /// Represents a method lookup with a type somewhere in the path
+    FromType {
+        call_path: CallPath<'sc>,
         type_name: TypeInfo<'sc>,
-        arguments: Vec<Expression<'sc>>,
-        span: Span<'sc>,
     },
+    /// Represents a method lookup that does not contain any types in the path
+    FromModule { call_path: CallPath<'sc> },
 }
 
-impl<'sc> MethodApplication<'sc> {
-    pub(crate) fn span(&self) -> &Span<'sc> {
+impl<'sc> MethodName<'sc> {
+    pub(crate) fn call_path(&self) -> &CallPath<'sc> {
         match self {
-            DotApplied { span, .. } => span,
-            FullyQualified { span, .. } => span,
+            MethodName::FromType { call_path, .. } => call_path,
+            MethodName::FromModule { call_path, .. } => call_path,
         }
     }
 }
@@ -87,7 +83,12 @@ pub enum Expression<'sc> {
         span: Span<'sc>,
         asm: AsmExpression<'sc>,
     },
-    MethodApplication(MethodApplication<'sc>),
+    MethodApplication {
+        subfield_exp: Vec<Ident<'sc>>,
+        method_name: MethodName<'sc>,
+        arguments: Vec<Expression<'sc>>,
+        span: Span<'sc>,
+    },
     /// A subfield expression is anything of the form:
     /// ```ignore
     /// <ident>.<ident>
@@ -150,7 +151,7 @@ impl<'sc> Expression<'sc> {
             ParenthesizedExpression { span, .. } => span,
             IfExp { span, .. } => span,
             AsmExpression { span, .. } => span,
-            MethodApplication { m_app } => m_app.span(),
+            MethodApplication { span, .. } => span,
             SubfieldExpression { span, .. } => span,
             DelineatedPath { span, .. } => span,
         })
@@ -582,13 +583,14 @@ impl<'sc> Expression<'sc> {
                         }
                         Expression::MethodApplication {
                             subfield_exp: vec![],
-                            method_name,
+                            method_name: MethodName::FromModule {
+                                call_path: method_name,
+                            },
                             arguments: arguments_buf.into_iter().collect(),
                             span: whole_exp_span,
                         }
                     }
                     Rule::fully_qualified_method => {
-                        dbg!(&pair);
                         let mut path_parts_buf = vec![];
                         let mut type_name = None;
                         let mut method_name = None;
@@ -626,30 +628,40 @@ impl<'sc> Expression<'sc> {
                         );
 
                         // parse the method name into a call path
-                        let method_name = MethodName {
-                            module_prefixes: path_parts_buf,
-                            type_suffix: Some(type_name),
-                            method_name: method_name.expect("guaranteed by grammar"),
+                        let method_name = MethodName::FromType {
+                            call_path: CallPath {
+                                prefixes: path_parts_buf,
+                                suffix: eval!(
+                                    Ident::parse_from_pair,
+                                    warnings,
+                                    errors,
+                                    method_name.expect("guaranteed by grammar"),
+                                    return err(warnings, errors)
+                                ),
+                            },
+                            type_name,
                         };
 
                         let mut arguments_buf = vec![];
                         // evaluate  the arguments passed in to the method
-                        for argument in arguments {
-                            let arg = eval!(
-                                Expression::parse_from_pair_inner,
-                                warnings,
-                                errors,
-                                argument,
-                                Expression::Unit {
-                                    span: argument.as_span()
-                                }
-                            );
-                            arguments_buf.push(arg);
+                        if let Some(arguments) = arguments {
+                            for argument in arguments.into_inner() {
+                                let arg = eval!(
+                                    Expression::parse_from_pair_inner,
+                                    warnings,
+                                    errors,
+                                    argument,
+                                    Expression::Unit {
+                                        span: argument.as_span()
+                                    }
+                                );
+                                arguments_buf.push(arg);
+                            }
                         }
 
                         Expression::MethodApplication {
                             subfield_exp: vec![],
-                            method_name: todo!("call path with type name"),
+                            method_name: method_name,
                             arguments: arguments_buf,
                             span: whole_exp_span,
                         }
@@ -1042,18 +1054,20 @@ fn arrange_by_order_of_operations<'sc>(
         let rhs = rhs.unwrap();
 
         expression_stack.push(Expression::MethodApplication {
-            method_name: CallPath {
-                prefixes: vec![
-                    Ident {
-                        primary_name: "std".into(),
-                        span: op.span.clone(),
-                    },
-                    Ident {
-                        primary_name: "ops".into(),
-                        span: op.span.clone(),
-                    },
-                ],
-                suffix: op.to_var_name(),
+            method_name: MethodName::FromModule {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident {
+                            primary_name: "std".into(),
+                            span: op.span.clone(),
+                        },
+                        Ident {
+                            primary_name: "ops".into(),
+                            span: op.span.clone(),
+                        },
+                    ],
+                    suffix: op.to_var_name(),
+                },
             },
             subfield_exp: vec![],
             arguments: vec![lhs.clone(), rhs.clone()],

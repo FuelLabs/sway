@@ -493,7 +493,6 @@ fn connect_trait_declaration<'sc>(
         CallPath {
             suffix: decl.name.clone(),
             prefixes: vec![],
-            type_suffix: None,
         },
         entry_node,
     );
