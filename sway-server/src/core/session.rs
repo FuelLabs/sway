@@ -146,7 +146,7 @@ impl Session {
 
     pub fn format_text(&self, url: &Url, options: FormattingOptions) -> Option<Vec<TextEdit>> {
         if let Some(document) = self.documents.get(url) {
-            get_format_text_edits(document.get_text(), options)
+            get_format_text_edits(&document.get_text(), options)
         } else {
             None
         }

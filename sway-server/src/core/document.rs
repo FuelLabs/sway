@@ -18,7 +18,6 @@ pub struct TextDocument {
     version: i32,
     uri: String,
     content: Rope,
-    text: String,
     tokens: Vec<Token>,
     lines: HashMap<u32, Vec<usize>>,
     values: HashMap<String, Vec<usize>>,
@@ -31,7 +30,6 @@ impl TextDocument {
             version: item.version,
             uri: item.uri.to_string(),
             content: Rope::from_str(&item.text),
-            text: item.text.clone(),
             tokens: vec![],
             lines: HashMap::new(),
             values: HashMap::new(),
@@ -79,7 +77,6 @@ impl TextDocument {
     }
 
     pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {
-        self.sync_text_with_content();
         self.clear_tokens();
         self.clear_hash_maps();
 
@@ -99,15 +96,15 @@ impl TextDocument {
         self.content.insert(edit.start_index, edit.change_text);
     }
 
-    pub fn get_text(&self) -> &str {
-        &self.text
+    pub fn get_text(&self) -> String {
+        self.content.to_string()
     }
 }
 
 // private methods
 impl TextDocument {
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
-        match parse(&self.text) {
+        match parse(&self.get_text()) {
             CompileResult::Err { warnings, errors } => {
                 Err(capabilities::diagnostic::get_diagnostics(warnings, errors))
             }
@@ -187,10 +184,6 @@ impl TextDocument {
                 }
             }
         }
-    }
-
-    fn sync_text_with_content(&mut self) {
-        self.text = self.content.to_string();
     }
 
     fn clear_hash_maps(&mut self) {
