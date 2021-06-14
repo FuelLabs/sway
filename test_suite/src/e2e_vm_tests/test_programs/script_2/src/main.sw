@@ -15,11 +15,7 @@ struct GasCounts {
 }
 
 fn get_gas() -> GasCounts {
-	let x = asm(cgas: 6u64) {
-		bhei cgas;
-		cgas
-	};
-    GasCounts {
+  GasCounts {
 		global_gas: asm() {
 			ggas
 		},

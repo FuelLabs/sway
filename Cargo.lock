@@ -14,9 +14,9 @@ dependencies = [
 
 [[package]]
 name = "addr2line"
-version = "0.15.1"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03345e98af8f3d786b6d9f656ccfa6ac316d954e92bc4841f0bba20789d5fb5a"
+checksum = "e7a2e47a1fbe209ee101dd6d61285226744c6c8d3c21c8dc878ba6cb9f467f3a"
 dependencies = [
  "gimli",
 ]
@@ -93,9 +93,9 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "backtrace"
-version = "0.3.59"
+version = "0.3.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4717cfcbfaa661a0fd48f8453951837ae7e8f81e481fbb136e3202d72805a744"
+checksum = "b7815ea54e4d821e791162e078acbebfd6d8c8939cd559c9335dceb1c8ca7282"
 dependencies = [
  "addr2line",
  "cc",
@@ -224,7 +224,7 @@ dependencies = [
  "either",
  "fuel-asm",
  "fuel-vm",
- "pest",
+ "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
  "pest_derive",
  "petgraph",
  "thiserror",
@@ -301,8 +301,11 @@ version = "0.1.0"
 dependencies = [
  "core_lang",
  "fuel-asm",
+ "fuel-tx",
+ "fuel-vm",
+ "hex",
  "line-col",
- "pest",
+ "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
  "serde",
  "source-span",
  "structopt",
@@ -331,12 +334,12 @@ checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#73a80acf5220e47aff893f76f1e50249e9843cf0"
+source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#a26fbb180508a1c727eaa74fe049fb7e67f87d0c"
 
 [[package]]
 name = "fuel-tx"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#d9345fc71d80ad95e45cf247ffab6b17c0d3d632"
+source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#4913ab7515ba62a3d78f713631b2acf01c39c115"
 dependencies = [
  "fuel-asm",
  "itertools",
@@ -498,6 +501,12 @@ checksum = "322f4de77956e22ed0e5032c359a0f1273f1f7f0d79bfa3b8ffbc730d7fbcc5c"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "httparse"
@@ -725,9 +734,12 @@ checksum = "b8f8bdf33df195859076e54ab11ee78a1b208382d3a26ec40d142ffc1ecc49ef"
 
 [[package]]
 name = "object"
-version = "0.24.0"
+version = "0.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a5b3dd1c072ee7963717671d1ca129f1048fda25edea6b752bfc71ac8854170"
+checksum = "f8bc1d42047cf336f0f939c99e97183cf31551bf0f2865a2ec9c8d91fd4ffb5e"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "opaque-debug"
@@ -757,12 +769,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pest"
+version = "2.1.3"
+source = "git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7#8aa58791f759daf4caee26e8560e862df5a6afb7"
+dependencies = [
+ "ucd-trie",
+]
+
+[[package]]
 name = "pest_derive"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "833d1ae558dc601e9a60366421196a8d94bc0ac980476d0b67e1d0988d72b2d0"
 dependencies = [
- "pest",
+ "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest_generator",
 ]
 
@@ -772,7 +792,7 @@ version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99b8db626e31e5b81787b9783425769681b347011cc59471e33ea46d2ea0cf55"
 dependencies = [
- "pest",
+ "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest_meta",
  "proc-macro2",
  "quote",
@@ -786,7 +806,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54be6e404f5317079812fc8f9f5279de376d8856929e21c184ecf6bbd692a11d"
 dependencies = [
  "maplit",
- "pest",
+ "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha-1",
 ]
 
@@ -1166,7 +1186,7 @@ dependencies = [
  "core_lang",
  "dashmap",
  "lspower",
- "pest",
+ "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ropey",
  "serde_json",
  "tokio",

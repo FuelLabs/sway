@@ -1,3 +1,5 @@
+use crate::build_config::BuildConfig;
+use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::ResolvedType;
@@ -11,6 +13,8 @@ pub(crate) fn instantiate_enum<'sc>(
     type_arguments: Vec<MaybeResolvedType<'sc>>,
     namespace: &Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
+    build_config: &BuildConfig,
+    dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -62,7 +66,9 @@ pub(crate) fn instantiate_enum<'sc>(
                     namespace,
                     Some(MaybeResolvedType::Resolved(r#type.clone())),
                     "Enum instantiator must match its declared variant type.",
-                    self_type
+                    self_type,
+                    build_config,
+                    dead_code_graph,
                 ),
                 return err(warnings, errors),
                 warnings,
