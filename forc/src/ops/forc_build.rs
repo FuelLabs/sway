@@ -1,52 +1,26 @@
+use crate::cli::BuildCommand;
 use line_col::LineColLookup;
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
+use std::fs::File;
 use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
 use crate::utils::manifest::{Dependency, DependencyDetails, Manifest};
 use core_lang::{
-    BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports, Namespace,
+    BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
+    Namespace,
 };
 use std::{fs, path::PathBuf};
 
-pub fn print_asm(path: Option<String>) -> Result<(), String> {
-    // find manifest directory, even if in subdirectory
-    let this_dir = if let Some(path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir().unwrap()
-    };
-    let manifest_dir = find_manifest_dir(&this_dir).ok_or(format!(
-        "No manifest file found in this directory or any parent directories of it: {:?}",
-        this_dir
-    ))?;
-    let manifest = read_manifest(&manifest_dir)?;
-
-    let mut namespace: Namespace = Default::default();
-    if let Some(ref deps) = manifest.dependencies {
-        for (dependency_name, dependency_details) in deps.iter() {
-            compile_dependency_lib(
-                &this_dir,
-                &dependency_name,
-                &dependency_details,
-                &mut namespace,
-            )?;
-        }
-    }
-
-    // now, compile this program with all of its dependencies
-    let main_file = get_main_file(&manifest, &manifest_dir)?;
-    let main = compile_to_asm(main_file, &manifest.project.name, &namespace)?;
-
-    println!("{}", main);
-
-    Ok(())
-}
-
-pub fn build(path: Option<String>) -> Result<Vec<u8>, String> {
+pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
+    let BuildCommand {
+        path,
+        binary_outfile,
+        print_asm,
+    } = command;
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(path) = path {
         PathBuf::from(path)
@@ -62,6 +36,7 @@ pub fn build(path: Option<String>) -> Result<Vec<u8>, String> {
             ))
         }
     };
+    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone());
     let manifest = read_manifest(&manifest_dir)?;
 
     let mut namespace: Namespace = Default::default();
@@ -78,7 +53,21 @@ pub fn build(path: Option<String>) -> Result<Vec<u8>, String> {
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-    let main = compile(main_file, &manifest.project.name, &namespace)?;
+    if print_asm {
+        let main = compile_to_asm(
+            main_file,
+            &manifest.project.name,
+            &namespace,
+            build_config.clone(),
+        )?;
+        println!("{}", main);
+    }
+
+    let main = compile(main_file, &manifest.project.name, &namespace, build_config)?;
+    if let Some(outfile) = binary_outfile {
+        let mut file = File::create(outfile).map_err(|e| e.to_string())?;
+        file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
+    }
 
     println!("Bytecode size is {} bytes.", main.len());
 
@@ -138,6 +127,8 @@ fn compile_dependency_lib<'source, 'manifest>(
         None => return Err("Manifest not found for dependency.".into()),
     };
 
+    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone());
+
     let manifest_of_dep = read_manifest(&manifest_dir)?;
 
     // The part below here is just a massive shortcut to get the standard library working
@@ -151,7 +142,12 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
-    let compiled = compile_library(main_file, &manifest_of_dep.project.name, &namespace.clone())?;
+    let compiled = compile_library(
+        main_file,
+        &manifest_of_dep.project.name,
+        &namespace.clone(),
+        build_config.clone(),
+    )?;
 
     namespace.insert_module(dependency_name.to_string(), compiled.namespace);
 
@@ -185,12 +181,13 @@ fn compile_library<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
+    build_config: BuildConfig,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = core_lang::compile_to_asm(&source, namespace);
+    let res = core_lang::compile_to_asm(&source, namespace, build_config);
     match res {
         CompilationResult::Library { exports, warnings } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled library {:?}.", proj_name));
@@ -212,10 +209,10 @@ fn compile_library<'source, 'manifest>(
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
 
-            errors.into_iter().for_each(|e| format_err(&source, e));
+            errors.into_iter().for_each(|e| format_err(e));
 
             write_red(format!(
                 "Aborting due to {} {}.",
@@ -238,12 +235,13 @@ fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
+    build_config: BuildConfig,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(&source, namespace);
+    let res = core_lang::compile_to_bytecode(&source, namespace, build_config);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled script {:?}.", proj_name));
@@ -263,7 +261,7 @@ fn compile<'source, 'manifest>(
         }
         BytecodeCompilationResult::Library { warnings } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled library {:?}.", proj_name));
@@ -285,10 +283,10 @@ fn compile<'source, 'manifest>(
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
 
-            errors.into_iter().for_each(|e| format_err(&source, e));
+            errors.into_iter().for_each(|e| format_err(e));
 
             write_red(format!(
                 "Aborting due to {} {}.",
@@ -301,7 +299,8 @@ fn compile<'source, 'manifest>(
     }
 }
 
-fn format_warning(input: &str, err: &core_lang::CompileWarning) {
+fn format_warning(err: &core_lang::CompileWarning) {
+    let input = err.span.input();
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;
@@ -332,7 +331,8 @@ fn format_warning(input: &str, err: &core_lang::CompileWarning) {
     println!("{}", formatted);
 }
 
-fn format_err(input: &str, err: core_lang::CompileError) {
+fn format_err(err: core_lang::CompileError) {
+    let input = err.pest_span().input();
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;
@@ -370,7 +370,9 @@ fn write_red(txt: String) -> io::Result<()> {
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Red)))?;
     writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)
+    bufwtr.print(&buffer)?;
+    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
+    Ok(())
 }
 
 fn write_green(txt: &str) -> io::Result<()> {
@@ -378,7 +380,9 @@ fn write_green(txt: &str) -> io::Result<()> {
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Green)))?;
     writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)
+    bufwtr.print(&buffer)?;
+    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
+    Ok(())
 }
 
 fn write_yellow(txt: &str) -> io::Result<()> {
@@ -386,7 +390,9 @@ fn write_yellow(txt: &str) -> io::Result<()> {
     let mut buffer = bufwtr.buffer();
     buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Yellow)))?;
     writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)
+    bufwtr.print(&buffer)?;
+    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
+    Ok(())
 }
 
 fn get_main_file(
@@ -410,12 +416,13 @@ fn compile_to_asm<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
+    build_config: BuildConfig,
 ) -> Result<FinalizedAsm<'source>, String> {
-    let res = core_lang::compile_to_asm(&source, namespace);
+    let res = core_lang::compile_to_asm(&source, namespace, build_config);
     match res {
         CompilationResult::Success { asm, warnings } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled script {:?}.", proj_name));
@@ -435,7 +442,7 @@ fn compile_to_asm<'source, 'manifest>(
         }
         CompilationResult::Library { warnings, .. } => {
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
             if warnings.is_empty() {
                 let _ = write_green(&format!("Compiled library {:?}.", proj_name));
@@ -457,10 +464,10 @@ fn compile_to_asm<'source, 'manifest>(
             let e_len = errors.len();
 
             for ref warning in warnings.iter() {
-                format_warning(&source, warning);
+                format_warning(warning);
             }
 
-            errors.into_iter().for_each(|e| format_err(&source, e));
+            errors.into_iter().for_each(|e| format_err(e));
 
             write_red(format!(
                 "Aborting due to {} {}.",

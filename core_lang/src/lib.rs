@@ -5,6 +5,8 @@ mod error;
 
 mod asm_generation;
 mod asm_lang;
+mod build_config;
+pub mod constants;
 mod control_flow_analysis;
 mod ident;
 mod parse_tree;
@@ -15,7 +17,8 @@ pub use crate::parse_tree::*;
 use crate::parser::{HllParser, Rule};
 use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
-use control_flow_analysis::ControlFlowGraph;
+pub use build_config::BuildConfig;
+use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
@@ -75,6 +78,7 @@ pub enum AstNodeContent<'sc> {
     Expression(Expression<'sc>),
     ImplicitReturnExpression(Expression<'sc>),
     WhileLoop(WhileLoop<'sc>),
+    IncludeStatement(IncludeStatement<'sc>),
 }
 
 impl<'sc> ParseTree<'sc> {
@@ -159,9 +163,112 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
     }
 }
 
+/// This struct represents the compilation of an internal dependency
+/// defined through an include statement (the `dep` keyword).
+pub(crate) struct InnerDependencyCompileResult<'sc> {
+    library_exports: LibraryExports<'sc>,
+}
+/// For internal compiler use.
+/// Compiles an included file and returns its control flow and dead code graphs.
+/// These graphs are merged into the parent program's graphs for accurate analysis.
+///
+/// TODO -- there is _so_ much duplicated code and messiness in this file around the
+/// different types of compilation and stuff. After we get to a good state with the MVP,
+/// clean up the types here with the power of hindsight
+pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
+    input: &'sc str,
+    initial_namespace: &Namespace<'sc>,
+    build_config: BuildConfig,
+    dead_code_graph: &mut ControlFlowGraph<'sc>,
+) -> CompileResult<'sc, InnerDependencyCompileResult<'sc>> {
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+    let parse_tree = eval!(parse, warnings, errors, input, return err(warnings, errors));
+    match (
+        parse_tree.script_ast,
+        parse_tree.predicate_ast,
+        parse_tree.contract_ast,
+    ) {
+        (None, None, None) => (),
+        _ => {
+            errors.push(CompileError::ImportMustBeLibrary {
+                span: Span::new(input, 0, 0).unwrap(),
+            });
+            return err(warnings, errors);
+        }
+    }
+    let library_exports: LibraryExports = {
+        let res: Vec<_> = parse_tree
+            .library_exports
+            .into_iter()
+            .filter_map(|(name, tree)| {
+                match TypedParseTree::type_check(
+                    tree,
+                    initial_namespace.clone(),
+                    TreeType::Library,
+                    &build_config,
+                    dead_code_graph,
+                ) {
+                    CompileResult::Ok {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                        value,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                        Some((name, value))
+                    }
+                    CompileResult::Err {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                        None
+                    }
+                }
+            })
+            .collect();
+        let mut exports = LibraryExports {
+            namespace: Default::default(),
+            trees: vec![],
+        };
+        for (ref name, parse_tree) in res {
+            exports.namespace.insert_module(
+                name.primary_name.to_string(),
+                parse_tree.namespace().clone(),
+            );
+            exports.trees.push(parse_tree);
+        }
+        exports
+    };
+    // look for return path errors
+    for tree in &library_exports.trees {
+        let graph = ControlFlowGraph::construct_return_path_graph(tree);
+        errors.append(&mut graph.analyze_return_paths());
+    }
+
+    for tree in &library_exports.trees {
+        // The dead code will be analyzed later wholistically with the rest of the program
+        // since we can't tell what is dead and what isn't just from looking at this file
+        if let Err(e) =
+            ControlFlowGraph::append_to_dead_code_graph(tree, TreeType::Library, dead_code_graph)
+        {
+            errors.push(e)
+        };
+    }
+
+    ok(
+        InnerDependencyCompileResult { library_exports },
+        warnings,
+        errors,
+    )
+}
+
 pub fn compile_to_asm<'sc, 'manifest>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
+    build_config: BuildConfig,
 ) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -172,9 +279,20 @@ pub fn compile_to_asm<'sc, 'manifest>(
         input,
         return CompilationResult::Failure { errors, warnings }
     );
+    let mut dead_code_graph = ControlFlowGraph {
+        graph: Graph::new(),
+        entry_points: vec![],
+        namespace: Default::default(),
+    };
 
     let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
-        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Contract) {
+        match TypedParseTree::type_check(
+            tree,
+            initial_namespace.clone(),
+            TreeType::Contract,
+            &build_config,
+            &mut dead_code_graph,
+        ) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -197,7 +315,13 @@ pub fn compile_to_asm<'sc, 'manifest>(
         None
     };
     let predicate_ast: Option<_> = if let Some(tree) = parse_tree.predicate_ast {
-        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Predicate) {
+        match TypedParseTree::type_check(
+            tree,
+            initial_namespace.clone(),
+            TreeType::Predicate,
+            &build_config,
+            &mut dead_code_graph,
+        ) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -220,7 +344,13 @@ pub fn compile_to_asm<'sc, 'manifest>(
         None
     };
     let script_ast: Option<_> = if let Some(tree) = parse_tree.script_ast {
-        match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Script) {
+        match TypedParseTree::type_check(
+            tree,
+            initial_namespace.clone(),
+            TreeType::Script,
+            &build_config,
+            &mut dead_code_graph,
+        ) {
             CompileResult::Ok {
                 warnings: mut l_w,
                 errors: mut l_e,
@@ -247,8 +377,13 @@ pub fn compile_to_asm<'sc, 'manifest>(
             .library_exports
             .into_iter()
             .filter_map(|(name, tree)| {
-                match TypedParseTree::type_check(tree, initial_namespace.clone(), TreeType::Library)
-                {
+                match TypedParseTree::type_check(
+                    tree,
+                    initial_namespace.clone(),
+                    TreeType::Library,
+                    &build_config,
+                    &mut dead_code_graph,
+                ) {
                     CompileResult::Ok {
                         warnings: mut l_w,
                         errors: mut l_e,
@@ -291,13 +426,13 @@ pub fn compile_to_asm<'sc, 'manifest>(
 
     // perform control flow analysis on each branch
     let (script_warnings, script_errors) =
-        perform_control_flow_analysis(&script_ast, TreeType::Script);
+        perform_control_flow_analysis(&script_ast, TreeType::Script, &mut dead_code_graph);
     let (contract_warnings, contract_errors) =
-        perform_control_flow_analysis(&contract_ast, TreeType::Contract);
+        perform_control_flow_analysis(&contract_ast, TreeType::Contract, &mut dead_code_graph);
     let (predicate_warnings, predicate_errors) =
-        perform_control_flow_analysis(&predicate_ast, TreeType::Predicate);
+        perform_control_flow_analysis(&predicate_ast, TreeType::Predicate, &mut dead_code_graph);
     let (library_warnings, library_errors) =
-        perform_control_flow_analysis_on_library_exports(&library_exports);
+        perform_control_flow_analysis_on_library_exports(&library_exports, &mut dead_code_graph);
 
     let mut l_warnings = [
         script_warnings,
@@ -378,6 +513,9 @@ pub fn compile_to_asm<'sc, 'manifest>(
                 warnings,
                 exports: o,
             },
+            (None, None, None, o) if o.trees.is_empty() => {
+                todo!("do we want empty files to be valid programs?")
+            }
             // Default to compiling an empty library if there is no code or invalid state
             _ => unimplemented!(
                 "Multiple contracts, libraries, scripts, or predicates in a single file are \
@@ -391,8 +529,9 @@ pub fn compile_to_asm<'sc, 'manifest>(
 pub fn compile_to_bytecode<'sc, 'manifest>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
+    build_config: BuildConfig,
 ) -> BytecodeCompilationResult<'sc> {
-    match compile_to_asm(input, initial_namespace) {
+    match compile_to_asm(input, initial_namespace, build_config) {
         CompilationResult::Success { asm, mut warnings } => {
             let bytes = match asm.to_bytecode() {
                 CompileResult::Ok {
@@ -434,16 +573,17 @@ pub fn compile_to_bytecode<'sc, 'manifest>(
 fn perform_control_flow_analysis<'sc>(
     tree: &Option<TypedParseTree<'sc>>,
     tree_type: TreeType,
+    dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     match tree {
         Some(tree) => {
-            let graph = match ControlFlowGraph::construct_dead_code_graph(tree, tree_type) {
-                Ok(o) => o,
+            match ControlFlowGraph::append_to_dead_code_graph(tree, tree_type, dead_code_graph) {
+                Ok(_) => (),
                 Err(e) => return (vec![], vec![e]),
-            };
+            }
             let mut warnings = vec![];
             let mut errors = vec![];
-            warnings.append(&mut graph.find_dead_code());
+            warnings.append(&mut dead_code_graph.find_dead_code());
             let graph = ControlFlowGraph::construct_return_path_graph(tree);
             errors.append(&mut graph.analyze_return_paths());
             (warnings, errors)
@@ -453,15 +593,17 @@ fn perform_control_flow_analysis<'sc>(
 }
 fn perform_control_flow_analysis_on_library_exports<'sc>(
     lib: &LibraryExports<'sc>,
+    dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     let mut warnings = vec![];
     let mut errors = vec![];
     for tree in &lib.trees {
-        let graph = match ControlFlowGraph::construct_dead_code_graph(tree, TreeType::Library) {
-            Ok(o) => o,
+        match ControlFlowGraph::append_to_dead_code_graph(tree, TreeType::Library, dead_code_graph)
+        {
+            Ok(_) => (),
             Err(e) => return (vec![], vec![e]),
-        };
-        warnings.append(&mut graph.find_dead_code());
+        }
+        warnings.append(&mut dead_code_graph.find_dead_code());
         let graph = ControlFlowGraph::construct_return_path_graph(tree);
         errors.append(&mut graph.analyze_return_paths());
     }
@@ -524,6 +666,20 @@ fn parse_root_from_pairs<'sc>(
                         lib_pair,
                         continue
                     ));
+                }
+                Rule::include_statement => {
+                    // parse the include statement into a reference to a specific file
+                    let include_statement = eval!(
+                        IncludeStatement::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair,
+                        continue
+                    );
+                    parse_tree.push(AstNode {
+                        content: AstNodeContent::IncludeStatement(include_statement),
+                        span: pair.as_span(),
+                    });
                 }
                 _ => unreachable!("{:?}", pair.as_str()),
             }

@@ -627,6 +627,20 @@ pub enum CompileError<'sc> {
     UnknownType { span: Span<'sc> },
     #[error("Bytecode can only support programs with up to 2^12 words worth of opcodes. Try refactoring into contract calls? This is a temporary error and will be implemented in the future.")]
     TooManyInstructions { span: Span<'sc> },
+    #[error(
+        "No valid {} file (.{}) was found at {file_path}",
+        crate::constants::LANGUAGE_NAME,
+        crate::constants::DEFAULT_FILE_EXTENSION
+    )]
+    FileNotFound { span: Span<'sc>, file_path: String },
+    #[error("The file {file_path} could not be read: {stringified_error}")]
+    FileCouldNotBeRead {
+        span: Span<'sc>,
+        file_path: String,
+        stringified_error: String,
+    },
+    #[error("This imported file must be a library. It must start with \"library <name>\", where \"name\" is the name of the library this file contains.")]
+    ImportMustBeLibrary { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -780,6 +794,9 @@ impl<'sc> CompileError<'sc> {
             UnknownType { span, .. } => span,
             InvalidStrType { span, .. } => span,
             TooManyInstructions { span, .. } => span,
+            FileNotFound { span, .. } => span,
+            FileCouldNotBeRead { span, .. } => span,
+            ImportMustBeLibrary { span, .. } => span,
         }
     }
 

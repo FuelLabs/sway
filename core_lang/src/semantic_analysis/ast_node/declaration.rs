@@ -1,9 +1,11 @@
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
+use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::{
+    build_config::BuildConfig,
     error::*,
     types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
@@ -242,6 +244,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // If there are any `Self` types in this declaration,
         // resolve them to this type.
         self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -287,7 +291,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 &namespace,
                 Some(return_type.clone()),
                 "Function body's return type does not match up with its return type annotation.",
-                self_type
+                self_type,
+                build_config,
+                dead_code_graph
             ),
             (
                 TypedCodeBlock {
@@ -409,5 +415,26 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             warnings,
             errors,
         )
+    }
+}
+
+impl<'sc> TypedTraitFn<'sc> {
+    /// This function is used in trait declarations to insert "placeholder" functions
+    /// in the methods. This allows the methods to use functions declared in the
+    /// interface surface.
+    pub(crate) fn to_dummy_func(&self) -> TypedFunctionDeclaration<'sc> {
+        TypedFunctionDeclaration {
+            name: self.name.clone(),
+            body: TypedCodeBlock {
+                contents: vec![],
+                whole_block_span: self.name.span.clone(),
+            },
+            parameters: vec![],
+            span: self.name.span.clone(),
+            return_type: self.return_type.clone(),
+            return_type_span: self.return_type_span.clone(),
+            visibility: Visibility::Public,
+            type_parameters: vec![],
+        }
     }
 }

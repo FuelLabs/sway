@@ -1,10 +1,12 @@
-use crate::parse_tree::*;
+use crate::build_config::BuildConfig;
 use crate::semantic_analysis::Namespace;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
+use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
+use std::path::Path;
 
 mod code_block;
 mod declaration;
@@ -83,6 +85,8 @@ impl<'sc> TypedAstNode<'sc> {
         return_type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String>,
         self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -90,11 +94,38 @@ impl<'sc> TypedAstNode<'sc> {
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    match a.import_type {
-                        ImportType::Star => namespace.star_import(a.call_path),
-
-                        ImportType::Item(s) => namespace.item_import(a.call_path, &s, None),
+                    let res = match a.import_type {
+                        ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
+                        ImportType::Item(s) => {
+                            namespace.item_import(a.call_path, &s, None, a.is_absolute)
+                        }
                     };
+                    match res {
+                        CompileResult::Ok {
+                            warnings: mut l_w, ..
+                        } => {
+                            warnings.append(&mut l_w);
+                        }
+                        CompileResult::Err {
+                            warnings: mut l_w,
+                            errors: mut l_e,
+                            ..
+                        } => {
+                            warnings.append(&mut l_w);
+                            errors.append(&mut l_e);
+                        }
+                    }
+                    TypedAstNodeContent::SideEffect
+                }
+                AstNodeContent::IncludeStatement(ref a) => {
+                    // Import the file, parse it, put it in the namespace under the module name (alias or
+                    // last part of the import by default)
+                    let _ = type_check!(
+                        import_new_file(a, namespace, build_config, dead_code_graph),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
                     TypedAstNodeContent::SideEffect
                 }
                 AstNodeContent::Declaration(a) => {
@@ -120,7 +151,9 @@ impl<'sc> TypedAstNode<'sc> {
                                             .map(|x| x.friendly_type_str())
                                             .unwrap_or("none".into())
                                     ),
-                                    self_type
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
                                 ),
                                 error_recovery_expr(name.span.clone()),
                                 warnings,
@@ -149,7 +182,13 @@ impl<'sc> TypedAstNode<'sc> {
                         Declaration::FunctionDeclaration(fn_decl) => {
                             let decl = type_check!(
                                 TypedFunctionDeclaration::type_check(
-                                    fn_decl, &namespace, None, "", self_type
+                                    fn_decl,
+                                    &namespace,
+                                    None,
+                                    "",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
                                 ),
                                 return err(warnings, errors),
                                 warnings,
@@ -171,28 +210,42 @@ impl<'sc> TypedAstNode<'sc> {
                         }) => {
                             let mut methods_buf = Vec::new();
                             let interface_surface = interface_surface
-                        .into_iter()
-                        .map(|TraitFn {
-                             name,
-                              parameters,
-                              return_type,
-                              return_type_span
-                             }| TypedTraitFn {
-                            name,
-                            return_type_span,
-                            parameters: parameters
-                                .into_iter()
-                                .map(|FunctionParameter { name, r#type, type_span }|
-                                    TypedFunctionParameter {
-                                         name,
-                                         r#type: namespace.resolve_type(&r#type, 
-                                            &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)),
-                                             type_span }
-                                ).collect(),
-                            return_type: namespace.resolve_type(&return_type,
-                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
-                            )
-                        }).collect::<Vec<_>>();
+                            .into_iter()
+                            .map(|TraitFn {
+                                name,
+                                parameters,
+                                return_type,
+                                return_type_span
+                                }| TypedTraitFn {
+                                name,
+                                return_type_span,
+                                parameters: parameters
+                                    .into_iter()
+                                    .map(|FunctionParameter { name, r#type, type_span }|
+                                        TypedFunctionParameter {
+                                            name,
+                                            r#type: namespace.resolve_type(&r#type, 
+                                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)),
+                                                type_span }
+                                    ).collect(),
+                                return_type: namespace.resolve_type(&return_type,
+                                    &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
+                                )
+                            }).collect::<Vec<_>>();
+                            let mut l_namespace = namespace.clone();
+                            // insert placeholder functions representing the interface surface
+                            // to allow methods to use those functions
+                            l_namespace.insert_trait_implementation(
+                                CallPath {
+                                    prefixes: vec![],
+                                    suffix: name.clone(),
+                                },
+                                MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                                interface_surface
+                                    .iter()
+                                    .map(|x| x.to_dummy_func())
+                                    .collect(),
+                            );
                             for FunctionDeclaration {
                                 body,
                                 name: fn_name,
@@ -204,7 +257,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 ..
                             } in methods
                             {
-                                let mut namespace = namespace.clone();
+                                let mut namespace = l_namespace.clone();
                                 parameters.clone().into_iter().for_each(
                                     |FunctionParameter { name, r#type, .. }| {
                                         let r#type = namespace.resolve_type(
@@ -298,6 +351,7 @@ impl<'sc> TypedAstNode<'sc> {
                                         },
                                     )
                                     .collect::<Vec<_>>();
+
                                 // TODO check code block implicit return
                                 let return_type = namespace.resolve_type(&return_type, self_type);
                                 let (body, _code_block_implicit_return) = type_check!(
@@ -307,7 +361,9 @@ impl<'sc> TypedAstNode<'sc> {
                                         Some(return_type.clone()),
                                         "Trait method body's return type does not match up with \
                                          its return type annotation.",
-                                        self_type
+                                        self_type,
+                                        build_config,
+                                        dead_code_graph,
                                     ),
                                     continue,
                                     warnings,
@@ -382,7 +438,9 @@ impl<'sc> TypedAstNode<'sc> {
                                     &namespace,
                                     Some(thing_to_reassign.return_type.clone()),
                                     "You can only reassign a value of the same type to a variable.",
-                                    self_type
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
                                 ),
                                 error_recovery_expr(span),
                                 warnings,
@@ -392,7 +450,12 @@ impl<'sc> TypedAstNode<'sc> {
                             TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs })
                         }
                         Declaration::ImplTrait(impl_trait) => type_check!(
-                            implementation_of_trait(impl_trait, namespace),
+                            implementation_of_trait(
+                                impl_trait,
+                                namespace,
+                                build_config,
+                                dead_code_graph
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -436,7 +499,9 @@ impl<'sc> TypedAstNode<'sc> {
                                         &namespace,
                                         None,
                                         "",
-                                        &type_implementing_for_resolved
+                                        &type_implementing_for_resolved,
+                                        build_config,
+                                        dead_code_graph
                                     ),
                                     continue,
                                     warnings,
@@ -498,7 +563,15 @@ impl<'sc> TypedAstNode<'sc> {
                 }
                 AstNodeContent::Expression(a) => {
                     let inner = type_check!(
-                        TypedExpression::type_check(a.clone(), &namespace, None, "", self_type),
+                        TypedExpression::type_check(
+                            a.clone(),
+                            &namespace,
+                            None,
+                            "",
+                            self_type,
+                            build_config,
+                            dead_code_graph
+                        ),
                         error_recovery_expr(a.span()),
                         warnings,
                         errors
@@ -514,7 +587,9 @@ impl<'sc> TypedAstNode<'sc> {
                                 return_type_annotation,
                                 "Returned value must match up with the function return type \
                                  annotation.",
-                                self_type
+                                self_type,
+                                build_config,
+                                dead_code_graph
                             ),
                             error_recovery_expr(expr.span()),
                             warnings,
@@ -532,7 +607,9 @@ impl<'sc> TypedAstNode<'sc> {
                                 "Implicit return must match up with block's type. {}",
                                 help_text.into()
                             ),
-                            self_type
+                            self_type,
+                            build_config,
+                            dead_code_graph
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -547,7 +624,9 @@ impl<'sc> TypedAstNode<'sc> {
                             &namespace,
                             Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
-                            self_type
+                            self_type,
+                            build_config,
+                            dead_code_graph
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -561,7 +640,9 @@ impl<'sc> TypedAstNode<'sc> {
                             "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
-                            self_type
+                            self_type,
+                            build_config,
+                            dead_code_graph,
                         ),
                         (
                             TypedCodeBlock {
@@ -603,4 +684,95 @@ impl<'sc> TypedAstNode<'sc> {
 
         ok(node, warnings, errors)
     }
+}
+
+/// Imports a new file, populates the given [Namespace] with its content,
+/// and appends the module's content to the control flow graph for later analysis.
+fn import_new_file<'sc>(
+    statement: &IncludeStatement<'sc>,
+    namespace: &mut Namespace<'sc>,
+    build_config: &BuildConfig,
+    dead_code_graph: &mut ControlFlowGraph<'sc>,
+) -> CompileResult<'sc, ()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let file_path = Path::new(statement.file_path);
+    let file_path = file_path.with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
+
+    let mut canonical_path = build_config.dir_of_code.clone();
+    canonical_path.push(file_path);
+    let res = if canonical_path.exists() {
+        std::fs::read_to_string(canonical_path.clone())
+    } else {
+        errors.push(CompileError::FileNotFound {
+            span: statement.path_span.clone(),
+            file_path: canonical_path.to_string_lossy().to_string(),
+        });
+        return ok((), warnings, errors);
+    };
+
+    let file_as_string = match res {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(CompileError::FileCouldNotBeRead {
+                span: statement.path_span.clone(),
+                file_path: canonical_path.to_string_lossy().to_string(),
+                stringified_error: e.to_string(),
+            });
+            return ok((), warnings, errors);
+        }
+    };
+
+    let mut dep_namespace = namespace.clone();
+    if namespace.crate_namespace.is_none() {
+        dep_namespace.crate_namespace = Box::new(Some(namespace.clone()));
+    }
+    // :)
+    let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
+    let mut dep_config = build_config.clone();
+    let dep_path = {
+        canonical_path.pop();
+        canonical_path
+    };
+    dep_config.dir_of_code = dep_path;
+    let crate::InnerDependencyCompileResult {
+        mut library_exports,
+    } = type_check!(
+        crate::compile_inner_dependency(
+            &static_file_string,
+            &dep_namespace,
+            dep_config,
+            dead_code_graph
+        ),
+        crate::InnerDependencyCompileResult {
+            library_exports: crate::LibraryExports {
+                namespace: Namespace::default(),
+                trees: vec![]
+            }
+        },
+        warnings,
+        errors
+    );
+
+    // since this was an import of a single file, it should have exactly 1 library export
+    // as an invariant.
+    assert_eq!(library_exports.namespace.modules.len(), 1);
+    library_exports.namespace.modules = library_exports
+        .namespace
+        .modules
+        .into_iter()
+        .map(|(name, content)| {
+            (
+                if let Some(ref alias) = statement.alias {
+                    alias.primary_name.to_string()
+                } else {
+                    name
+                },
+                content,
+            )
+        })
+        .collect();
+    namespace.merge_namespaces(&library_exports.namespace);
+
+    ok((), warnings, errors)
 }

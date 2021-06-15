@@ -65,7 +65,7 @@ pub enum ConstantRegister {
 
 impl ConstantRegister {
     pub(crate) fn to_register_id(&self) -> fuel_asm::RegisterId {
-        use fuel_vm_rust::consts::*;
+        use fuel_vm::consts::*;
         use ConstantRegister::*;
         match self {
             Zero => REG_ZERO,

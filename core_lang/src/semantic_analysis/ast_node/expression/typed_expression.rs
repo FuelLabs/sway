@@ -1,4 +1,6 @@
 use super::*;
+use crate::build_config::BuildConfig;
+use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
@@ -29,6 +31,8 @@ impl<'sc> TypedExpression<'sc> {
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -129,6 +133,8 @@ impl<'sc> TypedExpression<'sc> {
                                  not match the declared type of the parameter in the function \
                                  declaration.",
                                 self_type,
+                                build_config,
+                                dead_code_graph,
                             );
                             let arg = match res {
                                 CompileResult::Ok {
@@ -245,7 +251,9 @@ impl<'sc> TypedExpression<'sc> {
                         &namespace,
                         type_annotation.clone(),
                         help_text.clone(),
-                        self_type
+                        self_type,
+                        build_config,
+                        dead_code_graph,
                     ),
                     (
                         TypedCodeBlock {
@@ -295,7 +303,9 @@ impl<'sc> TypedExpression<'sc> {
                         &namespace,
                         Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                         "The condition of an if expression must be a boolean expression.",
-                        self_type
+                        self_type,
+                        build_config,
+                        dead_code_graph
                     ),
                     error_recovery_expr(condition.span()),
                     warnings,
@@ -307,7 +317,9 @@ impl<'sc> TypedExpression<'sc> {
                         &namespace,
                         type_annotation.clone(),
                         "",
-                        self_type
+                        self_type,
+                        build_config,
+                        dead_code_graph
                     ),
                     error_recovery_expr(then.span()),
                     warnings,
@@ -320,7 +332,9 @@ impl<'sc> TypedExpression<'sc> {
                             namespace,
                             Some(then.return_type.clone()),
                             "",
-                            self_type
+                            self_type,
+                            build_config,
+                            dead_code_graph
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -373,7 +387,9 @@ impl<'sc> TypedExpression<'sc> {
                                             namespace,
                                             None,
                                             "",
-                                            self_type
+                                            self_type,
+                                            build_config,
+                                            dead_code_graph
                                         ),
                                         error_recovery_expr(initializer.span()),
                                         warnings,
@@ -455,7 +471,9 @@ impl<'sc> TypedExpression<'sc> {
                             Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
                             "Struct field's type must match up with the type specified in its \
                              declaration.",
-                            self_type
+                            self_type,
+                            build_config,
+                            dead_code_graph
                         ),
                         continue,
                         warnings,
@@ -534,7 +552,7 @@ impl<'sc> TypedExpression<'sc> {
                     // if subfield exp is empty, then we are calling a method using either ::
                     // syntax or an operator
                     let ns = type_check!(
-                        namespace.find_module(&method_name.prefixes),
+                        namespace.find_module(&method_name.prefixes, false),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -547,6 +565,8 @@ impl<'sc> TypedExpression<'sc> {
                         None,
                         "",
                         self_type,
+                        build_config,
+                        dead_code_graph,
                     ) {
                         CompileResult::Ok {
                             value,
@@ -619,7 +639,9 @@ impl<'sc> TypedExpression<'sc> {
                                 Some(r#type.clone()),
                                 "Function argument must be of the same type declared in the \
                                  function declaration.",
-                                self_type
+                                self_type,
+                                build_config,
+                                dead_code_graph
                             ),
                             continue,
                             warnings,
@@ -657,7 +679,10 @@ impl<'sc> TypedExpression<'sc> {
                 // Instead, we try to resolve both paths.
                 // If only one exists, then we use that one. Otherwise, if both exist, it is
                 // an ambiguous reference error.
-                let module_result = namespace.find_module(&call_path.prefixes).ok().cloned();
+                let module_result = namespace
+                    .find_module(&call_path.prefixes, false)
+                    .ok()
+                    .cloned();
                 /*
                 let enum_result_result = {
                     // an enum could be combined with a module path
@@ -677,7 +702,7 @@ impl<'sc> TypedExpression<'sc> {
                     let (module_path, enum_name) =
                         call_path.prefixes.split_at(call_path.prefixes.len() - 1);
                     let enum_name = enum_name[0].clone();
-                    let namespace = namespace.find_module(module_path);
+                    let namespace = namespace.find_module(module_path, false);
                     let namespace = namespace.ok();
                     namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
                 };
@@ -713,7 +738,9 @@ impl<'sc> TypedExpression<'sc> {
                                 instantiator,
                                 type_arguments,
                                 namespace,
-                                self_type
+                                self_type,
+                                build_config,
+                                dead_code_graph
                             ),
                             return err(warnings, errors),
                             warnings,
