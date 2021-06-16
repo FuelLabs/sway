@@ -516,31 +516,10 @@ impl<'sc> TypedExpression<'sc> {
             }
             Expression::SubfieldExpression {
                 unary_op,
-                name_parts,
+                prefix,
                 span,
             } => {
-                // this must be >= 2, or else the core_lang would not have matched it. asserting
-                // that invariant here, since it is an assumption that is acted upon
-                // later.
-                assert!(name_parts.len() >= 2);
-                let (return_type, resolved_type_of_parent) = type_check!(
-                    namespace.find_subfield_type(&name_parts),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-
-                TypedExpression {
-                    return_type,
-                    expression: TypedExpressionVariant::SubfieldExpression {
-                        unary_op,
-                        name: name_parts,
-                        span: span.clone(),
-                        resolved_type_of_parent,
-                    },
-                    is_constant: IsConstant::No,
-                    span,
-                }
+                todo!("implement subfield exp")
             }
             Expression::MethodApplication {
                 subfield_exp,

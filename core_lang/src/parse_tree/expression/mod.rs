@@ -96,7 +96,7 @@ pub enum Expression<'sc> {
     ///
     /// Where there are `n >=2` idents. This is typically an access of a structure field.
     SubfieldExpression {
-        name_parts: Vec<Ident<'sc>>,
+        prefix: Box<Expression<'sc>>,
         span: Span<'sc>,
         unary_op: Option<UnaryOp>,
     },
@@ -551,39 +551,24 @@ impl<'sc> Expression<'sc> {
                             );
                             arguments_buf.push_back(arg);
                         }
-                        let mut name_parts_buf = Vec::new();
+                        let mut prefix_buf = Vec::new();
                         for name_part in name_parts {
-                            let name = eval!(
-                                Ident::parse_from_pair,
-                                warnings,
-                                errors,
-                                name_part,
-                                continue
-                            );
-                            name_parts_buf.push(name);
+                            let item =
+                                eval!(parse_call_item, warnings, errors, name_part, continue);
+                            prefix_buf.push(item);
                         }
 
-                        if name_parts_buf.len() == 1 {
-                            // then the first argument is a variable expression
-                            arguments_buf.push_front(Expression::VariableExpression {
-                                unary_op: None, // TODO
-                                name: name_parts_buf[0].clone(),
-                                span: name_parts_buf[0].clone().span,
-                            });
-                        } else {
-                            // then it is a subfield expression
-                            // then the first argument is a variable expression
-                            arguments_buf.push_front(Expression::SubfieldExpression {
-                                name_parts: name_parts_buf.clone(),
-                                unary_op: None, // TODO
-                                span: name_parts_buf
-                                    .clone()
-                                    .into_iter()
-                                    .fold(name_parts_buf[0].clone().span, |acc, this| {
-                                        join_spans(acc, this.span)
-                                    }),
-                            });
-                        }
+                        dbg!(&prefix_buf);
+                        arguments_buf.push_front(Expression::SubfieldExpression {
+                            prefix: todo!(),
+                            unary_op: None, // TODO
+                            span: prefix_buf
+                                .clone()
+                                .into_iter()
+                                .fold(prefix_buf[0].clone().span(), |acc, this| {
+                                    join_spans(acc, this.span())
+                                }),
+                        });
                         Expression::MethodApplication {
                             subfield_exp: vec![],
                             method_name: MethodName::FromModule {
@@ -672,13 +657,6 @@ impl<'sc> Expression<'sc> {
                     a => unreachable!("{:?}", a),
                 }
             }
-            Rule::subfield_exp => eval!(
-                subfield_from_pair,
-                warnings,
-                errors,
-                expr,
-                return err(warnings, errors)
-            ),
             Rule::delineated_path => {
                 // this is either an enum expression or looking something
                 // up in libraries
@@ -726,6 +704,12 @@ impl<'sc> Expression<'sc> {
                 span: expr.as_span(),
             },
             Rule::struct_field_access => {
+                dbg!(&expr);
+                let mut inner = expr.into_inner().next().expect("guaranteed by grammar");
+                assert_eq!(inner.as_rule(), Rule::subfield_path);
+                let mut path_contents = inner.into_inner().collect::<Vec<_>>();
+                let final_field = path_contents.pop().expect("guaranteed by grammar");
+
                 // treat parent as one expr, final name as the field to be accessed
                 // if there are multiple fields, this is a nested expression
                 // i.e. `a.b.c` is a lookup of field `c` on `a.b` which is a lookup
@@ -748,6 +732,19 @@ impl<'sc> Expression<'sc> {
         };
         ok(parsed, warnings, errors)
     }
+}
+
+// A call item is parsed as either an `ident` or a parenthesized `expr`. This method's job is to
+// figure out which variant of `call_item` this is and turn it into either a variable expression
+// or parse it as an expression otherwise.
+fn parse_call_item<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, Expression<'sc>> {
+    todo!(
+        "Okay, what needs to happen is:
+        only allow expressions as the first thing in a call path
+        construct subfield exps as a nested structure
+        make sure method applications with self args still work
+        "
+    )
 }
 
 #[derive(Debug, Clone)]
@@ -1095,6 +1092,7 @@ fn arrange_by_order_of_operations<'sc>(
 
     ok(expression_stack[0].clone(), warnings, errors)
 }
+/*
 fn subfield_from_pair<'sc>(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Expression> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1120,3 +1118,4 @@ fn subfield_from_pair<'sc>(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Expressi
         errors,
     )
 }
+*/

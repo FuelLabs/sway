@@ -33,7 +33,7 @@ file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { "as" ~ ident }
 // expressions
-expr_inner               = _{literal_value|if_exp|parenthesized_expression|asm_expression|code_block|func_app|struct_expression|method_exp|struct_field_access|delineated_path|var_exp|array_exp|match_expression|unit}
+expr_inner               = _{literal_value|if_exp|asm_expression|code_block|func_app|struct_expression|method_exp|struct_field_access|delineated_path|var_exp|array_exp|parenthesized_expression|match_expression|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 // // op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
@@ -47,7 +47,7 @@ subfield_exp             =  {subfield_path ~ fn_args}
 // TODO subfield path should allow parenthesized expressions _or_ just idents  
 subfield_path            =  {(call_item ~ ".")+ ~ call_item}
 fully_qualified_method   =  {(path_ident ~ path_separator)* ~ "~" ~ type_name ~ path_separator ~ call_item ~ fn_args}
-call_item                =  {ident}
+call_item                =  {ident | "(" ~ expr ~ ")" }
 delineated_path          =  {path_component ~ fn_args?}
 path_component           =  {path_ident ~ (path_separator ~ path_ident)+}
 path_ident               =  {ident}
