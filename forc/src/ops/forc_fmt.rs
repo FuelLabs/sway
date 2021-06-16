@@ -25,11 +25,12 @@ fn get_sway_files(path: PathBuf) -> Result<Vec<PathBuf>, FormatError> {
     while let Some(entry) = dir_entries.pop() {
         for inner_entry in fs::read_dir(entry)? {
             if let Ok(entry) = inner_entry {
-                if entry.path().is_dir() {
-                    dir_entries.push(entry.path());
+                let path = entry.path();
+                if path.is_dir() {
+                    dir_entries.push(path);
                 } else {
-                    if is_sway_file(&entry.path()) {
-                        files.push(entry.path())
+                    if is_sway_file(&path) {
+                        files.push(path)
                     }
                 }
             }
