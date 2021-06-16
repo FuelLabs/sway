@@ -300,6 +300,7 @@ name = "forc"
 version = "0.1.0"
 dependencies = [
  "core_lang",
+ "formatter",
  "fuel-asm",
  "fuel-tx",
  "fuel-vm",
@@ -324,6 +325,10 @@ dependencies = [
  "matches",
  "percent-encoding",
 ]
+
+[[package]]
+name = "formatter"
+version = "0.1.0"
 
 [[package]]
 name = "fuchsia-cprng"
@@ -1185,6 +1190,7 @@ version = "0.1.0"
 dependencies = [
  "core_lang",
  "dashmap",
+ "formatter",
  "lspower",
  "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ropey",

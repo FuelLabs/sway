@@ -2,8 +2,8 @@ use structopt::StructOpt;
 
 mod commands;
 use self::commands::{
-    analysis, benchmark, build, coverage, deploy, init, mvprun, parse_bytecode, publish, serve,
-    test,
+    analysis, benchmark, build, coverage, deploy, format, init, mvprun, parse_bytecode, publish,
+    serve, test,
 };
 
 use analysis::Command as AnalysisCommand;
@@ -11,6 +11,7 @@ use benchmark::Command as BenchmarkCommand;
 pub use build::Command as BuildCommand;
 use coverage::Command as CoverageCommand;
 use deploy::Command as DeployCommand;
+pub use format::Command as FormatCommand;
 use init::Command as InitCommand;
 use mvprun::Command as MvprunCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
@@ -32,6 +33,9 @@ enum Forc {
     Benchmark(BenchmarkCommand),
     Build(BuildCommand),
     Coverage(CoverageCommand),
+
+    #[structopt(name = "fmt")]
+    Format(FormatCommand),
     Deploy(DeployCommand),
     Init(InitCommand),
     Mvprun(MvprunCommand),
@@ -48,6 +52,7 @@ pub(crate) fn run_cli() -> Result<(), String> {
         Forc::Benchmark(command) => benchmark::exec(command),
         Forc::Build(command) => build::exec(command),
         Forc::Coverage(command) => coverage::exec(command),
+        Forc::Format(command) => format::exec(command),
         Forc::Deploy(command) => deploy::exec(command),
         Forc::Init(command) => init::exec(command),
         Forc::Mvprun(command) => mvprun::exec(command),
