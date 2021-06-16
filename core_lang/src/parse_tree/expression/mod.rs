@@ -725,6 +725,13 @@ impl<'sc> Expression<'sc> {
             Rule::unit => Expression::Unit {
                 span: expr.as_span(),
             },
+            Rule::struct_field_access => {
+                // treat parent as one expr, final name as the field to be accessed
+                // if there are multiple fields, this is a nested expression
+                // i.e. `a.b.c` is a lookup of field `c` on `a.b` which is a lookup
+                // of field `b` on `a`
+                todo!()
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
