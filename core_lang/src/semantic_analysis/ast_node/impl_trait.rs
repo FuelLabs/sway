@@ -26,7 +26,6 @@ pub(crate) fn implementation_of_trait<'sc>(
         block_span,
     } = impl_trait;
     // insert the methods from the trait constraints into the namespace
-    println!("HERE: {:?}", trait_name);
     namespace.insert_trait_methods(&type_arguments[..]);
     let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
     let self_type = type_implementing_for;

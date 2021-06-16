@@ -516,6 +516,10 @@ impl<'sc> Expression<'sc> {
                 let pair = parts.next().unwrap();
                 match pair.as_rule() {
                     Rule::subfield_exp => {
+                        println!("SUBFIELD : {}", pair.as_str());
+                        todo!(
+                            "Sort this out. Probably do the whole iter parse from scratch again."
+                        );
                         let subfield_exp = pair;
                         // remove the last field from the subfield exp, since it is the method name
                         // the different parts of the exp
@@ -524,6 +528,8 @@ impl<'sc> Expression<'sc> {
                         // then these parts are
                         // ["a", "b", "c", "add"]
                         let mut name_parts = subfield_exp.into_inner().collect::<Vec<_>>();
+                        let args = name_parts.pop().unwrap();
+                        dbg!(&name_parts);
                         let method_name = eval!(
                             CallPath::parse_from_pair,
                             warnings,
@@ -531,10 +537,7 @@ impl<'sc> Expression<'sc> {
                             name_parts.pop().unwrap(),
                             return err(warnings, errors)
                         );
-                        let function_arguments = parts
-                            .next()
-                            .map(|x| x.into_inner().collect::<Vec<_>>())
-                            .unwrap_or_else(|| vec![]);
+                        let function_arguments = args.into_inner().collect::<Vec<_>>();
                         let mut arguments_buf = VecDeque::new();
                         for argument in function_arguments {
                             let arg = eval!(
@@ -583,14 +586,15 @@ impl<'sc> Expression<'sc> {
                         }
                         Expression::MethodApplication {
                             subfield_exp: vec![],
-                            method_name: MethodName::FromModule {
+                            method_name: dbg!(MethodName::FromModule {
                                 call_path: method_name,
-                            },
+                            }),
                             arguments: arguments_buf.into_iter().collect(),
                             span: whole_exp_span,
                         }
                     }
                     Rule::fully_qualified_method => {
+                        println!("FULLY QUALIFIED: {}", pair.as_str());
                         let mut path_parts_buf = vec![];
                         let mut type_name = None;
                         let mut method_name = None;
@@ -661,7 +665,7 @@ impl<'sc> Expression<'sc> {
 
                         Expression::MethodApplication {
                             subfield_exp: vec![],
-                            method_name: method_name,
+                            method_name: dbg!(method_name),
                             arguments: arguments_buf,
                             span: whole_exp_span,
                         }

@@ -232,10 +232,10 @@ impl<'sc> TypedAstNode<'sc> {
                                     &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
                                 )
                             }).collect::<Vec<_>>();
-                            let mut l_namespace = namespace.clone();
+                            let mut trait_namespace = namespace.clone();
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
-                            l_namespace.insert_trait_implementation(
+                            trait_namespace.insert_trait_implementation(
                                 CallPath {
                                     prefixes: vec![],
                                     suffix: name.clone(),
@@ -257,32 +257,32 @@ impl<'sc> TypedAstNode<'sc> {
                                 ..
                             } in methods
                             {
-                                let mut namespace = l_namespace.clone();
+                                let mut function_namespace = trait_namespace.clone();
                                 parameters.clone().into_iter().for_each(
                                     |FunctionParameter { name, r#type, .. }| {
-                                        let r#type = namespace.resolve_type(
+                                        let r#type = function_namespace.resolve_type(
                                             &r#type,
                                             &MaybeResolvedType::Partial(
                                                 PartiallyResolvedType::SelfType,
                                             ),
                                         );
-                                        namespace.insert(
-                                        name.clone(),
-                                        TypedDeclaration::VariableDeclaration(
-                                            TypedVariableDeclaration {
-                                                name: name.clone(),
-                                                body: TypedExpression {
-                                                    expression:
-                                                        TypedExpressionVariant::FunctionParameter,
-                                                    return_type: r#type,
-                                                    is_constant: IsConstant::No,
-                                                    span: name.span.clone(),
+                                        function_namespace.insert(
+                                            name.clone(),
+                                            TypedDeclaration::VariableDeclaration(
+                                                TypedVariableDeclaration {
+                                                    name: name.clone(),
+                                                    body: TypedExpression {
+                                                        expression:
+                                                            TypedExpressionVariant::FunctionParameter,
+                                                        return_type: r#type,
+                                                        is_constant: IsConstant::No,
+                                                        span: name.span.clone(),
+                                                    },
+                                                    // TODO allow mutable function params?
+                                                    is_mutable: false,
                                                 },
-                                                // TODO allow mutable function params?
-                                                is_mutable: false,
-                                            },
-                                        ),
-                                    );
+                                            ),
+                                        );
                                     },
                                 );
                                 // check the generic types in the arguments, make sure they are in
@@ -346,7 +346,7 @@ impl<'sc> TypedAstNode<'sc> {
                                          }| {
                                             TypedFunctionParameter {
                                                 name,
-                                                r#type: namespace.resolve_type(
+                                                r#type: function_namespace.resolve_type(
                                                     &r#type,
                                                     &MaybeResolvedType::Partial(
                                                         PartiallyResolvedType::SelfType,
@@ -359,11 +359,12 @@ impl<'sc> TypedAstNode<'sc> {
                                     .collect::<Vec<_>>();
 
                                 // TODO check code block implicit return
-                                let return_type = namespace.resolve_type(&return_type, self_type);
+                                let return_type =
+                                    function_namespace.resolve_type(&return_type, self_type);
                                 let (body, _code_block_implicit_return) = type_check!(
                                     TypedCodeBlock::type_check(
                                         body,
-                                        &namespace,
+                                        &function_namespace,
                                         Some(return_type.clone()),
                                         "Trait method body's return type does not match up with \
                                          its return type annotation.",
