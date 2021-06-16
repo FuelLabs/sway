@@ -7,6 +7,7 @@ version = "0.1.0"
 [dependencies]
 core_lang = {path = "../core_lang"}
 dashmap = "4.0.2"
+formatter = {path = "../formatter"}
 lspower = "1.0.0"
 pest = "2.0"
 ropey = "1.2"
