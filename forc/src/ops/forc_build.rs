@@ -1,4 +1,4 @@
-use crate::cli::BuildCommand;
+use crate::{cli::BuildCommand, utils::helpers::find_manifest_dir};
 use line_col::LineColLookup;
 use source_span::{
     fmt::{Color, Formatter, Style},
@@ -72,23 +72,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     println!("Bytecode size is {} bytes.", main.len());
 
     Ok(main)
-}
-
-/// Continually go up in the file tree until a manifest (Forc.toml) is found.
-fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
-    let mut path = fs::canonicalize(starter_path.clone()).ok()?;
-    let empty_path = PathBuf::from("/");
-    while path != empty_path {
-        path.push(crate::utils::constants::MANIFEST_FILE_NAME);
-        if path.exists() {
-            path.pop();
-            return Some(path);
-        } else {
-            path.pop();
-            path.pop();
-        }
-    }
-    None
 }
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
