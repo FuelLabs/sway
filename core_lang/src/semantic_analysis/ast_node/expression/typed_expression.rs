@@ -552,7 +552,6 @@ impl<'sc> TypedExpression<'sc> {
                     MethodName::FromModule {
                         call_path: ref method_name,
                     } => {
-                        dbg!(&method_name);
                         if subfield_exp.is_empty() {
                             // if subfield exp is empty, then we are calling a method using either ::
                             // syntax or an operator

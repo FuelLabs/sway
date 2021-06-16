@@ -1,6 +1,5 @@
 library ops;
 
-/*
 pub trait Add {
     fn add(self, other: Self) -> Self;
 }
@@ -162,11 +161,9 @@ impl Divide for u8 {
 }
 
 
-*/
 pub trait Eq {
     fn equals(self, other: Self) -> bool;
 }
-/*
 
 
 impl Eq for u64 {
@@ -205,7 +202,6 @@ impl Eq for u8 {
   }
 }
 
-*/
 
 enum Ordering {
   LessOrEqual : (),
@@ -225,8 +221,8 @@ pub trait Ord {
   fn cmp(self, other: Self) -> Ordering;
 } {
   fn less_or_equal(self, other: Self) -> bool {
-    let res = 5;
-    res.equals(3)
+    let res = self.cmp(other);
+    res.equals(Ordering::LessOrEqual)
   }
   fn greater_than(self, other: Self) -> bool {
     let res = self.cmp(other);
