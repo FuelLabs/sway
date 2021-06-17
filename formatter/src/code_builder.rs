@@ -3,8 +3,6 @@ use std::{
     str::Chars,
 };
 
-use lspower::lsp::{Position, Range, TextEdit};
-
 use super::parse_helpers::{clean_all_incoming_whitespace, is_comment};
 use super::{
     code_line::CodeLine,
@@ -30,9 +28,7 @@ impl CodeBuilder {
         }
     }
 
-    pub fn to_text_edit(&mut self, text_lines_count: usize) -> Vec<TextEdit> {
-        let line_end = std::cmp::max(self.edits.len(), text_lines_count) as u32;
-
+    pub fn get_final_edits(mut self) -> (usize, String) {
         // add new line at the end if needed
         if let Some(code_line) = self.edits.last() {
             if !code_line.is_empty() {
@@ -40,17 +36,9 @@ impl CodeBuilder {
             }
         }
 
-        let main_edit = TextEdit {
-            range: Range::new(Position::new(0, 0), Position::new(line_end as u32, 0)),
-            new_text: self
-                .edits
-                .iter()
-                .map(|code_line| code_line.text.clone())
-                .collect::<Vec<String>>()
-                .join("\n"),
-        };
+        let num_of_lines = self.edits.len();
 
-        vec![main_edit]
+        (num_of_lines, self.to_string())
     }
 
     /// formats line of code and adds it to Vec<CodeLine>
@@ -129,6 +117,14 @@ impl CodeBuilder {
         }
 
         self.add_line(code_line);
+    }
+
+    fn to_string(&mut self) -> String {
+        self.edits
+            .iter()
+            .map(|code_line| code_line.text.clone())
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 
     /// if previous line is not completed get it, otherwise start a new one

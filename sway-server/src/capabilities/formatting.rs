@@ -2,9 +2,10 @@ use std::sync::Arc;
 
 use crate::core::session::Session;
 use core_lang::parse;
-use lspower::lsp::{DocumentFormattingParams, FormattingOptions, TextDocumentIdentifier, TextEdit};
-
-use super::code_builder::CodeBuilder;
+use formatter::get_formatted_data;
+use lspower::lsp::{
+    DocumentFormattingParams, FormattingOptions, Position, Range, TextDocumentIdentifier, TextEdit,
+};
 
 pub fn format_document(
     session: Arc<Session>,
@@ -30,14 +31,17 @@ pub fn get_format_text_edits(text: &str, options: FormattingOptions) -> Option<V
 }
 
 fn build_edits(text: &str, options: FormattingOptions) -> Vec<TextEdit> {
-    let mut code_builder = CodeBuilder::new(options.tab_size);
     let lines: Vec<&str> = text.split("\n").collect();
-    let length_of_lines = lines.len();
+    let text_lines_count = lines.len();
 
-    // todo: handle lengthy lines of code
-    for line in lines {
-        code_builder.format_and_add(line);
-    }
+    let (num_of_lines, formatted_text) = get_formatted_data(text, options.tab_size);
 
-    code_builder.to_text_edit(length_of_lines)
+    let line_end = std::cmp::max(num_of_lines, text_lines_count) as u32;
+
+    let main_edit = TextEdit {
+        range: Range::new(Position::new(0, 0), Position::new(line_end as u32, 0)),
+        new_text: formatted_text,
+    };
+
+    vec![main_edit]
 }
