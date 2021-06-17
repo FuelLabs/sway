@@ -80,6 +80,15 @@ impl CodeLine {
         }
     }
 
+    pub fn append_whitespace(&mut self) {
+        let last = self.text.chars().last();
+
+        match last {
+            Some('(') => {} // do not add whitespace,
+            _ => self.append_with_whitespace(""),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.text.is_empty()
     }

@@ -29,10 +29,10 @@ pub fn handle_whitespace_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
         let next_char = *next_char;
 
         match next_char {
-            '(' | ';' | ':' => {} // do nothing, handle it in next turn
+            '(' | ';' | ':' | ')' => {} // do nothing, handle it in next turn
             _ => {
                 // add whitespace if it is not already there
-                code_line.append_with_whitespace("");
+                code_line.append_whitespace();
             }
         }
     }
