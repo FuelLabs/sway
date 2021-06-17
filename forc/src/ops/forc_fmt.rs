@@ -15,7 +15,7 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     match find_manifest_dir(&curr_dir) {
         Some(path) => {
             let files = get_sway_files(path)?;
-            let mut errors_exist = false;
+            let mut files_to_be_formatted = vec![];
 
             for file in files {
                 if let Ok(file_content) = fs::read_to_string(&file) {
@@ -25,33 +25,29 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
                             warnings: _,
                             errors: _,
                         } => {
-                            if !command.check {
+                            if command.check {
+                                if file_should_change(&file_content) {
+                                    files_to_be_formatted.push(format!("{:?}", file))
+                                }
+                            } else {
                                 format_sway_file(&file_content, &file)?;
                             }
                         }
-                        core_lang::CompileResult::Err { warnings, errors } => {
-                            errors_exist = true;
-                            if command.check {
-                                eprintln!("{:?}", file);
-
-                                for warning in warnings {
-                                    eprintln!("{}", warning.to_friendly_warning_string());
-                                }
-
-                                for error in errors {
-                                    eprintln!("{}", error.to_friendly_error_string());
-                                }
-                            }
-                        }
+                        _ => {}
                     }
                 }
             }
 
             if command.check {
-                if errors_exist {
-                    std::process::exit(1);
-                } else {
+                if files_to_be_formatted.is_empty() {
+                    // All files are formatted, exit cleanly
                     std::process::exit(0);
+                } else {
+                    for file in files_to_be_formatted {
+                        eprintln!("{}", file);
+                    }
+                    // One or more files are not formatted, exit with error
+                    std::process::exit(1);
                 }
             }
 
@@ -81,6 +77,13 @@ fn get_sway_files(path: PathBuf) -> Result<Vec<PathBuf>, FormatError> {
     }
 
     Ok(files)
+}
+
+fn file_should_change(file_content: &str) -> bool {
+    // todo: get tab_size from Manifest file
+    let (_, formatted_content) = get_formatted_data(file_content, 4);
+    let should_change = file_content != &formatted_content;
+    should_change
 }
 
 fn format_sway_file(file_content: &str, file: &PathBuf) -> Result<(), FormatError> {
