@@ -40,7 +40,7 @@ impl<T> Vec<T> where T: Sized {
     // If this item would exceed the boundaries of the underlying buffer, we
     // need allocate a new, bigger buffer. 
     // TODO nested struct field
-    if ((self).len.multiply(size_of_item)) + size_of_item > self.buf.size {
+    if ((((self).len.multiply(size_of_item)).add(size_of_item)).greater_than(self.buf.size)) {
           // allocate a new buffer, copy the old contents over, set self.buf = new buf
     } else {
           // write T to self.len * size_of_item

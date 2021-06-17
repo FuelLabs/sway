@@ -520,6 +520,30 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 field_to_access,
             } => {
+                let parent = type_check!(
+                    TypedExpression::type_check(
+                        *prefix,
+                        namespace,
+                        None,
+                        "",
+                        self_type,
+                        build_config,
+                        dead_code_graph
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let fields = type_check!(
+                    namespace.get_struct_type_fields(
+                        &parent.return_type,
+                        parent.span.as_str(),
+                        &parent.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 todo!("implement subfield exp")
             }
             Expression::MethodApplication {
@@ -528,6 +552,8 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span,
             } => {
+                todo!("This subfield expression should now be a proper subfield expression and not a vector of idents")
+                /*
                 let method = match method_name {
                     MethodName::FromModule {
                         call_path: ref method_name,
@@ -681,6 +707,7 @@ impl<'sc> TypedExpression<'sc> {
                     is_constant: IsConstant::No,
                     span,
                 }
+                            */
             }
             Expression::Unit { span } => TypedExpression {
                 expression: TypedExpressionVariant::Unit,
@@ -755,7 +782,7 @@ impl<'sc> TypedExpression<'sc> {
                                 Some(decl) => Either::Left(decl),
                                 None => {
                                     errors.push(CompileError::SymbolNotFound {
-                                        name: call_path.suffix.primary_name,
+                                        name: call_path.suffix.primary_name.into(),
                                         span: call_path.suffix.span.clone(),
                                     });
                                     return err(warnings, errors);
@@ -780,7 +807,7 @@ impl<'sc> TypedExpression<'sc> {
                         (None, None) => {
                             errors.push(CompileError::SymbolNotFound {
                                 span,
-                                name: call_path.suffix.primary_name,
+                                name: call_path.suffix.primary_name.into(),
                             });
                             return err(warnings, errors);
                         }

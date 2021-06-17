@@ -68,10 +68,6 @@ pub enum Expression<'sc> {
         contents: CodeBlock<'sc>,
         span: Span<'sc>,
     },
-    ParenthesizedExpression {
-        inner: Box<Expression<'sc>>,
-        span: Span<'sc>,
-    },
     IfExp {
         condition: Box<Expression<'sc>>,
         then: Box<Expression<'sc>>,
@@ -149,7 +145,6 @@ impl<'sc> Expression<'sc> {
             MatchExpression { span, .. } => span,
             StructExpression { span, .. } => span,
             CodeBlock { span, .. } => span,
-            ParenthesizedExpression { span, .. } => span,
             IfExp { span, .. } => span,
             AsmExpression { span, .. } => span,
             MethodApplication { span, .. } => span,
@@ -437,10 +432,7 @@ impl<'sc> Expression<'sc> {
                         span: expr.as_span()
                     }
                 );
-                Expression::ParenthesizedExpression {
-                    inner: Box::new(expr),
-                    span,
-                }
+                expr
             }
             Rule::code_block => {
                 let whole_block_span = expr.as_span();
@@ -578,7 +570,6 @@ impl<'sc> Expression<'sc> {
                             }
                         }
 
-                        dbg!(&expr);
                         arguments_buf.push_front(expr);
                         Expression::MethodApplication {
                             subfield_exp: vec![],
@@ -717,14 +708,40 @@ impl<'sc> Expression<'sc> {
             Rule::struct_field_access => {
                 let mut inner = expr.into_inner().next().expect("guaranteed by grammar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
-                let mut path_contents = inner.into_inner().collect::<Vec<_>>();
-                let final_field = path_contents.pop().expect("guaranteed by grammar");
+                let mut name_parts = inner.into_inner().collect::<Vec<_>>();
+                let final_field = name_parts.pop().expect("guaranteed by grammar");
 
                 // treat parent as one expr, final name as the field to be accessed
                 // if there are multiple fields, this is a nested expression
                 // i.e. `a.b.c` is a lookup of field `c` on `a.b` which is a lookup
                 // of field `b` on `a`
-                todo!()
+                // the first thing is either an exp or a var, everything subsequent must be
+                // a field
+                let mut name_parts = name_parts.into_iter();
+                let mut expr = eval!(
+                    parse_call_item,
+                    warnings,
+                    errors,
+                    name_parts.next().expect("guaranteed by grammar"),
+                    return err(warnings, errors)
+                );
+
+                for name_part in name_parts {
+                    expr = Expression::SubfieldExpression {
+                        prefix: Box::new(expr.clone()),
+                        unary_op: None, // TODO
+                        span: name_part.as_span(),
+                        field_to_access: eval!(
+                            Ident::parse_from_pair,
+                            warnings,
+                            errors,
+                            name_part,
+                            continue
+                        ),
+                    }
+                }
+
+                expr
             }
             a => {
                 eprintln!(

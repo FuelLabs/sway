@@ -511,7 +511,7 @@ pub enum CompileError<'sc> {
     ModuleNotFound { span: Span<'sc>, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
     NotAStruct {
-        name: &'sc str,
+        name: String,
         span: Span<'sc>,
         actually: String,
     },
@@ -526,7 +526,7 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { span: Span<'sc>, name: &'sc str },
+    SymbolNotFound { span: Span<'sc>, name: String },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""

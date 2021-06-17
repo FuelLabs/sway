@@ -10,6 +10,7 @@ use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
+use pest::Span;
 use std::collections::HashMap;
 
 type ModuleName = String;
@@ -185,7 +186,7 @@ impl<'sc> Namespace<'sc> {
             }
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: item.primary_name,
+                    name: item.primary_name.into(),
                     span: item.span.clone(),
                 });
 
@@ -253,7 +254,7 @@ impl<'sc> Namespace<'sc> {
             Some(o) => ok(o, warnings, errors),
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: path.suffix.primary_name,
+                    name: path.suffix.primary_name.into(),
                     span: path.suffix.span.clone(),
                 });
                 err(warnings, errors)
@@ -371,6 +372,7 @@ impl<'sc> Namespace<'sc> {
             _ => None,
         }
     }
+    /*
     /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
@@ -400,7 +402,11 @@ impl<'sc> Namespace<'sc> {
             );
             return ok((ty.clone(), ty), warnings, errors);
         }
-        let (mut fields, struct_name) = match self.get_struct_type_fields(symbol, &first_ident) {
+        let (mut fields, struct_name) = match self.get_struct_type_fields(
+            symbol,
+            first_ident.primary_name,
+            &first_ident.span,
+        ) {
             CompileResult::Ok {
                 value,
                 warnings: mut l_w,
@@ -456,7 +462,8 @@ impl<'sc> Namespace<'sc> {
                     let (l_fields, _l_name) = type_check!(
                         self.find_struct_name_and_fields(
                             &MaybeResolvedType::Resolved(r#type),
-                            &ident
+                            ident.primary_name,
+                            &ident.span,
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -473,7 +480,7 @@ impl<'sc> Namespace<'sc> {
             }
         }
         ok((ret_ty, parent_rover), warnings, errors)
-    }
+    }*/
 
     pub(crate) fn get_methods_for_type(
         &self,
@@ -576,27 +583,43 @@ impl<'sc> Namespace<'sc> {
     /// e.g. foo.bar.baz
     /// is foo a struct? does it contain a field bar? is foo.bar a struct? does foo.bar contain a
     /// field baz? this is the problem this function addresses
-    fn get_struct_type_fields(
+    pub(crate) fn get_struct_type_fields(
         &self,
-        decl: &TypedDeclaration<'sc>,
-        debug_ident: &Ident<'sc>,
+        ty: &MaybeResolvedType<'sc>,
+        debug_string: impl Into<String>,
+        debug_span: &Span<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
-        match decl {
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                body: TypedExpression { return_type, .. },
-                ..
-            }) => self.find_struct_name_and_fields(return_type, debug_ident),
+        match ty {
+            MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields }) => todo!(),
             a => {
                 return err(
                     vec![],
                     vec![CompileError::NotAStruct {
-                        name: debug_ident.primary_name.clone(),
-                        span: debug_ident.span.clone(),
+                        name: debug_string.into(),
+                        span: debug_span.clone(),
+                        actually: a.friendly_type_str(),
+                    }],
+                )
+            }
+        }
+        /*
+        match decl {
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                body: TypedExpression { return_type, .. },
+                ..
+            }) => self.find_struct_name_and_fields(return_type, debug_string, debug_span),
+            a => {
+                return err(
+                    vec![],
+                    vec![CompileError::NotAStruct {
+                        name: debug_string.into(),
+                        span: debug_span.clone(),
                         actually: a.friendly_name().to_string(),
                     }],
                 )
             }
         }
+        */
     }
     /// given a type, look that type up in the namespace and:
     /// 1) assert that it is a struct, return error otherwise
@@ -604,7 +627,8 @@ impl<'sc> Namespace<'sc> {
     fn find_struct_name_and_fields(
         &self,
         return_type: &MaybeResolvedType<'sc>,
-        debug_ident: &Ident<'sc>,
+        debug_string: impl Into<String>,
+        debug_span: &Span<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
         if let MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields: _ }) = return_type {
             match self.get_symbol(name) {
@@ -616,16 +640,16 @@ impl<'sc> Namespace<'sc> {
                 Some(a) => err(
                     vec![],
                     vec![CompileError::NotAStruct {
-                        name: debug_ident.span.as_str(),
-                        span: debug_ident.span.clone(),
+                        name: debug_string.into(),
+                        span: debug_span.clone(),
                         actually: a.friendly_name().to_string(),
                     }],
                 ),
                 None => err(
                     vec![],
                     vec![CompileError::SymbolNotFound {
-                        name: debug_ident.span.as_str(),
-                        span: debug_ident.span.clone(),
+                        name: debug_string.into(),
+                        span: debug_span.clone(),
                     }],
                 ),
             }
@@ -633,8 +657,8 @@ impl<'sc> Namespace<'sc> {
             err(
                 vec![],
                 vec![CompileError::NotAStruct {
-                    name: debug_ident.span.as_str(),
-                    span: debug_ident.span.clone(),
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
                     actually: return_type.friendly_type_str(),
                 }],
             )
