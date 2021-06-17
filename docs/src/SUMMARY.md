@@ -9,6 +9,7 @@
 - [Basics](./c03/README.md)
   - [Project Structure](./c03/project_structure.md)
   - [Variables](./c03/variables.md)
+  - [Data Types](./c03/types.md)
   - [Functions](./c03/functions.md)
 - [Sway on the Chain](./c04/README.md)
   - [Smart Contracts](./c04/smart_contracts.md)
