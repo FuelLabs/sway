@@ -738,13 +738,16 @@ impl<'sc> Expression<'sc> {
 // figure out which variant of `call_item` this is and turn it into either a variable expression
 // or parse it as an expression otherwise.
 fn parse_call_item<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, Expression<'sc>> {
-    todo!(
-        "Okay, what needs to happen is:
-        only allow expressions as the first thing in a call path
-        construct subfield exps as a nested structure
-        make sure method applications with self args still work
-        "
-    )
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    assert_eq!(item.as_rule(), Rule::call_item);
+    let item = item.into_inner().next().expect("guaranteed by grammar");
+    let exp = match item.as_rule() {
+        Rule::ident => todo!("varexp"),
+        Rule::expr => todo!("parse expr"),
+        a => unreachable!("{:?}", a),
+    };
+    ok(exp, warnings, errors)
 }
 
 #[derive(Debug, Clone)]
