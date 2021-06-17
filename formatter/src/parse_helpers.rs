@@ -50,8 +50,7 @@ pub fn handle_assignment_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
             code_line.append_with_whitespace("=> ");
             iter.next();
         } else {
-            // it's assignment
-            code_line.append_with_whitespace("= ");
+            code_line.append_equal_sign();
         }
     } else {
         code_line.append_with_whitespace("= ");

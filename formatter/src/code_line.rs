@@ -61,17 +61,23 @@ impl CodeLine {
 
     pub fn append_with_whitespace(&mut self, value: &str) {
         let last = self.text.chars().last();
-        let is_previous_whitespace = if last.is_none() {
-            true
-        } else {
-            last.unwrap() == ' '
-        };
+        let is_previous_whitespace = Some(' ') == last;
 
         if !is_previous_whitespace {
             self.push_char(' ');
         }
 
         self.push_str(value);
+    }
+
+    pub fn append_equal_sign(&mut self) {
+        let last = self.text.chars().last();
+
+        if Some('!') == last {
+            self.push_char('=');
+        } else {
+            self.append_with_whitespace("=");
+        }
     }
 
     pub fn is_empty(&self) -> bool {
