@@ -1,3 +1,9 @@
 [workspace]
 
-members = ["core_lang", "forc", "sway-server", "test_suite"]
+members = [
+    "core_lang",
+    "core-types",
+    "forc",
+    "sway-server",
+    "test_suite"
+]
