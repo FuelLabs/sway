@@ -48,3 +48,4 @@ pub struct MyStruct {
   field_two: bool,
 }
 ```
+
