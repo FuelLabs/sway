@@ -99,6 +99,7 @@ pub enum Expression<'sc> {
         prefix: Box<Expression<'sc>>,
         span: Span<'sc>,
         unary_op: Option<UnaryOp>,
+        field_to_access: Ident<'sc>,
     },
     /// A [DelineatedPath] is anything of the form:
     /// ```ignore
@@ -551,24 +552,34 @@ impl<'sc> Expression<'sc> {
                             );
                             arguments_buf.push_back(arg);
                         }
-                        let mut prefix_buf = Vec::new();
+                        // the first thing is either an exp or a var, everything subsequent must be
+                        // a field
+                        let mut name_parts = name_parts.into_iter();
+                        let mut expr = eval!(
+                            parse_call_item,
+                            warnings,
+                            errors,
+                            name_parts.next().expect("guaranteed by grammar"),
+                            return err(warnings, errors)
+                        );
+
                         for name_part in name_parts {
-                            let item =
-                                eval!(parse_call_item, warnings, errors, name_part, continue);
-                            prefix_buf.push(item);
+                            expr = Expression::SubfieldExpression {
+                                prefix: Box::new(expr.clone()),
+                                unary_op: None, // TODO
+                                span: name_part.as_span(),
+                                field_to_access: eval!(
+                                    Ident::parse_from_pair,
+                                    warnings,
+                                    errors,
+                                    name_part,
+                                    continue
+                                ),
+                            }
                         }
 
-                        dbg!(&prefix_buf);
-                        arguments_buf.push_front(Expression::SubfieldExpression {
-                            prefix: todo!(),
-                            unary_op: None, // TODO
-                            span: prefix_buf
-                                .clone()
-                                .into_iter()
-                                .fold(prefix_buf[0].clone().span(), |acc, this| {
-                                    join_spans(acc, this.span())
-                                }),
-                        });
+                        dbg!(&expr);
+                        arguments_buf.push_front(expr);
                         Expression::MethodApplication {
                             subfield_exp: vec![],
                             method_name: MethodName::FromModule {
@@ -704,7 +715,6 @@ impl<'sc> Expression<'sc> {
                 span: expr.as_span(),
             },
             Rule::struct_field_access => {
-                dbg!(&expr);
                 let mut inner = expr.into_inner().next().expect("guaranteed by grammar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
                 let mut path_contents = inner.into_inner().collect::<Vec<_>>();
@@ -743,8 +753,24 @@ fn parse_call_item<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, Expression<
     assert_eq!(item.as_rule(), Rule::call_item);
     let item = item.into_inner().next().expect("guaranteed by grammar");
     let exp = match item.as_rule() {
-        Rule::ident => todo!("varexp"),
-        Rule::expr => todo!("parse expr"),
+        Rule::ident => Expression::VariableExpression {
+            name: eval!(
+                Ident::parse_from_pair,
+                warnings,
+                errors,
+                item,
+                return err(warnings, errors)
+            ),
+            span: item.as_span(),
+            unary_op: None,
+        },
+        Rule::expr => eval!(
+            Expression::parse_from_pair,
+            warnings,
+            errors,
+            item,
+            return err(warnings, errors)
+        ),
         a => unreachable!("{:?}", a),
     };
     ok(exp, warnings, errors)

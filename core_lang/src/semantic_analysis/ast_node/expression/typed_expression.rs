@@ -518,6 +518,7 @@ impl<'sc> TypedExpression<'sc> {
                 unary_op,
                 prefix,
                 span,
+                field_to_access,
             } => {
                 todo!("implement subfield exp")
             }
