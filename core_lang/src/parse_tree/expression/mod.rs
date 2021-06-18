@@ -572,8 +572,6 @@ impl<'sc> Expression<'sc> {
                         }
                     }
                     Rule::fully_qualified_method => {
-                        dbg!(&pair);
-
                         let mut path_parts_buf = vec![];
                         let mut type_name = None;
                         let mut method_name = None;

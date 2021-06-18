@@ -760,8 +760,8 @@ fn connect_expression<'sc>(
             }
             Ok(vec![exit])
         }
-        SubfieldExpression {
-            name,
+        StructFieldAccess {
+            field_to_access,
             resolved_type_of_parent,
             ..
         } => {
@@ -773,7 +773,7 @@ fn connect_expression<'sc>(
                 MaybeResolvedType::Resolved(ResolvedType::Struct { name, .. }) => name.clone(),
                 _ => panic!("Called subfield on a non-struct"),
             };
-            let field_name = name.last().unwrap();
+            let field_name = &field_to_access.name;
             // find the struct field index in the namespace
             let field_ix = match graph
                 .namespace

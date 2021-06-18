@@ -337,9 +337,6 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        if trait_name.suffix.primary_name == "Ord" {
-            dbg!(&functions_buf);
-        }
         let module_to_insert_into = type_check!(
             self.find_module_mut(&trait_name.prefixes),
             return err(warnings, errors),
