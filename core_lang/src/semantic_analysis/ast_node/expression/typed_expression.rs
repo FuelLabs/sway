@@ -547,12 +547,153 @@ impl<'sc> TypedExpression<'sc> {
                 todo!("implement subfield exp")
             }
             Expression::MethodApplication {
-                subfield_exp,
                 method_name,
                 arguments,
                 span,
             } => {
-                todo!("This subfield expression should now be a proper subfield expression and not a vector of idents")
+                match method_name {
+                    // something like a.b(c)
+                    MethodName::FromModule { method_name } => {
+                        dbg!(&arguments);
+                        let mut args_buf = vec![];
+                        for arg in arguments {
+                            let sp = arg.span().clone();
+                            args_buf.push(type_check!(
+                                TypedExpression::type_check(
+                                    arg,
+                                    namespace,
+                                    None,
+                                    "",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
+                                ),
+                                error_recovery_expr(sp),
+                                warnings,
+                                errors
+                            ));
+                        }
+                        let method = match namespace
+                            .find_method_for_type(&args_buf[0].return_type, method_name.clone())
+                        {
+                            Some(o) => o,
+                            None => todo!("method not found err"),
+                        };
+
+                        // + 1 for the "self" param
+                        if args_buf.len() > (method.parameters.len() + 1) {
+                            dbg!(&method);
+                            dbg!(&args_buf);
+                            todo!("too many args err");
+                        }
+
+                        if args_buf.len() < method.parameters.len() {
+                            dbg!(&method);
+                            dbg!(&args_buf);
+                            todo!("too few args err");
+                        }
+
+                        let args_and_names = method
+                            .parameters
+                            .iter()
+                            .zip(args_buf.into_iter())
+                            .map(|(param, arg)| (param.name.clone(), arg))
+                            .collect::<Vec<(_, _)>>();
+
+                        TypedExpression {
+                            expression: TypedExpressionVariant::FunctionApplication {
+                                name: CallPath {
+                                    prefixes: vec![],
+                                    suffix: method_name,
+                                },
+                                arguments: args_and_names,
+                                function_body: method.body.clone(),
+                            },
+                            return_type: method.return_type,
+                            is_constant: IsConstant::No,
+                            span,
+                        }
+                    }
+                    // something like blah::blah::~Type::foo()
+                    MethodName::FromType {
+                        call_path,
+                        type_name,
+                        is_absolute,
+                    } => {
+                        let method = if let Some(type_name) = type_name {
+                            let module = type_check!(
+                                namespace.find_module(&call_path.prefixes[..], is_absolute),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let type_name = module.resolve_type(&type_name, self_type);
+                            //                            dbg!(&module.implemented_traits);
+                            match module.find_method_for_type(&type_name, call_path.suffix.clone())
+                            {
+                                Some(o) => o,
+                                None => {
+                                    errors.push(CompileError::MethodNotFound {
+                                        method_name: call_path.suffix.primary_name.clone(),
+                                        type_name: type_name.friendly_type_str(),
+                                        span: call_path.suffix.span.clone(),
+                                    });
+                                    return err(warnings, errors);
+                                }
+                            }
+                        } else {
+                            // there is a special case for the stdlib where type_name is `None`, handle
+                            // that:
+                            todo!()
+                        };
+                        let mut args_buf = vec![];
+                        for arg in arguments {
+                            args_buf.push(type_check!(
+                                TypedExpression::type_check(
+                                    arg,
+                                    namespace,
+                                    None,
+                                    "",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
+                                ),
+                                continue,
+                                warnings,
+                                errors
+                            ));
+                        }
+
+                        if args_buf.len() > method.parameters.len() {
+                            todo!("too many args err");
+                        }
+
+                        if args_buf.len() < method.parameters.len() {
+                            dbg!(&method);
+                            dbg!(&args_buf);
+                            todo!("too few args err");
+                        }
+
+                        let args_and_names = method
+                            .parameters
+                            .iter()
+                            .zip(args_buf.into_iter())
+                            .map(|(param, arg)| (param.name.clone(), arg))
+                            .collect::<Vec<(_, _)>>();
+                        TypedExpression {
+                            expression: TypedExpressionVariant::FunctionApplication {
+                                name: call_path,
+                                arguments: args_and_names,
+                                function_body: method.body.clone(),
+                            },
+                            return_type: method.return_type,
+                            is_constant: IsConstant::No,
+                            span,
+                        }
+
+                        //                        todo!("fnd the namespace of the call_path and resolve the type_name in it. then grab the method name. emthod name is the call_path suffix")
+                    }
+                }
                 /*
                 let method = match method_name {
                     MethodName::FromModule {

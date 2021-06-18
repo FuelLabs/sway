@@ -1,5 +1,8 @@
 use crate::error::*;
-use crate::parse_tree::{CallPath, Literal};
+use crate::{
+    parse_tree::{CallPath, Literal},
+    types::MaybeResolvedType,
+};
 use crate::{parser::Rule, types::TypeInfo};
 use crate::{CodeBlock, Ident};
 use either::Either;
@@ -16,19 +19,12 @@ pub enum MethodName<'sc> {
     /// Represents a method lookup with a type somewhere in the path
     FromType {
         call_path: CallPath<'sc>,
-        type_name: TypeInfo<'sc>,
+        // if this is `None`, then use the first argument to determine the type
+        type_name: Option<TypeInfo<'sc>>,
+        is_absolute: bool,
     },
     /// Represents a method lookup that does not contain any types in the path
-    FromModule { call_path: CallPath<'sc> },
-}
-
-impl<'sc> MethodName<'sc> {
-    pub(crate) fn call_path(&self) -> &CallPath<'sc> {
-        match self {
-            MethodName::FromType { call_path, .. } => call_path,
-            MethodName::FromModule { call_path, .. } => call_path,
-        }
-    }
+    FromModule { method_name: Ident<'sc> },
 }
 
 #[derive(Debug, Clone)]
@@ -80,7 +76,6 @@ pub enum Expression<'sc> {
         asm: AsmExpression<'sc>,
     },
     MethodApplication {
-        subfield_exp: Vec<Ident<'sc>>,
         method_name: MethodName<'sc>,
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
@@ -90,7 +85,6 @@ pub enum Expression<'sc> {
     /// <ident>.<ident>
     /// ```
     ///
-    /// Where there are `n >=2` idents. This is typically an access of a structure field.
     SubfieldExpression {
         prefix: Box<Expression<'sc>>,
         span: Span<'sc>,
@@ -525,7 +519,7 @@ impl<'sc> Expression<'sc> {
                         //
                         // ["a", "b", "c", "add"]
                         let method_name = eval!(
-                            CallPath::parse_from_pair,
+                            Ident::parse_from_pair,
                             warnings,
                             errors,
                             name_parts.pop().unwrap(),
@@ -572,15 +566,14 @@ impl<'sc> Expression<'sc> {
 
                         arguments_buf.push_front(expr);
                         Expression::MethodApplication {
-                            subfield_exp: vec![],
-                            method_name: MethodName::FromModule {
-                                call_path: method_name,
-                            },
+                            method_name: MethodName::FromModule { method_name },
                             arguments: arguments_buf.into_iter().collect(),
                             span: whole_exp_span,
                         }
                     }
                     Rule::fully_qualified_method => {
+                        dbg!(&pair);
+
                         let mut path_parts_buf = vec![];
                         let mut type_name = None;
                         let mut method_name = None;
@@ -629,7 +622,8 @@ impl<'sc> Expression<'sc> {
                                     return err(warnings, errors)
                                 ),
                             },
-                            type_name,
+                            type_name: Some(type_name),
+                            is_absolute: false,
                         };
 
                         let mut arguments_buf = vec![];
@@ -650,7 +644,6 @@ impl<'sc> Expression<'sc> {
                         }
 
                         Expression::MethodApplication {
-                            subfield_exp: vec![],
                             method_name: method_name,
                             arguments: arguments_buf,
                             span: whole_exp_span,
@@ -1107,7 +1100,7 @@ fn arrange_by_order_of_operations<'sc>(
         let rhs = rhs.unwrap();
 
         expression_stack.push(Expression::MethodApplication {
-            method_name: MethodName::FromModule {
+            method_name: MethodName::FromType {
                 call_path: CallPath {
                     prefixes: vec![
                         Ident {
@@ -1121,8 +1114,9 @@ fn arrange_by_order_of_operations<'sc>(
                     ],
                     suffix: op.to_var_name(),
                 },
+                type_name: None,
+                is_absolute: true,
             },
-            subfield_exp: vec![],
             arguments: vec![lhs.clone(), rhs.clone()],
             span: join_spans(join_spans(lhs.span(), op.span.clone()), rhs.span()),
         });

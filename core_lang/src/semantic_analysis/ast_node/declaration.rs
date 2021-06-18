@@ -439,7 +439,7 @@ impl<'sc> TypedTraitFn<'sc> {
                 contents: vec![],
                 whole_block_span: self.name.span.clone(),
             },
-            parameters: vec![],
+            parameters: self.parameters.clone(),
             span: self.name.span.clone(),
             return_type: self.return_type.clone(),
             return_type_span: self.return_type_span.clone(),

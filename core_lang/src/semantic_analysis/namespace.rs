@@ -337,6 +337,9 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        if trait_name.suffix.primary_name == "Ord" {
+            dbg!(&functions_buf);
+        }
         let module_to_insert_into = type_check!(
             self.find_module_mut(&trait_name.prefixes),
             return err(warnings, errors),
@@ -588,9 +591,11 @@ impl<'sc> Namespace<'sc> {
         ty: &MaybeResolvedType<'sc>,
         debug_string: impl Into<String>,
         debug_span: &Span<'sc>,
-    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
+    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, Ident<'sc>)> {
         match ty {
-            MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields }) => todo!(),
+            MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields }) => {
+                ok((fields.to_vec(), name.clone()), vec![], vec![])
+            }
             a => {
                 return err(
                     vec![],
