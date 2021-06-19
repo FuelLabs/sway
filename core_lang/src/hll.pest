@@ -94,7 +94,7 @@ type_ascription =  {":" ~ type_name}
 fn_decl         =  {visibility ~ fn_signature ~ code_block}
 fn_signature    =  {fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds?}
 var_name        =  {ident}
-reassignment    =  {var_exp ~ assign ~ expr ~ ";"}
+reassignment    =  {(var_exp | struct_field_access) ~ assign ~ expr ~ ";"}
 
 visibility =  {"pub"?}
 

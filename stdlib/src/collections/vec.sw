@@ -22,7 +22,7 @@ impl<T> Vec<T> where T: Sized {
   /// capacity is exceeded.
   /// If you know how big the buffer should be, use `Vec::with_capacity` instead.
   fn new() -> Self {
-    let item_size = ~T::heap_size_of();
+    let item_size = ~T::size_of();
     Vec { buf: ~RawVec::new(item_size), len: 0 }
   }
 
@@ -30,21 +30,34 @@ impl<T> Vec<T> where T: Sized {
   /// If you know the size the vector will end up being, you should initialize
   /// your vector with this method instead, to save on future `aloc` calls.
   fn with_capacity(capacity: u64) -> Self {
-    let capacity_bytes = capacity.multiply(~T::heap_size_of());
+    let capacity_bytes = capacity.multiply(~T::size_of());
     Vec { buf: ~RawVec::new(capacity_bytes), len: 0 }
   }
 
   /// Push an item on to the end of the vector.
   fn push(self, item: T) {
-    let size_of_item = ~T::heap_size_of();
+    let size_of_item = ~T::size_of();
     // If this item would exceed the boundaries of the underlying buffer, we
     // need allocate a new, bigger buffer. 
     // TODO nested struct field
     if ((((self).len.multiply(size_of_item)).add(size_of_item)).greater_than(self.buf.size)) {
-          // allocate a new buffer, copy the old contents over, set self.buf = new buf
+      let new_buf_size = (2).multiply(self.buf.size);
+      let mut new_buf = RawVec::new(new_buf_size);
+      // copy the contents of the old buf to the new one
+      let mut i = 0;
+      while i.less_than(self.buf.size) {
+        copy_buf(self.buf, new_buf);
+        i = i + 1;
+      }
+      // put the new item in the buf
+      new_buf.put_item_at_index(self.len, item);
+      self.len = self.len + 1;
+      self.buf = new_buf;
     } else {
-          // write T to self.len * size_of_item
-          // increase self.len by one
+      self.buf.put_item_at_index(self.len, item);
+      self.len = self.len + 1;
+      // write T to self.len * size_of_item
+      // increase self.len by one
     }
   }
 }
@@ -64,3 +77,6 @@ impl RawVec {
   }
 }
 
+fn copy_buf(buf1: RawVec, buf2: RawVec) {
+  // copy ptr + size from buf1 into buf2
+}
