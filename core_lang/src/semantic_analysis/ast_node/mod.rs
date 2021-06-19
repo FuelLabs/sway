@@ -402,6 +402,9 @@ impl<'sc> TypedAstNode<'sc> {
                             trait_decl
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
+                            // ensure that the lhs is a variable expression or struct field access
+                            todo!("above comment");
+                            let lhs = todo!("lhs name if var exp, subfield if struct field access");
                             // check that the reassigned name exists
                             let thing_to_reassign = match namespace.get_symbol(&lhs) {
                                 Some(TypedDeclaration::VariableDeclaration(

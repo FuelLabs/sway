@@ -644,6 +644,8 @@ pub enum CompileError<'sc> {
     UnnecessaryEnumInstantiator { span: Span<'sc> },
     #[error("Trait \"{name}\" does not exist in this scope.")]
     TraitNotFound { name: &'sc str, span: Span<'sc> },
+    #[error("This expression is not valid on the left hand side of a reassignment.")]
+    InvalidExpressionOnLhs { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -803,6 +805,7 @@ impl<'sc> CompileError<'sc> {
             MoreThanOneEnumInstantiator { span, .. } => span,
             UnnecessaryEnumInstantiator { span, .. } => span,
             TraitNotFound { span, .. } => span,
+            InvalidExpressionOnLhs { span, .. } => span,
         }
     }
 

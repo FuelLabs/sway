@@ -1130,30 +1130,3 @@ fn arrange_by_order_of_operations<'sc>(
 
     ok(expression_stack[0].clone(), warnings, errors)
 }
-/*
-fn subfield_from_pair<'sc>(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Expression> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let span = expr.as_span();
-    let iter = expr.into_inner();
-    let mut buf = vec![];
-    for part in iter {
-        buf.push(eval!(
-            Ident::parse_from_pair,
-            warnings,
-            errors,
-            part,
-            continue
-        ));
-    }
-    ok(
-        Expression::SubfieldExpression {
-            span,
-            name_parts: buf,
-            unary_op: None, // TODO: support unary operators before subfield expressions
-        },
-        warnings,
-        errors,
-    )
-}
-*/
