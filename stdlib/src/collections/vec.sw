@@ -42,7 +42,7 @@ impl<T> Vec<T> where T: Sized {
     // TODO nested struct field
     if ((((self).len.multiply(size_of_item)).add(size_of_item)).greater_than(self.buf.size)) {
       let new_buf_size = (2).multiply(self.buf.size);
-      let mut new_buf = RawVec::new(new_buf_size);
+      let mut new_buf = ~RawVec::new(new_buf_size);
       // copy the contents of the old buf to the new one
       let mut i = 0;
       while i.less_than(self.buf.size) {

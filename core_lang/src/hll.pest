@@ -88,13 +88,15 @@ struct_expr_fields =  {struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name
 array_exp          =  {"[" ~ (expr ~ ("," ~ expr)*) ~ "]"}
 
 // declarations
-declaration     =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment|impl_trait|impl_self)}
-var_decl        =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
-type_ascription =  {":" ~ type_name}
-fn_decl         =  {visibility ~ fn_signature ~ code_block}
-fn_signature    =  {fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds?}
-var_name        =  {ident}
-reassignment    =  {(var_exp | struct_field_access) ~ assign ~ expr ~ ";"}
+declaration               =  {(enum_decl|var_decl|fn_decl|trait_decl|struct_decl|reassignment|impl_trait|impl_self)}
+var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
+type_ascription           =  {":" ~ type_name}
+fn_decl                   =  {visibility ~ fn_signature ~ code_block}
+fn_signature              =  {fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds?}
+var_name                  =  {ident}
+reassignment              =  {variable_reassignment | struct_field_reassignment}
+variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}
+struct_field_reassignment =  {struct_field_access ~ assign ~ expr ~ ";" }
 
 visibility =  {"pub"?}
 
@@ -129,11 +131,6 @@ expr_statement   =  {expr ~ ";"}
 
 // traits
 trait_decl    =  {visibility ~ trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ trait_methods}
-// // just a fn signature denotes a fn something must implement in order for it to be part of the trait
-// // i like the idea of separating the interface points from the actual
-// // functional implementations the trait provides, so i have them
-// // parsed as two separate blocks here.
-// // this can of course be changed if others dislike it.
 trait_methods =  {"{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{" ~ fn_decl* ~ "}")*}
 trait_name    =  {ident ~ (path_separator ~ ident)*}
 impl_trait    =  {impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
