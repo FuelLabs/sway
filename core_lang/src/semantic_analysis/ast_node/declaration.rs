@@ -262,7 +262,9 @@ pub struct TypedTraitFn<'sc> {
 
 #[derive(Clone, Debug)]
 pub struct TypedReassignment<'sc> {
-    pub(crate) lhs: Ident<'sc>,
+    // either a direct variable, so length of 1, or
+    // at series of struct fields/array indices (array syntax)
+    pub(crate) lhs: Vec<Ident<'sc>>,
     pub(crate) rhs: TypedExpression<'sc>,
 }
 

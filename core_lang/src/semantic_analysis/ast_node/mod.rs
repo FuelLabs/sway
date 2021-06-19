@@ -402,62 +402,20 @@ impl<'sc> TypedAstNode<'sc> {
                             trait_decl
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
-                            // ensure that the lhs is a variable expression or struct field access
-                            todo!("above comment");
-                            let lhs = todo!("lhs name if var exp, subfield if struct field access");
-                            // check that the reassigned name exists
-                            let thing_to_reassign = match namespace.get_symbol(&lhs) {
-                                Some(TypedDeclaration::VariableDeclaration(
-                                    TypedVariableDeclaration {
-                                        body, is_mutable, ..
-                                    },
-                                )) => {
-                                    // allow the type checking to continue unhindered even though
-                                    // this is an error
-                                    // basically pretending that this isn't an error by not
-                                    // early-returning, for the sake of better error reporting
-                                    if !is_mutable {
-                                        errors.push(CompileError::AssignmentToNonMutable(
-                                            lhs.primary_name,
-                                            span.clone(),
-                                        ));
-                                    }
-
-                                    body
-                                }
-                                Some(o) => {
-                                    errors.push(CompileError::ReassignmentToNonVariable {
-                                        name: lhs.primary_name,
-                                        kind: o.friendly_name(),
-                                        span,
-                                    });
-                                    return err(warnings, errors);
-                                }
-                                None => {
-                                    errors.push(CompileError::UnknownVariable {
-                                        var_name: lhs.primary_name,
-                                        span: lhs.span,
-                                    });
-                                    return err(warnings, errors);
-                                }
-                            };
-                            // type check the reassignment
-                            let rhs = type_check!(
-                                TypedExpression::type_check(
+                            type_check!(
+                                reassignment(
+                                    lhs,
                                     rhs,
-                                    &namespace,
-                                    Some(thing_to_reassign.return_type.clone()),
-                                    "You can only reassign a value of the same type to a variable.",
+                                    span,
+                                    namespace,
                                     self_type,
                                     build_config,
                                     dead_code_graph
                                 ),
-                                error_recovery_expr(span),
+                                return err(warnings, errors),
                                 warnings,
                                 errors
-                            );
-
-                            TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs })
+                            )
                         }
                         Declaration::ImplTrait(impl_trait) => type_check!(
                             implementation_of_trait(
@@ -778,4 +736,84 @@ fn import_new_file<'sc>(
     namespace.merge_namespaces(&library_exports.namespace);
 
     ok((), warnings, errors)
+}
+
+fn reassignment<'sc>(
+    lhs: Box<Expression<'sc>>,
+    rhs: Expression<'sc>,
+    span: Span<'sc>,
+    namespace: &mut Namespace,
+    self_type: &MaybeResolvedType<'sc>,
+    build_config: &BuildConfig,
+    dead_code_graph: &mut ControlFlowGraph<'sc>,
+) -> CompileResult<'sc, TypedDeclaration<'sc>> {
+    let mut errors = vec![];
+    let mut warnings = vec![];
+    // ensure that the lhs is a variable expression or struct field access
+    match *lhs {
+        Expression::VariableExpression {
+            unary_op,
+            name,
+            span,
+        } => {
+            // check that the reassigned name exists
+            let thing_to_reassign = match namespace.get_symbol(&name) {
+                Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    body,
+                    is_mutable,
+                    ..
+                })) => {
+                    // allow the type checking to continue unhindered even though
+                    // this is an error
+                    // basically pretending that this isn't an error by not
+                    // early-returning, for the sake of better error reporting
+                    if !is_mutable {
+                        errors.push(CompileError::AssignmentToNonMutable(
+                            name.primary_name,
+                            span.clone(),
+                        ));
+                    }
+
+                    body
+                }
+                Some(o) => {
+                    errors.push(CompileError::ReassignmentToNonVariable {
+                        name: name.primary_name,
+                        kind: o.friendly_name(),
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                None => {
+                    errors.push(CompileError::UnknownVariable {
+                        var_name: name.primary_name,
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+            };
+            // type check the reassignment
+            let rhs = type_check!(
+                TypedExpression::type_check(
+                    rhs,
+                    &namespace,
+                    Some(thing_to_reassign.return_type.clone()),
+                    "You can only reassign a value of the same type to a variable.",
+                    self_type,
+                    build_config,
+                    dead_code_graph
+                ),
+                error_recovery_expr(span),
+                warnings,
+                errors
+            );
+
+            ok(
+                TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs }),
+                warnings,
+                errors,
+            )
+        }
+        _ => todo!(),
+    }
 }
