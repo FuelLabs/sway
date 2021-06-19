@@ -19,7 +19,7 @@ type TraitName<'a> = Ident<'a>;
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
     pub(crate) symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    implemented_traits:
+    pub(crate) implemented_traits:
         HashMap<(TraitName<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     pub(crate) modules: HashMap<ModuleName, Namespace<'sc>>,

@@ -206,6 +206,37 @@ pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) visibility: Visibility,
 }
 
+impl<'sc> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn replace_self_types(&self, self_type: &MaybeResolvedType<'sc>) -> Self {
+        TypedFunctionDeclaration {
+            name: self.name.clone(),
+            body: self.body.replace_self_types(self_type),
+            parameters: self
+                .parameters
+                .iter()
+                .map(|x| {
+                    let mut x = x.clone();
+                    x.r#type = match x.r#type {
+                        MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => {
+                            self_type.clone()
+                        }
+                        otherwise => otherwise.clone(),
+                    };
+                    x
+                })
+                .collect(),
+            span: self.span.clone(),
+            return_type: match &self.return_type {
+                MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => self_type.clone(),
+                otherwise => otherwise.clone(),
+            },
+            type_parameters: self.type_parameters.clone(),
+            return_type_span: self.return_type_span.clone(),
+            visibility: self.visibility.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedFunctionParameter<'sc> {
     pub(crate) name: Ident<'sc>,
