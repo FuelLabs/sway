@@ -220,6 +220,7 @@ impl CodeBuilder {
             }
             // if there is more - move to new line!
             Some(_) => {
+                self.complete_and_add_line(CodeLine::new("}".into()));
                 self.move_rest_to_new_line(line, iter);
             }
             None => {
