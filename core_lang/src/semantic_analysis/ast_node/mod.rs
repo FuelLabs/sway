@@ -6,7 +6,7 @@ use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
-use std::path::Path;
+use std::{collections::VecDeque, path::Path};
 
 mod code_block;
 mod declaration;
@@ -817,13 +817,70 @@ fn reassignment<'sc>(
                 errors,
             )
         }
+        Expression::SubfieldExpression {
+            prefix,
+            unary_op,
+            field_to_access,
+            span,
+        } => {
+            let mut expr = *prefix;
+            let mut names_vec = vec![field_to_access];
+            loop {
+                match expr {
+                    Expression::VariableExpression { name, .. } => {
+                        names_vec.push(name);
+                        break;
+                    }
+                    Expression::SubfieldExpression {
+                        field_to_access,
+                        prefix,
+                        ..
+                    } => {
+                        names_vec.push(field_to_access);
+                        expr = *prefix;
+                    }
+                    _ => {
+                        errors.push(CompileError::InvalidExpressionOnLhs { span });
+                        return err(warnings, errors);
+                    }
+                }
+            }
 
-        Expression::SubfieldExpression { .. } => {
-            errors.push(CompileError::Unimplemented(
-                "Struct field reassignments are not implemented yet",
-                span,
-            ));
-            return err(warnings, errors);
+            let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+
+            let (ty_of_field, ty_of_parent) = type_check!(
+                namespace.find_subfield_type(names_vec.as_slice()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            // type check the reassignment
+            let rhs = type_check!(
+                TypedExpression::type_check(
+                    rhs,
+                    &namespace,
+                    Some(ty_of_field.clone()),
+                    format!(
+                        "This struct field has type \"{}\"",
+                        ty_of_field.friendly_type_str()
+                    ),
+                    self_type,
+                    build_config,
+                    dead_code_graph
+                ),
+                error_recovery_expr(span),
+                warnings,
+                errors
+            );
+
+            ok(
+                TypedDeclaration::Reassignment(TypedReassignment {
+                    lhs: names_vec,
+                    rhs,
+                }),
+                warnings,
+                errors,
+            )
         }
         _ => {
             errors.push(CompileError::InvalidExpressionOnLhs { span });

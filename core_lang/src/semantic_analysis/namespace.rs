@@ -372,7 +372,6 @@ impl<'sc> Namespace<'sc> {
             _ => None,
         }
     }
-    /*
     /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
@@ -402,39 +401,37 @@ impl<'sc> Namespace<'sc> {
             );
             return ok((ty.clone(), ty), warnings, errors);
         }
-        let (mut fields, struct_name) = match self.get_struct_type_fields(
-            symbol,
-            first_ident.primary_name,
-            &first_ident.span,
-        ) {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                // if it is missing, the error message comes from within the above method
-                // so we don't need to re-add it here
-                return err(warnings, errors);
-            }
-        };
-
-        let mut ret_ty = type_check!(
+        let mut symbol = type_check!(
             symbol.return_type(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let mut parent_rover = ret_ty.clone();
+        let (mut fields, struct_name) =
+            match self.get_struct_type_fields(&symbol, first_ident.primary_name, &first_ident.span)
+            {
+                CompileResult::Ok {
+                    value,
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
+                    errors.append(&mut l_e);
+                    warnings.append(&mut l_w);
+                    value
+                }
+                CompileResult::Err {
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
+                    errors.append(&mut l_e);
+                    warnings.append(&mut l_w);
+                    // if it is missing, the error message comes from within the above method
+                    // so we don't need to re-add it here
+                    return err(warnings, errors);
+                }
+            };
+
+        let mut parent_rover = symbol.clone();
 
         for ident in ident_iter {
             // find the ident in the currently available fields
@@ -458,29 +455,23 @@ impl<'sc> Namespace<'sc> {
                 }
             };
             match r#type {
-                ResolvedType::Struct { .. } => {
-                    let (l_fields, _l_name) = type_check!(
-                        self.find_struct_name_and_fields(
-                            &MaybeResolvedType::Resolved(r#type),
-                            ident.primary_name,
-                            &ident.span,
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    parent_rover = ret_ty.clone();
-                    fields = l_fields;
+                ResolvedType::Struct {
+                    fields: ref l_fields,
+                    ..
+                } => {
+                    parent_rover = symbol.clone();
+                    fields = l_fields.clone();
+                    symbol = MaybeResolvedType::Resolved(r#type);
                 }
                 _ => {
                     fields = vec![];
-                    parent_rover = ret_ty.clone();
-                    ret_ty = MaybeResolvedType::Resolved(r#type);
+                    parent_rover = symbol.clone();
+                    symbol = MaybeResolvedType::Resolved(r#type);
                 }
             }
         }
-        ok((ret_ty, parent_rover), warnings, errors)
-    }*/
+        ok((symbol, parent_rover), warnings, errors)
+    }
 
     pub(crate) fn get_methods_for_type(
         &self,
