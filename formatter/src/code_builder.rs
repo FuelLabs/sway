@@ -64,6 +64,12 @@ impl CodeBuilder {
             code_line.push_char('\n');
         }
 
+        if code_line.is_multiline_comment && line.trim() == "*/" {
+            code_line.push_str(&self.get_indentation());
+            code_line.push_str("*/");
+            return self.complete_and_add_line(code_line);
+        }
+
         let mut iter = line.chars().enumerate().peekable();
 
         loop {
