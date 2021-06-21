@@ -652,6 +652,24 @@ impl<'sc> TypedExpression<'sc> {
                         type_name,
                         is_absolute,
                     } => {
+                        let mut args_buf = vec![];
+                        for arg in arguments {
+                            args_buf.push(type_check!(
+                                TypedExpression::type_check(
+                                    arg,
+                                    namespace,
+                                    None,
+                                    "",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
+                                ),
+                                continue,
+                                warnings,
+                                errors
+                            ));
+                        }
+
                         let method = if let Some(type_name) = type_name {
                             let module = type_check!(
                                 namespace.find_module(&call_path.prefixes[..], is_absolute),
@@ -675,25 +693,25 @@ impl<'sc> TypedExpression<'sc> {
                         } else {
                             // there is a special case for the stdlib where type_name is `None`, handle
                             // that:
-                            todo!()
-                        };
-                        let mut args_buf = vec![];
-                        for arg in arguments {
-                            args_buf.push(type_check!(
-                                TypedExpression::type_check(
-                                    arg,
-                                    namespace,
-                                    None,
-                                    "",
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph
-                                ),
-                                continue,
+                            let module = type_check!(
+                                namespace.find_module(&call_path.prefixes[..], is_absolute),
+                                return err(warnings, errors),
                                 warnings,
                                 errors
-                            ));
-                        }
+                            );
+                            let r#type = &args_buf[0].return_type;
+                            match module.find_method_for_type(r#type, call_path.suffix.clone()) {
+                                Some(o) => o,
+                                None => {
+                                    errors.push(CompileError::MethodNotFound {
+                                        method_name: call_path.suffix.primary_name.clone(),
+                                        type_name: r#type.friendly_type_str(),
+                                        span: call_path.suffix.span.clone(),
+                                    });
+                                    return err(warnings, errors);
+                                }
+                            }
+                        };
 
                         if args_buf.len() > method.parameters.len() {
                             todo!("too many args err");

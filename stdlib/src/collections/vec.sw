@@ -51,11 +51,11 @@ impl<T> Vec<T> where T: Sized {
       }
       // put the new item in the buf
       new_buf.put_item_at_index(self.len, item);
-      self.len = self.len + 1;
+      self.len = self.len.add(1);
       self.buf = new_buf;
     } else {
       self.buf.put_item_at_index(self.len, item);
-      self.len = self.len + 1;
+      self.len = self.len.add(1);
       // write T to self.len * size_of_item
       // increase self.len by one
     }
@@ -65,9 +65,11 @@ impl<T> Vec<T> where T: Sized {
 
 impl RawVec {
   fn new(init_size_bytes: u64) -> Self {
-    let ptr = asm(r1: init_size_bytes) {
+    let ptr = asm(r1: init_size_bytes, r2) {
       aloc r1;
-      hp: u64
+      // add one, since the hp points to the free byte right below the byte that was just allocated.
+      addi r2 hp i1;
+      r2: u64
     };
 
     RawVec {

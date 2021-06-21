@@ -742,7 +742,7 @@ fn reassignment<'sc>(
     lhs: Box<Expression<'sc>>,
     rhs: Expression<'sc>,
     span: Span<'sc>,
-    namespace: &mut Namespace,
+    namespace: &mut Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -809,7 +809,10 @@ fn reassignment<'sc>(
             );
 
             ok(
-                TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs }),
+                TypedDeclaration::Reassignment(TypedReassignment {
+                    lhs: vec![name],
+                    rhs,
+                }),
                 warnings,
                 errors,
             )

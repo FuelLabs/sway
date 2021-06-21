@@ -34,18 +34,33 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
 
     // step 1
     let var_register = type_check!(
-        namespace.look_up_variable(&reassignment.lhs),
+        namespace.look_up_variable(&reassignment.lhs[0]),
         return err(warnings, errors),
         warnings,
         errors
     );
 
+    todo!("handle if reassignment.lhs has a length > 1, it is a struct field access");
+
     // step 2
     buf.push(Op::register_move_comment(
         var_register.clone(),
         return_register,
-        reassignment.lhs.span.clone(),
-        format!("variable {} reassignment", reassignment.lhs.primary_name),
+        reassignment
+            .lhs
+            .iter()
+            .fold(reassignment.lhs[0].span, |acc, this| {
+                crate::utils::join_spans(acc, this.span.clone())
+            }),
+        format!(
+            "variable {} reassignment",
+            reassignment
+                .lhs
+                .iter()
+                .map(|x| x.primary_name)
+                .collect::<Vec<_>>()
+                .join(".")
+        ),
     ));
 
     ok(buf, warnings, errors)

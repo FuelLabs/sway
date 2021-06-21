@@ -96,7 +96,11 @@ impl<'sc> TypedDeclaration<'sc> {
             TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span.clone(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span.clone(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            Reassignment(TypedReassignment { lhs, .. }) => lhs.span.clone(),
+            Reassignment(TypedReassignment { lhs, .. }) => {
+                lhs.iter().fold(lhs[0].span.clone(), |acc, this| {
+                    crate::utils::join_spans(acc, this.span.clone())
+                })
+            }
             ImplTrait { span, .. } => span.clone(),
             SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
         }
@@ -127,8 +131,11 @@ impl<'sc> TypedDeclaration<'sc> {
                     name.primary_name.into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
                     name.primary_name.into(),
-                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) =>
-                    lhs.primary_name.into(),
+                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
+                    .iter()
+                    .map(|x| x.primary_name)
+                    .collect::<Vec<_>>()
+                    .join("."),
                 _ => String::new(),
             }
         )
