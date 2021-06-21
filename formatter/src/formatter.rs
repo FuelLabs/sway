@@ -143,8 +143,14 @@ fn main() {
         
         */
         123;
-    };
-}
+    }; // comment here as well
+} // comment here too
+
+// example struct with comments
+struct Example { // first comment
+    prop: bool, // second comment
+    age: u32, // another comment
+} // comment as well
 "#;
 
         let (_, result) = get_formatted_data(correct_sway_code, 4);
@@ -162,8 +168,14 @@ fn main() {
         
         */
         123;
-    };
-}
+    };     // comment here as well
+} // comment here too
+
+ // example struct with comments
+struct Example {    // first comment
+    prop: bool,          // second comment
+    age: u32,              // another comment
+}   // comment as well
 "#;
 
         let (_, result) = get_formatted_data(sway_code, 4);
