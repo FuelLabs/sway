@@ -136,7 +136,11 @@ fn main() {
 fn main() {
     // this is a comment
     let o = 123; // this is an inline comment
+    /*
+        asdasd
+    asdasdsad asdasdasd */
 
+    /* multiline closed on the same line */
     let p = {
         /* this is some
             multi line stuff t
@@ -161,12 +165,16 @@ struct Example { // first comment
 fn main() {
     // this is a comment
     let o = 123;            // this is an inline comment
+     /*
+        asdasd
+    asdasdsad asdasdasd */
 
+         /* multiline closed on the same line */
     let p = {
         /* this is some
             multi line stuff t
         
-        */
+         */
         123;
     };     // comment here as well
 } // comment here too
