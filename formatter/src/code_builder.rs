@@ -73,7 +73,7 @@ impl CodeBuilder {
         let mut iter = line.chars().enumerate().peekable();
 
         loop {
-            if let Some((_, current_char)) = iter.next() {
+            if let Some((current_index, current_char)) = iter.next() {
                 if code_line.is_string {
                     handle_string_case(&mut code_line, current_char);
                 } else if code_line.is_multiline_comment {
@@ -104,7 +104,8 @@ impl CodeBuilder {
                                 }
                                 Some((_, '/')) => {
                                     // it's a comment
-                                    code_line.push_str(line);
+                                    let comment = &line[current_index..];
+                                    code_line.push_str(&comment);
                                     return self.complete_and_add_line(code_line);
                                 }
                                 _ => code_line.append_with_whitespace("/ "),
@@ -225,6 +226,7 @@ impl CodeBuilder {
             }
             // if there is more - move to new line!
             Some(_) => {
+                self.complete_and_add_line(CodeLine::new("}".into()));
                 self.move_rest_to_new_line(line, iter);
             }
             None => {
