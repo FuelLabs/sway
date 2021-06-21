@@ -68,7 +68,6 @@ impl<'sc> Reassignment<'sc> {
                 let mut inner = lhs.into_inner().next().expect("guaranteed by gramar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
                 let mut name_parts = inner.into_inner().collect::<Vec<_>>();
-                let final_field = name_parts.pop().expect("guaranteed by grammar");
 
                 // treat parent as one expr, final name as the field to be accessed
                 // if there are multiple fields, this is a nested expression

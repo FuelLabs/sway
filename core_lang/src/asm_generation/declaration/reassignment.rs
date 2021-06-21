@@ -32,6 +32,16 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
 
     buf.append(&mut rhs);
 
+    if reassignment.lhs.len() > 1 {
+        let lhs = reassignment.lhs.clone();
+        errors.push(CompileError::Unimplemented(
+            "Struct field reassignment assembly generation has not yet been implemented.",
+            lhs.iter().fold(lhs[0].span.clone(), |acc, this| {
+                crate::utils::join_spans(acc, this.span.clone())
+            }),
+        ));
+        return err(warnings, errors);
+    }
     // step 1
     let var_register = type_check!(
         namespace.look_up_variable(&reassignment.lhs[0]),
@@ -40,8 +50,6 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
         errors
     );
 
-    todo!("handle if reassignment.lhs has a length > 1, it is a struct field access");
-
     // step 2
     buf.push(Op::register_move_comment(
         var_register.clone(),
@@ -49,7 +57,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
         reassignment
             .lhs
             .iter()
-            .fold(reassignment.lhs[0].span, |acc, this| {
+            .fold(reassignment.lhs[0].span.clone(), |acc, this| {
                 crate::utils::join_spans(acc, this.span.clone())
             }),
         format!(

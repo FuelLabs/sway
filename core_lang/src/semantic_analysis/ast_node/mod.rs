@@ -817,6 +817,17 @@ fn reassignment<'sc>(
                 errors,
             )
         }
-        _ => todo!(),
+
+        Expression::SubfieldExpression { .. } => {
+            errors.push(CompileError::Unimplemented(
+                "Struct field reassignments are not implemented yet",
+                span,
+            ));
+            return err(warnings, errors);
+        }
+        _ => {
+            errors.push(CompileError::InvalidExpressionOnLhs { span });
+            return err(warnings, errors);
+        }
     }
 }
