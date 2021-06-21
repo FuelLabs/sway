@@ -3,6 +3,7 @@ pub struct CodeLine {
     pub text: String,
     pub is_string: bool,
     pub is_completed: bool,
+    pub is_multiline_comment: bool,
     pub was_previously_stored: bool,
 }
 
@@ -12,6 +13,7 @@ impl CodeLine {
             text,
             is_string: false,
             is_completed: false,
+            is_multiline_comment: false,
             was_previously_stored: false,
         }
     }
@@ -21,6 +23,7 @@ impl CodeLine {
             text: "".into(),
             is_string: false,
             is_completed: false,
+            is_multiline_comment: false,
             was_previously_stored: false,
         }
     }
@@ -30,6 +33,7 @@ impl CodeLine {
             text: "".into(),
             is_string: false,
             is_completed: true,
+            is_multiline_comment: false,
             was_previously_stored: false,
         }
     }
@@ -48,6 +52,14 @@ impl CodeLine {
 
     pub fn become_string(&mut self) {
         self.is_string = true;
+    }
+
+    pub fn become_multiline_comment(&mut self) {
+        self.is_multiline_comment = true;
+    }
+
+    pub fn end_multiline_comment(&mut self) {
+        self.is_multiline_comment = false;
     }
 
     pub fn end_string(&mut self) {
