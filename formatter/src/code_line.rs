@@ -3,6 +3,7 @@ pub struct CodeLine {
     pub text: String,
     pub is_string: bool,
     pub is_completed: bool,
+    pub is_multiline_comment: bool,
     pub was_previously_stored: bool,
 }
 
@@ -12,6 +13,7 @@ impl CodeLine {
             text,
             is_string: false,
             is_completed: false,
+            is_multiline_comment: false,
             was_previously_stored: false,
         }
     }
@@ -21,6 +23,7 @@ impl CodeLine {
             text: "".into(),
             is_string: false,
             is_completed: false,
+            is_multiline_comment: false,
             was_previously_stored: false,
         }
     }
@@ -30,6 +33,7 @@ impl CodeLine {
             text: "".into(),
             is_string: false,
             is_completed: true,
+            is_multiline_comment: false,
             was_previously_stored: false,
         }
     }
@@ -50,6 +54,14 @@ impl CodeLine {
         self.is_string = true;
     }
 
+    pub fn become_multiline_comment(&mut self) {
+        self.is_multiline_comment = true;
+    }
+
+    pub fn end_multiline_comment(&mut self) {
+        self.is_multiline_comment = false;
+    }
+
     pub fn end_string(&mut self) {
         self.is_string = false;
     }
@@ -61,17 +73,32 @@ impl CodeLine {
 
     pub fn append_with_whitespace(&mut self, value: &str) {
         let last = self.text.chars().last();
-        let is_previous_whitespace = if last.is_none() {
-            true
-        } else {
-            last.unwrap() == ' '
-        };
+        let is_previous_whitespace = Some(' ') == last;
 
         if !is_previous_whitespace {
             self.push_char(' ');
         }
 
         self.push_str(value);
+    }
+
+    pub fn append_equal_sign(&mut self) {
+        let last = self.text.chars().last();
+
+        if Some('!') == last {
+            self.push_char('=');
+        } else {
+            self.append_with_whitespace("=");
+        }
+    }
+
+    pub fn append_whitespace(&mut self) {
+        let last = self.text.chars().last();
+
+        match last {
+            Some('(') => {} // do not add whitespace,
+            _ => self.append_with_whitespace(""),
+        }
     }
 
     pub fn is_empty(&self) -> bool {
