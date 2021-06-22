@@ -31,7 +31,14 @@ fn main() {
         
         */
         123;
+
     };
+
+    add(1, 2);
+}
+
+pub fn add(a: u32, b: u32) -> u32 {
+    a + b
 }
 "#;
         let (_, result) = get_formatted_data(correct_sway_code, 4);
@@ -40,17 +47,45 @@ fn main() {
         let sway_code = r#"script;
 
 fn main() {
- // this is a comment
-      let o = 123;
+    // this is a comment
+    let o = 123;
 
-                                let p = {
-            /* this is some
+                let 
+p   
+    
+    
+            =
+    
+    
+        {
+        /* this is some
             multi line stuff t
         
-         */
-        123;
-};
+        */
+        123       
+        
+        
+                        ;
+    
+    
+    };
+
+    add(        1,    
+    
+                                                        2 
+    
+    
+            )     ;
 }
+
+pub
+fn 
+add
+    (
+    a:u32   , 
+            b: u32)             ->u32{
+    a +b}
+
 "#;
 
         let (_, result) = get_formatted_data(sway_code, 4);
