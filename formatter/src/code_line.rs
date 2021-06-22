@@ -1,41 +1,57 @@
 #[derive(Debug)]
 pub struct CodeLine {
     pub text: String,
-    pub is_string: bool,
     pub is_completed: bool,
-    pub is_multiline_comment: bool,
     pub was_previously_stored: bool,
+    code_type: CodeType,
 }
 
 impl CodeLine {
     pub fn new(text: String) -> Self {
         Self {
             text,
-            is_string: false,
             is_completed: false,
-            is_multiline_comment: false,
             was_previously_stored: false,
+            code_type: CodeType::Default,
         }
     }
 
     pub fn default() -> Self {
         Self {
             text: "".into(),
-            is_string: false,
             is_completed: false,
-            is_multiline_comment: false,
             was_previously_stored: false,
+            code_type: CodeType::Default,
         }
     }
 
     pub fn empty_line() -> Self {
         Self {
             text: "".into(),
-            is_string: false,
             is_completed: true,
-            is_multiline_comment: false,
             was_previously_stored: false,
+            code_type: CodeType::Default,
         }
+    }
+
+    pub fn is_string(&self) -> bool {
+        self.code_type == CodeType::String
+    }
+
+    pub fn is_multiline_comment(&self) -> bool {
+        self.code_type == CodeType::MultilineComment
+    }
+
+    pub fn become_multiline_comment(&mut self) {
+        self.code_type = CodeType::MultilineComment;
+    }
+
+    pub fn end_multiline_comment(&mut self) {
+        self.code_type = CodeType::Default;
+    }
+
+    pub fn end_string(&mut self) {
+        self.code_type = CodeType::Default;
     }
 
     pub fn push_str(&mut self, line: &str) {
@@ -51,19 +67,7 @@ impl CodeLine {
     }
 
     pub fn become_string(&mut self) {
-        self.is_string = true;
-    }
-
-    pub fn become_multiline_comment(&mut self) {
-        self.is_multiline_comment = true;
-    }
-
-    pub fn end_multiline_comment(&mut self) {
-        self.is_multiline_comment = false;
-    }
-
-    pub fn end_string(&mut self) {
-        self.is_string = false;
+        self.code_type = CodeType::String
     }
 
     pub fn update_for_storage(&mut self, indentation: String) {
@@ -75,7 +79,7 @@ impl CodeLine {
         let last = self.text.chars().last();
         let is_previous_whitespace = Some(' ') == last;
 
-        if !is_previous_whitespace {
+        if !is_previous_whitespace && last != None {
             self.push_char(' ');
         }
 
@@ -104,4 +108,11 @@ impl CodeLine {
     pub fn is_empty(&self) -> bool {
         self.text.is_empty()
     }
+}
+
+#[derive(Debug, PartialEq)]
+enum CodeType {
+    Default,
+    String,
+    MultilineComment,
 }
