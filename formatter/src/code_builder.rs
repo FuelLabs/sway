@@ -45,7 +45,8 @@ impl CodeBuilder {
     pub fn format_and_add(&mut self, line: &str) {
         let mut code_line = self.get_unfinished_code_line_or_new();
 
-        let is_string_or_multiline_comment = code_line.is_string || code_line.is_multiline_comment;
+        let is_string_or_multiline_comment =
+            code_line.is_string() || code_line.is_multiline_comment();
 
         let line = if !is_string_or_multiline_comment {
             line.trim()
@@ -64,7 +65,7 @@ impl CodeBuilder {
             code_line.push_char('\n');
         }
 
-        if code_line.is_multiline_comment && line.trim() == "*/" {
+        if code_line.is_multiline_comment() && line.trim() == "*/" {
             code_line.push_str(&self.get_indentation());
             code_line.push_str("*/");
             return self.complete_and_add_line(code_line);
@@ -74,11 +75,11 @@ impl CodeBuilder {
 
         loop {
             if let Some((current_index, current_char)) = iter.next() {
-                if code_line.is_string {
+                if code_line.is_string() {
                     handle_string_case(&mut code_line, current_char);
-                } else if code_line.is_multiline_comment {
+                } else if code_line.is_multiline_comment() {
                     handle_multiline_comment_case(&mut code_line, current_char, &mut iter);
-                    if !code_line.is_multiline_comment {
+                    if !code_line.is_multiline_comment() {
                         self.complete_and_add_line(code_line);
                         return self.move_rest_to_new_line(line, iter);
                     }
@@ -117,7 +118,7 @@ impl CodeBuilder {
 
                         // handle beginning of the string
                         '"' => {
-                            if !code_line.is_string {
+                            if !code_line.is_string() {
                                 code_line.append_with_whitespace("\"");
                                 code_line.become_string();
                             }
