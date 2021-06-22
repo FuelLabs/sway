@@ -99,7 +99,7 @@ impl CodeBuilder {
                                 Some((_, '/')) => {
                                     // it's a comment
                                     let comment = &line[current_index..];
-                                    code_line.push_str(&comment);
+                                    code_line.append_with_whitespace(&comment);
                                     return self.complete_and_add_line(code_line);
                                 }
                                 _ => code_line.append_with_whitespace("/ "),
