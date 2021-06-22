@@ -5,7 +5,6 @@ version = "0.1.0"
 authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
 edition = "2018"
 repository = "https://github.com/FuelLabs/sway"
-license = "Apache-2.0"
 
 [dependencies]
 serde = {version="1.0", features=["derive"]}
