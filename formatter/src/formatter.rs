@@ -153,7 +153,7 @@ fn main() {
 // example struct with comments
 struct Example { // first comment
     prop: bool, // second comment
-    age: u32, // another comment
+    age: u32 // another comment
 } // comment as well
 "#;
 
@@ -181,8 +181,8 @@ fn main() {
 
  // example struct with comments
 struct Example {    // first comment
-    prop: bool,          // second comment
-    age: u32,              // another comment
+    prop: bool,// second comment
+    age: u32// another comment
 }   // comment as well
 "#;
 
