@@ -138,7 +138,19 @@ impl CodeBuilder {
                         '}' => return self.handle_close_brace(line, code_line, iter),
 
                         // add the rest
-                        _ => code_line.push_char(current_char),
+                        _ => {
+                            // handle case when keywords are on different lines
+                            if current_index == 0 {
+                                // if there are 2 keywords on different lines - add whitespace between them
+                                if let Some(last_char) = code_line.text.chars().last() {
+                                    if last_char.is_alphabetic() && current_char.is_alphabetic() {
+                                        code_line.append_whitespace()
+                                    }
+                                }
+                            }
+
+                            code_line.push_char(current_char)
+                        }
                     }
                 }
             } else {
