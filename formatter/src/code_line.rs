@@ -34,6 +34,15 @@ impl CodeLine {
         }
     }
 
+    pub fn custom_type() -> Self {
+        Self {
+            text: "".into(),
+            is_completed: false,
+            was_previously_stored: false,
+            code_type: CodeType::CustomType,
+        }
+    }
+
     pub fn is_string(&self) -> bool {
         self.code_type == CodeType::String
     }
@@ -42,16 +51,24 @@ impl CodeLine {
         self.code_type == CodeType::MultilineComment
     }
 
+    pub fn is_custom_type(&self) -> bool {
+        self.code_type == CodeType::CustomType
+    }
+
+    pub fn become_string(&mut self) {
+        self.code_type = CodeType::String
+    }
+
     pub fn become_multiline_comment(&mut self) {
         self.code_type = CodeType::MultilineComment;
     }
 
-    pub fn end_multiline_comment(&mut self) {
+    pub fn become_default(&mut self) {
         self.code_type = CodeType::Default;
     }
 
-    pub fn end_string(&mut self) {
-        self.code_type = CodeType::Default;
+    pub fn become_custom_type(&mut self) {
+        self.code_type = CodeType::CustomType;
     }
 
     pub fn push_str(&mut self, line: &str) {
@@ -64,10 +81,6 @@ impl CodeLine {
 
     pub fn complete(&mut self) {
         self.is_completed = true;
-    }
-
-    pub fn become_string(&mut self) {
-        self.code_type = CodeType::String
     }
 
     pub fn update_for_storage(&mut self, indentation: String) {
@@ -89,7 +102,7 @@ impl CodeLine {
     pub fn append_equal_sign(&mut self) {
         let last = self.text.chars().last();
 
-        if Some('!') == last {
+        if last == Some('!') {
             self.push_char('=');
         } else {
             self.append_with_whitespace("=");
@@ -108,6 +121,10 @@ impl CodeLine {
     pub fn is_empty(&self) -> bool {
         self.text.is_empty()
     }
+
+    pub fn does_contain_custom_type_decl(&self) -> bool {
+        self.text.contains("struct") || self.text.contains("enum")
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -115,4 +132,5 @@ enum CodeType {
     Default,
     String,
     MultilineComment,
+    CustomType,
 }

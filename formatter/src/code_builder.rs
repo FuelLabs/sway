@@ -92,7 +92,6 @@ impl CodeBuilder {
                         '|' => handle_pipe_case(&mut code_line, &mut iter),
                         '&' => handle_ampersand_case(&mut code_line, &mut iter),
 
-                        ',' => code_line.push_str(", "),
                         '+' => code_line.append_with_whitespace("+ "),
                         '*' => code_line.append_with_whitespace("* "),
                         '/' => {
@@ -124,7 +123,16 @@ impl CodeBuilder {
                             }
                         }
 
-                        // handle line breakers ';', '{' AND '}'
+                        // handle line breakers ';', '{', '}' & ','
+                        ',' => {
+                            if code_line.is_custom_type() {
+                                code_line.push_char(',');
+                                self.complete_and_add_line(code_line);
+                                return self.move_rest_to_new_line(line, iter);
+                            } else {
+                                code_line.push_str(", ");
+                            }
+                        }
                         ';' => return self.handle_semicolon_case(line, code_line, iter),
 
                         '{' => {
@@ -175,7 +183,11 @@ impl CodeBuilder {
         match self.edits.last() {
             Some(code_line) => {
                 if code_line.is_completed {
-                    CodeLine::default()
+                    if code_line.is_custom_type() {
+                        CodeLine::custom_type()
+                    } else {
+                        CodeLine::default()
+                    }
                 } else {
                     self.edits.pop().unwrap()
                 }
@@ -269,6 +281,16 @@ impl CodeBuilder {
 
     fn complete_and_add_line(&mut self, code_line: CodeLine) {
         let mut code_line = code_line;
+        if code_line.is_custom_type() {
+            if code_line.text.chars().last() == Some('}') {
+                code_line.become_default();
+            }
+        } else {
+            if code_line.does_contain_custom_type_decl() {
+                code_line.become_custom_type();
+            }
+        }
+
         code_line.complete();
         self.add_line(code_line);
     }

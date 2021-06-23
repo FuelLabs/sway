@@ -22,7 +22,7 @@ pub fn handle_multiline_comment_case(
         if let Some((_, '/')) = iter.peek() {
             code_line.push_char('/');
             iter.next();
-            code_line.end_multiline_comment();
+            code_line.become_default();
         }
     }
 }
@@ -33,7 +33,7 @@ pub fn handle_string_case(code_line: &mut CodeLine, current_char: char) {
         let previous_char = code_line.text.chars().last();
         // end of the string
         if previous_char != Some('\\') {
-            code_line.end_string();
+            code_line.become_default();
         }
     }
 }
