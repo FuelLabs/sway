@@ -224,4 +224,63 @@ struct Example {    // first comment
         let (_, result) = get_formatted_data(sway_code, 4);
         assert_eq!(correct_sway_code, result);
     }
+
+    #[test]
+    fn test_custom_types() {
+        let correct_sway_code = r#"script;
+
+fn main() {
+
+}
+
+struct Structure {
+    age: u32,
+    name: string,
+}
+
+struct Vehicle {
+    age: u32,
+    name: string, // some comment middle of nowhere
+}
+
+struct Environment {
+    age: u32,
+    name: string
+} // lost my train of thought
+
+struct Person { // first comment
+    age: u32, // second comment
+    name: string, // third comment
+} // fourth comment
+"#;
+
+        let (_, result) = get_formatted_data(correct_sway_code, 4);
+        assert_eq!(correct_sway_code, result);
+
+        let sway_code = r#"script;
+
+fn main() {
+
+}
+
+struct Structure {
+    age: u32,
+    name: string,
+}
+
+struct Vehicle 
+          { age:       u32,          name: string , // some comment middle of nowhere
+}
+
+struct Environment{age:u32,name:string} // lost my train of thought
+
+struct Person {// first comment
+    age: u32,// second comment
+    name: string,          // third comment
+} // fourth comment
+"#;
+
+        let (_, result) = get_formatted_data(sway_code, 4);
+        assert_eq!(correct_sway_code, result);
+    }
 }
