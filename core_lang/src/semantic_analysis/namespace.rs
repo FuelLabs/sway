@@ -1,7 +1,6 @@
 use super::{
     ast_node::{
         TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
-        TypedVariableDeclaration,
     },
     TypedExpression,
 };
@@ -594,67 +593,6 @@ impl<'sc> Namespace<'sc> {
                     }],
                 )
             }
-        }
-        /*
-        match decl {
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                body: TypedExpression { return_type, .. },
-                ..
-            }) => self.find_struct_name_and_fields(return_type, debug_string, debug_span),
-            a => {
-                return err(
-                    vec![],
-                    vec![CompileError::NotAStruct {
-                        name: debug_string.into(),
-                        span: debug_span.clone(),
-                        actually: a.friendly_name().to_string(),
-                    }],
-                )
-            }
-        }
-        */
-    }
-    /// given a type, look that type up in the namespace and:
-    /// 1) assert that it is a struct, return error otherwise
-    /// 2) return its fields and struct name
-    fn find_struct_name_and_fields(
-        &self,
-        return_type: &MaybeResolvedType<'sc>,
-        debug_string: impl Into<String>,
-        debug_span: &Span<'sc>,
-    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
-        if let MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields: _ }) = return_type {
-            match self.get_symbol(name) {
-                Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
-                    fields,
-                    name,
-                    ..
-                })) => ok((fields.clone(), name), vec![], vec![]),
-                Some(a) => err(
-                    vec![],
-                    vec![CompileError::NotAStruct {
-                        name: debug_string.into(),
-                        span: debug_span.clone(),
-                        actually: a.friendly_name().to_string(),
-                    }],
-                ),
-                None => err(
-                    vec![],
-                    vec![CompileError::SymbolNotFound {
-                        name: debug_string.into(),
-                        span: debug_span.clone(),
-                    }],
-                ),
-            }
-        } else {
-            err(
-                vec![],
-                vec![CompileError::NotAStruct {
-                    name: debug_string.into(),
-                    span: debug_span.clone(),
-                    actually: return_type.friendly_type_str(),
-                }],
-            )
         }
     }
 }

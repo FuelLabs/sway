@@ -117,7 +117,7 @@ impl<'sc> TypedExpression<'sc> {
                         parameters,
                         return_type,
                         body,
-                        name: dbg_name,
+                        name: _dbg_name,
                         ..
                     }) => {
                         // type check arguments in function application vs arguments in function

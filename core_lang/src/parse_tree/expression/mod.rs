@@ -1,7 +1,6 @@
 use crate::error::*;
 use crate::{
     parse_tree::{CallPath, Literal},
-    types::MaybeResolvedType,
 };
 use crate::{parser::Rule, types::TypeInfo};
 use crate::{CodeBlock, Ident};
@@ -697,9 +696,9 @@ impl<'sc> Expression<'sc> {
                 span: expr.as_span(),
             },
             Rule::struct_field_access => {
-                let mut inner = expr.into_inner().next().expect("guaranteed by grammar");
+                let inner = expr.into_inner().next().expect("guaranteed by grammar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
-                let mut name_parts = inner.into_inner().collect::<Vec<_>>();
+                let name_parts = inner.into_inner().collect::<Vec<_>>();
 
                 // treat parent as one expr, final name as the field to be accessed
                 // if there are multiple fields, this is a nested expression

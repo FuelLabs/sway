@@ -65,9 +65,9 @@ impl<'sc> Reassignment<'sc> {
                     Expression::Unit { span: rhs_span }
                 );
 
-                let mut inner = lhs.into_inner().next().expect("guaranteed by gramar");
+                let inner = lhs.into_inner().next().expect("guaranteed by gramar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
-                let mut name_parts = inner.into_inner().collect::<Vec<_>>();
+                let name_parts = inner.into_inner().collect::<Vec<_>>();
 
                 // treat parent as one expr, final name as the field to be accessed
                 // if there are multiple fields, this is a nested expression

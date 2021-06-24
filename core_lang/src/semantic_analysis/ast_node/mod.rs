@@ -6,7 +6,7 @@ use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
-use std::{collections::VecDeque, path::Path};
+use std::{path::Path};
 
 mod code_block;
 mod declaration;
@@ -752,7 +752,7 @@ fn reassignment<'sc>(
     // ensure that the lhs is a variable expression or struct field access
     match *lhs {
         Expression::VariableExpression {
-            unary_op,
+            unary_op: _,
             name,
             span,
         } => {
@@ -819,7 +819,7 @@ fn reassignment<'sc>(
         }
         Expression::SubfieldExpression {
             prefix,
-            unary_op,
+            unary_op: _,
             field_to_access,
             span,
         } => {
@@ -848,7 +848,7 @@ fn reassignment<'sc>(
 
             let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
 
-            let (ty_of_field, ty_of_parent) = type_check!(
+            let (ty_of_field, _ty_of_parent) = type_check!(
                 namespace.find_subfield_type(names_vec.as_slice()),
                 return err(warnings, errors),
                 warnings,
