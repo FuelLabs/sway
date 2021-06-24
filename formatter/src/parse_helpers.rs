@@ -1,4 +1,5 @@
 use std::{
+    cmp,
     iter::{Enumerate, Peekable},
     str::Chars,
 };
@@ -10,6 +11,39 @@ pub fn is_comment(line: &str) -> bool {
     chars.next() == Some('/') && chars.next() == Some('/')
 }
 
+pub fn is_multiline_comment(line: &str) -> bool {
+    let mut chars = line.chars();
+    chars.next() == Some('/') && chars.next() == Some('*')
+}
+
+pub fn handle_custom_type(code_line: &mut CodeLine) {
+    let last_char = code_line.get_last_char();
+
+    if last_char == Some('}') {
+        code_line.become_default();
+    } else if code_line.text.contains(":") && last_char != Some(',') {
+        // add comma to last line, but handle possible comments first
+        let comment_index = code_line.text.find("//").unwrap_or(usize::MAX);
+        let multicomment_index = code_line.text.find("/*").unwrap_or(usize::MAX);
+
+        if comment_index != multicomment_index {
+            let (left, right) = code_line
+                .text
+                .split_at(cmp::min(comment_index, multicomment_index));
+
+            let new_text = if left.contains(",") {
+                format!("{}{}", left, right)
+            } else {
+                format!("{}, {}", left.trim(), right)
+            };
+
+            code_line.replace_text(new_text);
+        } else {
+            code_line.push_char(',');
+        }
+    }
+}
+
 pub fn handle_multiline_comment_case(
     code_line: &mut CodeLine,
     current_char: char,
@@ -18,14 +52,15 @@ pub fn handle_multiline_comment_case(
     code_line.push_char(current_char);
 
     if current_char == '*' {
-        // end multiline
+        // end multiline comment and reset to previous code type
         if let Some((_, '/')) = iter.peek() {
             code_line.push_char('/');
             iter.next();
-            code_line.become_default();
+            code_line.reset_code_type();
         }
     }
 }
+
 // if it's a string just keep pushing the characters
 pub fn handle_string_case(code_line: &mut CodeLine, current_char: char) {
     code_line.push_char(current_char);
