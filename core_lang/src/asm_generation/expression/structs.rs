@@ -11,6 +11,31 @@ use crate::{
     CompileResult, Ident,
 };
 
+pub(crate) fn get_struct_memory_layout<'sc>(
+    fields: &[TypedStructExpressionField<'sc>],
+) -> CompileResult<'sc, Vec<(TypedStructExpressionField<'sc>, u64)>> {
+    let mut fields_with_sizes = vec![];
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    for field in fields {
+        let stack_size = match field.value.return_type {
+            MaybeResolvedType::Partial(PartiallyResolvedType::Numeric) => {
+                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour).stack_size_of()
+            }
+            MaybeResolvedType::Resolved(ref r) => r.stack_size_of(),
+            MaybeResolvedType::Partial(ref p) => {
+                errors.push(CompileError::TypeMustBeKnown {
+                    span: field.value.span.clone(),
+                    ty: p.friendly_type_str(),
+                });
+                continue;
+            }
+        };
+        fields_with_sizes.push((field.clone(), stack_size));
+    }
+    ok(fields_with_sizes, warnings, errors)
+}
+
 pub(crate) fn convert_struct_expression_to_asm<'sc>(
     struct_name: &Ident<'sc>,
     fields: &[TypedStructExpressionField<'sc>],
@@ -35,23 +60,12 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     // step 4: put the pointer to the beginning of the struct in the namespace
 
     // step 0
-    let mut fields_with_sizes = vec![];
-    for field in fields {
-        let stack_size = match field.value.return_type {
-            MaybeResolvedType::Partial(PartiallyResolvedType::Numeric) => {
-                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour).stack_size_of()
-            }
-            MaybeResolvedType::Resolved(ref r) => r.stack_size_of(),
-            MaybeResolvedType::Partial(ref p) => {
-                errors.push(CompileError::TypeMustBeKnown {
-                    span: field.value.span.clone(),
-                    ty: p.friendly_type_str(),
-                });
-                continue;
-            }
-        };
-        fields_with_sizes.push((field, stack_size));
-    }
+    let fields_with_sizes = type_check!(
+        get_struct_memory_layout(fields),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     let total_size = fields_with_sizes.iter().fold(0, |acc, (_, num)| acc + num);
 
