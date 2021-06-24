@@ -180,7 +180,7 @@ fn main() {
         /* this is some
             multi line stuff t
         
-        */
+         */
         123;
     }; // comment here as well
 } // comment here too
@@ -188,7 +188,7 @@ fn main() {
 // example struct with comments
 struct Example { // first comment
     prop: bool, // second comment
-    age: u32 // another comment
+    age: u32, // another comment
 } // comment as well
 "#;
 
@@ -238,6 +238,23 @@ struct Structure {
     name: string,
 }
 
+struct Structure {
+    age: u32, /* completely meaningless multiline comment
+        not sure why would anyone write this but let's deal with it as well!
+    */
+    name: string,
+}
+
+struct Structure {
+    age: u32,
+    name: string, // super comment
+}
+
+struct Structure {
+    age: u32,
+    name: string, // super comment
+}
+
 struct Vehicle {
     age: u32,
     name: string, // some comment middle of nowhere
@@ -245,7 +262,7 @@ struct Vehicle {
 
 struct Environment {
     age: u32,
-    name: string
+    name: string,
 } // lost my train of thought
 
 struct Person { // first comment
@@ -264,8 +281,28 @@ fn main() {
 }
 
 struct Structure {
+    
     age: u32,
+
     name: string,
+
+}
+
+struct Structure {
+    age: u32, /* completely meaningless multiline comment
+        not sure why would anyone write this but let's deal with it as well!
+    */
+    name: string
+}
+
+struct Structure {
+    age: u32,
+    name: string// super comment
+}
+
+struct Structure {
+    age: u32,
+    name: string, // super comment
 }
 
 struct Vehicle 
