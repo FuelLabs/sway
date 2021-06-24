@@ -499,7 +499,7 @@ pub enum CompileError<'sc> {
         struct_name: &'sc str,
         span: Span<'sc>,
     },
-    #[error("No method named \"{method_name}\" found for type {type_name}.")]
+    #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
         span: Span<'sc>,
         method_name: &'sc str,

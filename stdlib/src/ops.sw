@@ -204,7 +204,8 @@ impl Eq for u8 {
 
 
 enum Ordering {
-  LessOrEqual : (),
+  Less: (),
+  Equal: (),
   Greater : (),
 }
 
@@ -217,12 +218,25 @@ impl Eq for Ordering {
   }
 }
 
+impl bool {
+  fn or(self, other: Self) -> Self {
+    asm(r1: self, r2: other, r3) {
+      or r3 r1 r2;
+      r3: bool
+    }
+  }
+}
+
 pub trait Ord {
   fn cmp(self, other: Self) -> Ordering;
 } {
+  fn less_than(self, other: Self) -> bool {
+    let res = self.cmp(other);
+    res.equals(Ordering::Less)
+  }
   fn less_or_equal(self, other: Self) -> bool {
     let res = self.cmp(other);
-    res.equals(Ordering::LessOrEqual)
+    (res.equals(Ordering::Less)).or(res.equals(Ordering::Equal))
   }
   fn greater_than(self, other: Self) -> bool {
     let res = self.cmp(other);
@@ -236,10 +250,17 @@ impl Ord for u64 {
         gt r3 r1 r2;
         r3: bool
     };
-    if is_greater_than { Ordering::Greater } else { Ordering::LessOrEqual }
+    if is_greater_than { Ordering::Greater } else { 
+        let is_less_than = asm(r1: self, r2: other, r3) {
+            le r3 r1 r2;
+            r3: bool
+        };
+      if is_less_than { Ordering::Less } else { Ordering::Equal }
+    }
   }
 }
 
+/*
 impl Ord for u32 {
   fn cmp(self, other: Self) -> Ordering {
     let is_greater_than = asm(r1: self, r2: other, r3) {
@@ -269,3 +290,4 @@ impl Ord for u8 {
     if is_greater_than { Ordering::Greater } else { Ordering::LessOrEqual }
   }
 }
+*/

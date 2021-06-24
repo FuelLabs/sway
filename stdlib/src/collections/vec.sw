@@ -42,19 +42,19 @@ impl<T> Vec<T> where T: Sized {
     // TODO nested struct field
     if ((((self).len.multiply(size_of_item)).add(size_of_item)).greater_than(self.buf.size)) {
       let new_buf_size = (2).multiply(self.buf.size);
-      let mut new_buf = ~RawVec::new(new_buf_size);
+      let mut new_buf: RawVec = ~RawVec::new(new_buf_size);
       // copy the contents of the old buf to the new one
       let mut i = 0;
       while i.less_than(self.buf.size) {
         copy_buf(self.buf, new_buf);
-        i = i + 1;
+        i = i.add(1);
       }
       // put the new item in the buf
-      new_buf.put_item_at_index(self.len, item);
+      new_buf.put_item_at_index(self.len.multiply(size_of_item), item);
       self.len = self.len.add(1);
       self.buf = new_buf;
     } else {
-      self.buf.put_item_at_index(self.len, item);
+      self.buf.put_item_at_index(self.len.multiply(size_of_item), item);
       self.len = self.len.add(1);
       // write T to self.len * size_of_item
       // increase self.len by one
@@ -77,8 +77,13 @@ impl RawVec {
       size: init_size_bytes,
     }
   }
+
+  fn put_item_at_index<T>(self, index_in_bytes: u64, item: T) {
+    // todo
+  }
 }
 
 fn copy_buf(buf1: RawVec, buf2: RawVec) {
   // copy ptr + size from buf1 into buf2
+  // TODO
 }
