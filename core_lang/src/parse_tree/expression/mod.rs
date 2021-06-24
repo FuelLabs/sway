@@ -1,7 +1,5 @@
 use crate::error::*;
-use crate::{
-    parse_tree::{CallPath, Literal},
-};
+use crate::parse_tree::{CallPath, Literal};
 use crate::{parser::Rule, types::TypeInfo};
 use crate::{CodeBlock, Ident};
 use either::Either;

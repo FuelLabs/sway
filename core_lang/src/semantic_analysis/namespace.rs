@@ -1,8 +1,5 @@
-use super::{
-    ast_node::{
-        TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
-    },
-    TypedExpression,
+use super::ast_node::{
+    TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
 };
 use crate::error::*;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};

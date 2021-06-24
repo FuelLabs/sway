@@ -6,7 +6,7 @@ use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
-use std::{path::Path};
+use std::path::Path;
 
 mod code_block;
 mod declaration;
