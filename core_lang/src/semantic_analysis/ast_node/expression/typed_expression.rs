@@ -126,10 +126,6 @@ impl<'sc> TypedExpression<'sc> {
                         //
                         let mut typed_call_arguments = Vec::new();
                         for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
-                            if dbg_name.primary_name == "copy_buf" {
-                                //               dbg!(&arg, &param);
-                            }
-
                             let res = TypedExpression::type_check(
                                 arg.clone(),
                                 &namespace,
