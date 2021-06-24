@@ -1,3 +1,3 @@
 library bar;
-dep a_dependency;
+//dep a_dependency;
 
