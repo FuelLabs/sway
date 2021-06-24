@@ -20,7 +20,7 @@ All other types in Sway are built up of these primitive types, or references to 
 ## Numeric Types
 All of the unsigned integer types are numeric types, and the `byte` type can also be viewed as an 8-bit unsigned integer. 
 
-Numbers can be declared with binary syntax, hexidecimal syntax, base-10 syntax, and with underscores for delineation. Let's take a look at the following valid numeric primitives:
+Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and with underscores for delineation. Let's take a look at the following valid numeric primitives:
 ```
 0xffffff    // hexidecimal
 0b10101010  // binary
@@ -41,4 +41,3 @@ In Sway, static-length strings are a primitive type. This means that when you de
 let my_string: str[4] = "fuel";
 ```
 Because the string literal `"fuel"` is four letters, the type is `str[4]`, denoting a static length of 4 characters. Strings default to UTF-8 in Sway. 
-
