@@ -17,28 +17,28 @@ pub fn is_multiline_comment(line: &str) -> bool {
 }
 
 pub fn handle_custom_type(code_line: &mut CodeLine) {
-    let last_char = code_line.get_last_char();
+    // add comma to last line, but handle possible comments first
+    let comment_index = code_line.text.find("//").unwrap_or(usize::MAX);
+    let multicomment_index = code_line.text.find("/*").unwrap_or(usize::MAX);
 
-    if last_char == Some('}') {
-        code_line.become_default();
-    } else if code_line.text.contains(":") && last_char != Some(',') {
-        // add comma to last line, but handle possible comments first
-        let comment_index = code_line.text.find("//").unwrap_or(usize::MAX);
-        let multicomment_index = code_line.text.find("/*").unwrap_or(usize::MAX);
+    // either a comment or multicomment inline exists
+    if comment_index != multicomment_index {
+        let (left, right) = code_line
+            .text
+            .split_at(cmp::min(comment_index, multicomment_index));
 
-        if comment_index != multicomment_index {
-            let (left, right) = code_line
-                .text
-                .split_at(cmp::min(comment_index, multicomment_index));
+        let last_left = left.trim().chars().last();
 
-            let new_text = if left.contains(",") {
-                format!("{}{}", left, right)
-            } else {
-                format!("{}, {}", left.trim(), right)
-            };
-
-            code_line.replace_text(new_text);
+        let new_text = if last_left == Some(',') || last_left == Some('{') {
+            format!("{}{}", left, right)
         } else {
+            format!("{}, {}", left.trim(), right)
+        };
+
+        code_line.replace_text(new_text);
+    } else {
+        let last_char = code_line.get_last_char();
+        if last_char != Some(',') && last_char != Some('{') {
             code_line.push_char(',');
         }
     }
