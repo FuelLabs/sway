@@ -13,7 +13,7 @@ Great! We have just declared a variable, `foo`. What do we know about `foo`?
 1. Its value is `5`. 
 1. Its type is `u64`, a 64-bit unsigned integer.
 
-Wait, what? `u64`? What's that crypic syntax about? See the section [Types](./Types.md) for more details on that. For now, just know that is the default numeric type.
+Wait, what? `u64`? What's that cryptic syntax about? See the section [Types](./Types.md) for more details on that. For now, just know that is the default numeric type.
 
 We can also make a mutable variable. Let's take a look:
 ```
