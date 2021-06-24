@@ -43,12 +43,27 @@ impl CodeLine {
         }
     }
 
+    pub fn get_type(&self) -> CodeType {
+        self.code_type
+    }
+
+    pub fn replace_text(&mut self, text: String) {
+        self.text = text;
+    }
+
+    pub fn get_last_char(&self) -> Option<char> {
+        self.text.chars().last()
+    }
+
     pub fn is_string(&self) -> bool {
         self.code_type == CodeType::String
     }
 
     pub fn is_multiline_comment(&self) -> bool {
-        self.code_type == CodeType::MultilineComment
+        match self.code_type {
+            CodeType::MultilineComment(_) => true,
+            _ => false,
+        }
     }
 
     pub fn is_custom_type(&self) -> bool {
@@ -60,11 +75,20 @@ impl CodeLine {
     }
 
     pub fn become_multiline_comment(&mut self) {
-        self.code_type = CodeType::MultilineComment;
+        self.code_type = CodeType::multiline_comment(self.get_type());
     }
 
     pub fn become_default(&mut self) {
         self.code_type = CodeType::Default;
+    }
+
+    pub fn reset_code_type(&mut self) {
+        match self.code_type {
+            CodeType::MultilineComment(value) => {
+                self.code_type = CodeType::from_value(value);
+            }
+            _ => self.become_default(),
+        }
     }
 
     pub fn become_custom_type(&mut self) {
@@ -119,7 +143,7 @@ impl CodeLine {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.text.is_empty()
+        self.text.trim().is_empty()
     }
 
     pub fn does_contain_custom_type_decl(&self) -> bool {
@@ -127,10 +151,30 @@ impl CodeLine {
     }
 }
 
-#[derive(Debug, PartialEq)]
-enum CodeType {
-    Default,
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum CodeType {
     String,
-    MultilineComment,
     CustomType,
+    Default,
+    MultilineComment(usize),
+}
+
+impl CodeType {
+    pub fn multiline_comment(current_code_type: CodeType) -> Self {
+        let value = match current_code_type {
+            CodeType::String => 0,
+            CodeType::CustomType => 1,
+            _ => 2,
+        };
+
+        Self::MultilineComment(value)
+    }
+
+    pub fn from_value(value: usize) -> Self {
+        match value {
+            0 => Self::String,
+            1 => Self::CustomType,
+            _ => Self::Default,
+        }
+    }
 }
