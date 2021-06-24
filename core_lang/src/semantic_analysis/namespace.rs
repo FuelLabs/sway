@@ -1,6 +1,7 @@
 use super::{
     ast_node::{
-        TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedVariableDeclaration,
+        TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
+        TypedVariableDeclaration,
     },
     TypedExpression,
 };
@@ -9,15 +10,17 @@ use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
+use pest::Span;
 use std::collections::HashMap;
 
 type ModuleName = String;
+type TraitName<'a> = Ident<'a>;
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
-    symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    implemented_traits:
-        HashMap<(Ident<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
+    pub(crate) symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
+    pub(crate) implemented_traits:
+        HashMap<(TraitName<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     pub(crate) modules: HashMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
@@ -183,7 +186,7 @@ impl<'sc> Namespace<'sc> {
             }
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: item.primary_name,
+                    name: item.primary_name.into(),
                     span: item.span.clone(),
                 });
 
@@ -251,7 +254,7 @@ impl<'sc> Namespace<'sc> {
             Some(o) => ok(o, warnings, errors),
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: path.suffix.primary_name,
+                    name: path.suffix.primary_name.into(),
                     span: path.suffix.span.clone(),
                 });
                 err(warnings, errors)
@@ -398,35 +401,37 @@ impl<'sc> Namespace<'sc> {
             );
             return ok((ty.clone(), ty), warnings, errors);
         }
-        let (mut fields, struct_name) = match self.get_struct_type_fields(symbol, &first_ident) {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                // if it is missing, the error message comes from within the above method
-                // so we don't need to re-add it here
-                return err(warnings, errors);
-            }
-        };
-
-        let mut ret_ty = type_check!(
+        let mut symbol = type_check!(
             symbol.return_type(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let mut parent_rover = ret_ty.clone();
+        let (mut fields, struct_name) =
+            match self.get_struct_type_fields(&symbol, first_ident.primary_name, &first_ident.span)
+            {
+                CompileResult::Ok {
+                    value,
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
+                    errors.append(&mut l_e);
+                    warnings.append(&mut l_w);
+                    value
+                }
+                CompileResult::Err {
+                    warnings: mut l_w,
+                    errors: mut l_e,
+                } => {
+                    errors.append(&mut l_e);
+                    warnings.append(&mut l_w);
+                    // if it is missing, the error message comes from within the above method
+                    // so we don't need to re-add it here
+                    return err(warnings, errors);
+                }
+            };
+
+        let mut parent_rover = symbol.clone();
 
         for ident in ident_iter {
             // find the ident in the currently available fields
@@ -450,27 +455,22 @@ impl<'sc> Namespace<'sc> {
                 }
             };
             match r#type {
-                ResolvedType::Struct { .. } => {
-                    let (l_fields, _l_name) = type_check!(
-                        self.find_struct_name_and_fields(
-                            &MaybeResolvedType::Resolved(r#type),
-                            &ident
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    parent_rover = ret_ty.clone();
-                    fields = l_fields;
+                ResolvedType::Struct {
+                    fields: ref l_fields,
+                    ..
+                } => {
+                    parent_rover = symbol.clone();
+                    fields = l_fields.clone();
+                    symbol = MaybeResolvedType::Resolved(r#type);
                 }
                 _ => {
                     fields = vec![];
-                    parent_rover = ret_ty.clone();
-                    ret_ty = MaybeResolvedType::Resolved(r#type);
+                    parent_rover = symbol.clone();
+                    symbol = MaybeResolvedType::Resolved(r#type);
                 }
             }
         }
-        ok((ret_ty, parent_rover), warnings, errors)
+        ok((symbol, parent_rover), warnings, errors)
     }
 
     pub(crate) fn get_methods_for_type(
@@ -484,6 +484,79 @@ impl<'sc> Namespace<'sc> {
             }
         }
         methods
+    }
+
+    fn find_trait_methods(
+        &self,
+        trait_name: &Ident<'sc>,
+    ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
+        let (methods, interface_surface) = match self.symbols.iter().find_map(|(_, x)| match x {
+            TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
+                name,
+                methods,
+                interface_surface,
+                ..
+            }) => {
+                if name == trait_name {
+                    Some((methods, interface_surface))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }) {
+            Some(o) => o,
+            None => {
+                return err(
+                    vec![],
+                    vec![CompileError::TraitNotFound {
+                        name: trait_name.primary_name,
+                        span: trait_name.span.clone(),
+                    }],
+                )
+            }
+        };
+
+        ok(
+            [
+                methods.into_iter().cloned().collect::<Vec<_>>(),
+                interface_surface
+                    .into_iter()
+                    .map(|x| x.to_dummy_func())
+                    .collect(),
+            ]
+            .concat(),
+            vec![],
+            vec![],
+        )
+    }
+
+    pub(crate) fn insert_trait_methods(&mut self, type_params: &[crate::TypeParameter<'sc>]) {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        for crate::TypeParameter {
+            name,
+            trait_constraints,
+            ..
+        } in type_params
+        {
+            let r#type = self.resolve_type_without_self(name);
+            for trait_constraint in trait_constraints {
+                let methods_for_trait = type_check!(
+                    self.find_trait_methods(&trait_constraint.name),
+                    continue,
+                    warnings,
+                    errors
+                );
+                // insert the type into the namespace
+                self.implemented_traits.insert(
+                    (trait_constraint.name.clone(), r#type.clone()),
+                    methods_for_trait,
+                );
+                //implemented_traits:
+                //    HashMap<(TraitName<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
+            }
+        }
     }
 
     pub(crate) fn find_method_for_type(
@@ -501,27 +574,45 @@ impl<'sc> Namespace<'sc> {
     /// e.g. foo.bar.baz
     /// is foo a struct? does it contain a field bar? is foo.bar a struct? does foo.bar contain a
     /// field baz? this is the problem this function addresses
-    fn get_struct_type_fields(
+    pub(crate) fn get_struct_type_fields(
         &self,
-        decl: &TypedDeclaration<'sc>,
-        debug_ident: &Ident<'sc>,
-    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
-        match decl {
-            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                body: TypedExpression { return_type, .. },
-                ..
-            }) => self.find_struct_name_and_fields(return_type, debug_ident),
+        ty: &MaybeResolvedType<'sc>,
+        debug_string: impl Into<String>,
+        debug_span: &Span<'sc>,
+    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, Ident<'sc>)> {
+        match ty {
+            MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields }) => {
+                ok((fields.to_vec(), name.clone()), vec![], vec![])
+            }
             a => {
                 return err(
                     vec![],
                     vec![CompileError::NotAStruct {
-                        name: debug_ident.primary_name.clone(),
-                        span: debug_ident.span.clone(),
+                        name: debug_string.into(),
+                        span: debug_span.clone(),
+                        actually: a.friendly_type_str(),
+                    }],
+                )
+            }
+        }
+        /*
+        match decl {
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                body: TypedExpression { return_type, .. },
+                ..
+            }) => self.find_struct_name_and_fields(return_type, debug_string, debug_span),
+            a => {
+                return err(
+                    vec![],
+                    vec![CompileError::NotAStruct {
+                        name: debug_string.into(),
+                        span: debug_span.clone(),
                         actually: a.friendly_name().to_string(),
                     }],
                 )
             }
         }
+        */
     }
     /// given a type, look that type up in the namespace and:
     /// 1) assert that it is a struct, return error otherwise
@@ -529,7 +620,8 @@ impl<'sc> Namespace<'sc> {
     fn find_struct_name_and_fields(
         &self,
         return_type: &MaybeResolvedType<'sc>,
-        debug_ident: &Ident<'sc>,
+        debug_string: impl Into<String>,
+        debug_span: &Span<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, &Ident<'sc>)> {
         if let MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields: _ }) = return_type {
             match self.get_symbol(name) {
@@ -541,16 +633,16 @@ impl<'sc> Namespace<'sc> {
                 Some(a) => err(
                     vec![],
                     vec![CompileError::NotAStruct {
-                        name: debug_ident.span.as_str(),
-                        span: debug_ident.span.clone(),
+                        name: debug_string.into(),
+                        span: debug_span.clone(),
                         actually: a.friendly_name().to_string(),
                     }],
                 ),
                 None => err(
                     vec![],
                     vec![CompileError::SymbolNotFound {
-                        name: debug_ident.span.as_str(),
-                        span: debug_ident.span.clone(),
+                        name: debug_string.into(),
+                        span: debug_span.clone(),
                     }],
                 ),
             }
@@ -558,8 +650,8 @@ impl<'sc> Namespace<'sc> {
             err(
                 vec![],
                 vec![CompileError::NotAStruct {
-                    name: debug_ident.span.as_str(),
-                    span: debug_ident.span.clone(),
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
                     actually: return_type.friendly_type_str(),
                 }],
             )

@@ -117,6 +117,7 @@ impl<'sc> TypedExpression<'sc> {
                         parameters,
                         return_type,
                         body,
+                        name: dbg_name,
                         ..
                     }) => {
                         // type check arguments in function application vs arguments in function
@@ -125,6 +126,10 @@ impl<'sc> TypedExpression<'sc> {
                         //
                         let mut typed_call_arguments = Vec::new();
                         for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
+                            if dbg_name.primary_name == "copy_buf" {
+                                //               dbg!(&arg, &param);
+                            }
+
                             let res = TypedExpression::type_check(
                                 arg.clone(),
                                 &namespace,
@@ -516,149 +521,230 @@ impl<'sc> TypedExpression<'sc> {
             }
             Expression::SubfieldExpression {
                 unary_op,
-                name_parts,
+                prefix,
                 span,
+                field_to_access,
             } => {
-                // this must be >= 2, or else the core_lang would not have matched it. asserting
-                // that invariant here, since it is an assumption that is acted upon
-                // later.
-                assert!(name_parts.len() >= 2);
-                let (return_type, resolved_type_of_parent) = type_check!(
-                    namespace.find_subfield_type(&name_parts),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-
-                TypedExpression {
-                    return_type,
-                    expression: TypedExpressionVariant::SubfieldExpression {
-                        unary_op,
-                        name: name_parts,
-                        span: span.clone(),
-                        resolved_type_of_parent,
-                    },
-                    is_constant: IsConstant::No,
-                    span,
-                }
-            }
-            Expression::MethodApplication {
-                subfield_exp,
-                method_name,
-                arguments,
-                span,
-            } => {
-                let method = if subfield_exp.is_empty() {
-                    // if subfield exp is empty, then we are calling a method using either ::
-                    // syntax or an operator
-                    let ns = type_check!(
-                        namespace.find_module(&method_name.prefixes, false),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    // a method is defined by the type of the parent, and in this case the parent
-                    // is the first argument
-                    let parent_expr = match TypedExpression::type_check(
-                        arguments[0].clone(),
+                let parent = type_check!(
+                    TypedExpression::type_check(
+                        *prefix,
                         namespace,
                         None,
                         "",
                         self_type,
                         build_config,
-                        dead_code_graph,
-                    ) {
-                        CompileResult::Ok {
-                            value,
-                            warnings: mut l_w,
-                            errors: mut l_e,
-                        } => {
-                            warnings.append(&mut l_w);
-                            errors.append(&mut l_e);
-                            value
-                        }
-                        CompileResult::Err {
-                            warnings: mut l_w,
-                            errors: mut l_e,
-                        } => {
-                            warnings.append(&mut l_w);
-                            errors.append(&mut l_e);
-                            return err(warnings, errors);
-                        }
-                    };
-                    match ns.find_method_for_type(
-                        &parent_expr.return_type.clone(),
-                        method_name.suffix.clone(),
-                    ) {
-                        Some(o) => o,
-                        None => {
-                            if parent_expr.return_type
-                                != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-                            {
-                                errors.push(CompileError::MethodNotFound {
-                                    span: method_name.suffix.clone().span,
-                                    method_name: method_name.suffix.clone().primary_name,
-                                    type_name: parent_expr.return_type.friendly_type_str(),
-                                });
-                            }
-                            return err(warnings, errors);
-                        }
-                    }
+                        dead_code_graph
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let (fields, struct_name) = type_check!(
+                    namespace.get_struct_type_fields(
+                        &parent.return_type,
+                        parent.span.as_str(),
+                        &parent.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                let field = if let Some(field) = fields
+                    .iter()
+                    .find(|TypedStructField { name, .. }| *name == field_to_access)
+                {
+                    field
                 } else {
-                    let (parent_of_method_type, _) = type_check!(
-                        namespace.find_subfield_type(&subfield_exp.clone()),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    match namespace
-                        .find_method_for_type(&parent_of_method_type, method_name.suffix.clone())
-                    {
-                        Some(o) => o,
-                        None => {
-                            errors.push(CompileError::MethodNotFound {
-                                span: method_name.suffix.clone().span,
-                                method_name: method_name.suffix.primary_name,
-                                type_name: parent_of_method_type.friendly_type_str(),
-                            });
-                            return err(warnings, errors);
-                        }
-                    }
+                    errors.push(CompileError::FieldNotFound {
+                        span: field_to_access.span.clone(),
+                        available_fields: fields
+                            .iter()
+                            .map(|TypedStructField { name, .. }| name.primary_name.clone())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                        field_name: field_to_access.primary_name,
+                        struct_name: struct_name.primary_name,
+                    });
+                    return err(warnings, errors);
                 };
 
-                // zip parameters to arguments to perform type checking
-                let zipped = method.parameters.iter().zip(arguments.iter());
-                let mut typed_arg_buf = vec![];
-                for (TypedFunctionParameter { r#type, name, .. }, arg) in zipped {
-                    typed_arg_buf.push((
-                        name.clone(),
-                        type_check!(
-                            TypedExpression::type_check(
-                                arg.clone(),
-                                &namespace,
-                                Some(r#type.clone()),
-                                "Function argument must be of the same type declared in the \
-                                 function declaration.",
-                                self_type,
-                                build_config,
-                                dead_code_graph
-                            ),
-                            continue,
-                            warnings,
-                            errors
-                        ),
-                    ));
-                }
-
                 TypedExpression {
-                    expression: TypedExpressionVariant::FunctionApplication {
-                        name: method_name.into(),
-                        arguments: typed_arg_buf,
-                        function_body: method.body.clone(),
+                    expression: TypedExpressionVariant::StructFieldAccess {
+                        unary_op,
+                        resolved_type_of_parent: MaybeResolvedType::Resolved(field.r#type.clone()),
+                        prefix: Box::new(parent),
+                        field_to_access: field.clone(),
                     },
-                    return_type: method.return_type,
+                    return_type: MaybeResolvedType::Resolved(field.r#type.clone()),
                     is_constant: IsConstant::No,
                     span,
+                }
+            }
+            Expression::MethodApplication {
+                method_name,
+                arguments,
+                span,
+            } => {
+                match method_name {
+                    // something like a.b(c)
+                    MethodName::FromModule { method_name } => {
+                        let mut args_buf = vec![];
+                        for arg in arguments {
+                            let sp = arg.span().clone();
+                            args_buf.push(type_check!(
+                                TypedExpression::type_check(
+                                    arg,
+                                    namespace,
+                                    None,
+                                    "",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
+                                ),
+                                error_recovery_expr(sp),
+                                warnings,
+                                errors
+                            ));
+                        }
+                        let method = match namespace
+                            .find_method_for_type(&args_buf[0].return_type, method_name.clone())
+                        {
+                            Some(o) => o,
+                            None => {
+                                errors.push(CompileError::MethodNotFound {
+                                    method_name: method_name.primary_name,
+                                    type_name: args_buf[0].return_type.friendly_type_str(),
+                                    span: method_name.span.clone(),
+                                });
+                                return err(warnings, errors);
+                            }
+                        };
+
+                        // + 1 for the "self" param
+                        if args_buf.len() > (method.parameters.len() + 1) {
+                            todo!("too many args err");
+                        }
+
+                        if args_buf.len() < method.parameters.len() {
+                            todo!("too few args err");
+                        }
+
+                        let args_and_names = method
+                            .parameters
+                            .iter()
+                            .zip(args_buf.into_iter())
+                            .map(|(param, arg)| (param.name.clone(), arg))
+                            .collect::<Vec<(_, _)>>();
+
+                        TypedExpression {
+                            expression: TypedExpressionVariant::FunctionApplication {
+                                name: CallPath {
+                                    prefixes: vec![],
+                                    suffix: method_name,
+                                },
+                                arguments: args_and_names,
+                                function_body: method.body.clone(),
+                            },
+                            return_type: method.return_type,
+                            is_constant: IsConstant::No,
+                            span,
+                        }
+                    }
+                    // something like blah::blah::~Type::foo()
+                    MethodName::FromType {
+                        call_path,
+                        type_name,
+                        is_absolute,
+                    } => {
+                        let mut args_buf = vec![];
+                        for arg in arguments {
+                            args_buf.push(type_check!(
+                                TypedExpression::type_check(
+                                    arg,
+                                    namespace,
+                                    None,
+                                    "",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
+                                ),
+                                continue,
+                                warnings,
+                                errors
+                            ));
+                        }
+
+                        let method = if let Some(type_name) = type_name {
+                            let module = type_check!(
+                                namespace.find_module(&call_path.prefixes[..], is_absolute),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let type_name = module.resolve_type(&type_name, self_type);
+                            match module.find_method_for_type(&type_name, call_path.suffix.clone())
+                            {
+                                Some(o) => o,
+                                None => {
+                                    errors.push(CompileError::MethodNotFound {
+                                        method_name: call_path.suffix.primary_name.clone(),
+                                        type_name: type_name.friendly_type_str(),
+                                        span: call_path.suffix.span.clone(),
+                                    });
+                                    return err(warnings, errors);
+                                }
+                            }
+                        } else {
+                            // there is a special case for the stdlib where type_name is `None`, handle
+                            // that:
+                            let module = type_check!(
+                                namespace.find_module(&call_path.prefixes[..], is_absolute),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let r#type = &args_buf[0].return_type;
+                            match module.find_method_for_type(r#type, call_path.suffix.clone()) {
+                                Some(o) => o,
+                                None => {
+                                    errors.push(CompileError::MethodNotFound {
+                                        method_name: call_path.suffix.primary_name.clone(),
+                                        type_name: r#type.friendly_type_str(),
+                                        span: call_path.suffix.span.clone(),
+                                    });
+                                    return err(warnings, errors);
+                                }
+                            }
+                        };
+
+                        if args_buf.len() > method.parameters.len() {
+                            todo!("too many args err");
+                        }
+
+                        if args_buf.len() < method.parameters.len() {
+                            todo!("too few args err");
+                        }
+
+                        let args_and_names = method
+                            .parameters
+                            .iter()
+                            .zip(args_buf.into_iter())
+                            .map(|(param, arg)| (param.name.clone(), arg))
+                            .collect::<Vec<(_, _)>>();
+                        TypedExpression {
+                            expression: TypedExpressionVariant::FunctionApplication {
+                                name: call_path,
+                                arguments: args_and_names,
+                                function_body: method.body.clone(),
+                            },
+                            return_type: method.return_type,
+                            is_constant: IsConstant::No,
+                            span,
+                        }
+
+                        //                        todo!("fnd the namespace of the call_path and resolve the type_name in it. then grab the method name. emthod name is the call_path suffix")
+                    }
                 }
             }
             Expression::Unit { span } => TypedExpression {
@@ -670,7 +756,7 @@ impl<'sc> TypedExpression<'sc> {
             Expression::DelineatedPath {
                 call_path,
                 span,
-                instantiator,
+                args,
                 type_arguments,
             } => {
                 // The first step is to determine if the call path refers to a module or an enum.
@@ -683,6 +769,16 @@ impl<'sc> TypedExpression<'sc> {
                     .find_module(&call_path.prefixes, false)
                     .ok()
                     .cloned();
+                /*
+                let type_method_result = {
+                    let (module_path, type_name) =
+                        call_path.prefixes.split_at(call_path.prefixes.len() - 1);
+                    let type_name = type_name[0].clone();
+                    let namespace = namespace.find_module(module_path, false).ok();
+                    namespace
+                        .map(|ns| ns.find_method_for_type_ident(&type_name, call_path.suffix))
+                        .flatten()
+                };*/
                 /*
                 let enum_result_result = {
                     // an enum could be combined with a module path
@@ -724,7 +820,7 @@ impl<'sc> TypedExpression<'sc> {
                                 Some(decl) => Either::Left(decl),
                                 None => {
                                     errors.push(CompileError::SymbolNotFound {
-                                        name: call_path.suffix.primary_name,
+                                        name: call_path.suffix.primary_name.into(),
                                         span: call_path.suffix.span.clone(),
                                     });
                                     return err(warnings, errors);
@@ -735,7 +831,7 @@ impl<'sc> TypedExpression<'sc> {
                             instantiate_enum(
                                 enum_decl,
                                 call_path.suffix,
-                                instantiator,
+                                args,
                                 type_arguments,
                                 namespace,
                                 self_type,
@@ -749,7 +845,7 @@ impl<'sc> TypedExpression<'sc> {
                         (None, None) => {
                             errors.push(CompileError::SymbolNotFound {
                                 span,
-                                name: call_path.suffix.primary_name,
+                                name: call_path.suffix.primary_name.into(),
                             });
                             return err(warnings, errors);
                         }

@@ -499,7 +499,7 @@ pub enum CompileError<'sc> {
         struct_name: &'sc str,
         span: Span<'sc>,
     },
-    #[error("No method named \"{method_name}\" found for type {type_name}.")]
+    #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
         span: Span<'sc>,
         method_name: &'sc str,
@@ -511,7 +511,7 @@ pub enum CompileError<'sc> {
     ModuleNotFound { span: Span<'sc>, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
     NotAStruct {
-        name: &'sc str,
+        name: String,
         span: Span<'sc>,
         actually: String,
     },
@@ -526,7 +526,7 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { span: Span<'sc>, name: &'sc str },
+    SymbolNotFound { span: Span<'sc>, name: String },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -586,10 +586,7 @@ pub enum CompileError<'sc> {
     },
     #[error("Unknown opcode: \"{op_name}\".")]
     UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
-    #[error(
-        "Unable to infer concrete type for partial type \"{ty}\". Type must be known at this \
-         point. Try providing an annotation or using a concrete type."
-    )]
+    #[error("Unknown type \"{ty}\".")]
     TypeMustBeKnown { ty: String, span: Span<'sc> },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
     Immediate06TooLarge { val: u64, span: Span<'sc> },
@@ -641,6 +638,14 @@ pub enum CompileError<'sc> {
     },
     #[error("This imported file must be a library. It must start with \"library <name>\", where \"name\" is the name of the library this file contains.")]
     ImportMustBeLibrary { span: Span<'sc> },
+    #[error("An enum instantiaton cannot contain more than one value. This should be a single value of type {ty}.")]
+    MoreThanOneEnumInstantiator { span: Span<'sc>, ty: String },
+    #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
+    UnnecessaryEnumInstantiator { span: Span<'sc> },
+    #[error("Trait \"{name}\" does not exist in this scope.")]
+    TraitNotFound { name: &'sc str, span: Span<'sc> },
+    #[error("This expression is not valid on the left hand side of a reassignment.")]
+    InvalidExpressionOnLhs { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -797,6 +802,10 @@ impl<'sc> CompileError<'sc> {
             FileNotFound { span, .. } => span,
             FileCouldNotBeRead { span, .. } => span,
             ImportMustBeLibrary { span, .. } => span,
+            MoreThanOneEnumInstantiator { span, .. } => span,
+            UnnecessaryEnumInstantiator { span, .. } => span,
+            TraitNotFound { span, .. } => span,
+            InvalidExpressionOnLhs { span, .. } => span,
         }
     }
 

@@ -9,7 +9,7 @@ use crate::types::ResolvedType;
 pub(crate) fn instantiate_enum<'sc>(
     enum_decl: TypedEnumDeclaration<'sc>,
     enum_field_name: Ident<'sc>,
-    instantiator: Option<Box<Expression<'sc>>>,
+    args: Vec<Expression<'sc>>,
     type_arguments: Vec<MaybeResolvedType<'sc>>,
     namespace: &Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
@@ -43,8 +43,8 @@ pub(crate) fn instantiate_enum<'sc>(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (instantiator, enum_field_type) {
-        (None, ResolvedType::Unit) => ok(
+    match (&args[..], enum_field_type) {
+        ([], ResolvedType::Unit) => ok(
             TypedExpression {
                 return_type: MaybeResolvedType::Resolved(enum_decl.as_type()),
                 expression: TypedExpressionVariant::EnumInstantiation {
@@ -59,10 +59,10 @@ pub(crate) fn instantiate_enum<'sc>(
             warnings,
             errors,
         ),
-        (Some(boxed_expr), r#type) => {
+        ([single_expr], r#type) => {
             let typed_expr = type_check!(
                 TypedExpression::type_check(
-                    *boxed_expr,
+                    single_expr.clone(),
                     namespace,
                     Some(MaybeResolvedType::Resolved(r#type.clone())),
                     "Enum instantiator must match its declared variant type.",
@@ -94,9 +94,22 @@ pub(crate) fn instantiate_enum<'sc>(
                 errors,
             )
         }
-        (None, _) => {
+        ([], _) => {
             errors.push(CompileError::MissingEnumInstantiator {
                 span: enum_field_name.span.clone(),
+            });
+            return err(warnings, errors);
+        }
+        (_too_many_expressions, ResolvedType::Unit) => {
+            errors.push(CompileError::UnnecessaryEnumInstantiator {
+                span: enum_field_name.span.clone(),
+            });
+            return err(warnings, errors);
+        }
+        (_too_many_expressions, ty) => {
+            errors.push(CompileError::MoreThanOneEnumInstantiator {
+                span: enum_field_name.span.clone(),
+                ty: ty.friendly_type_str(),
             });
             return err(warnings, errors);
         }

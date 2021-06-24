@@ -1,7 +1,6 @@
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
-use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::{
@@ -10,6 +9,7 @@ use crate::{
     types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
 };
+use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
 use pest::Span;
 
 #[derive(Clone, Debug)]
@@ -96,7 +96,11 @@ impl<'sc> TypedDeclaration<'sc> {
             TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span.clone(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span.clone(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            Reassignment(TypedReassignment { lhs, .. }) => lhs.span.clone(),
+            Reassignment(TypedReassignment { lhs, .. }) => {
+                lhs.iter().fold(lhs[0].span.clone(), |acc, this| {
+                    crate::utils::join_spans(acc, this.span.clone())
+                })
+            }
             ImplTrait { span, .. } => span.clone(),
             SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
         }
@@ -127,8 +131,11 @@ impl<'sc> TypedDeclaration<'sc> {
                     name.primary_name.into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
                     name.primary_name.into(),
-                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) =>
-                    lhs.primary_name.into(),
+                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
+                    .iter()
+                    .map(|x| x.primary_name)
+                    .collect::<Vec<_>>()
+                    .join("."),
                 _ => String::new(),
             }
         )
@@ -206,6 +213,37 @@ pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) visibility: Visibility,
 }
 
+impl<'sc> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn replace_self_types(&self, self_type: &MaybeResolvedType<'sc>) -> Self {
+        TypedFunctionDeclaration {
+            name: self.name.clone(),
+            body: self.body.replace_self_types(self_type),
+            parameters: self
+                .parameters
+                .iter()
+                .map(|x| {
+                    let mut x = x.clone();
+                    x.r#type = match x.r#type {
+                        MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => {
+                            self_type.clone()
+                        }
+                        otherwise => otherwise.clone(),
+                    };
+                    x
+                })
+                .collect(),
+            span: self.span.clone(),
+            return_type: match &self.return_type {
+                MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => self_type.clone(),
+                otherwise => otherwise.clone(),
+            },
+            type_parameters: self.type_parameters.clone(),
+            return_type_span: self.return_type_span.clone(),
+            visibility: self.visibility.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedFunctionParameter<'sc> {
     pub(crate) name: Ident<'sc>,
@@ -231,7 +269,9 @@ pub struct TypedTraitFn<'sc> {
 
 #[derive(Clone, Debug)]
 pub struct TypedReassignment<'sc> {
-    pub(crate) lhs: Ident<'sc>,
+    // either a direct variable, so length of 1, or
+    // at series of struct fields/array indices (array syntax)
+    pub(crate) lhs: Vec<Ident<'sc>>,
     pub(crate) rhs: TypedExpression<'sc>,
 }
 
@@ -348,7 +388,17 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 );
                 if type_parameters
                     .iter()
-                    .find(|x| x.name == name.primary_name)
+                    .find(
+                        |TypeParameter {
+                             name: this_name, ..
+                         }| {
+                            if let TypeInfo::Custom { name: this_name } = this_name {
+                                this_name.primary_name == name.primary_name
+                            } else {
+                                false
+                            }
+                        },
+                    )
                     .is_none()
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
@@ -429,7 +479,7 @@ impl<'sc> TypedTraitFn<'sc> {
                 contents: vec![],
                 whole_block_span: self.name.span.clone(),
             },
-            parameters: vec![],
+            parameters: self.parameters.clone(),
             span: self.name.span.clone(),
             return_type: self.return_type.clone(),
             return_type_span: self.return_type_span.clone(),

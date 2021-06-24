@@ -10,7 +10,9 @@ use crate::{
 use crate::{
     parse_tree::Literal,
     semantic_analysis::{
-        ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
+        ast_node::{
+            TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant, TypedStructField,
+        },
         TypedExpression,
     },
 };
@@ -18,7 +20,8 @@ use pest::Span;
 pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     unary_op: &Option<UnaryOp>,
     span: &Span<'sc>,
-    name: &[Ident<'sc>],
+    parent: &TypedExpression<'sc>,
+    field_to_access: &TypedStructField<'sc>,
     resolved_type_of_parent: &MaybeResolvedType<'sc>,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
