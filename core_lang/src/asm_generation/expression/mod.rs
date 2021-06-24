@@ -211,15 +211,16 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             struct_name,
             fields,
         } => convert_struct_expression_to_asm(struct_name, fields, namespace, register_sequencer),
-        TypedExpressionVariant::SubfieldExpression {
+        TypedExpressionVariant::StructFieldAccess {
             unary_op,
-            span,
-            name,
             resolved_type_of_parent,
+            prefix,
+            field_to_access,
         } => convert_subfield_expression_to_asm(
             unary_op,
-            span,
-            name,
+            &exp.span,
+            prefix,
+            field_to_access,
             resolved_type_of_parent,
             namespace,
             register_sequencer,

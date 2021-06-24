@@ -6,7 +6,7 @@ use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 use pest::Span;
-use std::path::Path;
+use std::{collections::VecDeque, path::Path};
 
 mod code_block;
 mod declaration;
@@ -232,10 +232,10 @@ impl<'sc> TypedAstNode<'sc> {
                                     &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
                                 )
                             }).collect::<Vec<_>>();
-                            let mut l_namespace = namespace.clone();
+                            let mut trait_namespace = namespace.clone();
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
-                            l_namespace.insert_trait_implementation(
+                            trait_namespace.insert_trait_implementation(
                                 CallPath {
                                     prefixes: vec![],
                                     suffix: name.clone(),
@@ -257,32 +257,32 @@ impl<'sc> TypedAstNode<'sc> {
                                 ..
                             } in methods
                             {
-                                let mut namespace = l_namespace.clone();
+                                let mut function_namespace = trait_namespace.clone();
                                 parameters.clone().into_iter().for_each(
                                     |FunctionParameter { name, r#type, .. }| {
-                                        let r#type = namespace.resolve_type(
+                                        let r#type = function_namespace.resolve_type(
                                             &r#type,
                                             &MaybeResolvedType::Partial(
                                                 PartiallyResolvedType::SelfType,
                                             ),
                                         );
-                                        namespace.insert(
-                                        name.clone(),
-                                        TypedDeclaration::VariableDeclaration(
-                                            TypedVariableDeclaration {
-                                                name: name.clone(),
-                                                body: TypedExpression {
-                                                    expression:
-                                                        TypedExpressionVariant::FunctionParameter,
-                                                    return_type: r#type,
-                                                    is_constant: IsConstant::No,
-                                                    span: name.span.clone(),
+                                        function_namespace.insert(
+                                            name.clone(),
+                                            TypedDeclaration::VariableDeclaration(
+                                                TypedVariableDeclaration {
+                                                    name: name.clone(),
+                                                    body: TypedExpression {
+                                                        expression:
+                                                            TypedExpressionVariant::FunctionParameter,
+                                                        return_type: r#type,
+                                                        is_constant: IsConstant::No,
+                                                        span: name.span.clone(),
+                                                    },
+                                                    // TODO allow mutable function params?
+                                                    is_mutable: false,
                                                 },
-                                                // TODO allow mutable function params?
-                                                is_mutable: false,
-                                            },
-                                        ),
-                                    );
+                                            ),
+                                        );
                                     },
                                 );
                                 // check the generic types in the arguments, make sure they are in
@@ -314,7 +314,13 @@ impl<'sc> TypedAstNode<'sc> {
                                         );
                                         if type_parameters
                                             .iter()
-                                            .find(|x| x.name == name.primary_name)
+                                            .find(|TypeParameter { name: this_name, .. }| {
+                                                if let TypeInfo::Custom { name: this_name } = this_name {
+                                                    this_name.primary_name == name.primary_name
+                                                } else {
+                                                    false
+                                                }
+                                            })
                                             .is_none()
                                         {
                                             errors.push(
@@ -340,7 +346,7 @@ impl<'sc> TypedAstNode<'sc> {
                                          }| {
                                             TypedFunctionParameter {
                                                 name,
-                                                r#type: namespace.resolve_type(
+                                                r#type: function_namespace.resolve_type(
                                                     &r#type,
                                                     &MaybeResolvedType::Partial(
                                                         PartiallyResolvedType::SelfType,
@@ -353,11 +359,12 @@ impl<'sc> TypedAstNode<'sc> {
                                     .collect::<Vec<_>>();
 
                                 // TODO check code block implicit return
-                                let return_type = namespace.resolve_type(&return_type, self_type);
+                                let return_type =
+                                    function_namespace.resolve_type(&return_type, self_type);
                                 let (body, _code_block_implicit_return) = type_check!(
                                     TypedCodeBlock::type_check(
                                         body,
-                                        &namespace,
+                                        &function_namespace,
                                         Some(return_type.clone()),
                                         "Trait method body's return type does not match up with \
                                          its return type annotation.",
@@ -395,59 +402,20 @@ impl<'sc> TypedAstNode<'sc> {
                             trait_decl
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
-                            // check that the reassigned name exists
-                            let thing_to_reassign = match namespace.get_symbol(&lhs) {
-                                Some(TypedDeclaration::VariableDeclaration(
-                                    TypedVariableDeclaration {
-                                        body, is_mutable, ..
-                                    },
-                                )) => {
-                                    // allow the type checking to continue unhindered even though
-                                    // this is an error
-                                    // basically pretending that this isn't an error by not
-                                    // early-returning, for the sake of better error reporting
-                                    if !is_mutable {
-                                        errors.push(CompileError::AssignmentToNonMutable(
-                                            lhs.primary_name,
-                                            span.clone(),
-                                        ));
-                                    }
-
-                                    body
-                                }
-                                Some(o) => {
-                                    errors.push(CompileError::ReassignmentToNonVariable {
-                                        name: lhs.primary_name,
-                                        kind: o.friendly_name(),
-                                        span,
-                                    });
-                                    return err(warnings, errors);
-                                }
-                                None => {
-                                    errors.push(CompileError::UnknownVariable {
-                                        var_name: lhs.primary_name,
-                                        span: lhs.span,
-                                    });
-                                    return err(warnings, errors);
-                                }
-                            };
-                            // type check the reassignment
-                            let rhs = type_check!(
-                                TypedExpression::type_check(
+                            type_check!(
+                                reassignment(
+                                    lhs,
                                     rhs,
-                                    &namespace,
-                                    Some(thing_to_reassign.return_type.clone()),
-                                    "You can only reassign a value of the same type to a variable.",
+                                    span,
+                                    namespace,
                                     self_type,
                                     build_config,
                                     dead_code_graph
                                 ),
-                                error_recovery_expr(span),
+                                return err(warnings, errors),
                                 warnings,
                                 errors
-                            );
-
-                            TypedDeclaration::Reassignment(TypedReassignment { lhs, rhs })
+                            )
                         }
                         Declaration::ImplTrait(impl_trait) => type_check!(
                             implementation_of_trait(
@@ -472,6 +440,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 namespace.resolve_type_without_self(&type_implementing_for);
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
+                            namespace.insert_trait_methods(&type_arguments[..]);
                             for mut fn_decl in functions.into_iter() {
                                 let mut type_arguments = type_arguments.clone();
                                 // add generic params from impl trait into function type params
@@ -744,19 +713,11 @@ fn import_new_file<'sc>(
             dep_config,
             dead_code_graph
         ),
-        crate::InnerDependencyCompileResult {
-            library_exports: crate::LibraryExports {
-                namespace: Namespace::default(),
-                trees: vec![]
-            }
-        },
+        return err(warnings, errors),
         warnings,
         errors
     );
 
-    // since this was an import of a single file, it should have exactly 1 library export
-    // as an invariant.
-    assert_eq!(library_exports.namespace.modules.len(), 1);
     library_exports.namespace.modules = library_exports
         .namespace
         .modules
@@ -775,4 +736,155 @@ fn import_new_file<'sc>(
     namespace.merge_namespaces(&library_exports.namespace);
 
     ok((), warnings, errors)
+}
+
+fn reassignment<'sc>(
+    lhs: Box<Expression<'sc>>,
+    rhs: Expression<'sc>,
+    span: Span<'sc>,
+    namespace: &mut Namespace<'sc>,
+    self_type: &MaybeResolvedType<'sc>,
+    build_config: &BuildConfig,
+    dead_code_graph: &mut ControlFlowGraph<'sc>,
+) -> CompileResult<'sc, TypedDeclaration<'sc>> {
+    let mut errors = vec![];
+    let mut warnings = vec![];
+    // ensure that the lhs is a variable expression or struct field access
+    match *lhs {
+        Expression::VariableExpression {
+            unary_op,
+            name,
+            span,
+        } => {
+            // check that the reassigned name exists
+            let thing_to_reassign = match namespace.get_symbol(&name) {
+                Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                    body,
+                    is_mutable,
+                    ..
+                })) => {
+                    // allow the type checking to continue unhindered even though
+                    // this is an error
+                    // basically pretending that this isn't an error by not
+                    // early-returning, for the sake of better error reporting
+                    if !is_mutable {
+                        errors.push(CompileError::AssignmentToNonMutable(
+                            name.primary_name,
+                            span.clone(),
+                        ));
+                    }
+
+                    body
+                }
+                Some(o) => {
+                    errors.push(CompileError::ReassignmentToNonVariable {
+                        name: name.primary_name,
+                        kind: o.friendly_name(),
+                        span,
+                    });
+                    return err(warnings, errors);
+                }
+                None => {
+                    errors.push(CompileError::UnknownVariable {
+                        var_name: name.primary_name,
+                        span: name.span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+            };
+            // type check the reassignment
+            let rhs = type_check!(
+                TypedExpression::type_check(
+                    rhs,
+                    &namespace,
+                    Some(thing_to_reassign.return_type.clone()),
+                    "You can only reassign a value of the same type to a variable.",
+                    self_type,
+                    build_config,
+                    dead_code_graph
+                ),
+                error_recovery_expr(span),
+                warnings,
+                errors
+            );
+
+            ok(
+                TypedDeclaration::Reassignment(TypedReassignment {
+                    lhs: vec![name],
+                    rhs,
+                }),
+                warnings,
+                errors,
+            )
+        }
+        Expression::SubfieldExpression {
+            prefix,
+            unary_op,
+            field_to_access,
+            span,
+        } => {
+            let mut expr = *prefix;
+            let mut names_vec = vec![field_to_access];
+            loop {
+                match expr {
+                    Expression::VariableExpression { name, .. } => {
+                        names_vec.push(name);
+                        break;
+                    }
+                    Expression::SubfieldExpression {
+                        field_to_access,
+                        prefix,
+                        ..
+                    } => {
+                        names_vec.push(field_to_access);
+                        expr = *prefix;
+                    }
+                    _ => {
+                        errors.push(CompileError::InvalidExpressionOnLhs { span });
+                        return err(warnings, errors);
+                    }
+                }
+            }
+
+            let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+
+            let (ty_of_field, ty_of_parent) = type_check!(
+                namespace.find_subfield_type(names_vec.as_slice()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            // type check the reassignment
+            let rhs = type_check!(
+                TypedExpression::type_check(
+                    rhs,
+                    &namespace,
+                    Some(ty_of_field.clone()),
+                    format!(
+                        "This struct field has type \"{}\"",
+                        ty_of_field.friendly_type_str()
+                    ),
+                    self_type,
+                    build_config,
+                    dead_code_graph
+                ),
+                error_recovery_expr(span),
+                warnings,
+                errors
+            );
+
+            ok(
+                TypedDeclaration::Reassignment(TypedReassignment {
+                    lhs: names_vec,
+                    rhs,
+                }),
+                warnings,
+                errors,
+            )
+        }
+        _ => {
+            errors.push(CompileError::InvalidExpressionOnLhs { span });
+            return err(warnings, errors);
+        }
+    }
 }

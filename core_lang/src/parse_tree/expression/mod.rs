@@ -1,6 +1,9 @@
 use crate::error::*;
-use crate::parse_tree::{CallPath, Literal};
-use crate::parser::Rule;
+use crate::{
+    parse_tree::{CallPath, Literal},
+    types::MaybeResolvedType,
+};
+use crate::{parser::Rule, types::TypeInfo};
 use crate::{CodeBlock, Ident};
 use either::Either;
 use pest::iterators::Pair;
@@ -10,6 +13,19 @@ use std::collections::{HashMap, VecDeque};
 mod asm;
 use crate::utils::join_spans;
 pub(crate) use asm::*;
+
+#[derive(Debug, Clone)]
+pub enum MethodName<'sc> {
+    /// Represents a method lookup with a type somewhere in the path
+    FromType {
+        call_path: CallPath<'sc>,
+        // if this is `None`, then use the first argument to determine the type
+        type_name: Option<TypeInfo<'sc>>,
+        is_absolute: bool,
+    },
+    /// Represents a method lookup that does not contain any types in the path
+    FromModule { method_name: Ident<'sc> },
+}
 
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
@@ -48,10 +64,6 @@ pub enum Expression<'sc> {
         contents: CodeBlock<'sc>,
         span: Span<'sc>,
     },
-    ParenthesizedExpression {
-        inner: Box<Expression<'sc>>,
-        span: Span<'sc>,
-    },
     IfExp {
         condition: Box<Expression<'sc>>,
         then: Box<Expression<'sc>>,
@@ -64,8 +76,7 @@ pub enum Expression<'sc> {
         asm: AsmExpression<'sc>,
     },
     MethodApplication {
-        subfield_exp: Vec<Ident<'sc>>,
-        method_name: CallPath<'sc>,
+        method_name: MethodName<'sc>,
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
@@ -74,11 +85,11 @@ pub enum Expression<'sc> {
     /// <ident>.<ident>
     /// ```
     ///
-    /// Where there are `n >=2` idents. This is typically an access of a structure field.
     SubfieldExpression {
-        name_parts: Vec<Ident<'sc>>,
+        prefix: Box<Expression<'sc>>,
         span: Span<'sc>,
         unary_op: Option<UnaryOp>,
+        field_to_access: Ident<'sc>,
     },
     /// A [DelineatedPath] is anything of the form:
     /// ```ignore
@@ -103,9 +114,9 @@ pub enum Expression<'sc> {
     /// ```
     DelineatedPath {
         call_path: CallPath<'sc>,
-        instantiator: Option<Box<Expression<'sc>>>,
+        args: Vec<Expression<'sc>>,
         span: Span<'sc>,
-        type_arguments: Vec<crate::types::TypeInfo<'sc>>,
+        type_arguments: Vec<TypeInfo<'sc>>,
     },
 }
 
@@ -128,7 +139,6 @@ impl<'sc> Expression<'sc> {
             MatchExpression { span, .. } => span,
             StructExpression { span, .. } => span,
             CodeBlock { span, .. } => span,
-            ParenthesizedExpression { span, .. } => span,
             IfExp { span, .. } => span,
             AsmExpression { span, .. } => span,
             MethodApplication { span, .. } => span,
@@ -416,10 +426,7 @@ impl<'sc> Expression<'sc> {
                         span: expr.as_span()
                     }
                 );
-                Expression::ParenthesizedExpression {
-                    inner: Box::new(expr),
-                    span,
-                }
+                expr
             }
             Rule::code_block => {
                 let whole_block_span = expr.as_span();
@@ -493,86 +500,156 @@ impl<'sc> Expression<'sc> {
             Rule::method_exp => {
                 let whole_exp_span = expr.as_span();
                 let mut parts = expr.into_inner();
-                let subfield_exp = parts.next().unwrap();
-                assert_eq!(subfield_exp.as_rule(), Rule::subfield_exp);
-                // remove the last field from the subfield exp, since it is the method name
-                // the different parts of the exp
-                // e.g.
-                // if the method_exp is a.b.c.add()
-                // then these parts are
-                // ["a", "b", "c", "add"]
-                let mut name_parts = subfield_exp.into_inner().collect::<Vec<_>>();
-                let method_name = eval!(
-                    CallPath::parse_from_pair,
-                    warnings,
-                    errors,
-                    name_parts.pop().unwrap(),
-                    return err(warnings, errors)
-                );
-                let function_arguments = parts
-                    .next()
-                    .map(|x| x.into_inner().collect::<Vec<_>>())
-                    .unwrap_or_else(|| vec![]);
-                let mut arguments_buf = VecDeque::new();
-                for argument in function_arguments {
-                    let arg = eval!(
-                        Expression::parse_from_pair_inner,
-                        warnings,
-                        errors,
-                        argument,
-                        Expression::Unit {
-                            span: argument.as_span()
+                let pair = parts.next().unwrap();
+                match pair.as_rule() {
+                    Rule::subfield_exp => {
+                        let mut pair = pair.into_inner();
+                        let mut name_parts = pair
+                            .next()
+                            .expect("Guaranteed by grammar.")
+                            .into_inner()
+                            .collect::<Vec<_>>();
+                        let function_arguments =
+                            pair.next().expect("Guaranteed by grammar").into_inner();
+                        // remove the last field from the subfield exp, since it is the method name
+                        // the different parts of the exp
+                        // e.g.
+                        // if the method_exp is a.b.c.add()
+                        // then these parts are
+                        //
+                        // ["a", "b", "c", "add"]
+                        let method_name = eval!(
+                            Ident::parse_from_pair,
+                            warnings,
+                            errors,
+                            name_parts.pop().unwrap(),
+                            return err(warnings, errors)
+                        );
+                        let mut arguments_buf = VecDeque::new();
+                        for argument in function_arguments {
+                            let arg = eval!(
+                                Expression::parse_from_pair,
+                                warnings,
+                                errors,
+                                argument,
+                                Expression::Unit {
+                                    span: argument.as_span()
+                                }
+                            );
+                            arguments_buf.push_back(arg);
                         }
-                    );
-                    arguments_buf.push_back(arg);
-                }
-                let mut name_parts_buf = Vec::new();
-                for name_part in name_parts {
-                    let name = eval!(
-                        Ident::parse_from_pair,
-                        warnings,
-                        errors,
-                        name_part,
-                        continue
-                    );
-                    name_parts_buf.push(name);
-                }
+                        // the first thing is either an exp or a var, everything subsequent must be
+                        // a field
+                        let mut name_parts = name_parts.into_iter();
+                        let mut expr = eval!(
+                            parse_call_item,
+                            warnings,
+                            errors,
+                            name_parts.next().expect("guaranteed by grammar"),
+                            return err(warnings, errors)
+                        );
 
-                if name_parts_buf.len() == 1 {
-                    // then the first argument is a variable expression
-                    arguments_buf.push_front(Expression::VariableExpression {
-                        unary_op: None, // TODO
-                        name: name_parts_buf[0].clone(),
-                        span: name_parts_buf[0].clone().span,
-                    });
-                } else {
-                    // then it is a subfield expression
-                    // then the first argument is a variable expression
-                    arguments_buf.push_front(Expression::SubfieldExpression {
-                        name_parts: name_parts_buf.clone(),
-                        unary_op: None, // TODO
-                        span: name_parts_buf
-                            .clone()
-                            .into_iter()
-                            .fold(name_parts_buf[0].clone().span, |acc, this| {
-                                join_spans(acc, this.span)
-                            }),
-                    });
-                }
-                Expression::MethodApplication {
-                    subfield_exp: vec![],
-                    method_name,
-                    arguments: arguments_buf.into_iter().collect(),
-                    span: whole_exp_span,
+                        for name_part in name_parts {
+                            expr = Expression::SubfieldExpression {
+                                prefix: Box::new(expr.clone()),
+                                unary_op: None, // TODO
+                                span: name_part.as_span(),
+                                field_to_access: eval!(
+                                    Ident::parse_from_pair,
+                                    warnings,
+                                    errors,
+                                    name_part,
+                                    continue
+                                ),
+                            }
+                        }
+
+                        arguments_buf.push_front(expr);
+                        Expression::MethodApplication {
+                            method_name: MethodName::FromModule { method_name },
+                            arguments: arguments_buf.into_iter().collect(),
+                            span: whole_exp_span,
+                        }
+                    }
+                    Rule::fully_qualified_method => {
+                        let mut path_parts_buf = vec![];
+                        let mut type_name = None;
+                        let mut method_name = None;
+                        let mut arguments = None;
+                        for pair in pair.into_inner() {
+                            match pair.as_rule() {
+                                Rule::path_separator => (),
+                                Rule::path_ident => {
+                                    path_parts_buf.push(eval!(
+                                        Ident::parse_from_pair,
+                                        warnings,
+                                        errors,
+                                        pair,
+                                        continue
+                                    ));
+                                }
+                                Rule::type_name => {
+                                    type_name = Some(pair);
+                                }
+                                Rule::call_item => {
+                                    method_name = Some(pair);
+                                }
+                                Rule::fn_args => {
+                                    arguments = Some(pair);
+                                }
+                                a => unreachable!("guaranteed by grammar: {:?}", a),
+                            }
+                        }
+                        let type_name = eval!(
+                            TypeInfo::parse_from_pair,
+                            warnings,
+                            errors,
+                            type_name.expect("guaranteed by grammar"),
+                            TypeInfo::ErrorRecovery
+                        );
+
+                        // parse the method name into a call path
+                        let method_name = MethodName::FromType {
+                            call_path: CallPath {
+                                prefixes: path_parts_buf,
+                                suffix: eval!(
+                                    Ident::parse_from_pair,
+                                    warnings,
+                                    errors,
+                                    method_name.expect("guaranteed by grammar"),
+                                    return err(warnings, errors)
+                                ),
+                            },
+                            type_name: Some(type_name),
+                            is_absolute: false,
+                        };
+
+                        let mut arguments_buf = vec![];
+                        // evaluate  the arguments passed in to the method
+                        if let Some(arguments) = arguments {
+                            for argument in arguments.into_inner() {
+                                let arg = eval!(
+                                    Expression::parse_from_pair,
+                                    warnings,
+                                    errors,
+                                    argument,
+                                    Expression::Unit {
+                                        span: argument.as_span()
+                                    }
+                                );
+                                arguments_buf.push(arg);
+                            }
+                        }
+
+                        Expression::MethodApplication {
+                            method_name: method_name,
+                            arguments: arguments_buf,
+                            span: whole_exp_span,
+                        }
+                    }
+                    a => unreachable!("{:?}", a),
                 }
             }
-            Rule::subfield_exp => eval!(
-                subfield_from_pair,
-                warnings,
-                errors,
-                expr,
-                return err(warnings, errors)
-            ),
             Rule::delineated_path => {
                 // this is either an enum expression or looking something
                 // up in libraries
@@ -588,23 +665,28 @@ impl<'sc> Expression<'sc> {
                     return err(warnings, errors)
                 );
 
-                let instantiator = if let Some(inst) = instantiator {
-                    Some(Box::new(eval!(
-                        Expression::parse_from_pair_inner,
-                        warnings,
-                        errors,
-                        inst.into_inner().next().unwrap(),
-                        return err(warnings, errors)
-                    )))
+                let args = if let Some(inst) = instantiator {
+                    let mut buf = vec![];
+                    for exp in inst.into_inner() {
+                        let exp = eval!(
+                            Expression::parse_from_pair,
+                            warnings,
+                            errors,
+                            exp,
+                            return err(warnings, errors)
+                        );
+                        buf.push(exp);
+                    }
+                    buf
                 } else {
-                    None
+                    vec![]
                 };
 
                 // if there is an expression in parenthesis, that is the instantiator.
 
                 Expression::DelineatedPath {
                     call_path: path,
-                    instantiator,
+                    args,
                     span,
                     // Eventually, when we support generic enums, we want to be able to parse type
                     // arguments on the enum name and throw them in here. TODO
@@ -614,6 +696,43 @@ impl<'sc> Expression<'sc> {
             Rule::unit => Expression::Unit {
                 span: expr.as_span(),
             },
+            Rule::struct_field_access => {
+                let mut inner = expr.into_inner().next().expect("guaranteed by grammar");
+                assert_eq!(inner.as_rule(), Rule::subfield_path);
+                let mut name_parts = inner.into_inner().collect::<Vec<_>>();
+
+                // treat parent as one expr, final name as the field to be accessed
+                // if there are multiple fields, this is a nested expression
+                // i.e. `a.b.c` is a lookup of field `c` on `a.b` which is a lookup
+                // of field `b` on `a`
+                // the first thing is either an exp or a var, everything subsequent must be
+                // a field
+                let mut name_parts = name_parts.into_iter();
+                let mut expr = eval!(
+                    parse_call_item,
+                    warnings,
+                    errors,
+                    name_parts.next().expect("guaranteed by grammar"),
+                    return err(warnings, errors)
+                );
+
+                for name_part in name_parts {
+                    expr = Expression::SubfieldExpression {
+                        prefix: Box::new(expr.clone()),
+                        unary_op: None, // TODO
+                        span: name_part.as_span(),
+                        field_to_access: eval!(
+                            Ident::parse_from_pair,
+                            warnings,
+                            errors,
+                            name_part,
+                            continue
+                        ),
+                    }
+                }
+
+                expr
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -630,6 +749,38 @@ impl<'sc> Expression<'sc> {
         };
         ok(parsed, warnings, errors)
     }
+}
+
+// A call item is parsed as either an `ident` or a parenthesized `expr`. This method's job is to
+// figure out which variant of `call_item` this is and turn it into either a variable expression
+// or parse it as an expression otherwise.
+fn parse_call_item<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, Expression<'sc>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    assert_eq!(item.as_rule(), Rule::call_item);
+    let item = item.into_inner().next().expect("guaranteed by grammar");
+    let exp = match item.as_rule() {
+        Rule::ident => Expression::VariableExpression {
+            name: eval!(
+                Ident::parse_from_pair,
+                warnings,
+                errors,
+                item,
+                return err(warnings, errors)
+            ),
+            span: item.as_span(),
+            unary_op: None,
+        },
+        Rule::expr => eval!(
+            Expression::parse_from_pair,
+            warnings,
+            errors,
+            item,
+            return err(warnings, errors)
+        ),
+        a => unreachable!("{:?}", a),
+    };
+    ok(exp, warnings, errors)
 }
 
 #[derive(Debug, Clone)]
@@ -946,20 +1097,23 @@ fn arrange_by_order_of_operations<'sc>(
         let rhs = rhs.unwrap();
 
         expression_stack.push(Expression::MethodApplication {
-            method_name: CallPath {
-                prefixes: vec![
-                    Ident {
-                        primary_name: "std".into(),
-                        span: op.span.clone(),
-                    },
-                    Ident {
-                        primary_name: "ops".into(),
-                        span: op.span.clone(),
-                    },
-                ],
-                suffix: op.to_var_name(),
+            method_name: MethodName::FromType {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident {
+                            primary_name: "std".into(),
+                            span: op.span.clone(),
+                        },
+                        Ident {
+                            primary_name: "ops".into(),
+                            span: op.span.clone(),
+                        },
+                    ],
+                    suffix: op.to_var_name(),
+                },
+                type_name: None,
+                is_absolute: true,
             },
-            subfield_exp: vec![],
             arguments: vec![lhs.clone(), rhs.clone()],
             span: join_spans(join_spans(lhs.span(), op.span.clone()), rhs.span()),
         });
@@ -974,29 +1128,4 @@ fn arrange_by_order_of_operations<'sc>(
     }
 
     ok(expression_stack[0].clone(), warnings, errors)
-}
-fn subfield_from_pair<'sc>(expr: Pair<'sc, Rule>) -> CompileResult<'sc, Expression> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let span = expr.as_span();
-    let iter = expr.into_inner();
-    let mut buf = vec![];
-    for part in iter {
-        buf.push(eval!(
-            Ident::parse_from_pair,
-            warnings,
-            errors,
-            part,
-            continue
-        ));
-    }
-    ok(
-        Expression::SubfieldExpression {
-            span,
-            name_parts: buf,
-            unary_op: None, // TODO: support unary operators before subfield expressions
-        },
-        warnings,
-        errors,
-    )
 }

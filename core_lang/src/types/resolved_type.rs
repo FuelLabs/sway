@@ -139,7 +139,7 @@ impl<'sc> MaybeResolvedType<'sc> {
 impl<'sc> PartiallyResolvedType<'sc> {
     pub(crate) fn friendly_type_str(&self) -> String {
         match self {
-            PartiallyResolvedType::Generic { name } => format!("generic {}", name.primary_name),
+            PartiallyResolvedType::Generic { name } => format!("{}", name.primary_name),
             PartiallyResolvedType::Numeric => "numeric".into(),
             PartiallyResolvedType::SelfType => "self".into(),
         }
