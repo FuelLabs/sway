@@ -1,4 +1,5 @@
 use crate::build_config::BuildConfig;
+use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 use crate::semantic_analysis::Namespace;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
@@ -810,7 +811,10 @@ fn reassignment<'sc>(
 
             ok(
                 TypedDeclaration::Reassignment(TypedReassignment {
-                    lhs: vec![name],
+                    lhs: vec![ReassignmentLhs {
+                        name,
+                        r#type: thing_to_reassign.return_type.clone(),
+                    }],
                     rhs,
                 }),
                 warnings,
@@ -824,19 +828,40 @@ fn reassignment<'sc>(
             span,
         } => {
             let mut expr = *prefix;
-            let mut names_vec = vec![field_to_access];
-            loop {
+            let mut names_vec = vec![];
+            let final_return_type = loop {
+                let type_checked = type_check!(
+                    TypedExpression::type_check(
+                        expr.clone(),
+                        namespace,
+                        None,
+                        "",
+                        self_type,
+                        build_config,
+                        dead_code_graph
+                    ),
+                    error_recovery_expr(expr.span()),
+                    warnings,
+                    errors
+                );
+
                 match expr {
                     Expression::VariableExpression { name, .. } => {
-                        names_vec.push(name);
-                        break;
+                        names_vec.push(ReassignmentLhs {
+                            name,
+                            r#type: type_checked.return_type.clone(),
+                        });
+                        break type_checked.return_type;
                     }
                     Expression::SubfieldExpression {
                         field_to_access,
                         prefix,
                         ..
                     } => {
-                        names_vec.push(field_to_access);
+                        names_vec.push(ReassignmentLhs {
+                            name: field_to_access,
+                            r#type: type_checked.return_type,
+                        });
                         expr = *prefix;
                     }
                     _ => {
@@ -844,12 +869,22 @@ fn reassignment<'sc>(
                         return err(warnings, errors);
                     }
                 }
-            }
+            };
 
-            let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+            let mut names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+            names_vec.push(ReassignmentLhs {
+                name: field_to_access,
+                r#type: final_return_type,
+            });
 
             let (ty_of_field, _ty_of_parent) = type_check!(
-                namespace.find_subfield_type(names_vec.as_slice()),
+                namespace.find_subfield_type(
+                    names_vec
+                        .iter()
+                        .map(|ReassignmentLhs { name, .. }| name.clone())
+                        .collect::<Vec<_>>()
+                        .as_slice()
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors

@@ -26,6 +26,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    // step 0. find the type of the top level
     return err(
         vec![],
         vec![CompileError::Unimplemented(

@@ -1,10 +1,11 @@
 use super::*;
 use crate::{
     asm_generation::{
-        convert_expression_to_asm, declaration::structs::get_struct_memory_layout, AsmNamespace,
+        convert_expression_to_asm, expression::get_struct_memory_layout, AsmNamespace,
         RegisterSequencer,
     },
     semantic_analysis::ast_node::TypedReassignment,
+    types::{MaybeResolvedType, ResolvedType},
 };
 
 pub(crate) fn convert_reassignment_to_asm<'sc>(
@@ -40,7 +41,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
         1 => {
             // step 1
             let var_register = type_check!(
-                namespace.look_up_variable(&reassignment.lhs[0]),
+                namespace.look_up_variable(&reassignment.lhs[0].name),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -53,15 +54,15 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 reassignment
                     .lhs
                     .iter()
-                    .fold(reassignment.lhs[0].span.clone(), |acc, this| {
-                        crate::utils::join_spans(acc, this.span.clone())
+                    .fold(reassignment.lhs[0].span(), |acc, this| {
+                        crate::utils::join_spans(acc, this.span())
                     }),
                 format!(
                     "variable {} reassignment",
                     reassignment
                         .lhs
                         .iter()
-                        .map(|x| x.primary_name)
+                        .map(|x| x.name.primary_name)
                         .collect::<Vec<_>>()
                         .join(".")
                 ),
@@ -74,11 +75,25 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // find the address of this field
             // write rhs to the address above
             // struct field reassignment
+            let fields = match reassignment.lhs[0].r#type {
+                MaybeResolvedType::Resolved(ResolvedType::Struct {
+                    ref fields, name, ..
+                }) => fields,
+                a => {
+                    errors.push(CompileError::NotAStruct {
+                        name: reassignment.lhs[0].name.primary_name.to_string(),
+                        span: reassignment.lhs[0].name.span.clone(),
+                        actually: a.friendly_type_str(),
+                    });
+                    return err(warnings, errors);
+                }
+            };
+            let field_layout = get_struct_memory_layout(fields);
             let lhs = reassignment.lhs.clone();
             errors.push(CompileError::Unimplemented(
                 "Struct field reassignment assembly generation has not yet been implemented.",
-                lhs.iter().fold(lhs[0].span.clone(), |acc, this| {
-                    crate::utils::join_spans(acc, this.span.clone())
+                lhs.iter().fold(lhs[0].span(), |acc, this| {
+                    crate::utils::join_spans(acc, this.span())
                 }),
             ));
             return err(warnings, errors);
