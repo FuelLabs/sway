@@ -3,14 +3,15 @@ use std::{
     str::Chars,
 };
 
+use crate::constants::NEW_LINE_SIGN;
+
 use super::{
-    code_line::{CodeLine, CodeType},
-    parse_helpers::{
+    code_builder_helpers::{
         clean_all_incoming_whitespace, handle_ampersand_case, handle_assignment_case,
-        handle_colon_case, handle_custom_type, handle_dash_case, handle_multiline_comment_case,
-        handle_pipe_case, handle_string_case, handle_whitespace_case, is_comment,
-        is_multiline_comment,
+        handle_colon_case, handle_dash_case, handle_multiline_comment_case, handle_pipe_case,
+        handle_string_case, handle_whitespace_case, is_comment, is_multiline_comment,
     },
+    code_line::{CodeLine, CodeType},
 };
 
 #[derive(Debug)]
@@ -65,7 +66,7 @@ impl CodeBuilder {
         loop {
             if let Some((current_index, current_char)) = iter.next() {
                 match code_line.get_type() {
-                    CodeType::MultilineComment(_) => {
+                    CodeType::MultilineComment => {
                         handle_multiline_comment_case(&mut code_line, current_char, &mut iter);
                         if !code_line.is_multiline_comment() {
                             self.complete_and_add_line(code_line);
@@ -115,15 +116,17 @@ impl CodeBuilder {
                             }
 
                             // handle line breakers ';', '{', '}' & ','
-                            ',' => {
-                                if code_line.is_custom_type() {
+                            ',' => match iter.peek() {
+                                Some((_, c)) if *c == NEW_LINE_SIGN => {
+                                    iter.next();
                                     code_line.push_char(',');
                                     self.complete_and_add_line(code_line);
                                     return self.move_rest_to_new_line(line, iter);
-                                } else {
+                                }
+                                _ => {
                                     code_line.push_str(", ");
                                 }
-                            }
+                            },
                             ';' => return self.handle_semicolon_case(line, code_line, iter),
 
                             '{' => {
@@ -176,11 +179,7 @@ impl CodeBuilder {
         match self.edits.last() {
             Some(code_line) => {
                 if code_line.is_completed {
-                    if code_line.is_custom_type() {
-                        CodeLine::custom_type()
-                    } else {
-                        CodeLine::default()
-                    }
+                    CodeLine::default()
                 } else {
                     self.edits.pop().unwrap()
                 }
@@ -281,14 +280,6 @@ impl CodeBuilder {
 
     fn complete_and_add_line(&mut self, code_line: CodeLine) {
         let mut code_line = code_line;
-        if code_line.is_custom_type() {
-            handle_custom_type(&mut code_line);
-        } else {
-            if code_line.does_contain_custom_type_decl() {
-                code_line.become_custom_type();
-            }
-        }
-
         code_line.complete();
         self.add_line(code_line);
     }
@@ -296,7 +287,7 @@ impl CodeBuilder {
     fn add_line(&mut self, code_line: CodeLine) {
         let mut code_line = code_line;
 
-        if code_line.is_empty() && !code_line.is_custom_type() {
+        if code_line.is_empty() {
             // don't add more than one new empty line!
             if self
                 .edits

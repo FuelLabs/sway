@@ -1,5 +1,4 @@
 use std::{
-    cmp,
     iter::{Enumerate, Peekable},
     str::Chars,
 };
@@ -7,41 +6,13 @@ use std::{
 use super::code_line::CodeLine;
 
 pub fn is_comment(line: &str) -> bool {
-    let mut chars = line.chars();
+    let mut chars = line.trim().chars();
     chars.next() == Some('/') && chars.next() == Some('/')
 }
 
 pub fn is_multiline_comment(line: &str) -> bool {
-    let mut chars = line.chars();
+    let mut chars = line.trim().chars();
     chars.next() == Some('/') && chars.next() == Some('*')
-}
-
-pub fn handle_custom_type(code_line: &mut CodeLine) {
-    // add comma to last line, but handle possible comments first
-    let comment_index = code_line.text.find("//").unwrap_or(usize::MAX);
-    let multicomment_index = code_line.text.find("/*").unwrap_or(usize::MAX);
-
-    // either a comment or multicomment inline exists
-    if comment_index != multicomment_index {
-        let (left, right) = code_line
-            .text
-            .split_at(cmp::min(comment_index, multicomment_index));
-
-        let last_left = left.trim().chars().last();
-
-        let new_text = if last_left == Some(',') || last_left == Some('{') {
-            format!("{}{}", left, right)
-        } else {
-            format!("{}, {}", left.trim(), right)
-        };
-
-        code_line.replace_text(new_text);
-    } else {
-        let last_char = code_line.get_last_char();
-        if last_char != Some(',') && last_char != Some('{') {
-            code_line.push_char(',');
-        }
-    }
 }
 
 pub fn handle_multiline_comment_case(
@@ -52,11 +23,11 @@ pub fn handle_multiline_comment_case(
     code_line.push_char(current_char);
 
     if current_char == '*' {
-        // end multiline comment and reset to previous code type
+        // end multiline comment and reset to default type
         if let Some((_, '/')) = iter.peek() {
             code_line.push_char('/');
             iter.next();
-            code_line.reset_code_type();
+            code_line.become_default();
         }
     }
 }
