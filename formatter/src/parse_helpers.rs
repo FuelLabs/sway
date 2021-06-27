@@ -10,13 +10,29 @@ pub fn is_comment(line: &str) -> bool {
     chars.next() == Some('/') && chars.next() == Some('/')
 }
 
+pub fn handle_multiline_comment_case(
+    code_line: &mut CodeLine,
+    current_char: char,
+    iter: &mut Peekable<Enumerate<Chars>>,
+) {
+    code_line.push_char(current_char);
+
+    if current_char == '*' {
+        // end multiline
+        if let Some((_, '/')) = iter.peek() {
+            code_line.push_char('/');
+            iter.next();
+            code_line.end_multiline_comment();
+        }
+    }
+}
 // if it's a string just keep pushing the characters
 pub fn handle_string_case(code_line: &mut CodeLine, current_char: char) {
     code_line.push_char(current_char);
     if current_char == '"' {
-        let previous_char = code_line.text.chars().last().unwrap_or(' ');
+        let previous_char = code_line.text.chars().last();
         // end of the string
-        if previous_char != '\\' {
+        if previous_char != Some('\\') {
             code_line.end_string();
         }
     }
@@ -29,10 +45,10 @@ pub fn handle_whitespace_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
         let next_char = *next_char;
 
         match next_char {
-            '(' | ';' | ':' => {} // do nothing, handle it in next turn
+            '(' | ';' | ':' | ')' | ',' => {} // do nothing, handle it in next turn
             _ => {
                 // add whitespace if it is not already there
-                code_line.append_with_whitespace("");
+                code_line.append_whitespace();
             }
         }
     }
@@ -50,8 +66,7 @@ pub fn handle_assignment_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
             code_line.append_with_whitespace("=> ");
             iter.next();
         } else {
-            // it's assignment
-            code_line.append_with_whitespace("= ");
+            code_line.append_equal_sign();
         }
     } else {
         code_line.append_with_whitespace("= ");
