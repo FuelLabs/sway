@@ -1,5 +1,5 @@
 use crate::build_config::BuildConfig;
-use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
+pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 use crate::semantic_analysis::Namespace;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};

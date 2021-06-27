@@ -4,7 +4,7 @@ use crate::{
         convert_expression_to_asm, expression::get_struct_memory_layout, AsmNamespace,
         RegisterSequencer,
     },
-    semantic_analysis::ast_node::TypedReassignment,
+    semantic_analysis::ast_node::{ReassignmentLhs, TypedReassignment, TypedStructField},
     types::{MaybeResolvedType, ResolvedType},
 };
 
@@ -69,34 +69,82 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             ));
         }
         _ => {
-            // change the lhs type to be a tuple containing both the name and the type, so we can
-            // get the struct layout more easily
-            // get the field layout
-            // find the address of this field
-            // write rhs to the address above
-            // struct field reassignment
-            let fields = match reassignment.lhs[0].r#type {
-                MaybeResolvedType::Resolved(ResolvedType::Struct {
-                    ref fields, name, ..
-                }) => fields,
-                a => {
-                    errors.push(CompileError::NotAStruct {
-                        name: reassignment.lhs[0].name.primary_name.to_string(),
-                        span: reassignment.lhs[0].name.span.clone(),
-                        actually: a.friendly_type_str(),
-                    });
+            // 0. get the field layout
+            // 1. find the offset to this field
+            // 2. write rhs to the address above
+            //
+            // step 0
+            let mut offset_in_words = 0;
+            let mut iter = reassignment.lhs.iter();
+            let mut fields = match iter
+                .next()
+                .map(
+                    |ReassignmentLhs { r#type, name }| -> Result<_, CompileError<'sc>> {
+                        match r#type {
+                            MaybeResolvedType::Resolved(ResolvedType::Struct {
+                                ref fields,
+                                ref name,
+                                ..
+                            }) => Ok(fields.clone()),
+                            ref a => Err(CompileError::NotAStruct {
+                                name: name.primary_name.to_string(),
+                                span: name.span.clone(),
+                                actually: a.friendly_type_str(),
+                            }),
+                        }
+                    },
+                )
+                .expect("Empty structs not allowed yet")
+            {
+                Ok(o) => o,
+                Err(e) => {
+                    errors.push(e);
                     return err(warnings, errors);
                 }
             };
-            let field_layout = get_struct_memory_layout(fields);
-            let lhs = reassignment.lhs.clone();
-            errors.push(CompileError::Unimplemented(
-                "Struct field reassignment assembly generation has not yet been implemented.",
-                lhs.iter().fold(lhs[0].span(), |acc, this| {
-                    crate::utils::join_spans(acc, this.span())
-                }),
-            ));
-            return err(warnings, errors);
+
+            // delve into this potentially nested field access and figure out the location of this
+            // subfield
+            for ReassignmentLhs { r#type, name } in iter {
+                let fields_for_layout = fields
+                    .iter()
+                    .map(|TypedStructField { name, r#type, .. }| {
+                        (MaybeResolvedType::Resolved(r#type.clone()), name)
+                    })
+                    .collect::<Vec<_>>();
+                let field_layout = type_check!(
+                    get_struct_memory_layout(&fields_for_layout[..]),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let offset_of_this_field = type_check!(
+                    field_layout.offset_to_field_name(name),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                offset_in_words += offset_of_this_field;
+                fields = match r#type {
+                    MaybeResolvedType::Resolved(ResolvedType::Struct {
+                        ref fields,
+                        ref name,
+                        ..
+                    }) => fields.clone(),
+                    ref a => {
+                        errors.push(CompileError::NotAStruct {
+                            name: name.primary_name.to_string(),
+                            span: name.span.clone(),
+                            actually: a.friendly_type_str(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+            }
+
+            let ptr = todo!("find the pointer to the top-level struct itself");
+
+            todo!("write the evaluated RHS to the LHS calculated by the ptr + the offset")
         }
     }
 
