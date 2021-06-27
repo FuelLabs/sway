@@ -619,11 +619,21 @@ impl<'sc> TypedExpression<'sc> {
 
                         // + 1 for the "self" param
                         if args_buf.len() > (method.parameters.len() + 1) {
-                            todo!("too many args err");
+                            errors.push(CompileError::TooManyArgumentsForFunction {
+                                span: span.clone(),
+                                method_name: method_name.primary_name,
+                                expected: method.parameters.len(),
+                                received: args_buf.len(),
+                            });
                         }
 
                         if args_buf.len() < method.parameters.len() {
-                            todo!("too few args err");
+                            errors.push(CompileError::TooFewArgumentsForFunction {
+                                span: span.clone(),
+                                method_name: method_name.primary_name,
+                                expected: method.parameters.len(),
+                                received: args_buf.len(),
+                            });
                         }
 
                         let args_and_names = method
@@ -649,9 +659,9 @@ impl<'sc> TypedExpression<'sc> {
                     }
                     // something like blah::blah::~Type::foo()
                     MethodName::FromType {
-                        call_path,
-                        type_name,
-                        is_absolute,
+                        ref call_path,
+                        ref type_name,
+                        ref is_absolute,
                     } => {
                         let mut args_buf = vec![];
                         for arg in arguments {
@@ -673,7 +683,7 @@ impl<'sc> TypedExpression<'sc> {
 
                         let method = if let Some(type_name) = type_name {
                             let module = type_check!(
-                                namespace.find_module(&call_path.prefixes[..], is_absolute),
+                                namespace.find_module(&call_path.prefixes[..], *is_absolute),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -695,7 +705,7 @@ impl<'sc> TypedExpression<'sc> {
                             // there is a special case for the stdlib where type_name is `None`, handle
                             // that:
                             let module = type_check!(
-                                namespace.find_module(&call_path.prefixes[..], is_absolute),
+                                namespace.find_module(&call_path.prefixes[..], *is_absolute),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -715,11 +725,21 @@ impl<'sc> TypedExpression<'sc> {
                         };
 
                         if args_buf.len() > method.parameters.len() {
-                            todo!("too many args err");
+                            errors.push(CompileError::TooManyArgumentsForFunction {
+                                span: span.clone(),
+                                method_name: method_name.easy_name(),
+                                expected: method.parameters.len(),
+                                received: args_buf.len(),
+                            });
                         }
 
                         if args_buf.len() < method.parameters.len() {
-                            todo!("too few args err");
+                            errors.push(CompileError::TooFewArgumentsForFunction {
+                                span: span.clone(),
+                                method_name: method_name.easy_name(),
+                                expected: method.parameters.len(),
+                                received: args_buf.len(),
+                            });
                         }
 
                         let args_and_names = method
@@ -730,7 +750,7 @@ impl<'sc> TypedExpression<'sc> {
                             .collect::<Vec<(_, _)>>();
                         TypedExpression {
                             expression: TypedExpressionVariant::FunctionApplication {
-                                name: call_path,
+                                name: call_path.clone(),
                                 arguments: args_and_names,
                                 function_body: method.body.clone(),
                             },

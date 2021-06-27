@@ -4,6 +4,7 @@ use crate::{
         convert_expression_to_asm, expression::get_struct_memory_layout, AsmNamespace,
         RegisterSequencer,
     },
+    asm_lang::virtual_ops::VirtualImmediate12,
     semantic_analysis::ast_node::{ReassignmentLhs, TypedReassignment, TypedStructField},
     types::{MaybeResolvedType, ResolvedType},
 };
@@ -76,16 +77,15 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // step 0
             let mut offset_in_words = 0;
             let mut iter = reassignment.lhs.iter();
-            let mut fields = match iter
+            let (mut fields, top_level_decl) = match iter
                 .next()
                 .map(
                     |ReassignmentLhs { r#type, name }| -> Result<_, CompileError<'sc>> {
                         match r#type {
                             MaybeResolvedType::Resolved(ResolvedType::Struct {
                                 ref fields,
-                                ref name,
                                 ..
-                            }) => Ok(fields.clone()),
+                            }) => Ok((fields.clone(), name)),
                             ref a => Err(CompileError::NotAStruct {
                                 name: name.primary_name.to_string(),
                                 span: name.span.clone(),
@@ -142,9 +142,32 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 };
             }
 
-            let ptr = todo!("find the pointer to the top-level struct itself");
+            let ptr = type_check!(
+                namespace.look_up_variable(&top_level_decl),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
 
-            todo!("write the evaluated RHS to the LHS calculated by the ptr + the offset")
+            let offset_in_words =
+                match VirtualImmediate12::new(offset_in_words, reassignment.rhs.span.clone()) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        errors.push(e);
+                        return err(warnings, errors);
+                    }
+                };
+
+            // the address to write to is:
+            // the register `ptr` (the struct pointer)
+            // + the offset in words (imm is in words, the vm multiplies it by 8)
+
+            buf.push(Op::write_register_to_memory(
+                ptr.clone(),
+                return_register,
+                offset_in_words,
+                crate::utils::join_spans(reassignment.lhs[0].span(), reassignment.rhs.span.clone()),
+            ));
         }
     }
 

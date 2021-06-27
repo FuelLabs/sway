@@ -29,7 +29,6 @@ pub(crate) struct StructFieldMemoryLayoutDescriptor<'sc> {
 
 impl<'sc> StructMemoryLayoutDescriptor<'sc> {
     pub(crate) fn offset_to_field_name(&self, name: &Ident<'sc>) -> CompileResult<'sc, u64> {
-        dbg!(&name, self);
         let field_ix = if let Some(ix) = self.fields.iter().position(
             |StructFieldMemoryLayoutDescriptor { name_of_field, .. }| name_of_field == name,
         ) {

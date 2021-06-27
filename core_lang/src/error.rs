@@ -646,6 +646,24 @@ pub enum CompileError<'sc> {
     TraitNotFound { name: &'sc str, span: Span<'sc> },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span<'sc> },
+    #[error(
+        "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
+    )]
+    TooManyArgumentsForFunction {
+        span: Span<'sc>,
+        method_name: &'sc str,
+        expected: usize,
+        received: usize,
+    },
+    #[error(
+        "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
+    )]
+    TooFewArgumentsForFunction {
+        span: Span<'sc>,
+        method_name: &'sc str,
+        expected: usize,
+        received: usize,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -806,6 +824,8 @@ impl<'sc> CompileError<'sc> {
             UnnecessaryEnumInstantiator { span, .. } => span,
             TraitNotFound { span, .. } => span,
             InvalidExpressionOnLhs { span, .. } => span,
+            TooManyArgumentsForFunction { span, .. } => span,
+            TooFewArgumentsForFunction { span, .. } => span,
         }
     }
 

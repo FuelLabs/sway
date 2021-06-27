@@ -24,6 +24,16 @@ pub enum MethodName<'sc> {
     FromModule { method_name: Ident<'sc> },
 }
 
+impl<'sc> MethodName<'sc> {
+    /// To be used for error messages and debug strings
+    pub(crate) fn easy_name(&self) -> &'sc str {
+        match self {
+            MethodName::FromType { call_path, .. } => call_path.suffix.primary_name,
+            MethodName::FromModule { method_name, .. } => method_name.primary_name,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
     Literal {
