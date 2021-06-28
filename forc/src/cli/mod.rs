@@ -10,7 +10,7 @@ use analysis::Command as AnalysisCommand;
 use benchmark::Command as BenchmarkCommand;
 pub use build::Command as BuildCommand;
 use coverage::Command as CoverageCommand;
-use deploy::Command as DeployCommand;
+pub use deploy::Command as DeployCommand;
 pub use format::Command as FormatCommand;
 use init::Command as InitCommand;
 use mvprun::Command as MvprunCommand;
