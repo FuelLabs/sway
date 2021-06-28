@@ -79,6 +79,23 @@ fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
             fields: _,
             span,
         } => changes.push(Change::handle_struct(span)),
+        Expression::IfExp {
+            condition: _,
+            then,
+            r#else,
+            span: _,
+        } => {
+            handle_expression(then, changes);
+
+            if let Some(else_expr) = r#else {
+                handle_expression(else_expr, changes);
+            }
+        }
+        Expression::CodeBlock { contents, span: _ } => {
+            for content in &contents.contents {
+                traverse_ast_node(&content, changes);
+            }
+        }
         _ => {}
     }
 }
