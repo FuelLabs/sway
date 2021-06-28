@@ -115,6 +115,17 @@ impl CodeBuilder {
                                 }
                             }
 
+                            '(' => {
+                                let trimmed_text = code_line.text.trim();
+                                if trimmed_text.len() >= 2 {
+                                    let last_two_chars = &trimmed_text[trimmed_text.len() - 2..];
+                                    if last_two_chars == "if" {
+                                        code_line.push_char(' ');
+                                    }
+                                }
+                                code_line.push_char('(');
+                            }
+
                             // handle line breakers ';', '{', '}' & ','
                             ',' => match iter.peek() {
                                 Some((_, c)) if *c == NEW_LINE_SIGN => {
