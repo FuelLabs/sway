@@ -28,6 +28,7 @@ pub(crate) struct StructFieldMemoryLayoutDescriptor<'sc> {
 }
 
 impl<'sc> StructMemoryLayoutDescriptor<'sc> {
+    /// Calculates the offset in words from the start of a struct to a specific field.
     pub(crate) fn offset_to_field_name(&self, name: &Ident<'sc>) -> CompileResult<'sc, u64> {
         let field_ix = if let Some(ix) = self.fields.iter().position(
             |StructFieldMemoryLayoutDescriptor { name_of_field, .. }| name_of_field == name,
@@ -60,6 +61,43 @@ impl<'sc> StructMemoryLayoutDescriptor<'sc> {
             .map(|StructFieldMemoryLayoutDescriptor { size, .. }| size)
             .sum()
     }
+}
+
+#[test]
+fn test_struct_memory_layout() {
+    let first_field_name = Ident {
+        span: Span::new(" ", 0, 0).unwrap(),
+        primary_name: "foo",
+    };
+    let second_field_name = Ident {
+        span: Span::new(" ", 0, 0).unwrap(),
+        primary_name: "bar",
+    };
+
+    let numbers = StructMemoryLayoutDescriptor {
+        fields: vec![
+            StructFieldMemoryLayoutDescriptor {
+                name_of_field: first_field_name.clone(),
+                size: 1,
+                type_of_field: ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+            },
+            StructFieldMemoryLayoutDescriptor {
+                name_of_field: second_field_name.clone(),
+                size: 1,
+                type_of_field: ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+            },
+        ],
+    };
+
+    assert_eq!(numbers.total_size(), 2u64);
+    assert_eq!(
+        numbers.offset_to_field_name(&first_field_name).unwrap(),
+        &0u64
+    );
+    assert_eq!(
+        numbers.offset_to_field_name(&second_field_name).unwrap(),
+        &1u64
+    );
 }
 
 pub(crate) fn get_struct_memory_layout<'sc>(

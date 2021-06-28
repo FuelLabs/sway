@@ -26,7 +26,10 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
-    // step 0. find the type of the top level
+    // step 0. find the type and register of the top level variable
+    // step 1. get the memory layout of the struct
+    // step 2. calculate the offset to the spot we are accessing
+    // step 3. write a pointer to that word into the return register
     return err(
         vec![],
         vec![CompileError::Unimplemented(
