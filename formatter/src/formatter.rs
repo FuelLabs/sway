@@ -284,6 +284,14 @@ fn main() {
         blue: 0,
         green: 0,
     };
+
+    if (true) {
+        let rgb: Rgb = Rgb {
+            red: 255,
+            blue: 0,
+            green: 0,
+        };
+    }
 }
 
 struct Rgb {
@@ -359,6 +367,13 @@ fn main() {
         blue: 0,
         green: 0,
     };
+
+    if(true){
+        let rgb: Rgb = Rgb {
+            red:255,      blue: 0,
+                green: 0,
+        };
+    }
 }
 
 struct Rgb {
