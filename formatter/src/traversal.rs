@@ -41,27 +41,26 @@ fn traverse_ast_node(ast_node: &AstNode, changes: &mut Vec<Change>) {
     match &ast_node.content {
         AstNodeContent::Declaration(dec) => handle_declaration(dec, ast_node, changes),
 
-        AstNodeContent::ReturnStatement(ret) => handle_return_statement(ret, ast_node, changes),
+        AstNodeContent::ReturnStatement(ret) => handle_return_statement(ret, changes),
 
-        AstNodeContent::Expression(expr) => handle_expression(expr, ast_node, changes),
+        AstNodeContent::Expression(expr) => handle_expression(expr, changes),
 
         AstNodeContent::ImplicitReturnExpression(expr) => {
-            handle_implicit_return_expression(expr, ast_node, changes)
+            handle_implicit_return_expression(expr, changes)
         }
 
         _ => {}
     }
 }
 
-fn handle_return_statement(ret: &ReturnStatement, ast_node: &AstNode, changes: &mut Vec<Change>) {
-    handle_expression(&ret.expr, ast_node, changes)
+fn handle_return_statement(ret: &ReturnStatement, changes: &mut Vec<Change>) {
+    handle_expression(&ret.expr, changes)
 }
 
 fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<Change>) {
     match &dec {
-        Declaration::VariableDeclaration(var_dec) => {
-            handle_expression(&var_dec.body, ast_node, changes)
-        }
+        Declaration::VariableDeclaration(var_dec) => handle_expression(&var_dec.body, changes),
+
         Declaration::StructDeclaration(_) => changes.push(Change::handle_struct(&ast_node.span)),
 
         Declaration::FunctionDeclaration(func) => {
@@ -73,21 +72,17 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
     };
 }
 
-fn handle_expression(expr: &Expression, ast_node: &AstNode, changes: &mut Vec<Change>) {
+fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
     match &expr {
         Expression::StructExpression {
             struct_name: _,
             fields: _,
-            span: _,
-        } => changes.push(Change::handle_struct(&ast_node.span)),
+            span,
+        } => changes.push(Change::handle_struct(span)),
         _ => {}
     }
 }
 
-fn handle_implicit_return_expression(
-    expr: &Expression,
-    ast_node: &AstNode,
-    changes: &mut Vec<Change>,
-) {
-    handle_expression(expr, ast_node, changes)
+fn handle_implicit_return_expression(expr: &Expression, changes: &mut Vec<Change>) {
+    handle_expression(expr, changes)
 }
