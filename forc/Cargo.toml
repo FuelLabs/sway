@@ -17,6 +17,7 @@ line-col = "0.2"
 #pest = "2.1"
 fuel-asm = {git = "ssh://git@github.com/FuelLabs/fuel-asm.git"}
 pest = {git = "https://github.com/sezna/pest.git", rev = "8aa58791f759daf4caee26e8560e862df5a6afb7"}
+prettydiff = "0.4.0"
 serde = {version = "1.0", features = ["derive"]}
 source-span = "2.4"
 structopt = "0.3"
