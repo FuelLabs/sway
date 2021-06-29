@@ -94,9 +94,9 @@ impl CodeLine {
         let last = self.text.chars().last();
 
         if last == Some('!') {
-            self.push_char('=');
+            self.push_str("= ");
         } else {
-            self.append_with_whitespace("=");
+            self.append_with_whitespace("= ");
         }
     }
 

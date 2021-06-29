@@ -279,7 +279,25 @@ struct Example {    // first comment
         let correct_sway_code = r#"script;
 
 fn main() {
+    let rgb: Rgb = Rgb {
+        red: 255,
+        blue: 0,
+        green: 0,
+    };
 
+    if (true) {
+        let rgb: Rgb = Rgb {
+            red: 255,
+            blue: 0,
+            green: 0,
+        };
+    }
+}
+
+struct Rgb {
+    red: u64,
+    green: u64,
+    blue: u64,
 }
 
 struct Structure {
@@ -344,7 +362,24 @@ struct Example {
         let sway_code = r#"script;
 
 fn main() {
+    let rgb:Rgb=Rgb {
+        red: 255,
+        blue: 0,
+        green: 0,
+    };
 
+    if(true){
+        let rgb: Rgb = Rgb {
+            red:255,      blue: 0,
+                green: 0,
+        };
+    }
+}
+
+struct Rgb {
+    red: u64,
+    green: u64,
+    blue: u64,
 }
 
 struct Structure {
