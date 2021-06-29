@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
+use crate::utils::constants;
 use crate::utils::manifest::{Dependency, DependencyDetails, Manifest};
 use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
@@ -112,14 +113,14 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     Ok(main)
 }
 
-// Downloads a non-local dependency that's hosted on GitHub.
-// By default, it stores the dependency in `~/.forc/`.
-// A given dependency `dep` is stored under `~/.forc/dep/default/$owner-$repo-$hash`.
-// If no hash (nor any other type of reference) is provided, Forc
-// will download the default branch at the latest commit.
-// If a branch is specified, it will go in `~/.forc/dep/$branch/$owner-$repo-$hash.
-// If a version is specified, it will go in `~/.forc/dep/$version/$owner-$repo-$hash.
-// Version takes precedence over branch reference.
+/// Downloads a non-local dependency that's hosted on GitHub.
+/// By default, it stores the dependency in `~/.forc/`.
+/// A given dependency `dep` is stored under `~/.forc/dep/default/$owner-$repo-$hash`.
+/// If no hash (nor any other type of reference) is provided, Forc
+/// will download the default branch at the latest commit.
+/// If a branch is specified, it will go in `~/.forc/dep/$branch/$owner-$repo-$hash.
+/// If a version is specified, it will go in `~/.forc/dep/$version/$owner-$repo-$hash.
+/// Version takes precedence over branch reference.
 fn download_github_dep(
     dep_name: &String,
     repo_base_url: &str,
@@ -133,12 +134,29 @@ fn download_github_dep(
 
     // Version tag takes precedence over branch reference.
     let out_dir = match &version {
-        Some(v) => format!("{}/.forc/{}/{}", home_dir, dep_name, v),
+        Some(v) => format!(
+            "{}/{}/{}/{}",
+            home_dir,
+            constants::FORC_DEPENDENCIES_DIRECTORY,
+            dep_name,
+            v
+        ),
         // If no version specified, check if a branch was specified
         None => match &branch {
-            Some(b) => format!("{}/.forc/{}/{}", home_dir, dep_name, b),
+            Some(b) => format!(
+                "{}/{}/{}/{}",
+                home_dir,
+                constants::FORC_DEPENDENCIES_DIRECTORY,
+                dep_name,
+                b
+            ),
             // If no version and no branch, use default
-            None => format!("{}/.forc/{}/default", home_dir, dep_name),
+            None => format!(
+                "{}/{}/{}/default",
+                home_dir,
+                constants::FORC_DEPENDENCIES_DIRECTORY,
+                dep_name
+            ),
         },
     };
 
@@ -165,11 +183,11 @@ fn download_github_dep(
     Ok(downloaded_dir)
 }
 
-// Builds a proper URL that's used to call GitHub's API.
-// The dependency is specified as `https://github.com/:owner/:project`
-// And the API URL must be like `https://api.github.com/repos/:owner/:project/tarball`
-// Adding a `:ref` at the end makes it download a branch/tag based repo.
-// Omitting it makes it download the default branch at latest commit.
+/// Builds a proper URL that's used to call GitHub's API.
+/// The dependency is specified as `https://github.com/:owner/:project`
+/// And the API URL must be like `https://api.github.com/repos/:owner/:project/tarball`
+/// Adding a `:ref` at the end makes it download a branch/tag based repo.
+/// Omitting it makes it download the default branch at latest commit.
 fn build_github_api_url(
     dependency_url: &str,
     branch: &Option<String>,
