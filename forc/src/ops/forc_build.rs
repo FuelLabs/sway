@@ -13,7 +13,13 @@ use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
     Namespace,
 };
-use std::{fs, path::PathBuf};
+
+use anyhow::{anyhow, Context, Result};
+use curl::easy::Easy;
+use dirs::home_dir;
+use flate2::read::GzDecoder;
+use std::{fs, io::Cursor, path::Path, path::PathBuf, str};
+use tar::Archive;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let BuildCommand {
@@ -37,11 +43,43 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         }
     };
     let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone());
-    let manifest = read_manifest(&manifest_dir)?;
+    let mut manifest = read_manifest(&manifest_dir)?;
 
     let mut namespace: Namespace = Default::default();
-    if let Some(ref deps) = manifest.dependencies {
-        for (dependency_name, dependency_details) in deps.iter() {
+    if let Some(ref mut deps) = manifest.dependencies {
+        for (dependency_name, dependency_details) in deps.iter_mut() {
+            // Check if dependency is a git-based dependency.
+            let dep = match dependency_details {
+                Dependency::Simple(..) => {
+                    return Err(
+                        "Not yet implemented: Simple version-spec dependencies require a registry."
+                            .into(),
+                    );
+                }
+                Dependency::Detailed(dep_details) => dep_details,
+            };
+
+            // Download a non-local dependency if the `git` property is set in this dependency.
+            if dep.git.is_some() {
+                let downloaded_dep_path = match download_github_dep(
+                    dependency_name,
+                    dep.git.as_ref().unwrap(),
+                    &dep.branch,
+                    &dep.version,
+                ) {
+                    Ok(path) => path,
+                    Err(e) => {
+                        return Err(format!(
+                            "Couldn't download dependency ({:?}): {:?}",
+                            dependency_name, e
+                        ))
+                    }
+                };
+
+                // Mutate this dependency's path to hold the newly downloaded dependency's path.
+                dep.path = Some(downloaded_dep_path);
+            }
+
             compile_dependency_lib(
                 &this_dir,
                 &dependency_name,
@@ -74,6 +112,148 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     Ok(main)
 }
 
+// Downloads a non-local dependency that's hosted on GitHub.
+// By default, it stores the dependency in `~/.forc/`.
+// A given dependency `dep` is stored under `~/.forc/dep/default/$owner-$repo-$hash`.
+// If no hash (nor any other type of reference) is provided, Forc
+// will download the default branch at the latest commit.
+// If a branch is specified, it will go in `~/.forc/dep/$branch/$owner-$repo-$hash.
+// If a version is specified, it will go in `~/.forc/dep/$version/$owner-$repo-$hash.
+// Version takes precedence over branch reference.
+fn download_github_dep(
+    dep_name: &String,
+    repo_base_url: &str,
+    branch: &Option<String>,
+    version: &Option<String>,
+) -> Result<String> {
+    let home_dir = match home_dir() {
+        None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
+        Some(p) => p.to_str().unwrap().to_owned(),
+    };
+
+    // Version tag takes precedence over branch reference.
+    let out_dir = match &version {
+        Some(v) => format!("{}/.forc/{}/{}", home_dir, dep_name, v),
+        // If no version specified, check if a branch was specified
+        None => match &branch {
+            Some(b) => format!("{}/.forc/{}/{}", home_dir, dep_name, b),
+            // If no version and no branch, use default
+            None => format!("{}/.forc/{}/default", home_dir, dep_name),
+        },
+    };
+
+    // Check if dependency is already installed, if so, return its path.
+    if Path::new(&out_dir).exists() {
+        for entry in fs::read_dir(&out_dir)? {
+            let path = entry?.path();
+            // If the path to that dependency at that branch/version already
+            // exists and there's a directory inside of it,
+            // this directory should be the installation path.
+            match path.is_dir() {
+                true => return Ok(path.to_str().unwrap().to_string()),
+                false => break,
+            }
+        }
+    }
+
+    let github_api_url = build_github_api_url(repo_base_url, &branch, &version);
+
+    println!("Downloading {:?} into {:?}", dep_name, out_dir);
+
+    let downloaded_dir = download_tarball(&github_api_url, &out_dir).unwrap();
+
+    Ok(downloaded_dir)
+}
+
+// Builds a proper URL that's used to call GitHub's API.
+// The dependency is specified as `https://github.com/:owner/:project`
+// And the API URL must be like `https://api.github.com/repos/:owner/:project/tarball`
+// Adding a `:ref` at the end makes it download a branch/tag based repo.
+// Omitting it makes it download the default branch at latest commit.
+fn build_github_api_url(
+    dependency_url: &str,
+    branch: &Option<String>,
+    version: &Option<String>,
+) -> String {
+    let mut pieces = dependency_url.rsplit("/");
+
+    let project_name: &str = match pieces.next() {
+        Some(p) => p.into(),
+        None => dependency_url.into(),
+    };
+
+    let owner_name: &str = match pieces.next() {
+        Some(p) => p.into(),
+        None => dependency_url.into(),
+    };
+
+    // Version tag takes precedence over branch reference.
+    match version {
+        Some(v) => {
+            format!(
+                "https://api.github.com/repos/{}/{}/tarball/{}",
+                owner_name, project_name, v
+            )
+        }
+        // If no version specified, check if a branch was specified
+        None => match branch {
+            Some(b) => {
+                format!(
+                    "https://api.github.com/repos/{}/{}/tarball/{}",
+                    owner_name, project_name, b
+                )
+            }
+            // If no version and no branch, download default branch at latest commit
+            None => {
+                format!(
+                    "https://api.github.com/repos/{}/{}/tarball",
+                    owner_name, project_name
+                )
+            }
+        },
+    }
+}
+
+fn download_tarball(url: &str, out_dir: &str) -> Result<String> {
+    let mut data = Vec::new();
+    let mut handle = Easy::new();
+
+    // Download the tarball.
+    handle.url(url).context("failed to configure tarball URL")?;
+    handle
+        .follow_location(true)
+        .context("failed to configure follow location")?;
+
+    handle
+        .useragent("forc-builder")
+        .context("failed to configure User-Agent")?;
+    {
+        let mut transfer = handle.transfer();
+        transfer
+            .write_function(|new_data| {
+                data.extend_from_slice(new_data);
+                Ok(new_data.len())
+            })
+            .context("failed to write download data")?;
+        transfer.perform().context("failed to download tarball")?;
+    }
+
+    // Unpack the tarball.
+    Archive::new(GzDecoder::new(Cursor::new(data)))
+        .unpack(out_dir)
+        .context("failed to unpack tarball")?;
+
+    for entry in fs::read_dir(out_dir)? {
+        let path = entry?.path();
+        match path.is_dir() {
+            true => return Ok(path.to_str().unwrap().to_string()),
+            false => (),
+        }
+    }
+
+    Err(anyhow!("couldn't find downloaded dependency"))
+}
+
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
 fn compile_dependency_lib<'source, 'manifest>(
@@ -84,7 +264,9 @@ fn compile_dependency_lib<'source, 'manifest>(
 ) -> Result<(), String> {
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
-            return Err("Simple version-spec dependencies require a registry.".into())
+            return Err(
+                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
+            )
         }
         Dependency::Detailed(DependencyDetails { path, .. }) => path,
     };

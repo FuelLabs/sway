@@ -43,6 +43,7 @@ pub struct DependencyDetails {
     pub(crate) version: Option<String>,
     pub(crate) path: Option<String>,
     pub(crate) git: Option<String>,
+    pub(crate) branch: Option<String>,
 }
 
 #[test]
