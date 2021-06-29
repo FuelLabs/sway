@@ -10,7 +10,6 @@ use crate::{
     types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     CompileResult, Ident,
 };
-use pest::Span;
 
 /// Contains an ordered array of fields and their sizes in words. Used in the code generation
 /// of struct field reassignments, accesses, and struct initializations.
@@ -104,7 +103,7 @@ pub(crate) fn get_struct_memory_layout<'sc>(
     fields_with_names: &[(MaybeResolvedType<'sc>, &Ident<'sc>)],
 ) -> CompileResult<'sc, StructMemoryLayoutDescriptor<'sc>> {
     let mut fields_with_sizes = vec![];
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
     for (field, name) in fields_with_names {
         let (ty, stack_size) = match field {

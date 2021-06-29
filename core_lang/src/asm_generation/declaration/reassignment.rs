@@ -126,11 +126,9 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 );
                 offset_in_words += offset_of_this_field;
                 fields = match r#type {
-                    MaybeResolvedType::Resolved(ResolvedType::Struct {
-                        ref fields,
-                        ref name,
-                        ..
-                    }) => fields.clone(),
+                    MaybeResolvedType::Resolved(ResolvedType::Struct { ref fields, .. }) => {
+                        fields.clone()
+                    }
                     ref a => {
                         errors.push(CompileError::NotAStruct {
                             name: name.primary_name.to_string(),
