@@ -30,7 +30,9 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
                                 format_sway_file(&file, &formatted_content)?;
                             }
                         }
-                        _ => {}
+                        Err(errors) => {
+                            eprintln!("{}", errors.join("\n"));
+                        }
                     }
                 }
             }
