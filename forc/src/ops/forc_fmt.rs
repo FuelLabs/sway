@@ -3,6 +3,7 @@ use crate::{
     utils::{constants::SWAY_EXTENSION, helpers::find_manifest_dir},
 };
 use formatter::get_formatted_data;
+use prettydiff::diff_lines;
 use std::{
     ffi::OsStr,
     fmt, fs, io,
@@ -15,7 +16,7 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     match find_manifest_dir(&curr_dir) {
         Some(path) => {
             let files = get_sway_files(path)?;
-            let mut files_to_be_formatted = vec![];
+            let mut contains_edits = false;
 
             for file in files {
                 if let Ok(file_content) = fs::read_to_string(&file) {
@@ -24,7 +25,14 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
                         Ok((_, formatted_content)) => {
                             if command.check {
                                 if file_content != formatted_content {
-                                    files_to_be_formatted.push(format!("{:?}", file))
+                                    let changeset = diff_lines(&file_content, &formatted_content);
+
+                                    println!("{:?}\n", file);
+                                    println!("{}", changeset);
+
+                                    if !contains_edits {
+                                        contains_edits = true;
+                                    }
                                 }
                             } else {
                                 format_sway_file(&file, &formatted_content)?;
@@ -38,15 +46,12 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
             }
 
             if command.check {
-                if files_to_be_formatted.is_empty() {
-                    // All files are formatted, exit cleanly
-                    std::process::exit(0);
-                } else {
-                    for file in files_to_be_formatted {
-                        eprintln!("{}", file);
-                    }
+                if contains_edits {
                     // One or more files are not formatted, exit with error
                     std::process::exit(1);
+                } else {
+                    // All files are formatted, exit cleanly
+                    std::process::exit(0);
                 }
             }
 
