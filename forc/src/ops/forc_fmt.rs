@@ -19,18 +19,15 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
 
             for file in files {
                 if let Ok(file_content) = fs::read_to_string(&file) {
-                    match core_lang::parse(&file_content) {
-                        core_lang::CompileResult::Ok {
-                            value: _,
-                            warnings: _,
-                            errors: _,
-                        } => {
+                    // todo: get tab_size from Manifest file
+                    match get_formatted_data(&file_content, 4) {
+                        Ok((_, formatted_content)) => {
                             if command.check {
-                                if file_should_change(&file_content) {
+                                if file_content != formatted_content {
                                     files_to_be_formatted.push(format!("{:?}", file))
                                 }
                             } else {
-                                format_sway_file(&file_content, &file)?;
+                                format_sway_file(&file, &formatted_content)?;
                             }
                         }
                         _ => {}
@@ -79,16 +76,7 @@ fn get_sway_files(path: PathBuf) -> Result<Vec<PathBuf>, FormatError> {
     Ok(files)
 }
 
-fn file_should_change(file_content: &str) -> bool {
-    // todo: get tab_size from Manifest file
-    let (_, formatted_content) = get_formatted_data(file_content, 4);
-    let should_change = file_content != &formatted_content;
-    should_change
-}
-
-fn format_sway_file(file_content: &str, file: &PathBuf) -> Result<(), FormatError> {
-    // todo: get tab_size from Manifest file
-    let (_, formatted_content) = get_formatted_data(file_content, 4);
+fn format_sway_file(file: &PathBuf, formatted_content: &str) -> Result<(), FormatError> {
     fs::write(file, formatted_content)?;
 
     Ok(())

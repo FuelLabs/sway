@@ -338,6 +338,10 @@ dependencies = [
 [[package]]
 name = "formatter"
 version = "0.1.0"
+dependencies = [
+ "core_lang",
+ "ropey",
+]
 
 [[package]]
 name = "fuchsia-cprng"

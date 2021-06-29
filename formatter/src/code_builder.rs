@@ -3,13 +3,15 @@ use std::{
     str::Chars,
 };
 
+use crate::constants::NEW_LINE_SIGN;
+
 use super::{
-    code_line::CodeLine,
-    parse_helpers::{
+    code_builder_helpers::{
         clean_all_incoming_whitespace, handle_ampersand_case, handle_assignment_case,
         handle_colon_case, handle_dash_case, handle_multiline_comment_case, handle_pipe_case,
-        handle_string_case, handle_whitespace_case, is_comment,
+        handle_string_case, handle_whitespace_case, is_comment, is_multiline_comment,
     },
+    code_line::{CodeLine, CodeType},
 };
 
 #[derive(Debug)]
@@ -54,103 +56,116 @@ impl CodeBuilder {
             line
         };
 
-        // handle comment
-        if is_comment(line) {
-            code_line.push_str(line);
-            return self.complete_and_add_line(code_line);
-        }
-
         // add newline if it's multiline string or comment
         if is_string_or_multiline_comment {
             code_line.push_char('\n');
-        }
-
-        if code_line.is_multiline_comment() && line.trim() == "*/" {
-            code_line.push_str(&self.get_indentation());
-            code_line.push_str("*/");
-            return self.complete_and_add_line(code_line);
         }
 
         let mut iter = line.chars().enumerate().peekable();
 
         loop {
             if let Some((current_index, current_char)) = iter.next() {
-                if code_line.is_string() {
-                    handle_string_case(&mut code_line, current_char);
-                } else if code_line.is_multiline_comment() {
-                    handle_multiline_comment_case(&mut code_line, current_char, &mut iter);
-                    if !code_line.is_multiline_comment() {
-                        self.complete_and_add_line(code_line);
-                        return self.move_rest_to_new_line(line, iter);
-                    }
-                } else {
-                    match current_char {
-                        ' ' => handle_whitespace_case(&mut code_line, &mut iter),
-                        '=' => handle_assignment_case(&mut code_line, &mut iter),
-                        ':' => handle_colon_case(&mut code_line, &mut iter),
-                        '-' => handle_dash_case(&mut code_line, &mut iter),
-                        '|' => handle_pipe_case(&mut code_line, &mut iter),
-                        '&' => handle_ampersand_case(&mut code_line, &mut iter),
-
-                        ',' => code_line.push_str(", "),
-                        '+' => code_line.append_with_whitespace("+ "),
-                        '*' => code_line.append_with_whitespace("* "),
-                        '/' => {
-                            match iter.peek() {
-                                Some((_, '*')) => {
-                                    // it's a multiline comment
-                                    code_line.become_multiline_comment();
-                                    iter.next();
-                                    code_line.push_str("/*");
-                                }
-                                Some((_, '/')) => {
-                                    // it's a comment
-                                    let comment = &line[current_index..];
-                                    code_line.append_with_whitespace(&comment);
-                                    return self.complete_and_add_line(code_line);
-                                }
-                                _ => code_line.append_with_whitespace("/ "),
-                            }
-                        }
-                        '%' => code_line.append_with_whitespace("% "),
-                        '^' => code_line.append_with_whitespace("^ "),
-                        '!' => code_line.append_with_whitespace("!"),
-
-                        // handle beginning of the string
-                        '"' => {
-                            if !code_line.is_string() {
-                                code_line.append_with_whitespace("\"");
-                                code_line.become_string();
-                            }
-                        }
-
-                        // handle line breakers ';', '{' AND '}'
-                        ';' => return self.handle_semicolon_case(line, code_line, iter),
-
-                        '{' => {
-                            code_line.append_with_whitespace("{");
+                match code_line.get_type() {
+                    CodeType::MultilineComment => {
+                        handle_multiline_comment_case(&mut code_line, current_char, &mut iter);
+                        if !code_line.is_multiline_comment() {
                             self.complete_and_add_line(code_line);
-                            self.indent();
-
-                            // if there is more - move to new line!
                             return self.move_rest_to_new_line(line, iter);
                         }
+                    }
+                    CodeType::String => handle_string_case(&mut code_line, current_char),
 
-                        '}' => return self.handle_close_brace(line, code_line, iter),
+                    _ => {
+                        match current_char {
+                            ' ' => handle_whitespace_case(&mut code_line, &mut iter),
+                            '=' => handle_assignment_case(&mut code_line, &mut iter),
+                            ':' => handle_colon_case(&mut code_line, &mut iter),
+                            '-' => handle_dash_case(&mut code_line, &mut iter),
+                            '|' => handle_pipe_case(&mut code_line, &mut iter),
+                            '&' => handle_ampersand_case(&mut code_line, &mut iter),
 
-                        // add the rest
-                        _ => {
-                            // handle case when keywords are on different lines
-                            if current_index == 0 {
-                                // if there are 2 keywords on different lines - add whitespace between them
-                                if let Some(last_char) = code_line.text.chars().last() {
-                                    if last_char.is_alphabetic() && current_char.is_alphabetic() {
-                                        code_line.append_whitespace()
+                            '+' => code_line.append_with_whitespace("+ "),
+                            '*' => code_line.append_with_whitespace("* "),
+                            '/' => {
+                                match iter.peek() {
+                                    Some((_, '*')) => {
+                                        // it's a multiline comment
+                                        code_line.become_multiline_comment();
+                                        iter.next();
+                                        code_line.push_str("/*");
                                     }
+                                    Some((_, '/')) => {
+                                        // it's a comment
+                                        let comment = &line[current_index..];
+                                        code_line.append_with_whitespace(&comment);
+                                        return self.complete_and_add_line(code_line);
+                                    }
+                                    _ => code_line.append_with_whitespace("/ "),
+                                }
+                            }
+                            '%' => code_line.append_with_whitespace("% "),
+                            '^' => code_line.append_with_whitespace("^ "),
+                            '!' => code_line.append_with_whitespace("!"),
+
+                            // handle beginning of the string
+                            '"' => {
+                                if !code_line.is_string() {
+                                    code_line.append_with_whitespace("\"");
+                                    code_line.become_string();
                                 }
                             }
 
-                            code_line.push_char(current_char)
+                            '(' => {
+                                let trimmed_text = code_line.text.trim();
+                                if trimmed_text.len() >= 2 {
+                                    let last_two_chars = &trimmed_text[trimmed_text.len() - 2..];
+                                    if last_two_chars == "if" {
+                                        code_line.push_char(' ');
+                                    }
+                                }
+                                code_line.push_char('(');
+                            }
+
+                            // handle line breakers ';', '{', '}' & ','
+                            ',' => match iter.peek() {
+                                Some((_, c)) if *c == NEW_LINE_SIGN => {
+                                    iter.next();
+                                    code_line.push_char(',');
+                                    self.complete_and_add_line(code_line);
+                                    return self.move_rest_to_new_line(line, iter);
+                                }
+                                _ => {
+                                    code_line.push_str(", ");
+                                }
+                            },
+                            ';' => return self.handle_semicolon_case(line, code_line, iter),
+
+                            '{' => {
+                                code_line.append_with_whitespace("{");
+                                self.complete_and_add_line(code_line);
+                                self.indent();
+
+                                // if there is more - move to new line!
+                                return self.move_rest_to_new_line(line, iter);
+                            }
+
+                            '}' => return self.handle_close_brace(line, code_line, iter),
+
+                            // add the rest
+                            _ => {
+                                // handle case when keywords are on different lines
+                                if current_index == 0 {
+                                    // if there are 2 keywords on different lines - add whitespace between them
+                                    if let Some(last_char) = code_line.get_last_char() {
+                                        if last_char.is_alphabetic() && current_char.is_alphabetic()
+                                        {
+                                            code_line.append_whitespace()
+                                        }
+                                    }
+                                }
+
+                                code_line.push_char(current_char)
+                            }
                         }
                     }
                 }
@@ -198,7 +213,7 @@ impl CodeBuilder {
                 // case when '}' was separated from ';' by one or more new lines
                 if previous_code_line.is_completed {
                     // remove empty line first
-                    if !(previous_code_line.text.chars().last() == Some('}')) {
+                    if !(previous_code_line.get_last_char() == Some('}')) {
                         self.edits.pop();
                     }
 
@@ -260,6 +275,13 @@ impl CodeBuilder {
                     code_line.push_char(' ');
                     code_line.push_str(next_line);
                     self.add_line(code_line);
+                }
+            } else if is_multiline_comment(&next_line) {
+                if let Some(mut code_line) = self.edits.pop() {
+                    code_line.is_completed = false;
+                    code_line.push_char(' ');
+                    self.add_line(code_line);
+                    self.format_and_add(next_line);
                 }
             } else {
                 self.format_and_add(next_line);

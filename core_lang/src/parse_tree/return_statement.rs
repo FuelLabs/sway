@@ -5,7 +5,7 @@ use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct ReturnStatement<'sc> {
-    pub(crate) expr: Expression<'sc>,
+    pub expr: Expression<'sc>,
 }
 
 impl<'sc> ReturnStatement<'sc> {
