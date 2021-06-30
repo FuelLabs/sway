@@ -62,10 +62,10 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
             };
 
             // Download a non-local dependency if the `git` property is set in this dependency.
-            if let Some(_) = dep.git {
+            if let Some(git) = &dep.git {
                 let downloaded_dep_path = match download_github_dep(
                     dependency_name,
-                    dep.git.as_ref().unwrap(),
+                    git,
                     &dep.branch,
                     &dep.version,
                     offline_mode,
