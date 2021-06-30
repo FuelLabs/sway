@@ -6,8 +6,13 @@ use std::{
 use super::code_line::CodeLine;
 
 pub fn is_comment(line: &str) -> bool {
-    let mut chars = line.chars();
+    let mut chars = line.trim().chars();
     chars.next() == Some('/') && chars.next() == Some('/')
+}
+
+pub fn is_multiline_comment(line: &str) -> bool {
+    let mut chars = line.trim().chars();
+    chars.next() == Some('/') && chars.next() == Some('*')
 }
 
 pub fn handle_multiline_comment_case(
@@ -18,14 +23,15 @@ pub fn handle_multiline_comment_case(
     code_line.push_char(current_char);
 
     if current_char == '*' {
-        // end multiline
+        // end multiline comment and reset to default type
         if let Some((_, '/')) = iter.peek() {
             code_line.push_char('/');
             iter.next();
-            code_line.end_multiline_comment();
+            code_line.become_default();
         }
     }
 }
+
 // if it's a string just keep pushing the characters
 pub fn handle_string_case(code_line: &mut CodeLine, current_char: char) {
     code_line.push_char(current_char);
@@ -33,7 +39,7 @@ pub fn handle_string_case(code_line: &mut CodeLine, current_char: char) {
         let previous_char = code_line.text.chars().last();
         // end of the string
         if previous_char != Some('\\') {
-            code_line.end_string();
+            code_line.become_default();
         }
     }
 }
