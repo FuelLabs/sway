@@ -62,7 +62,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
             };
 
             // Download a non-local dependency if the `git` property is set in this dependency.
-            if dep.git.is_some() {
+            if let Some(_) = dep.git {
                 let downloaded_dep_path = match download_github_dep(
                     dependency_name,
                     dep.git.as_ref().unwrap(),
@@ -170,9 +170,9 @@ fn download_github_dep(
             // If the path to that dependency at that branch/version already
             // exists and there's a directory inside of it,
             // this directory should be the installation path.
-            match path.is_dir() {
-                true => return Ok(path.to_str().unwrap().to_string()),
-                false => break,
+
+            if path.is_dir() {
+                return Ok(path.to_str().unwrap().to_string());
             }
         }
     }
