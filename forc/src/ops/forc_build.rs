@@ -27,6 +27,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         path,
         binary_outfile,
         print_asm,
+        offline_mode,
     } = command;
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(path) = path {
@@ -67,6 +68,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                     dep.git.as_ref().unwrap(),
                     &dep.branch,
                     &dep.version,
+                    offline_mode,
                 ) {
                     Ok(path) => path,
                     Err(e) => {
@@ -126,6 +128,7 @@ fn download_github_dep(
     repo_base_url: &str,
     branch: &Option<String>,
     version: &Option<String>,
+    offline_mode: bool,
 ) -> Result<String> {
     let home_dir = match home_dir() {
         None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
@@ -172,6 +175,18 @@ fn download_github_dep(
                 false => break,
             }
         }
+    }
+
+    // If offline mode is enabled, don't proceed as it will
+    // make use of the network to download the dependency from
+    // GitHub.
+    // If it's offline mode and the dependency already exists
+    // locally, then it would've been returned in the block above.
+    if offline_mode {
+        return Err(anyhow!(
+            "Can't build dependency: dependency {} doesn't exist locally and offline mode is enabled",
+            dep_name
+        ));
     }
 
     let github_api_url = build_github_api_url(repo_base_url, &branch, &version);
