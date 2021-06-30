@@ -193,9 +193,10 @@ fn download_github_dep(
 
     println!("Downloading {:?} into {:?}", dep_name, out_dir);
 
-    let downloaded_dir = download_tarball(&github_api_url, &out_dir).unwrap();
-
-    Ok(downloaded_dir)
+    match download_tarball(&github_api_url, &out_dir) {
+        Ok(downloaded_dir) => Ok(downloaded_dir),
+        Err(e) => Err(anyhow!("couldn't download from {}: {}", &github_api_url, e)),
+    }
 }
 
 /// Builds a proper URL that's used to call GitHub's API.
@@ -274,7 +275,7 @@ fn download_tarball(url: &str, out_dir: &str) -> Result<String> {
     // Unpack the tarball.
     Archive::new(GzDecoder::new(Cursor::new(data)))
         .unpack(out_dir)
-        .context("failed to unpack tarball")?;
+        .with_context(|| format!("failed to unpack tarball in directory: {}", out_dir))?;
 
     for entry in fs::read_dir(out_dir)? {
         let path = entry?.path();
@@ -284,7 +285,10 @@ fn download_tarball(url: &str, out_dir: &str) -> Result<String> {
         }
     }
 
-    Err(anyhow!("couldn't find downloaded dependency"))
+    Err(anyhow!(
+        "couldn't find downloaded dependency in directory: {}",
+        out_dir
+    ))
 }
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
