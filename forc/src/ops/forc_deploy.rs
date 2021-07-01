@@ -1,11 +1,12 @@
 use core_lang::{compile_to_bytecode, parse, BuildConfig, Namespace};
 use fuel_tx::{crypto::hash, ContractAddress, Output, Salt, Transaction};
 
-use crate::{
-    cli::DeployCommand,
-    utils::helpers::{find_manifest_dir, get_main_file, read_manifest},
-};
-use std::{fmt, io};
+use crate::cli::DeployCommand;
+
+use crate::utils::{constants, helpers};
+use constants::MANIFEST_FILE_NAME;
+use helpers::{find_manifest_dir, get_main_file, read_manifest};
+use std::{fmt, io, path::PathBuf};
 
 use super::forc_build::compile_dependency_lib;
 
@@ -56,7 +57,7 @@ pub fn deploy(_: DeployCommand) -> Result<(), DeployError> {
                 _ => Err("Project does not compile".into()),
             }
         }
-        None => Err("Manifest file does not exist".into()),
+        None => Err(DeployError::manifest_file_missing(curr_dir)),
     }
 }
 
@@ -105,6 +106,16 @@ fn create_contract_tx(compiled_contract: Vec<u8>) -> Transaction {
 
 pub struct DeployError {
     pub message: String,
+}
+
+impl DeployError {
+    fn manifest_file_missing(curr_dir: PathBuf) -> Self {
+        let message = format!(
+            "Manifest file not found at {:?}. Project root should contain '{}'",
+            curr_dir, MANIFEST_FILE_NAME
+        );
+        Self { message }
+    }
 }
 
 impl fmt::Display for DeployError {
