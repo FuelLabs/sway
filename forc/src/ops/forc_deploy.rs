@@ -1,40 +1,26 @@
-use core_lang::{compile_to_bytecode, parse, BuildConfig, Namespace};
+use core_lang::{parse, CompileError};
 use fuel_tx::{crypto::hash, ContractAddress, Output, Salt, Transaction};
 
 use crate::cli::DeployCommand;
 
+use crate::ops::forc_build;
 use crate::utils::{constants, helpers};
-use constants::MANIFEST_FILE_NAME;
+use constants::{MANIFEST_FILE_NAME, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
 use helpers::{find_manifest_dir, get_main_file, read_manifest};
 use std::{fmt, io, path::PathBuf};
 
-use super::forc_build::compile_dependency_lib;
+use crate::cli::BuildCommand;
 
 pub fn deploy(_: DeployCommand) -> Result<(), DeployError> {
     let curr_dir = std::env::current_dir()?;
 
     match find_manifest_dir(&curr_dir) {
         Some(manifest_dir) => {
-            let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone());
             let manifest = read_manifest(&manifest_dir)?;
-            let mut namespace: Namespace = Default::default();
-
-            // compile dependencies
-            if let Some(ref deps) = manifest.dependencies {
-                for (dependency_name, dependency_details) in deps.iter() {
-                    compile_dependency_lib(
-                        &curr_dir,
-                        &dependency_name,
-                        &dependency_details,
-                        &mut namespace,
-                    )?;
-                }
-            }
-
-            // compile this program with all of its dependencies
+            let project_name = &manifest.project.name;
             let main_file = get_main_file(&manifest, &manifest_dir)?;
 
-            // parse it and check is it a contract
+            // parse the main file and check is it a contract
             match parse(main_file) {
                 core_lang::CompileResult::Ok {
                     value: parse_tree,
@@ -42,35 +28,39 @@ pub fn deploy(_: DeployCommand) -> Result<(), DeployError> {
                     errors: _,
                 } => {
                     if let Some(_) = &parse_tree.contract_ast {
-                        // create Transaction::Create from contract file
-                        let compiled_contract =
-                            compile_contract(main_file, namespace, build_config)?;
+                        let build_command = BuildCommand {
+                            path: None,
+                            print_asm: false,
+                            binary_outfile: None,
+                        };
+
+                        let compiled_contract = forc_build::build(build_command)?;
                         let tx = create_contract_tx(compiled_contract);
+
                         // todo: pass the transaction to the running node
                         println!("{:?}", tx);
-
                         Ok(())
                     } else {
-                        Err("Project is not a contract".into())
+                        let parse_type = {
+                            if parse_tree.script_ast.is_some() {
+                                SWAY_SCRIPT
+                            } else if parse_tree.predicate_ast.is_some() {
+                                SWAY_PREDICATE
+                            } else {
+                                SWAY_LIBRARY
+                            }
+                        };
+
+                        Err(DeployError::not_a_contract(project_name, parse_type))
                     }
                 }
-                _ => Err("Project does not compile".into()),
+                core_lang::CompileResult::Err {
+                    warnings: _,
+                    errors,
+                } => Err(DeployError::parsing_failed(project_name, errors)),
             }
         }
         None => Err(DeployError::manifest_file_missing(curr_dir)),
-    }
-}
-
-fn compile_contract(
-    contract_file: &str,
-    namespace: Namespace,
-    build_config: BuildConfig,
-) -> Result<Vec<u8>, DeployError> {
-    let result = compile_to_bytecode(contract_file, &namespace, build_config);
-
-    match result {
-        core_lang::BytecodeCompilationResult::Success { bytes, warnings: _ } => Ok(bytes),
-        _ => Err("Failed to compile".into()),
     }
 }
 
@@ -113,6 +103,26 @@ impl DeployError {
         let message = format!(
             "Manifest file not found at {:?}. Project root should contain '{}'",
             curr_dir, MANIFEST_FILE_NAME
+        );
+        Self { message }
+    }
+
+    fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> Self {
+        let message = errors
+            .iter()
+            .map(|e| e.to_friendly_error_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        Self {
+            message: format!("Parsing {} failed: \n{}", project_name, message),
+        }
+    }
+
+    fn not_a_contract(project_name: &str, parse_type: &str) -> Self {
+        let message = format!(
+            "{} is not a 'contract' it is a '{}'\nContracts should start with 'contract;'",
+            project_name, parse_type
         );
         Self { message }
     }
