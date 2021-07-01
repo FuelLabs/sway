@@ -45,6 +45,7 @@ pub fn deploy(_: DeployCommand) -> Result<(), DeployError> {
                         let compiled_contract =
                             compile_contract(main_file, namespace, build_config)?;
                         let tx = create_contract_tx(compiled_contract);
+                        // todo: pass the transaction to the running node
                         println!("{:?}", tx);
 
                         Ok(())
