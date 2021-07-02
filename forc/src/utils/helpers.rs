@@ -1,3 +1,4 @@
+use super::constants::SRC_DIR;
 use super::manifest::Manifest;
 use std::path::PathBuf;
 
@@ -46,7 +47,7 @@ pub fn get_main_file(
 ) -> Result<&'static mut String, String> {
     let main_path = {
         let mut code_dir = manifest_dir.clone();
-        code_dir.push("src");
+        code_dir.push(SRC_DIR);
         code_dir.push(&manifest_of_dep.project.entry);
         code_dir
     };
