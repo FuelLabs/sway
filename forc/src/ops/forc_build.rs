@@ -79,7 +79,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-pub fn compile_dependency_lib<'source, 'manifest>(
+fn compile_dependency_lib<'source, 'manifest>(
     project_path: &PathBuf,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
