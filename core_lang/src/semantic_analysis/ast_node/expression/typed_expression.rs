@@ -568,7 +568,7 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression {
                     expression: TypedExpressionVariant::StructFieldAccess {
                         unary_op,
-                        resolved_type_of_parent: MaybeResolvedType::Resolved(field.r#type.clone()),
+                        resolved_type_of_parent: parent.return_type.clone(),
                         prefix: Box::new(parent),
                         field_to_access: field.clone(),
                     },
@@ -770,8 +770,6 @@ impl<'sc> TypedExpression<'sc> {
                             is_constant: IsConstant::No,
                             span,
                         }
-
-                        //                        todo!("fnd the namespace of the call_path and resolve the type_name in it. then grab the method name. emthod name is the call_path suffix")
                     }
                 }
             }
