@@ -1,16 +1,49 @@
 use super::code_builder::CodeBuilder;
+use crate::traversal::{traverse_for_changes, Change};
+use ropey::Rope;
 
 /// returns number of lines and formatted text
-pub fn get_formatted_data(file: &str, tab_size: u32) -> (usize, String) {
-    let mut code_builder = CodeBuilder::new(tab_size);
-    let lines: Vec<&str> = file.split("\n").collect();
+pub fn get_formatted_data(file: &str, tab_size: u32) -> Result<(usize, String), &str> {
+    match core_lang::parse(&file) {
+        core_lang::CompileResult::Ok {
+            value: parse_tree,
+            warnings: _,
+            errors: _,
+        } => {
+            let changes = traverse_for_changes(&parse_tree);
+            let mut rope_file = Rope::from_str(file);
 
-    // todo: handle lengthy lines of code
-    for line in lines {
-        code_builder.format_and_add(line);
+            let mut offset: i32 = 0;
+            for change in changes {
+                let (new_offset, start, end) = calculate_offset(offset, &change);
+                offset = new_offset;
+
+                rope_file.remove(start..end);
+                rope_file.insert(start, &change.text);
+            }
+
+            let mut code_builder = CodeBuilder::new(tab_size);
+
+            let file = rope_file.to_string();
+            let lines: Vec<&str> = file.split("\n").collect();
+
+            // todo: handle lengthy lines of code
+            for line in lines {
+                code_builder.format_and_add(line);
+            }
+
+            Ok(code_builder.get_final_edits())
+        }
+        _ => Err("Failed to parse the file"),
     }
+}
 
-    code_builder.get_final_edits()
+fn calculate_offset(current_offset: i32, change: &Change) -> (i32, usize, usize) {
+    let start = change.start as i32 + current_offset;
+    let end = change.end as i32 + current_offset;
+    let offset = current_offset + (start + change.text.len() as i32) - end;
+
+    (offset, start as usize, end as usize)
 }
 
 #[cfg(test)]
@@ -41,8 +74,10 @@ pub fn add(a: u32, b: u32) -> u32 {
     a + b
 }
 "#;
-        let (_, result) = get_formatted_data(correct_sway_code, 4);
-        assert_eq!(correct_sway_code, result);
+        let result = get_formatted_data(correct_sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
 
         let sway_code = r#"script;
 
@@ -88,8 +123,10 @@ add
 
 "#;
 
-        let (_, result) = get_formatted_data(sway_code, 4);
-        assert_eq!(correct_sway_code, result);
+        let result = get_formatted_data(sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
     }
 
     #[test]
@@ -106,8 +143,10 @@ fn main() {
 }
 "#;
 
-        let (_, result) = get_formatted_data(correct_sway_code, 4);
-        assert_eq!(correct_sway_code, result);
+        let result = get_formatted_data(correct_sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
 
         let sway_code = r#"script;
 
@@ -122,8 +161,10 @@ fn main(){
 }
 "#;
 
-        let (_, result) = get_formatted_data(sway_code, 4);
-        assert_eq!(correct_sway_code, result);
+        let result = get_formatted_data(sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
     }
 
     #[test]
@@ -141,8 +182,10 @@ fn main() {
 }
 "#;
 
-        let (_, result) = get_formatted_data(correct_sway_code, 4);
-        assert_eq!(correct_sway_code, result);
+        let result = get_formatted_data(correct_sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
 
         let sway_code = r#"script;
 
@@ -160,8 +203,10 @@ fn main() {
 }
 "#;
 
-        let (_, result) = get_formatted_data(sway_code, 4);
-        assert_eq!(correct_sway_code, result);
+        let result = get_formatted_data(sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
     }
 
     #[test]
@@ -180,7 +225,7 @@ fn main() {
         /* this is some
             multi line stuff t
         
-        */
+         */
         123;
     }; // comment here as well
 } // comment here too
@@ -188,12 +233,14 @@ fn main() {
 // example struct with comments
 struct Example { // first comment
     prop: bool, // second comment
-    age: u32 // another comment
+    age: u32, // another comment
 } // comment as well
 "#;
 
-        let (_, result) = get_formatted_data(correct_sway_code, 4);
-        assert_eq!(correct_sway_code, result);
+        let result = get_formatted_data(correct_sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
 
         let sway_code = r#"script;
 
@@ -221,7 +268,172 @@ struct Example {    // first comment
 }   // comment as well
 "#;
 
-        let (_, result) = get_formatted_data(sway_code, 4);
-        assert_eq!(correct_sway_code, result);
+        let result = get_formatted_data(sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
+
+    #[test]
+    fn test_custom_types() {
+        let correct_sway_code = r#"script;
+
+fn main() {
+    let rgb: Rgb = Rgb {
+        red: 255,
+        blue: 0,
+        green: 0,
+    };
+
+    if (true) {
+        let rgb: Rgb = Rgb {
+            red: 255,
+            blue: 0,
+            green: 0,
+        };
+    }
+}
+
+struct Rgb {
+    red: u64,
+    green: u64,
+    blue: u64,
+}
+
+struct Structure {
+    age: u32,
+    name: string,
+}
+
+struct Structure {
+    age: u32, /* completely meaningless multiline comment
+        not sure why would anyone write this but let's deal with it as well!
+    */
+    name: string,
+}
+
+struct Structure {
+    age: u32,
+    name: string, // super comment
+}
+
+struct Structure {
+    age: u32,
+    name: string, // super comment
+}
+
+struct Vehicle {
+    age: u32,
+    name: string, // some comment middle of nowhere
+}
+
+struct Environment {
+    age: u32,
+    name: string,
+} // lost my train of thought
+
+struct Person { // first comment
+    age: u32, // second comment
+    name: string, // third comment
+} // fourth comment
+
+pub fn get_age() -> u32 {
+    99
+}
+
+pub fn read_example() -> Example {
+    Example {
+        age: get_age(),
+        name: "Example face",
+    }
+}
+
+struct Example {
+    age: u32,
+    name: string,
+}
+"#;
+
+        let result = get_formatted_data(correct_sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+
+        let sway_code = r#"script;
+
+fn main() {
+    let rgb:Rgb=Rgb {
+        red: 255,
+        blue: 0,
+        green: 0,
+    };
+
+    if(true){
+        let rgb: Rgb = Rgb {
+            red:255,      blue: 0,
+                green: 0,
+        };
+    }
+}
+
+struct Rgb {
+    red: u64,
+    green: u64,
+    blue: u64,
+}
+
+struct Structure {
+    
+    age: u32,
+
+    name: string,
+
+}
+
+struct Structure {
+    age: u32, /* completely meaningless multiline comment
+        not sure why would anyone write this but let's deal with it as well!
+    */
+    name: string
+}
+
+struct Structure {
+    age: u32,
+    name: string// super comment
+}
+
+struct Structure {
+    age: u32,
+    name: string, // super comment
+}
+
+struct Vehicle 
+          { age:       u32,          name: string , // some comment middle of nowhere
+}
+
+struct Environment{age:u32,name:string} // lost my train of thought
+
+struct Person {// first comment
+    age: u32,// second comment
+    name: string,          // third comment
+} // fourth comment
+
+pub fn get_age() -> u32 {
+     99
+}
+
+pub fn read_example() -> Example {
+    Example {
+        age: get_age()     ,name: "Example face"
+    }
+}
+
+struct Example {age: u32,    name: string}
+"#;
+
+        let result = get_formatted_data(sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
     }
 }

@@ -1,8 +1,14 @@
 use structopt::{self, StructOpt};
 
-#[derive(Debug, StructOpt)]
-pub(crate) struct Command {}
+use crate::ops::forc_deploy;
 
-pub(crate) fn exec(_command: Command) -> Result<(), String> {
-    todo!()
+#[derive(Debug, StructOpt)]
+pub struct Command {}
+
+
+pub(crate) fn exec(command: Command) -> Result<(), String> {
+    match forc_deploy::deploy(command) {
+        Err(e) => Err(e.message),
+        _ => Ok(()),
+    }
 }

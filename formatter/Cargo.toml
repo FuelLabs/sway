@@ -4,4 +4,6 @@ edition = "2018"
 name = "formatter"
 version = "0.1.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+core_lang = {path = "../core_lang"}
+ropey = "1.2"
