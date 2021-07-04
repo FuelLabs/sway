@@ -608,11 +608,15 @@ impl<'sc> TypedExpression<'sc> {
                         {
                             Some(o) => o,
                             None => {
-                                errors.push(CompileError::MethodNotFound {
-                                    method_name: method_name.primary_name,
-                                    type_name: args_buf[0].return_type.friendly_type_str(),
-                                    span: method_name.span.clone(),
-                                });
+                                if args_buf[0].return_type
+                                    != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                                {
+                                    errors.push(CompileError::MethodNotFound {
+                                        method_name: method_name.primary_name,
+                                        type_name: args_buf[0].return_type.friendly_type_str(),
+                                        span: method_name.span.clone(),
+                                    });
+                                }
                                 return err(warnings, errors);
                             }
                         };
@@ -693,11 +697,15 @@ impl<'sc> TypedExpression<'sc> {
                             {
                                 Some(o) => o,
                                 None => {
-                                    errors.push(CompileError::MethodNotFound {
-                                        method_name: call_path.suffix.primary_name.clone(),
-                                        type_name: type_name.friendly_type_str(),
-                                        span: call_path.suffix.span.clone(),
-                                    });
+                                    if type_name
+                                        != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                                    {
+                                        errors.push(CompileError::MethodNotFound {
+                                            method_name: call_path.suffix.primary_name.clone(),
+                                            type_name: type_name.friendly_type_str(),
+                                            span: call_path.suffix.span.clone(),
+                                        });
+                                    }
                                     return err(warnings, errors);
                                 }
                             }
@@ -714,11 +722,15 @@ impl<'sc> TypedExpression<'sc> {
                             match module.find_method_for_type(r#type, call_path.suffix.clone()) {
                                 Some(o) => o,
                                 None => {
-                                    errors.push(CompileError::MethodNotFound {
-                                        method_name: call_path.suffix.primary_name.clone(),
-                                        type_name: r#type.friendly_type_str(),
-                                        span: call_path.suffix.span.clone(),
-                                    });
+                                    if *r#type
+                                        != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                                    {
+                                        errors.push(CompileError::MethodNotFound {
+                                            method_name: call_path.suffix.primary_name.clone(),
+                                            type_name: r#type.friendly_type_str(),
+                                            span: call_path.suffix.span.clone(),
+                                        });
+                                    }
                                     return err(warnings, errors);
                                 }
                             }
