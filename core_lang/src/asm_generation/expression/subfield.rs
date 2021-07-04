@@ -26,6 +26,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     resolved_type_of_parent: &MaybeResolvedType<'sc>,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
+    return_register: &VirtualRegister,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     // step 0. find the type and register of the prefix
     // step 1. get the memory layout of the struct
@@ -69,21 +70,73 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     );
 
     // step 2
-    let offset = type_check!(
+    let offset_in_words = type_check!(
         descriptor.offset_to_field_name(&field_to_access.name),
         0,
         warnings,
         errors
     );
 
-    // step 3
-    todo!("write the LW for this field");
+    let type_of_this_field = fields_for_layout
+        .into_iter()
+        .find_map(|(ty, name)| {
+            if *name == field_to_access.name {
+                Some(ty)
+            } else {
+                None
+            }
+        })
+        .expect(
+            "Accessing a subfield that is not no the struct would be caught during type checking",
+        );
 
-    return err(
-        vec![],
-        vec![CompileError::Unimplemented(
-            "Struct field access ASM generation is unimplemented.",
-            span.clone(),
-        )],
-    );
+    // step 3
+    // if this is a copy type (primitives that fit in a word), copy it into the register.
+    // Otherwise, load the pointer to the field into the register
+    asm_buf.push(if type_of_this_field.is_copy_type() {
+        let offset_in_words = match VirtualImmediate12::new(offset_in_words, span.clone()) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e);
+                return err(warnings, errors);
+            }
+        };
+
+        Op {
+            opcode: Either::Left(VirtualOp::LW(
+                return_register.clone(),
+                prefix_reg,
+                offset_in_words,
+            )),
+            comment: format!(
+                "Loading copy type: {}",
+                type_of_this_field.friendly_type_str()
+            ),
+            owning_span: Some(span.clone()),
+        }
+    } else {
+        // Load the offset, plus the actual memory address of the struct, as a pointer
+        // into the register
+        //
+        // first, construct the pointer by adding the offset to the pointer from the prefix
+        let offset_in_bytes = match VirtualImmediate12::new(offset_in_words * 8, span.clone()) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e);
+                return err(warnings, errors);
+            }
+        };
+
+        Op {
+            opcode: Either::Left(VirtualOp::ADDI(
+                return_register.clone(),
+                prefix_reg,
+                offset_in_bytes,
+            )),
+            comment: "Construct pointer for struct field".into(),
+            owning_span: Some(span.clone()),
+        }
+    });
+
+    return ok(asm_buf, warnings, errors);
 }

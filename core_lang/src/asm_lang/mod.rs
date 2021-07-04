@@ -124,7 +124,7 @@ impl<'sc> Op<'sc> {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::LW(reg, data)),
+            opcode: Either::Left(VirtualOp::LWDataId(reg, data)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -184,6 +184,7 @@ impl<'sc> Op<'sc> {
             owning_span: None,
         }
     }
+
     pub(crate) fn register_move_comment(
         r1: VirtualRegister,
         r2: VirtualRegister,
@@ -1246,7 +1247,8 @@ impl fmt::Display for Op<'_> {
                 CFEI(a) => format!("cfei {}", a),
                 CFSI(a) => format!("cfsi {}", a),
                 LB(a, b, c) => format!("lb {} {} {}", a, b, c),
-                LW(a, b) => format!("lw {} {}", a, b),
+                LWDataId(a, b) => format!("lw {} {}", a, b),
+                LW(a, b, c) => format!("lw {} {} {}", a, b, c),
                 ALOC(a) => format!("aloc {}", a),
                 MCL(a, b) => format!("mcl {} {}", a, b),
                 MCLI(a, b) => format!("mcli {} {}", a, b),

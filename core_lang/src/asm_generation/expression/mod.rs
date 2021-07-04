@@ -224,6 +224,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             resolved_type_of_parent,
             namespace,
             register_sequencer,
+            return_register,
         ),
         TypedExpressionVariant::EnumInstantiation {
             enum_decl,
@@ -328,7 +329,7 @@ fn convert_literal_to_asm<'sc>(
     let data_id = namespace.insert_data_value(lit);
     // then get that literal id and use it to make a load word op
     vec![Op {
-        opcode: either::Either::Left(VirtualOp::LW(return_register.clone(), data_id)),
+        opcode: either::Either::Left(VirtualOp::LWDataId(return_register.clone(), data_id)),
         comment: "literal instantiation".into(),
         owning_span: Some(span),
     }]
