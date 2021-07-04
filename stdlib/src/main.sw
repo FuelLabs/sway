@@ -1,4 +1,4 @@
-library collections;
+library std;
 
 dep collections/main;
 dep ops;
