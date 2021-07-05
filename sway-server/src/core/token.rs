@@ -51,6 +51,10 @@ impl Token {
         Token::new(ident.span.clone(), ident.primary_name.into(), content_type)
     }
 
+    pub fn from_span(span: Span, content_type: ContentType) -> Self {
+        Token::new(span.clone(), span.as_str().into(), content_type)
+    }
+
     pub fn is_initial_declaration(&self) -> bool {
         if let ContentType::Declaration(ref dec) = self.content_type {
             if &DeclarationType::Reassignment == dec {
@@ -90,11 +94,18 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
             }
         }
         Declaration::Reassignment(reassignment) => {
-            let ident = reassignment.lhs;
-            let token = Token::from_ident(
-                ident,
-                ContentType::Declaration(DeclarationType::Reassignment),
-            );
+            let content_type = ContentType::Declaration(DeclarationType::Reassignment);
+            let token = match *reassignment.lhs {
+                // a reassignment's lhs can _only_ be a variable expression or
+                // struct field a subfield expression
+                Expression::SubfieldExpression { span, .. } => Token::from_span(span, content_type),
+                Expression::VariableExpression { name, .. } => {
+                    Token::from_ident(name, content_type)
+                }
+                _ => {
+                    unreachable!("any other reassignment lhs is invalid and cannot be constructed.")
+                }
+            };
             tokens.push(token);
 
             handle_expression(reassignment.rhs, tokens);

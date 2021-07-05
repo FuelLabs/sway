@@ -25,8 +25,10 @@ pub(crate) fn implementation_of_trait<'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
+    // insert the methods from the trait constraints into the namespace
+    namespace.insert_trait_methods(&type_arguments[..]);
     let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
-    let self_type = type_implementing_for;
+    let self_type = type_implementing_for.clone();
     match namespace.get_call_path(&trait_name) {
         CompileResult::Ok {
             value: TypedDeclaration::TraitDeclaration(tr),
@@ -195,6 +197,10 @@ pub(crate) fn implementation_of_trait<'sc>(
                 functions_buf.push(fn_decl);
             }
 
+            for function in tr.methods {
+                functions_buf.push(function.replace_self_types(&type_implementing_for));
+            }
+
             // check that the implementation checklist is complete
             if !function_checklist.is_empty() {
                 errors.push(CompileError::MissingInterfaceSurfaceMethods {
@@ -206,6 +212,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                         .join("\n"),
                 });
             }
+            // add the methods to the namespace
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
