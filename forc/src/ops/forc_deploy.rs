@@ -32,6 +32,7 @@ pub fn deploy(_: DeployCommand) -> Result<(), DeployError> {
                             path: None,
                             print_asm: false,
                             binary_outfile: None,
+                            offline_mode: false,
                         };
 
                         let compiled_contract = forc_build::build(build_command)?;

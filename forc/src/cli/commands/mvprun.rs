@@ -25,6 +25,7 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
         path: Some(command.path),
         print_asm: false,
         binary_outfile: None,
+        offline_mode: false,
     };
     match forc_build::build(build_command) {
         Ok(script) => {

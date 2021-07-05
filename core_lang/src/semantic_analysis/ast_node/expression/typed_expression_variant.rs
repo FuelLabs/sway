@@ -44,10 +44,10 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     },
     // like a variable expression but it has multiple parts,
     // like looking up a field in a struct
-    SubfieldExpression {
+    StructFieldAccess {
         unary_op: Option<UnaryOp>,
-        name: Vec<Ident<'sc>>,
-        span: Span<'sc>,
+        prefix: Box<TypedExpression<'sc>>,
+        field_to_access: TypedStructField<'sc>,
         resolved_type_of_parent: MaybeResolvedType<'sc>,
     },
     EnumInstantiation {
@@ -100,8 +100,16 @@ impl<'sc> TypedExpressionVariant<'sc> {
             TypedExpressionVariant::FunctionParameter => "fn param access".into(),
             TypedExpressionVariant::IfExp { .. } => "if exp".into(),
             TypedExpressionVariant::AsmExpression { .. } => "inline asm".into(),
-            TypedExpressionVariant::SubfieldExpression { span, .. } => {
-                format!("\"{}\" subfield access", span.as_str())
+            TypedExpressionVariant::StructFieldAccess {
+                resolved_type_of_parent,
+                field_to_access,
+                ..
+            } => {
+                format!(
+                    "\"{}.{}\" struct field access",
+                    resolved_type_of_parent.friendly_type_str(),
+                    field_to_access.name.primary_name
+                )
             }
             TypedExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.primary_name)

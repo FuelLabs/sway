@@ -11,6 +11,10 @@ pub(crate) struct TypedCodeBlock<'sc> {
 }
 
 impl<'sc> TypedCodeBlock<'sc> {
+    pub(crate) fn replace_self_types(&self, _self_type: &MaybeResolvedType<'sc>) -> Self {
+        // TODO recursively replace all self types in the block
+        self.clone()
+    }
     pub(crate) fn type_check(
         other: CodeBlock<'sc>,
         namespace: &Namespace<'sc>,
