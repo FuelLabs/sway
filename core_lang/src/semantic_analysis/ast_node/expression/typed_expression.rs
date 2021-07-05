@@ -785,30 +785,6 @@ impl<'sc> TypedExpression<'sc> {
                     .find_module(&call_path.prefixes, false)
                     .ok()
                     .cloned();
-                /*
-                let type_method_result = {
-                    let (module_path, type_name) =
-                        call_path.prefixes.split_at(call_path.prefixes.len() - 1);
-                    let type_name = type_name[0].clone();
-                    let namespace = namespace.find_module(module_path, false).ok();
-                    namespace
-                        .map(|ns| ns.find_method_for_type_ident(&type_name, call_path.suffix))
-                        .flatten()
-                };*/
-                /*
-                let enum_result_result = {
-                    // an enum could be combined with a module path
-                    // e.g.
-                    // ```
-                    // module1::MyEnum::Variant1
-                    // ```
-                    //
-                    // so, in this case, the suffix is Variant1 and the prefixes are module1 and
-                    // MyEnum. When looking for an enum, we just want the _last_ prefix entry in the
-                    // namespace of the first 0..len-1 entries' module
-                    namespace.find_enum(&all_path.prefixes[0])
-                };
-                */
                 let enum_module_combined_result = {
                     // also, check if this is an enum _in_ another module.
                     let (module_path, enum_name) =
