@@ -543,12 +543,12 @@ checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#1f93c1d5c23ebf97392ad70ced80f17f1f822e2f"
+source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#a26fbb180508a1c727eaa74fe049fb7e67f87d0c"
 
 [[package]]
 name = "fuel-tx"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#5fab00454a37b20bfaabb147441d138ee4994d55"
+source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#4913ab7515ba62a3d78f713631b2acf01c39c115"
 dependencies = [
  "fuel-asm",
  "itertools",
@@ -559,7 +559,7 @@ dependencies = [
 [[package]]
 name = "fuel-vm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#1f8580bf420656994acbdd9973278b846bed4ab5"
+source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#0dcba30729ad5f4aa751a2cb9828df22ec82cbc6"
 dependencies = [
  "fuel-asm",
  "fuel-tx",
