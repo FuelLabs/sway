@@ -375,9 +375,7 @@ fn connect_declaration<'sc>(
             connect_impl_trait(&trait_name, graph, methods, entry_node, tree_type)?;
             Ok(vec![])
         }
-        SideEffect | ErrorRecovery => {
-            unreachable!("These are error cases and should be removed in the type checking stage. ")
-        }
+        SideEffect | ErrorRecovery => Ok(vec![]),
     }
 }
 
@@ -762,8 +760,8 @@ fn connect_expression<'sc>(
             }
             Ok(vec![exit])
         }
-        SubfieldExpression {
-            name,
+        StructFieldAccess {
+            field_to_access,
             resolved_type_of_parent,
             ..
         } => {
@@ -775,7 +773,7 @@ fn connect_expression<'sc>(
                 MaybeResolvedType::Resolved(ResolvedType::Struct { name, .. }) => name.clone(),
                 _ => panic!("Called subfield on a non-struct"),
             };
-            let field_name = name.last().unwrap();
+            let field_name = &field_to_access.name;
             // find the struct field index in the namespace
             let field_ix = match graph
                 .namespace
@@ -853,6 +851,10 @@ fn connect_enum_instantiation<'sc>(
     vec![enum_instantiation_exit_idx]
 }
 
+/// Given a `TypedAstNode` that we know is not reached in the graph, construct a warning
+/// representing its unreached status. For example, we want to say "this function is never called"
+/// if the node is a function declaration, but "this trait is never used" if it is a trait
+/// declaration.
 fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> CompileWarning<'sc> {
     match node {
         // if this is a function, struct, or trait declaration that is never called, then it is dead
@@ -886,7 +888,7 @@ fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> Compi
             warning_content: Warning::DeadTrait,
         },
         TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::EnumDeclaration(..)),
+            content: TypedAstNodeContent::Declaration(..),
             span,
         } => CompileWarning {
             span: span.clone(),

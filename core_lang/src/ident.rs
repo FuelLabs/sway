@@ -14,7 +14,7 @@ pub struct Ident<'sc> {
 }
 
 // custom implementation of Hash so that namespacing isn't reliant on the span itself, which will
-// always be different.
+// often be different.
 impl Hash for Ident<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.primary_name.hash(state);

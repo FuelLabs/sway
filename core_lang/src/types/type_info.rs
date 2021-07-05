@@ -66,6 +66,11 @@ impl<'sc> TypeInfo<'sc> {
     pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let input = if let Some(input) = input.clone().into_inner().next() {
+            input
+        } else {
+            input
+        };
         ok(
             match input.as_str().trim() {
                 "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
