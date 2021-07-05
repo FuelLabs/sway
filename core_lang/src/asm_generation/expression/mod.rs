@@ -358,7 +358,7 @@ fn convert_fn_app_to_asm<'sc>(
         let return_register = register_sequencer.next();
         let mut ops = type_check!(
             convert_expression_to_asm(arg, &mut namespace, &return_register, register_sequencer),
-            continue,
+            vec![],
             warnings,
             errors
         );
