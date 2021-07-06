@@ -52,6 +52,18 @@ impl Default for MaybeResolvedType<'_> {
 }
 
 impl<'sc> MaybeResolvedType<'sc> {
+    pub(crate) fn is_copy_type(&self) -> bool {
+        match self {
+            MaybeResolvedType::Resolved(ty) => match ty {
+                ResolvedType::UnsignedInteger(_)
+                | ResolvedType::Boolean
+                | ResolvedType::Unit
+                | ResolvedType::Byte => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
     pub(crate) fn friendly_type_str(&self) -> String {
         match self {
             MaybeResolvedType::Partial(ty) => ty.friendly_type_str(),
@@ -139,7 +151,7 @@ impl<'sc> MaybeResolvedType<'sc> {
 impl<'sc> PartiallyResolvedType<'sc> {
     pub(crate) fn friendly_type_str(&self) -> String {
         match self {
-            PartiallyResolvedType::Generic { name } => format!("generic {}", name.primary_name),
+            PartiallyResolvedType::Generic { name } => format!("{}", name.primary_name),
             PartiallyResolvedType::Numeric => "numeric".into(),
             PartiallyResolvedType::SelfType => "self".into(),
         }

@@ -64,14 +64,18 @@ impl<'sc> AsmExpression<'sc> {
                 a => unreachable!("{:?}", a),
             }
         }
+        let return_type = implicit_op_type.unwrap_or(if implicit_op_return.is_some() {
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+        } else {
+            TypeInfo::Unit
+        });
 
         ok(
             AsmExpression {
                 registers: asm_registers,
                 body: asm_op_buf,
                 returns: implicit_op_return,
-                return_type: implicit_op_type
-                    .unwrap_or(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+                return_type,
                 whole_block_span,
             },
             warnings,

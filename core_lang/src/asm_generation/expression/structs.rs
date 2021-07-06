@@ -11,6 +11,131 @@ use crate::{
     CompileResult, Ident,
 };
 
+/// Contains an ordered array of fields and their sizes in words. Used in the code generation
+/// of struct field reassignments, accesses, and struct initializations.
+#[derive(Debug)]
+pub(crate) struct StructMemoryLayoutDescriptor<'sc> {
+    fields: Vec<StructFieldMemoryLayoutDescriptor<'sc>>,
+}
+
+/// Describes the size, name, and type of an individual struct field in a memory layout.
+#[derive(Debug)]
+pub(crate) struct StructFieldMemoryLayoutDescriptor<'sc> {
+    name_of_field: Ident<'sc>,
+    size: u64,
+    type_of_field: ResolvedType<'sc>,
+}
+
+impl<'sc> StructMemoryLayoutDescriptor<'sc> {
+    /// Calculates the offset in words from the start of a struct to a specific field.
+    pub(crate) fn offset_to_field_name(&self, name: &Ident<'sc>) -> CompileResult<'sc, u64> {
+        let field_ix = if let Some(ix) = self.fields.iter().position(
+            |StructFieldMemoryLayoutDescriptor { name_of_field, .. }| name_of_field == name,
+        ) {
+            ix
+        } else {
+            return err(vec![],
+                vec![
+                CompileError::Internal(
+                    "Attempted to calculate struct memory offset on field that did not exist in struct.",
+                    name.span.clone()
+                    )
+                ]);
+        };
+
+        ok(
+            self.fields
+                .iter()
+                .take(field_ix)
+                .fold(0, |acc, StructFieldMemoryLayoutDescriptor { size, .. }| {
+                    acc + *size
+                }),
+            vec![],
+            vec![],
+        )
+    }
+    pub(crate) fn total_size(&self) -> u64 {
+        self.fields
+            .iter()
+            .map(|StructFieldMemoryLayoutDescriptor { size, .. }| size)
+            .sum()
+    }
+}
+
+#[test]
+fn test_struct_memory_layout() {
+    let first_field_name = Ident {
+        span: pest::Span::new(" ", 0, 0).unwrap(),
+        primary_name: "foo",
+    };
+    let second_field_name = Ident {
+        span: pest::Span::new(" ", 0, 0).unwrap(),
+        primary_name: "bar",
+    };
+
+    let numbers = StructMemoryLayoutDescriptor {
+        fields: vec![
+            StructFieldMemoryLayoutDescriptor {
+                name_of_field: first_field_name.clone(),
+                size: 1,
+                type_of_field: ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+            },
+            StructFieldMemoryLayoutDescriptor {
+                name_of_field: second_field_name.clone(),
+                size: 1,
+                type_of_field: ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+            },
+        ],
+    };
+
+    assert_eq!(numbers.total_size(), 2u64);
+    assert_eq!(
+        numbers.offset_to_field_name(&first_field_name).unwrap(),
+        &0u64
+    );
+    assert_eq!(
+        numbers.offset_to_field_name(&second_field_name).unwrap(),
+        &1u64
+    );
+}
+
+pub(crate) fn get_struct_memory_layout<'sc>(
+    fields_with_names: &[(MaybeResolvedType<'sc>, &Ident<'sc>)],
+) -> CompileResult<'sc, StructMemoryLayoutDescriptor<'sc>> {
+    let mut fields_with_sizes = vec![];
+    let warnings = vec![];
+    let mut errors = vec![];
+    for (field, name) in fields_with_names {
+        let (ty, stack_size) = match field {
+            MaybeResolvedType::Partial(PartiallyResolvedType::Numeric) => (
+                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
+                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour).stack_size_of(),
+            ),
+            MaybeResolvedType::Resolved(ref r) => (r.clone(), r.stack_size_of()),
+            MaybeResolvedType::Partial(ref p) => {
+                errors.push(CompileError::TypeMustBeKnown {
+                    span: name.span.clone(),
+                    ty: p.friendly_type_str(),
+                });
+                continue;
+            }
+        };
+
+        fields_with_sizes.push(StructFieldMemoryLayoutDescriptor {
+            name_of_field: (*name).clone(),
+            type_of_field: ty,
+            size: stack_size,
+        });
+    }
+    ok(
+        StructMemoryLayoutDescriptor {
+            fields: fields_with_sizes,
+        },
+        warnings,
+        errors,
+    )
+}
+
 pub(crate) fn convert_struct_expression_to_asm<'sc>(
     struct_name: &Ident<'sc>,
     fields: &[TypedStructExpressionField<'sc>],
@@ -35,25 +160,18 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     // step 4: put the pointer to the beginning of the struct in the namespace
 
     // step 0
-    let mut fields_with_sizes = vec![];
-    for field in fields {
-        let stack_size = match field.value.return_type {
-            MaybeResolvedType::Partial(PartiallyResolvedType::Numeric) => {
-                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour).stack_size_of()
-            }
-            MaybeResolvedType::Resolved(ref r) => r.stack_size_of(),
-            MaybeResolvedType::Partial(ref p) => {
-                errors.push(CompileError::TypeMustBeKnown {
-                    span: field.value.span.clone(),
-                    ty: p.friendly_type_str(),
-                });
-                continue;
-            }
-        };
-        fields_with_sizes.push((field, stack_size));
-    }
+    let fields_for_layout = fields
+        .iter()
+        .map(|TypedStructExpressionField { name, value }| (value.return_type.clone(), name))
+        .collect::<Vec<_>>();
+    let descriptor = type_check!(
+        get_struct_memory_layout(&fields_for_layout[..]),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-    let total_size = fields_with_sizes.iter().fold(0, |acc, (_, num)| acc + num);
+    let total_size = descriptor.total_size();
 
     asm_buf.push(Op::new_comment(format!(
         "{} struct initialization",

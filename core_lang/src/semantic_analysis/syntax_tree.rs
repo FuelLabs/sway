@@ -149,11 +149,8 @@ impl<'sc> TypedParseTree<'sc> {
                 break;
             }
             is_first_pass = false;
-            if !(next_pass_nodes.len() < num_failed_nodes) {
-                errors.push(CompileError::Internal(
-                    "Error nodes did not decrease monotonically in multi-pass compilation.",
-                    pest::Span::new(" ", 0, 0).unwrap(),
-                ));
+            // if the amount of nodes with errors is going up, then bail.
+            if next_pass_nodes.len() > num_failed_nodes {
                 errors.append(&mut errors_from_this_pass);
                 return err(warnings, errors);
             }

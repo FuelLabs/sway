@@ -18,7 +18,7 @@ mod structs;
 mod subfield;
 use enum_instantiation::convert_enum_instantiation_to_asm;
 use if_exp::convert_if_exp_to_asm;
-use structs::convert_struct_expression_to_asm;
+pub(crate) use structs::{convert_struct_expression_to_asm, get_struct_memory_layout};
 use subfield::convert_subfield_expression_to_asm;
 
 /// Given a [TypedExpression], convert it to assembly and put its return value, if any, in the
@@ -211,18 +211,20 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             struct_name,
             fields,
         } => convert_struct_expression_to_asm(struct_name, fields, namespace, register_sequencer),
-        TypedExpressionVariant::SubfieldExpression {
+        TypedExpressionVariant::StructFieldAccess {
             unary_op,
-            span,
-            name,
             resolved_type_of_parent,
+            prefix,
+            field_to_access,
         } => convert_subfield_expression_to_asm(
             unary_op,
-            span,
-            name,
+            &exp.span,
+            prefix,
+            field_to_access,
             resolved_type_of_parent,
             namespace,
             register_sequencer,
+            return_register,
         ),
         TypedExpressionVariant::EnumInstantiation {
             enum_decl,
@@ -327,7 +329,7 @@ fn convert_literal_to_asm<'sc>(
     let data_id = namespace.insert_data_value(lit);
     // then get that literal id and use it to make a load word op
     vec![Op {
-        opcode: either::Either::Left(VirtualOp::LW(return_register.clone(), data_id)),
+        opcode: either::Either::Left(VirtualOp::LWDataId(return_register.clone(), data_id)),
         comment: "literal instantiation".into(),
         owning_span: Some(span),
     }]
@@ -357,7 +359,7 @@ fn convert_fn_app_to_asm<'sc>(
         let return_register = register_sequencer.next();
         let mut ops = type_check!(
             convert_expression_to_asm(arg, &mut namespace, &return_register, register_sequencer),
-            continue,
+            vec![],
             warnings,
             errors
         );
