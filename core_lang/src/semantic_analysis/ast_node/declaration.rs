@@ -294,20 +294,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             }
             buf
         };
-        let return_ty = type_check!(
-            self.return_type.to_selector_name(&self.return_type_span),
-            "".into(),
-            warnings,
-            errors
-        );
 
         ok(
-            format!(
-                "{}({})->{}",
-                self.name.primary_name,
-                named_params.join(","),
-                return_ty
-            ),
+            format!("{}({})", self.name.primary_name, named_params.join(","),),
             warnings,
             errors,
         )
@@ -339,7 +328,7 @@ fn test_function_selector_behavior() {
         _ => panic!("test failure"),
     };
 
-    assert_eq!(selector_text, "foo()->unit".to_string());
+    assert_eq!(selector_text, "foo()".to_string());
 
     let decl = TypedFunctionDeclaration {
         name: Ident {
@@ -384,7 +373,7 @@ fn test_function_selector_behavior() {
         _ => panic!("test failure"),
     };
 
-    assert_eq!(selector_text, "bar(str[5],u32)->u64".to_string());
+    assert_eq!(selector_text, "bar(str[5],u32)".to_string());
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
