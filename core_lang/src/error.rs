@@ -664,6 +664,8 @@ pub enum CompileError<'sc> {
         expected: usize,
         received: usize,
     },
+    #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
+    InvalidAbiType { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -826,6 +828,7 @@ impl<'sc> CompileError<'sc> {
             InvalidExpressionOnLhs { span, .. } => span,
             TooManyArgumentsForFunction { span, .. } => span,
             TooFewArgumentsForFunction { span, .. } => span,
+            InvalidAbiType { span, .. } => span,
         }
     }
 
