@@ -62,17 +62,39 @@ pub fn get_main_file(
 }
 
 pub fn print_red(txt: &str) -> io::Result<()> {
-    print_with_color(txt, TermColor::Red)
+    print_std_out(txt, TermColor::Red)
 }
 
 pub fn print_green(txt: &str) -> io::Result<()> {
-    print_with_color(txt, TermColor::Green)
+    print_std_out(txt, TermColor::Green)
 }
 
-fn print_with_color(txt: &str, color: TermColor) -> io::Result<()> {
-    let mut stdout = StandardStream::stdout(ColorChoice::Always);
-    stdout.set_color(ColorSpec::new().set_fg(Some(color)))?;
-    writeln!(&mut stdout, "{}", txt)?;
-    stdout.reset()?;
+pub fn print_yellow_err(txt: &str) -> io::Result<()> {
+    print_std_err(txt, TermColor::Yellow)
+}
+
+pub fn print_red_err(txt: &str) -> io::Result<()> {
+    print_std_err(txt, TermColor::Red)
+}
+
+pub fn print_green_err(txt: &str) -> io::Result<()> {
+    print_std_err(txt, TermColor::Green)
+}
+
+fn print_std_out(txt: &str, color: TermColor) -> io::Result<()> {
+    let stdout = StandardStream::stdout(ColorChoice::Always);
+    print_with_color(txt, color, stdout)
+}
+
+fn print_std_err(txt: &str, color: TermColor) -> io::Result<()> {
+    let stdout = StandardStream::stderr(ColorChoice::Always);
+    print_with_color(txt, color, stdout)
+}
+
+fn print_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io::Result<()> {
+    let mut stream = stream;
+    stream.set_color(ColorSpec::new().set_fg(Some(color)))?;
+    writeln!(&mut stream, "{}", txt)?;
+    stream.reset()?;
     Ok(())
 }
