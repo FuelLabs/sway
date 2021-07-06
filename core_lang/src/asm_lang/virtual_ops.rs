@@ -288,11 +288,14 @@ pub(crate) enum VirtualOp {
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    // LW takes a virtual register and a DataId, which points to a labeled piece
+    // LWDataId takes a virtual register and a DataId, which points to a labeled piece
     // of data in the data section. Note that the ASM op corresponding to a LW is
     // subtly complex: $rB is in bytes and points to some mem address. The immediate
     // third argument is a _word_ offset from that byte address.
-    LW(VirtualRegister, DataId),
+    LWDataId(VirtualRegister, DataId),
+    // A raw LW that doesn't refer to a deferred placeholder and instead refers
+    // directly to memory
+    LW(VirtualRegister, VirtualRegister, VirtualImmediate12),
     ALOC(VirtualRegister),
     MCL(VirtualRegister, VirtualRegister),
     MCLI(VirtualRegister, VirtualImmediate18),
@@ -394,7 +397,8 @@ impl VirtualOp {
             CFEI(_imm) => vec![],
             CFSI(_imm) => vec![],
             LB(r1, r2, _i) => vec![r1, r2],
-            LW(r1, _i) => vec![r1],
+            LWDataId(r1, _i) => vec![r1],
+            LW(r1, r2, _i) => vec![r1, r2],
             ALOC(_imm) => vec![],
             MCL(r1, r2) => vec![r1, r2],
             MCLI(r1, _imm) => vec![r1],
@@ -631,7 +635,12 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            LW(reg1, imm) => AllocatedOpcode::LW(map_reg(&mapping, reg1), imm.clone()),
+            LWDataId(reg1, imm) => AllocatedOpcode::LWDataId(map_reg(&mapping, reg1), imm.clone()),
+            LW(reg1, reg2, imm) => AllocatedOpcode::LW(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
             ALOC(reg) => AllocatedOpcode::ALOC(map_reg(&mapping, reg)),
             MCL(reg1, reg2) => {
                 AllocatedOpcode::MCL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
