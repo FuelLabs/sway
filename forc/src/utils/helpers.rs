@@ -1,6 +1,8 @@
 use super::constants::SRC_DIR;
 use super::manifest::Manifest;
-use std::path::PathBuf;
+use std::io::{self, Write};
+use std::{path::PathBuf, str};
+use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 // Continually go up in the file tree until a manifest (Forc.toml) is found.
 pub fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
@@ -57,4 +59,20 @@ pub fn get_main_file(
     let main_file = Box::new(main_file);
     let main_file: &'static mut String = Box::leak(main_file);
     return Ok(main_file);
+}
+
+pub fn print_red(txt: &str) -> io::Result<()> {
+    print_with_color(txt, TermColor::Red)
+}
+
+pub fn print_green(txt: &str) -> io::Result<()> {
+    print_with_color(txt, TermColor::Green)
+}
+
+fn print_with_color(txt: &str, color: TermColor) -> io::Result<()> {
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
+    stdout.set_color(ColorSpec::new().set_fg(Some(color)))?;
+    writeln!(&mut stdout, "{}", txt)?;
+    stdout.reset()?;
+    Ok(())
 }
