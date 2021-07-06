@@ -583,11 +583,14 @@ impl<'sc> Namespace<'sc> {
             a => {
                 return err(
                     vec![],
-                    vec![CompileError::NotAStruct {
-                        name: debug_string.into(),
-                        span: debug_span.clone(),
-                        actually: a.friendly_type_str(),
-                    }],
+                    match a {
+                        MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery) => vec![],
+                        _ => vec![CompileError::NotAStruct {
+                            name: debug_string.into(),
+                            span: debug_span.clone(),
+                            actually: a.friendly_type_str(),
+                        }],
+                    },
                 )
             }
         }

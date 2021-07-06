@@ -568,7 +568,7 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression {
                     expression: TypedExpressionVariant::StructFieldAccess {
                         unary_op,
-                        resolved_type_of_parent: MaybeResolvedType::Resolved(field.r#type.clone()),
+                        resolved_type_of_parent: parent.return_type.clone(),
                         prefix: Box::new(parent),
                         field_to_access: field.clone(),
                     },
@@ -608,11 +608,15 @@ impl<'sc> TypedExpression<'sc> {
                         {
                             Some(o) => o,
                             None => {
-                                errors.push(CompileError::MethodNotFound {
-                                    method_name: method_name.primary_name,
-                                    type_name: args_buf[0].return_type.friendly_type_str(),
-                                    span: method_name.span.clone(),
-                                });
+                                if args_buf[0].return_type
+                                    != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                                {
+                                    errors.push(CompileError::MethodNotFound {
+                                        method_name: method_name.primary_name,
+                                        type_name: args_buf[0].return_type.friendly_type_str(),
+                                        span: method_name.span.clone(),
+                                    });
+                                }
                                 return err(warnings, errors);
                             }
                         };
@@ -693,11 +697,15 @@ impl<'sc> TypedExpression<'sc> {
                             {
                                 Some(o) => o,
                                 None => {
-                                    errors.push(CompileError::MethodNotFound {
-                                        method_name: call_path.suffix.primary_name.clone(),
-                                        type_name: type_name.friendly_type_str(),
-                                        span: call_path.suffix.span.clone(),
-                                    });
+                                    if type_name
+                                        != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                                    {
+                                        errors.push(CompileError::MethodNotFound {
+                                            method_name: call_path.suffix.primary_name.clone(),
+                                            type_name: type_name.friendly_type_str(),
+                                            span: call_path.suffix.span.clone(),
+                                        });
+                                    }
                                     return err(warnings, errors);
                                 }
                             }
@@ -714,11 +722,15 @@ impl<'sc> TypedExpression<'sc> {
                             match module.find_method_for_type(r#type, call_path.suffix.clone()) {
                                 Some(o) => o,
                                 None => {
-                                    errors.push(CompileError::MethodNotFound {
-                                        method_name: call_path.suffix.primary_name.clone(),
-                                        type_name: r#type.friendly_type_str(),
-                                        span: call_path.suffix.span.clone(),
-                                    });
+                                    if *r#type
+                                        != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                                    {
+                                        errors.push(CompileError::MethodNotFound {
+                                            method_name: call_path.suffix.primary_name.clone(),
+                                            type_name: r#type.friendly_type_str(),
+                                            span: call_path.suffix.span.clone(),
+                                        });
+                                    }
                                     return err(warnings, errors);
                                 }
                             }
@@ -758,8 +770,6 @@ impl<'sc> TypedExpression<'sc> {
                             is_constant: IsConstant::No,
                             span,
                         }
-
-                        //                        todo!("fnd the namespace of the call_path and resolve the type_name in it. then grab the method name. emthod name is the call_path suffix")
                     }
                 }
             }
