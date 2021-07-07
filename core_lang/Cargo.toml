@@ -18,3 +18,4 @@ petgraph = "0.5"
 uuid-b64 = "0.1"
 fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
 fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
+sha2 = "0.9"

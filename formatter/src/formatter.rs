@@ -3,7 +3,7 @@ use crate::traversal::{traverse_for_changes, Change};
 use ropey::Rope;
 
 /// returns number of lines and formatted text
-pub fn get_formatted_data(file: &str, tab_size: u32) -> Result<(usize, String), &str> {
+pub fn get_formatted_data(file: &str, tab_size: u32) -> Result<(usize, String), Vec<String>> {
     match core_lang::parse(&file) {
         core_lang::CompileResult::Ok {
             value: parse_tree,
@@ -34,7 +34,23 @@ pub fn get_formatted_data(file: &str, tab_size: u32) -> Result<(usize, String), 
 
             Ok(code_builder.get_final_edits())
         }
-        _ => Err("Failed to parse the file"),
+        core_lang::CompileResult::Err {
+            errors,
+            warnings: _,
+        } => {
+            let res = errors
+                .iter()
+                .map(|e| {
+                    format!(
+                        "{:?} at line: {}",
+                        e.to_friendly_error_string(),
+                        e.line_col().0.line,
+                    )
+                })
+                .collect();
+
+            Err(res)
+        }
     }
 }
 

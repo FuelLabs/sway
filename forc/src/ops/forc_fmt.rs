@@ -1,8 +1,14 @@
+use crate::cli::BuildCommand;
+use crate::ops::forc_build;
 use crate::{
     cli::FormatCommand,
-    utils::{constants::SWAY_EXTENSION, helpers::find_manifest_dir},
+    utils::{
+        constants::SWAY_EXTENSION,
+        helpers::{find_manifest_dir, print_green, print_red},
+    },
 };
 use formatter::get_formatted_data;
+use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     ffi::OsStr,
     fmt, fs, io,
@@ -10,12 +16,29 @@ use std::{
 };
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
+    let build_command = BuildCommand {
+        path: None,
+        print_asm: false,
+        binary_outfile: None,
+        offline_mode: false,
+    };
+
+    match forc_build::build(build_command) {
+        // build is successful, continue to formatting
+        Ok(_) => format_after_build(command),
+
+        // forc_build will print all the errors/warnings
+        Err(err) => Err(err.into()),
+    }
+}
+
+fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
     let curr_dir = std::env::current_dir()?;
 
     match find_manifest_dir(&curr_dir) {
         Some(path) => {
             let files = get_sway_files(path)?;
-            let mut files_to_be_formatted = vec![];
+            let mut contains_edits = false;
 
             for file in files {
                 if let Ok(file_content) = fs::read_to_string(&file) {
@@ -24,27 +47,70 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
                         Ok((_, formatted_content)) => {
                             if command.check {
                                 if file_content != formatted_content {
-                                    files_to_be_formatted.push(format!("{:?}", file))
+                                    let changeset = diff_lines(&file_content, &formatted_content);
+
+                                    println!("{:?}\n", file);
+
+                                    let mut count_of_updates = 0;
+
+                                    for diff in changeset.diff() {
+                                        // max 100 updates
+                                        if count_of_updates >= 100 {
+                                            break;
+                                        }
+                                        match diff {
+                                            DiffOp::Equal(old) => {
+                                                for o in old {
+                                                    println!("{}", o)
+                                                }
+                                            }
+                                            DiffOp::Insert(new) => {
+                                                count_of_updates += 1;
+                                                for n in new {
+                                                    print_green(&format!("+{}", n))?;
+                                                }
+                                            }
+                                            DiffOp::Remove(old) => {
+                                                count_of_updates += 1;
+                                                for o in old {
+                                                    print_red(&format!("-{}", o))?;
+                                                }
+                                            }
+                                            DiffOp::Replace(old, new) => {
+                                                count_of_updates += 1;
+                                                for o in old {
+                                                    print_red(&format!("-{}", o))?;
+                                                }
+                                                for n in new {
+                                                    print_green(&format!("+{}", n))?;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if !contains_edits {
+                                        contains_edits = true;
+                                    }
                                 }
                             } else {
                                 format_sway_file(&file, &formatted_content)?;
                             }
                         }
-                        _ => {}
+                        Err(_) => {
+                            // unreachable since we format it only after build is successful
+                            unreachable!()
+                        }
                     }
                 }
             }
 
             if command.check {
-                if files_to_be_formatted.is_empty() {
-                    // All files are formatted, exit cleanly
-                    std::process::exit(0);
-                } else {
-                    for file in files_to_be_formatted {
-                        eprintln!("{}", file);
-                    }
+                if contains_edits {
                     // One or more files are not formatted, exit with error
                     std::process::exit(1);
+                } else {
+                    // All files are formatted, exit cleanly
+                    std::process::exit(0);
                 }
             }
 
@@ -102,6 +168,12 @@ impl From<&str> for FormatError {
         FormatError {
             message: s.to_string(),
         }
+    }
+}
+
+impl From<String> for FormatError {
+    fn from(s: String) -> Self {
+        FormatError { message: s }
     }
 }
 

@@ -11,6 +11,7 @@ use crate::{
 };
 use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
 use pest::Span;
+use sha2::{Digest, Sha256};
 
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
@@ -242,6 +243,137 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             visibility: self.visibility.clone(),
         }
     }
+    /// Convers a [TypedFunctionDeclaration] into a value that is to be used in contract function
+    /// selectors.
+    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
+    #[allow(dead_code)]
+    pub(crate) fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+        let mut hasher = Sha256::new();
+        let data = type_check!(
+            self.to_selector_name(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        hasher.update(data);
+        // 4 bytes truncation via copying into a 4 byte buffer
+        let mut buf = [0u8; 4];
+        let hash = hasher.finalize();
+        buf.copy_from_slice(&hash);
+        ok(buf, warnings, errors)
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn to_selector_name(&self) -> CompileResult<'sc, String> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+        let named_params = {
+            let names = self
+                .parameters
+                .iter()
+                .map(
+                    |TypedFunctionParameter {
+                         r#type, type_span, ..
+                     }| r#type.to_selector_name(type_span),
+                )
+                .collect::<Vec<CompileResult<String>>>();
+            let mut buf = vec![];
+            for name in names {
+                match name {
+                    CompileResult::Ok { value, .. } => buf.push(value),
+                    CompileResult::Err {
+                        warnings: mut l_w,
+                        errors: mut l_e,
+                    } => {
+                        warnings.append(&mut l_w);
+                        errors.append(&mut l_e);
+                    }
+                }
+            }
+            buf
+        };
+
+        ok(
+            format!("{}({})", self.name.primary_name, named_params.join(","),),
+            warnings,
+            errors,
+        )
+    }
+}
+
+#[test]
+fn test_function_selector_behavior() {
+    use crate::types::IntegerBits;
+    let decl = TypedFunctionDeclaration {
+        name: Ident {
+            primary_name: "foo",
+            span: Span::new(" ", 0, 0).unwrap(),
+        },
+        body: TypedCodeBlock {
+            contents: vec![],
+            whole_block_span: Span::new(" ", 0, 0).unwrap(),
+        },
+        parameters: vec![],
+        span: Span::new(" ", 0, 0).unwrap(),
+        return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
+        type_parameters: vec![],
+        return_type_span: Span::new(" ", 0, 0).unwrap(),
+        visibility: Visibility::Public,
+    };
+
+    let selector_text = match decl.to_selector_name() {
+        CompileResult::Ok { value, .. } => value,
+        _ => panic!("test failure"),
+    };
+
+    assert_eq!(selector_text, "foo()".to_string());
+
+    let decl = TypedFunctionDeclaration {
+        name: Ident {
+            primary_name: "bar",
+            span: Span::new(" ", 0, 0).unwrap(),
+        },
+        body: TypedCodeBlock {
+            contents: vec![],
+            whole_block_span: Span::new(" ", 0, 0).unwrap(),
+        },
+        parameters: vec![
+            TypedFunctionParameter {
+                name: Ident {
+                    primary_name: "foo",
+                    span: Span::new(" ", 0, 0).unwrap(),
+                },
+                r#type: MaybeResolvedType::Resolved(ResolvedType::Str(5)),
+                type_span: Span::new(" ", 0, 0).unwrap(),
+            },
+            TypedFunctionParameter {
+                name: Ident {
+                    primary_name: "baz",
+                    span: Span::new(" ", 0, 0).unwrap(),
+                },
+                r#type: MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                    IntegerBits::ThirtyTwo,
+                )),
+                type_span: Span::new(" ", 0, 0).unwrap(),
+            },
+        ],
+        span: Span::new(" ", 0, 0).unwrap(),
+        return_type: MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+            IntegerBits::SixtyFour,
+        )),
+        type_parameters: vec![],
+        return_type_span: Span::new(" ", 0, 0).unwrap(),
+        visibility: Visibility::Public,
+    };
+
+    let selector_text = match decl.to_selector_name() {
+        CompileResult::Ok { value, .. } => value,
+        _ => panic!("test failure"),
+    };
+
+    assert_eq!(selector_text, "bar(str[5],u32)".to_string());
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

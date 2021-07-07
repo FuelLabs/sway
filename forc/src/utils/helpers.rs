@@ -1,6 +1,8 @@
 use super::constants::SRC_DIR;
 use super::manifest::Manifest;
-use std::path::PathBuf;
+use std::io::{self, Write};
+use std::{path::PathBuf, str};
+use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 // Continually go up in the file tree until a manifest (Forc.toml) is found.
 pub fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
@@ -57,4 +59,42 @@ pub fn get_main_file(
     let main_file = Box::new(main_file);
     let main_file: &'static mut String = Box::leak(main_file);
     return Ok(main_file);
+}
+
+pub fn print_red(txt: &str) -> io::Result<()> {
+    print_std_out(txt, TermColor::Red)
+}
+
+pub fn print_green(txt: &str) -> io::Result<()> {
+    print_std_out(txt, TermColor::Green)
+}
+
+pub fn print_yellow_err(txt: &str) -> io::Result<()> {
+    print_std_err(txt, TermColor::Yellow)
+}
+
+pub fn print_red_err(txt: &str) -> io::Result<()> {
+    print_std_err(txt, TermColor::Red)
+}
+
+pub fn print_green_err(txt: &str) -> io::Result<()> {
+    print_std_err(txt, TermColor::Green)
+}
+
+fn print_std_out(txt: &str, color: TermColor) -> io::Result<()> {
+    let stdout = StandardStream::stdout(ColorChoice::Always);
+    print_with_color(txt, color, stdout)
+}
+
+fn print_std_err(txt: &str, color: TermColor) -> io::Result<()> {
+    let stdout = StandardStream::stderr(ColorChoice::Always);
+    print_with_color(txt, color, stdout)
+}
+
+fn print_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io::Result<()> {
+    let mut stream = stream;
+    stream.set_color(ColorSpec::new().set_fg(Some(color)))?;
+    writeln!(&mut stream, "{}", txt)?;
+    stream.reset()?;
+    Ok(())
 }
