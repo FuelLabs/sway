@@ -642,7 +642,6 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 warnings,
                 errors
             );
-            println!("There are {} abi functions", selectors_and_labels.len());
             asm_buf.append(&mut build_contract_abi_switch(
                 &mut register_sequencer,
                 &mut namespace,
