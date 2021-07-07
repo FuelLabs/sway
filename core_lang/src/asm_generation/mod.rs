@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt};
 
 use crate::{
+    asm_generation::expression::convert_abi_fn_to_asm,
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedRegister},
         virtual_ops::{
@@ -1046,7 +1047,6 @@ fn build_contract_abi_switch<'sc>(
 
     // if none of the selectors matched, then revert
     asm_buf.push(Op {
-        // TODO to validate -- what do we want to return in this revert?
         // see https://github.com/FuelLabs/sway/issues/97#issuecomment-875674105
         opcode: Either::Left(VirtualOp::RVRT(VirtualRegister::Constant(
             ConstantRegister::Zero,
@@ -1058,12 +1058,57 @@ fn build_contract_abi_switch<'sc>(
     asm_buf
 }
 
+/// Given a contract's abi entries, compile them to jump destinations and an opcode buffer.
 fn compile_contract_to_selectors<'sc>(
     abi_entries: Vec<TypedFunctionDeclaration<'sc>>,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, (Vec<([u8; 4], Label)>, Vec<Op<'sc>>)> {
-    todo!(
-        "compile all the public functions in the contract and get their selectors and jump labels"
-    )
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    // for every ABI function, we need:
+    // 0) a jump label
+    // 1) loading the argument from the call frame into the register for the function
+    // 2) the function's bytecode itself
+    // 3) the function selector
+    let mut selectors_labels_buf = vec![];
+    let mut asm_buf = vec![];
+    for decl in abi_entries {
+        if decl.parameters.len() != 1 {
+            errors.push(CompileError::InvalidNumberOfAbiParams {
+                span: decl.parameters_span(),
+            });
+        }
+        let argument_name = decl.parameters[0].name.clone();
+        let selector = type_check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
+        let fn_label = register_sequencer.get_label();
+        asm_buf.push(Op::jump_label(fn_label.clone(), decl.span.clone()));
+        // load the call frame argument into the function argument register
+        let argument_register = register_sequencer.next();
+        asm_buf.push(Op {
+            opcode: Either::Left(VirtualOp::LW(
+                argument_register.clone(),
+                VirtualRegister::Constant(ConstantRegister::FramePointer),
+                // TODO update this to the new spec
+                VirtualImmediate12::new_unchecked(76, "infallible constant 76"),
+            )),
+            comment: "loading argument into abi function".into(),
+            owning_span: None,
+        });
+
+        asm_buf.append(&mut type_check!(
+            convert_abi_fn_to_asm(
+                &decl,
+                (&argument_name, &argument_register),
+                namespace,
+                register_sequencer
+            ),
+            vec![],
+            warnings,
+            errors
+        ));
+        selectors_labels_buf.push((selector, fn_label));
+    }
+
+    ok((selectors_labels_buf, asm_buf), warnings, errors)
 }

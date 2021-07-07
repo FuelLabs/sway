@@ -666,6 +666,8 @@ pub enum CompileError<'sc> {
     },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
     InvalidAbiType { span: Span<'sc> },
+    #[error("An ABI function must accept exactly one argument. If you need to accept more values, try putting them in a struct, and then accepting a parameter of that struct type.")]
+    InvalidNumberOfAbiParams { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -829,6 +831,7 @@ impl<'sc> CompileError<'sc> {
             TooManyArgumentsForFunction { span, .. } => span,
             TooFewArgumentsForFunction { span, .. } => span,
             InvalidAbiType { span, .. } => span,
+            InvalidNumberOfAbiParams { span, .. } => span,
         }
     }
 
