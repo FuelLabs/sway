@@ -5,7 +5,10 @@ use std::io::Read;
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
 pub enum FinalizedAsm<'sc> {
-    ContractAbi,
+    ContractAbi {
+        data_section: DataSection<'sc>,
+        program_section: InstructionSet<'sc>,
+    },
     ScriptMain {
         data_section: DataSection<'sc>,
         program_section: InstructionSet<'sc>,
@@ -21,7 +24,12 @@ impl<'sc> FinalizedAsm<'sc> {
     pub(crate) fn to_bytecode(&self) -> CompileResult<'sc, Vec<u8>> {
         use FinalizedAsm::*;
         match self {
-            ContractAbi | Library => ok(vec![], vec![], vec![]),
+            ContractAbi {
+                program_section,
+                data_section,
+            } => to_bytecode(program_section, data_section),
+            // libraries are not compiled to asm
+            Library => ok(vec![], vec![], vec![]),
             ScriptMain {
                 program_section,
                 data_section,
