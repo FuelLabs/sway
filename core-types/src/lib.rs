@@ -1,11 +1,11 @@
 use fuel_asm::Word;
-use fuel_tx::{crypto, ContractAddress, Hash};
+use fuel_tx::{crypto, ContractId, Hash};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
 pub type Id = [u8; Hash::size_of()];
-pub type Contract = [u8; ContractAddress::size_of()];
+pub type Contract = [u8; ContractId::size_of()];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Position {
@@ -134,7 +134,7 @@ pub struct CallFrame {
 
 impl CallFrame {
     pub fn new(
-        contract: ContractAddress,
+        contract: ContractId,
         source: Source,
         range: Range,
         program: Vec<Instruction>,
@@ -176,7 +176,7 @@ impl CallFrame {
         self.program.as_slice()
     }
 
-    pub fn contract(&self) -> ContractAddress {
+    pub fn contract(&self) -> ContractId {
         self.contract.into()
     }
 }
@@ -323,7 +323,7 @@ impl Context {
         }
     }
 
-    pub fn contract(&self) -> Option<ContractAddress> {
+    pub fn contract(&self) -> Option<ContractId> {
         match self {
             Self::CallFrame(t) => Some(t.contract()),
             _ => None,
