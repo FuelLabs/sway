@@ -1,5 +1,5 @@
 use core_lang::{parse, CompileError};
-use fuel_tx::{crypto::hash, ContractAddress, Output, Salt, Transaction};
+use fuel_tx::{crypto::hash, ContractId, Output, Salt, Transaction};
 
 use crate::cli::DeployCommand;
 
@@ -7,11 +7,13 @@ use crate::ops::forc_build;
 use crate::utils::{constants, helpers};
 use constants::{MANIFEST_FILE_NAME, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
 use helpers::{find_manifest_dir, get_main_file, read_manifest};
+use std::net::AddrParseError;
 use std::{fmt, io, path::PathBuf};
 
 use crate::cli::BuildCommand;
+use tx_client::client::TxClient;
 
-pub fn deploy(_: DeployCommand) -> Result<(), DeployError> {
+pub async fn deploy(command: DeployCommand) -> Result<(), DeployError> {
     let curr_dir = std::env::current_dir()?;
 
     match find_manifest_dir(&curr_dir) {
@@ -38,9 +40,16 @@ pub fn deploy(_: DeployCommand) -> Result<(), DeployError> {
                         let compiled_contract = forc_build::build(build_command)?;
                         let tx = create_contract_tx(compiled_contract);
 
-                        // todo: pass the transaction to the running node
-                        println!("{:?}", tx);
-                        Ok(())
+                        let node_url = command.port.unwrap_or("0.0.0.0:4000".into());
+                        let client = TxClient::new(node_url)?;
+
+                        match client.transact(&tx).await {
+                            Ok(logs) => {
+                                println!("{:?}", logs);
+                                Ok(())
+                            }
+                            Err(e) => Err(e.to_string().into()),
+                        }
                     } else {
                         let parse_type = {
                             if parse_tree.script_ast.is_some() {
@@ -79,7 +88,7 @@ fn create_contract_tx(compiled_contract: Vec<u8>) -> Transaction {
     let zero_hash = hash("0".as_bytes());
 
     let outputs = vec![Output::ContractCreated {
-        contract_id: ContractAddress::new(zero_hash.into()),
+        contract_id: ContractId::new(zero_hash.into()),
     }];
 
     Transaction::create(
@@ -151,6 +160,14 @@ impl From<String> for DeployError {
 
 impl From<io::Error> for DeployError {
     fn from(e: io::Error) -> Self {
+        DeployError {
+            message: e.to_string(),
+        }
+    }
+}
+
+impl From<AddrParseError> for DeployError {
+    fn from(e: AddrParseError) -> Self {
         DeployError {
             message: e.to_string(),
         }
