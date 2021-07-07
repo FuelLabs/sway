@@ -52,6 +52,22 @@ impl Default for MaybeResolvedType<'_> {
 }
 
 impl<'sc> MaybeResolvedType<'sc> {
+    pub(crate) fn to_selector_name(
+        &self,
+        error_msg_span: &Span<'sc>,
+    ) -> CompileResult<'sc, String> {
+        match self {
+            MaybeResolvedType::Resolved(r) => r.to_selector_name(error_msg_span),
+            _ => {
+                return err(
+                    vec![],
+                    vec![CompileError::InvalidAbiType {
+                        span: error_msg_span.clone(),
+                    }],
+                )
+            }
+        }
+    }
     pub(crate) fn is_copy_type(&self) -> bool {
         match self {
             MaybeResolvedType::Resolved(ty) => match ty {
@@ -262,5 +278,78 @@ impl<'sc> ResolvedType<'sc> {
         } else {
             false
         }
+    }
+
+    /// maps a type to a name that is used when constructing function selectors
+    pub(crate) fn to_selector_name(
+        &self,
+        error_msg_span: &Span<'sc>,
+    ) -> CompileResult<'sc, String> {
+        use ResolvedType::*;
+        let name = match self {
+            Str(len) => format!("str[{}]", len),
+            UnsignedInteger(bits) => {
+                use IntegerBits::*;
+                match bits {
+                    Eight => "u8",
+                    Sixteen => "u16",
+                    ThirtyTwo => "u32",
+                    SixtyFour => "u64",
+                }
+                .into()
+            }
+            Boolean => "bool".into(),
+
+            Unit => "unit".into(),
+            Byte => "byte".into(),
+            Byte32 => "byte32".into(),
+            Struct { fields, .. } => {
+                let field_names = {
+                    let names = fields
+                        .iter()
+                        .map(|TypedStructField { r#type, .. }| {
+                            r#type.to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for name in names {
+                        match name {
+                            CompileResult::Ok { value, .. } => buf.push(value),
+                            e => return e,
+                        }
+                    }
+                    buf
+                };
+
+                format!("s({})", field_names.join(","))
+            }
+            Enum { variant_types, .. } => {
+                let variant_names = {
+                    let names = variant_types
+                        .iter()
+                        .map(|ty| ty.to_selector_name(error_msg_span))
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for name in names {
+                        match name {
+                            CompileResult::Ok { value, .. } => buf.push(value),
+                            e => return e,
+                        }
+                    }
+                    buf
+                };
+
+                format!("e({})", variant_names.join(","))
+            }
+            _ => {
+                return err(
+                    vec![],
+                    vec![CompileError::InvalidAbiType {
+                        span: error_msg_span.clone(),
+                    }],
+                )
+            }
+        };
+        ok(name, vec![], vec![])
     }
 }
