@@ -11,7 +11,9 @@ use crate::{
     },
     error::*,
     parse_tree::Literal,
-    semantic_analysis::{TypedAstNode, TypedAstNodeContent, TypedParseTree},
+    semantic_analysis::{
+        TypedAstNode, TypedAstNodeContent, TypedFunctionDeclaration, TypedParseTree,
+    },
     Ident,
 };
 use either::Either;
@@ -630,10 +632,15 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 data_section: namespace.data_section,
             }
         }
-        TypedParseTree::Contract { .. } => {
+        TypedParseTree::Contract { abi_entries, .. } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            let (selectors_and_labels, contract_asm) = todo!("compile all the public functions in the contract and get their selectors and jump labels");
+            let (selectors_and_labels, mut contract_asm) = type_check!(
+                compile_contract_to_selectors(abi_entries, &mut namespace, &mut register_sequencer),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             asm_buf.append(&mut build_contract_abi_switch(
                 &mut register_sequencer,
                 &mut namespace,
@@ -1049,4 +1056,14 @@ fn build_contract_abi_switch<'sc>(
     });
 
     asm_buf
+}
+
+fn compile_contract_to_selectors<'sc>(
+    abi_entries: Vec<TypedFunctionDeclaration<'sc>>,
+    namespace: &mut AsmNamespace<'sc>,
+    register_sequencer: &mut RegisterSequencer,
+) -> CompileResult<'sc, (Vec<([u8; 4], Label)>, Vec<Op<'sc>>)> {
+    todo!(
+        "compile all the public functions in the contract and get their selectors and jump labels"
+    )
 }
