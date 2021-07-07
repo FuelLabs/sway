@@ -25,6 +25,7 @@ pub enum TypedDeclaration<'sc> {
         trait_name: CallPath<'sc>,
         span: Span<'sc>,
         methods: Vec<TypedFunctionDeclaration<'sc>>,
+        type_implementing_for: MaybeResolvedType<'sc>,
     },
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
@@ -273,7 +274,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // 4 bytes truncation via copying into a 4 byte buffer
         let mut buf = [0u8; 4];
         let hash = hasher.finalize();
-        buf.copy_from_slice(&hash);
+        buf.copy_from_slice(&hash[0..4]);
         ok(buf, warnings, errors)
     }
 
