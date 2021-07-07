@@ -1,12 +1,13 @@
+use crate::ops::forc_deploy;
 use structopt::{self, StructOpt};
 
-use crate::ops::forc_deploy;
-
 #[derive(Debug, StructOpt)]
-pub struct Command {}
+pub struct Command {
+    pub port: Option<String>,
+}
 
-pub(crate) fn exec(command: Command) -> Result<(), String> {
-    match forc_deploy::deploy(command) {
+pub(crate) async fn exec(command: Command) -> Result<(), String> {
+    match forc_deploy::deploy(command).await {
         Err(e) => Err(e.message),
         _ => Ok(()),
     }
