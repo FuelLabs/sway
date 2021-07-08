@@ -1091,7 +1091,7 @@ fn compile_contract_to_selectors<'sc>(
                 argument_register.clone(),
                 VirtualRegister::Constant(ConstantRegister::FramePointer),
                 // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
-                VirtualImmediate12::new_unchecked(74, "infallible constant 76"),
+                VirtualImmediate12::new_unchecked(74, "infallible constant 74"),
             )),
             comment: "loading argument into abi function".into(),
             owning_span: None,
