@@ -27,12 +27,13 @@ jobs:
           ${{ secrets.PRIVATE_KEY_FUEL_ASM }}
           ${{ secrets.PRIVATE_KEY_FUEL_TX }}
           ${{ secrets.PRIVATE_KEY_FUEL_VM }}
+          ${{ secrets.PRIVATE_KEY_FUEL_CORE }}
 
     - name: Install toolchain
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: 1.52.0
+        toolchain: stable
         override: true
 
     - name: Install rustfmt
