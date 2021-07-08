@@ -45,7 +45,7 @@ enum Forc {
     ParseBytecode(ParseBytecodeCommand),
 }
 
-pub(crate) fn run_cli() -> Result<(), String> {
+pub(crate) async fn run_cli() -> Result<(), String> {
     let opt = Opt::from_args();
     match opt.command {
         Forc::Analysis(command) => analysis::exec(command),
@@ -53,7 +53,7 @@ pub(crate) fn run_cli() -> Result<(), String> {
         Forc::Build(command) => build::exec(command),
         Forc::Coverage(command) => coverage::exec(command),
         Forc::Format(command) => format::exec(command),
-        Forc::Deploy(command) => deploy::exec(command),
+        Forc::Deploy(command) => deploy::exec(command).await,
         Forc::Init(command) => init::exec(command),
         Forc::Mvprun(command) => mvprun::exec(command),
         Forc::Publish(command) => publish::exec(command),
