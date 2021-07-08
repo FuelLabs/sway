@@ -1,5 +1,5 @@
 use fuel_asm::Word;
-use fuel_tx::{crypto, ContractId, Bytes32};
+use fuel_tx::{crypto, Bytes32, ContractId};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};

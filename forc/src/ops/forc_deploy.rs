@@ -5,8 +5,8 @@ use crate::cli::DeployCommand;
 
 use crate::ops::forc_build;
 use crate::utils::{constants, helpers};
-use constants::{MANIFEST_FILE_NAME, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT, DEFAULT_NODE_URL};
-use helpers::{find_manifest_dir, get_main_file, read_manifest,};
+use constants::{DEFAULT_NODE_URL, MANIFEST_FILE_NAME, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
+use helpers::{find_manifest_dir, get_main_file, read_manifest};
 use std::net::AddrParseError;
 use std::{fmt, io, path::PathBuf};
 
@@ -42,7 +42,7 @@ pub async fn deploy(_: DeployCommand) -> Result<(), DeployError> {
 
                         let node_url = match &manifest.network {
                             Some(network) => &network.url,
-                            _ => DEFAULT_NODE_URL
+                            _ => DEFAULT_NODE_URL,
                         };
 
                         let client = TxClient::new(node_url)?;
