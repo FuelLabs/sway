@@ -25,6 +25,7 @@ pub enum TypedDeclaration<'sc> {
         trait_name: CallPath<'sc>,
         span: Span<'sc>,
         methods: Vec<TypedFunctionDeclaration<'sc>>,
+        type_implementing_for: MaybeResolvedType<'sc>,
     },
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
@@ -215,6 +216,19 @@ pub struct TypedFunctionDeclaration<'sc> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
+    /// If there are parameters, join their spans. Otherwise, use the fn name span.
+    pub(crate) fn parameters_span(&self) -> Span<'sc> {
+        if self.parameters.len() >= 1 {
+            self.parameters.iter().fold(
+                self.parameters[0].name.span.clone(),
+                |acc, TypedFunctionParameter { type_span, .. }| {
+                    crate::utils::join_spans(acc, type_span.clone())
+                },
+            )
+        } else {
+            self.name.span.clone()
+        }
+    }
     pub(crate) fn replace_self_types(&self, self_type: &MaybeResolvedType<'sc>) -> Self {
         TypedFunctionDeclaration {
             name: self.name.clone(),
@@ -243,10 +257,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             visibility: self.visibility.clone(),
         }
     }
-    /// Convers a [TypedFunctionDeclaration] into a value that is to be used in contract function
+    /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    #[allow(dead_code)]
     pub(crate) fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -261,11 +274,10 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // 4 bytes truncation via copying into a 4 byte buffer
         let mut buf = [0u8; 4];
         let hash = hasher.finalize();
-        buf.copy_from_slice(&hash);
+        buf.copy_from_slice(&hash[0..4]);
         ok(buf, warnings, errors)
     }
 
-    #[allow(dead_code)]
     pub(crate) fn to_selector_name(&self) -> CompileResult<'sc, String> {
         let mut errors = vec![];
         let mut warnings = vec![];
