@@ -1037,7 +1037,7 @@ fn build_contract_abi_switch<'sc>(
         asm_buf.push(Op {
             // if the comparison result is _not_ equal to 0, then it was indeed equal.
             opcode: Either::Right(OrganizationalOp::JumpIfNotEq(
-                VirtualRegister::Constant(ConstantRegister::One),
+                VirtualRegister::Constant(ConstantRegister::Zero),
                 comparison_result_register,
                 label,
             )),
@@ -1075,12 +1075,17 @@ fn compile_contract_to_selectors<'sc>(
     let mut selectors_labels_buf = vec![];
     let mut asm_buf = vec![];
     for decl in abi_entries {
+        // TODO wrapping things in a struct should be doable by the compiler eventually,
+        // allowing users to pass in any number of free-floating parameters (bound by immediate limits maybe).
+        // https://github.com/FuelLabs/sway/pull/115#discussion_r666466414
         if decl.parameters.len() != 1 {
             errors.push(CompileError::InvalidNumberOfAbiParams {
                 span: decl.parameters_span(),
             });
         }
         let argument_name = decl.parameters[0].name.clone();
+        // the function selector is the first four bytes of the hashed declaration/params according
+        // to https://github.com/FuelLabs/sway/issues/96
         let selector = type_check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
         let fn_label = register_sequencer.get_label();
         asm_buf.push(Op::jump_label(fn_label.clone(), decl.span.clone()));
