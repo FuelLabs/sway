@@ -1002,6 +1002,8 @@ fn build_contract_abi_switch<'sc>(
             input_selector_register.clone(),
             VirtualRegister::Constant(ConstantRegister::FramePointer),
             // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
+            // We expect the last four bytes of this word to contain the selector, and the first
+            // four bytes to all be 0.
             VirtualImmediate12::new_unchecked(73, "constant infallible value"),
         )),
         comment: "load input function selector".into(),
