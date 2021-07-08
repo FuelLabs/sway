@@ -5,15 +5,15 @@ use crate::cli::DeployCommand;
 
 use crate::ops::forc_build;
 use crate::utils::{constants, helpers};
-use constants::{MANIFEST_FILE_NAME, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
-use helpers::{find_manifest_dir, get_main_file, read_manifest};
+use constants::{MANIFEST_FILE_NAME, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT, DEFAULT_NODE_URL};
+use helpers::{find_manifest_dir, get_main_file, read_manifest,};
 use std::net::AddrParseError;
 use std::{fmt, io, path::PathBuf};
 
 use crate::cli::BuildCommand;
 use tx_client::client::TxClient;
 
-pub async fn deploy(command: DeployCommand) -> Result<(), DeployError> {
+pub async fn deploy(_: DeployCommand) -> Result<(), DeployError> {
     let curr_dir = std::env::current_dir()?;
 
     match find_manifest_dir(&curr_dir) {
@@ -40,7 +40,11 @@ pub async fn deploy(command: DeployCommand) -> Result<(), DeployError> {
                         let compiled_contract = forc_build::build(build_command)?;
                         let tx = create_contract_tx(compiled_contract);
 
-                        let node_url = command.port.unwrap_or("0.0.0.0:4000".into());
+                        let node_url = match &manifest.network {
+                            Some(network) => &network.url,
+                            _ => DEFAULT_NODE_URL
+                        };
+
                         let client = TxClient::new(node_url)?;
 
                         match client.transact(&tx).await {
