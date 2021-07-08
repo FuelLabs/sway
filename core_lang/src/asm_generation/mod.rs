@@ -1001,7 +1001,8 @@ fn build_contract_abi_switch<'sc>(
         opcode: Either::Left(VirtualOp::LW(
             input_selector_register.clone(),
             VirtualRegister::Constant(ConstantRegister::FramePointer),
-            VirtualImmediate12::new_unchecked(75, "constant infallible value"),
+            // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
+            VirtualImmediate12::new_unchecked(73, "constant infallible value"),
         )),
         comment: "load input function selector".into(),
         owning_span: None,
@@ -1089,8 +1090,8 @@ fn compile_contract_to_selectors<'sc>(
             opcode: Either::Left(VirtualOp::LW(
                 argument_register.clone(),
                 VirtualRegister::Constant(ConstantRegister::FramePointer),
-                // TODO update this to the new spec
-                VirtualImmediate12::new_unchecked(76, "infallible constant 76"),
+                // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
+                VirtualImmediate12::new_unchecked(74, "infallible constant 76"),
             )),
             comment: "loading argument into abi function".into(),
             owning_span: None,
