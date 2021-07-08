@@ -2,9 +2,7 @@ use crate::ops::forc_deploy;
 use structopt::{self, StructOpt};
 
 #[derive(Debug, StructOpt)]
-pub struct Command {
-    pub port: Option<String>,
-}
+pub struct Command {}
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {
     match forc_deploy::deploy(command).await {
