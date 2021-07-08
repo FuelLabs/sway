@@ -32,6 +32,30 @@ pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
         }
     }
 
+    if let Some(contract_tree) = &parse_tree.contract_ast {
+        let nodes = &contract_tree.root_nodes;
+
+        for node in nodes {
+            traverse_ast_node(&node, &mut changes)
+        }
+    }
+
+    if let Some(predicate_tree) = &parse_tree.predicate_ast {
+        let nodes = &predicate_tree.root_nodes;
+
+        for node in nodes {
+            traverse_ast_node(&node, &mut changes)
+        }
+    }
+
+    for (_, lib_tree) in &parse_tree.library_exports {
+        let nodes = &lib_tree.root_nodes;
+
+        for node in nodes {
+            traverse_ast_node(&node, &mut changes)
+        }
+    }
+
     changes.sort_by(|a, b| a.start.cmp(&b.start));
 
     changes
