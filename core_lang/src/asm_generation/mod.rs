@@ -1049,7 +1049,7 @@ fn build_contract_abi_switch<'sc>(
     // if none of the selectors matched, then revert
     asm_buf.push(Op {
         // see https://github.com/FuelLabs/sway/issues/97#issuecomment-875674105
-        opcode: Either::Left(VirtualOp::RVRT(VirtualRegister::Constant(
+        opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
             ConstantRegister::Zero,
         ))),
         comment: "revert if no selectors matched".into(),
