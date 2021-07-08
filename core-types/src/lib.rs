@@ -1,10 +1,10 @@
 use fuel_asm::Word;
-use fuel_tx::{crypto, ContractId, Hash};
+use fuel_tx::{crypto, ContractId, Bytes32};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
-pub type Id = [u8; Hash::size_of()];
+pub type Id = [u8; Bytes32::size_of()];
 pub type Contract = [u8; ContractId::size_of()];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
