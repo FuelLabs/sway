@@ -46,6 +46,24 @@ pub struct VersionedDependencyDirectory {
     pub path: String,
 }
 
+pub type GitHubRepoReleases = Vec<TaggedRelease>;
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaggedRelease {
+    #[serde(rename = "tag_name")]
+    pub tag_name: String,
+    #[serde(rename = "target_commitish")]
+    pub target_commitish: String,
+    pub name: String,
+    pub draft: bool,
+    pub prerelease: bool,
+    #[serde(rename = "created_at")]
+    pub created_at: String,
+    #[serde(rename = "published_at")]
+    pub published_at: String,
+}
+
 /// Downloads a non-local dependency that's hosted on GitHub.
 /// By default, it stores the dependency in `~/.forc/`.
 /// A given dependency `dep` is stored under `~/.forc/dep/default/$owner-$repo-$hash`.
@@ -120,7 +138,7 @@ pub fn download_github_dep(
         ));
     }
 
-    let github_api_url = build_github_api_url(repo_base_url, &branch, &version);
+    let github_api_url = build_github_repo_api_url(repo_base_url, &branch, &version);
 
     println!("Downloading {:?} into {:?}", dep_name, out_dir);
 
@@ -135,7 +153,7 @@ pub fn download_github_dep(
 /// And the API URL must be like `https://api.github.com/repos/:owner/:project/tarball`
 /// Adding a `:ref` at the end makes it download a branch/tag based repo.
 /// Omitting it makes it download the default branch at latest commit.
-pub fn build_github_api_url(
+pub fn build_github_repo_api_url(
     dependency_url: &str,
     branch: &Option<String>,
     version: &Option<String>,
@@ -230,7 +248,7 @@ pub fn replace_dep_version(
 ) -> Result<()> {
     let current = get_current_dependency_version(&target_directory)?;
 
-    let api_url = build_github_api_url(git, &dep.branch, &dep.version);
+    let api_url = build_github_repo_api_url(git, &dep.branch, &dep.version);
     download_tarball(&api_url, &target_directory)?;
 
     // Delete old one
@@ -345,4 +363,41 @@ pub fn get_detailed_dependencies(manifest: &mut Manifest) -> HashMap<String, &De
     }
 
     dependencies
+}
+
+pub fn get_github_repo_releases(dependency_url: &str) -> Result<Vec<String>> {
+    // Quick protection against `git` dependency URL ending with `/`.
+    let dependency_url = dependency_url.trim_end_matches("/");
+
+    let mut pieces = dependency_url.rsplit("/");
+
+    let project_name: &str = match pieces.next() {
+        Some(p) => p.into(),
+        None => dependency_url.into(),
+    };
+
+    let owner_name: &str = match pieces.next() {
+        Some(p) => p.into(),
+        None => dependency_url.into(),
+    };
+
+    let api_endpoint = format!(
+        "https://api.github.com/repos/{}/{}/releases",
+        owner_name, project_name
+    );
+
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("forc-builder")
+        .build()?;
+
+    let resp = client.get(&api_endpoint).send()?;
+
+    let releases_vec = resp.json::<GitHubRepoReleases>().context(format!(
+        "couldn't parse GitHub API response. API endpoint crafted: {}",
+        api_endpoint
+    ))?;
+
+    let semver_releases: Vec<String> = releases_vec.iter().map(|r| r.tag_name.to_owned()).collect();
+
+    Ok(semver_releases)
 }

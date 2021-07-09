@@ -2,6 +2,7 @@ pub mod analysis;
 pub mod benchmark;
 pub mod build;
 pub mod coverage;
+pub mod dep_check;
 pub mod deploy;
 pub mod format;
 pub mod init;

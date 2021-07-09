@@ -66,28 +66,29 @@ fn update_dependency(dependency_name: &str, dep: &dependency::DependencyDetails)
 
     // Currently we only handle updates on github-based dependencies
     if let Some(git) = &dep.git {
-        // Automatically updating a dependency that has a tag/version specified in `Forc.toml`
-        // would mean to update the `Forc.toml` file, which I believe isn't a very
-        // nice behavior. Instead, if a tag/version is specified, the user should
-        // lookup for a desired version and manually specify it in `Forc.toml`.
-        if let Some(version) = &dep.version {
-            println!("Ignoring update for {} at version {}: Forc update not implemented for dependencies with specified tag. To update to another tag, change the tag in `Forc.toml` and run the build command.", dependency_name, version);
-        }
+        match &dep.version {
+            // Automatically updating a dependency that has a tag/version specified in `Forc.toml`
+            // would mean to update the `Forc.toml` file, which I believe isn't a very
+            // nice behavior. Instead, if a tag/version is specified, the user should
+            // lookup for a desired version and manually specify it in `Forc.toml`.
+            Some(version) => println!("Ignoring update for {} at version {}: Forc update not implemented for dependencies with specified tag. To update to another tag, change the tag in `Forc.toml` and run the build command.", dependency_name, version),
+            None => {
+                let target_directory = match &dep.branch {
+                    Some(b) => format!("{}/.forc/{}/{}", home_dir, dependency_name, &b),
+                    None => format!("{}/.forc/{}/default", home_dir, dependency_name),
+                };
 
-        let target_directory = match &dep.branch {
-            Some(b) => format!("{}/.forc/{}/{}", home_dir, dependency_name, &b),
-            None => format!("{}/.forc/{}/default", home_dir, dependency_name),
-        };
-
-        let current = dependency::get_current_dependency_version(&target_directory)?;
-
-        let latest_hash = dependency::get_latest_commit_sha(git, &dep.branch)?;
-
-        if current.hash == latest_hash {
-            println!("{} is up-to-date", dependency_name);
-        } else {
-            dependency::replace_dep_version(&target_directory, git, dep).unwrap();
-            println!("{}: {} -> {}", dependency_name, current.hash, latest_hash);
+                let current = dependency::get_current_dependency_version(&target_directory)?;
+                
+                let latest_hash = dependency::get_latest_commit_sha(git, &dep.branch)?;
+                
+                if current.hash == latest_hash {
+                      println!("{} is up-to-date", dependency_name);
+                } else {
+                    dependency::replace_dep_version(&target_directory, git, dep)?; 
+                    println!("{}: {} -> {}", dependency_name, current.hash, latest_hash);
+                }
+            }
         }
     }
     Ok(())
