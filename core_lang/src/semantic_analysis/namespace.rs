@@ -345,12 +345,7 @@ impl<'sc> Namespace<'sc> {
         {
             warnings.push(CompileWarning {
                 warning_content: Warning::OverridingTraitImplementation,
-                span: functions_buf.iter().fold(
-                    functions_buf[0].span.clone(),
-                    |acc, TypedFunctionDeclaration { span, .. }| {
-                        crate::utils::join_spans(acc, span.clone())
-                    },
-                ),
+                span: trait_name.span(),
             })
         }
         module_to_insert_into
