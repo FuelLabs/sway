@@ -51,7 +51,7 @@ pub fn handle_whitespace_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
         let next_char = *next_char;
 
         match next_char {
-            '(' | ';' | ':' | ')' | ',' => {} // do nothing, handle it in next turn
+            '(' | ';' | ':' | ')' | ',' | '/' => {} // do nothing, handle it in next turn
             _ => {
                 // add whitespace if it is not already there
                 code_line.append_whitespace();
@@ -82,15 +82,29 @@ pub fn handle_assignment_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
 pub fn handle_colon_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
     if let Some((_, next_char)) = iter.peek() {
         let next_char = *next_char;
+
+        // it's :: operator
         if next_char == ':' {
-            // it's :: operator
-            code_line.push_str("::");
+            // it's initial :: from 'use' statement so append whitespace to the left
+            if is_use_statement(&code_line.text) && !code_line.text.contains("::") {
+                code_line.append_with_whitespace("::");
+            } else {
+                code_line.push_str("::");
+            }
             iter.next();
         } else {
             code_line.push_str(": ");
         }
     } else {
         code_line.push_str(": ");
+    }
+}
+
+pub fn handle_star_case(code_line: &mut CodeLine) {
+    if is_use_statement(&code_line.text) {
+        code_line.push_char('*');
+    } else {
+        code_line.append_with_whitespace("* ");
     }
 }
 
@@ -146,5 +160,25 @@ pub fn clean_all_incoming_whitespace(iter: &mut Peekable<Enumerate<Chars>>) {
         } else {
             break;
         }
+    }
+}
+
+pub fn is_dep_statement(text: &str) -> bool {
+    let text = text.trim();
+
+    match text.len() {
+        3 => &text[0..3] == "dep",
+        n if n > 3 => &text[0..4] == "dep ",
+        _ => false,
+    }
+}
+
+fn is_use_statement(text: &str) -> bool {
+    let text = text.trim();
+
+    match text.len() {
+        3 => &text[0..3] == "use",
+        n if n > 3 => &text[0..4] == "use ",
+        _ => false,
     }
 }

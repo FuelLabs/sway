@@ -3,7 +3,10 @@ use std::{
     str::Chars,
 };
 
-use crate::constants::NEW_LINE_SIGN;
+use crate::{
+    code_builder_helpers::{handle_star_case, is_dep_statement},
+    constants::NEW_LINE_SIGN,
+};
 
 use super::{
     code_builder_helpers::{
@@ -83,9 +86,9 @@ impl CodeBuilder {
                             '-' => handle_dash_case(&mut code_line, &mut iter),
                             '|' => handle_pipe_case(&mut code_line, &mut iter),
                             '&' => handle_ampersand_case(&mut code_line, &mut iter),
+                            '*' => handle_star_case(&mut code_line),
 
                             '+' => code_line.append_with_whitespace("+ "),
-                            '*' => code_line.append_with_whitespace("* "),
                             '/' => {
                                 match iter.peek() {
                                     Some((_, '*')) => {
@@ -100,7 +103,13 @@ impl CodeBuilder {
                                         code_line.append_with_whitespace(&comment);
                                         return self.complete_and_add_line(code_line);
                                     }
-                                    _ => code_line.append_with_whitespace("/ "),
+                                    _ => {
+                                        if is_dep_statement(&code_line.text) {
+                                            code_line.push_char('/');
+                                        } else {
+                                            code_line.append_with_whitespace("/ ");
+                                        }
+                                    }
                                 }
                             }
                             '%' => code_line.append_with_whitespace("% "),
