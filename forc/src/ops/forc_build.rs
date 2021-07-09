@@ -206,11 +206,12 @@ fn download_github_dep(
 /// And the API URL must be like `https://api.github.com/repos/:owner/:project/tarball`
 /// Adding a `:ref` at the end makes it download a branch/tag based repo.
 /// Omitting it makes it download the default branch at latest commit.
-fn build_github_api_url(
+pub fn build_github_api_url(
     dependency_url: &str,
     branch: &Option<String>,
     version: &Option<String>,
 ) -> String {
+    let dependency_url = dependency_url.trim_end_matches("/");
     let mut pieces = dependency_url.rsplit("/");
 
     let project_name: &str = match pieces.next() {
@@ -250,7 +251,7 @@ fn build_github_api_url(
     }
 }
 
-fn download_tarball(url: &str, out_dir: &str) -> Result<String> {
+pub fn download_tarball(url: &str, out_dir: &str) -> Result<String> {
     let mut data = Vec::new();
     let mut handle = Easy::new();
 

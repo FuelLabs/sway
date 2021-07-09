@@ -3,7 +3,7 @@ use structopt::StructOpt;
 mod commands;
 use self::commands::{
     analysis, benchmark, build, coverage, deploy, format, init, mvprun, parse_bytecode, publish,
-    serve, test,
+    serve, test, update,
 };
 
 use analysis::Command as AnalysisCommand;
@@ -18,6 +18,7 @@ use parse_bytecode::Command as ParseBytecodeCommand;
 use publish::Command as PublishCommand;
 use serve::Command as ServeCommand;
 use test::Command as TestCommand;
+pub use update::Command as UpdateCommand;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "forc", about = "Fuel HLL Orchestrator")]
@@ -43,6 +44,7 @@ enum Forc {
     Serve(ServeCommand),
     Test(TestCommand),
     ParseBytecode(ParseBytecodeCommand),
+    Update(UpdateCommand),
 }
 
 pub(crate) fn run_cli() -> Result<(), String> {
@@ -60,6 +62,7 @@ pub(crate) fn run_cli() -> Result<(), String> {
         Forc::Serve(command) => serve::exec(command),
         Forc::Test(command) => test::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
+        Forc::Update(command) => update::exec(command),
     }?;
     /*
     let content = fs::read_to_string(opt.input.clone())?;

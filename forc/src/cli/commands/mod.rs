@@ -10,3 +10,4 @@ pub mod parse_bytecode;
 pub mod publish;
 pub mod serve;
 pub mod test;
+pub mod update;
