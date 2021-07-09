@@ -540,11 +540,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span.clone(),
-                    |acc,
-                     TypedFunctionParameter {
-                         name: Ident { span, .. },
-                         ..
-                     }| crate::utils::join_spans(acc, span.clone()),
+                    |acc, TypedFunctionParameter { type_span, .. }| {
+                        crate::utils::join_spans(acc, type_span.clone())
+                    },
                 );
                 if type_parameters
                     .iter()
