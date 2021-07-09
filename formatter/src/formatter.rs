@@ -64,7 +64,7 @@ fn calculate_offset(current_offset: i32, change: &Change) -> (i32, usize, usize)
 
 #[cfg(test)]
 mod tests {
-    use super::get_formatted_data;
+    use super::{get_formatted_data, CodeBuilder};
 
     #[test]
     fn test_indentation() {
@@ -450,6 +450,40 @@ struct Example {age: u32,    name: string}
         let result = get_formatted_data(sway_code, 4);
         assert!(result.is_ok());
         let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
+
+    #[test]
+    fn handle_isolated_cases() {
+        // in order to test statements that would require multiple files we test them isolated with CodeBuilder (skipping building/parsing)
+        // still this should be valid Sway code
+        let correct_sway_code = r#"use ::ops::*;
+use ::marker::Sized;
+use ::tops::*;
+use ::marker::Sized;
+
+dep collections/main;
+dep collections/main;
+"#;
+
+        let isolated_sway_code = r#"use ::ops::*;
+use ::marker::Sized;
+use ::tops :: * ;
+use ::marker :: Sized;
+
+dep collections/main;
+dep collections / main;
+"#;
+
+        let mut code_builder = CodeBuilder::new(4);
+
+        let lines: Vec<&str> = isolated_sway_code.split("\n").collect();
+
+        for line in lines {
+            code_builder.format_and_add(line);
+        }
+
+        let (_, formatted_code) = code_builder.get_final_edits();
         assert_eq!(correct_sway_code, formatted_code);
     }
 }
