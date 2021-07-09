@@ -20,7 +20,7 @@ pub struct ContractId {
 impl ContractId {
   fn new(id: byte32) -> Self {
     ContractId {
-      inner: addr
+      inner: id  
     }
   }
 }
@@ -32,21 +32,13 @@ pub struct Color {
 impl Color {
   fn new(color: byte32) -> Self {
     Color {
-      inner: addr
+      inner: color 
     }
   }
 }
 
-pub struct CallRequest {
-  contract_id: ContractId,
-  coins_to_forward: u64,
-  coin_color: Color,
-  gas_to_forward: u64,
-  params: u64, // TODO vec of params
-  returns: u64, // TODO vec of mutable references
-}
-
-
-pub struct CallResponse {
-
+/// Some compiler magic is performed on this function and it shows up in the standard library
+/// as `contract_caller()`.
+pub fn std__contract_caller(address: byte32, t_name: TraitName) -> ContractCaller {
+  // implemented in the compiler itself
 }

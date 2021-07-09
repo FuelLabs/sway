@@ -1,4 +1,0 @@
-library collections;
-
-dep vec;
-
