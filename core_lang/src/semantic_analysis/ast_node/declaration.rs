@@ -531,10 +531,11 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         }
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
         for TypedFunctionParameter {
-            ref r#type, name, ..
+            ref r#type,
+            type_span,
+            ..
         } in parameters.iter()
         {
-            let span = name.span.clone();
             if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { name, .. }) = r#type
             {
                 let args_span = parameters.iter().fold(
@@ -562,7 +563,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
                         name: name.primary_name,
-                        span: span.clone(),
+                        span: type_span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
                         fn_name: fn_decl.name.primary_name,
                         args: args_span.as_str(),
