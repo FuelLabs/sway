@@ -9,6 +9,7 @@ use crate::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },
+    types::{MaybeResolvedType, ResolvedType},
 };
 use pest::Span;
 
@@ -224,6 +225,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             resolved_type_of_parent,
             namespace,
             register_sequencer,
+            return_register,
         ),
         TypedExpressionVariant::EnumInstantiation {
             enum_decl,
@@ -328,7 +330,7 @@ fn convert_literal_to_asm<'sc>(
     let data_id = namespace.insert_data_value(lit);
     // then get that literal id and use it to make a load word op
     vec![Op {
-        opcode: either::Either::Left(VirtualOp::LW(return_register.clone(), data_id)),
+        opcode: either::Either::Left(VirtualOp::LWDataId(return_register.clone(), data_id)),
         comment: "literal instantiation".into(),
         owning_span: Some(span),
     }]
@@ -371,6 +373,7 @@ fn convert_fn_app_to_asm<'sc>(
         namespace.insert_variable(name, reg);
     }
 
+    // evaluate the function body
     let mut body = type_check!(
         convert_code_block_to_asm(
             function_body,
@@ -382,9 +385,71 @@ fn convert_fn_app_to_asm<'sc>(
         warnings,
         errors
     );
-    // evaluate the function body
     asm_buf.append(&mut body);
     parent_namespace.data_section = namespace.data_section;
+
+    // the return  value is already put in its proper register via the above statement, so the buf
+    // is done
+    ok(asm_buf, warnings, errors)
+}
+
+/// This is similar to `convert_fn_app_to_asm()`, except instead of function arguments, this
+/// takes a single register where the argument is expected to be pre-loaded when the ABI selector
+/// jumps to this function.
+pub(crate) fn convert_abi_fn_to_asm<'sc>(
+    decl: &TypedFunctionDeclaration<'sc>,
+    argument_register: (&Ident<'sc>, &VirtualRegister),
+    parent_namespace: &mut AsmNamespace<'sc>,
+    register_sequencer: &mut RegisterSequencer,
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut asm_buf = vec![Op::new_comment(format!(
+        "{} abi fn",
+        decl.name.primary_name
+    ))];
+    // Make a local namespace so that the namespace of this function does not pollute the outer
+    // scope
+    let mut namespace = parent_namespace.clone();
+    // insert the argument register into the namespace
+    namespace.insert_variable(argument_register.0.clone(), argument_register.1.clone());
+
+    let return_register = register_sequencer.next();
+    // evaluate the function body
+    let mut body = type_check!(
+        convert_code_block_to_asm(
+            &decl.body,
+            &mut namespace,
+            register_sequencer,
+            Some(&return_register),
+        ),
+        vec![],
+        warnings,
+        errors
+    );
+
+    asm_buf.append(&mut body);
+    // return the value from the abi function
+    asm_buf.push(Op {
+        // TODO we are just returning zero for now and not supporting return values from abi
+        // functions
+        opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
+            ConstantRegister::Zero,
+        ))),
+        owning_span: None,
+        comment: format!("{} abi fn return", decl.name.primary_name),
+    });
+    parent_namespace.data_section = namespace.data_section;
+    // because we are not supporting return values right now, throw an error if the function
+    // returns anything.
+    if decl.return_type != MaybeResolvedType::Resolved(ResolvedType::Unit)
+        && decl.return_type != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+    {
+        errors.push(CompileError::Unimplemented(
+            "ABI function return values are not yet implemented",
+            decl.return_type_span.clone(),
+        ));
+    }
 
     // the return  value is already put in its proper register via the above statement, so the buf
     // is done

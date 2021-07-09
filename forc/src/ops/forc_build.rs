@@ -2,7 +2,10 @@ use crate::utils::dependency::{Dependency, DependencyDetails};
 use crate::{
     cli::BuildCommand,
     utils::dependency,
-    utils::helpers::{find_manifest_dir, get_main_file, read_manifest},
+    utils::helpers::{
+        find_manifest_dir, get_main_file, print_green_err, print_red_err, print_yellow_err,
+        read_manifest,
+    },
 };
 use line_col::LineColLookup;
 use source_span::{
@@ -10,8 +13,7 @@ use source_span::{
     Position, Span,
 };
 use std::fs::File;
-use std::io::{self, Write};
-use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
+use std::io::Write;
 
 use anyhow::Result;
 use core_lang::{
@@ -192,9 +194,9 @@ fn compile_library<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled library {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -216,7 +218,7 @@ fn compile_library<'source, 'manifest>(
 
             errors.into_iter().for_each(|e| format_err(e));
 
-            write_red(format!(
+            print_red_err(&format!(
                 "Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
@@ -246,9 +248,9 @@ fn compile<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled script {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled script {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled script {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -266,9 +268,9 @@ fn compile<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled library {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -290,7 +292,7 @@ fn compile<'source, 'manifest>(
 
             errors.into_iter().for_each(|e| format_err(e));
 
-            write_red(format!(
+            print_red_err(&format!(
                 "Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
@@ -366,37 +368,6 @@ fn format_err(err: core_lang::CompileError) {
     println!("{}", formatted);
 }
 
-fn write_red(txt: String) -> io::Result<()> {
-    let txt = txt.as_str();
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
-    let mut buffer = bufwtr.buffer();
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Red)))?;
-    writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)?;
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
-    Ok(())
-}
-
-fn write_green(txt: &str) -> io::Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
-    let mut buffer = bufwtr.buffer();
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Green)))?;
-    writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)?;
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
-    Ok(())
-}
-
-fn write_yellow(txt: &str) -> io::Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
-    let mut buffer = bufwtr.buffer();
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Yellow)))?;
-    writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)?;
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
-    Ok(())
-}
-
 fn compile_to_asm<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
@@ -410,9 +381,9 @@ fn compile_to_asm<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled script {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled script {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled script {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -430,9 +401,9 @@ fn compile_to_asm<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled library {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -454,7 +425,7 @@ fn compile_to_asm<'source, 'manifest>(
 
             errors.into_iter().for_each(|e| format_err(e));
 
-            write_red(format!(
+            print_red_err(&format!(
                 "Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }

@@ -287,8 +287,8 @@ impl<'sc> TypedParseTree<'sc> {
                 errors,
             ),
             TreeType::Contract => {
-                // abi entries should be all public functions,
-                // and all other declarations are not in the abi
+                // abi entries are all functions declared in impl_traits
+                // on the contract type itself
                 let mut abi_entries = vec![];
                 let mut declarations = vec![];
                 let all_nodes = typed_tree_nodes.clone();
@@ -296,16 +296,14 @@ impl<'sc> TypedParseTree<'sc> {
                     match node {
                         TypedAstNode {
                             content:
-                                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                                    a
-                                    @
-                                    TypedFunctionDeclaration {
-                                        visibility: crate::Visibility::Public,
-                                        ..
-                                    },
-                                )),
+                                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+                                    methods,
+                                    type_implementing_for:
+                                        MaybeResolvedType::Resolved(ResolvedType::Contract),
+                                    ..
+                                }),
                             ..
-                        } => abi_entries.push(a),
+                        } => abi_entries.append(&mut methods.clone()),
                         TypedAstNode {
                             content: TypedAstNodeContent::Declaration(a),
                             ..

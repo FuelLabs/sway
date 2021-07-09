@@ -498,13 +498,10 @@ pub fn compile_to_asm<'sc, 'manifest>(
                 asm: pred,
                 warnings,
             },
-            (None, Some(_contract), None, o) if o.trees.is_empty() => {
-                errors.push(CompileError::Unimplemented(
-                    "Contracts are not implemented yet. ",
-                    Span::new(input, 0, input.len() - 1).unwrap(),
-                ));
-                return CompilationResult::Failure { errors, warnings };
-            }
+            (None, Some(contract), None, o) if o.trees.is_empty() => CompilationResult::Success {
+                asm: contract,
+                warnings,
+            },
             (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::Success {
                 asm: script,
                 warnings,

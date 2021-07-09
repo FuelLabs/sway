@@ -17,7 +17,7 @@ use std::{path::PathBuf, str};
 /// specified a version for a dependency and want to update it you should, instead,
 /// run `forc check-updates` to check for updates for all GitHub-based dependencies, and if
 /// a new version is detected and return, manually update your `Forc.toml` with this new version.
-pub fn update(command: UpdateCommand) -> Result<()> {
+pub async fn update(command: UpdateCommand) -> Result<()> {
     let UpdateCommand {
         path,
         target_dependency,
@@ -45,20 +45,20 @@ pub fn update(command: UpdateCommand) -> Result<()> {
     match target_dependency {
         // Target dependency (`-d`) specified
         Some(target_dep) => match dependencies.get(&target_dep) {
-            Some(dep) => Ok(update_dependency(&target_dep, dep).unwrap()),
+            Some(dep) => Ok(update_dependency(&target_dep, dep).await?),
             None => return Err(anyhow!("dependency {} not found", target_dep)),
         },
         // No target dependency specified, try and update all dependencies
         None => {
             for (dependency_name, dep) in dependencies {
-                update_dependency(&dependency_name, dep)?;
+                update_dependency(&dependency_name, dep).await?;
             }
             Ok(())
         }
     }
 }
 
-fn update_dependency(dependency_name: &str, dep: &dependency::DependencyDetails) -> Result<()> {
+async fn update_dependency(dependency_name: &str, dep: &dependency::DependencyDetails) -> Result<()> {
     let home_dir = match home_dir() {
         None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
         Some(p) => p.to_str().unwrap().to_owned(),
@@ -80,7 +80,7 @@ fn update_dependency(dependency_name: &str, dep: &dependency::DependencyDetails)
 
                 let current = dependency::get_current_dependency_version(&target_directory)?;
                 
-                let latest_hash = dependency::get_latest_commit_sha(git, &dep.branch)?;
+                let latest_hash = dependency::get_latest_commit_sha(git, &dep.branch).await?;
                 
                 if current.hash == latest_hash {
                       println!("{} is up-to-date", dependency_name);

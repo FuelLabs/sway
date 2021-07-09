@@ -12,8 +12,8 @@ pub struct Command {
     pub target_dependency: Option<String>,
 }
 
-pub(crate) fn exec(command: Command) -> Result<(), String> {
-    match forc_update::update(command) {
+pub(crate) async fn exec(command: Command) -> Result<(), String> {
+    match forc_update::update(command).await {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("couldn't update dependencies: {}", e)),
     }

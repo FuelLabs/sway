@@ -2,6 +2,8 @@ use crate::utils::dependency::Dependency;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
+use super::constants::DEFAULT_NODE_URL;
+
 // using https://github.com/rust-lang/cargo/blob/master/src/cargo/util/toml/mod.rs as the source of
 // implementation strategy
 
@@ -9,6 +11,7 @@ use std::collections::BTreeMap;
 #[serde(rename_all = "kebab-case")]
 pub struct Manifest {
     pub project: Project,
+    pub network: Option<Network>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
 }
 
@@ -24,6 +27,17 @@ pub struct Project {
 
 fn default_entry() -> String {
     "main.sw".into()
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub struct Network {
+    #[serde(default = "default_url")]
+    pub url: String,
+}
+
+fn default_url() -> String {
+    DEFAULT_NODE_URL.into()
 }
 
 #[test]

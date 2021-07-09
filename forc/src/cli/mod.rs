@@ -49,7 +49,7 @@ enum Forc {
     DepCheck(DepCheckCommand),
 }
 
-pub(crate) fn run_cli() -> Result<(), String> {
+pub(crate) async fn run_cli() -> Result<(), String> {
     let opt = Opt::from_args();
     match opt.command {
         Forc::Analysis(command) => analysis::exec(command),
@@ -57,15 +57,15 @@ pub(crate) fn run_cli() -> Result<(), String> {
         Forc::Build(command) => build::exec(command),
         Forc::Coverage(command) => coverage::exec(command),
         Forc::Format(command) => format::exec(command),
-        Forc::Deploy(command) => deploy::exec(command),
+        Forc::Deploy(command) => deploy::exec(command).await,
         Forc::Init(command) => init::exec(command),
         Forc::Mvprun(command) => mvprun::exec(command),
         Forc::Publish(command) => publish::exec(command),
         Forc::Serve(command) => serve::exec(command),
         Forc::Test(command) => test::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
-        Forc::Update(command) => update::exec(command),
-        Forc::DepCheck(command) => dep_check::exec(command),
+        Forc::Update(command) => update::exec(command).await,
+        Forc::DepCheck(command) => dep_check::exec(command).await,
     }?;
     /*
     let content = fs::read_to_string(opt.input.clone())?;

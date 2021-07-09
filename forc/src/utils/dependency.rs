@@ -292,7 +292,10 @@ pub fn get_current_dependency_version(dep_dir: &str) -> Result<VersionedDependen
 
 // Returns the _truncated_ (e.g `e6940e4`) latest commit hash of a
 // GitHub repository given a branch. If branch is None, the default branch is used.
-pub fn get_latest_commit_sha(dependency_url: &str, branch: &Option<String>) -> Result<String> {
+pub async fn get_latest_commit_sha(
+    dependency_url: &str,
+    branch: &Option<String>,
+) -> Result<String> {
     // Quick protection against `git` dependency URL ending with `/`.
     let dependency_url = dependency_url.trim_end_matches("/");
 
@@ -323,16 +326,13 @@ pub fn get_latest_commit_sha(dependency_url: &str, branch: &Option<String>) -> R
         }
     };
 
-    let client = reqwest::blocking::Client::builder()
+    let client = reqwest::Client::builder()
         .user_agent("forc-builder")
         .build()?;
 
-    let resp = client.get(&api_endpoint).send()?;
+    let resp = client.get(&api_endpoint).send().await?;
 
-    let hash_vec = resp.json::<GitHubAPICommitsResponse>().context(format!(
-        "couldn't parse GitHub API response. API endpoint crafted: {}",
-        api_endpoint
-    ))?;
+    let hash_vec = resp.json::<GitHubAPICommitsResponse>().await?;
 
     // `take(7)` because the truncated SHA1 used by GitHub is 7 chars long.
     let truncated_hash: String = hash_vec[0].sha.chars().take(7).collect();
@@ -365,7 +365,7 @@ pub fn get_detailed_dependencies(manifest: &mut Manifest) -> HashMap<String, &De
     dependencies
 }
 
-pub fn get_github_repo_releases(dependency_url: &str) -> Result<Vec<String>> {
+pub async fn get_github_repo_releases(dependency_url: &str) -> Result<Vec<String>> {
     // Quick protection against `git` dependency URL ending with `/`.
     let dependency_url = dependency_url.trim_end_matches("/");
 
@@ -386,16 +386,13 @@ pub fn get_github_repo_releases(dependency_url: &str) -> Result<Vec<String>> {
         owner_name, project_name
     );
 
-    let client = reqwest::blocking::Client::builder()
+    let client = reqwest::Client::builder()
         .user_agent("forc-builder")
         .build()?;
 
-    let resp = client.get(&api_endpoint).send()?;
+    let resp = client.get(&api_endpoint).send().await?;
 
-    let releases_vec = resp.json::<GitHubRepoReleases>().context(format!(
-        "couldn't parse GitHub API response. API endpoint crafted: {}",
-        api_endpoint
-    ))?;
+    let releases_vec = resp.json::<GitHubRepoReleases>().await?;
 
     let semver_releases: Vec<String> = releases_vec.iter().map(|r| r.tag_name.to_owned()).collect();
 
