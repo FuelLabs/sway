@@ -58,7 +58,10 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     }
 }
 
-async fn update_dependency(dependency_name: &str, dep: &dependency::DependencyDetails) -> Result<()> {
+async fn update_dependency(
+    dependency_name: &str,
+    dep: &dependency::DependencyDetails,
+) -> Result<()> {
     let home_dir = match home_dir() {
         None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
         Some(p) => p.to_str().unwrap().to_owned(),
@@ -79,13 +82,13 @@ async fn update_dependency(dependency_name: &str, dep: &dependency::DependencyDe
                 };
 
                 let current = dependency::get_current_dependency_version(&target_directory)?;
-                
+
                 let latest_hash = dependency::get_latest_commit_sha(git, &dep.branch).await?;
-                
+
                 if current.hash == latest_hash {
                       println!("{} is up-to-date", dependency_name);
                 } else {
-                    dependency::replace_dep_version(&target_directory, git, dep)?; 
+                    dependency::replace_dep_version(&target_directory, git, dep)?;
                     println!("{}: {} -> {}", dependency_name, current.hash, latest_hash);
                 }
             }
