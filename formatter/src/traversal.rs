@@ -92,6 +92,21 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
                 traverse_ast_node(&content, changes);
             }
         }
+
+        Declaration::ImplSelf(impl_self) => {
+            for func in &impl_self.functions {
+                for content in &func.body.contents {
+                    traverse_ast_node(&content, changes);
+                }
+            }
+        }
+        Declaration::ImplTrait(impl_trait) => {
+            for func in &impl_trait.functions {
+                for content in &func.body.contents {
+                    traverse_ast_node(&content, changes);
+                }
+            }
+        }
         _ => {}
     };
 }
