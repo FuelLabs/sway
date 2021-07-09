@@ -1,31 +1,14 @@
 use crate::{
     cli::UpdateCommand,
     utils::{
+        dependency,
         helpers::{find_manifest_dir, read_manifest},
-        manifest::Manifest,
     },
 };
 
-// TODO: refactor dependency stuff out of forc_build
-use crate::ops::forc_build;
-use crate::utils::manifest::{Dependency, DependencyDetails};
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Result};
 use dirs::home_dir;
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, path::PathBuf, str};
-
-pub type GitHubAPICommitsResponse = Vec<GithubCommit>;
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GithubCommit {
-    pub sha: String,
-}
-#[derive(Debug)]
-pub struct VersionedDependency {
-    pub hash: String,
-    pub path: String,
-}
+use std::{path::PathBuf, str};
 
 /// Forc update will update the contents inside the Forc dependencies directory.
 /// If a dependency `d` is passed as parameter, it will only try and update that specific dependency.
@@ -57,7 +40,7 @@ pub fn update(command: UpdateCommand) -> Result<()> {
 
     let mut manifest = read_manifest(&manifest_dir).unwrap();
 
-    let dependencies = get_detailed_dependencies(&mut manifest);
+    let dependencies = dependency::get_detailed_dependencies(&mut manifest);
 
     match target_dependency {
         // Target dependency (`-d`) specified
@@ -75,7 +58,7 @@ pub fn update(command: UpdateCommand) -> Result<()> {
     }
 }
 
-fn update_dependency(dependency_name: &str, dep: &DependencyDetails) -> Result<()> {
+fn update_dependency(dependency_name: &str, dep: &dependency::DependencyDetails) -> Result<()> {
     let home_dir = match home_dir() {
         None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
         Some(p) => p.to_str().unwrap().to_owned(),
@@ -96,129 +79,16 @@ fn update_dependency(dependency_name: &str, dep: &DependencyDetails) -> Result<(
             None => format!("{}/.forc/{}/default", home_dir, dependency_name),
         };
 
-        let current = get_current_dependency_version(&target_directory)?;
+        let current = dependency::get_current_dependency_version(&target_directory)?;
 
-        let latest_hash = get_latest_commit_sha(git, &dep.branch)?;
+        let latest_hash = dependency::get_latest_commit_sha(git, &dep.branch)?;
 
         if current.hash == latest_hash {
             println!("{} is up-to-date", dependency_name);
         } else {
-            replace_dep_version(&target_directory, git, dep).unwrap();
+            dependency::replace_dep_version(&target_directory, git, dep).unwrap();
             println!("{}: {} -> {}", dependency_name, current.hash, latest_hash);
         }
     }
     Ok(())
-}
-
-fn replace_dep_version(target_directory: &str, git: &str, dep: &DependencyDetails) -> Result<()> {
-    let current = get_current_dependency_version(&target_directory).unwrap();
-
-    let api_url = forc_build::build_github_api_url(git, &dep.branch, &dep.version);
-    forc_build::download_tarball(&api_url, &target_directory).unwrap();
-    // Delete old one
-    match fs::remove_dir_all(current.path) {
-        Ok(_) => Ok(()), // TODO: Test this
-        Err(e) => return Err(anyhow!("failed to update dep {}: {}", git, e)),
-    }
-}
-
-fn get_current_dependency_version(dep_dir: &str) -> Result<VersionedDependency> {
-    for entry in fs::read_dir(dep_dir).context(format!("couldn't read directory {}", dep_dir))? {
-        let path = entry?.path();
-        if !path.is_dir() {
-            bail!("{} isn't a directory.", dep_dir)
-        }
-
-        let path_str = path.to_str().unwrap().to_string();
-
-        // Getting the base of the path (the dependency directory name)
-        let mut pieces = path_str.rsplit("/");
-        match pieces.next() {
-            Some(p) => {
-                return Ok(VersionedDependency {
-                    // Dependencies directories are named as "$repo_owner-$repo-$concatenated_hash"
-                    // Here we're grabbing the hash.
-                    hash: p.to_owned().split("-").last().unwrap().into(),
-                    path: path_str,
-                });
-            }
-            None => bail!("Unexpected dependency naming scheme: {}", path_str),
-        }
-    }
-    bail!("Dependency directory is empty. Run `forc build` to install dependencies.")
-}
-
-// Returns the _truncated_ (e.g `e6940e4`) latest commit hash of a
-// GitHub repository given a branch. If branch is None, the default branch is used.
-fn get_latest_commit_sha(dependency_url: &str, branch: &Option<String>) -> Result<String> {
-    // Quick protection against `git` dependency URL ending with `/`.
-    let dependency_url = dependency_url.trim_end_matches("/");
-
-    let mut pieces = dependency_url.rsplit("/");
-
-    let project_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
-    };
-
-    let owner_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
-    };
-
-    let api_endpoint = match branch {
-        Some(b) => {
-            format!(
-                "https://api.github.com/repos/{}/{}/commits?sha={}&per_page=1",
-                owner_name, project_name, b
-            )
-        }
-        None => {
-            format!(
-                "https://api.github.com/repos/{}/{}/commits?per_page=1",
-                owner_name, project_name
-            )
-        }
-    };
-
-    let client = reqwest::blocking::Client::builder()
-        .user_agent("forc-builder")
-        .build()?;
-
-    let resp = client.get(&api_endpoint).send()?;
-
-    let hash_vec = resp.json::<GitHubAPICommitsResponse>().context(format!(
-        "couldn't parse GitHub API response. API endpoint crafted: {}",
-        api_endpoint
-    ))?;
-
-    // `take(7)` because the truncated SHA1 used by GitHub is 7 chars long.
-    let truncated_hash: String = hash_vec[0].sha.chars().take(7).collect();
-
-    if truncated_hash.is_empty() {
-        bail!(
-            "failed to extract hash from GitHub commit history API, response: {:?}",
-            hash_vec
-        )
-    }
-
-    Ok(truncated_hash)
-}
-
-// Helper to get only detailed dependencies (`Dependency::Detailed`).
-fn get_detailed_dependencies(manifest: &mut Manifest) -> HashMap<String, &DependencyDetails> {
-    let mut dependencies: HashMap<String, &DependencyDetails> = HashMap::new();
-
-    if let Some(ref mut deps) = manifest.dependencies {
-        for (dep_name, dependency_details) in deps.iter_mut() {
-            match dependency_details {
-                Dependency::Simple(..) => continue,
-                Dependency::Detailed(dep_details) => {
-                    dependencies.insert(dep_name.to_owned(), dep_details)
-                }
-            };
-        }
-    }
-
-    dependencies
 }

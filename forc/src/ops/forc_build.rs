@@ -1,5 +1,7 @@
+use crate::utils::dependency::{Dependency, DependencyDetails};
 use crate::{
     cli::BuildCommand,
+    utils::dependency,
     utils::helpers::{find_manifest_dir, get_main_file, read_manifest},
 };
 use line_col::LineColLookup;
@@ -11,18 +13,12 @@ use std::fs::File;
 use std::io::{self, Write};
 use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
 
-use crate::utils::constants;
-use crate::utils::manifest::{Dependency, DependencyDetails};
-use anyhow::{anyhow, Context, Result};
+use anyhow::Result;
 use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
     Namespace,
 };
-use curl::easy::Easy;
-use dirs::home_dir;
-use flate2::read::GzDecoder;
-use std::{fs, io::Cursor, path::Path, path::PathBuf, str};
-use tar::Archive;
+use std::path::PathBuf;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let BuildCommand {
@@ -65,7 +61,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
             // Download a non-local dependency if the `git` property is set in this dependency.
             if let Some(git) = &dep.git {
-                let downloaded_dep_path = match download_github_dep(
+                let downloaded_dep_path = match dependency::download_github_dep(
                     dependency_name,
                     git,
                     &dep.branch,
@@ -115,183 +111,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     println!("Bytecode size is {} bytes.", main.len());
 
     Ok(main)
-}
-
-/// Downloads a non-local dependency that's hosted on GitHub.
-/// By default, it stores the dependency in `~/.forc/`.
-/// A given dependency `dep` is stored under `~/.forc/dep/default/$owner-$repo-$hash`.
-/// If no hash (nor any other type of reference) is provided, Forc
-/// will download the default branch at the latest commit.
-/// If a branch is specified, it will go in `~/.forc/dep/$branch/$owner-$repo-$hash.
-/// If a version is specified, it will go in `~/.forc/dep/$version/$owner-$repo-$hash.
-/// Version takes precedence over branch reference.
-fn download_github_dep(
-    dep_name: &String,
-    repo_base_url: &str,
-    branch: &Option<String>,
-    version: &Option<String>,
-    offline_mode: bool,
-) -> Result<String> {
-    let home_dir = match home_dir() {
-        None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
-        Some(p) => p.to_str().unwrap().to_owned(),
-    };
-
-    // Version tag takes precedence over branch reference.
-    let out_dir = match &version {
-        Some(v) => format!(
-            "{}/{}/{}/{}",
-            home_dir,
-            constants::FORC_DEPENDENCIES_DIRECTORY,
-            dep_name,
-            v
-        ),
-        // If no version specified, check if a branch was specified
-        None => match &branch {
-            Some(b) => format!(
-                "{}/{}/{}/{}",
-                home_dir,
-                constants::FORC_DEPENDENCIES_DIRECTORY,
-                dep_name,
-                b
-            ),
-            // If no version and no branch, use default
-            None => format!(
-                "{}/{}/{}/default",
-                home_dir,
-                constants::FORC_DEPENDENCIES_DIRECTORY,
-                dep_name
-            ),
-        },
-    };
-
-    // Check if dependency is already installed, if so, return its path.
-    if Path::new(&out_dir).exists() {
-        for entry in fs::read_dir(&out_dir)? {
-            let path = entry?.path();
-            // If the path to that dependency at that branch/version already
-            // exists and there's a directory inside of it,
-            // this directory should be the installation path.
-
-            if path.is_dir() {
-                return Ok(path.to_str().unwrap().to_string());
-            }
-        }
-    }
-
-    // If offline mode is enabled, don't proceed as it will
-    // make use of the network to download the dependency from
-    // GitHub.
-    // If it's offline mode and the dependency already exists
-    // locally, then it would've been returned in the block above.
-    if offline_mode {
-        return Err(anyhow!(
-            "Can't build dependency: dependency {} doesn't exist locally and offline mode is enabled",
-            dep_name
-        ));
-    }
-
-    let github_api_url = build_github_api_url(repo_base_url, &branch, &version);
-
-    println!("Downloading {:?} into {:?}", dep_name, out_dir);
-
-    match download_tarball(&github_api_url, &out_dir) {
-        Ok(downloaded_dir) => Ok(downloaded_dir),
-        Err(e) => Err(anyhow!("couldn't download from {}: {}", &github_api_url, e)),
-    }
-}
-
-/// Builds a proper URL that's used to call GitHub's API.
-/// The dependency is specified as `https://github.com/:owner/:project`
-/// And the API URL must be like `https://api.github.com/repos/:owner/:project/tarball`
-/// Adding a `:ref` at the end makes it download a branch/tag based repo.
-/// Omitting it makes it download the default branch at latest commit.
-pub fn build_github_api_url(
-    dependency_url: &str,
-    branch: &Option<String>,
-    version: &Option<String>,
-) -> String {
-    let dependency_url = dependency_url.trim_end_matches("/");
-    let mut pieces = dependency_url.rsplit("/");
-
-    let project_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
-    };
-
-    let owner_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
-    };
-
-    // Version tag takes precedence over branch reference.
-    match version {
-        Some(v) => {
-            format!(
-                "https://api.github.com/repos/{}/{}/tarball/{}",
-                owner_name, project_name, v
-            )
-        }
-        // If no version specified, check if a branch was specified
-        None => match branch {
-            Some(b) => {
-                format!(
-                    "https://api.github.com/repos/{}/{}/tarball/{}",
-                    owner_name, project_name, b
-                )
-            }
-            // If no version and no branch, download default branch at latest commit
-            None => {
-                format!(
-                    "https://api.github.com/repos/{}/{}/tarball",
-                    owner_name, project_name
-                )
-            }
-        },
-    }
-}
-
-pub fn download_tarball(url: &str, out_dir: &str) -> Result<String> {
-    let mut data = Vec::new();
-    let mut handle = Easy::new();
-
-    // Download the tarball.
-    handle.url(url).context("failed to configure tarball URL")?;
-    handle
-        .follow_location(true)
-        .context("failed to configure follow location")?;
-
-    handle
-        .useragent("forc-builder")
-        .context("failed to configure User-Agent")?;
-    {
-        let mut transfer = handle.transfer();
-        transfer
-            .write_function(|new_data| {
-                data.extend_from_slice(new_data);
-                Ok(new_data.len())
-            })
-            .context("failed to write download data")?;
-        transfer.perform().context("failed to download tarball")?;
-    }
-
-    // Unpack the tarball.
-    Archive::new(GzDecoder::new(Cursor::new(data)))
-        .unpack(out_dir)
-        .with_context(|| format!("failed to unpack tarball in directory: {}", out_dir))?;
-
-    for entry in fs::read_dir(out_dir)? {
-        let path = entry?.path();
-        match path.is_dir() {
-            true => return Ok(path.to_str().unwrap().to_string()),
-            false => (),
-        }
-    }
-
-    Err(anyhow!(
-        "couldn't find downloaded dependency in directory: {}",
-        out_dir
-    ))
 }
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
