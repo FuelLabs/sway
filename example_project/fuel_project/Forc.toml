@@ -5,4 +5,4 @@ name = "Fuel example project"
 
 
 [dependencies]
-std = { git= "https://github.com/digorithm/sway-stdlib-test/"}
+std = { path = "../../stdlib" }
