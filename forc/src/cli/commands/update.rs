@@ -15,7 +15,7 @@ pub struct Command {
     /// Checks if the dependencies have newer versions.
     /// Won't actually perform the update, will output which
     /// ones are up-to-date and outdated.
-    #[structopt(long = "check")]
+    #[structopt(short = "c", long = "check")]
     pub check: bool,
 }
 
