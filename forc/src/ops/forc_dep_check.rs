@@ -1,9 +1,6 @@
-use crate::{
-    cli::DepCheckCommand,
-    utils::{
-        dependency,
-        helpers::{find_manifest_dir, read_manifest},
-    },
+use crate::utils::{
+    dependency,
+    helpers::{find_manifest_dir, read_manifest},
 };
 
 use anyhow::{anyhow, Result};
@@ -20,11 +17,7 @@ use std::{path::PathBuf, str};
 /// `forc update` can automatically update to the latest version.
 /// If a dependency has a tag, `forc dep_check` will let you know if there's a newer tag
 /// and then you can decide whether to update it in the manifest or not.
-pub async fn check(command: DepCheckCommand) -> Result<()> {
-    let DepCheckCommand {
-        path,
-        target_dependency,
-    } = command;
+pub async fn check(path: Option<String>, target_dependency: Option<String>) -> Result<()> {
     let this_dir = if let Some(path) = path {
         PathBuf::from(path)
     } else {

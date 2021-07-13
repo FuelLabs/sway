@@ -2,15 +2,14 @@ use structopt::StructOpt;
 
 mod commands;
 use self::commands::{
-    analysis, benchmark, build, coverage, dep_check, deploy, format, init, mvprun, parse_bytecode,
-    publish, serve, test, update,
+    analysis, benchmark, build, coverage, deploy, format, init, mvprun, parse_bytecode, publish,
+    serve, test, update,
 };
 
 use analysis::Command as AnalysisCommand;
 use benchmark::Command as BenchmarkCommand;
 pub use build::Command as BuildCommand;
 use coverage::Command as CoverageCommand;
-pub use dep_check::Command as DepCheckCommand;
 pub use deploy::Command as DeployCommand;
 pub use format::Command as FormatCommand;
 use init::Command as InitCommand;
@@ -46,7 +45,6 @@ enum Forc {
     Test(TestCommand),
     ParseBytecode(ParseBytecodeCommand),
     Update(UpdateCommand),
-    DepCheck(DepCheckCommand),
 }
 
 pub(crate) async fn run_cli() -> Result<(), String> {
@@ -65,7 +63,6 @@ pub(crate) async fn run_cli() -> Result<(), String> {
         Forc::Test(command) => test::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Update(command) => update::exec(command).await,
-        Forc::DepCheck(command) => dep_check::exec(command).await,
     }?;
     /*
     let content = fs::read_to_string(opt.input.clone())?;

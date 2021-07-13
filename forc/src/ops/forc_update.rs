@@ -1,5 +1,6 @@
 use crate::{
     cli::UpdateCommand,
+    ops::forc_dep_check,
     utils::{
         dependency,
         helpers::{find_manifest_dir, read_manifest},
@@ -15,13 +16,19 @@ use std::{path::PathBuf, str};
 /// Otherwise, it will try and update all GitHub-based dependencies in a project's `Forc.toml`.
 /// It won't automatically update dependencies that have a version specified, if you have
 /// specified a version for a dependency and want to update it you should, instead,
-/// run `forc check-updates` to check for updates for all GitHub-based dependencies, and if
+/// run `forc update --check` to check for updates for all GitHub-based dependencies, and if
 /// a new version is detected and return, manually update your `Forc.toml` with this new version.
 pub async fn update(command: UpdateCommand) -> Result<()> {
+    if command.check {
+        return forc_dep_check::check(command.path, command.target_dependency).await;
+    }
+
     let UpdateCommand {
         path,
         target_dependency,
+        check: _,
     } = command;
+
     let this_dir = if let Some(path) = path {
         PathBuf::from(path)
     } else {
