@@ -1,3 +1,4 @@
+use crate::utils::dependency::Dependency;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
@@ -37,27 +38,6 @@ pub struct Network {
 
 fn default_url() -> String {
     DEFAULT_NODE_URL.into()
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(untagged)]
-pub enum Dependency {
-    /// In the simple format, only a version is specified, eg.
-    /// `package = "<version>"`
-    Simple(String),
-    /// The simple format is equivalent to a detailed dependency
-    /// specifying only a version, eg.
-    /// `package = { version = "<version>" }`
-    Detailed(DependencyDetails),
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct DependencyDetails {
-    pub(crate) version: Option<String>,
-    pub(crate) path: Option<String>,
-    pub(crate) git: Option<String>,
-    pub(crate) branch: Option<String>,
 }
 
 #[test]
