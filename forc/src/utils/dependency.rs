@@ -22,6 +22,14 @@ pub enum Dependency {
     Detailed(DependencyDetails),
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub struct DependencyDetails {
+    pub(crate) version: Option<String>,
+    pub(crate) path: Option<String>,
+    pub(crate) git: Option<String>,
+    pub(crate) branch: Option<String>,
+}
 pub enum OfflineMode {
     Yes,
     No,
@@ -34,15 +42,6 @@ impl From<bool> for OfflineMode {
             false => OfflineMode::No,
         }
     }
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct DependencyDetails {
-    pub(crate) version: Option<String>,
-    pub(crate) path: Option<String>,
-    pub(crate) git: Option<String>,
-    pub(crate) branch: Option<String>,
 }
 
 pub type GitHubAPICommitsResponse = Vec<GithubCommit>;
