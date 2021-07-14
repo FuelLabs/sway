@@ -5,7 +5,7 @@ use curl::easy::Easy;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, io::Cursor, path::Path, str};
+use std::{collections::HashMap, fs, io::Cursor, path::Path};
 use tar::Archive;
 
 // A collection of remote dependency related functions
@@ -20,6 +20,20 @@ pub enum Dependency {
     /// specifying only a version, eg.
     /// `package = { version = "<version>" }`
     Detailed(DependencyDetails),
+}
+
+pub enum OfflineMode {
+    Yes,
+    No,
+}
+
+impl From<bool> for OfflineMode {
+    fn from(v: bool) -> OfflineMode {
+        match v {
+            true => OfflineMode::Yes,
+            false => OfflineMode::No,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -77,7 +91,7 @@ pub fn download_github_dep(
     repo_base_url: &str,
     branch: &Option<String>,
     version: &Option<String>,
-    offline_mode: bool,
+    offline_mode: OfflineMode,
 ) -> Result<String> {
     let home_dir = match home_dir() {
         None => return Err(anyhow!("Couldn't find home directory (`~/`)")),
@@ -131,7 +145,7 @@ pub fn download_github_dep(
     // GitHub.
     // If it's offline mode and the dependency already exists
     // locally, then it would've been returned in the block above.
-    if offline_mode {
+    if let OfflineMode::Yes = offline_mode {
         return Err(anyhow!(
             "Can't build dependency: dependency {} doesn't exist locally and offline mode is enabled",
             dep_name

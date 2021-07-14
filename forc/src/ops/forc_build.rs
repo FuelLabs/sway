@@ -68,7 +68,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                     git,
                     &dep.branch,
                     &dep.version,
-                    offline_mode,
+                    offline_mode.into(),
                 ) {
                     Ok(path) => path,
                     Err(e) => {
