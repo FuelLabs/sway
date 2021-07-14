@@ -4,7 +4,7 @@ use std::str::Chars;
 use core_lang::{extract_keyword, Rule};
 
 use super::code_builder_helpers::{is_comment, is_multiline_comment};
-use crate::constants::NEW_LINE_SIGN;
+use crate::constants::NEW_LINE_PATTERN;
 
 pub fn format_struct(text: &str) -> String {
     let mut iter = text.chars().enumerate().peekable();
@@ -115,7 +115,7 @@ fn get_struct_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> S
     if let Some((next_index, _)) = iter.peek() {
         let leftover = &line[*next_index..];
         if !is_comment(leftover) && !is_multiline_comment(leftover) {
-            result.push(NEW_LINE_SIGN);
+            result.push_str(NEW_LINE_PATTERN);
         }
     }
 

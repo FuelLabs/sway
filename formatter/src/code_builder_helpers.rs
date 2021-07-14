@@ -3,6 +3,8 @@ use std::{
     str::Chars,
 };
 
+use crate::constants::NEW_LINE_PATTERN;
+
 use super::code_line::CodeLine;
 
 pub fn is_comment(line: &str) -> bool {
@@ -147,4 +149,14 @@ pub fn clean_all_incoming_whitespace(iter: &mut Peekable<Enumerate<Chars>>) {
             break;
         }
     }
+}
+
+pub fn is_next_new_line_pattern<'a>(line: &'a str) -> Option<&'a str> {
+    let pattern_len = NEW_LINE_PATTERN.len();
+
+    if line.len() >= pattern_len && &line[0..pattern_len] == NEW_LINE_PATTERN {
+        return Some(&line[pattern_len..]);
+    }
+
+    None
 }
