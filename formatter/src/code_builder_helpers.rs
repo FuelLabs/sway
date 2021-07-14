@@ -47,13 +47,6 @@ pub fn handle_string_case(code_line: &mut CodeLine, current_char: char) {
 pub fn handle_whitespace_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
     clean_all_incoming_whitespace(iter);
 
-    if is_use_statement(&code_line.text) || is_dep_statement(&code_line.text) {
-        if code_line.text.len() == 3 {
-            code_line.append_whitespace();
-        }
-        return;
-    }
-
     if let Some((_, next_char)) = iter.peek() {
         let next_char = *next_char;
 
@@ -89,7 +82,6 @@ pub fn handle_assignment_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
 pub fn handle_colon_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
     if let Some((_, next_char)) = iter.peek() {
         let next_char = *next_char;
-
         if next_char == ':' {
             // it's :: operator
             code_line.push_str("::");
@@ -99,14 +91,6 @@ pub fn handle_colon_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate
         }
     } else {
         code_line.push_str(": ");
-    }
-}
-
-pub fn handle_star_case(code_line: &mut CodeLine) {
-    if is_use_statement(&code_line.text) {
-        code_line.push_char('*');
-    } else {
-        code_line.append_with_whitespace("* ");
     }
 }
 
@@ -162,25 +146,5 @@ pub fn clean_all_incoming_whitespace(iter: &mut Peekable<Enumerate<Chars>>) {
         } else {
             break;
         }
-    }
-}
-
-pub fn is_dep_statement(text: &str) -> bool {
-    let text = text.trim();
-
-    match text.len() {
-        3 => &text[0..3] == "dep",
-        n if n > 3 => &text[0..4] == "dep ",
-        _ => false,
-    }
-}
-
-fn is_use_statement(text: &str) -> bool {
-    let text = text.trim();
-
-    match text.len() {
-        3 => &text[0..3] == "use",
-        n if n > 3 => &text[0..4] == "use ",
-        _ => false,
     }
 }
