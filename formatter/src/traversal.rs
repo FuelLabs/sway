@@ -2,7 +2,7 @@ use core_lang::{
     AstNode, AstNodeContent, Declaration, Expression, HllParseTree, ReturnStatement, Span,
 };
 
-use crate::traversal_helper::format_struct;
+use crate::traversal_helper::{format_include_statement, format_struct, format_use_statement};
 
 #[derive(Debug)]
 pub struct Change {
@@ -12,13 +12,26 @@ pub struct Change {
 }
 
 impl Change {
-    pub fn handle_struct(span: &Span) -> Self {
+    fn new(span: &Span, change_type: ChangeType) -> Self {
+        let text = match change_type {
+            ChangeType::Struct => format_struct(span.as_str()),
+            ChangeType::IncludeStatement => format_include_statement(span.as_str()),
+            ChangeType::UseStatement => format_use_statement(span.as_str()),
+        };
+
         Self {
-            text: format_struct(span.as_str()),
+            text,
             start: span.start(),
             end: span.end(),
         }
     }
+}
+
+#[derive(Debug)]
+enum ChangeType {
+    Struct,
+    IncludeStatement,
+    UseStatement,
 }
 
 pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
@@ -26,6 +39,30 @@ pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
 
     if let Some(script_tree) = &parse_tree.script_ast {
         let nodes = &script_tree.root_nodes;
+
+        for node in nodes {
+            traverse_ast_node(&node, &mut changes)
+        }
+    }
+
+    if let Some(contract_tree) = &parse_tree.contract_ast {
+        let nodes = &contract_tree.root_nodes;
+
+        for node in nodes {
+            traverse_ast_node(&node, &mut changes)
+        }
+    }
+
+    if let Some(predicate_tree) = &parse_tree.predicate_ast {
+        let nodes = &predicate_tree.root_nodes;
+
+        for node in nodes {
+            traverse_ast_node(&node, &mut changes)
+        }
+    }
+
+    for (_, lib_tree) in &parse_tree.library_exports {
+        let nodes = &lib_tree.root_nodes;
 
         for node in nodes {
             traverse_ast_node(&node, &mut changes)
@@ -49,6 +86,14 @@ fn traverse_ast_node(ast_node: &AstNode, changes: &mut Vec<Change>) {
             handle_implicit_return_expression(expr, changes)
         }
 
+        AstNodeContent::UseStatement(__) => {
+            changes.push(Change::new(&ast_node.span, ChangeType::UseStatement));
+        }
+
+        AstNodeContent::IncludeStatement(_) => {
+            changes.push(Change::new(&ast_node.span, ChangeType::IncludeStatement))
+        }
+
         _ => {}
     }
 }
@@ -61,11 +106,28 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
     match &dec {
         Declaration::VariableDeclaration(var_dec) => handle_expression(&var_dec.body, changes),
 
-        Declaration::StructDeclaration(_) => changes.push(Change::handle_struct(&ast_node.span)),
+        Declaration::StructDeclaration(_) => {
+            changes.push(Change::new(&ast_node.span, ChangeType::Struct))
+        }
 
         Declaration::FunctionDeclaration(func) => {
             for content in &func.body.contents {
                 traverse_ast_node(&content, changes);
+            }
+        }
+
+        Declaration::ImplSelf(impl_self) => {
+            for func in &impl_self.functions {
+                for content in &func.body.contents {
+                    traverse_ast_node(&content, changes);
+                }
+            }
+        }
+        Declaration::ImplTrait(impl_trait) => {
+            for func in &impl_trait.functions {
+                for content in &func.body.contents {
+                    traverse_ast_node(&content, changes);
+                }
             }
         }
         _ => {}
@@ -78,7 +140,7 @@ fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
             struct_name: _,
             fields: _,
             span,
-        } => changes.push(Change::handle_struct(span)),
+        } => changes.push(Change::new(span, ChangeType::Struct)),
         Expression::IfExp {
             condition: _,
             then,

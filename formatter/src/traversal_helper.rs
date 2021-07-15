@@ -1,8 +1,10 @@
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
 
+use core_lang::{extract_keyword, Rule};
+
 use super::code_builder_helpers::{is_comment, is_multiline_comment};
-use crate::constants::NEW_LINE_SIGN;
+use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN};
 
 pub fn format_struct(text: &str) -> String {
     let mut iter = text.chars().enumerate().peekable();
@@ -64,6 +66,26 @@ pub fn format_struct(text: &str) -> String {
     result
 }
 
+pub fn format_use_statement(line: &str) -> String {
+    let use_keyword = extract_keyword(line, Rule::use_keyword).unwrap();
+    let (_, right) = line.split_once(use_keyword).unwrap();
+    let right: String = right.chars().filter(|c| !c.is_whitespace()).collect();
+    format!(
+        "{}{} {}",
+        ALREADY_FORMATTED_LINE_PATTERN, use_keyword, right
+    )
+}
+
+pub fn format_include_statement(line: &str) -> String {
+    let include_keyword = extract_keyword(line, Rule::include_keyword).unwrap();
+    let (_, right) = line.split_once(include_keyword).unwrap();
+    let right: String = right.chars().filter(|c| !c.is_whitespace()).collect();
+    format!(
+        "{}{} {}",
+        ALREADY_FORMATTED_LINE_PATTERN, include_keyword, right
+    )
+}
+
 fn get_struct_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> String {
     let mut result = String::default();
 
@@ -99,7 +121,7 @@ fn get_struct_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> S
     if let Some((next_index, _)) = iter.peek() {
         let leftover = &line[*next_index..];
         if !is_comment(leftover) && !is_multiline_comment(leftover) {
-            result.push(NEW_LINE_SIGN);
+            result.push_str(NEW_LINE_PATTERN);
         }
     }
 

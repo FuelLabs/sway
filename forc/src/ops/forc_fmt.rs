@@ -49,7 +49,7 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                                 if file_content != formatted_content {
                                     let changeset = diff_lines(&file_content, &formatted_content);
 
-                                    println!("{:?}\n", file);
+                                    println!("\n{:?}\n", file);
 
                                     let mut count_of_updates = 0;
 
@@ -96,9 +96,10 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                                 format_sway_file(&file, &formatted_content)?;
                             }
                         }
-                        Err(_) => {
-                            // unreachable since we format it only after build is successful
-                            unreachable!()
+                        Err(err) => {
+                            // there could still be Sway files that are not part of the build
+                            eprintln!("\nThis file: {:?} is not part of the build", file);
+                            eprintln!("{}", err.join("\n"));
                         }
                     }
                 }

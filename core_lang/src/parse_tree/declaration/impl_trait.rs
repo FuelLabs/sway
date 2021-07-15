@@ -9,7 +9,7 @@ pub struct ImplTrait<'sc> {
     pub(crate) trait_name: CallPath<'sc>,
     pub(crate) type_implementing_for: TypeInfo<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
-    pub(crate) functions: Vec<FunctionDeclaration<'sc>>,
+    pub functions: Vec<FunctionDeclaration<'sc>>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span<'sc>,
     pub(crate) type_arguments_span: Span<'sc>,
@@ -21,7 +21,7 @@ pub struct ImplTrait<'sc> {
 pub struct ImplSelf<'sc> {
     pub(crate) type_implementing_for: TypeInfo<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
-    pub(crate) functions: Vec<FunctionDeclaration<'sc>>,
+    pub functions: Vec<FunctionDeclaration<'sc>>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span<'sc>,
     pub(crate) type_arguments_span: Span<'sc>,
