@@ -224,6 +224,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     trait_name,
                     span: block_span,
                     methods: functions_buf,
+                    type_implementing_for,
                 },
                 warnings,
                 errors,

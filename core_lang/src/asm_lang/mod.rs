@@ -1322,7 +1322,7 @@ pub(crate) enum OrganizationalOp {
     Jump(Label),
     // Jumps to a label
     JumpIfNotEq(VirtualRegister, VirtualRegister, Label),
-    // placeholder for the DataSection offset to go
+    // placeholder for the DataSection offset
     DataSectionOffsetPlaceholder,
 }
 impl fmt::Display for OrganizationalOp {

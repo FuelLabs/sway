@@ -25,6 +25,7 @@ pub enum TypeInfo<'sc> {
     /// This means that specific type of a number is not yet known. It will be
     /// determined via inference at a later time.
     Numeric,
+    Contract,
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -49,6 +50,7 @@ impl<'sc> TypeInfo<'sc> {
             ),
             TypeInfo::Boolean => MaybeResolvedType::Resolved(ResolvedType::Boolean),
             TypeInfo::Str(len) => MaybeResolvedType::Resolved(ResolvedType::Str(*len)),
+            TypeInfo::Contract => MaybeResolvedType::Resolved(ResolvedType::Contract),
             TypeInfo::UnsignedInteger(bits) => {
                 MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(*bits))
             }
@@ -82,6 +84,7 @@ impl<'sc> TypeInfo<'sc> {
                 "byte" => TypeInfo::Byte,
                 "byte32" => TypeInfo::Byte32,
                 "Self" | "self" => TypeInfo::SelfType,
+                "Contract" => TypeInfo::Contract,
                 "()" => TypeInfo::Unit,
                 a if a.contains("str[") => type_check!(
                     parse_str_type(a, input.as_span()),
