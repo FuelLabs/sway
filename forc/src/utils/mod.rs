@@ -1,3 +1,4 @@
+pub mod cli_error;
 pub mod constants;
 pub mod defaults;
 pub mod dependency;
