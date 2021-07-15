@@ -3,7 +3,7 @@ use std::{
     str::Chars,
 };
 
-use crate::constants::NEW_LINE_PATTERN;
+use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN};
 
 use super::code_line::CodeLine;
 
@@ -151,11 +151,31 @@ pub fn clean_all_incoming_whitespace(iter: &mut Peekable<Enumerate<Chars>>) {
     }
 }
 
+/// checks does next part of the line contain "add new line" pattern,
+/// if it does it returns the rest of the line
 pub fn is_next_new_line_pattern<'a>(line: &'a str) -> Option<&'a str> {
     let pattern_len = NEW_LINE_PATTERN.len();
 
     if line.len() >= pattern_len && &line[0..pattern_len] == NEW_LINE_PATTERN {
         return Some(&line[pattern_len..]);
+    }
+
+    None
+}
+
+/// checks does beginning of the new line contain "already formatted" pattern
+/// if it does it splits and returns the already formatted line and the rest after it
+pub fn is_already_formatted_line_pattern<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {
+    let pattern_len = ALREADY_FORMATTED_LINE_PATTERN.len();
+
+    if line.len() >= pattern_len && &line[0..pattern_len] == ALREADY_FORMATTED_LINE_PATTERN {
+        // already formatted single lines end with ';'
+        let end = line.find(';').unwrap();
+        let formatted_line = &line[pattern_len..end + 1];
+        // rest, if any
+        let rest = &line[end + 1..];
+
+        return Some((formatted_line, rest));
     }
 
     None

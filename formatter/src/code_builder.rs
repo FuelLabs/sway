@@ -3,7 +3,7 @@ use std::{
     str::Chars,
 };
 
-use crate::code_builder_helpers::is_next_new_line_pattern;
+use crate::code_builder_helpers::{is_already_formatted_line_pattern, is_next_new_line_pattern};
 
 use super::{
     code_builder_helpers::{
@@ -59,6 +59,12 @@ impl CodeBuilder {
         // add newline if it's multiline string or comment
         if is_string_or_multiline_comment {
             code_line.push_char('\n');
+        } else {
+            if let Some((formatted_line, rest)) = is_already_formatted_line_pattern(line) {
+                code_line.push_str(formatted_line);
+                self.complete_and_add_line(code_line);
+                return self.move_rest_to_new_line(rest, rest.chars().enumerate().peekable());
+            }
         }
 
         let mut iter = line.chars().enumerate().peekable();
