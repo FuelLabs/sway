@@ -2,7 +2,7 @@ use structopt::StructOpt;
 
 mod commands;
 use self::commands::{
-    analysis, benchmark, build, coverage, deploy, format, init, mvprun, parse_bytecode, publish,
+    analysis, benchmark, build, coverage, deploy, format, init, parse_bytecode, publish, run,
     serve, test, update,
 };
 
@@ -13,9 +13,9 @@ use coverage::Command as CoverageCommand;
 pub use deploy::Command as DeployCommand;
 pub use format::Command as FormatCommand;
 use init::Command as InitCommand;
-use mvprun::Command as MvprunCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 use publish::Command as PublishCommand;
+pub use run::Command as RunCommand;
 use serve::Command as ServeCommand;
 use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
@@ -39,7 +39,7 @@ enum Forc {
     Format(FormatCommand),
     Deploy(DeployCommand),
     Init(InitCommand),
-    Mvprun(MvprunCommand),
+    Run(RunCommand),
     Publish(PublishCommand),
     Serve(ServeCommand),
     Test(TestCommand),
@@ -57,19 +57,13 @@ pub(crate) async fn run_cli() -> Result<(), String> {
         Forc::Format(command) => format::exec(command),
         Forc::Deploy(command) => deploy::exec(command).await,
         Forc::Init(command) => init::exec(command),
-        Forc::Mvprun(command) => mvprun::exec(command),
+        Forc::Run(command) => run::exec(command).await,
         Forc::Publish(command) => publish::exec(command),
         Forc::Serve(command) => serve::exec(command),
         Forc::Test(command) => test::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Update(command) => update::exec(command).await,
     }?;
-    /*
-    let content = fs::read_to_string(opt.input.clone())?;
-
-    let res = compile(&content);
-
-    */
 
     Ok(())
 }
