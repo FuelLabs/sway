@@ -3,7 +3,7 @@ use std::{
     str::Chars,
 };
 
-use crate::code_builder_helpers::{is_already_formatted_line_pattern, is_next_new_line_pattern};
+use crate::code_builder_helpers::{get_already_formatted_line_pattern, get_new_line_pattern};
 
 use super::{
     code_builder_helpers::{
@@ -60,7 +60,7 @@ impl CodeBuilder {
         if is_string_or_multiline_comment {
             code_line.push_char('\n');
         } else {
-            if let Some((formatted_line, rest)) = is_already_formatted_line_pattern(line) {
+            if let Some((formatted_line, rest)) = get_already_formatted_line_pattern(line) {
                 code_line.push_str(formatted_line);
                 self.complete_and_add_line(code_line);
                 return self.move_rest_to_new_line(rest, rest.chars().enumerate().peekable());
@@ -135,7 +135,7 @@ impl CodeBuilder {
                             // handle line breakers ';', '{', '}' & ','
                             ',' => {
                                 let rest_of_line = &line[current_index + 1..];
-                                match is_next_new_line_pattern(rest_of_line) {
+                                match get_new_line_pattern(rest_of_line) {
                                     Some(line_after_pattern) => {
                                         code_line.push_char(',');
                                         self.complete_and_add_line(code_line);

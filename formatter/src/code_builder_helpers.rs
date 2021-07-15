@@ -153,7 +153,7 @@ pub fn clean_all_incoming_whitespace(iter: &mut Peekable<Enumerate<Chars>>) {
 
 /// checks does next part of the line contain "add new line" pattern,
 /// if it does it returns the rest of the line
-pub fn is_next_new_line_pattern<'a>(line: &'a str) -> Option<&'a str> {
+pub fn get_new_line_pattern<'a>(line: &'a str) -> Option<&'a str> {
     let pattern_len = NEW_LINE_PATTERN.len();
 
     if line.len() >= pattern_len && &line[0..pattern_len] == NEW_LINE_PATTERN {
@@ -165,7 +165,7 @@ pub fn is_next_new_line_pattern<'a>(line: &'a str) -> Option<&'a str> {
 
 /// checks does beginning of the new line contain "already formatted" pattern
 /// if it does it splits and returns the already formatted line and the rest after it
-pub fn is_already_formatted_line_pattern<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {
+pub fn get_already_formatted_line_pattern<'a>(line: &'a str) -> Option<(&'a str, &'a str)> {
     let pattern_len = ALREADY_FORMATTED_LINE_PATTERN.len();
 
     if line.len() >= pattern_len && &line[0..pattern_len] == ALREADY_FORMATTED_LINE_PATTERN {
