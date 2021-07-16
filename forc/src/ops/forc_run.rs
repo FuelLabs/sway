@@ -44,6 +44,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
 
                         if command.dry_run {
                             println!("{:?}", tx);
+                            Ok(())
                         } else {
                             let node_url = match &manifest.network {
                                 Some(network) => &network.url,
@@ -55,12 +56,11 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                             match client.transact(&tx).await {
                                 Ok(logs) => {
                                     println!("{:?}", logs);
+                                    Ok(())
                                 }
-                                Err(e) => return Err(e.to_string().into()),
+                                Err(e) => Err(e.to_string().into()),
                             }
                         }
-
-                        Ok(())
                     } else {
                         let parse_type = {
                             if parse_tree.contract_ast.is_some() {
