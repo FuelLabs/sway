@@ -3,4 +3,5 @@ pub mod forc_dep_check;
 pub mod forc_deploy;
 pub mod forc_fmt;
 pub mod forc_init;
+pub mod forc_run;
 pub mod forc_update;
