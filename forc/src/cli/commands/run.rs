@@ -7,8 +7,8 @@ pub struct Command {
     pub data: Option<String>,
 
     /// Path to the project, if not specified, current working directory will be used.
-    #[structopt(short, long, default_value = "./")]
-    pub path: String,
+    #[structopt(short, long)]
+    pub path: Option<String>,
 
     #[structopt(long)]
     pub dry_run: bool,
