@@ -1,9 +1,8 @@
+use crate::ops::forc_fmt;
 use structopt::{self, StructOpt};
 
-use crate::ops::forc_fmt;
-
-#[derive(Debug, StructOpt)]
 /// Format all Sway files of the current project.
+#[derive(Debug, StructOpt)]
 pub struct Command {
     /// Run in 'check' mode.
     /// Exits with 0 if input is formatted correctly.

@@ -1,8 +1,8 @@
+use crate::ops::forc_build;
 use structopt::{self, StructOpt};
 
-use crate::ops::forc_build;
-#[derive(Debug, StructOpt)]
 /// Compile the current or target project.
+#[derive(Debug, StructOpt)]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[structopt(short, long)]

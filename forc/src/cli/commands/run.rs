@@ -1,9 +1,9 @@
 use crate::ops::forc_run;
 use structopt::{self, StructOpt};
 
-#[derive(Debug, StructOpt)]
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
+#[derive(Debug, StructOpt)]
 pub struct Command {
     /// Hex string of data to input to script.
     #[structopt(short, long)]

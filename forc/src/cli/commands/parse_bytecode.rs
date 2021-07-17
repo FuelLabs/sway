@@ -5,8 +5,8 @@ use structopt::{self, StructOpt};
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
 
-#[derive(Debug, StructOpt)]
 /// Parse bytecode file into a debug format.
+#[derive(Debug, StructOpt)]
 pub(crate) struct Command {
     file_path: String,
 }
