@@ -2,6 +2,7 @@ use crate::ops::forc_deploy;
 use structopt::{self, StructOpt};
 
 #[derive(Debug, StructOpt)]
+/// Deploy contract project.
 pub struct Command {}
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

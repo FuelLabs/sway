@@ -2,6 +2,7 @@ use structopt::{self, StructOpt};
 
 use crate::ops::forc_update;
 #[derive(Debug, StructOpt)]
+/// Update dependencies in the Forc dependencies directory.
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[structopt(short, long)]

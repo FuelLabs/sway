@@ -2,6 +2,7 @@ use crate::ops::forc_run;
 use structopt::{self, StructOpt};
 
 #[derive(Debug, StructOpt)]
+/// Run script project.
 pub struct Command {
     #[structopt(short, long)]
     pub data: Option<String>,

@@ -2,6 +2,7 @@ use structopt::{self, StructOpt};
 
 use crate::ops::forc_init;
 #[derive(Debug, StructOpt)]
+/// Create a new Forc project.
 pub(crate) struct Command {
     project_name: String,
 }
