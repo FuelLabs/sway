@@ -13,7 +13,7 @@ use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "forc", about = "Fuel HLL Orchestrator")]
+#[structopt(name = "forc", about = "Fuel Orchestrator")]
 struct Opt {
     /// the command to run
     #[structopt(subcommand)]
