@@ -3,7 +3,6 @@ use structopt::{self, StructOpt};
 use crate::ops::forc_init;
 #[derive(Debug, StructOpt)]
 pub(crate) struct Command {
-    #[structopt(name = "init")]
     project_name: String,
 }
 

@@ -3,8 +3,8 @@ use structopt::{self, StructOpt};
 use crate::ops::forc_update;
 #[derive(Debug, StructOpt)]
 pub struct Command {
-    /// Path to the project, if not specified, current working directory will be used
-    #[structopt(short = "p")]
+    /// Path to the project, if not specified, current working directory will be used.
+    #[structopt(short, long)]
     pub path: Option<String>,
 
     /// Dependency to be updated.
@@ -15,7 +15,7 @@ pub struct Command {
     /// Checks if the dependencies have newer versions.
     /// Won't actually perform the update, will output which
     /// ones are up-to-date and outdated.
-    #[structopt(short = "c", long = "check")]
+    #[structopt(short, long)]
     pub check: bool,
 }
 

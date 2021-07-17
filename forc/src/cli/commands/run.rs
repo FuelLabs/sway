@@ -3,13 +3,14 @@ use structopt::{self, StructOpt};
 
 #[derive(Debug, StructOpt)]
 pub struct Command {
-    #[structopt(short = "d", long = "data")]
+    #[structopt(short, long)]
     pub data: Option<String>,
 
-    #[structopt(short = "p", long = "path", default_value = "./")]
+    /// Path to the project, if not specified, current working directory will be used.
+    #[structopt(short, long, default_value = "./")]
     pub path: String,
 
-    #[structopt(long = "dry-run")]
+    #[structopt(long)]
     pub dry_run: bool,
 }
 
