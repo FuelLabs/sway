@@ -23,13 +23,13 @@ struct Opt {
 #[derive(Debug, StructOpt)]
 enum Forc {
     Build(BuildCommand),
+    Deploy(DeployCommand),
     #[structopt(name = "fmt")]
     Format(FormatCommand),
-    Deploy(DeployCommand),
     Init(InitCommand),
+    ParseBytecode(ParseBytecodeCommand),
     Run(RunCommand),
     Test(TestCommand),
-    ParseBytecode(ParseBytecodeCommand),
     Update(UpdateCommand),
 }
 
@@ -37,12 +37,12 @@ pub(crate) async fn run_cli() -> Result<(), String> {
     let opt = Opt::from_args();
     match opt.command {
         Forc::Build(command) => build::exec(command),
-        Forc::Format(command) => format::exec(command),
         Forc::Deploy(command) => deploy::exec(command).await,
+        Forc::Format(command) => format::exec(command),
         Forc::Init(command) => init::exec(command),
+        Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Run(command) => run::exec(command).await,
         Forc::Test(command) => test::exec(command),
-        Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Update(command) => update::exec(command).await,
     }?;
 
