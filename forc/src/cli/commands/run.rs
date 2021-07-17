@@ -3,7 +3,9 @@ use structopt::{self, StructOpt};
 
 #[derive(Debug, StructOpt)]
 /// Run script project.
+/// Crafts a script transaction then sends it to a running node.
 pub struct Command {
+    /// Hex string of data to input to script.
     #[structopt(short, long)]
     pub data: Option<String>,
 
@@ -11,6 +13,7 @@ pub struct Command {
     #[structopt(short, long)]
     pub path: Option<String>,
 
+    /// Only craft transaction and print it out.
     #[structopt(long)]
     pub dry_run: bool,
 }
