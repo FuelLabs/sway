@@ -9,7 +9,7 @@ pub struct Command {
     pub path: Option<String>,
 
     /// Dependency to be updated.
-    /// If `d` isn't specified, all dependencies will be updated.
+    /// If not set, all dependencies will be updated.
     #[structopt(short = "d")]
     pub target_dependency: Option<String>,
 
