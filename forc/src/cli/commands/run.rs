@@ -1,15 +1,20 @@
 use crate::ops::forc_run;
 use structopt::{self, StructOpt};
 
+/// Run script project.
+/// Crafts a script transaction then sends it to a running node.
 #[derive(Debug, StructOpt)]
 pub struct Command {
-    #[structopt(short = "d", long = "data")]
+    /// Hex string of data to input to script.
+    #[structopt(short, long)]
     pub data: Option<String>,
 
-    #[structopt(short = "p", long = "path", default_value = "./")]
-    pub path: String,
+    /// Path to the project, if not specified, current working directory will be used.
+    #[structopt(short, long)]
+    pub path: Option<String>,
 
-    #[structopt(long = "dry-run")]
+    /// Only craft transaction and print it out.
+    #[structopt(long)]
     pub dry_run: bool,
 }
 

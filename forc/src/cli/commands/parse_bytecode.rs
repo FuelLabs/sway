@@ -5,12 +5,12 @@ use structopt::{self, StructOpt};
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
 
+/// Parse bytecode file into a debug format.
 #[derive(Debug, StructOpt)]
 pub(crate) struct Command {
     file_path: String,
 }
 
-/// Parses the bytecode into a debug format.
 pub(crate) fn exec(command: Command) -> Result<(), String> {
     let mut f = File::open(&command.file_path)
         .map_err(|_| format!("{}: file not found", command.file_path))?;

@@ -12,7 +12,11 @@ use constants::{DEFAULT_NODE_URL, SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, S
 use helpers::{find_manifest_dir, get_main_file, read_manifest};
 
 pub async fn run(command: RunCommand) -> Result<(), CliError> {
-    let path_dir = PathBuf::from(&command.path);
+    let path_dir = if let Some(path) = &command.path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().unwrap()
+    };
 
     match find_manifest_dir(&path_dir) {
         Some(manifest_dir) => {
@@ -33,7 +37,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                         let script_data = hex::decode(data).expect("Invalid hex");
 
                         let build_command = BuildCommand {
-                            path: Some(command.path),
+                            path: command.path,
                             print_asm: false,
                             binary_outfile: None,
                             offline_mode: false,
