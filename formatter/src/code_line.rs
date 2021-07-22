@@ -93,10 +93,13 @@ impl CodeLine {
     pub fn append_equal_sign(&mut self) {
         let last = self.text.chars().last();
 
-        if last == Some('!') {
-            self.push_str("= ");
-        } else {
-            self.append_with_whitespace("= ");
+        match last {
+            Some(c) if c == '!' || c == '<' || c == '>' => {
+                self.push_str("= ");
+            }
+            _ => {
+                self.append_with_whitespace("= ");
+            }
         }
     }
 
