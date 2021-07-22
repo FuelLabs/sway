@@ -6,7 +6,8 @@ use core_lang::{extract_keyword, Rule};
 use super::code_builder_helpers::{is_comment, is_multiline_comment};
 use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN};
 
-pub fn format_struct(text: &str) -> String {
+/// formats custom Enums and Structs
+pub fn format_custom_types(text: &str) -> String {
     let mut iter = text.chars().enumerate().peekable();
 
     let mut is_curr_comment = false;
@@ -64,6 +65,11 @@ pub fn format_struct(text: &str) -> String {
     }
 
     result
+}
+
+pub fn format_delineated_path(line: &str) -> String {
+    // currently just clean up extra unwanted whitespace
+    line.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 pub fn format_use_statement(line: &str) -> String {
