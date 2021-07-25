@@ -2,7 +2,9 @@ use core_lang::{
     AstNode, AstNodeContent, Declaration, Expression, HllParseTree, ReturnStatement, Span,
 };
 
-use crate::traversal_helper::{format_include_statement, format_struct, format_use_statement};
+use crate::traversal_helper::{
+    format_custom_types, format_delineated_path, format_include_statement, format_use_statement,
+};
 
 #[derive(Debug)]
 pub struct Change {
@@ -14,9 +16,11 @@ pub struct Change {
 impl Change {
     fn new(span: &Span, change_type: ChangeType) -> Self {
         let text = match change_type {
-            ChangeType::Struct => format_struct(span.as_str()),
+            ChangeType::Struct => format_custom_types(span.as_str()),
+            ChangeType::Enum => format_custom_types(span.as_str()),
             ChangeType::IncludeStatement => format_include_statement(span.as_str()),
             ChangeType::UseStatement => format_use_statement(span.as_str()),
+            ChangeType::DelineatedPath => format_delineated_path(span.as_str()),
         };
 
         Self {
@@ -30,8 +34,10 @@ impl Change {
 #[derive(Debug)]
 enum ChangeType {
     Struct,
+    Enum,
     IncludeStatement,
     UseStatement,
+    DelineatedPath,
 }
 
 pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
@@ -110,6 +116,10 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
             changes.push(Change::new(&ast_node.span, ChangeType::Struct))
         }
 
+        Declaration::EnumDeclaration(_) => {
+            changes.push(Change::new(&ast_node.span, ChangeType::Enum))
+        }
+
         Declaration::FunctionDeclaration(func) => {
             for content in &func.body.contents {
                 traverse_ast_node(&content, changes);
@@ -157,6 +167,14 @@ fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
             for content in &contents.contents {
                 traverse_ast_node(&content, changes);
             }
+        }
+        Expression::DelineatedPath {
+            span,
+            args: _,
+            call_path: _,
+            type_arguments: _,
+        } => {
+            changes.push(Change::new(&span, ChangeType::DelineatedPath));
         }
         _ => {}
     }
