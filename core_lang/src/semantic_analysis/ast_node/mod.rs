@@ -529,6 +529,7 @@ impl<'sc> TypedAstNode<'sc> {
 
                             TypedDeclaration::StructDeclaration(decl)
                         }
+                        Declaration::AbiDeclaration(abi_decl) => todo!(),
                     })
                 }
                 AstNodeContent::Expression(a) => {
