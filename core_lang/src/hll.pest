@@ -55,7 +55,7 @@ path_component           =  {path_ident ~ (path_separator ~ path_ident)+}
 path_ident               =  {ident}
 
 // abi blocks and abi casting
-abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ byte ~ ")"}
+abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ expr ~ ")"}
 abi_decl = {abi_keyword ~ abi_name ~ trait_methods} 
 abi_name = {ident} 
 
