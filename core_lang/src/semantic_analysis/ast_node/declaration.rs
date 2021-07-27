@@ -27,6 +27,7 @@ pub enum TypedDeclaration<'sc> {
         methods: Vec<TypedFunctionDeclaration<'sc>>,
         type_implementing_for: MaybeResolvedType<'sc>,
     },
+    AbiDeclaration(TypedAbiDeclaration<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
     ErrorRecovery,
@@ -44,6 +45,7 @@ impl<'sc> TypedDeclaration<'sc> {
             EnumDeclaration(_) => "enum",
             Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
+            AbiDeclaration(..) => "abi",
             SideEffect => "",
             ErrorRecovery => "error",
         }
@@ -103,6 +105,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     crate::utils::join_spans(acc, this.span())
                 })
             }
+            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
             SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
         }
@@ -142,6 +145,20 @@ impl<'sc> TypedDeclaration<'sc> {
             }
         )
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct TypedAbiDeclaration<'sc> {
+    /// If the abi declaration is `Visibility::Public`, then other contracts, scripts, etc can
+    /// import this type to call it.
+    pub(crate) visibility: Visibility,
+    /// The name of the abi trait (also known as a "contract trait")
+    pub(crate) name: Ident<'sc>,
+    /// The methods a contract is required to implement in order opt in to this interface
+    pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
+    /// The methods provided to a contract "for free" upon opting in to this interface
+    pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
+    pub(crate) span: Span<'sc>,
 }
 
 #[derive(Clone, Debug)]

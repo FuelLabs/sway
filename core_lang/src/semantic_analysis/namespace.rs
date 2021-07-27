@@ -522,6 +522,10 @@ impl<'sc> Namespace<'sc> {
         )
     }
 
+    /// Used to insert methods from trait constraints into the namespace for a given (generic) type
+    /// e.g. given `T: Clone`, insert the method `clone()` into the namespace for the type `T`.
+    /// A [crate::TypeParameter] contains a type and zero or more constraints, and this method
+    /// performs this task on potentially many type parameters.
     pub(crate) fn insert_trait_methods(&mut self, type_params: &[crate::TypeParameter<'sc>]) {
         let mut warnings = vec![];
         let mut errors = vec![];

@@ -6,7 +6,8 @@ use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
     parse_tree::Visibility,
     semantic_analysis::ast_node::{
-        TypedExpressionVariant, TypedReturnStatement, TypedStructDeclaration, TypedTraitDeclaration,
+        TypedAbiDeclaration, TypedExpressionVariant, TypedReturnStatement, TypedStructDeclaration,
+        TypedTraitDeclaration,
     },
     CompileError, Ident, TreeType,
 };
@@ -350,6 +351,10 @@ fn connect_declaration<'sc>(
             connect_trait_declaration(&trait_decl, graph, entry_node);
             Ok(vec![])
         }
+        AbiDeclaration(abi_decl) => {
+            connect_abi_declaration(&abi_decl, graph, entry_node);
+            Ok(vec![])
+        }
         StructDeclaration(struct_decl) => {
             connect_struct_declaration(&struct_decl, graph, entry_node, tree_type);
             Ok(vec![])
@@ -498,6 +503,28 @@ fn connect_trait_declaration<'sc>(
     );
 }
 
+/// The strategy here is to populate the trait namespace with just one singular trait
+/// and if it is ever implemented, by virtue of type checking, we know all interface points
+/// were met.
+/// Upon implementation, we can populate the methods namespace and track dead functions that way.
+/// TL;DR: At this point, we _only_ track the wholistic trait declaration and not the functions
+/// contained within.
+///
+/// The trait node itself has already been added (as `entry_node`), so we just need to insert that
+/// node index into the namespace for the trait.
+fn connect_abi_declaration<'sc>(
+    decl: &TypedAbiDeclaration<'sc>,
+    graph: &mut ControlFlowGraph<'sc>,
+    entry_node: NodeIndex,
+) {
+    graph.namespace.add_trait(
+        CallPath {
+            suffix: decl.name.clone(),
+            prefixes: vec![],
+        },
+        entry_node,
+    );
+}
 /// For an enum declaration, we want to make a declaration node for every individual enum
 /// variant. When a variant is constructed, we can point an edge at that variant. This way,
 /// we can see clearly, and thusly warn, when individual variants are not ever constructed.

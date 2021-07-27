@@ -18,10 +18,12 @@ pub struct AbiDeclaration<'sc> {
     pub(crate) interface_surface: Vec<TraitFn<'sc>>,
     /// The methods provided to a contract "for free" upon opting in to this interface
     pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
+    pub(crate) span: Span<'sc>,
 }
 
 impl<'sc> AbiDeclaration<'sc> {
     pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+        let span = pair.as_span();
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -68,6 +70,7 @@ impl<'sc> AbiDeclaration<'sc> {
                 interface_surface,
                 name,
                 visibility,
+                span,
             },
             warnings,
             errors,

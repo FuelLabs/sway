@@ -19,8 +19,8 @@ mod while_loop;
 use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{
-    TypedDeclaration, TypedEnumDeclaration, TypedEnumVariant, TypedFunctionDeclaration,
-    TypedFunctionParameter, TypedStructDeclaration, TypedStructField,
+    TypedAbiDeclaration, TypedDeclaration, TypedEnumDeclaration, TypedEnumVariant,
+    TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration, TypedStructField,
 };
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
 pub(crate) use expression::*;
@@ -209,30 +209,9 @@ impl<'sc> TypedAstNode<'sc> {
                             type_parameters,
                             visibility,
                         }) => {
-                            let mut methods_buf = Vec::new();
-                            let interface_surface = interface_surface
-                            .into_iter()
-                            .map(|TraitFn {
-                                name,
-                                parameters,
-                                return_type,
-                                return_type_span
-                                }| TypedTraitFn {
-                                name,
-                                return_type_span,
-                                parameters: parameters
-                                    .into_iter()
-                                    .map(|FunctionParameter { name, r#type, type_span }|
-                                        TypedFunctionParameter {
-                                            name,
-                                            r#type: namespace.resolve_type(&r#type, 
-                                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)),
-                                                type_span }
-                                    ).collect(),
-                                return_type: namespace.resolve_type(&return_type,
-                                    &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)
-                                )
-                            }).collect::<Vec<_>>();
+                            // type check the interface surface
+                            let interface_surface =
+                                type_check_interface_surface(interface_surface, &namespace);
                             let mut trait_namespace = namespace.clone();
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
@@ -247,155 +226,23 @@ impl<'sc> TypedAstNode<'sc> {
                                     .map(|x| x.to_dummy_func())
                                     .collect(),
                             );
-                            for FunctionDeclaration {
-                                body,
-                                name: fn_name,
-                                parameters,
-                                span,
-                                return_type,
-                                type_parameters,
-                                return_type_span,
-                                ..
-                            } in methods
-                            {
-                                let mut function_namespace = trait_namespace.clone();
-                                parameters.clone().into_iter().for_each(
-                                    |FunctionParameter { name, r#type, .. }| {
-                                        let r#type = function_namespace.resolve_type(
-                                            &r#type,
-                                            &MaybeResolvedType::Partial(
-                                                PartiallyResolvedType::SelfType,
-                                            ),
-                                        );
-                                        function_namespace.insert(
-                                            name.clone(),
-                                            TypedDeclaration::VariableDeclaration(
-                                                TypedVariableDeclaration {
-                                                    name: name.clone(),
-                                                    body: TypedExpression {
-                                                        expression:
-                                                            TypedExpressionVariant::FunctionParameter,
-                                                        return_type: r#type,
-                                                        is_constant: IsConstant::No,
-                                                        span: name.span.clone(),
-                                                    },
-                                                    // TODO allow mutable function params?
-                                                    is_mutable: false,
-                                                },
-                                            ),
-                                        );
-                                    },
-                                );
-                                // check the generic types in the arguments, make sure they are in
-                                // the type scope
-                                let mut generic_params_buf_for_error_message = Vec::new();
-                                for param in parameters.iter() {
-                                    if let TypeInfo::Custom { ref name } = param.r#type {
-                                        generic_params_buf_for_error_message
-                                            .push(name.primary_name);
-                                    }
-                                }
-                                let comma_separated_generic_params =
-                                    generic_params_buf_for_error_message.join(", ");
-                                for FunctionParameter {
-                                    ref r#type, name, ..
-                                } in parameters.iter()
-                                {
-                                    let span = name.span.clone();
-                                    if let TypeInfo::Custom { name, .. } = r#type {
-                                        let args_span = parameters.iter().fold(
-                                            parameters[0].name.span.clone(),
-                                            |acc,
-                                             FunctionParameter {
-                                                 name: Ident { span, .. },
-                                                 ..
-                                             }| {
-                                                crate::utils::join_spans(acc, span.clone())
-                                            },
-                                        );
-                                        if type_parameters
-                                            .iter()
-                                            .find(|TypeParameter { name: this_name, .. }| {
-                                                if let TypeInfo::Custom { name: this_name } = this_name {
-                                                    this_name.primary_name == name.primary_name
-                                                } else {
-                                                    false
-                                                }
-                                            })
-                                            .is_none()
-                                        {
-                                            errors.push(
-                                                CompileError::TypeParameterNotInTypeScope {
-                                                    name: name.primary_name,
-                                                    span: span.clone(),
-                                                    comma_separated_generic_params:
-                                                        comma_separated_generic_params.clone(),
-                                                    fn_name: fn_name.primary_name,
-                                                    args: args_span.as_str(),
-                                                },
-                                            );
-                                        }
-                                    }
-                                }
-                                let parameters = parameters
-                                    .into_iter()
-                                    .map(
-                                        |FunctionParameter {
-                                             name,
-                                             r#type,
-                                             type_span,
-                                         }| {
-                                            TypedFunctionParameter {
-                                                name,
-                                                r#type: function_namespace.resolve_type(
-                                                    &r#type,
-                                                    &MaybeResolvedType::Partial(
-                                                        PartiallyResolvedType::SelfType,
-                                                    ),
-                                                ),
-                                                type_span,
-                                            }
-                                        },
-                                    )
-                                    .collect::<Vec<_>>();
-
-                                // TODO check code block implicit return
-                                let return_type =
-                                    function_namespace.resolve_type(&return_type, self_type);
-                                let (body, _code_block_implicit_return) = type_check!(
-                                    TypedCodeBlock::type_check(
-                                        body,
-                                        &function_namespace,
-                                        Some(return_type.clone()),
-                                        "Trait method body's return type does not match up with \
-                                         its return type annotation.",
-                                        self_type,
-                                        build_config,
-                                        dead_code_graph,
-                                    ),
-                                    continue,
-                                    warnings,
-                                    errors
-                                );
-
-                                methods_buf.push(TypedFunctionDeclaration {
-                                    name: fn_name,
-                                    body,
-                                    parameters,
-                                    span,
-                                    return_type,
-                                    type_parameters,
-                                    // For now, any method declared is automatically public.
-                                    // We can tweak that later if we want.
-                                    visibility: Visibility::Public,
-                                    return_type_span,
-                                });
-                            }
+                            let methods = type_check!(
+                                type_check_trait_methods(
+                                    methods,
+                                    &trait_namespace,
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph,
+                                ),
+                                vec![],
+                                warnings,
+                                errors
+                            );
                             let trait_decl =
                                 TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
                                     name: name.clone(),
                                     interface_surface,
-                                    methods: methods_buf,
+                                    methods,
                                     type_parameters,
                                     visibility,
                                 });
@@ -529,7 +376,40 @@ impl<'sc> TypedAstNode<'sc> {
 
                             TypedDeclaration::StructDeclaration(decl)
                         }
-                        Declaration::AbiDeclaration(abi_decl) => todo!(),
+                        Declaration::AbiDeclaration(AbiDeclaration {
+                            visibility,
+                            name,
+                            interface_surface,
+                            methods,
+                            span,
+                        }) => {
+                            // type check the interface surface and methods
+                            // Note that we do not want to allow a contract to call itself via
+                            // contract calls, so we do not add the interface surface into the
+                            // methods. This is by design.
+                            let interface_surface =
+                                type_check_interface_surface(interface_surface, &namespace);
+                            let methods = type_check!(
+                                type_check_trait_methods(
+                                    methods,
+                                    &namespace,
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph,
+                                ),
+                                vec![],
+                                warnings,
+                                errors
+                            );
+
+                            TypedDeclaration::AbiDeclaration(TypedAbiDeclaration {
+                                interface_surface,
+                                methods,
+                                name,
+                                span,
+                                visibility,
+                            })
+                        }
                     })
                 }
                 AstNodeContent::Expression(a) => {
@@ -923,4 +803,192 @@ fn reassignment<'sc>(
             return err(warnings, errors);
         }
     }
+}
+
+fn type_check_interface_surface<'sc>(
+    interface_surface: Vec<TraitFn<'sc>>,
+    namespace: &Namespace<'sc>,
+) -> Vec<TypedTraitFn<'sc>> {
+    interface_surface
+        .into_iter()
+        .map(
+            |TraitFn {
+                 name,
+                 parameters,
+                 return_type,
+                 return_type_span,
+             }| TypedTraitFn {
+                name,
+                return_type_span,
+                parameters: parameters
+                    .into_iter()
+                    .map(
+                        |FunctionParameter {
+                             name,
+                             r#type,
+                             type_span,
+                         }| TypedFunctionParameter {
+                            name,
+                            r#type: namespace.resolve_type(
+                                &r#type,
+                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                            ),
+                            type_span,
+                        },
+                    )
+                    .collect(),
+                return_type: namespace.resolve_type(
+                    &return_type,
+                    &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                ),
+            },
+        )
+        .collect::<Vec<_>>()
+}
+
+fn type_check_trait_methods<'sc>(
+    methods: Vec<FunctionDeclaration<'sc>>,
+    namespace: &Namespace<'sc>,
+    self_type: &MaybeResolvedType<'sc>,
+    build_config: &BuildConfig,
+    dead_code_graph: &mut ControlFlowGraph<'sc>,
+) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut methods_buf = Vec::new();
+    for FunctionDeclaration {
+        body,
+        name: fn_name,
+        parameters,
+        span,
+        return_type,
+        type_parameters,
+        return_type_span,
+        ..
+    } in methods
+    {
+        let mut function_namespace = namespace.clone();
+        parameters
+            .clone()
+            .into_iter()
+            .for_each(|FunctionParameter { name, r#type, .. }| {
+                let r#type = function_namespace.resolve_type(
+                    &r#type,
+                    &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                );
+                function_namespace.insert(
+                    name.clone(),
+                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                        name: name.clone(),
+                        body: TypedExpression {
+                            expression: TypedExpressionVariant::FunctionParameter,
+                            return_type: r#type,
+                            is_constant: IsConstant::No,
+                            span: name.span.clone(),
+                        },
+                        // TODO allow mutable function params?
+                        is_mutable: false,
+                    }),
+                );
+            });
+        // check the generic types in the arguments, make sure they are in
+        // the type scope
+        let mut generic_params_buf_for_error_message = Vec::new();
+        for param in parameters.iter() {
+            if let TypeInfo::Custom { ref name } = param.r#type {
+                generic_params_buf_for_error_message.push(name.primary_name);
+            }
+        }
+        let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
+        for FunctionParameter {
+            ref r#type, name, ..
+        } in parameters.iter()
+        {
+            let span = name.span.clone();
+            if let TypeInfo::Custom { name, .. } = r#type {
+                let args_span = parameters.iter().fold(
+                    parameters[0].name.span.clone(),
+                    |acc,
+                     FunctionParameter {
+                         name: Ident { span, .. },
+                         ..
+                     }| { crate::utils::join_spans(acc, span.clone()) },
+                );
+                if type_parameters
+                    .iter()
+                    .find(
+                        |TypeParameter {
+                             name: this_name, ..
+                         }| {
+                            if let TypeInfo::Custom { name: this_name } = this_name {
+                                this_name.primary_name == name.primary_name
+                            } else {
+                                false
+                            }
+                        },
+                    )
+                    .is_none()
+                {
+                    errors.push(CompileError::TypeParameterNotInTypeScope {
+                        name: name.primary_name,
+                        span: span.clone(),
+                        comma_separated_generic_params: comma_separated_generic_params.clone(),
+                        fn_name: fn_name.primary_name,
+                        args: args_span.as_str(),
+                    });
+                }
+            }
+        }
+        let parameters = parameters
+            .into_iter()
+            .map(
+                |FunctionParameter {
+                     name,
+                     r#type,
+                     type_span,
+                 }| {
+                    TypedFunctionParameter {
+                        name,
+                        r#type: function_namespace.resolve_type(
+                            &r#type,
+                            &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                        ),
+                        type_span,
+                    }
+                },
+            )
+            .collect::<Vec<_>>();
+
+        // TODO check code block implicit return
+        let return_type = function_namespace.resolve_type(&return_type, self_type);
+        let (body, _code_block_implicit_return) = type_check!(
+            TypedCodeBlock::type_check(
+                body,
+                &function_namespace,
+                Some(return_type.clone()),
+                "Trait method body's return type does not match up with \
+                                         its return type annotation.",
+                self_type,
+                build_config,
+                dead_code_graph,
+            ),
+            continue,
+            warnings,
+            errors
+        );
+
+        methods_buf.push(TypedFunctionDeclaration {
+            name: fn_name,
+            body,
+            parameters,
+            span,
+            return_type,
+            type_parameters,
+            // For now, any method declared is automatically public.
+            // We can tweak that later if we want.
+            visibility: Visibility::Public,
+            return_type_span,
+        });
+    }
+    ok(methods_buf, warnings, errors)
 }

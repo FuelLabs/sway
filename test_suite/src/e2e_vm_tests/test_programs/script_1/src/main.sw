@@ -10,7 +10,7 @@ struct Rgb {
 
 trait Color {
   fn rgb(self) -> Rgb;
-}
+} 
 
 enum PrimaryColor {
    Red : (),
