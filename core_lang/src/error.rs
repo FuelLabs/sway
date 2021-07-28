@@ -668,6 +668,11 @@ pub enum CompileError<'sc> {
     InvalidAbiType { span: Span<'sc> },
     #[error("An ABI function must accept exactly one argument. If you need to accept more values, try putting them in a struct, and then accepting a parameter of that struct type.")]
     InvalidNumberOfAbiParams { span: Span<'sc> },
+    #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
+    NotAnAbi {
+        span: Span<'sc>,
+        actually_is: &'static str,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -832,6 +837,7 @@ impl<'sc> CompileError<'sc> {
             TooFewArgumentsForFunction { span, .. } => span,
             InvalidAbiType { span, .. } => span,
             InvalidNumberOfAbiParams { span, .. } => span,
+            NotAnAbi { span, .. } => span,
         }
     }
 

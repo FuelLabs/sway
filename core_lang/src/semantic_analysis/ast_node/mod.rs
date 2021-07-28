@@ -143,7 +143,7 @@ impl<'sc> TypedAstNode<'sc> {
                             let body = type_check!(
                                 TypedExpression::type_check(
                                     body,
-                                    &namespace,
+                                    namespace,
                                     type_ascription.clone(),
                                     format!(
                                         "Variable declaration's type annotation (type {}) does \
@@ -402,13 +402,15 @@ impl<'sc> TypedAstNode<'sc> {
                                 errors
                             );
 
-                            TypedDeclaration::AbiDeclaration(TypedAbiDeclaration {
+                            let decl = TypedDeclaration::AbiDeclaration(TypedAbiDeclaration {
                                 interface_surface,
                                 methods,
-                                name,
+                                name: name.clone(),
                                 span,
                                 visibility,
-                            })
+                            });
+                            namespace.insert(name, decl.clone());
+                            decl
                         }
                     })
                 }
@@ -416,7 +418,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let inner = type_check!(
                         TypedExpression::type_check(
                             a.clone(),
-                            &namespace,
+                            namespace,
                             None,
                             "",
                             self_type,
@@ -434,7 +436,7 @@ impl<'sc> TypedAstNode<'sc> {
                         expr: type_check!(
                             TypedExpression::type_check(
                                 expr.clone(),
-                                &namespace,
+                                namespace,
                                 return_type_annotation,
                                 "Returned value must match up with the function return type \
                                  annotation.",
@@ -452,7 +454,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let typed_expr = type_check!(
                         TypedExpression::type_check(
                             expr.clone(),
-                            &namespace,
+                            namespace,
                             return_type_annotation,
                             format!(
                                 "Implicit return must match up with block's type. {}",
@@ -472,7 +474,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let typed_condition = type_check!(
                         TypedExpression::type_check(
                             condition,
-                            &namespace,
+                            namespace,
                             Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
@@ -639,7 +641,7 @@ fn reassignment<'sc>(
             span,
         } => {
             // check that the reassigned name exists
-            let thing_to_reassign = match namespace.get_symbol(&name) {
+            let thing_to_reassign = match namespace.clone().get_symbol(&name) {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body,
                     is_mutable,
@@ -656,7 +658,7 @@ fn reassignment<'sc>(
                         ));
                     }
 
-                    body
+                    body.clone()
                 }
                 Some(o) => {
                     errors.push(CompileError::ReassignmentToNonVariable {
@@ -678,7 +680,7 @@ fn reassignment<'sc>(
             let rhs = type_check!(
                 TypedExpression::type_check(
                     rhs,
-                    &namespace,
+                    namespace,
                     Some(thing_to_reassign.return_type.clone()),
                     "You can only reassign a value of the same type to a variable.",
                     self_type,
@@ -774,7 +776,7 @@ fn reassignment<'sc>(
             let rhs = type_check!(
                 TypedExpression::type_check(
                     rhs,
-                    &namespace,
+                    namespace,
                     Some(ty_of_field.clone()),
                     format!(
                         "This struct field has type \"{}\"",

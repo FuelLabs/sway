@@ -1,5 +1,5 @@
 use super::IntegerBits;
-use crate::{error::*, semantic_analysis::ast_node::TypedStructField, Ident};
+use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use pest::Span;
 
 /// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
@@ -35,7 +35,7 @@ pub enum ResolvedType<'sc> {
     Contract,
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
-    ContractCaller(Ident<'sc>),
+    ContractCaller(CallPath<'sc>),
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -242,7 +242,7 @@ impl<'sc> ResolvedType<'sc> {
                 ..
             } => format!("enum {}", primary_name),
             Contract => "contract".into(),
-            ContractCaller(id) => format!("{} contract caller", id.primary_name),
+            ContractCaller(id) => format!("{} contract caller", id.suffix.primary_name),
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }

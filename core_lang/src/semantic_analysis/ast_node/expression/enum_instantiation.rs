@@ -11,7 +11,7 @@ pub(crate) fn instantiate_enum<'sc>(
     enum_field_name: Ident<'sc>,
     args: Vec<Expression<'sc>>,
     type_arguments: Vec<MaybeResolvedType<'sc>>,
-    namespace: &Namespace<'sc>,
+    namespace: &mut Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
