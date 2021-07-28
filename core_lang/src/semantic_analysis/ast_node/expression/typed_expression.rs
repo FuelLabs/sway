@@ -865,6 +865,34 @@ impl<'sc> TypedExpression<'sc> {
                     Either::Right(expr) => expr,
                 }
             }
+            Expression::AbiCast {
+                abi_name,
+                address,
+                span,
+            } => {
+                // TODO use stdlib's Address type instead of byte32
+                // type check the address and make sure it is
+                let err_span = address.span();
+                let address = type_check!(
+                    TypedExpression::type_check(
+                        *address,
+                        &namespace,
+                        Some(MaybeResolvedType::Resolved(ResolvedType::Byte32)),
+                        "An address that is being ABI cast must be of type byte32",
+                        self_type,
+                        build_config,
+                        dead_code_graph,
+                    ),
+                    error_recovery_expr(err_span),
+                    warnings,
+                    errors
+                );
+                let return_type = ResolvedType::ContractCaller(abi_name);
+                // look up the abi name and insert the methods into the trait namespace
+                // send some out-of-signal flag that these are contract calls so the code
+                // generation knows what's up
+                todo!("above comment")
+            }
             a => {
                 println!("Unimplemented semantic_analysis for expression: {:?}", a);
                 errors.push(CompileError::Unimplemented(
