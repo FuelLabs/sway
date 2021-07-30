@@ -1,0 +1,203 @@
+{
+	"core": {
+		"meta": {
+			"path": "components/prism-core.js",
+			"option": "mandatory"
+		},
+		"core": "Core"
+	},
+	"themes": {
+		"meta": {
+			"path": "themes/{id}.css",
+			"link": "index.html?theme={id}",
+			"exclusive": true
+		},
+		"prism": {
+			"title": "Default",
+			"option": "default"
+		},
+		"prism-dark": "Dark",
+		"prism-funky": "Funky",
+		"prism-okaidia": {
+			"title": "Okaidia",
+			"owner": "ocodia"
+		},
+		"prism-twilight": {
+			"title": "Twilight",
+			"owner": "remybach"
+		},
+		"prism-coy": {
+			"title": "Coy",
+			"owner": "tshedor"
+		},
+		"prism-solarizedlight": {
+			"title": "Solarized Light",
+			"owner": "hectormatos2011 "
+		},
+		"prism-tomorrow": {
+			"title": "Tomorrow Night",
+			"owner": "Rosey"
+		}
+	},
+	"languages": {
+        "sway": {
+			"title": "Sway",
+			"owner": "Fuel"
+		}
+    },
+	"plugins": {
+		"meta": {
+			"path": "plugins/{id}/prism-{id}",
+			"link": "plugins/{id}/"
+		},
+		"line-highlight": {
+			"title": "Line Highlight",
+			"description": "Highlights specific lines and/or line ranges."
+		},
+		"line-numbers": {
+			"title": "Line Numbers",
+			"description": "Line number at the beginning of code lines.",
+			"owner": "kuba-kubula"
+		},
+		"show-invisibles": {
+			"title": "Show Invisibles",
+			"description": "Show hidden characters such as tabs and line breaks.",
+			"optional": [
+				"autolinker",
+				"data-uri-highlight"
+			]
+		},
+		"autolinker": {
+			"title": "Autolinker",
+			"description": "Converts URLs and emails in code to clickable links. Parses Markdown links in comments."
+		},
+		"wpd": {
+			"title": "WebPlatform Docs",
+			"description": "Makes tokens link to <a href=\"https://webplatform.github.io/docs/\">WebPlatform.org documentation</a>. The links open in a new tab."
+		},
+		"custom-class": {
+			"title": "Custom Class",
+			"description": "This plugin allows you to prefix Prism's default classes (<code>.comment</code> can become <code>.namespace--comment</code>) or replace them with your defined ones (like <code>.editor__comment</code>). You can even add new classes.",
+			"owner": "dvkndn",
+			"noCSS": true
+		},
+		"file-highlight": {
+			"title": "File Highlight",
+			"description": "Fetch external files and highlight them with Prism. Used on the Prism website itself.",
+			"noCSS": true
+		},
+		"show-language": {
+			"title": "Show Language",
+			"description": "Display the highlighted language in code blocks (inline code does not show the label).",
+			"owner": "nauzilus",
+			"noCSS": true,
+			"require": "toolbar"
+		},
+		"jsonp-highlight": {
+			"title": "JSONP Highlight",
+			"description": "Fetch content with JSONP and highlight some interesting content (e.g. GitHub/Gists or Bitbucket API).",
+			"noCSS": true,
+			"owner": "nauzilus"
+		},
+		"highlight-keywords": {
+			"title": "Highlight Keywords",
+			"description": "Adds special CSS classes for each keyword matched in the code. For example, the keyword <code>if</code> will have the class <code>keyword-if</code> as well. You can have fine grained control over the appearance of each keyword by providing your own CSS rules.",
+			"owner": "vkbansal",
+			"noCSS": true
+		},
+		"remove-initial-line-feed": {
+			"title": "Remove initial line feed",
+			"description": "Removes the initial line feed in code blocks.",
+			"owner": "Golmote",
+			"noCSS": true
+		},
+		"inline-color": {
+			"title": "Inline color",
+			"description": "Adds a small inline preview for colors in style sheets.",
+			"require": "css-extras",
+			"owner": "RunDevelopment"
+		},
+		"previewers": {
+			"title": "Previewers",
+			"description": "Previewers for angles, colors, gradients, easing and time.",
+			"require": "css-extras",
+			"owner": "Golmote"
+		},
+		"autoloader": {
+			"title": "Autoloader",
+			"description": "Automatically loads the needed languages to highlight the code blocks.",
+			"owner": "Golmote",
+			"noCSS": true
+		},
+		"keep-markup": {
+			"title": "Keep Markup",
+			"description": "Prevents custom markup from being dropped out during highlighting.",
+			"owner": "Golmote",
+			"optional": "normalize-whitespace",
+			"noCSS": true
+		},
+		"command-line": {
+			"title": "Command Line",
+			"description": "Display a command line with a prompt and, optionally, the output/response from the commands.",
+			"owner": "chriswells0"
+		},
+		"unescaped-markup": {
+			"title": "Unescaped Markup",
+			"description": "Write markup without having to escape anything."
+		},
+		"normalize-whitespace": {
+			"title": "Normalize Whitespace",
+			"description": "Supports multiple operations to normalize whitespace in code blocks.",
+			"owner": "zeitgeist87",
+			"optional": "unescaped-markup",
+			"noCSS": true
+		},
+		"data-uri-highlight": {
+			"title": "Data-URI Highlight",
+			"description": "Highlights data-URI contents.",
+			"owner": "Golmote",
+			"noCSS": true
+		},
+		"toolbar": {
+			"title": "Toolbar",
+			"description": "Attach a toolbar for plugins to easily register buttons on the top of a code block.",
+			"owner": "mAAdhaTTah"
+		},
+		"copy-to-clipboard": {
+			"title": "Copy to Clipboard Button",
+			"description": "Add a button that copies the code block to the clipboard when clicked.",
+			"owner": "mAAdhaTTah",
+			"require": "toolbar",
+			"noCSS": true
+		},
+		"download-button": {
+			"title": "Download Button",
+			"description": "A button in the toolbar of a code block adding a convenient way to download a code file.",
+			"owner": "Golmote",
+			"require": "toolbar",
+			"noCSS": true
+		},
+		"match-braces": {
+			"title": "Match braces",
+			"description": "Highlights matching braces.",
+			"owner": "RunDevelopment"
+		},
+		"diff-highlight": {
+			"title": "Diff Highlight",
+			"description": "Highlights the code inside diff blocks.",
+			"owner": "RunDevelopment",
+			"require": "diff"
+		},
+		"filter-highlight-all": {
+			"title": "Filter highlightAll",
+			"description": "Filters the elements the <code>highlightAll</code> and <code>highlightAllUnder</code> methods actually highlight.",
+			"owner": "RunDevelopment",
+			"noCSS": true
+		},
+		"treeview": {
+			"title": "Treeview",
+			"description": "A language with special styles to highlight file system tree structures.",
+			"owner": "Golmote"
+		}
+	}
+}
