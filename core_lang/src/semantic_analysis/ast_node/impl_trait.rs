@@ -61,6 +61,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     dead_code_graph,
                     &block_span,
                     &type_implementing_for,
+                    Mode::RegularTraitFn,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -90,6 +91,7 @@ pub(crate) fn implementation_of_trait<'sc>(
             warnings: mut l_w,
             errors: mut l_e,
         } => {
+            println!("abi decl");
             // if you are comparing this with the `impl_trait` branch above, note that
             // there are no type arguments here because we don't support generic types
             // in contract ABIs yet (or ever?) due to the complexity of communicating
@@ -118,6 +120,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     dead_code_graph,
                     &block_span,
                     &type_implementing_for,
+                    Mode::ImplAbiFn
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -170,6 +173,11 @@ pub(crate) fn implementation_of_trait<'sc>(
     }
 }
 
+enum Mode {
+    ImplAbiFn,
+    RegularTraitFn,
+}
+
 fn type_check_trait_implementation<'sc>(
     interface_surface: &[TypedTraitFn<'sc>],
     functions: &[FunctionDeclaration<'sc>],
@@ -182,6 +190,7 @@ fn type_check_trait_implementation<'sc>(
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     block_span: &Span<'sc>,
     type_implementing_for: &MaybeResolvedType<'sc>,
+    mode: Mode,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
@@ -342,7 +351,15 @@ fn type_check_trait_implementation<'sc>(
     }
 
     for function in methods {
-        functions_buf.push(function.replace_self_types(type_implementing_for));
+        let mut fn_decl = function.replace_self_types(type_implementing_for);
+        functions_buf.push(fn_decl);
+    }
+
+    for mut fn_decl in functions_buf.iter_mut() {
+        match mode {
+            Mode::ImplAbiFn => fn_decl.is_contract_call = true,
+            _ => (),
+        }
     }
 
     // check that the implementation checklist is complete
@@ -356,5 +373,9 @@ fn type_check_trait_implementation<'sc>(
                 .join("\n"),
         });
     }
+    dbg!(functions_buf
+        .iter()
+        .map(|x| x.is_contract_call)
+        .collect::<Vec<_>>());
     ok(functions_buf, warnings, errors)
 }

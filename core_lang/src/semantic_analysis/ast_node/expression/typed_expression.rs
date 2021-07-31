@@ -117,7 +117,7 @@ impl<'sc> TypedExpression<'sc> {
                         parameters,
                         return_type,
                         body,
-                        name: _dbg_name,
+                        is_contract_call,
                         ..
                     }) => {
                         // type check arguments in function application vs arguments in function
@@ -171,6 +171,7 @@ impl<'sc> TypedExpression<'sc> {
                                 arguments: typed_call_arguments,
                                 name: name.clone(),
                                 function_body: body.clone(),
+                                is_contract_call,
                             },
                             span,
                         }
@@ -656,6 +657,7 @@ impl<'sc> TypedExpression<'sc> {
                                 },
                                 arguments: args_and_names,
                                 function_body: method.body.clone(),
+                                is_contract_call: method.is_contract_call,
                             },
                             return_type: method.return_type,
                             is_constant: IsConstant::No,
@@ -766,6 +768,7 @@ impl<'sc> TypedExpression<'sc> {
                                 name: call_path.clone(),
                                 arguments: args_and_names,
                                 function_body: method.body.clone(),
+                                is_contract_call: method.is_contract_call,
                             },
                             return_type: method.return_type,
                             is_constant: IsConstant::No,

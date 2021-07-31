@@ -48,14 +48,22 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             name,
             arguments,
             function_body,
-        } => convert_fn_app_to_asm(
-            name,
-            arguments,
-            function_body,
-            namespace,
-            return_register,
-            register_sequencer,
-        ),
+            is_contract_call,
+        } => {
+            dbg!(&name, &is_contract_call);
+            if *is_contract_call {
+                todo!("asm for contract call")
+            } else {
+                convert_fn_app_to_asm(
+                    name,
+                    arguments,
+                    function_body,
+                    namespace,
+                    return_register,
+                    register_sequencer,
+                )
+            }
+        }
         TypedExpressionVariant::VariableExpression { unary_op: _, name } => {
             let var = type_check!(
                 namespace.look_up_variable(name),
@@ -257,6 +265,8 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             convert_code_block_to_asm(block, namespace, register_sequencer, Some(return_register))
         }
         TypedExpressionVariant::Unit => ok(vec![], warnings, errors),
+        // ABI casts are purely compile-time constructs and generate no corresponding bytecode
+        TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
         a => {
             println!("unimplemented: {:?}", a);
             errors.push(CompileError::Unimplemented(

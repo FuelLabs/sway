@@ -990,6 +990,7 @@ fn type_check_trait_methods<'sc>(
             // We can tweak that later if we want.
             visibility: Visibility::Public,
             return_type_span,
+            is_contract_call: false,
         });
     }
     ok(methods_buf, warnings, errors)

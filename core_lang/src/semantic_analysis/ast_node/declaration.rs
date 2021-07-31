@@ -230,6 +230,8 @@ pub struct TypedFunctionDeclaration<'sc> {
     /// annotation of the function
     pub(crate) return_type_span: Span<'sc>,
     pub(crate) visibility: Visibility,
+    /// whether this function exists in another contract and requires a call to it or not
+    pub(crate) is_contract_call: bool,
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
@@ -272,6 +274,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             type_parameters: self.type_parameters.clone(),
             return_type_span: self.return_type_span.clone(),
             visibility: self.visibility.clone(),
+            is_contract_call: self.is_contract_call,
         }
     }
     /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
@@ -350,6 +353,7 @@ fn test_function_selector_behavior() {
         type_parameters: vec![],
         return_type_span: Span::new(" ", 0, 0).unwrap(),
         visibility: Visibility::Public,
+        is_contract_call: false,
     };
 
     let selector_text = match decl.to_selector_name() {
@@ -395,6 +399,7 @@ fn test_function_selector_behavior() {
         type_parameters: vec![],
         return_type_span: Span::new(" ", 0, 0).unwrap(),
         visibility: Visibility::Public,
+        is_contract_call: false,
     };
 
     let selector_text = match decl.to_selector_name() {
@@ -636,6 +641,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 type_parameters,
                 return_type_span,
                 visibility,
+                // this is set in impl_trait if it is part of an abi
+                is_contract_call: false,
             },
             warnings,
             errors,
@@ -660,6 +667,7 @@ impl<'sc> TypedTraitFn<'sc> {
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
+            is_contract_call: false,
         }
     }
 }
