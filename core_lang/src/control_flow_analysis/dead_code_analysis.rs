@@ -831,6 +831,20 @@ fn connect_expression<'sc>(
             Ok(vec![asm_node])
         }
         Unit => Ok(vec![]),
+        AbiCast {
+            abi_name,
+            address,
+            span,
+            abi,
+        } => connect_expression(
+            &address.expression,
+            graph,
+            leaves,
+            exit_node,
+            "abi cast address",
+            tree_type,
+            address.span.clone(),
+        ),
         a => {
             println!("Unimplemented: {:?}", a);
             return Err(CompileError::Unimplemented(

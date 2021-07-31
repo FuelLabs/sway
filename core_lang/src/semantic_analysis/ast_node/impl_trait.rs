@@ -23,6 +23,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         type_arguments,
         functions,
         type_implementing_for,
+        type_implementing_for_span,
         type_arguments_span,
         block_span,
     } = impl_trait;
@@ -89,7 +90,57 @@ pub(crate) fn implementation_of_trait<'sc>(
             warnings: mut l_w,
             errors: mut l_e,
         } => {
-            todo!("Copy and abstract code from the above trait declaration code for contract abis ")
+            // if you are comparing this with the `impl_trait` branch above, note that
+            // there are no type arguments here because we don't support generic types
+            // in contract ABIs yet (or ever?) due to the complexity of communicating
+            // the ABI layout in the descriptor file.
+            errors.append(&mut l_e);
+            warnings.append(&mut l_w);
+
+            if type_implementing_for != MaybeResolvedType::Resolved(ResolvedType::Contract) {
+                errors.push(CompileError::ImplAbiForNonContract {
+                    span: type_implementing_for_span.clone(),
+                    ty: type_implementing_for.friendly_type_str(),
+                });
+            }
+
+            let functions_buf = type_check!(
+                type_check_trait_implementation(
+                    &abi.interface_surface,
+                    &functions,
+                    &abi.methods,
+                    &abi.name,
+                    // ABIs don't have type parameters
+                    &[],
+                    namespace,
+                    &self_type,
+                    build_config,
+                    dead_code_graph,
+                    &block_span,
+                    &type_implementing_for,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            // type check all components of the impl trait functions
+            // add the methods to the namespace
+
+            namespace.insert_trait_implementation(
+                trait_name.clone(),
+                self_type,
+                functions_buf.clone(),
+            );
+            ok(
+                TypedDeclaration::ImplTrait {
+                    trait_name,
+                    span: block_span,
+                    methods: functions_buf,
+                    type_implementing_for,
+                },
+                warnings,
+                errors,
+            )
         }
         CompileResult::Ok {
             value: _,
@@ -192,6 +243,17 @@ fn type_check_trait_implementation<'sc>(
                  return_type_span,
              }| {
                 if fn_decl.name == *name {
+                    if fn_decl.parameters.len() != parameters.len() {
+                        errors.push(
+                            CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
+                                span: fn_decl.parameters_span(),
+                                fn_name: fn_decl.name.primary_name,
+                                trait_name: trait_name.primary_name,
+                                num_args: parameters.len(),
+                                provided_args: fn_decl.parameters.len(),
+                            },
+                        );
+                    }
                     let mut errors = vec![];
                     if let Some(mut maybe_err) = parameters
                         .iter()

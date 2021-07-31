@@ -1076,6 +1076,7 @@ fn compile_contract_to_selectors<'sc>(
     // 3) the function selector
     let mut selectors_labels_buf = vec![];
     let mut asm_buf = vec![];
+    dbg!(&abi_entries);
     for decl in abi_entries {
         // TODO wrapping things in a struct should be doable by the compiler eventually,
         // allowing users to pass in any number of free-floating parameters (bound by immediate limits maybe).
@@ -1084,6 +1085,7 @@ fn compile_contract_to_selectors<'sc>(
             errors.push(CompileError::InvalidNumberOfAbiParams {
                 span: decl.parameters_span(),
             });
+            continue;
         }
         let argument_name = decl.parameters[0].name.clone();
         // the function selector is the first four bytes of the hashed declaration/params according

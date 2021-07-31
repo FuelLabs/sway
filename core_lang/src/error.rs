@@ -673,6 +673,16 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
         actually_is: &'static str,
     },
+    #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
+    ImplAbiForNonContract { span: Span<'sc>, ty: String },
+    #[error("The trait function \"{fn_name}\" in trait \"{trait_name}\" expects {num_args} arguments, but the provided implementation only takes {provided_args} arguments.")]
+    IncorrectNumberOfInterfaceSurfaceFunctionParameters {
+        fn_name: &'sc str,
+        trait_name: &'sc str,
+        num_args: usize,
+        provided_args: usize,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -838,6 +848,8 @@ impl<'sc> CompileError<'sc> {
             InvalidAbiType { span, .. } => span,
             InvalidNumberOfAbiParams { span, .. } => span,
             NotAnAbi { span, .. } => span,
+            ImplAbiForNonContract { span, .. } => span,
+            IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span,
         }
     }
 
