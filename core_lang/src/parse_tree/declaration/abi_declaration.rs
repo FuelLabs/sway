@@ -1,5 +1,5 @@
 use super::TraitFn;
-use super::{FunctionDeclaration, FunctionParameter, Visibility};
+use super::{FunctionDeclaration, Visibility};
 use crate::parser::Rule;
 use crate::{error::*, Ident};
 use pest::iterators::Pair;
@@ -44,7 +44,7 @@ impl<'sc> AbiDeclaration<'sc> {
         );
         let mut interface_surface = vec![];
         let mut methods = vec![];
-        let mut trait_methods = iter.next().expect("guaranteed by grammar");
+        let trait_methods = iter.next().expect("guaranteed by grammar");
         for func in trait_methods.into_inner() {
             match func.as_rule() {
                 Rule::fn_signature => interface_surface.push(eval!(

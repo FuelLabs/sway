@@ -831,12 +831,7 @@ fn connect_expression<'sc>(
             Ok(vec![asm_node])
         }
         Unit => Ok(vec![]),
-        AbiCast {
-            abi_name,
-            address,
-            span,
-            abi,
-        } => connect_expression(
+        AbiCast { address, .. } => connect_expression(
             &address.expression,
             graph,
             leaves,

@@ -1,3 +1,4 @@
+use super::impl_trait::Mode;
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
@@ -467,6 +468,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        mode: Mode,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -641,8 +643,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 type_parameters,
                 return_type_span,
                 visibility,
-                // this is set in impl_trait if it is part of an abi
-                is_contract_call: false,
+                // if this is for a contract, then it is a contract call
+                is_contract_call: mode == Mode::ImplAbiFn,
             },
             warnings,
             errors,
@@ -654,7 +656,7 @@ impl<'sc> TypedTraitFn<'sc> {
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.
-    pub(crate) fn to_dummy_func(&self) -> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration<'sc> {
         TypedFunctionDeclaration {
             name: self.name.clone(),
             body: TypedCodeBlock {
@@ -667,7 +669,7 @@ impl<'sc> TypedTraitFn<'sc> {
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
-            is_contract_call: false,
+            is_contract_call: mode == Mode::ImplAbiFn,
         }
     }
 }

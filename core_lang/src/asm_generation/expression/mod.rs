@@ -50,9 +50,12 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             function_body,
             is_contract_call,
         } => {
-            dbg!(&name, &is_contract_call);
             if *is_contract_call {
-                todo!("asm for contract call")
+                errors.push(CompileError::Unimplemented(
+                    "Code generation for contract calls is unimplemented",
+                    name.span().clone(),
+                ));
+                return err(warnings, errors);
             } else {
                 convert_fn_app_to_asm(
                     name,

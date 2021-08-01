@@ -61,7 +61,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     dead_code_graph,
                     &block_span,
                     &type_implementing_for,
-                    Mode::RegularTraitFn,
+                    Mode::NonAbi,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -91,7 +91,6 @@ pub(crate) fn implementation_of_trait<'sc>(
             warnings: mut l_w,
             errors: mut l_e,
         } => {
-            println!("abi decl");
             // if you are comparing this with the `impl_trait` branch above, note that
             // there are no type arguments here because we don't support generic types
             // in contract ABIs yet (or ever?) due to the complexity of communicating
@@ -173,9 +172,10 @@ pub(crate) fn implementation_of_trait<'sc>(
     }
 }
 
-enum Mode {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Mode {
     ImplAbiFn,
-    RegularTraitFn,
+    NonAbi,
 }
 
 fn type_check_trait_implementation<'sc>(
@@ -215,7 +215,8 @@ fn type_check_trait_implementation<'sc>(
                 "",
                 &self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                mode
             ),
             continue,
             warnings,
@@ -238,7 +239,7 @@ fn type_check_trait_implementation<'sc>(
         };
         function_checklist.remove(ix_of_thing_to_remove);
 
-        let mut type_arguments = type_arguments.clone();
+        let type_arguments = type_arguments.clone();
         // add generic params from impl trait into function type params
         fn_decl.type_parameters.append(&mut type_arguments.to_vec());
 
@@ -351,7 +352,7 @@ fn type_check_trait_implementation<'sc>(
     }
 
     for function in methods {
-        let mut fn_decl = function.replace_self_types(type_implementing_for);
+        let fn_decl = function.replace_self_types(type_implementing_for);
         functions_buf.push(fn_decl);
     }
 
@@ -373,9 +374,5 @@ fn type_check_trait_implementation<'sc>(
                 .join("\n"),
         });
     }
-    dbg!(functions_buf
-        .iter()
-        .map(|x| x.is_contract_call)
-        .collect::<Vec<_>>());
     ok(functions_buf, warnings, errors)
 }

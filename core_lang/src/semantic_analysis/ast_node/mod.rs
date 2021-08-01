@@ -6,6 +6,7 @@ use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
+pub(crate) use impl_trait::Mode;
 use pest::Span;
 use std::path::Path;
 
@@ -189,7 +190,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     "",
                                     self_type,
                                     build_config,
-                                    dead_code_graph
+                                    dead_code_graph,
+                                    Mode::NonAbi,
                                 ),
                                 return err(warnings, errors),
                                 warnings,
@@ -223,7 +225,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
                                 interface_surface
                                     .iter()
-                                    .map(|x| x.to_dummy_func())
+                                    .map(|x| x.to_dummy_func(Mode::NonAbi))
                                     .collect(),
                             );
                             let methods = type_check!(
@@ -318,7 +320,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         "",
                                         &type_implementing_for_resolved,
                                         build_config,
-                                        dead_code_graph
+                                        dead_code_graph,
+                                        Mode::NonAbi
                                     ),
                                     continue,
                                     warnings,

@@ -1,3 +1,4 @@
+use super::ast_node::Mode;
 use super::ast_node::{
     TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
 };
@@ -513,7 +514,7 @@ impl<'sc> Namespace<'sc> {
                 methods.into_iter().cloned().collect::<Vec<_>>(),
                 interface_surface
                     .into_iter()
-                    .map(|x| x.to_dummy_func())
+                    .map(|x| x.to_dummy_func(Mode::NonAbi))
                     .collect(),
             ]
             .concat(),

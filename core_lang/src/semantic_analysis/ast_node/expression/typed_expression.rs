@@ -914,7 +914,7 @@ impl<'sc> TypedExpression<'sc> {
                 let mut functions_buf = abi
                     .interface_surface
                     .iter()
-                    .map(TypedTraitFn::to_dummy_func)
+                    .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
                     .collect::<Vec<_>>();
                 functions_buf.append(&mut abi.methods.clone());
                 namespace.insert_trait_implementation(
