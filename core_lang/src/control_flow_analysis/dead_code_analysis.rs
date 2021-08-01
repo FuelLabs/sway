@@ -503,15 +503,7 @@ fn connect_trait_declaration<'sc>(
     );
 }
 
-/// The strategy here is to populate the trait namespace with just one singular trait
-/// and if it is ever implemented, by virtue of type checking, we know all interface points
-/// were met.
-/// Upon implementation, we can populate the methods namespace and track dead functions that way.
-/// TL;DR: At this point, we _only_ track the wholistic trait declaration and not the functions
-/// contained within.
-///
-/// The trait node itself has already been added (as `entry_node`), so we just need to insert that
-/// node index into the namespace for the trait.
+/// See [connect_trait_declaration] for implementation details.
 fn connect_abi_declaration<'sc>(
     decl: &TypedAbiDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
