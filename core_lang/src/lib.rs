@@ -821,7 +821,7 @@ fn test_parenthesized() {
     let prog = parse(
         r#"
         contract;
-        pub fn abi_func() -> unit {
+        pub fn some_abi_func() -> unit {
             let x = (5 + 6 / (1 + (2 / 1) + 4));
             return;
         }
