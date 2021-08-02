@@ -4,14 +4,14 @@ Update "prism-sway.js" file.
 
 Then run:
 
-```cli
-$ bash build.sh
+```sh
+$ ./build.sh
 ```
 
-If you are actively developing and testing and want to keep `prism` (repo) directory add "keep" in the command
+If you are actively developing and testing and want to keep `prism` (repo) directory add `keep` in the command
 
-```cli
-$ bash build.sh keep
+```sh
+$ ./build.sh keep
 ```
 
 ### Testing
