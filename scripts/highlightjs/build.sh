@@ -2,7 +2,7 @@
 project="highlight.js"
 sway="sway.js"
 
-if ! test -d /${project}; then
+if ! test -d ./${project}; then
     git clone git@github.com:highlightjs/highlight.js.git
 fi
 

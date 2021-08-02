@@ -3,7 +3,7 @@ project="prism"
 components="components.json"
 sway="prism-sway.js"
 
-if ! test -d /${project}; then
+if ! test -d ./${project}; then
     git clone git@github.com:PrismJS/prism.git
 fi
 
