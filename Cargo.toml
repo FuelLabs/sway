@@ -5,6 +5,7 @@ members = [
     "core-types",
     "forc",
     "formatter",
+    "sway-rs",
     "sway-server",
-    "test_suite"
+    "test_suite",
 ]

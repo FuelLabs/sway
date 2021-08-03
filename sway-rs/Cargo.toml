@@ -1,0 +1,18 @@
+[package]
+authors = ["digorithm <rod.dearaujo@gmail.com>"]
+name = "sway-rs"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+blake2 = "0.9"
+bytes = { version = "1.0.1", features = ["serde"] }
+glob = { version = "0.3.0", default-features = false }
+hex = { version = "0.4.3", default-features = false, features = ["std"] }
+serde = { version = "1.0.124", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0.64", default-features = true }
+sha3 = "0.9.1"
+thiserror = { version = "1.0.26", default-features = false }
+
