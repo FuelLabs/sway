@@ -380,7 +380,6 @@ impl<'sc> TypedAstNode<'sc> {
                             TypedDeclaration::StructDeclaration(decl)
                         }
                         Declaration::AbiDeclaration(AbiDeclaration {
-                            visibility,
                             name,
                             interface_surface,
                             methods,
@@ -410,7 +409,6 @@ impl<'sc> TypedAstNode<'sc> {
                                 methods,
                                 name: name.clone(),
                                 span,
-                                visibility,
                             });
                             namespace.insert(name, decl.clone());
                             decl

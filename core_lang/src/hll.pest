@@ -176,5 +176,5 @@ char           = @{
 }
 unit           =  {"(" ~ ")"}
 ident          = @{(!(reserved_words) ~ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")*)}
-reserved_words =  {abi_keyword|while_keyword|"struct"|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword}
+reserved_words =  {abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword}
 

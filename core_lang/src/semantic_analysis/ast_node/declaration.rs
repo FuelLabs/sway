@@ -148,11 +148,9 @@ impl<'sc> TypedDeclaration<'sc> {
     }
 }
 
+/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's [AbiDeclaration].
 #[derive(Clone, Debug)]
 pub struct TypedAbiDeclaration<'sc> {
-    /// If the abi declaration is `Visibility::Public`, then other contracts, scripts, etc can
-    /// import this type to call it.
-    pub(crate) visibility: Visibility,
     /// The name of the abi trait (also known as a "contract trait")
     pub(crate) name: Ident<'sc>,
     /// The methods a contract is required to implement in order opt in to this interface
