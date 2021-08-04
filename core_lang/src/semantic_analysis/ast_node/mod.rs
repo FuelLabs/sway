@@ -386,9 +386,10 @@ impl<'sc> TypedAstNode<'sc> {
                             span,
                         }) => {
                             // type check the interface surface and methods
-                            // Note that we do not want to allow a contract to call itself via
-                            // contract calls, so we do not add the interface surface into the
-                            // methods. This is by design.
+                            // We don't want the user to waste resources by contract calling
+                            // themselves, and we don't want to do more work in the compiler,
+                            // so we don't support the case of calling a contract's own interface
+                            // from itself. This is by design.
                             let interface_surface =
                                 type_check_interface_surface(interface_surface, &namespace);
                             let methods = type_check!(
