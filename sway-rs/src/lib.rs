@@ -4,22 +4,22 @@ mod abi_encoder;
 mod tests {
     use super::*;
 
-    use sha3::{Digest, Keccak256};
+    use sha2::{Digest, Sha256};
 
     #[test]
     fn encode_function_signature() {
         let sway_fn = "entry_one(u64)";
 
-        let abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
 
-        let result = abi_encoder.encoded_sway_function;
+        let result = abi_encoder.function_selector;
 
         println!(
             "Encoded function selector for ({}): {:#0x?}",
             sway_fn, result
         );
 
-        assert_eq!(result, [0x0, 0x0, 0x0, 0x0, 0x67, 0x19, 0xaf, 0xac]);
+        assert_eq!(result, [0x0, 0x0, 0x0, 0x0, 0x0c, 0x36, 0xcb, 0x9c]);
     }
 
     #[test]
@@ -42,13 +42,13 @@ mod tests {
         let args: Vec<abi_encoder::Token> = vec![arg];
 
         // Expected encoded ABI:
-        // "00003d62125d0000ffffffff";
+        // "0x0000ffffffff";
 
-        let expected_encoded_abi = [
-            0x0, 0x0, 0x0, 0x0, 0x3d, 0x62, 0x12, 0x5d, 0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff,
-        ];
+        let expected_encoded_abi = [0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff];
 
-        let abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xb7, 0x9e, 0xf7, 0x43];
+
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -58,6 +58,7 @@ mod tests {
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
+        assert_eq!(abi_encoder.function_selector, expected_function_selector);
     }
 
     #[test]
@@ -81,14 +82,15 @@ mod tests {
         let args: Vec<abi_encoder::Token> = vec![first, second];
 
         // Expected encoded ABI:
-        // "00001b6f3f790000ffffffff0000ffffffff";
+        // "0x0000ffffffff0000ffffffff";
 
         let expected_encoded_abi = [
-            0x0, 0x0, 0x0, 0x0, 0x1b, 0x6f, 0x3f, 0x79, 0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff,
-            0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff,
+            0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff, 0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff,
         ];
 
-        let abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xa7, 0x07, 0xb0, 0x8e];
+
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -98,6 +100,7 @@ mod tests {
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
+        assert_eq!(abi_encoder.function_selector, expected_function_selector);
     }
 
     #[test]
@@ -120,14 +123,13 @@ mod tests {
         let args: Vec<abi_encoder::Token> = vec![arg];
 
         // Expected encoded ABI:
-        // "00006719afacffffffffffffffff";
+        // "0xffffffffffffffff";
 
-        let expected_encoded_abi = [
-            0x0, 0x0, 0x0, 0x0, 0x67, 0x19, 0xaf, 0xac, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-            0xff,
-        ];
+        let expected_encoded_abi = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
 
-        let abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x0c, 0x36, 0xcb, 0x9c];
+
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -137,6 +139,7 @@ mod tests {
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
+        assert_eq!(abi_encoder.function_selector, expected_function_selector);
     }
 
     #[test]
@@ -159,13 +162,13 @@ mod tests {
         let args: Vec<abi_encoder::Token> = vec![arg];
 
         // Expected encoded ABI:
-        // "00004f0bebd300000001";
+        // "0x00000001";
 
-        let expected_encoded_abi = [
-            0x0, 0x0, 0x0, 0x0, 0x4f, 0xb, 0xeb, 0xd3, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1,
-        ];
+        let expected_encoded_abi = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1];
 
-        let abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x66, 0x8f, 0xff, 0x58];
+
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -175,6 +178,7 @@ mod tests {
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
+        assert_eq!(abi_encoder.function_selector, expected_function_selector);
     }
 
     #[test]
@@ -198,14 +202,15 @@ mod tests {
         let args: Vec<abi_encoder::Token> = vec![first, second];
 
         // Expected encoded ABI:
-        // "0000494599540000ffffffff00000001";
+        // "0x0000ffffffff00000001";
 
         let expected_encoded_abi = [
-            0x0, 0x0, 0x0, 0x0, 0x49, 0x45, 0x99, 0x54, 0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff,
-            0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1,
+            0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1,
         ];
 
-        let abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xf5, 0x40, 0x73, 0x2b];
+
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -215,6 +220,7 @@ mod tests {
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
+        assert_eq!(abi_encoder.function_selector, expected_function_selector);
     }
 
     #[test]
@@ -237,13 +243,13 @@ mod tests {
         let args: Vec<abi_encoder::Token> = vec![arg];
 
         // Expected encoded ABI:
-        // "0000996725860000ffffffff";
+        // "0x0000000ff";
 
-        let expected_encoded_abi = [
-            0x0, 0x0, 0x0, 0x0, 0x99, 0x67, 0x25, 0x86, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xff,
-        ];
+        let expected_encoded_abi = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xff];
 
-        let abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x2e, 0xe3, 0xce, 0x1f];
+
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -253,6 +259,7 @@ mod tests {
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
+        assert_eq!(abi_encoder.function_selector, expected_function_selector);
     }
 
     #[test]
@@ -271,7 +278,7 @@ mod tests {
 
         let sway_fn = "takes_bytes32(bytes32)";
 
-        let mut hasher = Keccak256::new();
+        let mut hasher = Sha256::new();
         hasher.update("test string".as_bytes());
 
         let arg = hasher.finalize();
@@ -281,15 +288,17 @@ mod tests {
         let args: Vec<abi_encoder::Token> = vec![arg];
 
         // Expected encoded ABI:
-        // "0000ff1e564dc7fd1d987ada439fc085cfa3c49416cf2b504ac50151e3c2335d60595cb90745";
+        // "0xd5579c46dfcc7f18207013e65b44e4cb4e2c2298f4ac457ba8f82743f31e930b";
 
         let expected_encoded_abi = [
-            0x0, 0x0, 0x0, 0x0, 0xff, 0x1e, 0x56, 0x4d, 0xc7, 0xfd, 0x1d, 0x98, 0x7a, 0xda, 0x43,
-            0x9f, 0xc0, 0x85, 0xcf, 0xa3, 0xc4, 0x94, 0x16, 0xcf, 0x2b, 0x50, 0x4a, 0xc5, 0x1,
-            0x51, 0xe3, 0xc2, 0x33, 0x5d, 0x60, 0x59, 0x5c, 0xb9, 0x7, 0x45,
+            0xd5, 0x57, 0x9c, 0x46, 0xdf, 0xcc, 0x7f, 0x18, 0x20, 0x70, 0x13, 0xe6, 0x5b, 0x44,
+            0xe4, 0xcb, 0x4e, 0x2c, 0x22, 0x98, 0xf4, 0xac, 0x45, 0x7b, 0xa8, 0xf8, 0x27, 0x43,
+            0xf3, 0x1e, 0x93, 0xb,
         ];
 
-        let abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x8f, 0x72, 0x18, 0x52];
+
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -299,5 +308,6 @@ mod tests {
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
+        assert_eq!(abi_encoder.function_selector, expected_function_selector);
     }
 }

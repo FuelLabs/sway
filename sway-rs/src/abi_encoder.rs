@@ -1,4 +1,4 @@
-use sha3::{Digest, Keccak256};
+use sha2::{Digest, Sha256};
 use std::io::Read;
 use thiserror::Error;
 
@@ -33,47 +33,49 @@ pub enum ABIError {
 }
 
 pub struct ABIEncoder {
-    pub encoded_sway_function: Vec<u8>,
+    pub function_selector: Word,
+    pub encoded_args: Vec<u8>,
 }
 
 impl ABIEncoder {
     pub fn new(sway_function: String) -> Self {
         Self {
-            encoded_sway_function: Self::function_selector(sway_function).to_vec(),
+            function_selector: Self::function_selector(sway_function),
+            encoded_args: Vec::new(),
         }
     }
 
     // TODO: write docs
-    pub fn encode(mut self, args: &Vec<Token>) -> Result<Vec<u8>, ABIError> {
+    pub fn encode(&mut self, args: &Vec<Token>) -> Result<Vec<u8>, ABIError> {
         for arg in args {
             match arg {
-                Token::U8(arg_u8) => self.encoded_sway_function.extend(pad_u8(arg_u8)),
-                Token::U16(arg_u16) => self.encoded_sway_function.extend(pad_u16(arg_u16)),
-                Token::U32(arg_u32) => self.encoded_sway_function.extend(pad_u32(arg_u32)),
-                Token::U64(arg_u64) => self.encoded_sway_function.extend(arg_u64.to_be_bytes()),
-                Token::Byte(arg_byte) => self.encoded_sway_function.extend(pad_u8(arg_byte)),
+                Token::U8(arg_u8) => self.encoded_args.extend(pad_u8(arg_u8)),
+                Token::U16(arg_u16) => self.encoded_args.extend(pad_u16(arg_u16)),
+                Token::U32(arg_u32) => self.encoded_args.extend(pad_u32(arg_u32)),
+                Token::U64(arg_u64) => self.encoded_args.extend(arg_u64.to_be_bytes()),
+                Token::Byte(arg_byte) => self.encoded_args.extend(pad_u8(arg_byte)),
                 Token::Bool(arg_bool) => match arg_bool {
                     true => {
                         let i = 1 as u8;
 
-                        self.encoded_sway_function.extend(pad_u8(&i))
+                        self.encoded_args.extend(pad_u8(&i))
                     }
                     false => {
                         let i = 0 as u8;
 
-                        self.encoded_sway_function.extend(pad_u8(&i))
+                        self.encoded_args.extend(pad_u8(&i))
                     }
                 },
                 // TODO: We might need to check whether the digest being passed to this function
                 // is smaller than 32 bytes or not. If it is, we might wanna do some left padding.
-                Token::Bytes32(arg_bytes32) => self.encoded_sway_function.extend(arg_bytes32),
+                Token::Bytes32(arg_bytes32) => self.encoded_args.extend(arg_bytes32),
             };
         }
-        Ok(self.encoded_sway_function.into())
+        Ok(self.encoded_args.clone().into())
     }
 
     pub fn function_selector(signature: String) -> Word {
-        let mut hasher = Keccak256::new();
+        let mut hasher = Sha256::new();
         hasher.update(signature.as_bytes());
         let result = hasher.finalize();
 
@@ -109,8 +111,6 @@ pub fn pad_u16(value: &u16) -> Word {
 /// Converts a u32 to a right aligned array of 8 bytes.
 pub fn pad_u32(value: &u32) -> Word {
     let mut padded = [0u8; 8];
-    println!("value: {:x?}\n", value.to_le_bytes());
-    println!("value.to_be_bytes(): {:x?}\n", value.to_be_bytes());
     padded[4..8].copy_from_slice(&value.to_be_bytes());
     padded
 }
