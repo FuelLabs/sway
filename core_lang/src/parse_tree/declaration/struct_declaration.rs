@@ -12,14 +12,14 @@ use super::Visibility;
 #[derive(Debug, Clone)]
 pub struct StructDeclaration<'sc> {
     pub name: Ident<'sc>,
-    pub(crate) fields: Vec<StructField<'sc>>,
+    pub fields: Vec<StructField<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) visibility: Visibility,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct StructField<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub struct StructField<'sc> {
+    pub name: Ident<'sc>,
     pub(crate) r#type: TypeInfo<'sc>,
     pub(crate) span: Span<'sc>,
 }
