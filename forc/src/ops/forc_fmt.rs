@@ -1,21 +1,16 @@
 use crate::cli::BuildCommand;
 use crate::ops::forc_build;
+use crate::utils::cli_error::CliError;
+use crate::utils::helpers::get_sway_files;
 use crate::{
     cli::FormatCommand,
-    utils::{
-        constants::SWAY_EXTENSION,
-        helpers::{find_manifest_dir, print_green, print_red},
-    },
+    utils::helpers::{find_manifest_dir, print_green, print_red},
 };
 use formatter::get_formatted_data;
 use prettydiff::{basic::DiffOp, diff_lines};
-use std::{
-    ffi::OsStr,
-    fmt, fs, io,
-    path::{Path, PathBuf},
-};
+use std::{fs, path::PathBuf};
 
-pub fn format(command: FormatCommand) -> Result<(), FormatError> {
+pub fn format(command: FormatCommand) -> Result<(), CliError> {
     let build_command = BuildCommand {
         path: None,
         print_asm: false,
@@ -32,7 +27,7 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     }
 }
 
-fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
+fn format_after_build(command: FormatCommand) -> Result<(), CliError> {
     let curr_dir = std::env::current_dir()?;
 
     match find_manifest_dir(&curr_dir) {
@@ -121,67 +116,8 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
     }
 }
 
-fn get_sway_files(path: PathBuf) -> Result<Vec<PathBuf>, FormatError> {
-    let mut files = vec![];
-    let mut dir_entries = vec![path];
-
-    while let Some(entry) = dir_entries.pop() {
-        for inner_entry in fs::read_dir(entry)? {
-            if let Ok(entry) = inner_entry {
-                let path = entry.path();
-                if path.is_dir() {
-                    dir_entries.push(path);
-                } else {
-                    if is_sway_file(&path) {
-                        files.push(path)
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(files)
-}
-
-fn format_sway_file(file: &PathBuf, formatted_content: &str) -> Result<(), FormatError> {
+fn format_sway_file(file: &PathBuf, formatted_content: &str) -> Result<(), CliError> {
     fs::write(file, formatted_content)?;
 
     Ok(())
-}
-
-fn is_sway_file(file: &Path) -> bool {
-    let res = file.extension();
-    Some(OsStr::new(SWAY_EXTENSION)) == res
-}
-
-pub struct FormatError {
-    pub message: String,
-}
-
-impl fmt::Display for FormatError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self)
-    }
-}
-
-impl From<&str> for FormatError {
-    fn from(s: &str) -> Self {
-        FormatError {
-            message: s.to_string(),
-        }
-    }
-}
-
-impl From<String> for FormatError {
-    fn from(s: String) -> Self {
-        FormatError { message: s }
-    }
-}
-
-impl From<io::Error> for FormatError {
-    fn from(e: io::Error) -> Self {
-        FormatError {
-            message: e.to_string(),
-        }
-    }
 }
