@@ -1,10 +1,11 @@
 use structopt::StructOpt;
 
 mod commands;
-use self::commands::{build, deploy, format, init, parse_bytecode, run, test, update};
+use self::commands::{build, deploy, doc, format, init, parse_bytecode, run, test, update};
 
 pub use build::Command as BuildCommand;
 pub use deploy::Command as DeployCommand;
+pub use doc::Command as DocCommand;
 pub use format::Command as FormatCommand;
 use init::Command as InitCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
@@ -24,6 +25,7 @@ struct Opt {
 enum Forc {
     Build(BuildCommand),
     Deploy(DeployCommand),
+    Doc(DocCommand),
     #[structopt(name = "fmt")]
     Format(FormatCommand),
     Init(InitCommand),
@@ -38,6 +40,7 @@ pub(crate) async fn run_cli() -> Result<(), String> {
     match opt.command {
         Forc::Build(command) => build::exec(command),
         Forc::Deploy(command) => deploy::exec(command).await,
+        Forc::Doc(command) => doc::exec(command),
         Forc::Format(command) => format::exec(command),
         Forc::Init(command) => init::exec(command),
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),

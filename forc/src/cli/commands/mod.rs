@@ -1,5 +1,6 @@
 pub mod build;
 pub mod deploy;
+pub mod doc;
 pub mod format;
 pub mod init;
 pub mod parse_bytecode;
