@@ -6,7 +6,8 @@ use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
     parse_tree::Visibility,
     semantic_analysis::ast_node::{
-        TypedExpressionVariant, TypedReturnStatement, TypedStructDeclaration, TypedTraitDeclaration,
+        TypedAbiDeclaration, TypedExpressionVariant, TypedReturnStatement, TypedStructDeclaration,
+        TypedTraitDeclaration,
     },
     CompileError, Ident, TreeType,
 };
@@ -350,6 +351,10 @@ fn connect_declaration<'sc>(
             connect_trait_declaration(&trait_decl, graph, entry_node);
             Ok(vec![])
         }
+        AbiDeclaration(abi_decl) => {
+            connect_abi_declaration(&abi_decl, graph, entry_node);
+            Ok(vec![])
+        }
         StructDeclaration(struct_decl) => {
             connect_struct_declaration(&struct_decl, graph, entry_node, tree_type);
             Ok(vec![])
@@ -498,6 +503,20 @@ fn connect_trait_declaration<'sc>(
     );
 }
 
+/// See [connect_trait_declaration] for implementation details.
+fn connect_abi_declaration<'sc>(
+    decl: &TypedAbiDeclaration<'sc>,
+    graph: &mut ControlFlowGraph<'sc>,
+    entry_node: NodeIndex,
+) {
+    graph.namespace.add_trait(
+        CallPath {
+            suffix: decl.name.clone(),
+            prefixes: vec![],
+        },
+        entry_node,
+    );
+}
 /// For an enum declaration, we want to make a declaration node for every individual enum
 /// variant. When a variant is constructed, we can point an edge at that variant. This way,
 /// we can see clearly, and thusly warn, when individual variants are not ever constructed.
@@ -804,6 +823,15 @@ fn connect_expression<'sc>(
             Ok(vec![asm_node])
         }
         Unit => Ok(vec![]),
+        AbiCast { address, .. } => connect_expression(
+            &address.expression,
+            graph,
+            leaves,
+            exit_node,
+            "abi cast address",
+            tree_type,
+            address.span.clone(),
+        ),
         a => {
             println!("Unimplemented: {:?}", a);
             return Err(CompileError::Unimplemented(

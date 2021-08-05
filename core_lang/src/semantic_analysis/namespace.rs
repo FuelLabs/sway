@@ -1,3 +1,4 @@
+use super::ast_node::Mode;
 use super::ast_node::{
     TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
 };
@@ -513,7 +514,7 @@ impl<'sc> Namespace<'sc> {
                 methods.into_iter().cloned().collect::<Vec<_>>(),
                 interface_surface
                     .into_iter()
-                    .map(|x| x.to_dummy_func())
+                    .map(|x| x.to_dummy_func(Mode::NonAbi))
                     .collect(),
             ]
             .concat(),
@@ -522,6 +523,10 @@ impl<'sc> Namespace<'sc> {
         )
     }
 
+    /// Used to insert methods from trait constraints into the namespace for a given (generic) type
+    /// e.g. given `T: Clone`, insert the method `clone()` into the namespace for the type `T`.
+    /// A [crate::TypeParameter] contains a type and zero or more constraints, and this method
+    /// performs this task on potentially many type parameters.
     pub(crate) fn insert_trait_methods(&mut self, type_params: &[crate::TypeParameter<'sc>]) {
         let mut warnings = vec![];
         let mut errors = vec![];

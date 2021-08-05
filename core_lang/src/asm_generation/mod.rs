@@ -1084,6 +1084,7 @@ fn compile_contract_to_selectors<'sc>(
             errors.push(CompileError::InvalidNumberOfAbiParams {
                 span: decl.parameters_span(),
             });
+            continue;
         }
         let argument_name = decl.parameters[0].name.clone();
         // the function selector is the first four bytes of the hashed declaration/params according

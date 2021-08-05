@@ -27,7 +27,7 @@ pub(crate) fn error_recovery_expr<'sc>(span: Span<'sc>) -> TypedExpression<'sc> 
 impl<'sc> TypedExpression<'sc> {
     pub(crate) fn type_check(
         other: Expression<'sc>,
-        namespace: &Namespace<'sc>,
+        namespace: &mut Namespace<'sc>,
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
@@ -117,7 +117,7 @@ impl<'sc> TypedExpression<'sc> {
                         parameters,
                         return_type,
                         body,
-                        name: _dbg_name,
+                        is_contract_call,
                         ..
                     }) => {
                         // type check arguments in function application vs arguments in function
@@ -128,7 +128,7 @@ impl<'sc> TypedExpression<'sc> {
                         for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
                             let res = TypedExpression::type_check(
                                 arg.clone(),
-                                &namespace,
+                                namespace,
                                 Some(param.r#type.clone()),
                                 "The argument that has been provided to this function's type does \
                                  not match the declared type of the parameter in the function \
@@ -171,6 +171,7 @@ impl<'sc> TypedExpression<'sc> {
                                 arguments: typed_call_arguments,
                                 name: name.clone(),
                                 function_body: body.clone(),
+                                is_contract_call,
                             },
                             span,
                         }
@@ -301,7 +302,7 @@ impl<'sc> TypedExpression<'sc> {
                 let condition = Box::new(type_check!(
                     TypedExpression::type_check(
                         *condition.clone(),
-                        &namespace,
+                        namespace,
                         Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
                         "The condition of an if expression must be a boolean expression.",
                         self_type,
@@ -315,7 +316,7 @@ impl<'sc> TypedExpression<'sc> {
                 let then = Box::new(type_check!(
                     TypedExpression::type_check(
                         *then.clone(),
-                        &namespace,
+                        namespace,
                         type_annotation.clone(),
                         "",
                         self_type,
@@ -420,23 +421,24 @@ impl<'sc> TypedExpression<'sc> {
             } => {
                 // TODO in here replace generic types with provided types
                 // find the struct definition in the namespace
-                let definition: &TypedStructDeclaration = match namespace.get_symbol(&struct_name) {
-                    Some(TypedDeclaration::StructDeclaration(st)) => st,
-                    Some(_) => {
-                        errors.push(CompileError::DeclaredNonStructAsStruct {
-                            name: struct_name.primary_name,
-                            span: span.clone(),
-                        });
-                        return err(warnings, errors);
-                    }
-                    None => {
-                        errors.push(CompileError::StructNotFound {
-                            name: struct_name.primary_name,
-                            span: span.clone(),
-                        });
-                        return err(warnings, errors);
-                    }
-                };
+                let definition: TypedStructDeclaration =
+                    match namespace.clone().get_symbol(&struct_name) {
+                        Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
+                        Some(_) => {
+                            errors.push(CompileError::DeclaredNonStructAsStruct {
+                                name: struct_name.primary_name,
+                                span: span.clone(),
+                            });
+                            return err(warnings, errors);
+                        }
+                        None => {
+                            errors.push(CompileError::StructNotFound {
+                                name: struct_name.primary_name,
+                                span: span.clone(),
+                            });
+                            return err(warnings, errors);
+                        }
+                    };
                 let mut typed_fields_buf = vec![];
 
                 // match up the names with their type annotations from the declaration
@@ -468,7 +470,7 @@ impl<'sc> TypedExpression<'sc> {
                     let typed_field = type_check!(
                         TypedExpression::type_check(
                             expr_field.value,
-                            &namespace,
+                            namespace,
                             Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
                             "Struct field's type must match up with the type specified in its \
                              declaration.",
@@ -655,6 +657,7 @@ impl<'sc> TypedExpression<'sc> {
                                 },
                                 arguments: args_and_names,
                                 function_body: method.body.clone(),
+                                is_contract_call: method.is_contract_call,
                             },
                             return_type: method.return_type,
                             is_constant: IsConstant::No,
@@ -765,6 +768,7 @@ impl<'sc> TypedExpression<'sc> {
                                 name: call_path.clone(),
                                 arguments: args_and_names,
                                 function_body: method.body.clone(),
+                                is_contract_call: method.is_contract_call,
                             },
                             return_type: method.return_type,
                             is_constant: IsConstant::No,
@@ -863,6 +867,73 @@ impl<'sc> TypedExpression<'sc> {
                         return err(warnings, errors);
                     }
                     Either::Right(expr) => expr,
+                }
+            }
+            Expression::AbiCast {
+                abi_name,
+                address,
+                span,
+            } => {
+                // TODO use stdlib's Address type instead of byte32
+                // type check the address and make sure it is
+                let err_span = address.span();
+                let address = type_check!(
+                    TypedExpression::type_check(
+                        *address,
+                        namespace,
+                        Some(MaybeResolvedType::Resolved(ResolvedType::Byte32)),
+                        "An address that is being ABI cast must be of type byte32",
+                        self_type,
+                        build_config,
+                        dead_code_graph,
+                    ),
+                    error_recovery_expr(err_span),
+                    warnings,
+                    errors
+                );
+                // look up the call path and get the declaration it references
+                let abi = type_check!(
+                    namespace.get_call_path(&abi_name),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                // make sure the declaration is actually an abi
+                let abi = match abi {
+                    TypedDeclaration::AbiDeclaration(abi) => abi,
+                    a => {
+                        errors.push(CompileError::NotAnAbi {
+                            span: abi_name.span(),
+                            actually_is: a.friendly_name(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                let return_type =
+                    MaybeResolvedType::Resolved(ResolvedType::ContractCaller(abi_name.clone()));
+                let mut functions_buf = abi
+                    .interface_surface
+                    .iter()
+                    .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
+                    .collect::<Vec<_>>();
+                functions_buf.append(&mut abi.methods.clone());
+                namespace.insert_trait_implementation(
+                    abi_name.clone(),
+                    return_type.clone(),
+                    functions_buf,
+                );
+                // send some out-of-band flag that these are contract calls so the code
+                // generation knows what's up
+                TypedExpression {
+                    expression: TypedExpressionVariant::AbiCast {
+                        abi_name,
+                        address: Box::new(address),
+                        span: span.clone(),
+                        abi,
+                    },
+                    return_type,
+                    is_constant: IsConstant::No,
+                    span,
                 }
             }
             a => {
