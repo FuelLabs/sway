@@ -7,7 +7,7 @@ use crate::semantic_analysis::Namespace;
 use crate::{
     build_config::BuildConfig,
     error::*,
-    types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
 };
 use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
@@ -628,6 +628,50 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 Err(err) => {
                     errors.push(err.into());
                 }
+            }
+        }
+
+        // if this is an abi function, it is required that it begins with
+        // the three parameters related to contract calls
+        //  gas_to_forward: u64,
+        //  coins_to_forward: u64,
+        //  color_of_coins: bytes32,
+        //
+        //  eventually this will be a `ContractRequest`
+        //
+        //  not spending _too_ much time on particularly specific error messages here since
+        //  it is a temporary workaround
+        if mode == Mode::ImplAbiFn {
+            if parameters.len() == 4 {
+                if parameters[0].r#type
+                    != MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    ))
+                {
+                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                        span: parameters[0].type_span.clone(),
+                    });
+                }
+                if parameters[1].r#type
+                    != MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    ))
+                {
+                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                        span: parameters[1].type_span.clone(),
+                    });
+                }
+                if parameters[2].r#type != MaybeResolvedType::Resolved(ResolvedType::Byte32) {
+                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                        span: parameters[2].type_span.clone(),
+                    });
+                }
+            } else {
+                println!("else");
+                dbg!(&parameters);
+                errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                    span: parameters[0].type_span.clone(),
+                });
             }
         }
 

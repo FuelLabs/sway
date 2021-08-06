@@ -922,8 +922,6 @@ impl<'sc> TypedExpression<'sc> {
                     return_type.clone(),
                     functions_buf,
                 );
-                // send some out-of-band flag that these are contract calls so the code
-                // generation knows what's up
                 TypedExpression {
                     expression: TypedExpressionVariant::AbiCast {
                         abi_name,

@@ -1080,7 +1080,7 @@ fn compile_contract_to_selectors<'sc>(
         // TODO wrapping things in a struct should be doable by the compiler eventually,
         // allowing users to pass in any number of free-floating parameters (bound by immediate limits maybe).
         // https://github.com/FuelLabs/sway/pull/115#discussion_r666466414
-        if decl.parameters.len() != 1 {
+        if decl.parameters.len() != 4 {
             errors.push(CompileError::InvalidNumberOfAbiParams {
                 span: decl.parameters_span(),
             });
