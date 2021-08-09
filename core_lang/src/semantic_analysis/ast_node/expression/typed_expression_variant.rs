@@ -9,7 +9,9 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         name: CallPath<'sc>,
         arguments: Vec<(Ident<'sc>, TypedExpression<'sc>)>,
         function_body: TypedCodeBlock<'sc>,
-        is_contract_call: bool,
+        /// If this is `Some(val)` then `val` is the function selector. If this is `None`, then
+        /// there is no selector.
+        selector: Option<[u8; 4]>,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,

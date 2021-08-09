@@ -113,13 +113,14 @@ impl<'sc> TypedExpression<'sc> {
                     errors
                 );
                 match function_declaration {
-                    TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-                        parameters,
-                        return_type,
-                        body,
-                        is_contract_call,
-                        ..
-                    }) => {
+                    TypedDeclaration::FunctionDeclaration(decl) => {
+                        let TypedFunctionDeclaration {
+                            parameters,
+                            return_type,
+                            body,
+                            is_contract_call,
+                            ..
+                        } = decl.clone();
                         // type check arguments in function application vs arguments in function
                         // declaration. Use parameter type annotations as annotations for the
                         // arguments
@@ -171,7 +172,17 @@ impl<'sc> TypedExpression<'sc> {
                                 arguments: typed_call_arguments,
                                 name: name.clone(),
                                 function_body: body.clone(),
-                                is_contract_call,
+                                selector: if is_contract_call {
+                                    let selector = type_check!(
+                                        decl.to_fn_selector_value(),
+                                        [0; 4],
+                                        warnings,
+                                        errors
+                                    );
+                                    Some(selector)
+                                } else {
+                                    None
+                                },
                             },
                             span,
                         }
@@ -657,7 +668,17 @@ impl<'sc> TypedExpression<'sc> {
                                 },
                                 arguments: args_and_names,
                                 function_body: method.body.clone(),
-                                is_contract_call: method.is_contract_call,
+                                selector: if method.is_contract_call {
+                                    let selector = type_check!(
+                                        method.to_fn_selector_value(),
+                                        [0; 4],
+                                        warnings,
+                                        errors
+                                    );
+                                    Some(selector)
+                                } else {
+                                    None
+                                },
                             },
                             return_type: method.return_type,
                             is_constant: IsConstant::No,
@@ -768,7 +789,17 @@ impl<'sc> TypedExpression<'sc> {
                                 name: call_path.clone(),
                                 arguments: args_and_names,
                                 function_body: method.body.clone(),
-                                is_contract_call: method.is_contract_call,
+                                selector: if method.is_contract_call {
+                                    let selector = type_check!(
+                                        method.to_fn_selector_value(),
+                                        [0; 4],
+                                        warnings,
+                                        errors
+                                    );
+                                    Some(selector)
+                                } else {
+                                    None
+                                },
                             },
                             return_type: method.return_type,
                             is_constant: IsConstant::No,

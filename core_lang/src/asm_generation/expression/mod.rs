@@ -50,9 +50,9 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             name,
             arguments,
             function_body,
-            is_contract_call,
+            selector,
         } => {
-            if *is_contract_call {
+            if let Some(selector) = selector {
                 convert_contract_call_to_asm(todo!(), arguments)
             } else {
                 convert_fn_app_to_asm(
