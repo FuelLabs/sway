@@ -53,7 +53,24 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             selector,
         } => {
             if let Some(selector) = selector {
-                convert_contract_call_to_asm(todo!(), arguments)
+                assert_eq!(
+                    arguments.len(),
+                    4,
+                    "this is verified in the semantic analysis stage"
+                );
+                convert_contract_call_to_asm(
+                    *selector,
+                    // gas to forward
+                    &arguments[0].1,
+                    // coins to forward
+                    &arguments[1].1,
+                    // color of coins
+                    &arguments[2].1,
+                    // user parameter
+                    &arguments[3].1,
+                    register_sequencer,
+                    namespace,
+                )
             } else {
                 convert_fn_app_to_asm(
                     name,
@@ -425,11 +442,6 @@ pub(crate) fn convert_abi_fn_to_asm<'sc>(
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
     let mut namespace = parent_namespace.clone();
-    /*
-    // insert the argument register into the namespace
-    namespace.insert_variable(argument_register.0.clone(), argument_register.1.clone());
-
-    */
     let return_register = register_sequencer.next();
 
     // insert the arguments into the asm namespace with their registers mapped

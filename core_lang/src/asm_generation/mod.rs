@@ -829,6 +829,7 @@ pub(crate) enum NodeAsmResult<'sc> {
     JustAsm(Vec<Op<'sc>>),
     ReturnStatement { asm: Vec<Op<'sc>> },
 }
+
 /// The tuple being returned here contains the opcodes of the code block and,
 /// optionally, a return register in case this node was a return statement
 fn convert_node_to_asm<'sc>(
