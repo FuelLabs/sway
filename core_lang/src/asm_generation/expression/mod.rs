@@ -13,10 +13,12 @@ use crate::{
 };
 use pest::Span;
 
+mod contract_call;
 mod enum_instantiation;
 mod if_exp;
 mod structs;
 mod subfield;
+use contract_call::convert_contract_call_to_asm;
 use enum_instantiation::convert_enum_instantiation_to_asm;
 use if_exp::convert_if_exp_to_asm;
 pub(crate) use structs::{convert_struct_expression_to_asm, get_struct_memory_layout};
@@ -51,11 +53,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             is_contract_call,
         } => {
             if *is_contract_call {
-                errors.push(CompileError::Unimplemented(
-                    "Code generation for contract calls is unimplemented",
-                    name.span().clone(),
-                ));
-                return err(warnings, errors);
+                convert_contract_call_to_asm(todo!(), arguments)
             } else {
                 convert_fn_app_to_asm(
                     name,
@@ -407,11 +405,14 @@ fn convert_fn_app_to_asm<'sc>(
 }
 
 /// This is similar to `convert_fn_app_to_asm()`, except instead of function arguments, this
-/// takes a single register where the argument is expected to be pre-loaded when the ABI selector
-/// jumps to this function.
+/// takes jour registers where the registers are expected to be pre-loaded with the desired values
+/// when this function is jumped to.
 pub(crate) fn convert_abi_fn_to_asm<'sc>(
     decl: &TypedFunctionDeclaration<'sc>,
-    argument_register: (&Ident<'sc>, &VirtualRegister),
+    user_argument: (Ident<'sc>, VirtualRegister),
+    cgas: (Ident<'sc>, VirtualRegister),
+    bal: (Ident<'sc>, VirtualRegister),
+    coin_color: (Ident<'sc>, VirtualRegister),
     parent_namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
@@ -424,10 +425,18 @@ pub(crate) fn convert_abi_fn_to_asm<'sc>(
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
     let mut namespace = parent_namespace.clone();
+    /*
     // insert the argument register into the namespace
     namespace.insert_variable(argument_register.0.clone(), argument_register.1.clone());
 
+    */
     let return_register = register_sequencer.next();
+
+    // insert the arguments into the asm namespace with their registers mapped
+    namespace.insert_variable(user_argument.0, user_argument.1);
+    namespace.insert_variable(cgas.0, cgas.1);
+    namespace.insert_variable(bal.0, bal.1);
+    namespace.insert_variable(coin_color.0, coin_color.1);
     // evaluate the function body
     let mut body = type_check!(
         convert_code_block_to_asm(

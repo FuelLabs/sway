@@ -1086,29 +1086,34 @@ fn compile_contract_to_selectors<'sc>(
             });
             continue;
         }
-        let argument_name = decl.parameters[0].name.clone();
+        // there are currently four parameters to every ABI function, and they are required to be
+        // in this order
+        let cgas_name = decl.parameters[0].name.clone();
+        let bal_name = decl.parameters[1].name.clone();
+        let coin_color_name = decl.parameters[2].name.clone();
+        let user_argument_name = decl.parameters[3].name.clone();
         // the function selector is the first four bytes of the hashed declaration/params according
         // to https://github.com/FuelLabs/sway/issues/96
         let selector = type_check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
         let fn_label = register_sequencer.get_label();
         asm_buf.push(Op::jump_label(fn_label.clone(), decl.span.clone()));
         // load the call frame argument into the function argument register
-        let argument_register = register_sequencer.next();
-        asm_buf.push(Op {
-            opcode: Either::Left(VirtualOp::LW(
-                argument_register.clone(),
-                VirtualRegister::Constant(ConstantRegister::FramePointer),
-                // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
-                VirtualImmediate12::new_unchecked(74, "infallible constant 74"),
-            )),
-            comment: "loading argument into abi function".into(),
-            owning_span: None,
-        });
+        let user_argument_register = register_sequencer.next();
+        let cgas_register = register_sequencer.next();
+        let bal_register = register_sequencer.next();
+        let coin_color_register = register_sequencer.next();
+        asm_buf.push(load_user_argument(user_argument_register.clone()));
+        asm_buf.push(load_cgas(cgas_register.clone()));
+        asm_buf.push(load_bal(bal_register.clone()));
+        asm_buf.push(load_coin_color(coin_color_register.clone()));
 
         asm_buf.append(&mut type_check!(
             convert_abi_fn_to_asm(
                 &decl,
-                (&argument_name, &argument_register),
+                (user_argument_name, user_argument_register),
+                (cgas_name, cgas_register),
+                (bal_name, bal_register),
+                (coin_color_name, coin_color_register),
                 namespace,
                 register_sequencer
             ),
@@ -1120,4 +1125,53 @@ fn compile_contract_to_selectors<'sc>(
     }
 
     ok((selectors_labels_buf, asm_buf), warnings, errors)
+}
+/// Given a register, load the user-provided argument into it
+fn load_user_argument<'sc>(return_register: VirtualRegister) -> Op<'sc> {
+    Op {
+        opcode: Either::Left(VirtualOp::LW(
+            return_register,
+            VirtualRegister::Constant(ConstantRegister::FramePointer),
+            // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
+            VirtualImmediate12::new_unchecked(74, "infallible constant 74"),
+        )),
+        comment: "loading argument into abi function".into(),
+        owning_span: None,
+    }
+}
+/// Given a register, load the current value of $cgas into it
+fn load_cgas<'sc>(return_register: VirtualRegister) -> Op<'sc> {
+    Op {
+        opcode: Either::Left(VirtualOp::LW(
+            return_register,
+            VirtualRegister::Constant(ConstantRegister::ContextGas),
+            VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
+        )),
+        comment: "loading cgas into abi function".into(),
+        owning_span: None,
+    }
+}
+/// Given a register, load the current value of $bal into it
+fn load_bal<'sc>(return_register: VirtualRegister) -> Op<'sc> {
+    Op {
+        opcode: Either::Left(VirtualOp::LW(
+            return_register,
+            VirtualRegister::Constant(ConstantRegister::Balance),
+            VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
+        )),
+        comment: "loading coin balance into abi function".into(),
+        owning_span: None,
+    }
+}
+/// Given a register, load the current coin color into it
+fn load_coin_color<'sc>(return_register: VirtualRegister) -> Op<'sc> {
+    Op {
+        opcode: Either::Left(VirtualOp::LW(
+            return_register,
+            VirtualRegister::Constant(ConstantRegister::FramePointer),
+            VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
+        )),
+        comment: "loading coin balance into abi function".into(),
+        owning_span: None,
+    }
 }

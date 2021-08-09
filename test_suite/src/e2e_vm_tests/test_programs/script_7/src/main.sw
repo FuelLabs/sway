@@ -19,5 +19,6 @@ impl MyContract for Contract {
 fn calls_other_contract() {
   let x = abi(MyContract, 0x0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000);
   // commenting this out for now since contract call asm generation is not yet implemented
-  //x.foo(5);
+  let color = 0x0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
+  x.foo(5, 5, color, 5);
 }
