@@ -38,7 +38,7 @@ pub struct ABIEncoder {
 }
 
 impl ABIEncoder {
-    pub fn new(sway_function: String) -> Self {
+    pub fn new(sway_function: &[u8]) -> Self {
         Self {
             function_selector: Self::function_selector(sway_function),
             encoded_args: Vec::new(),
@@ -46,7 +46,7 @@ impl ABIEncoder {
     }
 
     // TODO: write docs
-    pub fn encode(&mut self, args: &Vec<Token>) -> Result<Vec<u8>, ABIError> {
+    pub fn encode(&mut self, args: Vec<Token>) -> Result<Vec<u8>, ABIError> {
         for arg in args {
             match arg {
                 Token::U8(arg_u8) => self.encoded_args.extend(pad_u8(arg_u8)),
@@ -54,18 +54,10 @@ impl ABIEncoder {
                 Token::U32(arg_u32) => self.encoded_args.extend(pad_u32(arg_u32)),
                 Token::U64(arg_u64) => self.encoded_args.extend(arg_u64.to_be_bytes()),
                 Token::Byte(arg_byte) => self.encoded_args.extend(pad_u8(arg_byte)),
-                Token::Bool(arg_bool) => match arg_bool {
-                    true => {
-                        let i = 1 as u8;
-
-                        self.encoded_args.extend(pad_u8(&i))
-                    }
-                    false => {
-                        let i = 0 as u8;
-
-                        self.encoded_args.extend(pad_u8(&i))
-                    }
-                },
+                Token::Bool(arg_bool) => {
+                    self.encoded_args
+                        .extend(pad_u8(if arg_bool { 1 } else { 0 }))
+                }
                 // TODO: We might need to check whether the digest being passed to this function
                 // is smaller than 32 bytes or not. If it is, we might wanna do some left padding.
                 Token::Bytes32(arg_bytes32) => self.encoded_args.extend(arg_bytes32),
@@ -74,43 +66,36 @@ impl ABIEncoder {
         Ok(self.encoded_args.clone().into())
     }
 
-    pub fn function_selector(signature: String) -> Word {
+    pub fn function_selector(signature: &[u8]) -> Word {
         let mut hasher = Sha256::new();
-        hasher.update(signature.as_bytes());
+        hasher.update(signature);
         let result = hasher.finalize();
 
-        let mut output = [0u8; 4];
+        let mut output = Word::default();
 
-        // Read 4 bytes from it.
-        let mut handle = result.take(4);
+        (&mut output[4..]).copy_from_slice(&result[..4]);
 
-        handle.read(&mut output).unwrap();
-
-        // Add padding to the previously extract 4 bytes from the function selector
-        let mut padding = [0u8; 8];
-        padding[4..8].copy_from_slice(&output);
-
-        padding
+        output
     }
 }
 
 /// Converts a u8 to a right aligned array of 8 bytes.
-pub fn pad_u8(value: &u8) -> Word {
-    let mut padded = [0u8; 8];
-    padded[7..8].copy_from_slice(&value.to_be_bytes());
+pub fn pad_u8(value: u8) -> Word {
+    let mut padded = Word::default();
+    padded[7] = value;
     padded
 }
 
 /// Converts a u16 to a right aligned array of 8 bytes.
-pub fn pad_u16(value: &u16) -> Word {
-    let mut padded = [0u8; 8];
-    padded[6..8].copy_from_slice(&value.to_be_bytes());
+pub fn pad_u16(value: u16) -> Word {
+    let mut padded = Word::default();
+    padded[6..].copy_from_slice(&value.to_be_bytes());
     padded
 }
 
 /// Converts a u32 to a right aligned array of 8 bytes.
-pub fn pad_u32(value: &u32) -> Word {
+pub fn pad_u32(value: u32) -> Word {
     let mut padded = [0u8; 8];
-    padded[4..8].copy_from_slice(&value.to_be_bytes());
+    padded[4..].copy_from_slice(&value.to_be_bytes());
     padded
 }

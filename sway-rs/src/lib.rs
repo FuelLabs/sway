@@ -10,7 +10,7 @@ mod tests {
     fn encode_function_signature() {
         let sway_fn = "entry_one(u64)";
 
-        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.as_bytes());
 
         let result = abi_encoder.function_selector;
 
@@ -48,13 +48,13 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xb7, 0x9e, 0xf7, 0x43];
 
-        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.as_bytes());
 
-        let encoded = abi_encoder.encode(&args).unwrap();
+        let encoded = abi_encoder.encode(args).unwrap();
 
         println!(
             "Encoded ABI for ({}) with args ({:?}): {:#0x?}",
-            sway_fn, args, encoded
+            sway_fn, arg, encoded
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
@@ -90,13 +90,13 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xa7, 0x07, 0xb0, 0x8e];
 
-        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.as_bytes());
 
-        let encoded = abi_encoder.encode(&args).unwrap();
+        let encoded = abi_encoder.encode(args).unwrap();
 
         println!(
-            "Encoded ABI for ({}) with args ({:?}): {:#0x?}",
-            sway_fn, args, encoded
+            "Encoded ABI for ({}) with args ({:?}, {:?}): {:#0x?}",
+            sway_fn, first, second, encoded
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
@@ -129,13 +129,13 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x0c, 0x36, 0xcb, 0x9c];
 
-        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.as_bytes());
 
-        let encoded = abi_encoder.encode(&args).unwrap();
+        let encoded = abi_encoder.encode(args).unwrap();
 
         println!(
             "Encoded ABI for ({}) with args ({:?}): {:#0x?}",
-            sway_fn, args, encoded
+            sway_fn, arg, encoded
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
@@ -168,13 +168,13 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x66, 0x8f, 0xff, 0x58];
 
-        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.as_bytes());
 
-        let encoded = abi_encoder.encode(&args).unwrap();
+        let encoded = abi_encoder.encode(args).unwrap();
 
         println!(
             "Encoded ABI for ({}) with args ({:?}): {:#0x?}",
-            sway_fn, args, encoded
+            sway_fn, arg, encoded
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
@@ -210,13 +210,13 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xf5, 0x40, 0x73, 0x2b];
 
-        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.as_bytes());
 
-        let encoded = abi_encoder.encode(&args).unwrap();
+        let encoded = abi_encoder.encode(args).unwrap();
 
         println!(
-            "Encoded ABI for ({}) with args ({:?}): {:#0x?}",
-            sway_fn, args, encoded
+            "Encoded ABI for ({}) with args ({:?}, {:?}): {:#0x?}",
+            sway_fn, first, second, encoded
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
@@ -249,13 +249,13 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x2e, 0xe3, 0xce, 0x1f];
 
-        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.as_bytes());
 
-        let encoded = abi_encoder.encode(&args).unwrap();
+        let encoded = abi_encoder.encode(args).unwrap();
 
         println!(
             "Encoded ABI for ({}) with args ({:?}): {:#0x?}",
-            sway_fn, args, encoded
+            sway_fn, arg, encoded
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));
@@ -298,13 +298,13 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x8f, 0x72, 0x18, 0x52];
 
-        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.into());
+        let mut abi_encoder = abi_encoder::ABIEncoder::new(sway_fn.as_bytes());
 
-        let encoded = abi_encoder.encode(&args).unwrap();
+        let encoded = abi_encoder.encode(args).unwrap();
 
         println!(
             "Encoded ABI for ({}) with args ({:?}): {:#0x?}",
-            sway_fn, args, encoded
+            sway_fn, arg, encoded
         );
 
         assert_eq!(hex::encode(expected_encoded_abi), hex::encode(encoded));

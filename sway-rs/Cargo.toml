@@ -1,5 +1,5 @@
 [package]
-authors = ["digorithm <rod.dearaujo@gmail.com>"]
+authors = ["digorithm <rodrigo.araujo@fuel.sh>"]
 name = "sway-rs"
 version = "0.1.0"
 edition = "2018"
