@@ -161,7 +161,6 @@ impl<'sc> TypedExpression<'sc> {
                             typed_call_arguments.push((param.name.clone(), arg));
                         }
 
-                        println!("HERE2");
                         TypedExpression {
                             return_type: return_type.clone(),
                             // now check the function call return type
