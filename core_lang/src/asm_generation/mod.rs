@@ -1172,7 +1172,7 @@ fn load_coin_color<'sc>(return_register: VirtualRegister) -> Op<'sc> {
             VirtualRegister::Constant(ConstantRegister::FramePointer),
             VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
         )),
-        comment: "loading coin balance into abi function".into(),
+        comment: "loading coin color into abi function".into(),
         owning_span: None,
     }
 }
