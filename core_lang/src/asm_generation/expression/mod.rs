@@ -52,14 +52,14 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             function_body,
             selector,
         } => {
-            if let Some(selector) = selector {
+            if let Some(metadata) = selector {
                 assert_eq!(
                     arguments.len(),
                     4,
                     "this is verified in the semantic analysis stage"
                 );
                 convert_contract_call_to_asm(
-                    *selector,
+                    metadata,
                     // gas to forward
                     &arguments[0].1,
                     // coins to forward
@@ -70,6 +70,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     &arguments[3].1,
                     register_sequencer,
                     namespace,
+                    exp.span.clone(),
                 )
             } else {
                 convert_fn_app_to_asm(

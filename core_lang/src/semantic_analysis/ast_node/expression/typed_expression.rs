@@ -4,9 +4,10 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
+use std::collections::VecDeque;
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypedExpression<'sc> {
+pub struct TypedExpression<'sc> {
     pub(crate) expression: TypedExpressionVariant<'sc>,
     pub(crate) return_type: MaybeResolvedType<'sc>,
     /// whether or not this expression is constantly evaluatable (if the result is known at compile
@@ -160,6 +161,7 @@ impl<'sc> TypedExpression<'sc> {
                             typed_call_arguments.push((param.name.clone(), arg));
                         }
 
+                        println!("HERE2");
                         TypedExpression {
                             return_type: return_type.clone(),
                             // now check the function call return type
@@ -172,17 +174,7 @@ impl<'sc> TypedExpression<'sc> {
                                 arguments: typed_call_arguments,
                                 name: name.clone(),
                                 function_body: body.clone(),
-                                selector: if is_contract_call {
-                                    let selector = type_check!(
-                                        decl.to_fn_selector_value(),
-                                        [0; 4],
-                                        warnings,
-                                        errors
-                                    );
-                                    Some(selector)
-                                } else {
-                                    None
-                                },
+                                selector: None, // regular functions cannot be in a contract call; only methods
                             },
                             span,
                         }
@@ -598,10 +590,10 @@ impl<'sc> TypedExpression<'sc> {
                 match method_name {
                     // something like a.b(c)
                     MethodName::FromModule { method_name } => {
-                        let mut args_buf = vec![];
+                        let mut args_buf = VecDeque::new();
                         for arg in arguments {
                             let sp = arg.span().clone();
-                            args_buf.push(type_check!(
+                            args_buf.push_back(type_check!(
                                 TypedExpression::type_check(
                                     arg,
                                     namespace,
@@ -653,6 +645,11 @@ impl<'sc> TypedExpression<'sc> {
                             });
                         }
 
+                        let contract_caller = if method.is_contract_call {
+                            args_buf.pop_front()
+                        } else {
+                            None
+                        };
                         let args_and_names = method
                             .parameters
                             .iter()
@@ -669,13 +666,27 @@ impl<'sc> TypedExpression<'sc> {
                                 arguments: args_and_names,
                                 function_body: method.body.clone(),
                                 selector: if method.is_contract_call {
-                                    let selector = type_check!(
+                                    let contract_address = match contract_caller
+                                        .map(|x| x.return_type)
+                                    {
+                                        Some(MaybeResolvedType::Resolved(
+                                            ResolvedType::ContractCaller { address, .. },
+                                        )) => address,
+                                        _ => {
+                                            errors.push(CompileError::Internal("Attempted to find contract address of non-contract-call.", span.clone()));
+                                            Box::new(error_recovery_expr(span.clone()))
+                                        }
+                                    };
+                                    let func_selector = type_check!(
                                         method.to_fn_selector_value(),
                                         [0; 4],
                                         warnings,
                                         errors
                                     );
-                                    Some(selector)
+                                    Some(ContractCallMetadata {
+                                        func_selector,
+                                        contract_address,
+                                    })
                                 } else {
                                     None
                                 },
@@ -691,9 +702,9 @@ impl<'sc> TypedExpression<'sc> {
                         ref type_name,
                         ref is_absolute,
                     } => {
-                        let mut args_buf = vec![];
+                        let mut args_buf = VecDeque::new();
                         for arg in arguments {
-                            args_buf.push(type_check!(
+                            args_buf.push_back(type_check!(
                                 TypedExpression::type_check(
                                     arg,
                                     namespace,
@@ -777,6 +788,11 @@ impl<'sc> TypedExpression<'sc> {
                                 received: args_buf.len(),
                             });
                         }
+                        let contract_caller = if method.is_contract_call {
+                            args_buf.pop_front()
+                        } else {
+                            None
+                        };
 
                         let args_and_names = method
                             .parameters
@@ -790,13 +806,27 @@ impl<'sc> TypedExpression<'sc> {
                                 arguments: args_and_names,
                                 function_body: method.body.clone(),
                                 selector: if method.is_contract_call {
-                                    let selector = type_check!(
+                                    let contract_address = match contract_caller
+                                        .map(|x| x.return_type)
+                                    {
+                                        Some(MaybeResolvedType::Resolved(
+                                            ResolvedType::ContractCaller { address, .. },
+                                        )) => address,
+                                        _ => {
+                                            errors.push(CompileError::Internal("Attempted to find contract address of non-contract-call.", span.clone()));
+                                            Box::new(error_recovery_expr(span.clone()))
+                                        }
+                                    };
+                                    let func_selector = type_check!(
                                         method.to_fn_selector_value(),
                                         [0; 4],
                                         warnings,
                                         errors
                                     );
-                                    Some(selector)
+                                    Some(ContractCallMetadata {
+                                        func_selector,
+                                        contract_address,
+                                    })
                                 } else {
                                     None
                                 },
@@ -940,8 +970,10 @@ impl<'sc> TypedExpression<'sc> {
                         return err(warnings, errors);
                     }
                 };
-                let return_type =
-                    MaybeResolvedType::Resolved(ResolvedType::ContractCaller(abi_name.clone()));
+                let return_type = MaybeResolvedType::Resolved(ResolvedType::ContractCaller {
+                    abi_name: abi_name.clone(),
+                    address: Box::new(address.clone()),
+                });
                 let mut functions_buf = abi
                     .interface_surface
                     .iter()

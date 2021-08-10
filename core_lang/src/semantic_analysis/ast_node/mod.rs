@@ -70,6 +70,7 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
         f.write_str(&text)
     }
 }
+
 impl<'sc> TypedAstNode<'sc> {
     fn type_info(&self) -> MaybeResolvedType<'sc> {
         // return statement should be ()
