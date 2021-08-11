@@ -4,6 +4,7 @@ use forc::cli::BuildCommand;
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::MemoryStorage;
+use tx_client::client::TxClient;
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
@@ -26,10 +27,16 @@ pub(crate) fn runs_in_vm(file_name: &str) {
         outputs,
         witness,
     );
-    let block_height = (u32::MAX >> 1) as u64;
-    tx.validate(block_height).unwrap();
-    let storage = MemoryStorage::default();
-    Interpreter::execute_tx(storage, tx).unwrap();
+    let node_url = "127.0.0.1:4000";
+
+    let client = TxClient::new(node_url).unwrap();
+    let res = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async { client.transact(&tx).await });
+
+    res.unwrap()
 }
 
 /// Returns `true` if a file compiled without any errors or warnings,
