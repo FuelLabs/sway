@@ -9,20 +9,17 @@ author  = "{}"
 license = "MIT"
 name = "{}"
 entry = "main.sw"
-
-
-[dependencies]
-stdlib = {{ path = "../stdlib" }}
 "#,
         real_name, project_name,
     )
 }
 
 pub(crate) fn default_program() -> String {
-    r#"script {
-    fn main() {
-        std::println("Hello, world!");
-    }
-}"#
+    r#"script;
+
+fn main() {
+    
+}
+"#
     .into()
 }
