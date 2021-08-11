@@ -6,4 +6,4 @@ pub const SWAY_PREDICATE: &'static str = "predicate";
 pub const SWAY_LIBRARY: &'static str = "library";
 pub const SWAY_SCRIPT: &'static str = "script";
 pub const SWAY_CONTRACT: &'static str = "contract";
-pub const DEFAULT_NODE_URL: &'static str = "0.0.0.0:4000";
+pub const DEFAULT_NODE_URL: &'static str = "127.0.0.1:4000";
