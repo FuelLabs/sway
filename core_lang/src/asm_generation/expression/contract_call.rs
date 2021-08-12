@@ -13,13 +13,10 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     span: Span<'sc>,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
-    // step 0. evaluate the arguments
-    // step 1. construct the CALL op using the arguments
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut asm_buf = vec![];
-    // step 0
-    //
+
     let user_argument_register = register_sequencer.next();
     let gas_to_forward = register_sequencer.next();
     let bal_register = register_sequencer.next();
@@ -36,6 +33,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
         owning_span: Some(span.clone()),
     });
 
+    // evaluate the user provided argument to the contract
     asm_buf.append(&mut type_check!(
         convert_expression_to_asm(
             user_argument,
@@ -47,20 +45,27 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
         warnings,
         errors
     ));
+
+    // evaluate the gas to forward to the contract
     asm_buf.append(&mut type_check!(
         convert_expression_to_asm(cgas, namespace, &gas_to_forward, register_sequencer),
         vec![],
         warnings,
         errors
     ));
+
+    // evaluate the balance to forward to the contract
     asm_buf.append(&mut type_check!(
         convert_expression_to_asm(bal, namespace, &bal_register, register_sequencer),
         vec![],
         warnings,
         errors
     ));
+
+    // evaluate the coin color expression to forward to the contract
     asm_buf.append(&mut type_check!(
         convert_expression_to_asm(
+            // investigation: changing this value also results in a different color
             coin_color,
             namespace,
             &coin_color_register,
@@ -70,23 +75,22 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
         warnings,
         errors
     ));
+
+    // evaluate the contract address for the contract
     asm_buf.append(&mut type_check!(
         convert_expression_to_asm(
-            coin_color,
+            // investigation: changing the value in the contract_address register
+            // impacts the color that the VM sees
+            &*metadata.contract_address,
             namespace,
-            &coin_color_register,
+            &contract_address,
             register_sequencer
         ),
         vec![],
         warnings,
         errors
     ));
-    asm_buf.append(&mut type_check!(
-        convert_expression_to_asm(coin_color, namespace, &contract_address, register_sequencer),
-        vec![],
-        warnings,
-        errors
-    ));
+
     // Write to memory, in order: the contract address (32 bytes), the function selector (param1, 8
     // bytes), and the user argument (param2, 8 bytes).
     //
@@ -96,6 +100,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
         ra_pointer.clone(),
         VirtualRegister::Constant(ConstantRegister::StackPointer),
     ));
+
     // extend the stack by 32 + 8 + 8 = 48 bytes
     asm_buf.push(Op::unowned_stack_allocate_memory(
         VirtualImmediate24::new_unchecked(
@@ -109,14 +114,16 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     //
     // first, copy the address over
     //
-    //  load 32 into a register
+    // load 32 into a register
     let data_label = namespace.insert_data_value(&Literal::U32(32));
+    let _data_label = namespace.insert_data_value(&Literal::U32(64));
     let num32_register = register_sequencer.next();
     asm_buf.push(Op {
         opcode: Either::Left(VirtualOp::LWDataId(num32_register.clone(), data_label)),
         comment: "constant 32 load for call".into(),
         owning_span: Some(span.clone()),
     });
+
     // write the contract addr to bytes 0-32
     asm_buf.push(Op {
         opcode: Either::Left(VirtualOp::MCP(
@@ -127,9 +134,10 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
         comment: "move contract address for call".into(),
         owning_span: Some(span.clone()),
     });
+
     // write the selector to bytes 32-40
     asm_buf.push(Op {
-        opcode: Either::Left(VirtualOp::SB(
+        opcode: Either::Left(VirtualOp::SW(
             ra_pointer.clone(),
             selector_register,
             // offset by 4 words, since a byte32 is 4 words
@@ -138,6 +146,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
         comment: "write fn selector to rA + 32 for call".into(),
         owning_span: Some(span.clone()),
     });
+
     // write the user argument to bytes 40-48
     asm_buf.push(Op {
         opcode: Either::Left(VirtualOp::SW(

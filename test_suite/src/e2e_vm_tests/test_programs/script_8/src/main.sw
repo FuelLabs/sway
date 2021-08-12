@@ -12,5 +12,5 @@ fn main () {
   let x = abi(MyContract, 0x0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000);
   // commenting this out for now since contract call asm generation is not yet implemented
   let color = 0x0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
-  x.foo(5, 5, color, 5);
+  x.foo(5, 6, color, 7);
 }
