@@ -27,16 +27,11 @@ pub(crate) fn runs_in_vm(file_name: &str) {
         outputs,
         witness,
     );
-    let node_url = "127.0.0.1:4000";
-
-    let client = TxClient::new(node_url).unwrap();
-    let res = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async { client.transact(&tx).await });
-
-    res.unwrap()
+    let block_height = (u32::MAX >> 1) as u64;
+    tx.validate(block_height).unwrap();
+    let storage = MemoryStorage::default();
+    let mut interpreter = Interpreter::with_storage(storage);
+    interpreter.transact(tx).unwrap();
 }
 
 /// Returns `true` if a file compiled without any errors or warnings,
