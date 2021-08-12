@@ -172,7 +172,11 @@ impl<'sc> Literal<'sc> {
 }
 
 fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, CompileError<'sc>> {
-    let hex = &pair.as_str()[2..];
+    let hex = &pair.as_str()[2..]
+        .chars()
+        .filter(|x| *x != '_')
+        .collect::<String>();
+
     Ok(match hex.len() {
         2 => Literal::Byte(u8::from_str_radix(hex, 16).map_err(|_| {
             CompileError::Internal(
@@ -214,7 +218,10 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
 }
 
 fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, CompileError<'sc>> {
-    let bin = &pair.as_str()[2..];
+    let bin = &pair.as_str()[2..]
+        .chars()
+        .filter(|x| *x != '_')
+        .collect::<String>();
 
     Ok(match bin.len() {
         8 => Literal::Byte(u8::from_str_radix(bin, 2).map_err(|_| {

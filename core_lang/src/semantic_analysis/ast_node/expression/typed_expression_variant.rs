@@ -9,6 +9,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         name: CallPath<'sc>,
         arguments: Vec<(Ident<'sc>, TypedExpression<'sc>)>,
         function_body: TypedCodeBlock<'sc>,
+        is_contract_call: bool,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,
@@ -58,6 +59,12 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         tag: usize,
         contents: Option<Box<TypedExpression<'sc>>>,
     },
+    AbiCast {
+        abi_name: CallPath<'sc>,
+        address: Box<TypedExpression<'sc>>,
+        span: Span<'sc>,
+        abi: TypedAbiDeclaration<'sc>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -100,6 +107,9 @@ impl<'sc> TypedExpressionVariant<'sc> {
             TypedExpressionVariant::FunctionParameter => "fn param access".into(),
             TypedExpressionVariant::IfExp { .. } => "if exp".into(),
             TypedExpressionVariant::AsmExpression { .. } => "inline asm".into(),
+            TypedExpressionVariant::AbiCast { abi_name, .. } => {
+                format!("abi cast {}", abi_name.suffix.primary_name)
+            }
             TypedExpressionVariant::StructFieldAccess {
                 resolved_type_of_parent,
                 field_to_access,

@@ -14,7 +14,7 @@ mod parser;
 mod semantic_analysis;
 
 pub use crate::parse_tree::*;
-use crate::parser::{HllParser, Rule};
+pub use crate::parser::{HllParser, Rule};
 use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 pub use build_config::BuildConfig;
@@ -147,6 +147,14 @@ pub enum BytecodeCompilationResult<'sc> {
         warnings: Vec<CompileWarning<'sc>>,
         errors: Vec<CompileError<'sc>>,
     },
+}
+
+pub fn extract_keyword(line: &str, rule: Rule) -> Option<&str> {
+    if let Ok(pair) = HllParser::parse(rule, line) {
+        Some(pair.as_str().trim())
+    } else {
+        None
+    }
 }
 
 fn get_start(err: &pest::error::Error<Rule>) -> usize {
@@ -813,7 +821,7 @@ fn test_parenthesized() {
     let prog = parse(
         r#"
         contract;
-        pub fn abi_func() -> unit {
+        pub fn some_abi_func() -> unit {
             let x = (5 + 6 / (1 + (2 / 1) + 4));
             return;
         }

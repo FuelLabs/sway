@@ -1,3 +1,4 @@
+use super::impl_trait::Mode;
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
@@ -27,6 +28,7 @@ pub enum TypedDeclaration<'sc> {
         methods: Vec<TypedFunctionDeclaration<'sc>>,
         type_implementing_for: MaybeResolvedType<'sc>,
     },
+    AbiDeclaration(TypedAbiDeclaration<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
     ErrorRecovery,
@@ -44,6 +46,7 @@ impl<'sc> TypedDeclaration<'sc> {
             EnumDeclaration(_) => "enum",
             Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
+            AbiDeclaration(..) => "abi",
             SideEffect => "",
             ErrorRecovery => "error",
         }
@@ -103,6 +106,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     crate::utils::join_spans(acc, this.span())
                 })
             }
+            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
             SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
         }
@@ -142,6 +146,18 @@ impl<'sc> TypedDeclaration<'sc> {
             }
         )
     }
+}
+
+/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's [AbiDeclaration].
+#[derive(Clone, Debug)]
+pub struct TypedAbiDeclaration<'sc> {
+    /// The name of the abi trait (also known as a "contract trait")
+    pub(crate) name: Ident<'sc>,
+    /// The methods a contract is required to implement in order opt in to this interface
+    pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
+    /// The methods provided to a contract "for free" upon opting in to this interface
+    pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
+    pub(crate) span: Span<'sc>,
 }
 
 #[derive(Clone, Debug)]
@@ -213,6 +229,8 @@ pub struct TypedFunctionDeclaration<'sc> {
     /// annotation of the function
     pub(crate) return_type_span: Span<'sc>,
     pub(crate) visibility: Visibility,
+    /// whether this function exists in another contract and requires a call to it or not
+    pub(crate) is_contract_call: bool,
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
@@ -255,6 +273,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             type_parameters: self.type_parameters.clone(),
             return_type_span: self.return_type_span.clone(),
             visibility: self.visibility.clone(),
+            is_contract_call: self.is_contract_call,
         }
     }
     /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
@@ -333,6 +352,7 @@ fn test_function_selector_behavior() {
         type_parameters: vec![],
         return_type_span: Span::new(" ", 0, 0).unwrap(),
         visibility: Visibility::Public,
+        is_contract_call: false,
     };
 
     let selector_text = match decl.to_selector_name() {
@@ -378,6 +398,7 @@ fn test_function_selector_behavior() {
         type_parameters: vec![],
         return_type_span: Span::new(" ", 0, 0).unwrap(),
         visibility: Visibility::Public,
+        is_contract_call: false,
     };
 
     let selector_text = match decl.to_selector_name() {
@@ -445,6 +466,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        mode: Mode,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -619,6 +641,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 type_parameters,
                 return_type_span,
                 visibility,
+                // if this is for a contract, then it is a contract call
+                is_contract_call: mode == Mode::ImplAbiFn,
             },
             warnings,
             errors,
@@ -630,7 +654,7 @@ impl<'sc> TypedTraitFn<'sc> {
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.
-    pub(crate) fn to_dummy_func(&self) -> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration<'sc> {
         TypedFunctionDeclaration {
             name: self.name.clone(),
             body: TypedCodeBlock {
@@ -643,6 +667,7 @@ impl<'sc> TypedTraitFn<'sc> {
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
+            is_contract_call: mode == Mode::ImplAbiFn,
         }
     }
 }

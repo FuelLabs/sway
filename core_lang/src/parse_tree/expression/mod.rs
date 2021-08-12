@@ -125,6 +125,12 @@ pub enum Expression<'sc> {
         span: Span<'sc>,
         type_arguments: Vec<TypeInfo<'sc>>,
     },
+    /// A cast of a hash to an ABI for calling a contract.
+    AbiCast {
+        abi_name: CallPath<'sc>,
+        address: Box<Expression<'sc>>,
+        span: Span<'sc>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +157,7 @@ impl<'sc> Expression<'sc> {
             MethodApplication { span, .. } => span,
             SubfieldExpression { span, .. } => span,
             DelineatedPath { span, .. } => span,
+            AbiCast { span, .. } => span,
         })
         .clone()
     }
@@ -739,6 +746,32 @@ impl<'sc> Expression<'sc> {
                 }
 
                 expr
+            }
+            Rule::abi_cast => {
+                let span = expr.as_span();
+                let mut iter = expr.into_inner();
+                let _abi_keyword = iter.next();
+                let abi_name = iter.next().expect("guaranteed by grammar");
+                let abi_name = eval!(
+                    CallPath::parse_from_pair,
+                    warnings,
+                    errors,
+                    abi_name,
+                    return err(warnings, errors)
+                );
+                let address = iter.next().expect("guaranteed by grammar");
+                let address = eval!(
+                    Expression::parse_from_pair,
+                    warnings,
+                    errors,
+                    address,
+                    return err(warnings, errors)
+                );
+                Expression::AbiCast {
+                    span,
+                    address: Box::new(address),
+                    abi_name,
+                }
             }
             a => {
                 eprintln!(

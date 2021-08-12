@@ -1,14 +1,16 @@
+use crate::ops::forc_build;
 use structopt::{self, StructOpt};
 
-use crate::ops::forc_build;
+/// Compile the current or target project.
 #[derive(Debug, StructOpt)]
 pub struct Command {
-    #[structopt(short = "p")]
+    /// Path to the project, if not specified, current working directory will be used.
+    #[structopt(short, long)]
     pub path: Option<String>,
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
-    #[structopt(long = "print-asm")]
+    #[structopt(long)]
     pub print_asm: bool,
-    /// Whether to output a binary file representing the script bytes
+    /// If set, outputs a binary file representing the script bytes.
     #[structopt(short = "o")]
     pub binary_outfile: Option<String>,
 

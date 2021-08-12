@@ -452,4 +452,62 @@ struct Example {age: u32,    name: string}
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
     }
+
+    #[test]
+    fn test_enums() {
+        let correct_sway_code = r#"script;
+
+pub fn main() {
+    let k = Story::Pain;
+
+}
+
+enum Story {
+    Pain: (),
+    Gain: (),
+}
+
+enum StoryA {
+    Pain: (),
+    Gain: (),
+}
+
+pub fn tell_a_story() -> Story {
+    Story::Gain
+}
+"#;
+
+        let result = get_formatted_data(correct_sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+
+        let sway_code = r#"script;
+
+        pub fn main() {
+            let k = 
+                    Story          :: Pain;
+        
+        
+        
+        }
+        
+        
+        enum Story {
+           Pain:(),
+            Gain:()
+        }
+        
+        enum StoryA {Pain:(),Gain:()}
+        
+        pub fn tell_a_story() ->Story {
+                Story   :: Gain
+        }
+"#;
+
+        let result = get_formatted_data(sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
 }

@@ -1,5 +1,6 @@
 use structopt::{self, StructOpt};
 
+/// Run Rust-based tests on current project.
 #[derive(Debug, StructOpt)]
 pub(crate) struct Command {}
 

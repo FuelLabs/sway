@@ -1,5 +1,4 @@
 use crate::utils::constants;
-
 use crate::{
     cli::UpdateCommand,
     ops::forc_dep_check,
@@ -8,7 +7,6 @@ use crate::{
         helpers::{find_manifest_dir, read_manifest},
     },
 };
-
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
 use std::{path::PathBuf, str};

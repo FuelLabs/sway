@@ -136,7 +136,7 @@ pub(crate) struct TraitFn<'sc> {
 }
 
 impl<'sc> TraitFn<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut signature = pair.clone().into_inner();

@@ -3,7 +3,7 @@ use std::{
     str::Chars,
 };
 
-use crate::constants::NEW_LINE_SIGN;
+use crate::code_builder_helpers::{get_already_formatted_line_pattern, get_new_line_pattern};
 
 use super::{
     code_builder_helpers::{
@@ -59,6 +59,12 @@ impl CodeBuilder {
         // add newline if it's multiline string or comment
         if is_string_or_multiline_comment {
             code_line.push_char('\n');
+        } else {
+            if let Some((formatted_line, rest)) = get_already_formatted_line_pattern(line) {
+                code_line.push_str(formatted_line);
+                self.complete_and_add_line(code_line);
+                return self.move_rest_to_new_line(rest, rest.chars().enumerate().peekable());
+            }
         }
 
         let mut iter = line.chars().enumerate().peekable();
@@ -127,17 +133,21 @@ impl CodeBuilder {
                             }
 
                             // handle line breakers ';', '{', '}' & ','
-                            ',' => match iter.peek() {
-                                Some((_, c)) if *c == NEW_LINE_SIGN => {
-                                    iter.next();
-                                    code_line.push_char(',');
-                                    self.complete_and_add_line(code_line);
-                                    return self.move_rest_to_new_line(line, iter);
+                            ',' => {
+                                let rest_of_line = &line[current_index + 1..];
+                                match get_new_line_pattern(rest_of_line) {
+                                    Some(line_after_pattern) => {
+                                        code_line.push_char(',');
+                                        self.complete_and_add_line(code_line);
+
+                                        return self.move_rest_to_new_line(
+                                            line_after_pattern,
+                                            line_after_pattern.chars().enumerate().peekable(),
+                                        );
+                                    }
+                                    None => code_line.push_str(", "),
                                 }
-                                _ => {
-                                    code_line.push_str(", ");
-                                }
-                            },
+                            }
                             ';' => return self.handle_semicolon_case(line, code_line, iter),
 
                             '{' => {

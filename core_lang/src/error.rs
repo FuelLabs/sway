@@ -668,6 +668,21 @@ pub enum CompileError<'sc> {
     InvalidAbiType { span: Span<'sc> },
     #[error("An ABI function must accept exactly one argument. If you need to accept more values, try putting them in a struct, and then accepting a parameter of that struct type.")]
     InvalidNumberOfAbiParams { span: Span<'sc> },
+    #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
+    NotAnAbi {
+        span: Span<'sc>,
+        actually_is: &'static str,
+    },
+    #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
+    ImplAbiForNonContract { span: Span<'sc>, ty: String },
+    #[error("The trait function \"{fn_name}\" in trait \"{trait_name}\" expects {num_args} arguments, but the provided implementation only takes {provided_args} arguments.")]
+    IncorrectNumberOfInterfaceSurfaceFunctionParameters {
+        fn_name: &'sc str,
+        trait_name: &'sc str,
+        num_args: usize,
+        provided_args: usize,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -832,6 +847,9 @@ impl<'sc> CompileError<'sc> {
             TooFewArgumentsForFunction { span, .. } => span,
             InvalidAbiType { span, .. } => span,
             InvalidNumberOfAbiParams { span, .. } => span,
+            NotAnAbi { span, .. } => span,
+            ImplAbiForNonContract { span, .. } => span,
+            IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span,
         }
     }
 

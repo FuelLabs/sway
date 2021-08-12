@@ -1,9 +1,9 @@
+use crate::ops::forc_init;
 use structopt::{self, StructOpt};
 
-use crate::ops::forc_init;
+/// Create a new Forc project.
 #[derive(Debug, StructOpt)]
 pub(crate) struct Command {
-    #[structopt(name = "init")]
     project_name: String,
 }
 
