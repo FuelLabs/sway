@@ -117,6 +117,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
         comment: "constant 32 load for call".into(),
         owning_span: Some(span.clone()),
     });
+    // write the contract addr to bytes 0-32
     asm_buf.push(Op {
         opcode: Either::Left(VirtualOp::MCP(
             ra_pointer.clone(),
@@ -126,43 +127,23 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
         comment: "move contract address for call".into(),
         owning_span: Some(span.clone()),
     });
-    // second, calculate the new pointer (current value of $rA + 32)
-    let rover_register = register_sequencer.next();
+    // write the selector to bytes 32-40
     asm_buf.push(Op {
-        opcode: Either::Left(VirtualOp::ADDI(
-            rover_register.clone(),
+        opcode: Either::Left(VirtualOp::SB(
             ra_pointer.clone(),
-            VirtualImmediate12::new_unchecked(32, "infallible constant 32"),
-        )),
-        comment: "calculate call fn selector addr".into(),
-        owning_span: Some(span.clone()),
-    });
-    // third, use the rover register as the pointer to write the function selector to
-    asm_buf.push(Op {
-        opcode: Either::Left(VirtualOp::MCP(
-            rover_register.clone(),
             selector_register,
-            VirtualRegister::Constant(ConstantRegister::One),
+            // offset by 4 words, since a byte32 is 4 words
+            VirtualImmediate12::new_unchecked(4, "infallible constant 4"),
         )),
-        comment: "move fn selector for call".into(),
+        comment: "write fn selector to rA + 32 for call".into(),
         owning_span: Some(span.clone()),
     });
-    // fourth, calculate the new pointer (current value of the rover register + 1)
+    // write the user argument to bytes 40-48
     asm_buf.push(Op {
-        opcode: Either::Left(VirtualOp::ADDI(
-            rover_register.clone(),
-            rover_register.clone(),
-            VirtualImmediate12::new_unchecked(1, "infallible constant 1"),
-        )),
-        comment: "calculate call user param addr".into(),
-        owning_span: Some(span.clone()),
-    });
-    // fifth, use the rover register as the pointer to write the user param to
-    asm_buf.push(Op {
-        opcode: Either::Left(VirtualOp::MCP(
-            rover_register,
+        opcode: Either::Left(VirtualOp::SW(
+            ra_pointer.clone(),
             user_argument_register,
-            VirtualRegister::Constant(ConstantRegister::One),
+            VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
         )),
         comment: "move user param for call".into(),
         owning_span: Some(span.clone()),
