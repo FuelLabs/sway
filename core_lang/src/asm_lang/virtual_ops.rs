@@ -115,7 +115,7 @@ impl fmt::Display for ConstantRegister {
 }
 
 /// 6-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate06 {
     pub(crate) value: u8,
 }
@@ -141,7 +141,7 @@ impl fmt::Display for VirtualImmediate06 {
 }
 
 /// 12-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate12 {
     pub(crate) value: u16,
 }
@@ -177,7 +177,7 @@ impl fmt::Display for VirtualImmediate12 {
 }
 
 /// 18-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate18 {
     pub(crate) value: u32,
 }
@@ -212,7 +212,7 @@ impl fmt::Display for VirtualImmediate18 {
 }
 
 /// 24-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate24 {
     pub(crate) value: u32,
 }
@@ -250,7 +250,7 @@ impl fmt::Display for VirtualImmediate24 {
 /// allows me to use the compiler's internal [VirtualRegister] types and maintain type safety
 /// between virtual ops and the real opcodes. A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum VirtualOp {
     ADD(VirtualRegister, VirtualRegister, VirtualRegister),
     ADDI(VirtualRegister, VirtualRegister, VirtualImmediate12),
@@ -453,7 +453,7 @@ impl VirtualOp {
             .map(|x| match x {
                 VirtualRegister::Constant(c) => (x, Some(AllocatedRegister::Constant(c.clone()))),
                 VirtualRegister::Virtual(_) => {
-                    (x, pool.get_register(x, &op_register_mapping[ix + 1..]))
+                    (x, pool.get_register(x, &op_register_mapping[ix..]))
                 }
             })
             .map(|(x, res)| match res {
