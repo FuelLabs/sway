@@ -8,3 +8,6 @@ members = [
     "sway-server",
     "test_suite"
 ]
+
+[profile.dev.package.sway-server]
+debug = 2
