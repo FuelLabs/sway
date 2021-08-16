@@ -14,7 +14,7 @@ pub(crate) use namespace::FunctionNamespaceEntry;
 pub type EntryPoint = NodeIndex;
 pub type ExitPoint = NodeIndex;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 /// A graph that can be used to model the control flow of a fuel HLL program.
 /// This graph is used as the basis for all of the algorithms in the control flow analysis portion
 /// of the compiler.

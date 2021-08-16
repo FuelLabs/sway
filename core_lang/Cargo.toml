@@ -6,7 +6,7 @@ edition = "2018"
 rust = "1.50"
 
 [features]
-selector-debug = ["structopt"]
+selector-debug = ["structopt", "hex"]
 
 [dependencies]
 #pest = "2.0"
@@ -21,6 +21,7 @@ fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
 fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
 sha2 = "0.9"
 structopt = { version = "0.3", default-features = false, optional = true }
+hex = { version = "0.4", optional = true }
 
 
 [[bin]]

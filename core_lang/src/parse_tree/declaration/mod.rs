@@ -1,6 +1,6 @@
 mod abi_declaration;
 mod enum_declaration;
-mod function_declaration;
+pub mod function_declaration;
 mod impl_trait;
 mod reassignment;
 mod struct_declaration;
