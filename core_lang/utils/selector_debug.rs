@@ -64,5 +64,5 @@ fn main() {
     let selector_hash = hex::encode(selector_hash);
     println!("selector string:         {}", selector_string);
     println!("untruncated hash:        0x{}", selector_hash_untruncated);
-    println!("truncated/padded hash:   0x{}", selector_hash);
+    println!("truncated/padded hash:   0x00000000{}", selector_hash);
 }
