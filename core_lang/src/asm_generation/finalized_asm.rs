@@ -4,6 +4,7 @@ use either::Either;
 use std::io::Read;
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
+#[derive(Clone)]
 pub enum FinalizedAsm<'sc> {
     ContractAbi {
         data_section: DataSection<'sc>,
@@ -21,22 +22,22 @@ pub enum FinalizedAsm<'sc> {
     Library,
 }
 impl<'sc> FinalizedAsm<'sc> {
-    pub(crate) fn to_bytecode(&self) -> CompileResult<'sc, Vec<u8>> {
+    pub(crate) fn to_bytecode(&mut self) -> CompileResult<'sc, Vec<u8>> {
         use FinalizedAsm::*;
         match self {
             ContractAbi {
                 program_section,
-                data_section,
+                ref mut data_section,
             } => to_bytecode(program_section, data_section),
             // libraries are not compiled to asm
             Library => ok(vec![], vec![], vec![]),
             ScriptMain {
                 program_section,
-                data_section,
+                ref mut data_section,
             } => to_bytecode(program_section, data_section),
             PredicateMain {
                 program_section,
-                data_section,
+                ref mut data_section,
             } => to_bytecode(program_section, data_section),
         }
     }
@@ -44,7 +45,7 @@ impl<'sc> FinalizedAsm<'sc> {
 
 fn to_bytecode<'sc>(
     program_section: &InstructionSet<'sc>,
-    data_section: &DataSection<'sc>,
+    data_section: &mut DataSection<'sc>,
 ) -> CompileResult<'sc, Vec<u8>> {
     let mut errors = vec![];
     if program_section.ops.len() & 1 != 0 {

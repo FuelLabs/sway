@@ -52,7 +52,7 @@ impl AllocatedRegister {
 /// between virtual ops and those which have gone through register allocation.
 /// A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum AllocatedOpcode {
     ADD(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     ADDI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
@@ -153,7 +153,7 @@ pub(crate) enum AllocatedOpcode {
     DataSectionRegisterLoadPlaceholder,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct AllocatedOp<'sc> {
     pub(crate) opcode: AllocatedOpcode,
     /// A descriptive comment for ASM readability
@@ -259,7 +259,7 @@ impl<'sc> AllocatedOp<'sc> {
     pub(crate) fn to_fuel_asm(
         &self,
         offset_to_data_section: u64,
-        data_section: &DataSection,
+        data_section: &mut DataSection,
     ) -> Either<fuel_asm::Opcode, DoubleWideData> {
         use AllocatedOpcode::*;
         #[rustfmt::skip]
@@ -300,7 +300,7 @@ impl<'sc> AllocatedOp<'sc> {
             CFEI(a)         => VmOp::CFEI(a.value),
             CFSI(a)         => VmOp::CFSI(a.value),
             LB  (a, b, c)   => VmOp::LB  (a.to_register_id(), b.to_register_id(), c.value),
-            LWDataId  (a, b)=> realize_lw(a, b, data_section),
+            LWDataId  (a, b)=> realize_lw(a, b, data_section, offset_to_data_section),
             LW (a, b, c)    => VmOp::LW(a.to_register_id(), b.to_register_id(), c.value),
             ALOC(a)         => VmOp::ALOC(a.to_register_id()),
             MCL (a, b)      => VmOp::MCL (a.to_register_id(), b.to_register_id()),
@@ -341,17 +341,45 @@ impl<'sc> AllocatedOp<'sc> {
     }
 }
 
-fn realize_lw(dest: &AllocatedRegister, data_id: &DataId, data_section: &DataSection) -> VmOp {
-    let dest = dest.to_register_id();
+fn realize_lw(
+    dest: &AllocatedRegister,
+    data_id: &DataId,
+    data_section: &mut DataSection,
+    offset_to_data_section: u64,
+) -> VmOp {
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
-    let offset = (data_section.offset_to_id(data_id) / 8) as u64;
-    let offset = match VirtualImmediate12::new(offset, Span::new(" ", 0, 0).unwrap()) {
-        Ok ( value ) => value,
-        Err  (_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
+    let offset_bytes = data_section.offset_to_id(data_id) as u64;
+    let offset_words = offset_bytes / 8;
+    let offset = match VirtualImmediate12::new(offset_words, Span::new(" ", 0, 0).unwrap()) {
+        Ok(value) => value,
+        Err(_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
     };
-    VmOp::LW(
-        dest,
-        crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as usize,
-        offset.value,
-    )
+    // if this data is larger than a word, instead of loading the data directly
+    // into the register, we want to load a pointer to the data into the register
+    // this appends onto the data section and mutates it by adding the pointer as a literal
+    let type_of_data = data_section.type_of_data(data_id).expect(
+        "Internal miscalculation in data section -- data id did not match up to any actual data",
+    );
+    if type_of_data.stack_size_of() > 1 {
+        // load the pointer itself into the register
+        // `offset_to_data_section` is in bytes. We want a byte
+        // address here
+        let pointer_offset_from_instruction_start = offset_to_data_section + offset_bytes;
+        // insert the pointer as bytes as a new data section entry at the end of the data
+        let data_id_for_pointer =
+            data_section.append_pointer(pointer_offset_from_instruction_start);
+        // now load the pointer we just created into the `dest`ination
+        realize_lw(
+            dest,
+            &data_id_for_pointer,
+            data_section,
+            offset_to_data_section,
+        )
+    } else {
+        VmOp::LW(
+            dest.to_register_id(),
+            crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as usize,
+            offset.value,
+        )
+    }
 }

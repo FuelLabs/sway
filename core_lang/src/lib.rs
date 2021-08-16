@@ -537,7 +537,10 @@ pub fn compile_to_bytecode<'sc, 'manifest>(
     build_config: BuildConfig,
 ) -> BytecodeCompilationResult<'sc> {
     match compile_to_asm(input, initial_namespace, build_config) {
-        CompilationResult::Success { asm, mut warnings } => {
+        CompilationResult::Success {
+            mut asm,
+            mut warnings,
+        } => {
             let bytes = match asm.to_bytecode() {
                 CompileResult::Ok {
                     value,
