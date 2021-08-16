@@ -3,7 +3,6 @@ name = "core_lang"
 version = "0.1.0"
 authors = ["Alex <alex.hansen@fuel.sh>"]
 edition = "2018"
-rust = "1.50"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
