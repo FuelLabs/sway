@@ -116,7 +116,6 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     //
     // load 32 into a register
     let data_label = namespace.insert_data_value(&Literal::U32(32));
-    let _data_label = namespace.insert_data_value(&Literal::U32(64));
     let num32_register = register_sequencer.next();
     asm_buf.push(Op {
         opcode: Either::Left(VirtualOp::LWDataId(num32_register.clone(), data_label)),
@@ -131,7 +130,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
             contract_address,
             num32_register,
         )),
-        comment: "move contract address for call".into(),
+        comment: "copy contract address for call".into(),
         owning_span: Some(span.clone()),
     });
 
