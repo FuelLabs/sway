@@ -1,0 +1,45 @@
+header {
+    height: 32px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--color-navbar-standard);
+    background-color: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+    z-index: 999;
+}
+
+.header-button {
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 13px;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--color-navbar-standard);
+    text-decoration: none;
+    border-right: 1px solid var(--color-border);
+}
+
+.header-button svg {
+    width: 13px;
+    height: 13px;
+    fill: currentColor;
+    margin: -1px 4px 0 0;
+}
+
+.header-button:active, .header-button:hover {
+    outline: 0;
+}
+
+.header-button:hover {
+    color: var(--color-standard);
+    background-color: inherit;
+}
+
+.header-button:focus {
+    color: var(--color-background);
+    background-color: var(--color-doc-link-background);
+}

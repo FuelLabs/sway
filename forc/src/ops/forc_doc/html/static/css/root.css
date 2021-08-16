@@ -1,0 +1,95 @@
+html {
+    --color-border: #ddd;
+    --color-navbar-standard: #777;
+    --color-background: #fff;
+    --color-standard: #000;
+    --color-doc-link-background: #333;
+    --color-background-sidebar: #F1F1F1;
+    --color-h1-h4: #000;
+    --color-border-bottom-h2-h4: #DDDDDD;
+    --color-background-sidebar-block-link-hover: #F5F5F5;
+    --color-border-bottom-h1-fqm: #D5D5D5;
+    --color-main-section-struct: #ad448e;
+}
+
+* {
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+}
+
+body {
+	font: 16px/1.4 "Source Serif 4", "Noto Sans KR", serif;
+	margin: 0;
+	position: relative;
+
+	-webkit-font-feature-settings: "kern", "liga";
+	-moz-font-feature-settings: "kern", "liga";
+	font-feature-settings: "kern", "liga";
+}
+
+p {
+	margin: 0 0 .6em 0;
+}
+
+h1, h2, h3, h4, .sidebar, .item-column-left a {
+	font-family: "Fira Sans", Arial, sans-serif;
+}
+
+h2, h3, h4 {
+    border-bottom: 1px solid;
+    border-bottom-color: var(--color-border-bottom-h2-h4);
+}
+
+h1, h2, h3, h4 {
+    color: var(--color-h1-h4);
+    font-weight: 500;
+    margin: 20px 0 15px 0;
+    padding-bottom: 6px;
+}
+
+h1 {
+    font-size: 1.5em;
+}
+
+h2 {
+    font-size: 1.4em;
+}
+
+h3 {
+    font-size: 1.3em;
+}
+
+h1.section-header-1 {
+    display: flex;
+    border-bottom: 1px dashed;
+    margin-top: 0;
+    border-bottom-color: var(--color-border-bottom-h1-fqm);
+}
+
+a {
+    text-decoration: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+a:active, a:hover {
+    outline: 0;
+}
+
+pre.rust {
+    tab-size: 4;
+    white-space: pre-wrap;
+}
+
+pre {
+    background-color: #F5F5F5;
+    padding: 14px;
+    overflow: auto;
+}
+
+code, pre {
+    font-family: "Source Code Pro", monospace;
+    font-size: 1em;
+}

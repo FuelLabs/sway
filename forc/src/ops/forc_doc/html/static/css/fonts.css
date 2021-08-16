@@ -1,0 +1,76 @@
+/* See FiraSans-LICENSE.txt for the Fira Sans license. */
+@font-face {
+	font-family: 'Fira Sans';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Fira Sans'),
+		url("../../static/fonts/FiraSans-Regular.woff2") format("woff2"),
+		url("../../static/fonts/FiraSans-Regular.woff") format('woff');
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Fira Sans';
+	font-style: normal;
+	font-weight: 500;
+	src: local('Fira Sans Medium'),
+		url("../../static/fonts/FiraSans-Medium.woff2") format("woff2"),
+		url("../../static/fonts/FiraSans-Medium.woff") format('woff');
+	font-display: swap;
+}
+
+/* See SourceSerif4-LICENSE.md for the Source Serif 4 license. */
+@font-face {
+	font-family: 'Source Serif 4';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Source Serif 4'),
+		url("../../static/fonts/SourceSerif4-Regular.ttf.woff2") format("woff2"),
+		url("../../static/fonts/SourceSerif4-Regular.ttf.woff") format("woff");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Serif 4';
+	font-style: italic;
+	font-weight: 400;
+	src: local('Source Serif 4 Italic'),
+		url("../../static/fonts/SourceSerif4-It.ttf.woff2") format("woff2"),
+		url("../../static/fonts/SourceSerif4-It.ttf.woff") format("woff");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Serif 4';
+	font-style: normal;
+	font-weight: 700;
+	src: local('Source Serif 4 Bold'),
+		url("../../static/fonts/SourceSerif4-Bold.ttf.woff2") format("woff2"),
+		url("../../static/fonts/SourceSerif4-Bold.ttf.woff") format("woff");
+	font-display: swap;
+}
+
+/* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: normal;
+	font-weight: 400;
+	/* Avoid using locally installed font because bad versions are in circulation:
+	 * see https://github.com/rust-lang/rust/issues/24355 */
+	src: url("../../static/fonts/SourceCodePro-Regular.ttf.woff2") format("woff2"),
+		url("../../static/fonts/SourceCodePro-Regular.ttf.woff") format("woff");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: italic;
+	font-weight: 400;
+	src: url("../../static/fonts/SourceCodePro-It.ttf.woff2") format("woff2"),
+		url("../../static/fonts/SourceCodePro-It.ttf.woff") format("woff");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: normal;
+	font-weight: 600;
+	src: url("../../static/fonts/SourceCodePro-Semibold.ttf.woff2") format("woff2"),
+		url("../../static/fonts/SourceCodePro-Semibold.ttf.woff") format("woff");
+	font-display: swap;
+}

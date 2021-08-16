@@ -1,0 +1,118 @@
+.sidebar {
+    margin-top: 32px;
+    background-color: var(--color-background-sidebar);
+    width: 200px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    overflow: auto;
+}
+
+.sidebar .logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    width: 100px;
+    position: relative;
+    margin: 10px auto 20px;
+    background-color: #ccc;
+    font-family: 'Fira Sans';
+}
+
+.sidebar .block {
+    padding: 0;
+    margin-bottom: 14px;
+}
+
+.sidebar .block h2, .sidebar .block h3 {
+    text-align: center;
+}
+
+.sidebar .block ul, .sidebar .block li {
+    margin: 0 10px;
+    padding: 0;
+    list-style: none;
+}
+
+.sidebar .block > ul > li {
+    margin-right: -10px;
+}
+
+.sidebar .block a {
+    display: block;
+    padding: 7px 5px;
+    font-size: 14px;
+    line-height: 15px;
+    font-weight: 300;
+    text-overflow: ellipsis;
+    transition: border 500ms ease-out;
+    overflow: hidden;
+}
+
+.sidebar .block a:hover {
+    background: var(--color-background-sidebar-block-link-hover);
+}
+
+.sidebar .version {
+    font-size: 15px;
+    text-align: center;
+    border-bottom: 1px solid;
+    border-bottom-color: #DDD;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+.sidebar .location {
+    padding: 0;
+    margin: 30px 10px 20px 10px;
+    font-size: 17px;
+    font-weight: inherit;
+    word-wrap: break-word;
+    text-align: center;
+    color: #333;
+    background-color: var(--color-background);
+    border: 1px solid #000;
+}
+
+.main-section {
+    padding: 64px 0 0 260px;
+}
+
+.item-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-row {
+    display: flex;
+}
+
+.item-row .item-column-left {
+    flex: 0 0 100px;
+}
+
+.item-row .item-column-right p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
+.item-column-right p code {
+    border-radius: 3px;
+    padding: 0 0.1em;
+    background-color: #F5F5F5;
+    white-space: pre-wrap;
+}
+
+.main-section .struct {
+    color: var(--color-main-section-struct);
+}
+
+.docblock {
+    margin-left: 24px;
+    position: relative;
+}
