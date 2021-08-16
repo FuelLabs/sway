@@ -1074,6 +1074,7 @@ dependencies = [
  "pest_derive",
  "petgraph",
  "sha2",
+ "structopt 0.3.22",
  "thiserror",
  "uuid-b64",
 ]
