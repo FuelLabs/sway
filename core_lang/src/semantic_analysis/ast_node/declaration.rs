@@ -276,10 +276,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             is_contract_call: self.is_contract_call,
         }
     }
-    /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
-    /// selectors.
-    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub(crate) fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
+    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<'sc, Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
@@ -290,14 +287,28 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             errors
         );
         hasher.update(data);
+        let hash = hasher.finalize();
+        ok(hash.to_vec(), warnings, errors)
+    }
+    /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
+    /// selectors.
+    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
+    pub fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+        let hash = type_check!(
+            self.to_fn_selector_value_untruncated(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
         // 4 bytes truncation via copying into a 4 byte buffer
         let mut buf = [0u8; 4];
-        let hash = hasher.finalize();
         buf.copy_from_slice(&hash[0..4]);
         ok(buf, warnings, errors)
     }
 
-    pub(crate) fn to_selector_name(&self) -> CompileResult<'sc, String> {
+    pub fn to_selector_name(&self) -> CompileResult<'sc, String> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let named_params = {
@@ -456,7 +467,7 @@ pub struct TypedReassignment<'sc> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub(crate) fn type_check(
+    pub fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
         _return_type_annotation: Option<MaybeResolvedType<'sc>>,

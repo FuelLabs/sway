@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate pest_derive;
 #[macro_use]
-mod error;
+pub mod error;
 
 mod asm_generation;
 mod asm_lang;
@@ -9,9 +9,9 @@ mod build_config;
 pub mod constants;
 mod control_flow_analysis;
 mod ident;
-mod parse_tree;
+pub mod parse_tree;
 mod parser;
-mod semantic_analysis;
+pub mod semantic_analysis;
 
 pub use crate::parse_tree::*;
 pub use crate::parser::{HllParser, Rule};
@@ -22,7 +22,7 @@ use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
-pub(crate) mod types;
+pub mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 

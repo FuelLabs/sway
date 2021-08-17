@@ -173,7 +173,7 @@ pub(crate) fn implementation_of_trait<'sc>(
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Mode {
+pub enum Mode {
     ImplAbiFn,
     NonAbi,
 }

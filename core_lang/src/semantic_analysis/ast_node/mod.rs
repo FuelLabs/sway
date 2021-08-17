@@ -11,9 +11,9 @@ use pest::Span;
 use std::path::Path;
 
 mod code_block;
-mod declaration;
+pub mod declaration;
 mod expression;
-mod impl_trait;
+pub mod impl_trait;
 mod return_statement;
 mod while_loop;
 
