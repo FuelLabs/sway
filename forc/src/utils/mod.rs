@@ -3,4 +3,5 @@ pub mod constants;
 pub mod defaults;
 pub mod dependency;
 pub mod helpers;
+pub mod macros;
 pub mod manifest;
