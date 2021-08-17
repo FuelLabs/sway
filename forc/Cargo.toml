@@ -18,6 +18,7 @@ fuel-asm = {git = "ssh://git@github.com/FuelLabs/fuel-asm.git"}
 fuel-tx = {git = "ssh://git@github.com/FuelLabs/fuel-tx.git"}
 fuel-vm = {git = "ssh://git@github.com/FuelLabs/fuel-vm.git"}
 hex = "0.4.3"
+lazy_static = "1.4.0"
 line-col = "0.2"
 maud = "0.22.2"
 pest = {git = "https://github.com/sezna/pest.git", rev = "8aa58791f759daf4caee26e8560e862df5a6afb7"}
