@@ -1,10 +1,11 @@
+use std::{env, path::PathBuf};
 mod html;
 
 use crate::{
     cli::{BuildCommand, DocCommand},
     utils::{
         cli_error::CliError,
-        helpers::{find_manifest_dir, get_sway_files},
+        helpers::{find_manifest_dir, get_sway_files, read_manifest},
     },
 };
 
@@ -12,7 +13,7 @@ use super::forc_build;
 
 pub fn doc(command: DocCommand) -> Result<(), CliError> {
     let build_command = BuildCommand {
-        path: None,
+        path: command.path.clone(),
         print_asm: false,
         binary_outfile: None,
         offline_mode: false,
@@ -20,11 +21,20 @@ pub fn doc(command: DocCommand) -> Result<(), CliError> {
 
     match forc_build::build(build_command) {
         Ok(_) => {
-            let curr_dir = std::env::current_dir()?;
+            let project_dir = if let Some(path) = &command.path {
+                PathBuf::from(path)
+            } else {
+                env::current_dir()?
+            };
 
-            match find_manifest_dir(&curr_dir) {
-                Some(path_buf) => {
-                    let files = get_sway_files(path_buf)?;
+            match find_manifest_dir(&project_dir) {
+                Some(manifest_dir) => {
+                    let manifest = read_manifest(&manifest_dir)?;
+                    let project_name = manifest.project.name;
+                    let project_name = html::build_static_files(&project_name)?;
+                    let files = get_sway_files(manifest_dir)?;
+
+                    env::set_current_dir(project_name)?;
 
                     for file in files {
                         if let Ok(file_content) = std::fs::read_to_string(&file) {
@@ -41,7 +51,7 @@ pub fn doc(command: DocCommand) -> Result<(), CliError> {
 
                     Ok(())
                 }
-                None => Err(CliError::manifest_file_missing(curr_dir)),
+                None => Err(CliError::manifest_file_missing(project_dir)),
             }
         }
         Err(err) => Err(err.into()),
