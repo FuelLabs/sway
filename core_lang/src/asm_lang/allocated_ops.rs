@@ -260,10 +260,10 @@ impl<'sc> AllocatedOp<'sc> {
         &self,
         offset_to_data_section: u64,
         data_section: &mut DataSection,
-    ) -> Either<fuel_asm::Opcode, DoubleWideData> {
+    ) -> Either<Vec<fuel_asm::Opcode>, DoubleWideData> {
         use AllocatedOpcode::*;
         #[rustfmt::skip]
-         let fuel_op = Either::Left(match &self.opcode {
+         let fuel_op = Either::Left(vec![match &self.opcode {
             ADD (a, b, c)   => VmOp::ADD (a.to_register_id(), b.to_register_id(), c.to_register_id()),
             ADDI(a, b, c)   => VmOp::ADDI(a.to_register_id(), b.to_register_id(), c.value),
             AND (a, b, c)   => VmOp::AND (a.to_register_id(), b.to_register_id(), c.to_register_id()),
@@ -300,7 +300,7 @@ impl<'sc> AllocatedOp<'sc> {
             CFEI(a)         => VmOp::CFEI(a.value),
             CFSI(a)         => VmOp::CFSI(a.value),
             LB  (a, b, c)   => VmOp::LB  (a.to_register_id(), b.to_register_id(), c.value),
-            LWDataId  (a, b)=> realize_lw(a, b, data_section, offset_to_data_section),
+            LWDataId  (a, b)=> return Either::Left(realize_lw(a, b, data_section, offset_to_data_section)),
             LW (a, b, c)    => VmOp::LW(a.to_register_id(), b.to_register_id(), c.value),
             ALOC(a)         => VmOp::ALOC(a.to_register_id()),
             MCL (a, b)      => VmOp::MCL (a.to_register_id(), b.to_register_id()),
@@ -334,19 +334,23 @@ impl<'sc> AllocatedOp<'sc> {
             NOOP            => VmOp::NOOP,
             FLAG(a)         => VmOp::FLAG(a.to_register_id()),
             Undefined       => VmOp::Undefined,
-            DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes()),
+            DataSectionOffsetPlaceholder => return Either::Right(dbg!(offset_to_data_section).to_be_bytes()),
             DataSectionRegisterLoadPlaceholder => VmOp::LW(crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as fuel_asm::RegisterId, ConstantRegister::InstructionStart.to_register_id(), 1),
-         });
+         }]);
         fuel_op
     }
 }
 
+/// Converts a virtual load word instruction which uses data labels into one which uses
+/// actual bytewise offsets for use in bytecode.
+/// Returns one op if the type is less than one word big, but two ops if it has to construct
+/// a pointer and add it to $is.
 fn realize_lw(
     dest: &AllocatedRegister,
     data_id: &DataId,
     data_section: &mut DataSection,
     offset_to_data_section: u64,
-) -> VmOp {
+) -> Vec<VmOp> {
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
     let offset_bytes = data_section.offset_to_id(data_id) as u64;
     let offset_words = offset_bytes / 8;
@@ -368,18 +372,29 @@ fn realize_lw(
         // insert the pointer as bytes as a new data section entry at the end of the data
         let data_id_for_pointer =
             data_section.append_pointer(pointer_offset_from_instruction_start);
+        dbg!(&offset_to_data_section);
+        dbg!(&offset_bytes);
+        dbg!(&pointer_offset_from_instruction_start);
         // now load the pointer we just created into the `dest`ination
-        realize_lw(
+        let mut buf = Vec::with_capacity(2);
+        buf.append(&mut realize_lw(
             dest,
             &data_id_for_pointer,
             data_section,
             offset_to_data_section,
-        )
+        ));
+        // add $is to the pointer since it is relative to the data section
+        buf.push(VmOp::ADD(
+            dest.to_register_id(),
+            dest.to_register_id(),
+            ConstantRegister::InstructionStart.to_register_id(),
+        ));
+        buf
     } else {
-        VmOp::LW(
+        vec![VmOp::LW(
             dest.to_register_id(),
             crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as usize,
             offset.value,
-        )
+        )]
     }
 }

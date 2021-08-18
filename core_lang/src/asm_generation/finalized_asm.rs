@@ -62,7 +62,7 @@ fn to_bytecode<'sc>(
     // this points at the byte (*4*8) address immediately following (+1) the last instruction
     let offset_to_data_section = ((program_section.ops.len() + 1) * 4) as u64;
 
-    // each op is four bytes, so the length of the buf is then number of ops times four.
+    // each op is four bytes, so the length of the buf is the number of ops times four.
     let mut buf = vec![0; (program_section.ops.len() * 4) + 4];
 
     let mut half_word_ix = 0;
@@ -75,14 +75,25 @@ fn to_bytecode<'sc>(
                 }
                 half_word_ix += 2;
             }
-            Either::Left(mut op) => {
-                op.read(&mut buf[half_word_ix * 4..])
-                    .expect("Failed to write to in-memory buffer.");
-                half_word_ix += 1;
+            Either::Left(mut ops) => {
+                if ops.len() > 1 {
+                    println!(
+                        "Resizing buf from {} to {} to allow for new word",
+                        buf.len(),
+                        buf.len() + ((ops.len() - 1) * 4)
+                    );
+                    buf.resize(buf.len() + ((ops.len() - 1) * 4), 0);
+                }
+                for mut op in ops {
+                    op.read(&mut buf[half_word_ix * 4..])
+                        .expect("Failed to write to in-memory buffer.");
+                    half_word_ix += 1;
+                }
             }
         }
     }
 
+    println!("{}", &data_section);
     let mut data_section = data_section.serialize_to_bytes();
 
     buf.append(&mut data_section);
