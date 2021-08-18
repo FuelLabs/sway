@@ -526,7 +526,7 @@ pub(crate) struct AsmNamespace<'sc> {
 }
 
 /// An address which refers to a value in the data section of the asm.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct DataId(u32);
 
 impl fmt::Display for DataId {

@@ -2,7 +2,6 @@
 authors = ["Alex Hansen <alex.hansen@fuel.sh>"]
 edition = "2018"
 name = "forc"
-rust = "1.50"
 version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
