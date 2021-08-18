@@ -334,7 +334,7 @@ impl<'sc> AllocatedOp<'sc> {
             NOOP            => VmOp::NOOP,
             FLAG(a)         => VmOp::FLAG(a.to_register_id()),
             Undefined       => VmOp::Undefined,
-            DataSectionOffsetPlaceholder => return Either::Right(dbg!(offset_to_data_section).to_be_bytes()),
+            DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes()),
             DataSectionRegisterLoadPlaceholder => VmOp::LW(crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as fuel_asm::RegisterId, ConstantRegister::InstructionStart.to_register_id(), 1),
          }]);
         fuel_op
@@ -372,9 +372,6 @@ fn realize_lw(
         // insert the pointer as bytes as a new data section entry at the end of the data
         let data_id_for_pointer =
             data_section.append_pointer(pointer_offset_from_instruction_start);
-        dbg!(&offset_to_data_section);
-        dbg!(&offset_bytes);
-        dbg!(&pointer_offset_from_instruction_start);
         // now load the pointer we just created into the `dest`ination
         let mut buf = Vec::with_capacity(2);
         buf.append(&mut realize_lw(

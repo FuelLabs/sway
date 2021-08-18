@@ -1,4 +1,5 @@
 use super::{DataSection, InstructionSet};
+use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
 use either::Either;
 use std::io::Read;
@@ -60,14 +61,32 @@ fn to_bytecode<'sc>(
     // A noop is inserted in ASM generation if there is an odd number of ops.
     assert_eq!(program_section.ops.len() & 1, 0);
     // this points at the byte (*4*8) address immediately following (+1) the last instruction
-    let offset_to_data_section = ((program_section.ops.len() + 1) * 4) as u64;
+    // Some LWs are expanded into two ops to allow for data larger than one word, so we calculate
+    // exactly how many ops will be generated to calculate the offset.
+    let offset_to_data_section_in_bytes =
+        program_section
+            .ops
+            .iter()
+            .fold(0, |acc, item| match &item.opcode {
+                AllocatedOpcode::LWDataId(_reg, data_label)
+                    if data_section
+                        .type_of_data(&data_label)
+                        .expect("data label references non existent data -- internal error")
+                        .stack_size_of()
+                        > 1 =>
+                {
+                    acc + 8
+                }
+                _ => acc + 4,
+            })
+            + 4;
 
     // each op is four bytes, so the length of the buf is the number of ops times four.
     let mut buf = vec![0; (program_section.ops.len() * 4) + 4];
 
     let mut half_word_ix = 0;
     for op in program_section.ops.iter() {
-        let op = op.to_fuel_asm(offset_to_data_section, data_section);
+        let op = op.to_fuel_asm(offset_to_data_section_in_bytes, data_section);
         match op {
             Either::Right(data) => {
                 for i in 0..data.len() {
@@ -77,11 +96,6 @@ fn to_bytecode<'sc>(
             }
             Either::Left(mut ops) => {
                 if ops.len() > 1 {
-                    println!(
-                        "Resizing buf from {} to {} to allow for new word",
-                        buf.len(),
-                        buf.len() + ((ops.len() - 1) * 4)
-                    );
                     buf.resize(buf.len() + ((ops.len() - 1) * 4), 0);
                 }
                 for mut op in ops {
@@ -93,7 +107,6 @@ fn to_bytecode<'sc>(
         }
     }
 
-    println!("{}", &data_section);
     let mut data_section = data_section.serialize_to_bytes();
 
     buf.append(&mut data_section);
