@@ -362,14 +362,11 @@ impl<'sc> DataSection<'sc> {
     /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
     pub(crate) fn offset_to_id(&self, id: &DataId) -> usize {
-        let res = self
-            .value_pairs
+        self.value_pairs
             .iter()
             .take(id.0 as usize)
             .map(|x| x.to_bytes().len())
-            .sum();
-        println!("Offset to {} is {}", id, res);
-        res
+            .sum()
     }
 
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
@@ -397,7 +394,6 @@ impl<'sc> DataSection<'sc> {
     /// in question.
     pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
         let pointer_as_data = Literal::new_pointer_literal(pointer_value);
-        println!("Inserting pointer {:?}", pointer_value);
         self.insert_data_value(&pointer_as_data)
     }
 
@@ -411,9 +407,7 @@ impl<'sc> DataSection<'sc> {
             None => {
                 self.value_pairs.push(data.clone());
                 // the index of the data section where the value is stored
-                let id = DataId((self.value_pairs.len() - 1) as u32);
-                println!("Inserted fresh {:?} into data with id {}", data, id);
-                id
+                DataId((self.value_pairs.len() - 1) as u32)
             }
         }
     }
