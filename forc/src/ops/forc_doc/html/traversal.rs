@@ -13,7 +13,7 @@ pub(crate) fn traverse_ast_node<'a>(ast_node: &'a AstNode) -> Option<PageType<'a
 fn handle_declaration<'a>(dec: &'a Declaration, ast_node: &'a AstNode) -> Option<PageType<'a>> {
     match &dec {
         Declaration::StructDeclaration(struct_dec) => Some(struct_dec.into()),
-
+        Declaration::EnumDeclaration(enum_dec) => Some(enum_dec.into()),
         _ => None,
     }
 }

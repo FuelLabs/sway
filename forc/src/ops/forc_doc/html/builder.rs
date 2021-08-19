@@ -21,7 +21,7 @@ pub(crate) fn build_page(body: Markup, main_sidebar: &Markup) -> Markup {
 pub(crate) fn build_body(page_type: &PageType) -> Markup {
     let name = page_type.get_name();
     let type_name = page_type.get_type();
-    let fields = page_type.get_fields();
+    let details = page_type.build_details();
 
     html! {
         body {
@@ -32,25 +32,8 @@ pub(crate) fn build_body(page_type: &PageType) -> Markup {
                         (type_name)" "(name)
                     }
 
-                    div class="item-table" {
-                        @for field in fields {
-                            div class="item-row" {
-                                div class="item-column-left" {
-                                    p class="struct" {
-                                        (field.name.primary_name)
-                                    }
-                                }
-
-                                div class="item-column-right" {
-                                    p {
-                                        ":"({
-                                            let field_type = format!("{:?}", field.r#type);
-                                            field_type
-                                        })
-                                    }
-                                }
-                            }
-                        }
+                    @if let Some(details) = details {
+                        (details)
                     }
                 }
             }
