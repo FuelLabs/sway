@@ -31,10 +31,14 @@ pub fn doc(command: DocCommand) -> Result<(), CliError> {
                 Some(manifest_dir) => {
                     let manifest = read_manifest(&manifest_dir)?;
                     let project_name = manifest.project.name;
-                    let project_name = html::build_static_files(&project_name)?;
+                    let project_name_buff = html::build_static_files(&project_name)?;
                     let files = get_sway_files(manifest_dir)?;
 
-                    env::set_current_dir(project_name)?;
+                    // build index.html
+                    // list all Structs, Traits, Enums etc
+                    let mut page_types = vec![];
+
+                    env::set_current_dir(project_name_buff)?;
 
                     for file in files {
                         if let Ok(file_content) = std::fs::read_to_string(&file) {
@@ -44,9 +48,16 @@ pub fn doc(command: DocCommand) -> Result<(), CliError> {
                                 errors: _,
                             } = core_lang::parse(&file_content)
                             {
-                                html::build_from_tree(value)?;
+                                let res = html::get_page_types(value);
+                                page_types.extend(res.clone());
                             }
                         }
+                    }
+
+                    let main_sidebar = html::build_main_sidebar(&project_name, &page_types);
+
+                    for page in page_types {
+                        html::build_page(&page, &main_sidebar)?;
                     }
 
                     Ok(())

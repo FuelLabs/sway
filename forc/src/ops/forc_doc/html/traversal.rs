@@ -1,31 +1,34 @@
 use core_lang::{AstNode, AstNodeContent, Declaration, HllParseTree};
 
-use super::builder;
+use super::page_type::PageType;
 
-pub fn traverse_and_build(parse_tree: HllParseTree) -> Result<(), String> {
+pub(crate) fn traverse_for_page_types(parse_tree: HllParseTree) -> Vec<PageType> {
+    let mut res = vec![];
+
     if let Some(script_tree) = &parse_tree.script_ast {
         let nodes = &script_tree.root_nodes;
 
         for node in nodes {
-            traverse_ast_node(&node);
+            if let Some(page_type) = traverse_ast_node(&node) {
+                res.push(page_type);
+            }
         }
     }
 
-    Ok(())
+    res
 }
 
-fn traverse_ast_node(ast_node: &AstNode) {
+fn traverse_ast_node(ast_node: &AstNode) -> Option<PageType> {
     match &ast_node.content {
         AstNodeContent::Declaration(dec) => handle_declaration(dec, ast_node),
 
-        _ => {}
+        _ => None,
     }
 }
 
-fn handle_declaration(dec: &Declaration, ast_node: &AstNode) {
+fn handle_declaration(dec: &Declaration, ast_node: &AstNode) -> Option<PageType> {
     match &dec {
-        Declaration::StructDeclaration(struct_dec) => builder::build_struct(struct_dec),
-
-        _ => {}
-    };
+        Declaration::StructDeclaration(struct_dec) => Some(struct_dec.into()),
+        _ => None,
+    }
 }
