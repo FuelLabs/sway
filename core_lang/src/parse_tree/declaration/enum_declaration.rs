@@ -13,14 +13,14 @@ use pest::Span;
 pub struct EnumDeclaration<'sc> {
     pub name: Ident<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
-    pub(crate) variants: Vec<EnumVariant<'sc>>,
+    pub variants: Vec<EnumVariant<'sc>>,
     pub(crate) span: Span<'sc>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct EnumVariant<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: TypeInfo<'sc>,
+pub struct EnumVariant<'sc> {
+    pub name: Ident<'sc>,
+    pub r#type: TypeInfo<'sc>,
     pub(crate) tag: usize,
     pub(crate) span: Span<'sc>,
 }

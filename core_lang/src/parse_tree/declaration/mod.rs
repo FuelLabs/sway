@@ -7,7 +7,7 @@ mod trait_declaration;
 mod type_parameter;
 mod variable_declaration;
 
-pub(crate) use enum_declaration::*;
+pub use enum_declaration::*;
 pub(crate) use function_declaration::*;
 pub(crate) use impl_trait::*;
 pub(crate) use reassignment::*;
