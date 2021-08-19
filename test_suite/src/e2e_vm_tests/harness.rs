@@ -4,7 +4,6 @@ use forc::cli::BuildCommand;
 use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::MemoryStorage;
-use tx_client::client::TxClient;
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.

@@ -1,5 +1,4 @@
 use super::*;
-use crate::error::*;
 use crate::semantic_analysis::ast_node::*;
 use either::Either;
 /// Converts a function application of a contract ABI function into assembly

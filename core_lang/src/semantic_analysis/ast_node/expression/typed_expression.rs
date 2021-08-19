@@ -119,7 +119,6 @@ impl<'sc> TypedExpression<'sc> {
                             parameters,
                             return_type,
                             body,
-                            is_contract_call,
                             ..
                         } = decl.clone();
                         // type check arguments in function application vs arguments in function
