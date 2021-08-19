@@ -3810,6 +3810,7 @@ dependencies = [
  "fuel-asm",
  "fuel-tx",
  "fuel-vm",
+ "tx-client",
 ]
 
 [[package]]
