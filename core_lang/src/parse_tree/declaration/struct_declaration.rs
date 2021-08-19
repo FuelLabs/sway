@@ -20,7 +20,7 @@ pub struct StructDeclaration<'sc> {
 #[derive(Debug, Clone)]
 pub struct StructField<'sc> {
     pub name: Ident<'sc>,
-    pub(crate) r#type: TypeInfo<'sc>,
+    pub r#type: TypeInfo<'sc>,
     pub(crate) span: Span<'sc>,
 }
 
