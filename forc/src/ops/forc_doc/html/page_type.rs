@@ -1,54 +1,50 @@
-use core_lang::StructDeclaration;
+use core_lang::{StructDeclaration, StructField};
 
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) enum PageType {
-    Struct(PageStruct),
+const STRUCTS: &'static str = "structs";
+pub(crate) const SWAY_TYPES: [&'static str; 1] = [STRUCTS];
+
+pub(crate) enum PageType<'a> {
+    Struct(&'a str, &'a Vec<StructField<'a>>),
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct PageStruct {
-    name: String,
-    fields: Vec<String>,
-}
-
-impl PageType {
-    pub(crate) fn name(&self) -> &str {
+impl<'a> PageType<'a> {
+    pub(crate) fn get_name(&'a self) -> &'a str {
         match self {
-            PageType::Struct(page_struct) => &page_struct.name,
+            &PageType::Struct(name, _) => name,
         }
     }
 
-    pub(crate) fn type_name(&self) -> &str {
+    pub(crate) fn is_struct(&'a self) -> bool {
         match self {
-            PageType::Struct(_) => "Struct",
-        }
-    }
-
-    pub(crate) fn is_struct(&self) -> bool {
-        match self {
-            PageType::Struct(_) => true,
+            &PageType::Struct(_, _) => true,
             _ => false,
         }
     }
 
-    pub(crate) fn get_fields(&self) -> Option<&Vec<String>> {
+    pub(crate) fn get_fields(&'a self) -> &Vec<StructField<'a>> {
         match self {
-            PageType::Struct(page_struct) => Some(&page_struct.fields),
-            _ => None,
+            &PageType::Struct(_, fields) => fields,
+        }
+    }
+
+    pub(crate) fn get_type_key(&'a self) -> &'static str {
+        match self {
+            &PageType::Struct(_, _) => STRUCTS,
+        }
+    }
+
+    pub(crate) fn get_type(&'a self) -> &str {
+        match self {
+            &PageType::Struct(_, _) => "Struct",
         }
     }
 }
 
-impl<'a> From<&StructDeclaration<'_>> for PageType {
-    fn from(struct_dec: &StructDeclaration) -> Self {
-        let name = struct_dec.name.primary_name.into();
+impl<'a> From<&'a StructDeclaration<'a>> for PageType<'a> {
+    fn from(struct_dec: &'a StructDeclaration<'a>) -> Self {
+        let name = struct_dec.name.primary_name;
+        let fields = &struct_dec.fields;
 
-        let fields: Vec<String> = struct_dec
-            .fields
-            .iter()
-            .map(|field| field.name.primary_name.into())
-            .collect();
-
-        PageType::Struct(PageStruct { name, fields })
+        PageType::Struct(name, fields)
     }
 }

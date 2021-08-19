@@ -1,4 +1,8 @@
-use std::{fs::create_dir_all, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fs::{create_dir_all, File},
+    path::PathBuf,
+};
 
 use core_lang::HllParseTree;
 use maud::Markup;
@@ -8,15 +12,14 @@ use crate::{
     utils::cli_error::CliError,
 };
 
-use self::page_type::PageType;
+use self::{page_type::SWAY_TYPES, traversal::traverse_ast_node};
 
 mod builder;
-mod common;
 mod page_type;
 mod static_files;
 mod traversal;
 
-pub fn build_static_files(project_name: &str) -> Result<PathBuf, CliError> {
+pub(crate) fn build_static_files(project_name: &str) -> Result<PathBuf, CliError> {
     // Build static folders
     let mut project_path = PathBuf::from(format!("{}-doc", project_name));
 
@@ -38,22 +41,53 @@ pub fn build_static_files(project_name: &str) -> Result<PathBuf, CliError> {
     Ok(project_path)
 }
 
-pub(crate) fn get_page_types(parse_tree: HllParseTree) -> Vec<PageType> {
-    traversal::traverse_for_page_types(parse_tree)
+pub(crate) fn build_and_store_markups(
+    parse_tree: HllParseTree,
+    map: &mut HashMap<&str, Vec<(String, Markup)>>,
+) {
+    if let Some(script_tree) = &parse_tree.script_ast {
+        let nodes = &script_tree.root_nodes;
+
+        for node in nodes {
+            if let Some(page_type) = traverse_ast_node(&node) {
+                let store = map.get_mut(page_type.get_type_key()).unwrap();
+                let body = builder::build_body(&page_type);
+                let name = page_type.get_name().into();
+                store.push((name, body));
+            }
+        }
+    }
 }
 
-pub(crate) fn build_index_html(page_types: Vec<PageType>) -> Result<(), CliError> {
-    //let structs = page_types.iter().filter(|t| t.is_struct());
+pub(crate) fn build_page(name: &str, body: Markup, main_sidebar: &Markup) -> Result<(), CliError> {
+    let page = builder::build_page(body, main_sidebar);
+
+    let file_name = format!("./{}.html", name);
+    let _ = File::create(&file_name)?;
+    std::fs::write(&file_name, page.into_string())?;
+
     Ok(())
 }
 
-pub(crate) fn build_page(page_type: &PageType, main_sidebar: &Markup) -> Result<(), CliError> {
-    builder::build_page(page_type, main_sidebar)
+pub(crate) fn build_main_sidebar(
+    project_name: &str,
+    markups: &HashMap<&str, Vec<(String, Markup)>>,
+) -> Markup {
+    let mut res = vec![];
+
+    for (key, value) in markups {
+        res.push(builder::build_type_sidebar(key, value))
+    }
+
+    builder::main_sidebar(project_name, res)
 }
 
-pub(crate) fn build_main_sidebar(project_name: &str, page_types: &Vec<PageType>) -> Markup {
-    let structs: Vec<&PageType> = page_types.iter().filter(|t| t.is_struct()).collect();
-    let structs = builder::build_type_sidebar("Structs", structs);
+pub(crate) fn initialize_markup_map() -> HashMap<&'static str, Vec<(String, Markup)>> {
+    let mut map = HashMap::new();
 
-    common::main_sidebar(project_name, vec![structs])
+    for key in SWAY_TYPES {
+        map.insert(key, vec![]);
+    }
+
+    map
 }

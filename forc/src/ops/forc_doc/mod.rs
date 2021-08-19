@@ -1,5 +1,7 @@
-use std::{env, path::PathBuf};
+use std::{collections::HashMap, env, path::PathBuf};
 mod html;
+
+use maud::Markup;
 
 use crate::{
     cli::{BuildCommand, DocCommand},
@@ -8,6 +10,8 @@ use crate::{
         helpers::{find_manifest_dir, get_sway_files, read_manifest},
     },
 };
+
+use self::html::initialize_markup_map;
 
 use super::forc_build;
 
@@ -34,11 +38,9 @@ pub fn doc(command: DocCommand) -> Result<(), CliError> {
                     let project_name_buff = html::build_static_files(&project_name)?;
                     let files = get_sway_files(manifest_dir)?;
 
-                    // build index.html
-                    // list all Structs, Traits, Enums etc
-                    let mut page_types = vec![];
-
                     env::set_current_dir(project_name_buff)?;
+
+                    let mut markups: HashMap<&str, Vec<(String, Markup)>> = initialize_markup_map();
 
                     for file in files {
                         if let Ok(file_content) = std::fs::read_to_string(&file) {
@@ -48,16 +50,17 @@ pub fn doc(command: DocCommand) -> Result<(), CliError> {
                                 errors: _,
                             } = core_lang::parse(&file_content)
                             {
-                                let res = html::get_page_types(value);
-                                page_types.extend(res.clone());
+                                html::build_and_store_markups(value, &mut markups);
                             }
                         }
                     }
 
-                    let main_sidebar = html::build_main_sidebar(&project_name, &page_types);
+                    let main_sidebar = html::build_main_sidebar(&project_name, &markups);
 
-                    for page in page_types {
-                        html::build_page(&page, &main_sidebar)?;
+                    for (_, value) in markups {
+                        for (name, body) in value {
+                            html::build_page(&name, body, &main_sidebar)?;
+                        }
                     }
 
                     Ok(())
