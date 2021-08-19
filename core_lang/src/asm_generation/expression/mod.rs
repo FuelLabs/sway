@@ -68,7 +68,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             }
         }
         TypedExpressionVariant::VariableExpression { unary_op: _, name } => {
-            let var = type_check!(
+            let var = check!(
                 namespace.look_up_variable(name),
                 return err(warnings, errors),
                 warnings,
@@ -114,7 +114,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                 mapping_of_real_registers_to_declared_names.insert(name, register.clone());
                 // evaluate each register's initializer
                 if let Some(initializer) = initializer {
-                    asm_buf.append(&mut type_check!(
+                    asm_buf.append(&mut check!(
                         convert_expression_to_asm(
                             initializer,
                             namespace,
@@ -164,7 +164,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     .collect::<Vec<VirtualRegister>>();
 
                 // parse the actual op and registers
-                let opcode = type_check!(
+                let opcode = check!(
                     Op::parse_opcode(
                         &op.op_name,
                         replaced_registers.as_slice(),
@@ -308,7 +308,7 @@ pub(crate) fn convert_code_block_to_asm<'sc>(
     for node in &block.contents {
         // If this is a return, then we jump to the end of the function and put the
         // value in the return register
-        let res = type_check!(
+        let res = check!(
             convert_node_to_asm(node, namespace, register_sequencer, return_register),
             continue,
             warnings,
@@ -368,7 +368,7 @@ fn convert_fn_app_to_asm<'sc>(
     // evaluate every expression being passed into the function
     for (name, arg) in arguments {
         let return_register = register_sequencer.next();
-        let mut ops = type_check!(
+        let mut ops = check!(
             convert_expression_to_asm(arg, &mut namespace, &return_register, register_sequencer),
             vec![],
             warnings,
@@ -384,7 +384,7 @@ fn convert_fn_app_to_asm<'sc>(
     }
 
     // evaluate the function body
-    let mut body = type_check!(
+    let mut body = check!(
         convert_code_block_to_asm(
             function_body,
             &mut namespace,
@@ -426,7 +426,7 @@ pub(crate) fn convert_abi_fn_to_asm<'sc>(
 
     let return_register = register_sequencer.next();
     // evaluate the function body
-    let mut body = type_check!(
+    let mut body = check!(
         convert_code_block_to_asm(
             &decl.body,
             &mut namespace,

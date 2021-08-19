@@ -48,7 +48,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                 })
             }
 
-            let functions_buf = type_check!(
+            let functions_buf = check!(
                 type_check_trait_implementation(
                     &tr.interface_surface,
                     &functions,
@@ -105,7 +105,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                 });
             }
 
-            let functions_buf = type_check!(
+            let functions_buf = check!(
                 type_check_trait_implementation(
                     &abi.interface_surface,
                     &functions,
@@ -207,7 +207,7 @@ fn type_check_trait_implementation<'sc>(
         // i.e. fn add(self, other: u64) -> Self becomes fn
         // add(self: u64, other: u64) -> u64
 
-        let mut fn_decl = type_check!(
+        let mut fn_decl = check!(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
                 &namespace,
@@ -287,7 +287,7 @@ fn type_check_trait_implementation<'sc>(
                                     }),
                                 }
                             } else {
-                                let fn_decl_param_type = type_check!(
+                                let fn_decl_param_type = check!(
                                     fn_decl_param
                                         .r#type
                                         .force_resolution(&self_type, &fn_decl_param.type_span),
@@ -295,7 +295,7 @@ fn type_check_trait_implementation<'sc>(
                                     warnings,
                                     errors
                                 );
-                                let trait_param_type = type_check!(
+                                let trait_param_type = check!(
                                     trait_param
                                         .r#type
                                         .force_resolution(&self_type, &fn_decl_param.type_span),
@@ -321,7 +321,7 @@ fn type_check_trait_implementation<'sc>(
                     {
                         errors.append(&mut maybe_err);
                     }
-                    let return_type = type_check!(
+                    let return_type = check!(
                         return_type.force_resolution(&self_type, return_type_span),
                         ResolvedType::ErrorRecovery,
                         warnings,

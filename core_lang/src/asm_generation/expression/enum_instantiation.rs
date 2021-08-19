@@ -86,7 +86,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     // // if there are any enum contents, instantiate them
     if let Some(instantiation) = contents {
         let return_register = register_sequencer.next();
-        let mut asm = type_check!(
+        let mut asm = check!(
             convert_expression_to_asm(
                 &*instantiation,
                 namespace,
