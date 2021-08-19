@@ -50,7 +50,7 @@ pub fn doc(command: DocCommand) -> Result<(), CliError> {
                                 errors: _,
                             } = core_lang::parse(&file_content)
                             {
-                                html::build_and_store_markups(value, &mut markups);
+                                html::build_and_store_markup_body(value, &mut markups);
                             }
                         }
                     }

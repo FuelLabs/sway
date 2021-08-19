@@ -41,7 +41,7 @@ pub(crate) fn build_static_files(project_name: &str) -> Result<PathBuf, CliError
     Ok(project_path)
 }
 
-pub(crate) fn build_and_store_markups(
+pub(crate) fn build_and_store_markup_body(
     parse_tree: HllParseTree,
     map: &mut HashMap<&str, Vec<(String, Markup)>>,
 ) {
