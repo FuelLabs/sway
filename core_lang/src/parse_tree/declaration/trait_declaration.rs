@@ -11,7 +11,7 @@ use pest::Span;
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration<'sc> {
     pub name: Ident<'sc>,
-    pub(crate) interface_surface: Vec<TraitFn<'sc>>,
+    pub interface_surface: Vec<TraitFn<'sc>>,
     pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) visibility: Visibility,
@@ -128,10 +128,10 @@ impl<'sc> TraitDeclaration<'sc> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct TraitFn<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub struct TraitFn<'sc> {
+    pub name: Ident<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub return_type: TypeInfo<'sc>,
     pub(crate) return_type_span: Span<'sc>,
 }
 

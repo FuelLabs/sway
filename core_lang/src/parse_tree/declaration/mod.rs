@@ -8,11 +8,11 @@ mod type_parameter;
 mod variable_declaration;
 
 pub use enum_declaration::*;
-pub(crate) use function_declaration::*;
+pub use function_declaration::*;
 pub(crate) use impl_trait::*;
 pub(crate) use reassignment::*;
 pub use struct_declaration::*;
-pub(crate) use trait_declaration::*;
+pub use trait_declaration::*;
 pub(crate) use type_parameter::*;
 pub use variable_declaration::*;
 
