@@ -4,7 +4,7 @@ use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
 use thiserror::Error;
 
-macro_rules! type_check {
+macro_rules! check {
     ($fn_expr: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
         use crate::CompileResult;
         let res = $fn_expr;

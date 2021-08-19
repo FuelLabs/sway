@@ -148,7 +148,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, ()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let namespace = type_check!(
+        let namespace = check!(
             self.find_module(&path, is_absolute),
             return err(warnings, errors),
             warnings,
@@ -240,7 +240,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module = type_check!(
+        let module = check!(
             self.find_module(&path.prefixes, false),
             return err(warnings, errors),
             warnings,
@@ -334,7 +334,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module_to_insert_into = type_check!(
+        let module_to_insert_into = check!(
             self.find_module_mut(&trait_name.prefixes),
             return err(warnings, errors),
             warnings,
@@ -385,7 +385,7 @@ impl<'sc> Namespace<'sc> {
             }
         };
         if ident_iter.peek().is_none() {
-            let ty = type_check!(
+            let ty = check!(
                 symbol.return_type(),
                 return err(warnings, errors),
                 warnings,
@@ -393,7 +393,7 @@ impl<'sc> Namespace<'sc> {
             );
             return ok((ty.clone(), ty), warnings, errors);
         }
-        let mut symbol = type_check!(
+        let mut symbol = check!(
             symbol.return_type(),
             return err(warnings, errors),
             warnings,
@@ -538,7 +538,7 @@ impl<'sc> Namespace<'sc> {
         {
             let r#type = self.resolve_type_without_self(name);
             for trait_constraint in trait_constraints {
-                let methods_for_trait = type_check!(
+                let methods_for_trait = check!(
                     self.find_trait_methods(&trait_constraint.name),
                     continue,
                     warnings,

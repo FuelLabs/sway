@@ -106,7 +106,7 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 ..
             } => {
-                let function_declaration = type_check!(
+                let function_declaration = check!(
                     namespace.get_call_path(&name),
                     return err(warnings, errors),
                     warnings,
@@ -193,13 +193,13 @@ impl<'sc> TypedExpression<'sc> {
                 ));
                 return err(warnings, errors);
                 /*
-                let typed_primary_expression = type_check!(
+                let typed_primary_expression = check!(
                     TypedExpression::type_check(*primary_expression, &namespace, None, ""),
                     ERROR_RECOVERY_EXPR.clone(),
                     warnings,
                     errors
                 );
-                let first_branch_result = type_check!(
+                let first_branch_result = check!(
                     TypedExpression::type_check(
                         branches[0].result.clone(),
                         &namespace,
@@ -221,7 +221,7 @@ impl<'sc> TypedExpression<'sc> {
                         |MatchBranch {
                              condition, result, ..
                          }| {
-                            type_check!(
+                            check!(
                                 TypedExpression::type_check(
                                     result,
                                     &namespace,
@@ -247,7 +247,7 @@ impl<'sc> TypedExpression<'sc> {
                 */
             }
             Expression::CodeBlock { contents, span, .. } => {
-                let (typed_block, block_return_type) = type_check!(
+                let (typed_block, block_return_type) = check!(
                     TypedCodeBlock::type_check(
                         contents.clone(),
                         &namespace,
@@ -299,7 +299,7 @@ impl<'sc> TypedExpression<'sc> {
                 r#else,
                 span,
             } => {
-                let condition = Box::new(type_check!(
+                let condition = Box::new(check!(
                     TypedExpression::type_check(
                         *condition.clone(),
                         namespace,
@@ -313,7 +313,7 @@ impl<'sc> TypedExpression<'sc> {
                     warnings,
                     errors
                 ));
-                let then = Box::new(type_check!(
+                let then = Box::new(check!(
                     TypedExpression::type_check(
                         *then.clone(),
                         namespace,
@@ -328,7 +328,7 @@ impl<'sc> TypedExpression<'sc> {
                     errors
                 ));
                 let r#else = if let Some(expr) = r#else {
-                    Some(Box::new(type_check!(
+                    Some(Box::new(check!(
                         TypedExpression::type_check(
                             *expr.clone(),
                             namespace,
@@ -383,7 +383,7 @@ impl<'sc> TypedExpression<'sc> {
                                 name_span: name_span.clone(),
                                 name,
                                 initializer: initializer.map(|initializer| {
-                                    type_check!(
+                                    check!(
                                         TypedExpression::type_check(
                                             initializer.clone(),
                                             namespace,
@@ -467,7 +467,7 @@ impl<'sc> TypedExpression<'sc> {
                             }
                         };
 
-                    let typed_field = type_check!(
+                    let typed_field = check!(
                         TypedExpression::type_check(
                             expr_field.value,
                             namespace,
@@ -523,7 +523,7 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 field_to_access,
             } => {
-                let parent = type_check!(
+                let parent = check!(
                     TypedExpression::type_check(
                         *prefix,
                         namespace,
@@ -537,7 +537,7 @@ impl<'sc> TypedExpression<'sc> {
                     warnings,
                     errors
                 );
-                let (fields, struct_name) = type_check!(
+                let (fields, struct_name) = check!(
                     namespace.get_struct_type_fields(
                         &parent.return_type,
                         parent.span.as_str(),
@@ -590,7 +590,7 @@ impl<'sc> TypedExpression<'sc> {
                         let mut args_buf = vec![];
                         for arg in arguments {
                             let sp = arg.span().clone();
-                            args_buf.push(type_check!(
+                            args_buf.push(check!(
                                 TypedExpression::type_check(
                                     arg,
                                     namespace,
@@ -672,7 +672,7 @@ impl<'sc> TypedExpression<'sc> {
                     } => {
                         let mut args_buf = vec![];
                         for arg in arguments {
-                            args_buf.push(type_check!(
+                            args_buf.push(check!(
                                 TypedExpression::type_check(
                                     arg,
                                     namespace,
@@ -689,7 +689,7 @@ impl<'sc> TypedExpression<'sc> {
                         }
 
                         let method = if let Some(type_name) = type_name {
-                            let module = type_check!(
+                            let module = check!(
                                 namespace.find_module(&call_path.prefixes[..], *is_absolute),
                                 return err(warnings, errors),
                                 warnings,
@@ -715,7 +715,7 @@ impl<'sc> TypedExpression<'sc> {
                         } else {
                             // there is a special case for the stdlib where type_name is `None`, handle
                             // that:
-                            let module = type_check!(
+                            let module = check!(
                                 namespace.find_module(&call_path.prefixes[..], *is_absolute),
                                 return err(warnings, errors),
                                 warnings,
@@ -833,7 +833,7 @@ impl<'sc> TypedExpression<'sc> {
                                 }
                             }
                         }
-                        (None, Some(enum_decl)) => Either::Right(type_check!(
+                        (None, Some(enum_decl)) => Either::Right(check!(
                             instantiate_enum(
                                 enum_decl,
                                 call_path.suffix,
@@ -877,7 +877,7 @@ impl<'sc> TypedExpression<'sc> {
                 // TODO use stdlib's Address type instead of byte32
                 // type check the address and make sure it is
                 let err_span = address.span();
-                let address = type_check!(
+                let address = check!(
                     TypedExpression::type_check(
                         *address,
                         namespace,
@@ -892,7 +892,7 @@ impl<'sc> TypedExpression<'sc> {
                     errors
                 );
                 // look up the call path and get the declaration it references
-                let abi = type_check!(
+                let abi = check!(
                     namespace.get_call_path(&abi_name),
                     return err(warnings, errors),
                     warnings,

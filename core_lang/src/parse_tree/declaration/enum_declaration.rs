@@ -38,7 +38,7 @@ impl<'sc> EnumDeclaration<'sc> {
         let mut warnings = vec![];
 
         for variant in &self.variants {
-            variants_buf.push(type_check!(
+            variants_buf.push(check!(
                 variant.to_typed_decl(namespace, self_type, variant.span.clone()),
                 continue,
                 warnings,

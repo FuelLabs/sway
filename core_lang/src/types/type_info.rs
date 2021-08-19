@@ -86,7 +86,7 @@ impl<'sc> TypeInfo<'sc> {
                 "Self" | "self" => TypeInfo::SelfType,
                 "Contract" => TypeInfo::Contract,
                 "()" => TypeInfo::Unit,
-                a if a.contains("str[") => type_check!(
+                a if a.contains("str[") => check!(
                     parse_str_type(a, input.as_span()),
                     return err(warnings, errors),
                     warnings,

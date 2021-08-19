@@ -23,7 +23,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
     let mut errors = vec![];
     // step 0
     let return_register = register_sequencer.next();
-    let mut rhs = type_check!(
+    let mut rhs = check!(
         convert_expression_to_asm(
             &reassignment.rhs,
             namespace,
@@ -41,7 +41,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
         0 => unreachable!(),
         1 => {
             // step 1
-            let var_register = type_check!(
+            let var_register = check!(
                 namespace.look_up_variable(&reassignment.lhs[0].name),
                 return err(warnings, errors),
                 warnings,
@@ -112,13 +112,13 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                         (MaybeResolvedType::Resolved(r#type.clone()), name)
                     })
                     .collect::<Vec<_>>();
-                let field_layout = type_check!(
+                let field_layout = check!(
                     get_struct_memory_layout(&fields_for_layout[..]),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let offset_of_this_field = type_check!(
+                let offset_of_this_field = check!(
                     field_layout.offset_to_field_name(name),
                     return err(warnings, errors),
                     warnings,
@@ -140,7 +140,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 };
             }
 
-            let ptr = type_check!(
+            let ptr = check!(
                 namespace.look_up_variable(&top_level_decl),
                 return err(warnings, errors),
                 warnings,

@@ -18,7 +18,7 @@ pub(crate) fn instantiate_enum<'sc>(
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let enum_decl = type_check!(
+    let enum_decl = check!(
         enum_decl.resolve_generic_types(type_arguments),
         return err(warnings, errors),
         warnings,
@@ -60,7 +60,7 @@ pub(crate) fn instantiate_enum<'sc>(
             errors,
         ),
         ([single_expr], r#type) => {
-            let typed_expr = type_check!(
+            let typed_expr = check!(
                 TypedExpression::type_check(
                     single_expr.clone(),
                     namespace,
