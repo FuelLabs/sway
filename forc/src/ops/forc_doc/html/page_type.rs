@@ -7,12 +7,14 @@ use maud::{html, Markup};
 const STRUCTS: &'static str = "structs";
 const ENUMS: &'static str = "enums";
 const TRAITS: &'static str = "traits";
-pub(crate) const SWAY_TYPES: [&'static str; 3] = [STRUCTS, ENUMS, TRAITS];
+const FUNCTIONS: &'static str = "functions";
+pub(crate) const SWAY_TYPES: [&'static str; 4] = [STRUCTS, ENUMS, TRAITS, FUNCTIONS];
 
 pub(crate) enum PageType<'a> {
     Struct(&'a str, &'a Vec<StructField<'a>>),
     Enum(&'a str, &'a Vec<EnumVariant<'a>>),
     Trait(&'a str, &'a Vec<TraitFn<'a>>),
+    Function(&'a FunctionDeclaration<'a>),
 }
 
 impl<'a> PageType<'a> {
@@ -21,6 +23,7 @@ impl<'a> PageType<'a> {
             &PageType::Struct(name, _) => name,
             &PageType::Enum(name, _) => name,
             &PageType::Trait(name, _) => name,
+            &PageType::Function(func_dec) => func_dec.name.primary_name,
         }
     }
 
@@ -92,6 +95,27 @@ impl<'a> PageType<'a> {
                     }
                 }
             }),
+            &PageType::Function(function) => Some(html! {
+                div class="item-table" {
+                    div class="item-row" {
+                        div class="item-column-left" {
+                            p class="struct" {
+                                (function.name.primary_name)"()"
+                            }
+                        }
+
+                        div class="item-column-right" {
+                            p {
+                                ":"({
+                                    let function_body = format!("-> {:?}", function.return_type);
+                                    function_body
+                                })
+                            }
+                        }
+                    }
+
+                }
+            }),
             _ => None,
         }
     }
@@ -101,6 +125,7 @@ impl<'a> PageType<'a> {
             &PageType::Struct(_, _) => STRUCTS,
             &PageType::Enum(_, _) => ENUMS,
             &PageType::Trait(_, _) => TRAITS,
+            &PageType::Function(_) => FUNCTIONS,
         }
     }
 
@@ -109,6 +134,7 @@ impl<'a> PageType<'a> {
             &PageType::Struct(_, _) => "Struct",
             &PageType::Enum(_, _) => "Enum",
             &PageType::Trait(_, _) => "Trait",
+            &PageType::Function(_) => "Function",
         }
     }
 }
@@ -137,5 +163,11 @@ impl<'a> From<&'a TraitDeclaration<'a>> for PageType<'a> {
         let methods = &trait_dec.interface_surface;
 
         PageType::Trait(name, methods)
+    }
+}
+
+impl<'a> From<&'a FunctionDeclaration<'a>> for PageType<'a> {
+    fn from(func_dec: &'a FunctionDeclaration<'a>) -> Self {
+        PageType::Function(func_dec)
     }
 }

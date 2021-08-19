@@ -4,17 +4,18 @@ use super::page_type::PageType;
 
 pub(crate) fn traverse_ast_node<'a>(ast_node: &'a AstNode) -> Option<PageType<'a>> {
     match &ast_node.content {
-        AstNodeContent::Declaration(dec) => handle_declaration(dec, ast_node),
+        AstNodeContent::Declaration(dec) => handle_declaration(dec),
 
         _ => None,
     }
 }
 
-fn handle_declaration<'a>(dec: &'a Declaration, ast_node: &'a AstNode) -> Option<PageType<'a>> {
+fn handle_declaration<'a>(dec: &'a Declaration) -> Option<PageType<'a>> {
     match &dec {
         Declaration::StructDeclaration(struct_dec) => Some(struct_dec.into()),
         Declaration::EnumDeclaration(enum_dec) => Some(enum_dec.into()),
         Declaration::TraitDeclaration(trait_dec) => Some(trait_dec.into()),
+        Declaration::FunctionDeclaration(func_dec) => Some(func_dec.into()),
         _ => None,
     }
 }
