@@ -14,6 +14,7 @@ fn handle_declaration<'a>(dec: &'a Declaration, ast_node: &'a AstNode) -> Option
     match &dec {
         Declaration::StructDeclaration(struct_dec) => Some(struct_dec.into()),
         Declaration::EnumDeclaration(enum_dec) => Some(enum_dec.into()),
+        Declaration::TraitDeclaration(trait_dec) => Some(trait_dec.into()),
         _ => None,
     }
 }
