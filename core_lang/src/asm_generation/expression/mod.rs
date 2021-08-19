@@ -90,9 +90,6 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                 warnings,
                 errors
             );
-            // we set this register as equivalent to another register
-            // it is not a load, because that would be superfluous
-            // the expression is literally just referring to this specific register
             ok(
                 vec![Op::register_move(
                     return_register.into(),

@@ -34,7 +34,7 @@ pub(crate) struct Op<'sc> {
     pub(crate) owning_span: Option<Span<'sc>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct RealizedOp<'sc> {
     pub(crate) opcode: VirtualOp,
     /// A descriptive comment for ASM readability

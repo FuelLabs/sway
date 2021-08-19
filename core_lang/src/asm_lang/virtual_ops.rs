@@ -635,7 +635,9 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            LWDataId(reg1, imm) => AllocatedOpcode::LWDataId(map_reg(&mapping, reg1), imm.clone()),
+            LWDataId(reg1, label) => {
+                AllocatedOpcode::LWDataId(map_reg(&mapping, reg1), label.clone())
+            }
             LW(reg1, reg2, imm) => AllocatedOpcode::LW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),

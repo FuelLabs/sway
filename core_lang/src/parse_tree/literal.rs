@@ -169,6 +169,12 @@ impl<'sc> Literal<'sc> {
             Byte32(b) => b.to_vec(),
         }
     }
+
+    /// Used when creating a pointer literal value, typically during code generation for
+    /// values that wouldn't fit in a register.
+    pub(crate) fn new_pointer_literal(offset_bytes: u64) -> Literal<'static> {
+        Literal::U64(offset_bytes)
+    }
 }
 
 fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, CompileError<'sc>> {

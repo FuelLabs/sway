@@ -15,6 +15,7 @@ use crate::{
     semantic_analysis::{
         TypedAstNode, TypedAstNodeContent, TypedFunctionDeclaration, TypedParseTree,
     },
+    types::ResolvedType,
     Ident,
 };
 use either::Either;
@@ -135,6 +136,7 @@ impl<'sc> RealizedAbstractInstructionSet<'sc> {
 }
 
 /// An [InstructionSet] is produced by allocating registers on an [AbstractInstructionSet].
+#[derive(Clone)]
 pub struct InstructionSet<'sc> {
     ops: Vec<AllocatedOp<'sc>>,
 }
@@ -265,10 +267,12 @@ impl<'sc> AbstractInstructionSet<'sc> {
     }
 }
 
+#[derive(Debug)]
 struct RegisterAllocationStatus {
     reg: AllocatedRegister,
     in_use: Option<VirtualRegister>,
 }
+#[derive(Debug)]
 pub(crate) struct RegisterPool {
     registers: Vec<RegisterAllocationStatus>,
 }
@@ -304,8 +308,9 @@ impl RegisterPool {
         ) {
             return a.cloned();
         }
+
         // scan to see if any of the old ones are no longer in use
-        for RegisterAllocationStatus { in_use, .. } in
+        for RegisterAllocationStatus { in_use, reg } in
             self.registers.iter_mut().filter(|r| r.in_use.is_some())
         {
             if virtual_register_is_never_accessed_again(
@@ -320,6 +325,7 @@ impl RegisterPool {
             .registers
             .iter_mut()
             .find(|RegisterAllocationStatus { in_use, .. }| in_use.is_none());
+
         match next_available {
             Some(RegisterAllocationStatus { in_use, reg }) => {
                 *in_use = Some(virtual_register.clone());
@@ -370,6 +376,40 @@ impl<'sc> DataSection<'sc> {
             buf.append(&mut val.to_bytes().to_vec());
         }
         buf
+    }
+
+    /// Calculates the return type of the data held at a specific [DataId].
+    pub(crate) fn type_of_data(&self, id: &DataId) -> Option<ResolvedType<'sc>> {
+        self.value_pairs
+            .iter()
+            .nth(id.0 as usize)
+            .map(|x| x.as_type())
+    }
+
+    /// When generating code, sometimes a hard-coded data pointer is needed to reference
+    /// static values that have a length longer than one word.
+    /// This method appends pointers to the end of the data section (thus, not altering the data
+    /// offsets of previous data).
+    /// `pointer_value` is in _bytes_ and refers to the offset from instruction start to the data
+    /// in question.
+    pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
+        let pointer_as_data = Literal::new_pointer_literal(pointer_value);
+        self.insert_data_value(&pointer_as_data)
+    }
+
+    /// Given any data in the form of a [Literal] (using this type mainly because it includes type
+    /// information and debug spans), insert it into the data section and return its offset as a
+    /// [DataId].
+    pub(crate) fn insert_data_value(&mut self, data: &Literal<'sc>) -> DataId {
+        // if there is an identical data value, use the same id
+        match self.value_pairs.iter().position(|x| x == data) {
+            Some(num) => DataId(num as u32),
+            None => {
+                self.value_pairs.push(data.clone());
+                // the index of the data section where the value is stored
+                DataId((self.value_pairs.len() - 1) as u32)
+            }
+        }
     }
 }
 
@@ -544,15 +584,7 @@ impl<'sc> AsmNamespace<'sc> {
         self.variables.insert(var_name, register_location);
     }
     pub(crate) fn insert_data_value(&mut self, data: &Data<'sc>) -> DataId {
-        // if there is an identical data value, use the same id
-        match self.data_section.value_pairs.iter().position(|x| x == data) {
-            Some(num) => DataId(num as u32),
-            None => {
-                self.data_section.value_pairs.push(data.clone());
-                // the index of the data section where the value is stored
-                DataId((self.data_section.value_pairs.len() - 1) as u32)
-            }
-        }
+        self.data_section.insert_data_value(data)
     }
     /// Finds the register which contains variable `var_name`
     /// The `get` is unwrapped, because invalid variable expressions are
