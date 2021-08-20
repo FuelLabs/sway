@@ -45,8 +45,14 @@ pub(crate) fn runs_in_vm(file_name: &str) {
     let block_height = (u32::MAX >> 1) as u64;
     tx.validate(block_height).unwrap();
     let mut storage = MemoryStorage::default();
-    Storage::<_, Contract>::insert(&mut storage, &contract_id, &Default::default());
-    //    storage.insert::<_, Contract>(&contract_id, Default::default());
+    let _ = storage.insert(
+        &contract_id,
+        &Contract::from(vec![
+            240, 0, 0, 0, // NOOP
+            52, 64, 0, 0, // RET(16)
+        ]),
+    );
+
     let mut interpreter = Interpreter::with_storage(storage);
     interpreter.transact(tx).unwrap();
 }
