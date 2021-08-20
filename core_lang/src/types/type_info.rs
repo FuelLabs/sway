@@ -123,37 +123,37 @@ fn parse_str_type<'sc>(raw: &'sc str, span: pest::Span<'sc>) -> CompileResult<'s
 
 #[test]
 fn test_str_parse() {
-    match parse_str_type("str[20]", pest::Span::new("", 0, 0).unwrap()) {
-        CompileResult::Ok { value, .. } if value == TypeInfo::Str(20) => (),
+    match parse_str_type("str[20]", pest::Span::new("", 0, 0).unwrap()).value {
+        Some(value) if value == TypeInfo::Str(20) => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("str[]", pest::Span::new("", 0, 0).unwrap()) {
-        CompileResult::Err { .. } => (),
+    match parse_str_type("str[]", pest::Span::new("", 0, 0).unwrap()).value {
+        None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("str[ab]", pest::Span::new("", 0, 0).unwrap()) {
-        CompileResult::Err { .. } => (),
+    match parse_str_type("str[ab]", pest::Span::new("", 0, 0).unwrap()).value {
+        None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("str [ab]", pest::Span::new("", 0, 0).unwrap()) {
-        CompileResult::Err { .. } => (),
+    match parse_str_type("str [ab]", pest::Span::new("", 0, 0).unwrap()).value {
+        None => (),
         _ => panic!("failed test"),
     }
 
-    match parse_str_type("not even a str[ type", pest::Span::new("", 0, 0).unwrap()) {
-        CompileResult::Err { .. } => (),
+    match parse_str_type("not even a str[ type", pest::Span::new("", 0, 0).unwrap()).value {
+        None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("", pest::Span::new("", 0, 0).unwrap()) {
-        CompileResult::Err { .. } => (),
+    match parse_str_type("", pest::Span::new("", 0, 0).unwrap()).value {
+        None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("20", pest::Span::new("", 0, 0).unwrap()) {
-        CompileResult::Err { .. } => (),
+    match parse_str_type("20", pest::Span::new("", 0, 0).unwrap()).value {
+        None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("[20]", pest::Span::new("", 0, 0).unwrap()) {
-        CompileResult::Err { .. } => (),
+    match parse_str_type("[20]", pest::Span::new("", 0, 0).unwrap()).value {
+        None => (),
         _ => panic!("failed test"),
     }
 }

@@ -322,15 +322,12 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 )
                 .collect::<Vec<CompileResult<String>>>();
             let mut buf = vec![];
-            for name in names {
-                match name {
-                    CompileResult::Ok { value, .. } => buf.push(value),
-                    CompileResult::Err {
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
+            for mut name in names {
+                match name.value {
+                    Some(value) => buf.push(value),
+                    None => {
+                        warnings.append(&mut name.warnings);
+                        errors.append(&mut name.errors);
                     }
                 }
             }
@@ -366,8 +363,8 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name() {
-        CompileResult::Ok { value, .. } => value,
+    let selector_text = match decl.to_selector_name().value {
+        Some(value) => value,
         _ => panic!("test failure"),
     };
 
@@ -412,8 +409,8 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name() {
-        CompileResult::Ok { value, .. } => value,
+    let selector_text = match decl.to_selector_name().value {
+        Some(value) => value,
         _ => panic!("test failure"),
     };
 

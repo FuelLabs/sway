@@ -126,7 +126,7 @@ impl<'sc> TypedExpression<'sc> {
                         //
                         let mut typed_call_arguments = Vec::new();
                         for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
-                            let res = TypedExpression::type_check(
+                            let mut res = TypedExpression::type_check(
                                 arg.clone(),
                                 namespace,
                                 Some(param.r#type.clone()),
@@ -137,26 +137,12 @@ impl<'sc> TypedExpression<'sc> {
                                 build_config,
                                 dead_code_graph,
                             );
-                            let arg = match res {
-                                CompileResult::Ok {
-                                    value,
-                                    warnings: mut l_w,
-                                    errors: mut l_e,
-                                } => {
-                                    warnings.append(&mut l_w);
-                                    errors.append(&mut l_e);
-                                    value
-                                }
-                                CompileResult::Err {
-                                    warnings: mut l_w,
-                                    errors: mut l_e,
-                                } => {
-                                    warnings.append(&mut l_w);
-                                    errors.append(&mut l_e);
-                                    error_recovery_expr(arg.span())
-                                }
-                            };
-                            typed_call_arguments.push((param.name.clone(), arg));
+                            warnings.append(&mut res.warnings);
+                            errors.append(&mut res.errors);
+                            typed_call_arguments.push((
+                                param.name.clone(),
+                                res.value.unwrap_or_else(|| error_recovery_expr(arg.span())),
+                            ));
                         }
 
                         TypedExpression {

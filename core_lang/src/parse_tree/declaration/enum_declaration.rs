@@ -80,27 +80,11 @@ impl<'sc> EnumDeclaration<'sc> {
             }
         }
 
-        let type_parameters =
-            match TypeParameter::parse_from_type_params_and_where_clause(type_params, where_clause)
-            {
-                CompileResult::Ok {
-                    value,
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    value
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    Vec::new()
-                }
-            };
+        let mut parsed_type_parameters =
+            TypeParameter::parse_from_type_params_and_where_clause(type_params, where_clause);
+        warnings.append(&mut parsed_type_parameters.warnings);
+        errors.append(&mut parsed_type_parameters.errors);
+        let type_parameters = parsed_type_parameters.value.unwrap_or_else(|| Vec::new());
 
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();

@@ -41,7 +41,7 @@ impl<'sc> TypedCodeBlock<'sc> {
             })
             .unwrap_or(None);
         for node in &other.contents {
-            match TypedAstNode::type_check(
+            let mut type_checked_node = TypedAstNode::type_check(
                 node.clone(),
                 &mut local_namespace,
                 type_annotation.clone(),
@@ -49,24 +49,12 @@ impl<'sc> TypedCodeBlock<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-            ) {
-                CompileResult::Ok {
-                    value,
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    evaluated_contents.push(value);
-                }
-                CompileResult::Err {
-                    errors: mut l_e,
-                    warnings: mut l_w,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                }
-            };
+            );
+            warnings.append(&mut type_checked_node.warnings);
+            errors.append(&mut type_checked_node.errors);
+            if let Some(value) = type_checked_node.value {
+                evaluated_contents.push(value);
+            }
         }
 
         // find the implicit return, if any, and use it as the code block's return type.

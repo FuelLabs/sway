@@ -91,28 +91,14 @@ impl<'sc> TraitDeclaration<'sc> {
                 }
             }
         }
-        let type_parameters = match crate::parse_tree::declaration::TypeParameter::parse_from_type_params_and_where_clause(
-            type_params_pair,
-            where_clause_pair,
-        ) {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                Vec::new()
-            }
-        };
+        let mut parsed_type_parameters =
+            crate::parse_tree::declaration::TypeParameter::parse_from_type_params_and_where_clause(
+                type_params_pair,
+                where_clause_pair,
+            );
+        warnings.append(&mut parsed_type_parameters.warnings);
+        errors.append(&mut parsed_type_parameters.errors);
+        let type_parameters = parsed_type_parameters.value.unwrap_or_else(|| Vec::new());
         ok(
             TraitDeclaration {
                 type_parameters,

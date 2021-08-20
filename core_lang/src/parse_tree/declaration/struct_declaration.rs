@@ -57,28 +57,13 @@ impl<'sc> StructDeclaration<'sc> {
         }
         let name = name.expect("guaranteed to exist by grammar");
 
-        let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
+        let mut parsed_type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        ) {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                Vec::new()
-            }
-        };
+        );
+        warnings.append(&mut parsed_type_parameters.warnings);
+        errors.append(&mut parsed_type_parameters.errors);
+        let type_parameters = parsed_type_parameters.value.unwrap_or_else(|| Vec::new());
 
         let fields = if let Some(fields) = fields_pair {
             eval!(

@@ -105,21 +105,15 @@ impl<'sc> TypedParseTree<'sc> {
             // If we hit the internal "non-decreasing error nodes" error, this helps
             // show what went wrong right beforehand.
             let mut errors_from_this_pass = vec![];
-            for (node, res) in nodes.clone() {
-                match res {
-                    CompileResult::Ok { ref errors, .. } if errors.is_empty() => {
-                        successful_nodes.push(res)
-                    }
-                    CompileResult::Err {
-                        errors: mut l_e, ..
-                    } => {
-                        errors_from_this_pass.append(&mut l_e);
-                        next_pass_nodes.push_front(node);
-                    }
-                    CompileResult::Ok {
-                        errors: mut l_e, ..
-                    } => {
-                        errors_from_this_pass.append(&mut l_e);
+            for (node, mut res) in nodes.clone() {
+                if res.value.is_none() {
+                    errors_from_this_pass.append(&mut res.errors);
+                    next_pass_nodes.push_front(node);
+                } else {
+                    if res.errors.is_empty() {
+                        successful_nodes.push(res);
+                    } else {
+                        errors_from_this_pass.append(&mut res.errors);
                         next_pass_nodes.push_front(node);
                     }
                 }
@@ -127,24 +121,9 @@ impl<'sc> TypedParseTree<'sc> {
             // If we did not solve any issues, i.e. the same number of nodes failed,
             // then this is a genuine error and so we break.
             if next_pass_nodes.len() == num_failed_nodes && !is_first_pass {
-                for (_, failed_node_res) in nodes {
-                    match failed_node_res {
-                        CompileResult::Ok {
-                            errors: mut l_e,
-                            warnings: mut l_w,
-                            ..
-                        } => {
-                            errors.append(&mut l_e);
-                            warnings.append(&mut l_w);
-                        }
-                        CompileResult::Err {
-                            errors: mut l_e,
-                            warnings: mut l_w,
-                        } => {
-                            errors.append(&mut l_e);
-                            warnings.append(&mut l_w);
-                        }
-                    }
+                for (_, mut failed_node_res) in nodes {
+                    warnings.append(&mut failed_node_res.warnings);
+                    errors.append(&mut failed_node_res.errors);
                 }
                 break;
             }
@@ -158,24 +137,11 @@ impl<'sc> TypedParseTree<'sc> {
         }
 
         let mut typed_tree_nodes = Vec::new();
-        for res in successful_nodes {
-            match res {
-                CompileResult::Ok {
-                    value: node,
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    errors.append(&mut l_e);
-                    warnings.append(&mut l_w);
-                    typed_tree_nodes.push(node);
-                }
-                CompileResult::Err {
-                    errors: mut l_e,
-                    warnings: mut l_w,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                }
+        for mut res in successful_nodes {
+            warnings.append(&mut res.warnings);
+            errors.append(&mut res.errors);
+            if let Some(node) = res.value {
+                typed_tree_nodes.push(node);
             }
         }
         // perform validation based on the tree type

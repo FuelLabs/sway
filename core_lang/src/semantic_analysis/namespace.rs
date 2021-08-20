@@ -399,29 +399,16 @@ impl<'sc> Namespace<'sc> {
             warnings,
             errors
         );
-        let (mut fields, struct_name) =
-            match self.get_struct_type_fields(&symbol, first_ident.primary_name, &first_ident.span)
-            {
-                CompileResult::Ok {
-                    value,
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    errors.append(&mut l_e);
-                    warnings.append(&mut l_w);
-                    value
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    errors.append(&mut l_e);
-                    warnings.append(&mut l_w);
-                    // if it is missing, the error message comes from within the above method
-                    // so we don't need to re-add it here
-                    return err(warnings, errors);
-                }
-            };
+        let mut type_fields =
+            self.get_struct_type_fields(&symbol, first_ident.primary_name, &first_ident.span);
+        warnings.append(&mut type_fields.warnings);
+        errors.append(&mut type_fields.errors);
+        let (mut fields, struct_name) = match type_fields.value {
+            // if it is missing, the error message comes from within the above method
+            // so we don't need to re-add it here
+            None => return err(warnings, errors),
+            Some(value) => value,
+        };
 
         let mut parent_rover = symbol.clone();
 
