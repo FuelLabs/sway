@@ -462,7 +462,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
     // for each syntax tree, generate assembly.
     let predicate_asm = (|| {
         if let Some(tree) = predicate_ast {
-            Some(type_check!(
+            Some(check!(
                 compile_ast_to_asm(tree),
                 return None,
                 warnings,
@@ -475,7 +475,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
 
     let contract_asm = (|| {
         if let Some(tree) = contract_ast {
-            Some(type_check!(
+            Some(check!(
                 compile_ast_to_asm(tree),
                 return None,
                 warnings,
@@ -488,7 +488,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
 
     let script_asm = (|| {
         if let Some(tree) = script_ast {
-            Some(type_check!(
+            Some(check!(
                 compile_ast_to_asm(tree),
                 return None,
                 warnings,

@@ -619,7 +619,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
             // start generating from the main function
             let return_register = register_sequencer.next();
-            let mut body = type_check!(
+            let mut body = check!(
                 convert_code_block_to_asm(
                     &main_function.body,
                     &mut namespace,
@@ -647,7 +647,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
             // start generating from the main function
-            let mut body = type_check!(
+            let mut body = check!(
                 convert_code_block_to_asm(
                     &main_function.body,
                     &mut namespace,
@@ -668,7 +668,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
         TypedParseTree::Contract { abi_entries, .. } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
-            let (selectors_and_labels, mut contract_asm) = type_check!(
+            let (selectors_and_labels, mut contract_asm) = check!(
                 compile_contract_to_selectors(abi_entries, &mut namespace, &mut register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -874,7 +874,7 @@ fn convert_node_to_asm<'sc>(
     let mut errors = vec![];
     match &node.content {
         TypedAstNodeContent::WhileLoop(r#loop) => {
-            let res = type_check!(
+            let res = check!(
                 convert_while_loop_to_asm(r#loop, namespace, register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -883,7 +883,7 @@ fn convert_node_to_asm<'sc>(
             ok(NodeAsmResult::JustAsm(res), warnings, errors)
         }
         TypedAstNodeContent::Declaration(typed_decl) => {
-            let res = type_check!(
+            let res = check!(
                 convert_decl_to_asm(typed_decl, namespace, register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -899,7 +899,7 @@ fn convert_node_to_asm<'sc>(
             } else {
                 register_sequencer.next()
             };
-            let ops = type_check!(
+            let ops = check!(
                 convert_expression_to_asm(exp, namespace, &return_register, register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -919,7 +919,7 @@ fn convert_node_to_asm<'sc>(
             } else {
                 register_sequencer.next()
             };
-            let ops = type_check!(
+            let ops = check!(
                 convert_expression_to_asm(
                     &exp.expr,
                     namespace,
@@ -942,7 +942,7 @@ fn convert_node_to_asm<'sc>(
             } else {
                 register_sequencer.next()
             };
-            let asm = type_check!(
+            let asm = check!(
                 convert_expression_to_asm(
                     typed_expr,
                     namespace,
@@ -1121,7 +1121,7 @@ fn compile_contract_to_selectors<'sc>(
         let argument_name = decl.parameters[0].name.clone();
         // the function selector is the first four bytes of the hashed declaration/params according
         // to https://github.com/FuelLabs/sway/issues/96
-        let selector = type_check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
+        let selector = check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
         let fn_label = register_sequencer.get_label();
         asm_buf.push(Op::jump_label(fn_label.clone(), decl.span.clone()));
         // load the call frame argument into the function argument register
@@ -1137,7 +1137,7 @@ fn compile_contract_to_selectors<'sc>(
             owning_span: None,
         });
 
-        asm_buf.append(&mut type_check!(
+        asm_buf.append(&mut check!(
             convert_abi_fn_to_asm(
                 &decl,
                 (&argument_name, &argument_register),

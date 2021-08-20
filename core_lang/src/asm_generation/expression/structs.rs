@@ -164,7 +164,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         .iter()
         .map(|TypedStructExpressionField { name, value }| (value.return_type.clone(), name))
         .collect::<Vec<_>>();
-    let descriptor = type_check!(
+    let descriptor = check!(
         get_struct_memory_layout(&fields_for_layout[..]),
         return err(warnings, errors),
         warnings,
@@ -227,7 +227,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
                 continue;
             }
         };
-        let mut field_instantiation = type_check!(
+        let mut field_instantiation = check!(
             convert_expression_to_asm(value, namespace, &return_register, register_sequencer),
             vec![],
             warnings,

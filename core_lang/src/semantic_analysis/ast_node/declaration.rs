@@ -280,7 +280,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
-        let data = type_check!(
+        let data = check!(
             self.to_selector_name(),
             return err(warnings, errors),
             warnings,
@@ -296,7 +296,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
-        let hash = type_check!(
+        let hash = check!(
             self.to_fn_selector_value_untruncated(),
             return err(warnings, errors),
             warnings,
@@ -517,7 +517,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) = type_check!(
+        let (body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,
