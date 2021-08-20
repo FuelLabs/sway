@@ -2,11 +2,11 @@ use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDe
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::Namespace;
-use crate::ParseTree;
 use crate::{
     error::*,
     types::{MaybeResolvedType, ResolvedType},
 };
+use crate::{AstNode, ParseTree};
 use std::collections::VecDeque;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -56,6 +56,7 @@ impl<'sc> TypedParseTree<'sc> {
             Predicate { all_nodes, .. } => all_nodes,
         }
     }
+
     pub(crate) fn namespace(&self) -> &Namespace<'sc> {
         use TypedParseTree::*;
         match self {
@@ -65,6 +66,7 @@ impl<'sc> TypedParseTree<'sc> {
             Predicate { namespace, .. } => namespace,
         }
     }
+
     pub(crate) fn type_check(
         parsed: ParseTree<'sc>,
         initial_namespace: Namespace<'sc>,
@@ -73,12 +75,46 @@ impl<'sc> TypedParseTree<'sc> {
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Self> {
         let mut initial_namespace = initial_namespace.clone();
-        let mut successful_nodes = vec![];
-        let mut next_pass_nodes: VecDeque<_> = parsed.root_nodes.into_iter().collect();
-        let mut num_failed_nodes = next_pass_nodes.len();
+
         let mut warnings = Vec::new();
-        let mut is_first_pass = true;
         let mut errors = Vec::new();
+
+        let typed_nodes = check!(
+            TypedParseTree::get_typed_nodes(
+                parsed.root_nodes,
+                &mut initial_namespace,
+                build_config,
+                dead_code_graph
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        TypedParseTree::validate_typed_nodes(
+            parsed.span,
+            initial_namespace,
+            tree_type,
+            warnings,
+            errors,
+            typed_nodes,
+        )
+    }
+
+    fn get_typed_nodes(
+        root_nodes: Vec<AstNode<'sc>>,
+        initial_namespace: &mut Namespace<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+    ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
+        let mut successful_nodes = vec![];
+        let mut next_pass_nodes: VecDeque<_> = root_nodes.into_iter().collect();
+        let mut num_failed_nodes = next_pass_nodes.len();
+
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+
+        let mut is_first_pass = true;
         while num_failed_nodes > 0 {
             let nodes = next_pass_nodes
                 .clone()
@@ -88,7 +124,7 @@ impl<'sc> TypedParseTree<'sc> {
                         node.clone(),
                         TypedAstNode::type_check(
                             node,
-                            &mut initial_namespace,
+                            initial_namespace,
                             None,
                             "",
                             // TODO only allow impl traits on contract trees, do something else
@@ -136,164 +172,109 @@ impl<'sc> TypedParseTree<'sc> {
             num_failed_nodes = next_pass_nodes.len();
         }
 
-        let typed_tree_nodes = successful_nodes
-            .into_iter()
-            .filter_map(|res| res.ok(&mut warnings, &mut errors))
-            .collect::<Vec<TypedAstNode<'sc>>>();
+        // gather nodes, warnings and errors together
+        ok(
+            successful_nodes
+                .into_iter()
+                .filter_map(|res| res.ok(&mut warnings, &mut errors))
+                .collect::<Vec<TypedAstNode<'sc>>>(),
+            warnings,
+            errors,
+        )
+    }
 
-        // perform validation based on the tree type
-        match tree_type {
+    fn validate_typed_nodes(
+        span: pest::Span<'sc>,
+        namespace: Namespace<'sc>,
+        tree_type: TreeType,
+        warnings: Vec<CompileWarning<'sc>>,
+        mut errors: Vec<CompileError<'sc>>,
+        typed_tree_nodes: Vec<TypedAstNode<'sc>>,
+    ) -> CompileResult<'sc, Self> {
+        // Keep a copy of the nodes as they are.
+        let all_nodes = typed_tree_nodes.clone();
+
+        // Extract other interesting properties from the list.
+        let mut mains = Vec::new();
+        let mut declarations = Vec::new();
+        let mut abi_entries = Vec::new();
+        for node in typed_tree_nodes {
+            match node.content {
+                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
+                    if func.name.primary_name == "main" =>
+                {
+                    mains.push(func)
+                }
+                // ABI entries are all functions declared in impl_traits on the contract type
+                // itself.
+                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+                    methods,
+                    type_implementing_for: MaybeResolvedType::Resolved(ResolvedType::Contract),
+                    ..
+                }) => abi_entries.append(&mut methods.clone()),
+                // XXX we're excluding the above ABI methods, is that OK?
+                TypedAstNodeContent::Declaration(decl) => declarations.push(decl),
+                _ => (),
+            };
+        }
+
+        // Perform validation based on the tree type.
+        let typed_parse_tree = match tree_type {
             TreeType::Predicate => {
-                // a predicate must have a main function and that function must return a boolean
-                let all_nodes = typed_tree_nodes.clone();
-                let main_func_vec = typed_tree_nodes
-                    .iter()
-                    .filter_map(|TypedAstNode { content, .. }| match content {
-                        TypedAstNodeContent::Declaration(
-                            TypedDeclaration::FunctionDeclaration(func),
-                        ) => {
-                            if func.name.primary_name == "main" {
-                                Some(func)
-                            } else {
-                                None
-                            }
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-
-                if main_func_vec.len() > 1 {
-                    errors.push(CompileError::MultiplePredicateMainFunctions(
-                        main_func_vec.last().unwrap().span.clone(),
-                    ));
-                } else if main_func_vec.is_empty() {
-                    errors.push(CompileError::NoPredicateMainFunction(parsed.span));
+                // A predicate must have a main function and that function must return a boolean.
+                if mains.is_empty() {
+                    errors.push(CompileError::NoPredicateMainFunction(span));
                     return err(warnings, errors);
                 }
-                let main_func = main_func_vec[0];
+                if mains.len() > 1 {
+                    errors.push(CompileError::MultiplePredicateMainFunctions(
+                        mains.last().unwrap().span.clone(),
+                    ));
+                }
+                let main_func = &mains[0];
                 match main_func.return_type {
                     MaybeResolvedType::Resolved(ResolvedType::Boolean) => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
                     )),
                 }
-                ok(
-                    TypedParseTree::Predicate {
-                        main_function: main_func.clone(),
-                        all_nodes,
-                        namespace: initial_namespace,
-                        declarations: typed_tree_nodes
-                            .into_iter()
-                            .filter_map(|TypedAstNode { content, .. }| match content {
-                                TypedAstNodeContent::Declaration(a) => Some(a),
-                                _ => None,
-                            })
-                            .collect(),
-                    },
-                    warnings,
-                    errors,
-                )
+                TypedParseTree::Predicate {
+                    main_function: main_func.clone(),
+                    all_nodes,
+                    namespace,
+                    declarations,
+                }
             }
             TreeType::Script => {
-                // a script must have exactly one main function
-                let all_nodes = typed_tree_nodes.clone();
-                let main_func_vec = typed_tree_nodes
-                    .iter()
-                    .filter_map(|TypedAstNode { content, .. }| match content {
-                        TypedAstNodeContent::Declaration(
-                            TypedDeclaration::FunctionDeclaration(func),
-                        ) => {
-                            if func.name.primary_name == "main" {
-                                Some(func)
-                            } else {
-                                None
-                            }
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
-
-                if main_func_vec.len() > 1 {
-                    errors.push(CompileError::MultipleScriptMainFunctions(
-                        main_func_vec.last().unwrap().span.clone(),
-                    ));
-                } else if main_func_vec.is_empty() {
-                    errors.push(CompileError::NoScriptMainFunction(parsed.span));
+                // A script must have exactly one main function.
+                if mains.is_empty() {
+                    errors.push(CompileError::NoScriptMainFunction(span));
                     return err(warnings, errors);
                 }
-
-                let main_func = main_func_vec[0];
-
-                ok(
-                    TypedParseTree::Script {
-                        main_function: main_func.clone(),
-                        namespace: initial_namespace,
-                        all_nodes,
-                        declarations: typed_tree_nodes
-                            .into_iter()
-                            .filter_map(|TypedAstNode { content, .. }| match content {
-                                TypedAstNodeContent::Declaration(a) => Some(a),
-                                _ => None,
-                            })
-                            .collect(),
-                    },
-                    warnings,
-                    errors,
-                )
-            }
-            TreeType::Library => ok(
-                TypedParseTree::Library {
-                    all_nodes: typed_tree_nodes,
-                    namespace: initial_namespace,
-                },
-                warnings,
-                errors,
-            ),
-            TreeType::Contract => {
-                // abi entries are all functions declared in impl_traits
-                // on the contract type itself
-                let mut abi_entries = vec![];
-                let mut declarations = vec![];
-                let all_nodes = typed_tree_nodes.clone();
-                for node in typed_tree_nodes {
-                    match node {
-                        TypedAstNode {
-                            content:
-                                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
-                                    methods,
-                                    type_implementing_for:
-                                        MaybeResolvedType::Resolved(ResolvedType::Contract),
-                                    ..
-                                }),
-                            ..
-                        } => abi_entries.append(&mut methods.clone()),
-                        TypedAstNode {
-                            content: TypedAstNodeContent::Declaration(a),
-                            ..
-                        } => declarations.push(a),
-                        _ => (),
-                    }
+                if mains.len() > 1 {
+                    errors.push(CompileError::MultipleScriptMainFunctions(
+                        mains.last().unwrap().span.clone(),
+                    ));
                 }
-                ok(
-                    TypedParseTree::Contract {
-                        abi_entries,
-                        namespace: initial_namespace,
-                        declarations,
-                        all_nodes,
-                    },
-                    warnings,
-                    errors,
-                )
+                TypedParseTree::Script {
+                    main_function: mains[0].clone(),
+                    all_nodes,
+                    namespace,
+                    declarations: declarations,
+                }
             }
-        }
-        /*
-        ok(
-            TypedParseTree {
-                root_nodes: typed_tree_nodes,
-                namespace: initial_namespace,
+            TreeType::Library => TypedParseTree::Library {
+                all_nodes,
+                namespace,
             },
-            warnings,
-            errors,
-        )*/
+            TreeType::Contract => TypedParseTree::Contract {
+                abi_entries,
+                namespace,
+                declarations,
+                all_nodes,
+            },
+        };
+
+        ok(typed_parse_tree, warnings, errors)
     }
 }
