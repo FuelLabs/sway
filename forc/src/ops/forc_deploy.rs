@@ -1,5 +1,5 @@
 use core_lang::parse;
-use fuel_tx::{crypto::hash, ContractId, Output, Salt, Transaction};
+use fuel_tx::{crypto, ContractId, Output, Salt, Transaction};
 use tx_client::client::TxClient;
 
 use crate::cli::{BuildCommand, DeployCommand};
@@ -89,7 +89,7 @@ fn create_contract_tx(compiled_contract: Vec<u8>) -> Transaction {
     let static_contracts = vec![];
     let inputs = vec![];
 
-    let zero_hash = hash("0".as_bytes());
+    let zero_hash = crypto::Hasher::hash("0".as_bytes());
 
     let outputs = vec![Output::ContractCreated {
         contract_id: ContractId::new(zero_hash.into()),

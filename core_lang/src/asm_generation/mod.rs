@@ -310,7 +310,7 @@ impl RegisterPool {
         }
 
         // scan to see if any of the old ones are no longer in use
-        for RegisterAllocationStatus { in_use, reg } in
+        for RegisterAllocationStatus { in_use, .. } in
             self.registers.iter_mut().filter(|r| r.in_use.is_some())
         {
             if virtual_register_is_never_accessed_again(
