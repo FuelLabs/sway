@@ -60,6 +60,15 @@ impl Color for PrimaryColor {
       }
     }
   }
+
+  fn rgb_match(self) -> Rgb {
+    match self {
+      PrimaryColor::Red => Rgb { red: 255, blue: 0, green: 0 },
+      PrimaryColor::Blue => Rgb { red: 0, blue: 255, green: 0 },
+      PrimaryColor::Green => Rgb { red: 0, blue: 0, green: 255 },
+      _ => Rgb { red: 0, blue: 0, green: 0 }
+    }
+  }
 }
 
 fn main() {
@@ -71,7 +80,7 @@ fn main() {
   let second_color = PrimaryColor::Blue;
   let second_rgb = second_color.rgb();
   let second_color = PrimaryColor::Blue;
-  let second_rgb = second_color.rgb();
+  let second_rgb = second_color.rgb_match();
   let second_color = PrimaryColor::Blue;
-  let second_rgb = second_color.rgb();
+  let second_rgb = second_color.rgb_match();
 }
