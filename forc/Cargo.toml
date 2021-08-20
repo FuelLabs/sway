@@ -31,5 +31,5 @@ termcolor = "1.1"
 tokio = {version = "1.8.0", features = ["macros", "rt-multi-thread"]}
 toml = "0.5"
 #tx-client = {git = "ssh://git@github.com/FuelLabs/fuel-core"}
-tx-client = {path = "../../fuel-core/tx-client"}
+tx-client = {path = "../../fuel-core/tx-client", default-features=false}
 whoami = "1.1"
