@@ -320,9 +320,9 @@ impl<'sc> ResolvedType<'sc> {
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
                     for name in names {
-                        match name {
-                            CompileResult::Ok { value, .. } => buf.push(value),
-                            e => return e,
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
                         }
                     }
                     buf
@@ -338,9 +338,9 @@ impl<'sc> ResolvedType<'sc> {
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
                     for name in names {
-                        match name {
-                            CompileResult::Ok { value, .. } => buf.push(value),
-                            e => return e,
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
                         }
                     }
                     buf

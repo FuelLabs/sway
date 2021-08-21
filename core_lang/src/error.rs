@@ -5,27 +5,13 @@ use pest::Span;
 use thiserror::Error;
 
 macro_rules! check {
-    ($fn_expr: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
-        use crate::CompileResult;
-        let res = $fn_expr;
-        match res {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $warnings.append(&mut l_w);
-                $errors.append(&mut l_e);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $warnings.append(&mut l_w);
-                $errors.append(&mut l_e);
-                $err_recov
-            }
+    ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident) => {{
+        let mut res = $fn_expr;
+        $warnings.append(&mut res.warnings);
+        $errors.append(&mut res.errors);
+        match res.value {
+            None => $error_recovery,
+            Some(value) => value,
         }
     }};
 }
@@ -33,27 +19,13 @@ macro_rules! check {
 /// evaluates `$fn` with argument `$arg`, and pushes any warnings to the `$warnings` buffer.
 macro_rules! eval {
     ($fn: expr, $warnings: ident, $errors: ident, $arg: expr, $error_recovery: expr) => {{
-        use crate::CompileResult;
-        let res = match $fn($arg.clone()) {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $warnings.append(&mut l_w);
-                $errors.append(&mut l_e);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $errors.append(&mut l_e);
-                $warnings.append(&mut l_w);
-                $error_recovery
-            }
-        };
-        res
+        let mut res = $fn($arg.clone());
+        $warnings.append(&mut res.warnings);
+        $errors.append(&mut res.errors);
+        match res.value {
+            None => $error_recovery,
+            Some(value) => value,
+        }
     }};
 }
 
@@ -74,7 +46,11 @@ pub(crate) fn err<'sc, T>(
     warnings: Vec<CompileWarning<'sc>>,
     errors: Vec<CompileError<'sc>>,
 ) -> CompileResult<'sc, T> {
-    CompileResult::Err { warnings, errors }
+    CompileResult {
+        value: None,
+        warnings,
+        errors,
+    }
 }
 
 /// Denotes a recovered or non-error state
@@ -83,40 +59,28 @@ pub(crate) fn ok<'sc, T>(
     warnings: Vec<CompileWarning<'sc>>,
     errors: Vec<CompileError<'sc>>,
 ) -> CompileResult<'sc, T> {
-    CompileResult::Ok {
+    CompileResult {
+        value: Some(value),
         warnings,
-        value,
         errors,
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum CompileResult<'sc, T> {
-    Ok {
-        value: T,
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
-    },
-    Err {
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
-    },
+pub struct CompileResult<'sc, T> {
+    pub value: Option<T>,
+    pub warnings: Vec<CompileWarning<'sc>>,
+    pub errors: Vec<CompileError<'sc>>,
 }
 
 impl<'sc, T> CompileResult<'sc, T> {
     pub fn unwrap(&self) -> &T {
-        match self {
-            CompileResult::Ok { value, .. } => value,
-            CompileResult::Err { errors, .. } => {
-                panic!("Unwrapped an err {:?}", errors);
-            }
-        }
+        self.value
+            .as_ref()
+            .unwrap_or_else(|| panic!("Unwrapped an err {:?}", self.errors))
     }
     pub fn ok(&self) -> Option<&T> {
-        match self {
-            CompileResult::Ok { value, .. } => Some(value),
-            _ => None,
-        }
+        self.value.as_ref()
     }
 }
 

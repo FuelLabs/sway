@@ -72,28 +72,13 @@ impl<'sc> ImplTrait<'sc> {
             Some(ref x) => x.as_span(),
             None => trait_name.span(),
         };
-        let type_arguments = match TypeParameter::parse_from_type_params_and_where_clause(
+        let mut parsed_type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        ) {
-            CompileResult::Ok {
-                errors: mut l_e,
-                warnings: mut l_w,
-                value,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                value
-            }
-            CompileResult::Err {
-                errors: mut l_e,
-                warnings: mut l_w,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                Vec::new()
-            }
-        };
+        );
+        warnings.append(&mut parsed_type_arguments.warnings);
+        errors.append(&mut parsed_type_arguments.errors);
+        let type_arguments = parsed_type_arguments.value.unwrap_or_else(|| Vec::new());
 
         let mut fn_decls_buf = vec![];
 
@@ -157,28 +142,13 @@ impl<'sc> ImplSelf<'sc> {
             Some(ref x) => x.as_span(),
             None => type_name_span.clone(),
         };
-        let type_arguments = match TypeParameter::parse_from_type_params_and_where_clause(
+        let mut parsed_type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        ) {
-            CompileResult::Ok {
-                errors: mut l_e,
-                warnings: mut l_w,
-                value,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                value
-            }
-            CompileResult::Err {
-                errors: mut l_e,
-                warnings: mut l_w,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                Vec::new()
-            }
-        };
+        );
+        warnings.append(&mut parsed_type_arguments.warnings);
+        errors.append(&mut parsed_type_arguments.errors);
+        let type_arguments = parsed_type_arguments.value.unwrap_or_else(|| Vec::new());
 
         let mut fn_decls_buf = vec![];
 
