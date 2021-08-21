@@ -9,7 +9,7 @@ abi MyContract {
 }
 
 fn main () {
-  let x = abi(MyContract, 0x1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111);
+  let x = abi(MyContract, 0x781168189b0865cce557e5f53af9357238b55dbed0dccfc016a46505296a41a1);
   // commenting this out for now since contract call asm generation is not yet implemented
   let color = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
   x.foo(5, 0, color, 7);

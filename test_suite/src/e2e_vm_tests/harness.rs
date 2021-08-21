@@ -1,16 +1,17 @@
 use forc;
 use forc::cli::BuildCommand;
-
 use fuel_tx::{ContractId, Input, Output, Transaction};
 use fuel_vm::interpreter::Interpreter;
-use fuel_vm::prelude::{Contract, MemoryStorage, Storage};
+use fuel_vm::prelude::*;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
 pub(crate) fn runs_in_vm(file_name: &str) {
     let contract_id = ContractId::from([
-        17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17,
-        17, 17, 17, 17, 17, 17, 17, 17, 17,
+        120, 17, 104, 24, 155, 8, 101, 204, 229, 87, 229, 245, 58, 249, 53, 114, 56, 181, 93, 190,
+        208, 220, 207, 192, 22, 164, 101, 5, 41, 106, 65, 161,
     ]);
     let input_contract = Input::Contract {
         utxo_id: Default::default(),
@@ -32,7 +33,7 @@ pub(crate) fn runs_in_vm(file_name: &str) {
     let inputs = vec![input_contract];
     let outputs = vec![output_contract];
     let witness = vec![];
-    let tx = Transaction::script(
+    let tx_to_test = Transaction::script(
         gas_price,
         gas_limit,
         maturity,
@@ -43,18 +44,40 @@ pub(crate) fn runs_in_vm(file_name: &str) {
         witness,
     );
     let block_height = (u32::MAX >> 1) as u64;
-    tx.validate(block_height).unwrap();
+    tx_to_test.validate(block_height).unwrap();
     let mut storage = MemoryStorage::default();
-    let _ = storage.insert(
-        &contract_id,
-        &Contract::from(vec![
-            240, 0, 0, 0, // NOOP
-            52, 64, 0, 0, // RET(16)
-        ]),
+    let program = vec![Opcode::NOOP, Opcode::RET(16)];
+
+    let program: Witness = program.into_iter().collect::<Vec<u8>>().into();
+
+    let contract = Contract::from(program.as_ref());
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let salt: Salt = rng.gen();
+
+    let contract_root = contract.root();
+    let contract_id = contract.id(&salt, &contract_root);
+
+    let output = Output::contract_created(contract_id);
+
+    let bytecode_witness = 0;
+    let tx = Transaction::create(
+        gas_price,
+        gas_limit,
+        maturity,
+        bytecode_witness,
+        salt,
+        vec![],
+        vec![],
+        vec![output],
+        vec![program],
     );
 
+    // Deploy the contract into the blockchain
+    Interpreter::transition(&mut storage, tx).expect("Failed to transact");
     let mut interpreter = Interpreter::with_storage(storage);
-    interpreter.transact(tx).unwrap();
+    // evaluate the test case
+    interpreter.transact(tx_to_test).unwrap();
 }
 
 /// Returns `true` if a file compiled without any errors or warnings,
