@@ -2,7 +2,7 @@ mod harness;
 
 pub fn run() {
     let project_names = vec![
-        "script_1", "script_2", "script_3", "script_4", "script_5", "script_6", "script_7",
+        //"script_1", "script_2", "script_3", "script_4", "script_5", "script_6", "script_7",
         "script_8",
     ];
     project_names.into_iter().for_each(|name| {

@@ -1138,7 +1138,7 @@ dependencies = [
  "derivative",
  "either",
  "fuel-asm",
- "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git)",
+ "fuel-vm",
  "hex",
  "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
  "pest_derive",
@@ -1585,7 +1585,7 @@ dependencies = [
  "formatter",
  "fuel-asm",
  "fuel-tx",
- "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git)",
+ "fuel-vm",
  "hex",
  "line-col",
  "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
@@ -1678,7 +1678,7 @@ dependencies = [
  "bincode",
  "dirs 3.0.2",
  "env_logger",
- "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git)",
+ "fuel-vm",
  "futures",
  "hex",
  "itertools",
@@ -1707,18 +1707,6 @@ dependencies = [
  "rand 0.8.4",
  "serde",
  "sha2",
-]
-
-[[package]]
-name = "fuel-vm"
-version = "0.1.0"
-dependencies = [
- "fuel-asm",
- "fuel-tx",
- "itertools",
- "secp256k1",
- "sha3",
- "tracing",
 ]
 
 [[package]]
@@ -4009,8 +3997,7 @@ dependencies = [
  "forc",
  "fuel-asm",
  "fuel-tx",
- "fuel-vm 0.1.0",
- "hex",
+ "fuel-vm",
  "rand 0.8.4",
 ]
 
@@ -4368,7 +4355,7 @@ dependencies = [
  "async-graphql",
  "cynic",
  "fuel-core",
- "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git)",
+ "fuel-vm",
  "serde",
  "serde_json",
  "surf",
