@@ -124,26 +124,28 @@ impl<'sc> TypedExpression<'sc> {
                         // declaration. Use parameter type annotations as annotations for the
                         // arguments
                         //
-                        let mut typed_call_arguments = Vec::new();
-                        for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
-                            let mut res = TypedExpression::type_check(
-                                arg.clone(),
-                                namespace,
-                                Some(param.r#type.clone()),
-                                "The argument that has been provided to this function's type does \
-                                 not match the declared type of the parameter in the function \
-                                 declaration.",
-                                self_type,
-                                build_config,
-                                dead_code_graph,
-                            );
-                            warnings.append(&mut res.warnings);
-                            errors.append(&mut res.errors);
-                            typed_call_arguments.push((
-                                param.name.clone(),
-                                res.value.unwrap_or_else(|| error_recovery_expr(arg.span())),
-                            ));
-                        }
+                        let typed_call_arguments = arguments
+                            .into_iter()
+                            .zip(parameters.iter())
+                            .map(|(arg, param)| {
+                                (param.name.clone(), TypedExpression::type_check(
+                                    arg.clone(),
+                                    namespace,
+                                    Some(param.r#type.clone()),
+                                    "The argument that has been provided to this function's type does \
+                                    not match the declared type of the parameter in the function \
+                                    declaration.",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph,
+                                )
+                                .unwrap_or_else(
+                                    &mut warnings,
+                                    &mut errors,
+                                    || error_recovery_expr(arg.span()),
+                                ))
+                            })
+                            .collect();
 
                         TypedExpression {
                             return_type: return_type.clone(),
@@ -781,17 +783,18 @@ impl<'sc> TypedExpression<'sc> {
                 // Instead, we try to resolve both paths.
                 // If only one exists, then we use that one. Otherwise, if both exist, it is
                 // an ambiguous reference error.
+                let mut probe_warnings = Vec::new();
+                let mut probe_errors = Vec::new();
                 let module_result = namespace
                     .find_module(&call_path.prefixes, false)
-                    .ok()
-                    .cloned();
+                    .ok(&mut probe_warnings, &mut probe_errors);
                 let enum_module_combined_result = {
                     // also, check if this is an enum _in_ another module.
                     let (module_path, enum_name) =
                         call_path.prefixes.split_at(call_path.prefixes.len() - 1);
                     let enum_name = enum_name[0].clone();
                     let namespace = namespace.find_module(module_path, false);
-                    let namespace = namespace.ok();
+                    let namespace = namespace.ok(&mut warnings, &mut errors);
                     namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
                 };
 

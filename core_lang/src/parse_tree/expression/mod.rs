@@ -184,13 +184,7 @@ impl<'sc> Expression<'sc> {
             let op_str = op.as_str();
             let op_span = op.as_span();
 
-            let mut parsed_op = parse_op(op);
-            warnings.append(&mut parsed_op.warnings);
-            errors.append(&mut parsed_op.errors);
-            let op = match parsed_op.value {
-                None => return err(warnings, errors),
-                Some(value) => value,
-            };
+            let op = check!(parse_op(op), return err(warnings, errors), warnings, errors);
 
             // an op is necessarily followed by an expression
             let next_expr = match expr_iter.next() {
@@ -222,13 +216,10 @@ impl<'sc> Expression<'sc> {
         if expr_or_op_buf.len() == 1 {
             ok(first_expr, warnings, errors)
         } else {
-            let mut arranged_ops =
-                arrange_by_order_of_operations(expr_or_op_buf, expr_for_debug.as_span());
-            warnings.append(&mut arranged_ops.warnings);
-            errors.append(&mut arranged_ops.errors);
-            let expr = arranged_ops.value.unwrap_or_else(|| Expression::Unit {
-                span: expr_for_debug.as_span(),
-            });
+            let expr = arrange_by_order_of_operations(expr_or_op_buf, expr_for_debug.as_span())
+                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit {
+                    span: expr_for_debug.as_span(),
+                });
             ok(expr, warnings, errors)
         }
     }
@@ -238,15 +229,9 @@ impl<'sc> Expression<'sc> {
         let mut warnings = Vec::new();
         let span = expr.as_span();
         let parsed = match expr.as_rule() {
-            Rule::literal_value => {
-                let mut parsed_literal = Literal::parse_from_pair(expr.clone());
-                warnings.append(&mut parsed_literal.warnings);
-                errors.append(&mut parsed_literal.errors);
-                parsed_literal
-                    .value
-                    .map(|(value, span)| Expression::Literal { value, span })
-                    .unwrap_or_else(|| Expression::Unit { span })
-            }
+            Rule::literal_value => Literal::parse_from_pair(expr.clone())
+                .map(|(value, span)| Expression::Literal { value, span })
+                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit { span }),
             Rule::func_app => {
                 let span = expr.as_span();
                 let mut func_app_parts = expr.into_inner();

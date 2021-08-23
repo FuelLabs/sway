@@ -311,28 +311,16 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn to_selector_name(&self) -> CompileResult<'sc, String> {
         let mut errors = vec![];
         let mut warnings = vec![];
-        let named_params = {
-            let names = self
-                .parameters
-                .iter()
-                .map(
-                    |TypedFunctionParameter {
-                         r#type, type_span, ..
-                     }| r#type.to_selector_name(type_span),
-                )
-                .collect::<Vec<CompileResult<String>>>();
-            let mut buf = vec![];
-            for mut name in names {
-                match name.value {
-                    Some(value) => buf.push(value),
-                    None => {
-                        warnings.append(&mut name.warnings);
-                        errors.append(&mut name.errors);
-                    }
-                }
-            }
-            buf
-        };
+        let named_params = self
+            .parameters
+            .iter()
+            .map(
+                |TypedFunctionParameter {
+                     r#type, type_span, ..
+                 }| r#type.to_selector_name(type_span),
+            )
+            .filter_map(|name| name.ok(&mut warnings, &mut errors))
+            .collect::<Vec<String>>();
 
         ok(
             format!("{}({})", self.name.primary_name, named_params.join(","),),

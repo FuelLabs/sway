@@ -31,10 +31,10 @@ pub(crate) fn implementation_of_trait<'sc>(
     namespace.insert_trait_methods(&type_arguments[..]);
     let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
     let self_type = type_implementing_for.clone();
-    let mut call_path = namespace.get_call_path(&trait_name);
-    warnings.append(&mut call_path.warnings);
-    errors.append(&mut call_path.errors);
-    match call_path.value {
+    match namespace
+        .get_call_path(&trait_name)
+        .ok(&mut warnings, &mut errors)
+    {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
             let tr = tr.clone();
             if type_arguments.len() != tr.type_parameters.len() {

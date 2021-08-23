@@ -72,13 +72,11 @@ impl<'sc> ImplTrait<'sc> {
             Some(ref x) => x.as_span(),
             None => trait_name.span(),
         };
-        let mut parsed_type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
+        let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        );
-        warnings.append(&mut parsed_type_arguments.warnings);
-        errors.append(&mut parsed_type_arguments.errors);
-        let type_arguments = parsed_type_arguments.value.unwrap_or_else(|| Vec::new());
+        )
+        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let mut fn_decls_buf = vec![];
 
@@ -142,13 +140,11 @@ impl<'sc> ImplSelf<'sc> {
             Some(ref x) => x.as_span(),
             None => type_name_span.clone(),
         };
-        let mut parsed_type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
+        let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        );
-        warnings.append(&mut parsed_type_arguments.warnings);
-        errors.append(&mut parsed_type_arguments.errors);
-        let type_arguments = parsed_type_arguments.value.unwrap_or_else(|| Vec::new());
+        )
+        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let mut fn_decls_buf = vec![];
 
