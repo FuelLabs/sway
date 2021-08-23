@@ -91,14 +91,12 @@ impl<'sc> TraitDeclaration<'sc> {
                 }
             }
         }
-        let mut parsed_type_parameters =
+        let type_parameters =
             crate::parse_tree::declaration::TypeParameter::parse_from_type_params_and_where_clause(
                 type_params_pair,
                 where_clause_pair,
-            );
-        warnings.append(&mut parsed_type_parameters.warnings);
-        errors.append(&mut parsed_type_parameters.errors);
-        let type_parameters = parsed_type_parameters.value.unwrap_or_else(|| Vec::new());
+            )
+            .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
         ok(
             TraitDeclaration {
                 type_parameters,

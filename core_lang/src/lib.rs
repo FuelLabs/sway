@@ -210,16 +210,15 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
             .library_exports
             .into_iter()
             .filter_map(|(name, tree)| {
-                let mut checked_tree = TypedParseTree::type_check(
+                TypedParseTree::type_check(
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
                     &build_config,
                     dead_code_graph,
-                );
-                warnings.append(&mut checked_tree.warnings);
-                errors.append(&mut checked_tree.errors);
-                checked_tree.value.map(|value| (name, value))
+                )
+                .ok(&mut warnings, &mut errors)
+                .map(|value| (name, value))
             })
             .collect();
         let mut exports = LibraryExports {
@@ -280,16 +279,14 @@ pub fn compile_to_asm<'sc, 'manifest>(
 
     let mut type_check_ast = |ast: Option<_>, tree_type| {
         ast.map(|tree| {
-            let mut typed_tree = TypedParseTree::type_check(
+            TypedParseTree::type_check(
                 tree,
                 initial_namespace.clone(),
                 tree_type,
                 &build_config,
                 &mut dead_code_graph,
-            );
-            warnings.append(&mut typed_tree.warnings);
-            errors.append(&mut typed_tree.errors);
-            typed_tree.value
+            )
+            .ok(&mut warnings, &mut errors)
         })
         .flatten()
     };
@@ -303,16 +300,15 @@ pub fn compile_to_asm<'sc, 'manifest>(
             .library_exports
             .into_iter()
             .filter_map(|(name, tree)| {
-                let mut typed_library = TypedParseTree::type_check(
+                TypedParseTree::type_check(
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
                     &build_config,
                     &mut dead_code_graph,
-                );
-                warnings.append(&mut typed_library.warnings);
-                errors.append(&mut typed_library.errors);
-                typed_library.value.map(|value| (name, value))
+                )
+                .ok(&mut warnings, &mut errors)
+                .map(|value| (name, value))
             })
             .collect();
         let mut exports = LibraryExports {
@@ -709,7 +705,9 @@ fn test_basic_prog() {
     "#,
     );
     dbg!(&prog);
-    prog.unwrap();
+    let mut warnings: Vec<CompileWarning> = Vec::new();
+    let mut errors: Vec<CompileError> = Vec::new();
+    prog.unwrap(&mut warnings, &mut errors);
 }
 #[test]
 fn test_parenthesized() {
@@ -722,5 +720,7 @@ fn test_parenthesized() {
         }
     "#,
     );
-    prog.unwrap();
+    let mut warnings: Vec<CompileWarning> = Vec::new();
+    let mut errors: Vec<CompileError> = Vec::new();
+    prog.unwrap(&mut warnings, &mut errors);
 }

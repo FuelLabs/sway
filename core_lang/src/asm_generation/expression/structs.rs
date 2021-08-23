@@ -88,14 +88,20 @@ fn test_struct_memory_layout() {
         ],
     };
 
+    let mut warnings: Vec<CompileWarning> = Vec::new();
+    let mut errors: Vec<CompileError> = Vec::new();
     assert_eq!(numbers.total_size(), 2u64);
     assert_eq!(
-        numbers.offset_to_field_name(&first_field_name).unwrap(),
-        &0u64
+        numbers
+            .offset_to_field_name(&first_field_name)
+            .unwrap(&mut warnings, &mut errors),
+        0u64
     );
     assert_eq!(
-        numbers.offset_to_field_name(&second_field_name).unwrap(),
-        &1u64
+        numbers
+            .offset_to_field_name(&second_field_name)
+            .unwrap(&mut warnings, &mut errors),
+        1u64
     );
 }
 

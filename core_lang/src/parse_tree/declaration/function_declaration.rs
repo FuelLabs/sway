@@ -120,13 +120,11 @@ impl<'sc> FunctionDeclaration<'sc> {
             ),
             None => TypeInfo::Unit,
         };
-        let mut parsed_type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
+        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        );
-        warnings.append(&mut parsed_type_parameters.warnings);
-        errors.append(&mut parsed_type_parameters.errors);
-        let type_parameters = parsed_type_parameters.value.unwrap_or_else(|| Vec::new());
+        )
+        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         // check that all generic types used in function parameters are a part of the type
         // parameters

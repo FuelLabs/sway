@@ -74,13 +74,39 @@ pub struct CompileResult<'sc, T> {
 }
 
 impl<'sc, T> CompileResult<'sc, T> {
-    pub fn unwrap(&self) -> &T {
+    pub fn ok(
+        mut self,
+        warnings: &mut Vec<CompileWarning<'sc>>,
+        errors: &mut Vec<CompileError<'sc>>,
+    ) -> Option<T> {
+        warnings.append(&mut self.warnings);
+        errors.append(&mut self.errors);
         self.value
-            .as_ref()
-            .unwrap_or_else(|| panic!("Unwrapped an err {:?}", self.errors))
     }
-    pub fn ok(&self) -> Option<&T> {
-        self.value.as_ref()
+
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> CompileResult<'sc, U> {
+        match self.value {
+            None => err(self.warnings, self.errors),
+            Some(value) => ok(f(value), self.warnings, self.errors),
+        }
+    }
+
+    pub fn unwrap(
+        self,
+        warnings: &mut Vec<CompileWarning<'sc>>,
+        errors: &mut Vec<CompileError<'sc>>,
+    ) -> T {
+        let panic_msg = format!("Unwrapped an err {:?}", self.errors);
+        self.unwrap_or_else(warnings, errors, || panic!("{}", panic_msg))
+    }
+
+    pub fn unwrap_or_else<F: FnOnce() -> T>(
+        self,
+        warnings: &mut Vec<CompileWarning<'sc>>,
+        errors: &mut Vec<CompileError<'sc>>,
+        or_else: F,
+    ) -> T {
+        self.ok(warnings, errors).unwrap_or_else(or_else)
     }
 }
 

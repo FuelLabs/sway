@@ -136,14 +136,11 @@ impl<'sc> TypedParseTree<'sc> {
             num_failed_nodes = next_pass_nodes.len();
         }
 
-        let mut typed_tree_nodes = Vec::new();
-        for mut res in successful_nodes {
-            warnings.append(&mut res.warnings);
-            errors.append(&mut res.errors);
-            if let Some(node) = res.value {
-                typed_tree_nodes.push(node);
-            }
-        }
+        let typed_tree_nodes = successful_nodes
+            .into_iter()
+            .filter_map(|res| res.ok(&mut warnings, &mut errors))
+            .collect::<Vec<TypedAstNode<'sc>>>();
+
         // perform validation based on the tree type
         match tree_type {
             TreeType::Predicate => {
