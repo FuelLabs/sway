@@ -956,7 +956,10 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             // The annotation will result in a cast, so set the return type accordingly.
-            typed_expression.return_type = type_annotation
+            match type_annotation {
+                MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType) => {}
+                ty => typed_expression.return_type = ty,
+            };
         }
 
         ok(typed_expression, warnings, errors)
