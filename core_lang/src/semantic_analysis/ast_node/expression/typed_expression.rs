@@ -38,7 +38,9 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = Vec::new();
         let expr_span = other.span();
         let mut typed_expression = match other {
-            Expression::Literal { value: lit, span } => Self::type_check_expression_literal(lit, span),
+            Expression::Literal { value: lit, span } => {
+                Self::type_check_expression_literal(lit, span)
+            }
             Expression::VariableExpression {
                 name,
                 unary_op,
@@ -935,23 +937,24 @@ impl<'sc> TypedExpression<'sc> {
         ok(typed_expression, warnings, errors)
     }
 
-    fn type_check_expression_literal(lit: Literal<'sc>, span: pest::Span<'sc>) -> TypedExpression<'sc> {
+    fn type_check_expression_literal(
+        lit: Literal<'sc>,
+        span: pest::Span<'sc>,
+    ) -> TypedExpression<'sc> {
         let return_type = match lit {
-            Literal::String(s) => {
-                MaybeResolvedType::Resolved(ResolvedType::Str(s.len() as u64))
+            Literal::String(s) => MaybeResolvedType::Resolved(ResolvedType::Str(s.len() as u64)),
+            Literal::U8(_) => {
+                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Eight))
             }
-            Literal::U8(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                IntegerBits::Eight,
-            )),
-            Literal::U16(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                IntegerBits::Sixteen,
-            )),
-            Literal::U32(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                IntegerBits::ThirtyTwo,
-            )),
-            Literal::U64(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                IntegerBits::SixtyFour,
-            )),
+            Literal::U16(_) => {
+                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Sixteen))
+            }
+            Literal::U32(_) => {
+                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo))
+            }
+            Literal::U64(_) => {
+                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::SixtyFour))
+            }
             Literal::Boolean(_) => MaybeResolvedType::Resolved(ResolvedType::Boolean),
             Literal::Byte(_) => MaybeResolvedType::Resolved(ResolvedType::Byte),
             Literal::Byte32(_) => MaybeResolvedType::Resolved(ResolvedType::Byte32),
