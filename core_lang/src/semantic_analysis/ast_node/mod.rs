@@ -129,7 +129,9 @@ impl<'sc> TypedAstNode<'sc> {
                         }) => {
                             let type_ascription = match type_ascription {
                                 Some(ty) => Some(namespace.resolve_type(&ty, self_type)),
-                                None => Some(MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType))
+                                None => Some(MaybeResolvedType::Partial(
+                                    PartiallyResolvedType::NeedsType,
+                                )),
                             };
                             let body = check!(
                                 TypedExpression::type_check(

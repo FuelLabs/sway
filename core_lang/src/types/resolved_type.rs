@@ -46,7 +46,7 @@ pub enum PartiallyResolvedType<'sc> {
     Numeric,
     SelfType,
     Generic { name: Ident<'sc> },
-    NeedsType
+    NeedsType,
 }
 
 impl Default for MaybeResolvedType<'_> {
@@ -176,7 +176,7 @@ impl<'sc> PartiallyResolvedType<'sc> {
             PartiallyResolvedType::Generic { name } => format!("{}", name.primary_name),
             PartiallyResolvedType::Numeric => "numeric".into(),
             PartiallyResolvedType::SelfType => "self".into(),
-            PartiallyResolvedType::NeedsType => "needs_type".into()
+            PartiallyResolvedType::NeedsType => "needs_type".into(),
         }
     }
 }
