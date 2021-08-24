@@ -20,5 +20,9 @@ fn calls_other_contract() {
   let x = abi(MyContract, 0x0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000);
   // commenting this out for now since contract call asm generation is not yet implemented
   let color = 0x0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
-  x.foo(5, 5, color, 5);
+  let input = InputStruct {
+    field_1: true,
+    field_2: 3,
+  };
+  x.foo(5, 5, color, input);
 }

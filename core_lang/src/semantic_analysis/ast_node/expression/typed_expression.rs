@@ -4,7 +4,9 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
-use std::collections::VecDeque;
+
+mod method_application;
+use method_application::type_check_method_application;
 
 #[derive(Clone, Debug)]
 pub struct TypedExpression<'sc> {
@@ -584,258 +586,20 @@ impl<'sc> TypedExpression<'sc> {
                 method_name,
                 arguments,
                 span,
-            } => {
-                match method_name {
-                    // something like a.b(c)
-                    MethodName::FromModule { method_name } => {
-                        let mut args_buf = VecDeque::new();
-                        for arg in arguments {
-                            let sp = arg.span().clone();
-                            args_buf.push_back(type_check!(
-                                TypedExpression::type_check(
-                                    arg,
-                                    namespace,
-                                    None,
-                                    "",
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph
-                                ),
-                                error_recovery_expr(sp),
-                                warnings,
-                                errors
-                            ));
-                        }
-                        let method = match namespace
-                            .find_method_for_type(&args_buf[0].return_type, method_name.clone())
-                        {
-                            Some(o) => o,
-                            None => {
-                                if args_buf[0].return_type
-                                    != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-                                {
-                                    errors.push(CompileError::MethodNotFound {
-                                        method_name: method_name.primary_name,
-                                        type_name: args_buf[0].return_type.friendly_type_str(),
-                                        span: method_name.span.clone(),
-                                    });
-                                }
-                                return err(warnings, errors);
-                            }
-                        };
-
-                        // + 1 for the "self" param
-                        if args_buf.len() > (method.parameters.len() + 1) {
-                            errors.push(CompileError::TooManyArgumentsForFunction {
-                                span: span.clone(),
-                                method_name: method_name.primary_name,
-                                expected: method.parameters.len(),
-                                received: args_buf.len(),
-                            });
-                        }
-
-                        if args_buf.len() < method.parameters.len() {
-                            errors.push(CompileError::TooFewArgumentsForFunction {
-                                span: span.clone(),
-                                method_name: method_name.primary_name,
-                                expected: method.parameters.len(),
-                                received: args_buf.len(),
-                            });
-                        }
-
-                        let contract_caller = if method.is_contract_call {
-                            args_buf.pop_front()
-                        } else {
-                            None
-                        };
-                        let args_and_names = method
-                            .parameters
-                            .iter()
-                            .zip(args_buf.into_iter())
-                            .map(|(param, arg)| (param.name.clone(), arg))
-                            .collect::<Vec<(_, _)>>();
-
-                        TypedExpression {
-                            expression: TypedExpressionVariant::FunctionApplication {
-                                name: CallPath {
-                                    prefixes: vec![],
-                                    suffix: method_name,
-                                },
-                                arguments: args_and_names,
-                                function_body: method.body.clone(),
-                                selector: if method.is_contract_call {
-                                    let contract_address = match contract_caller
-                                        .map(|x| x.return_type)
-                                    {
-                                        Some(MaybeResolvedType::Resolved(
-                                            ResolvedType::ContractCaller { address, .. },
-                                        )) => address,
-                                        _ => {
-                                            errors.push(CompileError::Internal("Attempted to find contract address of non-contract-call.", span.clone()));
-                                            Box::new(error_recovery_expr(span.clone()))
-                                        }
-                                    };
-                                    let func_selector = type_check!(
-                                        method.to_fn_selector_value(),
-                                        [0; 4],
-                                        warnings,
-                                        errors
-                                    );
-                                    Some(ContractCallMetadata {
-                                        func_selector,
-                                        contract_address,
-                                    })
-                                } else {
-                                    None
-                                },
-                            },
-                            return_type: method.return_type,
-                            is_constant: IsConstant::No,
-                            span,
-                        }
-                    }
-                    // something like blah::blah::~Type::foo()
-                    MethodName::FromType {
-                        ref call_path,
-                        ref type_name,
-                        ref is_absolute,
-                    } => {
-                        let mut args_buf = VecDeque::new();
-                        for arg in arguments {
-                            args_buf.push_back(type_check!(
-                                TypedExpression::type_check(
-                                    arg,
-                                    namespace,
-                                    None,
-                                    "",
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph
-                                ),
-                                continue,
-                                warnings,
-                                errors
-                            ));
-                        }
-
-                        let method = if let Some(type_name) = type_name {
-                            let module = type_check!(
-                                namespace.find_module(&call_path.prefixes[..], *is_absolute),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            let type_name = module.resolve_type(&type_name, self_type);
-                            match module.find_method_for_type(&type_name, call_path.suffix.clone())
-                            {
-                                Some(o) => o,
-                                None => {
-                                    if type_name
-                                        != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-                                    {
-                                        errors.push(CompileError::MethodNotFound {
-                                            method_name: call_path.suffix.primary_name.clone(),
-                                            type_name: type_name.friendly_type_str(),
-                                            span: call_path.suffix.span.clone(),
-                                        });
-                                    }
-                                    return err(warnings, errors);
-                                }
-                            }
-                        } else {
-                            // there is a special case for the stdlib where type_name is `None`, handle
-                            // that:
-                            let module = type_check!(
-                                namespace.find_module(&call_path.prefixes[..], *is_absolute),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            let r#type = &args_buf[0].return_type;
-                            match module.find_method_for_type(r#type, call_path.suffix.clone()) {
-                                Some(o) => o,
-                                None => {
-                                    if *r#type
-                                        != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-                                    {
-                                        errors.push(CompileError::MethodNotFound {
-                                            method_name: call_path.suffix.primary_name.clone(),
-                                            type_name: r#type.friendly_type_str(),
-                                            span: call_path.suffix.span.clone(),
-                                        });
-                                    }
-                                    return err(warnings, errors);
-                                }
-                            }
-                        };
-
-                        if args_buf.len() > method.parameters.len() {
-                            errors.push(CompileError::TooManyArgumentsForFunction {
-                                span: span.clone(),
-                                method_name: method_name.easy_name(),
-                                expected: method.parameters.len(),
-                                received: args_buf.len(),
-                            });
-                        }
-
-                        if args_buf.len() < method.parameters.len() {
-                            errors.push(CompileError::TooFewArgumentsForFunction {
-                                span: span.clone(),
-                                method_name: method_name.easy_name(),
-                                expected: method.parameters.len(),
-                                received: args_buf.len(),
-                            });
-                        }
-                        let contract_caller = if method.is_contract_call {
-                            args_buf.pop_front()
-                        } else {
-                            None
-                        };
-
-                        let args_and_names = method
-                            .parameters
-                            .iter()
-                            .zip(args_buf.into_iter())
-                            .map(|(param, arg)| (param.name.clone(), arg))
-                            .collect::<Vec<(_, _)>>();
-                        TypedExpression {
-                            expression: TypedExpressionVariant::FunctionApplication {
-                                name: call_path.clone(),
-                                arguments: args_and_names,
-                                function_body: method.body.clone(),
-                                selector: if method.is_contract_call {
-                                    let contract_address = match contract_caller
-                                        .map(|x| x.return_type)
-                                    {
-                                        Some(MaybeResolvedType::Resolved(
-                                            ResolvedType::ContractCaller { address, .. },
-                                        )) => address,
-                                        _ => {
-                                            errors.push(CompileError::Internal("Attempted to find contract address of non-contract-call.", span.clone()));
-                                            Box::new(error_recovery_expr(span.clone()))
-                                        }
-                                    };
-                                    let func_selector = type_check!(
-                                        method.to_fn_selector_value(),
-                                        [0; 4],
-                                        warnings,
-                                        errors
-                                    );
-                                    Some(ContractCallMetadata {
-                                        func_selector,
-                                        contract_address,
-                                    })
-                                } else {
-                                    None
-                                },
-                            },
-                            return_type: method.return_type,
-                            is_constant: IsConstant::No,
-                            span,
-                        }
-                    }
-                }
-            }
+            } => type_check!(
+                type_check_method_application(
+                    method_name,
+                    arguments,
+                    span.clone(),
+                    namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph
+                ),
+                error_recovery_expr(span),
+                warnings,
+                errors
+            ),
             Expression::Unit { span } => TypedExpression {
                 expression: TypedExpressionVariant::Unit,
                 return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
