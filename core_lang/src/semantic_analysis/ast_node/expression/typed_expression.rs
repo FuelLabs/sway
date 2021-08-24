@@ -34,226 +34,61 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Self> {
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
         let expr_span = other.span();
-        let mut typed_expression = match other {
-            Expression::Literal { value: lit, span } => {
-                Self::type_check_expression_literal(lit, span)
-            }
+        let (mut typed_expression, mut warnings, mut errors) = match other {
+            Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
             Expression::VariableExpression {
                 name,
                 unary_op,
                 span,
                 ..
-            } => match namespace.get_symbol(&name) {
-                Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    body,
-                    ..
-                })) => TypedExpression {
-                    return_type: body.return_type.clone(),
-                    is_constant: body.is_constant,
-                    expression: TypedExpressionVariant::VariableExpression {
-                        unary_op: unary_op.clone(),
-                        name: name.clone(),
-                    },
-                    span,
-                },
-                Some(a) => {
-                    errors.push(CompileError::NotAVariable {
-                        name: name.span.as_str(),
-                        span: name.span.clone(),
-                        what_it_is: a.friendly_name(),
-                    });
-                    error_recovery_expr(name.span.clone())
-                }
-                None => {
-                    errors.push(CompileError::UnknownVariable {
-                        var_name: name.span.as_str().trim(),
-                        span: name.span.clone(),
-                    });
-                    error_recovery_expr(name.span.clone())
-                }
-            },
+            } => Self::type_check_variable_expression(name, unary_op, span, namespace),
             Expression::FunctionApplication {
                 name,
                 arguments,
                 span,
                 ..
             } => {
+                let mut warnings = vec![];
+                let mut errors = vec![];
                 let function_declaration = check!(
                     namespace.get_call_path(&name),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                match function_declaration {
-                    TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-                        parameters,
-                        return_type,
-                        body,
-                        is_contract_call,
-                        ..
-                    }) => {
-                        // type check arguments in function application vs arguments in function
-                        // declaration. Use parameter type annotations as annotations for the
-                        // arguments
-                        //
-                        let typed_call_arguments = arguments
-                            .into_iter()
-                            .zip(parameters.iter())
-                            .map(|(arg, param)| {
-                                (param.name.clone(), TypedExpression::type_check(
-                                    arg.clone(),
-                                    namespace,
-                                    Some(param.r#type.clone()),
-                                    "The argument that has been provided to this function's type does \
-                                    not match the declared type of the parameter in the function \
-                                    declaration.",
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph,
-                                )
-                                .unwrap_or_else(
-                                    &mut warnings,
-                                    &mut errors,
-                                    || error_recovery_expr(arg.span()),
-                                ))
-                            })
-                            .collect();
-
-                        TypedExpression {
-                            return_type: return_type.clone(),
-                            // now check the function call return type
-                            // FEATURE this IsConstant can be true if the function itself is
-                            // constant-able const functions would be an
-                            // advanced feature and are not supported right
-                            // now
-                            is_constant: IsConstant::No,
-                            expression: TypedExpressionVariant::FunctionApplication {
-                                arguments: typed_call_arguments,
-                                name: name.clone(),
-                                function_body: body.clone(),
-                                is_contract_call,
-                            },
-                            span,
-                        }
-                    }
-                    a => {
-                        errors.push(CompileError::NotAFunction {
-                            name: name.span().as_str(),
-                            span: name.span(),
-                            what_it_is: a.friendly_name(),
-                        });
-                        error_recovery_expr(name.span())
-                    }
-                }
+                Self::type_check_function_application(
+                    name,
+                    arguments,
+                    span,
+                    namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    warnings,
+                    errors,
+                    function_declaration,
+                )
             }
             Expression::MatchExpression { span, .. } => {
+                let mut errors = vec![];
                 errors.push(CompileError::Unimplemented(
                     "Match expressions and pattern matching have not been implemented.",
                     span,
                 ));
-                return err(warnings, errors);
-                /*
-                let typed_primary_expression = check!(
-                    TypedExpression::type_check(*primary_expression, &namespace, None, ""),
-                    ERROR_RECOVERY_EXPR.clone(),
-                    warnings,
-                    errors
-                );
-                let first_branch_result = check!(
-                    TypedExpression::type_check(
-                        branches[0].result.clone(),
-                        &namespace,
-                        type_annotation.clone(),
-                        help_text.clone()
-                    ),
-                    ERROR_RECOVERY_EXPR.clone(),
-                    warnings,
-                    errors
-                );
-
-                let first_branch_result = vec![first_branch_result];
-                // use type of first branch for annotation on the rest of the branches
-                // we checked the first branch separately just to get its return type for inferencing the rest
-                let mut rest_of_branches = branches
-                    .into_iter()
-                    .skip(1)
-                    .map(
-                        |MatchBranch {
-                             condition, result, ..
-                         }| {
-                            check!(
-                                TypedExpression::type_check(
-                                    result,
-                                    &namespace,
-                                    Some(first_branch_result[0].return_type.clone()),
-                                    "All branches of a match expression must be of the same type.",
-                                ),
-                                ERROR_RECOVERY_EXPR.clone(),
-                                warnings,
-                                errors
-                            )
-                        },
-                    )
-                    .collect::<Vec<_>>();
-
-                let mut all_branches = first_branch_result;
-                all_branches.append(&mut rest_of_branches);
-
-                errors.push(CompileError::Unimplemented(
-                    "Match expressions and pattern matching",
-                    span,
-                ));
-                ERROR_RECOVERY_EXPR.clone()
-                */
+                return err(vec![], errors);
+                // type_check_match_expression()
             }
-            Expression::CodeBlock { contents, span, .. } => {
-                let (typed_block, block_return_type) = check!(
-                    TypedCodeBlock::type_check(
-                        contents.clone(),
-                        &namespace,
-                        type_annotation.clone(),
-                        help_text.clone(),
-                        self_type,
-                        build_config,
-                        dead_code_graph,
-                    ),
-                    (
-                        TypedCodeBlock {
-                            contents: vec![],
-                            whole_block_span: span.clone()
-                        },
-                        Some(MaybeResolvedType::Resolved(ResolvedType::Unit))
-                    ),
-                    warnings,
-                    errors
-                );
-                let block_return_type = match block_return_type {
-                    Some(ty) => ty,
-                    None => match type_annotation {
-                        Some(ref ty) if ty != &MaybeResolvedType::Resolved(ResolvedType::Unit) => {
-                            errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
-                                span: span.clone(),
-                                ty: ty.friendly_type_str(),
-                            });
-                            MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-                        }
-                        _ => MaybeResolvedType::Resolved(ResolvedType::Unit),
-                    },
-                };
-                TypedExpression {
-                    expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
-                        contents: typed_block.contents,
-                        whole_block_span: span.clone(),
-                    }),
-                    return_type: block_return_type,
-                    is_constant: IsConstant::No, /* TODO if all elements of block are constant
-                                                  * then this is constant */
-                    span,
-                }
-            }
+            Expression::CodeBlock { contents, span, .. } => Self::type_check_code_block(
+                contents,
+                span,
+                namespace,
+                type_annotation.clone(),
+                help_text.clone(),
+                self_type,
+                build_config,
+                dead_code_graph,
+            ),
             // TODO if _condition_ is constant, evaluate it and compile this to a regular
             // expression with only one branch
             Expression::IfExp {
@@ -261,127 +96,32 @@ impl<'sc> TypedExpression<'sc> {
                 then,
                 r#else,
                 span,
-            } => {
-                let condition = Box::new(check!(
-                    TypedExpression::type_check(
-                        *condition.clone(),
-                        namespace,
-                        Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
-                        "The condition of an if expression must be a boolean expression.",
-                        self_type,
-                        build_config,
-                        dead_code_graph
-                    ),
-                    error_recovery_expr(condition.span()),
-                    warnings,
-                    errors
-                ));
-                let then = Box::new(check!(
-                    TypedExpression::type_check(
-                        *then.clone(),
-                        namespace,
-                        type_annotation.clone(),
-                        "",
-                        self_type,
-                        build_config,
-                        dead_code_graph
-                    ),
-                    error_recovery_expr(then.span()),
-                    warnings,
-                    errors
-                ));
-                let r#else = if let Some(expr) = r#else {
-                    Some(Box::new(check!(
-                        TypedExpression::type_check(
-                            *expr.clone(),
-                            namespace,
-                            Some(then.return_type.clone()),
-                            "",
-                            self_type,
-                            build_config,
-                            dead_code_graph
-                        ),
-                        error_recovery_expr(expr.span()),
-                        warnings,
-                        errors
-                    )))
-                } else {
-                    None
-                };
-
-                // if there is a type annotation, then the else branch must exist
-                if let Some(ref annotation) = type_annotation {
-                    if r#else.is_none() {
-                        errors.push(CompileError::NoElseBranch {
-                            span: span.clone(),
-                            r#type: annotation.friendly_type_str(),
-                        });
-                    }
-                }
-
-                TypedExpression {
-                    expression: TypedExpressionVariant::IfExp {
-                        condition,
-                        then: then.clone(),
-                        r#else,
-                    },
-                    is_constant: IsConstant::No, // TODO
-                    return_type: then.return_type,
-                    span,
-                }
-            }
-            Expression::AsmExpression { asm, span, .. } => {
-                let return_type = namespace.resolve_type(&asm.return_type, self_type);
-                // type check the initializers
-                let typed_registers = asm
-                    .registers
-                    .into_iter()
-                    .map(
-                        |AsmRegisterDeclaration {
-                             name,
-                             initializer,
-                             name_span,
-                         }| {
-                            TypedAsmRegisterDeclaration {
-                                name_span: name_span.clone(),
-                                name,
-                                initializer: initializer.map(|initializer| {
-                                    check!(
-                                        TypedExpression::type_check(
-                                            initializer.clone(),
-                                            namespace,
-                                            None,
-                                            "",
-                                            self_type,
-                                            build_config,
-                                            dead_code_graph
-                                        ),
-                                        error_recovery_expr(initializer.span()),
-                                        warnings,
-                                        errors
-                                    )
-                                }),
-                            }
-                        },
-                    )
-                    .collect();
-                TypedExpression {
-                    expression: TypedExpressionVariant::AsmExpression {
-                        whole_block_span: asm.whole_block_span,
-                        body: asm.body,
-                        registers: typed_registers,
-                        returns: asm.returns,
-                    },
-                    return_type,
-                    is_constant: IsConstant::No,
-                    span,
-                }
-            }
+            } => Self::type_check_if_expression(
+                condition,
+                then,
+                r#else,
+                span,
+                namespace,
+                type_annotation.clone(),
+                self_type,
+                build_config,
+                dead_code_graph,
+            ),
+            Expression::AsmExpression { asm, span, .. } => Self::type_check_asm_expression(
+                asm,
+                span,
+                namespace,
+                self_type,
+                build_config,
+                dead_code_graph,
+            ),
             Expression::StructExpression {
                 span,
                 struct_name,
                 fields,
             } => {
+                let warnings = vec![];
+                let mut errors = vec![];
                 // TODO in here replace generic types with provided types
                 // find the struct definition in the namespace
                 let definition: TypedStructDeclaration =
@@ -402,83 +142,17 @@ impl<'sc> TypedExpression<'sc> {
                             return err(warnings, errors);
                         }
                     };
-                let mut typed_fields_buf = vec![];
-
-                // match up the names with their type annotations from the declaration
-                for def_field in definition.fields.iter() {
-                    let expr_field: crate::parse_tree::StructExpressionField =
-                        match fields.iter().find(|x| x.name == def_field.name) {
-                            Some(val) => val.clone(),
-                            None => {
-                                errors.push(CompileError::StructMissingField {
-                                    field_name: def_field.name.primary_name,
-                                    struct_name: definition.name.primary_name,
-                                    span: span.clone(),
-                                });
-                                typed_fields_buf.push(TypedStructExpressionField {
-                                    name: def_field.name.clone(),
-                                    value: TypedExpression {
-                                        expression: TypedExpressionVariant::Unit,
-                                        return_type: MaybeResolvedType::Resolved(
-                                            ResolvedType::ErrorRecovery,
-                                        ),
-                                        is_constant: IsConstant::No,
-                                        span: span.clone(),
-                                    },
-                                });
-                                continue;
-                            }
-                        };
-
-                    let typed_field = check!(
-                        TypedExpression::type_check(
-                            expr_field.value,
-                            namespace,
-                            Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
-                            "Struct field's type must match up with the type specified in its \
-                             declaration.",
-                            self_type,
-                            build_config,
-                            dead_code_graph
-                        ),
-                        continue,
-                        warnings,
-                        errors
-                    );
-
-                    typed_fields_buf.push(TypedStructExpressionField {
-                        value: typed_field,
-                        name: expr_field.name.clone(),
-                    });
-                }
-
-                // check that there are no extra fields
-                for field in fields {
-                    if definition
-                        .fields
-                        .iter()
-                        .find(|x| x.name == field.name)
-                        .is_none()
-                    {
-                        errors.push(CompileError::StructDoesNotHaveField {
-                            field_name: field.name.primary_name.clone(),
-                            struct_name: definition.name.primary_name,
-                            span: field.span,
-                        });
-                    }
-                }
-                TypedExpression {
-                    expression: TypedExpressionVariant::StructExpression {
-                        struct_name: definition.name.clone(),
-                        fields: typed_fields_buf,
-                    },
-                    return_type: MaybeResolvedType::Resolved(ResolvedType::Struct {
-                        name: definition.name.clone(),
-                        fields: definition.fields.clone(),
-                    }),
-                    is_constant: IsConstant::No,
+                Self::type_check_struct_expression(
                     span,
-                }
+                    fields,
+                    namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    warnings,
+                    errors,
+                    definition,
+                )
             }
             Expression::SubfieldExpression {
                 unary_op,
@@ -486,6 +160,8 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 field_to_access,
             } => {
+                let mut warnings = vec![];
+                let mut errors = vec![];
                 let parent = check!(
                     TypedExpression::type_check(
                         *prefix,
@@ -510,7 +186,6 @@ impl<'sc> TypedExpression<'sc> {
                     warnings,
                     errors
                 );
-
                 let field = if let Some(field) = fields
                     .iter()
                     .find(|TypedStructField { name, .. }| *name == field_to_access)
@@ -530,7 +205,7 @@ impl<'sc> TypedExpression<'sc> {
                     return err(warnings, errors);
                 };
 
-                TypedExpression {
+                let exp = TypedExpression {
                     expression: TypedExpressionVariant::StructFieldAccess {
                         unary_op,
                         resolved_type_of_parent: parent.return_type.clone(),
@@ -540,13 +215,16 @@ impl<'sc> TypedExpression<'sc> {
                     return_type: MaybeResolvedType::Resolved(field.r#type.clone()),
                     is_constant: IsConstant::No,
                     span,
-                }
+                };
+                (exp, warnings, errors)
             }
             Expression::MethodApplication {
                 method_name,
                 arguments,
                 span,
             } => {
+                let mut warnings = vec![];
+                let mut errors = vec![];
                 match method_name {
                     // something like a.b(c)
                     MethodName::FromModule { method_name } => {
@@ -612,7 +290,7 @@ impl<'sc> TypedExpression<'sc> {
                             .map(|(param, arg)| (param.name.clone(), arg))
                             .collect::<Vec<(_, _)>>();
 
-                        TypedExpression {
+                        let exp = TypedExpression {
                             expression: TypedExpressionVariant::FunctionApplication {
                                 name: CallPath {
                                     prefixes: vec![],
@@ -625,7 +303,8 @@ impl<'sc> TypedExpression<'sc> {
                             return_type: method.return_type,
                             is_constant: IsConstant::No,
                             span,
-                        }
+                        };
+                        (exp, warnings, errors)
                     }
                     // something like blah::blah::~Type::foo()
                     MethodName::FromType {
@@ -726,7 +405,7 @@ impl<'sc> TypedExpression<'sc> {
                             .zip(args_buf.into_iter())
                             .map(|(param, arg)| (param.name.clone(), arg))
                             .collect::<Vec<(_, _)>>();
-                        TypedExpression {
+                        let exp = TypedExpression {
                             expression: TypedExpressionVariant::FunctionApplication {
                                 name: call_path.clone(),
                                 arguments: args_and_names,
@@ -736,22 +415,28 @@ impl<'sc> TypedExpression<'sc> {
                             return_type: method.return_type,
                             is_constant: IsConstant::No,
                             span,
-                        }
+                        };
+                        (exp, warnings, errors)
                     }
                 }
             }
-            Expression::Unit { span } => TypedExpression {
-                expression: TypedExpressionVariant::Unit,
-                return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
-                is_constant: IsConstant::Yes,
-                span,
-            },
+            Expression::Unit { span } => {
+                let exp = TypedExpression {
+                    expression: TypedExpressionVariant::Unit,
+                    return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
+                    is_constant: IsConstant::Yes,
+                    span,
+                };
+                (exp, vec![], vec![])
+            }
             Expression::DelineatedPath {
                 call_path,
                 span,
                 args,
                 type_arguments,
             } => {
+                let mut warnings = vec![];
+                let mut errors = vec![];
                 // The first step is to determine if the call path refers to a module or an enum.
                 // We could rely on the capitalization convention, where modules are lowercase
                 // and enums are uppercase, but this is not robust in the long term.
@@ -821,7 +506,7 @@ impl<'sc> TypedExpression<'sc> {
                         }
                     };
 
-                match this_thing {
+                let exp = match this_thing {
                     Either::Left(_) => {
                         errors.push(CompileError::Unimplemented(
                             "Unable to refer to declarations in other modules directly. Try \
@@ -831,13 +516,16 @@ impl<'sc> TypedExpression<'sc> {
                         return err(warnings, errors);
                     }
                     Either::Right(expr) => expr,
-                }
+                };
+                (exp, warnings, errors)
             }
             Expression::AbiCast {
                 abi_name,
                 address,
                 span,
             } => {
+                let mut warnings = vec![];
+                let mut errors = vec![];
                 // TODO use stdlib's Address type instead of byte32
                 // type check the address and make sure it is
                 let err_span = address.span();
@@ -888,7 +576,7 @@ impl<'sc> TypedExpression<'sc> {
                 );
                 // send some out-of-band flag that these are contract calls so the code
                 // generation knows what's up
-                TypedExpression {
+                let exp = TypedExpression {
                     expression: TypedExpressionVariant::AbiCast {
                         abi_name,
                         address: Box::new(address),
@@ -898,16 +586,19 @@ impl<'sc> TypedExpression<'sc> {
                     return_type,
                     is_constant: IsConstant::No,
                     span,
-                }
+                };
+                (exp, warnings, errors)
             }
             a => {
+                let mut errors = vec![];
                 println!("Unimplemented semantic_analysis for expression: {:?}", a);
                 errors.push(CompileError::Unimplemented(
                     "Unimplemented expression",
                     a.span(),
                 ));
 
-                error_recovery_expr(a.span())
+                let exp = error_recovery_expr(a.span());
+                (exp, vec![], errors)
             }
         };
         // if the return type cannot be cast into the annotation type then it is a type error
@@ -937,10 +628,14 @@ impl<'sc> TypedExpression<'sc> {
         ok(typed_expression, warnings, errors)
     }
 
-    fn type_check_expression_literal(
+    fn type_check_literal(
         lit: Literal<'sc>,
         span: pest::Span<'sc>,
-    ) -> TypedExpression<'sc> {
+    ) -> (
+        TypedExpression<'sc>,
+        Vec<CompileWarning<'sc>>,
+        Vec<CompileError<'sc>>,
+    ) {
         let return_type = match lit {
             Literal::String(s) => MaybeResolvedType::Resolved(ResolvedType::Str(s.len() as u64)),
             Literal::U8(_) => {
@@ -959,12 +654,507 @@ impl<'sc> TypedExpression<'sc> {
             Literal::Byte(_) => MaybeResolvedType::Resolved(ResolvedType::Byte),
             Literal::Byte32(_) => MaybeResolvedType::Resolved(ResolvedType::Byte32),
         };
-        TypedExpression {
+        let exp = TypedExpression {
             expression: TypedExpressionVariant::Literal(lit),
             return_type,
             is_constant: IsConstant::Yes,
             span,
+        };
+        (exp, vec![], vec![])
+    }
+
+    fn type_check_variable_expression(
+        name: Ident<'sc>,
+        unary_op: Option<UnaryOp>,
+        span: pest::Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+    ) -> (
+        TypedExpression<'sc>,
+        Vec<CompileWarning<'sc>>,
+        Vec<CompileError<'sc>>,
+    ) {
+        let mut errors = vec![];
+        let exp = match namespace.get_symbol(&name) {
+            Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                body, ..
+            })) => TypedExpression {
+                return_type: body.return_type.clone(),
+                is_constant: body.is_constant,
+                expression: TypedExpressionVariant::VariableExpression {
+                    unary_op: unary_op.clone(),
+                    name: name.clone(),
+                },
+                span,
+            },
+            Some(a) => {
+                errors.push(CompileError::NotAVariable {
+                    name: name.span.as_str(),
+                    span: name.span.clone(),
+                    what_it_is: a.friendly_name(),
+                });
+                error_recovery_expr(name.span.clone())
+            }
+            None => {
+                errors.push(CompileError::UnknownVariable {
+                    var_name: name.span.as_str().trim(),
+                    span: name.span.clone(),
+                });
+                error_recovery_expr(name.span.clone())
+            }
+        };
+        (exp, vec![], errors)
+    }
+
+    fn type_check_function_application(
+        name: CallPath<'sc>,
+        arguments: Vec<Expression<'sc>>,
+        span: pest::Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+        function_declaration: TypedDeclaration<'sc>,
+    ) -> (
+        TypedExpression<'sc>,
+        Vec<CompileWarning<'sc>>,
+        Vec<CompileError<'sc>>,
+    ) {
+        let mut warnings = warnings;
+        let mut errors = errors;
+        let exp = match function_declaration {
+            TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
+                parameters,
+                return_type,
+                body,
+                is_contract_call,
+                ..
+            }) => {
+                // type check arguments in function application vs arguments in function
+                // declaration. Use parameter type annotations as annotations for the
+                // arguments
+                //
+                let typed_call_arguments =
+                    arguments
+                        .into_iter()
+                        .zip(parameters.iter())
+                        .map(|(arg, param)| {
+                            (param.name.clone(), TypedExpression::type_check(
+                            arg.clone(),
+                            namespace,
+                            Some(param.r#type.clone()),
+                            "The argument that has been provided to this function's type does \
+                            not match the declared type of the parameter in the function \
+                            declaration.",
+                            self_type,
+                            build_config,
+                            dead_code_graph,
+                        )
+                        .unwrap_or_else(
+                            &mut warnings,
+                            &mut errors,
+                            || error_recovery_expr(arg.span()),
+                        ))
+                        })
+                        .collect();
+
+                TypedExpression {
+                    return_type: return_type.clone(),
+                    // now check the function call return type
+                    // FEATURE this IsConstant can be true if the function itself is
+                    // constant-able const functions would be an
+                    // advanced feature and are not supported right
+                    // now
+                    is_constant: IsConstant::No,
+                    expression: TypedExpressionVariant::FunctionApplication {
+                        arguments: typed_call_arguments,
+                        name: name.clone(),
+                        function_body: body.clone(),
+                        is_contract_call,
+                    },
+                    span,
+                }
+            }
+            a => {
+                errors.push(CompileError::NotAFunction {
+                    name: name.span().as_str(),
+                    span: name.span(),
+                    what_it_is: a.friendly_name(),
+                });
+                error_recovery_expr(name.span())
+            }
+        };
+        (exp, warnings, errors)
+    }
+
+    pub fn type_check_match_expression() -> (
+        TypedExpression<'sc>,
+        Vec<CompileWarning<'sc>>,
+        Vec<CompileError<'sc>>,
+    ) {
+        /*
+        let typed_primary_expression = check!(
+            TypedExpression::type_check(*primary_expression, &namespace, None, ""),
+            ERROR_RECOVERY_EXPR.clone(),
+            warnings,
+            errors
+        );
+        let first_branch_result = check!(
+            TypedExpression::type_check(
+                branches[0].result.clone(),
+                &namespace,
+                type_annotation.clone(),
+                help_text.clone()
+            ),
+            ERROR_RECOVERY_EXPR.clone(),
+            warnings,
+            errors
+        );
+
+        let first_branch_result = vec![first_branch_result];
+        // use type of first branch for annotation on the rest of the branches
+        // we checked the first branch separately just to get its return type for inferencing the rest
+        let mut rest_of_branches = branches
+            .into_iter()
+            .skip(1)
+            .map(
+                |MatchBranch {
+                        condition, result, ..
+                    }| {
+                    check!(
+                        TypedExpression::type_check(
+                            result,
+                            &namespace,
+                            Some(first_branch_result[0].return_type.clone()),
+                            "All branches of a match expression must be of the same type.",
+                        ),
+                        ERROR_RECOVERY_EXPR.clone(),
+                        warnings,
+                        errors
+                    )
+                },
+            )
+            .collect::<Vec<_>>();
+
+        let mut all_branches = first_branch_result;
+        all_branches.append(&mut rest_of_branches);
+
+        errors.push(CompileError::Unimplemented(
+            "Match expressions and pattern matching",
+            span,
+        ));
+        ERROR_RECOVERY_EXPR.clone()
+        */
+        unimplemented!()
+    }
+
+    fn type_check_code_block(
+        contents: CodeBlock<'sc>,
+        span: pest::Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        type_annotation: Option<MaybeResolvedType<'sc>>,
+        help_text: impl Into<String> + Clone,
+        self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+    ) -> (
+        TypedExpression<'sc>,
+        Vec<CompileWarning<'sc>>,
+        Vec<CompileError<'sc>>,
+    ) {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let (typed_block, block_return_type) = check!(
+            TypedCodeBlock::type_check(
+                contents.clone(),
+                &namespace,
+                type_annotation.clone(),
+                help_text.clone(),
+                self_type,
+                build_config,
+                dead_code_graph,
+            ),
+            (
+                TypedCodeBlock {
+                    contents: vec![],
+                    whole_block_span: span.clone()
+                },
+                Some(MaybeResolvedType::Resolved(ResolvedType::Unit))
+            ),
+            warnings,
+            errors
+        );
+        let block_return_type = match block_return_type {
+            Some(ty) => ty,
+            None => match type_annotation {
+                Some(ref ty) if ty != &MaybeResolvedType::Resolved(ResolvedType::Unit) => {
+                    errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
+                        span: span.clone(),
+                        ty: ty.friendly_type_str(),
+                    });
+                    MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                }
+                _ => MaybeResolvedType::Resolved(ResolvedType::Unit),
+            },
+        };
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
+                contents: typed_block.contents,
+                whole_block_span: span.clone(),
+            }),
+            return_type: block_return_type,
+            is_constant: IsConstant::No, /* TODO if all elements of block are constant
+                                          * then this is constant */
+            span,
+        };
+        (exp, warnings, errors)
+    }
+
+    fn type_check_if_expression(
+        condition: Box<Expression<'sc>>,
+        then: Box<Expression<'sc>>,
+        r#else: Option<Box<Expression<'sc>>>,
+        span: pest::Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        type_annotation: Option<MaybeResolvedType<'sc>>,
+        self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+    ) -> (
+        TypedExpression<'sc>,
+        Vec<CompileWarning<'sc>>,
+        Vec<CompileError<'sc>>,
+    ) {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let condition = Box::new(check!(
+            TypedExpression::type_check(
+                *condition.clone(),
+                namespace,
+                Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
+                "The condition of an if expression must be a boolean expression.",
+                self_type,
+                build_config,
+                dead_code_graph
+            ),
+            error_recovery_expr(condition.span()),
+            warnings,
+            errors
+        ));
+        let then = Box::new(check!(
+            TypedExpression::type_check(
+                *then.clone(),
+                namespace,
+                type_annotation.clone(),
+                "",
+                self_type,
+                build_config,
+                dead_code_graph
+            ),
+            error_recovery_expr(then.span()),
+            warnings,
+            errors
+        ));
+        let r#else = if let Some(expr) = r#else {
+            Some(Box::new(check!(
+                TypedExpression::type_check(
+                    *expr.clone(),
+                    namespace,
+                    Some(then.return_type.clone()),
+                    "",
+                    self_type,
+                    build_config,
+                    dead_code_graph
+                ),
+                error_recovery_expr(expr.span()),
+                warnings,
+                errors
+            )))
+        } else {
+            None
+        };
+
+        // if there is a type annotation, then the else branch must exist
+        if let Some(ref annotation) = type_annotation {
+            if r#else.is_none() {
+                errors.push(CompileError::NoElseBranch {
+                    span: span.clone(),
+                    r#type: annotation.friendly_type_str(),
+                });
+            }
         }
+
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::IfExp {
+                condition,
+                then: then.clone(),
+                r#else,
+            },
+            is_constant: IsConstant::No, // TODO
+            return_type: then.return_type,
+            span,
+        };
+        (exp, warnings, errors)
+    }
+
+    fn type_check_asm_expression(
+        asm: AsmExpression<'sc>,
+        span: pest::Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+    ) -> (
+        TypedExpression<'sc>,
+        Vec<CompileWarning<'sc>>,
+        Vec<CompileError<'sc>>,
+    ) {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let return_type = namespace.resolve_type(&asm.return_type, self_type);
+        // type check the initializers
+        let typed_registers = asm
+            .registers
+            .into_iter()
+            .map(
+                |AsmRegisterDeclaration {
+                     name,
+                     initializer,
+                     name_span,
+                 }| {
+                    TypedAsmRegisterDeclaration {
+                        name_span: name_span.clone(),
+                        name,
+                        initializer: initializer.map(|initializer| {
+                            check!(
+                                TypedExpression::type_check(
+                                    initializer.clone(),
+                                    namespace,
+                                    None,
+                                    "",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
+                                ),
+                                error_recovery_expr(initializer.span()),
+                                warnings,
+                                errors
+                            )
+                        }),
+                    }
+                },
+            )
+            .collect();
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::AsmExpression {
+                whole_block_span: asm.whole_block_span,
+                body: asm.body,
+                registers: typed_registers,
+                returns: asm.returns,
+            },
+            return_type,
+            is_constant: IsConstant::No,
+            span,
+        };
+        (exp, warnings, errors)
+    }
+
+    fn type_check_struct_expression(
+        span: pest::Span<'sc>,
+        fields: Vec<StructExpressionField<'sc>>,
+        namespace: &mut Namespace<'sc>,
+        self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+        definition: TypedStructDeclaration<'sc>,
+    ) -> (
+        TypedExpression<'sc>,
+        Vec<CompileWarning<'sc>>,
+        Vec<CompileError<'sc>>,
+    ) {
+        let mut warnings = warnings;
+        let mut errors = errors;
+        let mut typed_fields_buf = vec![];
+
+        // match up the names with their type annotations from the declaration
+        for def_field in definition.fields.iter() {
+            let expr_field: crate::parse_tree::StructExpressionField = match fields
+                .iter()
+                .find(|x| x.name == def_field.name)
+            {
+                Some(val) => val.clone(),
+                None => {
+                    errors.push(CompileError::StructMissingField {
+                        field_name: def_field.name.primary_name,
+                        struct_name: definition.name.primary_name,
+                        span: span.clone(),
+                    });
+                    typed_fields_buf.push(TypedStructExpressionField {
+                        name: def_field.name.clone(),
+                        value: TypedExpression {
+                            expression: TypedExpressionVariant::Unit,
+                            return_type: MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
+                            is_constant: IsConstant::No,
+                            span: span.clone(),
+                        },
+                    });
+                    continue;
+                }
+            };
+
+            let typed_field = check!(
+                TypedExpression::type_check(
+                    expr_field.value,
+                    namespace,
+                    Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
+                    "Struct field's type must match up with the type specified in its \
+                     declaration.",
+                    self_type,
+                    build_config,
+                    dead_code_graph
+                ),
+                continue,
+                warnings,
+                errors
+            );
+
+            typed_fields_buf.push(TypedStructExpressionField {
+                value: typed_field,
+                name: expr_field.name.clone(),
+            });
+        }
+
+        // check that there are no extra fields
+        for field in fields {
+            if definition
+                .fields
+                .iter()
+                .find(|x| x.name == field.name)
+                .is_none()
+            {
+                errors.push(CompileError::StructDoesNotHaveField {
+                    field_name: field.name.primary_name.clone(),
+                    struct_name: definition.name.primary_name,
+                    span: field.span,
+                });
+            }
+        }
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::StructExpression {
+                struct_name: definition.name.clone(),
+                fields: typed_fields_buf,
+            },
+            return_type: MaybeResolvedType::Resolved(ResolvedType::Struct {
+                name: definition.name.clone(),
+                fields: definition.fields.clone(),
+            }),
+            is_constant: IsConstant::No,
+            span,
+        };
+        (exp, warnings, errors)
     }
 
     pub(crate) fn pretty_print(&self) -> String {
