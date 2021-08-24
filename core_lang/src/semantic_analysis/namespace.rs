@@ -150,7 +150,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, ()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let namespace = type_check!(
+        let namespace = check!(
             self.find_module(&path, is_absolute),
             return err(warnings, errors),
             warnings,
@@ -243,7 +243,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module = type_check!(
+        let module = check!(
             self.find_module(&path.prefixes, false),
             return err(warnings, errors),
             warnings,
@@ -337,7 +337,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module_to_insert_into = type_check!(
+        let module_to_insert_into = check!(
             self.find_module_mut(&trait_name.prefixes),
             return err(warnings, errors),
             warnings,
@@ -388,7 +388,7 @@ impl<'sc> Namespace<'sc> {
             }
         };
         if ident_iter.peek().is_none() {
-            let ty = type_check!(
+            let ty = check!(
                 symbol.return_type(),
                 return err(warnings, errors),
                 warnings,
@@ -396,35 +396,22 @@ impl<'sc> Namespace<'sc> {
             );
             return ok((ty.clone(), ty), warnings, errors);
         }
-        let mut symbol = type_check!(
+        let mut symbol = check!(
             symbol.return_type(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let (mut fields, struct_name) =
-            match self.get_struct_type_fields(&symbol, first_ident.primary_name, &first_ident.span)
-            {
-                CompileResult::Ok {
-                    value,
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    errors.append(&mut l_e);
-                    warnings.append(&mut l_w);
-                    value
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    errors.append(&mut l_e);
-                    warnings.append(&mut l_w);
-                    // if it is missing, the error message comes from within the above method
-                    // so we don't need to re-add it here
-                    return err(warnings, errors);
-                }
-            };
+        let mut type_fields =
+            self.get_struct_type_fields(&symbol, first_ident.primary_name, &first_ident.span);
+        warnings.append(&mut type_fields.warnings);
+        errors.append(&mut type_fields.errors);
+        let (mut fields, struct_name) = match type_fields.value {
+            // if it is missing, the error message comes from within the above method
+            // so we don't need to re-add it here
+            None => return err(warnings, errors),
+            Some(value) => value,
+        };
 
         let mut parent_rover = symbol.clone();
 
@@ -541,7 +528,7 @@ impl<'sc> Namespace<'sc> {
         {
             let r#type = self.resolve_type_without_self(name);
             for trait_constraint in trait_constraints {
-                let methods_for_trait = type_check!(
+                let methods_for_trait = check!(
                     self.find_trait_methods(&trait_constraint.name),
                     continue,
                     warnings,
@@ -581,7 +568,7 @@ impl<'sc> Namespace<'sc> {
                 ref type_name,
                 ref is_absolute,
             } => {
-                let module = type_check!(
+                let module = check!(
                     self.find_module(&call_path.prefixes[..], *is_absolute),
                     return err(warnings, errors),
                     warnings,

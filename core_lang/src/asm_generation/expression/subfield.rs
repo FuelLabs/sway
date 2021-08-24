@@ -38,7 +38,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     let prefix_reg = register_sequencer.next();
-    let mut prefix_ops = type_check!(
+    let mut prefix_ops = check!(
         convert_expression_to_asm(parent, namespace, &prefix_reg, register_sequencer),
         vec![],
         warnings,
@@ -62,7 +62,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
             (MaybeResolvedType::Resolved(r#type.clone()), name)
         })
         .collect::<Vec<_>>();
-    let descriptor = type_check!(
+    let descriptor = check!(
         get_struct_memory_layout(&fields_for_layout[..]),
         return err(warnings, errors),
         warnings,
@@ -70,7 +70,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     );
 
     // step 2
-    let offset_in_words = type_check!(
+    let offset_in_words = check!(
         descriptor.offset_to_field_name(&field_to_access.name),
         0,
         warnings,

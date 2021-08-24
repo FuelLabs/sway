@@ -33,7 +33,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     });
 
     // evaluate the user provided argument to the contract
-    asm_buf.append(&mut type_check!(
+    asm_buf.append(&mut check!(
         convert_expression_to_asm(
             user_argument,
             namespace,
@@ -46,7 +46,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     ));
 
     // evaluate the gas to forward to the contract
-    asm_buf.append(&mut type_check!(
+    asm_buf.append(&mut check!(
         convert_expression_to_asm(cgas, namespace, &gas_to_forward, register_sequencer),
         vec![],
         warnings,
@@ -54,7 +54,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     ));
 
     // evaluate the balance to forward to the contract
-    asm_buf.append(&mut type_check!(
+    asm_buf.append(&mut check!(
         convert_expression_to_asm(bal, namespace, &bal_register, register_sequencer),
         vec![],
         warnings,
@@ -62,7 +62,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     ));
 
     // evaluate the coin color expression to forward to the contract
-    asm_buf.append(&mut type_check!(
+    asm_buf.append(&mut check!(
         convert_expression_to_asm(
             // investigation: changing this value also results in a different color
             coin_color,
@@ -76,7 +76,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     ));
 
     // evaluate the contract address for the contract
-    asm_buf.append(&mut type_check!(
+    asm_buf.append(&mut check!(
         convert_expression_to_asm(
             // investigation: changing the value in the contract_address register
             // impacts the color that the VM sees

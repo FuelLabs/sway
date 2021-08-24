@@ -162,25 +162,9 @@ impl<'sc> Expression<'sc> {
         while let Some(op) = expr_iter.next() {
             let op_str = op.as_str();
             let op_span = op.as_span();
-            let op = match parse_op(op) {
-                CompileResult::Ok {
-                    warnings: mut l_w,
-                    value,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    value
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    return err(warnings, errors);
-                }
-            };
+
+            let op = check!(parse_op(op), return err(warnings, errors), warnings, errors);
+
             // an op is necessarily followed by an expression
             let next_expr = match expr_iter.next() {
                 Some(o) => eval!(
@@ -211,28 +195,10 @@ impl<'sc> Expression<'sc> {
         if expr_or_op_buf.len() == 1 {
             ok(first_expr, warnings, errors)
         } else {
-            let expr =
-                match arrange_by_order_of_operations(expr_or_op_buf, expr_for_debug.as_span()) {
-                    CompileResult::Ok {
-                        value,
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                        value
-                    }
-                    CompileResult::Err {
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                        Expression::Unit {
-                            span: expr_for_debug.as_span(),
-                        }
-                    }
-                };
+            let expr = arrange_by_order_of_operations(expr_or_op_buf, expr_for_debug.as_span())
+                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit {
+                    span: expr_for_debug.as_span(),
+                });
             ok(expr, warnings, errors)
         }
     }
@@ -242,25 +208,9 @@ impl<'sc> Expression<'sc> {
         let mut warnings = Vec::new();
         let span = expr.as_span();
         let parsed = match expr.as_rule() {
-            Rule::literal_value => match Literal::parse_from_pair(expr.clone()) {
-                CompileResult::Ok {
-                    value: (value, span),
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    Expression::Literal { value, span }
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    Expression::Unit { span }
-                }
-            },
+            Rule::literal_value => Literal::parse_from_pair(expr.clone())
+                .map(|(value, span)| Expression::Literal { value, span })
+                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit { span }),
             Rule::func_app => {
                 let span = expr.as_span();
                 let mut func_app_parts = expr.into_inner();

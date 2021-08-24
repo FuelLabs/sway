@@ -4,28 +4,14 @@ use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
 use thiserror::Error;
 
-macro_rules! type_check {
-    ($fn_expr: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
-        use crate::CompileResult;
-        let res = $fn_expr;
-        match res {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $warnings.append(&mut l_w);
-                $errors.append(&mut l_e);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $warnings.append(&mut l_w);
-                $errors.append(&mut l_e);
-                $err_recov
-            }
+macro_rules! check {
+    ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident) => {{
+        let mut res = $fn_expr;
+        $warnings.append(&mut res.warnings);
+        $errors.append(&mut res.errors);
+        match res.value {
+            None => $error_recovery,
+            Some(value) => value,
         }
     }};
 }
@@ -33,27 +19,13 @@ macro_rules! type_check {
 /// evaluates `$fn` with argument `$arg`, and pushes any warnings to the `$warnings` buffer.
 macro_rules! eval {
     ($fn: expr, $warnings: ident, $errors: ident, $arg: expr, $error_recovery: expr) => {{
-        use crate::CompileResult;
-        let res = match $fn($arg.clone()) {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $warnings.append(&mut l_w);
-                $errors.append(&mut l_e);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $errors.append(&mut l_e);
-                $warnings.append(&mut l_w);
-                $error_recovery
-            }
-        };
-        res
+        let mut res = $fn($arg.clone());
+        $warnings.append(&mut res.warnings);
+        $errors.append(&mut res.errors);
+        match res.value {
+            None => $error_recovery,
+            Some(value) => value,
+        }
     }};
 }
 
@@ -74,7 +46,11 @@ pub(crate) fn err<'sc, T>(
     warnings: Vec<CompileWarning<'sc>>,
     errors: Vec<CompileError<'sc>>,
 ) -> CompileResult<'sc, T> {
-    CompileResult::Err { warnings, errors }
+    CompileResult {
+        value: None,
+        warnings,
+        errors,
+    }
 }
 
 /// Denotes a recovered or non-error state
@@ -83,40 +59,54 @@ pub(crate) fn ok<'sc, T>(
     warnings: Vec<CompileWarning<'sc>>,
     errors: Vec<CompileError<'sc>>,
 ) -> CompileResult<'sc, T> {
-    CompileResult::Ok {
+    CompileResult {
+        value: Some(value),
         warnings,
-        value,
         errors,
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum CompileResult<'sc, T> {
-    Ok {
-        value: T,
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
-    },
-    Err {
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
-    },
+pub struct CompileResult<'sc, T> {
+    pub value: Option<T>,
+    pub warnings: Vec<CompileWarning<'sc>>,
+    pub errors: Vec<CompileError<'sc>>,
 }
 
 impl<'sc, T> CompileResult<'sc, T> {
-    pub fn unwrap(&self) -> &T {
-        match self {
-            CompileResult::Ok { value, .. } => value,
-            CompileResult::Err { errors, .. } => {
-                panic!("Unwrapped an err {:?}", errors);
-            }
+    pub fn ok(
+        mut self,
+        warnings: &mut Vec<CompileWarning<'sc>>,
+        errors: &mut Vec<CompileError<'sc>>,
+    ) -> Option<T> {
+        warnings.append(&mut self.warnings);
+        errors.append(&mut self.errors);
+        self.value
+    }
+
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> CompileResult<'sc, U> {
+        match self.value {
+            None => err(self.warnings, self.errors),
+            Some(value) => ok(f(value), self.warnings, self.errors),
         }
     }
-    pub fn ok(&self) -> Option<&T> {
-        match self {
-            CompileResult::Ok { value, .. } => Some(value),
-            _ => None,
-        }
+
+    pub fn unwrap(
+        self,
+        warnings: &mut Vec<CompileWarning<'sc>>,
+        errors: &mut Vec<CompileError<'sc>>,
+    ) -> T {
+        let panic_msg = format!("Unwrapped an err {:?}", self.errors);
+        self.unwrap_or_else(warnings, errors, || panic!("{}", panic_msg))
+    }
+
+    pub fn unwrap_or_else<F: FnOnce() -> T>(
+        self,
+        warnings: &mut Vec<CompileWarning<'sc>>,
+        errors: &mut Vec<CompileError<'sc>>,
+        or_else: F,
+    ) -> T {
+        self.ok(warnings, errors).unwrap_or_else(or_else)
     }
 }
 
