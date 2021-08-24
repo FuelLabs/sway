@@ -57,7 +57,7 @@ impl<'sc> TypedExpression<'sc> {
                     )),
                     Literal::Boolean(_) => MaybeResolvedType::Resolved(ResolvedType::Boolean),
                     Literal::Byte(_) => MaybeResolvedType::Resolved(ResolvedType::Byte),
-                    Literal::Byte32(_) => MaybeResolvedType::Resolved(ResolvedType::Byte32),
+                    Literal::B256(_) => MaybeResolvedType::Resolved(ResolvedType::Byte32),
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::Literal(lit),

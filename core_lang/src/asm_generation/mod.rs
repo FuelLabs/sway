@@ -425,7 +425,7 @@ impl fmt::Display for DataSection<'_> {
                 Literal::Boolean(b) => format!(".bool {}", if *b { "0x01" } else { "0x00" }),
                 Literal::String(st) => format!(".str \"{}\"", st),
                 Literal::Byte(b) => format!(".byte {:#08b}", b),
-                Literal::Byte32(b) => format!(
+                Literal::B256(b) => format!(
                     ".byte32 0x{}",
                     b.into_iter()
                         .map(|x| format!("{:02x}", x))
