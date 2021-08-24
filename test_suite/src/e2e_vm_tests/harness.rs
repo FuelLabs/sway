@@ -10,8 +10,8 @@ use rand::{Rng, SeedableRng};
 /// `true` if it does, `false` if not.
 pub(crate) fn runs_in_vm(file_name: &str) {
     let contract_id = ContractId::from([
-        120, 17, 104, 24, 155, 8, 101, 204, 229, 87, 229, 245, 58, 249, 53, 114, 56, 181, 93, 190,
-        208, 220, 207, 192, 22, 164, 101, 5, 41, 106, 65, 161,
+        137, 0, 197, 190, 196, 202, 151, 212, 254, 191, 156, 235, 71, 84, 166, 13, 120, 42, 187,
+        243, 205, 129, 88, 54, 193, 135, 33, 22, 242, 3, 248, 97,
     ]);
     let input_contract = Input::Contract {
         utxo_id: Default::default(),
@@ -46,7 +46,7 @@ pub(crate) fn runs_in_vm(file_name: &str) {
     let block_height = (u32::MAX >> 1) as u64;
     tx_to_test.validate(block_height).unwrap();
     let mut storage = MemoryStorage::default();
-    let program = vec![Opcode::NOOP, Opcode::RET(16)];
+    let program = vec![Opcode::NOOP, Opcode::RET(1)];
 
     let program: Witness = program.into_iter().collect::<Vec<u8>>().into();
 

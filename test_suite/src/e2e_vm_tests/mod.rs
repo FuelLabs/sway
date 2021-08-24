@@ -8,4 +8,5 @@ pub fn run() {
     project_names.into_iter().for_each(|name| {
         crate::e2e_vm_tests::harness::runs_in_vm(name);
     });
+    println!("Test cases passed.");
 }
