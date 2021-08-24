@@ -678,8 +678,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     });
                 }
             } else {
-                println!("else");
-                dbg!(&parameters);
                 errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                     span: parameters[0].type_span.clone(),
                 });
