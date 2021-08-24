@@ -420,7 +420,7 @@ fn convert_fn_app_to_asm<'sc>(
 }
 
 /// This is similar to `convert_fn_app_to_asm()`, except instead of function arguments, this
-/// takes jour registers where the registers are expected to be pre-loaded with the desired values
+/// takes four registers where the registers are expected to be pre-loaded with the desired values
 /// when this function is jumped to.
 pub(crate) fn convert_abi_fn_to_asm<'sc>(
     decl: &TypedFunctionDeclaration<'sc>,
