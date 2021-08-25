@@ -30,7 +30,7 @@ impl<'sc> Literal<'sc> {
             String(inner) => ResolvedType::Str(inner.len() as u64),
             Boolean(_) => ResolvedType::Boolean,
             Byte(_) => ResolvedType::Byte,
-            B256(_) => ResolvedType::Byte32,
+            B256(_) => ResolvedType::B256,
         }
     }
     pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> CompileResult<'sc, (Self, Span<'sc>)> {
