@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use core_lang::parse;
 use fuel_tx::Transaction;
-use tx_client::client::TxClient;
+use fuel_client::client::FuelClient;
 
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
@@ -10,6 +10,7 @@ use crate::utils::cli_error::CliError;
 use crate::utils::{constants, helpers};
 use constants::{DEFAULT_NODE_URL, SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
 use helpers::{find_manifest_dir, get_main_file, read_manifest};
+
 
 pub async fn run(command: RunCommand) -> Result<(), CliError> {
     let path_dir = if let Some(path) = &command.path {
@@ -52,7 +53,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                                 _ => DEFAULT_NODE_URL,
                             };
 
-                            let client = TxClient::new(node_url)?;
+                            let client = FuelClient::new(node_url)?;
 
                             match client.transact(&tx).await {
                                 Ok(logs) => {

@@ -1,6 +1,6 @@
 use core_lang::parse;
 use fuel_tx::{crypto, ContractId, Output, Salt, Transaction};
-use tx_client::client::TxClient;
+use fuel_client::client::FuelClient;
 
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
@@ -38,7 +38,7 @@ pub async fn deploy(_: DeployCommand) -> Result<(), CliError> {
                             _ => DEFAULT_NODE_URL,
                         };
 
-                        let client = TxClient::new(node_url)?;
+                        let client = FuelClient::new(node_url)?;
 
                         match client.transact(&tx).await {
                             Ok(logs) => {
