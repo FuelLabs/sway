@@ -292,7 +292,7 @@ impl Context {
     pub fn id_from_repr<'a>(bytes: impl Iterator<Item = &'a u8>) -> Id {
         let bytes: Vec<u8> = bytes.copied().collect();
 
-        *crypto::hash(bytes.as_slice())
+        *crypto::Hasher::hash(bytes.as_slice())
     }
 
     pub const fn id(&self) -> &Id {

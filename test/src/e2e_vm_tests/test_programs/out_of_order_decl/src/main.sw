@@ -12,6 +12,7 @@ fn main() -> bool {
     a: true,
     b: false
   };
+
   return true;
 }
 
