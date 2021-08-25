@@ -1,5 +1,5 @@
 [workspace]
-
+resolver = "2"
 members = [
     "core_lang",
     "core-types",
@@ -11,6 +11,3 @@ members = [
 
 [profile.dev.package.sway-server]
 debug = 2
-
-[patch."ssh://git@github.com/FuelLabs/fuel-core"]
-fuel-client = { path = "./../fuel-core/fuel-client" }
