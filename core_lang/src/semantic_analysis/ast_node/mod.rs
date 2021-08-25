@@ -96,33 +96,22 @@ impl<'sc> TypedAstNode<'sc> {
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    let res = match a.import_type {
+                    let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
                         ImportType::Item(s) => {
                             namespace.item_import(a.call_path, &s, None, a.is_absolute)
                         }
                     };
-                    match res {
-                        CompileResult::Ok {
-                            warnings: mut l_w, ..
-                        } => {
-                            warnings.append(&mut l_w);
-                        }
-                        CompileResult::Err {
-                            warnings: mut l_w,
-                            errors: mut l_e,
-                            ..
-                        } => {
-                            warnings.append(&mut l_w);
-                            errors.append(&mut l_e);
-                        }
+                    warnings.append(&mut res.warnings);
+                    if res.value.is_none() {
+                        errors.append(&mut res.errors);
                     }
                     TypedAstNodeContent::SideEffect
                 }
                 AstNodeContent::IncludeStatement(ref a) => {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
-                    let _ = type_check!(
+                    let _ = check!(
                         import_new_file(a, namespace, build_config, dead_code_graph),
                         return err(warnings, errors),
                         warnings,
@@ -138,10 +127,13 @@ impl<'sc> TypedAstNode<'sc> {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription = type_ascription.map(|type_ascription| {
-                                namespace.resolve_type(&type_ascription, self_type)
-                            });
-                            let body = type_check!(
+                            let type_ascription = match type_ascription {
+                                Some(ty) => Some(namespace.resolve_type(&ty, self_type)),
+                                None => Some(MaybeResolvedType::Partial(
+                                    PartiallyResolvedType::NeedsType,
+                                )),
+                            };
+                            let body = check!(
                                 TypedExpression::type_check(
                                     body,
                                     namespace,
@@ -182,7 +174,7 @@ impl<'sc> TypedAstNode<'sc> {
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
-                            let decl = type_check!(
+                            let decl = check!(
                                 TypedFunctionDeclaration::type_check(
                                     fn_decl,
                                     &namespace,
@@ -197,11 +189,14 @@ impl<'sc> TypedAstNode<'sc> {
                                 warnings,
                                 errors
                             );
-
-                            namespace.insert(
-                                decl.name.clone(),
-                                TypedDeclaration::FunctionDeclaration(decl.clone()),
-                            );
+                            if errors.is_empty() {
+                                // Add this function declaration to the namespace only if it
+                                // fully typechecked without errors.
+                                namespace.insert(
+                                    decl.name.clone(),
+                                    TypedDeclaration::FunctionDeclaration(decl.clone()),
+                                );
+                            }
                             TypedDeclaration::FunctionDeclaration(decl)
                         }
                         Declaration::TraitDeclaration(TraitDeclaration {
@@ -228,7 +223,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     .map(|x| x.to_dummy_func(Mode::NonAbi))
                                     .collect(),
                             );
-                            let methods = type_check!(
+                            let methods = check!(
                                 type_check_trait_methods(
                                     methods,
                                     &trait_namespace,
@@ -252,7 +247,7 @@ impl<'sc> TypedAstNode<'sc> {
                             trait_decl
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
-                            type_check!(
+                            check!(
                                 reassignment(
                                     lhs,
                                     rhs,
@@ -267,7 +262,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 errors
                             )
                         }
-                        Declaration::ImplTrait(impl_trait) => type_check!(
+                        Declaration::ImplTrait(impl_trait) => check!(
                             implementation_of_trait(
                                 impl_trait,
                                 namespace,
@@ -312,7 +307,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     fn_decl.return_type = type_implementing_for.clone();
                                 }
 
-                                functions_buf.push(type_check!(
+                                functions_buf.push(check!(
                                     TypedFunctionDeclaration::type_check(
                                         fn_decl,
                                         &namespace,
@@ -392,7 +387,7 @@ impl<'sc> TypedAstNode<'sc> {
                             // from itself. This is by design.
                             let interface_surface =
                                 type_check_interface_surface(interface_surface, &namespace);
-                            let methods = type_check!(
+                            let methods = check!(
                                 type_check_trait_methods(
                                     methods,
                                     &namespace,
@@ -417,7 +412,7 @@ impl<'sc> TypedAstNode<'sc> {
                     })
                 }
                 AstNodeContent::Expression(a) => {
-                    let inner = type_check!(
+                    let inner = check!(
                         TypedExpression::type_check(
                             a.clone(),
                             namespace,
@@ -435,7 +430,7 @@ impl<'sc> TypedAstNode<'sc> {
                 }
                 AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
                     TypedAstNodeContent::ReturnStatement(TypedReturnStatement {
-                        expr: type_check!(
+                        expr: check!(
                             TypedExpression::type_check(
                                 expr.clone(),
                                 namespace,
@@ -453,7 +448,7 @@ impl<'sc> TypedAstNode<'sc> {
                     })
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
-                    let typed_expr = type_check!(
+                    let typed_expr = check!(
                         TypedExpression::type_check(
                             expr.clone(),
                             namespace,
@@ -473,7 +468,7 @@ impl<'sc> TypedAstNode<'sc> {
                     TypedAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
                 AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
-                    let typed_condition = type_check!(
+                    let typed_condition = check!(
                         TypedExpression::type_check(
                             condition,
                             namespace,
@@ -487,7 +482,7 @@ impl<'sc> TypedAstNode<'sc> {
                         warnings,
                         errors
                     );
-                    let (typed_body, _block_implicit_return) = type_check!(
+                    let (typed_body, _block_implicit_return) = check!(
                         TypedCodeBlock::type_check(
                             body.clone(),
                             &namespace,
@@ -592,7 +587,7 @@ fn import_new_file<'sc>(
     dep_config.dir_of_code = dep_path;
     let crate::InnerDependencyCompileResult {
         mut library_exports,
-    } = type_check!(
+    } = check!(
         crate::compile_inner_dependency(
             &static_file_string,
             &dep_namespace,
@@ -679,7 +674,7 @@ fn reassignment<'sc>(
                 }
             };
             // type check the reassignment
-            let rhs = type_check!(
+            let rhs = check!(
                 TypedExpression::type_check(
                     rhs,
                     namespace,
@@ -715,7 +710,7 @@ fn reassignment<'sc>(
             let mut expr = *prefix;
             let mut names_vec = vec![];
             let final_return_type = loop {
-                let type_checked = type_check!(
+                let type_checked = check!(
                     TypedExpression::type_check(
                         expr.clone(),
                         namespace,
@@ -762,7 +757,7 @@ fn reassignment<'sc>(
                 r#type: final_return_type,
             });
 
-            let (ty_of_field, _ty_of_parent) = type_check!(
+            let (ty_of_field, _ty_of_parent) = check!(
                 namespace.find_subfield_type(
                     names_vec
                         .iter()
@@ -775,7 +770,7 @@ fn reassignment<'sc>(
                 errors
             );
             // type check the reassignment
-            let rhs = type_check!(
+            let rhs = check!(
                 TypedExpression::type_check(
                     rhs,
                     namespace,
@@ -965,7 +960,7 @@ fn type_check_trait_methods<'sc>(
 
         // TODO check code block implicit return
         let return_type = function_namespace.resolve_type(&return_type, self_type);
-        let (body, _code_block_implicit_return) = type_check!(
+        let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(
                 body,
                 &function_namespace,

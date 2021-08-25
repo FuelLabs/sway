@@ -262,6 +262,7 @@ pub(crate) enum VirtualOp {
     EXP(VirtualRegister, VirtualRegister, VirtualRegister),
     EXPI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     GT(VirtualRegister, VirtualRegister, VirtualRegister),
+    LT(VirtualRegister, VirtualRegister, VirtualRegister),
     MLOG(VirtualRegister, VirtualRegister, VirtualRegister),
     MROO(VirtualRegister, VirtualRegister, VirtualRegister),
     MOD(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -371,6 +372,7 @@ impl VirtualOp {
             EXP(r1, r2, r3) => vec![r1, r2, r3],
             EXPI(r1, r2, _i) => vec![r1, r2],
             GT(r1, r2, r3) => vec![r1, r2, r3],
+            LT(r1, r2, r3) => vec![r1, r2, r3],
             MLOG(r1, r2, r3) => vec![r1, r2, r3],
             MROO(r1, r2, r3) => vec![r1, r2, r3],
             MOD(r1, r2, r3) => vec![r1, r2, r3],
@@ -523,6 +525,11 @@ impl VirtualOp {
                 imm.clone(),
             ),
             GT(reg1, reg2, reg3) => AllocatedOpcode::GT(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            LT(reg1, reg2, reg3) => AllocatedOpcode::LT(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),

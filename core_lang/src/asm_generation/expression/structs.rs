@@ -88,14 +88,20 @@ fn test_struct_memory_layout() {
         ],
     };
 
+    let mut warnings: Vec<CompileWarning> = Vec::new();
+    let mut errors: Vec<CompileError> = Vec::new();
     assert_eq!(numbers.total_size(), 2u64);
     assert_eq!(
-        numbers.offset_to_field_name(&first_field_name).unwrap(),
-        &0u64
+        numbers
+            .offset_to_field_name(&first_field_name)
+            .unwrap(&mut warnings, &mut errors),
+        0u64
     );
     assert_eq!(
-        numbers.offset_to_field_name(&second_field_name).unwrap(),
-        &1u64
+        numbers
+            .offset_to_field_name(&second_field_name)
+            .unwrap(&mut warnings, &mut errors),
+        1u64
     );
 }
 
@@ -164,7 +170,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         .iter()
         .map(|TypedStructExpressionField { name, value }| (value.return_type.clone(), name))
         .collect::<Vec<_>>();
-    let descriptor = type_check!(
+    let descriptor = check!(
         get_struct_memory_layout(&fields_for_layout[..]),
         return err(warnings, errors),
         warnings,
@@ -227,7 +233,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
                 continue;
             }
         };
-        let mut field_instantiation = type_check!(
+        let mut field_instantiation = check!(
             convert_expression_to_asm(value, namespace, &return_register, register_sequencer),
             vec![],
             warnings,

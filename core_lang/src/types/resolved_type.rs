@@ -46,6 +46,7 @@ pub enum PartiallyResolvedType<'sc> {
     Numeric,
     SelfType,
     Generic { name: Ident<'sc> },
+    NeedsType,
 }
 
 impl Default for MaybeResolvedType<'_> {
@@ -128,6 +129,8 @@ impl<'sc> MaybeResolvedType<'sc> {
             (MaybeResolvedType::Resolved(r), MaybeResolvedType::Resolved(r2)) if r == r2 => {
                 Ok(None)
             }
+            (_, MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType)) => Ok(None),
+            (MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType), _) => Ok(None),
             _ => Err(TypeError::MismatchedType {
                 expected: other.friendly_type_str(),
                 received: self.friendly_type_str(),
@@ -173,6 +176,7 @@ impl<'sc> PartiallyResolvedType<'sc> {
             PartiallyResolvedType::Generic { name } => format!("{}", name.primary_name),
             PartiallyResolvedType::Numeric => "numeric".into(),
             PartiallyResolvedType::SelfType => "self".into(),
+            PartiallyResolvedType::NeedsType => "needs_type".into(),
         }
     }
 }
@@ -320,9 +324,9 @@ impl<'sc> ResolvedType<'sc> {
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
                     for name in names {
-                        match name {
-                            CompileResult::Ok { value, .. } => buf.push(value),
-                            e => return e,
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
                         }
                     }
                     buf
@@ -338,9 +342,9 @@ impl<'sc> ResolvedType<'sc> {
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
                     for name in names {
-                        match name {
-                            CompileResult::Ok { value, .. } => buf.push(value),
-                            e => return e,
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
                         }
                     }
                     buf

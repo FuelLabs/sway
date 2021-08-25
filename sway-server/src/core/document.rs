@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use core_lang::{parse, CompileResult};
+use core_lang::parse;
 use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent, TextDocumentItem};
 
 use ropey::Rope;
@@ -104,15 +104,14 @@ impl TextDocument {
 // private methods
 impl TextDocument {
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
-        match parse(&self.get_text()) {
-            CompileResult::Err { warnings, errors } => {
-                Err(capabilities::diagnostic::get_diagnostics(warnings, errors))
-            }
-            CompileResult::Ok {
-                value,
-                warnings,
-                errors,
-            } => {
+        let text = &self.get_text();
+        let parsed_result = parse(text);
+        match parsed_result.value {
+            None => Err(capabilities::diagnostic::get_diagnostics(
+                parsed_result.warnings,
+                parsed_result.errors,
+            )),
+            Some(value) => {
                 let mut tokens = vec![];
 
                 for (ident, parse_tree) in value.library_exports {
@@ -148,7 +147,10 @@ impl TextDocument {
 
                 Ok((
                     tokens,
-                    capabilities::diagnostic::get_diagnostics(warnings, errors),
+                    capabilities::diagnostic::get_diagnostics(
+                        parsed_result.warnings,
+                        parsed_result.errors,
+                    ),
                 ))
             }
         }

@@ -94,7 +94,7 @@ fn to_bytecode<'sc>(
                 }
                 half_word_ix += 2;
             }
-            Either::Left(mut ops) => {
+            Either::Left(ops) => {
                 if ops.len() > 1 {
                     buf.resize(buf.len() + ((ops.len() - 1) * 4), 0);
                 }

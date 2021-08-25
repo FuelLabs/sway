@@ -280,7 +280,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
-        let data = type_check!(
+        let data = check!(
             self.to_selector_name(),
             return err(warnings, errors),
             warnings,
@@ -296,7 +296,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
-        let hash = type_check!(
+        let hash = check!(
             self.to_fn_selector_value_untruncated(),
             return err(warnings, errors),
             warnings,
@@ -311,31 +311,16 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn to_selector_name(&self) -> CompileResult<'sc, String> {
         let mut errors = vec![];
         let mut warnings = vec![];
-        let named_params = {
-            let names = self
-                .parameters
-                .iter()
-                .map(
-                    |TypedFunctionParameter {
-                         r#type, type_span, ..
-                     }| r#type.to_selector_name(type_span),
-                )
-                .collect::<Vec<CompileResult<String>>>();
-            let mut buf = vec![];
-            for name in names {
-                match name {
-                    CompileResult::Ok { value, .. } => buf.push(value),
-                    CompileResult::Err {
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                    }
-                }
-            }
-            buf
-        };
+        let named_params = self
+            .parameters
+            .iter()
+            .map(
+                |TypedFunctionParameter {
+                     r#type, type_span, ..
+                 }| r#type.to_selector_name(type_span),
+            )
+            .filter_map(|name| name.ok(&mut warnings, &mut errors))
+            .collect::<Vec<String>>();
 
         ok(
             format!("{}({})", self.name.primary_name, named_params.join(","),),
@@ -366,8 +351,8 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name() {
-        CompileResult::Ok { value, .. } => value,
+    let selector_text = match decl.to_selector_name().value {
+        Some(value) => value,
         _ => panic!("test failure"),
     };
 
@@ -412,8 +397,8 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name() {
-        CompileResult::Ok { value, .. } => value,
+    let selector_text = match decl.to_selector_name().value {
+        Some(value) => value,
         _ => panic!("test failure"),
     };
 
@@ -517,7 +502,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) = type_check!(
+        let (body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,

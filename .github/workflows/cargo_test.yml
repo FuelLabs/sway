@@ -50,6 +50,8 @@ jobs:
       with:
         command: build
         args: --verbose
+      env:
+        RUSTFLAGS: "-D warnings"
 
     - name: Run tests
       uses: actions-rs/cargo@v1

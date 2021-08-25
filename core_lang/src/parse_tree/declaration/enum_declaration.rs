@@ -38,7 +38,7 @@ impl<'sc> EnumDeclaration<'sc> {
         let mut warnings = vec![];
 
         for variant in &self.variants {
-            variants_buf.push(type_check!(
+            variants_buf.push(check!(
                 variant.to_typed_decl(namespace, self_type, variant.span.clone()),
                 continue,
                 warnings,
@@ -81,26 +81,8 @@ impl<'sc> EnumDeclaration<'sc> {
         }
 
         let type_parameters =
-            match TypeParameter::parse_from_type_params_and_where_clause(type_params, where_clause)
-            {
-                CompileResult::Ok {
-                    value,
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    value
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    Vec::new()
-                }
-            };
+            TypeParameter::parse_from_type_params_and_where_clause(type_params, where_clause)
+                .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();

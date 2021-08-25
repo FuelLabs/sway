@@ -25,12 +25,9 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
             let main_file = get_main_file(&manifest, &manifest_dir)?;
 
             // parse the main file and check is it a script
-            match parse(main_file) {
-                core_lang::CompileResult::Ok {
-                    value: parse_tree,
-                    warnings: _,
-                    errors: _,
-                } => {
+            let parsed_result = parse(main_file);
+            match parsed_result.value {
+                Some(parse_tree) => {
                     if let Some(_) = &parse_tree.script_ast {
                         let input_data = &command.data.unwrap_or("".into());
                         let data = format_hex_data(input_data);
@@ -83,10 +80,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                         ))
                     }
                 }
-                core_lang::CompileResult::Err {
-                    warnings: _,
-                    errors,
-                } => Err(CliError::parsing_failed(project_name, errors)),
+                None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
             }
         }
         None => Err(CliError::manifest_file_missing(path_dir)),
