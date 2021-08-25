@@ -63,4 +63,4 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: run
-        args: --bin test_suite
+        args: --bin test
