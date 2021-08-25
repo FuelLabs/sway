@@ -1,6 +1,6 @@
 script;
 use std::*;
-use std::ops::Eq;
+use std::ops::Ord;
 
 struct Rgb {
   red: u64,
@@ -18,8 +18,20 @@ enum PrimaryColor {
    Blue : ()
 }
 
-impl std::ops::Eq for PrimaryColor {
-  fn equals(self, other: Self) -> bool {
+impl std::ops::Ord for PrimaryColor {
+  fn lt(self, other: Self) -> bool {
+   asm(r1: self, r2: other, r3) {
+      lt r3 r1 r2;
+      r3: bool
+    }
+  }
+  fn gt(self, other: Self) -> bool {
+   asm(r1: self, r2: other, r3) {
+      gt r3 r1 r2;
+      r3: bool
+    }
+  }
+  fn eq(self, other: Self) -> bool {
    asm(r1: self, r2: other, r3) {
       eq r3 r1 r2;
       r3: bool

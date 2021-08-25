@@ -910,6 +910,8 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>) -> CompileResult<'sc, Op> {
         "&" => BinaryAnd,
         ">" => GreaterThan,
         "<" => LessThan,
+        ">=" => GreaterThanOrEqualTo,
+        "<=" => LessThanOrEqualTo,
         a => {
             errors.push(CompileError::ExpectedOp {
                 op: a,
@@ -959,6 +961,8 @@ enum OpVariant {
     BinaryAnd,
     GreaterThan,
     LessThan,
+    GreaterThanOrEqualTo,
+    LessThanOrEqualTo,
 }
 
 impl OpVariant {
@@ -972,13 +976,15 @@ impl OpVariant {
             Modulo => "modulo",
             Or => "or",
             And => "and",
-            Equals => "equals",
-            NotEquals => "not_equals",
+            Equals => "eq",
+            NotEquals => "neq",
             Xor => "xor",
             BinaryOr => "binary_or",
             BinaryAnd => "binary_and",
-            GreaterThan => "greater_than",
-            LessThan => "less_than",
+            GreaterThan => "gt",
+            LessThan => "lt",
+            LessThanOrEqualTo => "le",
+            GreaterThanOrEqualTo => "ge",
         }
     }
     fn precedence(&self) -> usize {
@@ -999,6 +1005,8 @@ impl OpVariant {
             BinaryAnd => 0,
             GreaterThan => 0,
             LessThan => 0,
+            GreaterThanOrEqualTo => 0,
+            LessThanOrEqualTo => 0,
         }
     }
 }
