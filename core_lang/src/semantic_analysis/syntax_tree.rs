@@ -7,7 +7,6 @@ use crate::{
     types::{MaybeResolvedType, ResolvedType},
 };
 use crate::{AstNode, ParseTree};
-use std::collections::VecDeque;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TreeType {
@@ -92,104 +91,56 @@ impl<'sc> TypedParseTree<'sc> {
         );
 
         TypedParseTree::validate_typed_nodes(
+            typed_nodes,
             parsed.span,
             initial_namespace,
             tree_type,
             warnings,
             errors,
-            typed_nodes,
         )
     }
 
     fn get_typed_nodes(
-        root_nodes: Vec<AstNode<'sc>>,
+        nodes: Vec<AstNode<'sc>>,
         initial_namespace: &mut Namespace<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
-        let mut successful_nodes = vec![];
-        let mut next_pass_nodes: VecDeque<_> = root_nodes.into_iter().collect();
-        let mut num_failed_nodes = next_pass_nodes.len();
-
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+        let typed_nodes = nodes
+            .clone()
+            .into_iter()
+            .map(|node| {
+                TypedAstNode::type_check(
+                    node,
+                    initial_namespace,
+                    None,
+                    "",
+                    // TODO only allow impl traits on contract trees, do something else
+                    // for other tree types
+                    &MaybeResolvedType::Resolved(ResolvedType::Contract),
+                    build_config,
+                    dead_code_graph,
+                )
+            })
+            .filter_map(|res| res.ok(&mut warnings, &mut errors))
+            .collect();
 
-        let mut is_first_pass = true;
-        while num_failed_nodes > 0 {
-            let nodes = next_pass_nodes
-                .clone()
-                .into_iter()
-                .map(|node| {
-                    (
-                        node.clone(),
-                        TypedAstNode::type_check(
-                            node,
-                            initial_namespace,
-                            None,
-                            "",
-                            // TODO only allow impl traits on contract trees, do something else
-                            // for other tree types
-                            &MaybeResolvedType::Resolved(ResolvedType::Contract),
-                            build_config,
-                            dead_code_graph,
-                        ),
-                    )
-                })
-                .collect::<Vec<(_, CompileResult<_>)>>();
-            next_pass_nodes = Default::default();
-
-            // If we hit the internal "non-decreasing error nodes" error, this helps
-            // show what went wrong right beforehand.
-            let mut errors_from_this_pass = vec![];
-            for (node, mut res) in nodes.clone() {
-                if res.value.is_none() {
-                    errors_from_this_pass.append(&mut res.errors);
-                    next_pass_nodes.push_front(node);
-                } else {
-                    if res.errors.is_empty() {
-                        successful_nodes.push(res);
-                    } else {
-                        errors_from_this_pass.append(&mut res.errors);
-                        next_pass_nodes.push_front(node);
-                    }
-                }
-            }
-            // If we did not solve any issues, i.e. the same number of nodes failed,
-            // then this is a genuine error and so we break.
-            if next_pass_nodes.len() == num_failed_nodes && !is_first_pass {
-                for (_, mut failed_node_res) in nodes {
-                    warnings.append(&mut failed_node_res.warnings);
-                    errors.append(&mut failed_node_res.errors);
-                }
-                break;
-            }
-            is_first_pass = false;
-            // if the amount of nodes with errors is going up, then bail.
-            if next_pass_nodes.len() > num_failed_nodes {
-                errors.append(&mut errors_from_this_pass);
-                return err(warnings, errors);
-            }
-            num_failed_nodes = next_pass_nodes.len();
+        if !errors.is_empty() {
+            err(warnings, errors)
+        } else {
+            ok(typed_nodes, warnings, errors)
         }
-
-        // gather nodes, warnings and errors together
-        ok(
-            successful_nodes
-                .into_iter()
-                .filter_map(|res| res.ok(&mut warnings, &mut errors))
-                .collect::<Vec<TypedAstNode<'sc>>>(),
-            warnings,
-            errors,
-        )
     }
 
     fn validate_typed_nodes(
+        typed_tree_nodes: Vec<TypedAstNode<'sc>>,
         span: pest::Span<'sc>,
         namespace: Namespace<'sc>,
         tree_type: TreeType,
         warnings: Vec<CompileWarning<'sc>>,
         mut errors: Vec<CompileError<'sc>>,
-        typed_tree_nodes: Vec<TypedAstNode<'sc>>,
     ) -> CompileResult<'sc, Self> {
         // Keep a copy of the nodes as they are.
         let all_nodes = typed_tree_nodes.clone();
