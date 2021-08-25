@@ -25,6 +25,8 @@ pub fn to_symbol_information(tokens: &Vec<Token>, url: Url) -> Vec<SymbolInforma
     symbols
 }
 
+#[allow(warnings)]
+// TODO: the "deprecated: None" field is deprecated according to this library
 fn create_symbol_info(token: &Token, url: Url) -> SymbolInformation {
     SymbolInformation {
         name: token.name.clone(),
