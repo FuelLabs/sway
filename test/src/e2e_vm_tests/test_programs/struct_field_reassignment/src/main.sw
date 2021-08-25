@@ -1,5 +1,5 @@
 script;
-// this file tests struct subfield reassignments
+// this file tests struct field reassignments
 fn main() {
   let mut data = Data { 
                   value: NumberOrString::Number(20),

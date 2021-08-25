@@ -3992,7 +3992,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_suite"
+name = "test"
 version = "0.1.0"
 dependencies = [
  "forc",
