@@ -127,9 +127,12 @@ impl<'sc> TypedAstNode<'sc> {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription = type_ascription.map(|type_ascription| {
-                                namespace.resolve_type(&type_ascription, self_type)
-                            });
+                            let type_ascription = match type_ascription {
+                                Some(ty) => Some(namespace.resolve_type(&ty, self_type)),
+                                None => Some(MaybeResolvedType::Partial(
+                                    PartiallyResolvedType::NeedsType,
+                                )),
+                            };
                             let body = check!(
                                 TypedExpression::type_check(
                                     body,

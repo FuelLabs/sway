@@ -1,7 +1,7 @@
 [project]
 author  = "Alexander Hansen <alex.hansen@fuel.sh>"
 license = "MIT"
-name = "script_2"
+name = "struct_field_reassignment"
 entry = "main.sw"
 
 
