@@ -8,12 +8,14 @@ use pest::Span;
 use std::collections::VecDeque;
 
 mod asm;
-mod method_name;
 mod match_branch;
+mod match_condition;
+mod method_name;
 use crate::utils::join_spans;
 pub(crate) use asm::*;
-pub(crate) use method_name::MethodName;
 pub(crate) use match_branch::MatchBranch;
+pub(crate) use match_condition::MatchCondition;
+pub(crate) use method_name::MethodName;
 
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
@@ -752,12 +754,6 @@ fn parse_call_item<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, Expression<
         a => unreachable!("{:?}", a),
     };
     ok(exp, warnings, errors)
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum MatchCondition<'sc> {
-    CatchAll,
-    Expression(Expression<'sc>),
 }
 
 #[derive(Clone, Debug)]
