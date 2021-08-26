@@ -1,7 +1,7 @@
 use super::IntegerBits;
+use super::MaybeResolvedType;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use pest::Span;
-use super::MaybeResolvedType;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ResolvedType<'sc> {
