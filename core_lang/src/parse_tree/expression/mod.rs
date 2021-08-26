@@ -11,11 +11,13 @@ mod asm;
 mod match_branch;
 mod match_condition;
 mod method_name;
+mod unary_op;
 use crate::utils::join_spans;
 pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
 pub(crate) use match_condition::MatchCondition;
 pub(crate) use method_name::MethodName;
+pub(crate) use unary_op::UnaryOp;
 
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
@@ -754,31 +756,6 @@ fn parse_call_item<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, Expression<
         a => unreachable!("{:?}", a),
     };
     ok(exp, warnings, errors)
-}
-
-#[derive(Clone, Debug)]
-pub enum UnaryOp {
-    Not,
-    Ref,
-    Deref,
-}
-
-impl UnaryOp {
-    fn parse_from_pair<'sc>(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Option<Self>> {
-        use UnaryOp::*;
-        match pair.as_str() {
-            "!" => ok(Some(Not), Vec::new(), Vec::new()),
-            "ref" => ok(Some(Ref), Vec::new(), Vec::new()),
-            "deref" => ok(Some(Deref), Vec::new(), Vec::new()),
-            _ => {
-                let errors = vec![CompileError::Internal(
-                    "Attempted to parse unary op from invalid op string.",
-                    pair.as_span(),
-                )];
-                return err(Vec::new(), errors);
-            }
-        }
-    }
 }
 
 fn parse_op<'sc>(op: Pair<'sc, Rule>) -> CompileResult<'sc, Op> {
