@@ -1,7 +1,7 @@
 [project]
 author  = "Alexander Hansen <alex.hansen@fuel.sh>"
 license = "MIT"
-name = "script_3"
+name = "if_elseif_enum"
 entry = "main.sw"
 
 
