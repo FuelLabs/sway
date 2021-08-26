@@ -174,12 +174,95 @@ impl<'sc> TypedExpression<'sc> {
                     }
                 }
             }
-            Expression::MatchExpression { span, .. } => {
+            Expression::MatchExpression { primary_expression, branches, span, .. } => {
                 errors.push(CompileError::Unimplemented(
                     "Match expressions and pattern matching have not been implemented.",
                     span,
                 ));
-                return err(warnings, errors);
+
+                let typed_primary_expression = Box::new(check!(
+                    TypedExpression::type_check(
+                        *primary_expression.clone(),
+                        namespace,
+                        None,
+                        "",
+                        self_type,
+                        build_config,
+                        dead_code_graph
+                    ),
+                    error_recovery_expr(primary_expression.span()),
+                    warnings,
+                    errors
+                ));
+
+                // TODO(emilyaherbert): compiler should make sure that there is
+                // at least one branch in the match expression
+                let typed_first_branch_condition = check!(
+                    TypedMatchCondition::type_check(
+                        branches[0].condition.clone(),
+                        namespace,
+                        type_annotation.clone(),
+                        help_text.clone(),
+                        self_type,
+                        build_config,
+                        dead_code_graph
+                    ),
+                    error_recovery_expr(branches[0].condition.clone().span),
+                    warnings,
+                    errors
+                );
+                let typed_first_branch_res = check!(
+                    TypedExpression::type_check(
+                        branches[0].result.clone(),
+                        namespace,
+                        type_annotation.clone(),
+                        help_text.clone(),
+                        self_type,
+                        build_config,
+                        dead_code_graph
+                    ),
+                    error_recovery_expr(branches[0].result.clone().span()),
+                    warnings,
+                    errors
+                );
+                let typed_branches = vec!(typed_first_branch);
+                let return_type = typed_branches[0].return_type.clone();
+                let mut rest_of_branches = branches
+                    .into_iter()
+                    .skip(1)
+                    .map(|MatchBranch { condition, result, .. }| {
+                        let res = check!(
+                            TypedExpression::type_check(
+                                result.clone(),
+                                namespace,
+                                Some(return_type),
+                                "All branches of a match expression must be of the same type.",
+                                self_type,
+                                build_config,
+                                dead_code_graph
+                            ),
+                            error_recovery_expr(result.clone().span()),
+                            warnings,
+                            errors
+                        );
+                        TypedMatchBranch {
+                            condition: condition,
+                            result: Either::Right(res)
+                        }
+                    }).collect::<Vec<_>>();
+                let mut all_branches = typed_branches;
+                all_branches.append(&mut rest_of_branches);
+                
+                TypedExpression {
+                    expression: TypedExpressionVariant::MatchExpression {
+                        primary_expression: typed_primary_expression,
+                        branches: all_branches
+                    },
+                    is_constant: IsConstant::No, // TODO
+                    return_type: return_type,
+                    span,
+                }
+
                 /*
                 let typed_primary_expression = check!(
                     TypedExpression::type_check(*primary_expression, &namespace, None, ""),
