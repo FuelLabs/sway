@@ -15,7 +15,7 @@ pub enum Literal<'sc> {
     String(&'sc str),
     Boolean(bool),
     Byte(u8),
-    Byte32([u8; 32]),
+    B256([u8; 32]),
 }
 
 impl<'sc> Literal<'sc> {
@@ -30,7 +30,7 @@ impl<'sc> Literal<'sc> {
             String(inner) => ResolvedType::Str(inner.len() as u64),
             Boolean(_) => ResolvedType::Boolean,
             Byte(_) => ResolvedType::Byte,
-            Byte32(_) => ResolvedType::Byte32,
+            B256(_) => ResolvedType::B256,
         }
     }
     pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> CompileResult<'sc, (Self, Span<'sc>)> {
@@ -166,7 +166,7 @@ impl<'sc> Literal<'sc> {
             // assume utf8 for now
             String(st) => st.to_string().into_bytes(),
             Byte(b) => vec![0, 0, 0, 0, 0, 0, 0, b.to_be_bytes()[0]],
-            Byte32(b) => b.to_vec(),
+            B256(b) => b.to_vec(),
         }
     }
 
@@ -212,7 +212,7 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
                     pair.as_span(),
                 )
             })?;
-            Literal::Byte32(arr)
+            Literal::B256(arr)
         }
         a => {
             return Err(CompileError::InvalidByteLiteralLength {
@@ -258,7 +258,7 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Co
                     pair.as_span(),
                 )
             })?;
-            Literal::Byte32(arr)
+            Literal::B256(arr)
         }
         a => {
             return Err(CompileError::InvalidByteLiteralLength {

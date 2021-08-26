@@ -60,7 +60,7 @@ impl<'sc> TypedExpression<'sc> {
                     )),
                     Literal::Boolean(_) => MaybeResolvedType::Resolved(ResolvedType::Boolean),
                     Literal::Byte(_) => MaybeResolvedType::Resolved(ResolvedType::Byte),
-                    Literal::Byte32(_) => MaybeResolvedType::Resolved(ResolvedType::Byte32),
+                    Literal::B256(_) => MaybeResolvedType::Resolved(ResolvedType::B256),
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::Literal(lit),
@@ -686,15 +686,15 @@ impl<'sc> TypedExpression<'sc> {
                 address,
                 span,
             } => {
-                // TODO use stdlib's Address type instead of byte32
+                // TODO use stdlib's Address type instead of b256
                 // type check the address and make sure it is
                 let err_span = address.span();
                 let address = check!(
                     TypedExpression::type_check(
                         *address,
                         namespace,
-                        Some(MaybeResolvedType::Resolved(ResolvedType::Byte32)),
-                        "An address that is being ABI cast must be of type byte32",
+                        Some(MaybeResolvedType::Resolved(ResolvedType::B256)),
+                        "An address that is being ABI cast must be of type b256",
                         self_type,
                         build_config,
                         dead_code_graph,
