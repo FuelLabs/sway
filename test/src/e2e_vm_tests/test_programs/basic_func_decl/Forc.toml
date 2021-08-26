@@ -1,7 +1,7 @@
 [project]
 author  = "Alexander Hansen <alex.hansen@fuel.sh>"
 license = "MIT"
-name = "script_6"
+name = "basic_func_decl"
 entry = "main.sw"
 
 
