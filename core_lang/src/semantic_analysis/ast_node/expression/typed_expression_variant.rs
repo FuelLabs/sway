@@ -87,7 +87,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                     Literal::String(content) => content.to_string(),
                     Literal::Boolean(content) => content.to_string(),
                     Literal::Byte(content) => content.to_string(),
-                    Literal::Byte32(content) => content
+                    Literal::B256(content) => content
                         .iter()
                         .map(|x| x.to_string())
                         .collect::<Vec<_>>()
