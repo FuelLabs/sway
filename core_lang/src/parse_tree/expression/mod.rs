@@ -1,5 +1,7 @@
 use crate::error::*;
 use crate::parse_tree::{CallPath, Literal};
+use crate::semantic_analysis::ast_node::{TypedExpression, TypedExpressionVariant};
+use crate::types::MaybeResolvedType;
 use crate::{parser::Rule, types::TypeInfo};
 use crate::{CodeBlock, Ident};
 use either::Either;

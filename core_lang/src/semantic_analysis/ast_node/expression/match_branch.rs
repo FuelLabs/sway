@@ -1,10 +1,10 @@
 use super::*;
-use crate::semantic_analysis::ast_node::TypedCodeBlock;
-use either::Either;
+use crate::types::*;
+use crate::Ident;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub(crate) struct TypedMatchBranch<'sc> {
-    condition: TypedMatchCondition<'sc>,
-    result: Either<TypedCodeBlock<'sc>, TypedExpression<'sc>>,
+    pub(crate) patterns: Vec<(Ident<'sc>, MaybeResolvedType<'sc>)>,
+    pub(crate) result: TypedExpression<'sc>,
 }

@@ -6,7 +6,7 @@ use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypedExpression<'sc> {
+pub struct TypedExpression<'sc> {
     pub(crate) expression: TypedExpressionVariant<'sc>,
     pub(crate) return_type: MaybeResolvedType<'sc>,
     /// whether or not this expression is constantly evaluatable (if the result is known at compile
@@ -174,12 +174,12 @@ impl<'sc> TypedExpression<'sc> {
                     }
                 }
             }
-            Expression::MatchExpression { primary_expression, branches, span, .. } => {
-                errors.push(CompileError::Unimplemented(
-                    "Match expressions and pattern matching have not been implemented.",
-                    span,
-                ));
-
+            Expression::MatchExpression {
+                primary_expression,
+                branches,
+                span,
+                ..
+            } => {
                 let typed_primary_expression = Box::new(check!(
                     TypedExpression::type_check(
                         *primary_expression.clone(),
@@ -194,72 +194,74 @@ impl<'sc> TypedExpression<'sc> {
                     warnings,
                     errors
                 ));
+                let condition_type = typed_primary_expression.return_type.clone();
 
-                // TODO(emilyaherbert): compiler should make sure that there is
-                // at least one branch in the match expression
-                let typed_first_branch_condition = check!(
-                    TypedMatchCondition::type_check(
-                        branches[0].condition.clone(),
-                        namespace,
-                        type_annotation.clone(),
-                        help_text.clone(),
-                        self_type,
-                        build_config,
-                        dead_code_graph
-                    ),
-                    error_recovery_expr(branches[0].condition.clone().span),
-                    warnings,
-                    errors
-                );
-                let typed_first_branch_res = check!(
-                    TypedExpression::type_check(
-                        branches[0].result.clone(),
-                        namespace,
-                        type_annotation.clone(),
-                        help_text.clone(),
-                        self_type,
-                        build_config,
-                        dead_code_graph
-                    ),
-                    error_recovery_expr(branches[0].result.clone().span()),
-                    warnings,
-                    errors
-                );
-                let typed_branches = vec!(typed_first_branch);
-                let return_type = typed_branches[0].return_type.clone();
-                let mut rest_of_branches = branches
+                let typed_branches = branches
                     .into_iter()
-                    .skip(1)
-                    .map(|MatchBranch { condition, result, .. }| {
-                        let res = check!(
-                            TypedExpression::type_check(
-                                result.clone(),
-                                namespace,
-                                Some(return_type),
-                                "All branches of a match expression must be of the same type.",
-                                self_type,
-                                build_config,
-                                dead_code_graph
-                            ),
-                            error_recovery_expr(result.clone().span()),
-                            warnings,
-                            errors
-                        );
-                        TypedMatchBranch {
-                            condition: condition,
-                            result: Either::Right(res)
-                        }
-                    }).collect::<Vec<_>>();
-                let mut all_branches = typed_branches;
-                all_branches.append(&mut rest_of_branches);
-                
+                    .map(
+                        |MatchBranch {
+                             condition, result, ..
+                         }| {
+                            let patterns = match condition {
+                                MatchCondition::CatchAll => todo!(),
+                                MatchCondition::Expression(exp) => TypedExpression::pattern_match(
+                                    exp,
+                                    namespace,
+                                    condition_type.clone(),
+                                )
+                            };
+                            for (name, typ) in patterns.iter() {
+                                namespace.insert(
+                                    name.clone(),
+                                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                                        name: name.clone(),
+                                        body: TypedExpression {
+                                            expression: TypedExpressionVariant::VariableExpression {
+                                                name: name.clone(),
+                                                unary_op: None
+                                            },
+                                            return_type: typ.clone(),
+                                            is_constant: IsConstant::No,
+                                            span: name.span.clone(),
+                                        },
+                                        is_mutable: false, // TODO allow mutable function params?
+                                    }),
+                                );
+                            }
+                            let typed_result = check!(
+                                TypedExpression::type_check(
+                                    result.clone(),
+                                    namespace,
+                                    type_annotation.clone(),
+                                    "All branches of a match expression must be of the same type.",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph
+                                ),
+                                error_recovery_expr(result.clone().span()),
+                                warnings,
+                                errors
+                            );
+                            TypedMatchBranch {
+                                patterns: patterns,
+                                result: typed_result,
+                            }
+                        },
+                    )
+                    .collect::<Vec<_>>();
+
+                // TODO(emilyaherbert): Check to see if the return type from
+                // all the branches is the same
+
+                let result_type = typed_branches[0].result.return_type.clone();
+
                 TypedExpression {
                     expression: TypedExpressionVariant::MatchExpression {
                         primary_expression: typed_primary_expression,
-                        branches: all_branches
+                        branches: typed_branches,
                     },
-                    is_constant: IsConstant::No, // TODO
-                    return_type: return_type,
+                    is_constant: IsConstant::No,
+                    return_type: result_type,
                     span,
                 }
 
@@ -1047,6 +1049,20 @@ impl<'sc> TypedExpression<'sc> {
 
         ok(typed_expression, warnings, errors)
     }
+
+    pub(crate) fn pattern_match(
+        other: Expression<'sc>,
+        namespace: &mut Namespace<'sc>,
+        type_annotation: MaybeResolvedType<'sc>,) -> Vec<(Ident<'sc>, MaybeResolvedType<'sc>)> {
+        let mut patterns = vec!();
+        match other {
+            Expression::Literal { .. } => {},
+            Expression::VariableExpression { name, .. } => patterns.push((name, type_annotation.clone())),
+            _ => todo!()
+        }
+        patterns
+    }
+
     pub(crate) fn pretty_print(&self) -> String {
         format!(
             "{} ({})",
