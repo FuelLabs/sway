@@ -709,7 +709,10 @@ impl<'sc> TypedExpression<'sc> {
                                 warnings,
                                 errors
                             );
-                            let r#type = &args_buf[0].return_type;
+                            let r#type = &args_buf
+                                .get(0)
+                                .map(|x| x.return_type.clone())
+                                .unwrap_or(MaybeResolvedType::Resolved(ResolvedType::Unit));
                             match module.find_method_for_type(r#type, call_path.suffix.clone()) {
                                 Some(o) => o,
                                 None => {
