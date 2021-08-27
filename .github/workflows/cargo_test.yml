@@ -1,12 +1,12 @@
 name: Compile and Test
 
-on:
+on: 
   push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
+    paths:
+      # Only run cargo test when relevant files are changed
+      - '**/**.rs'
+      - '**/**.sw'
+      - '**/**.toml'
 
 env:
   CARGO_TERM_COLOR: always
