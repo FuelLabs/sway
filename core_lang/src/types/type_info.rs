@@ -21,7 +21,7 @@ pub enum TypeInfo<'sc> {
     Unit,
     SelfType,
     Byte,
-    Byte32,
+    B256,
     /// This means that specific type of a number is not yet known. It will be
     /// determined via inference at a later time.
     Numeric,
@@ -61,7 +61,7 @@ impl<'sc> TypeInfo<'sc> {
             TypeInfo::Numeric => MaybeResolvedType::Partial(PartiallyResolvedType::Numeric),
             TypeInfo::Unit => MaybeResolvedType::Resolved(ResolvedType::Unit),
             TypeInfo::Byte => MaybeResolvedType::Resolved(ResolvedType::Byte),
-            TypeInfo::Byte32 => MaybeResolvedType::Resolved(ResolvedType::Byte32),
+            TypeInfo::B256 => MaybeResolvedType::Resolved(ResolvedType::B256),
             TypeInfo::ErrorRecovery => MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
         })
     }
@@ -86,7 +86,7 @@ impl<'sc> TypeInfo<'sc> {
                 "bool" => TypeInfo::Boolean,
                 "unit" => TypeInfo::Unit,
                 "byte" => TypeInfo::Byte,
-                "byte32" => TypeInfo::Byte32,
+                "b256" => TypeInfo::B256,
                 "Self" | "self" => TypeInfo::SelfType,
                 "Contract" => TypeInfo::Contract,
                 "()" => TypeInfo::Unit,

@@ -657,7 +657,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         span: parameters[1].type_span.clone(),
                     });
                 }
-                if parameters[2].r#type != MaybeResolvedType::Resolved(ResolvedType::Byte32) {
+                if parameters[2].r#type != MaybeResolvedType::Resolved(ResolvedType::B256) {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[2].type_span.clone(),
                     });

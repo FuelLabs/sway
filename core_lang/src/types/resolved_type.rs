@@ -24,7 +24,7 @@ pub enum ResolvedType<'sc> {
     Boolean,
     Unit,
     Byte,
-    Byte32,
+    B256,
     Struct {
         name: Ident<'sc>,
         fields: Vec<TypedStructField<'sc>>,
@@ -243,7 +243,7 @@ impl<'sc> ResolvedType<'sc> {
 
             Unit => "()".into(),
             Byte => "byte".into(),
-            Byte32 => "byte32".into(),
+            B256 => "b256".into(),
             Struct {
                 name: Ident { primary_name, .. },
                 ..
@@ -271,7 +271,7 @@ impl<'sc> ResolvedType<'sc> {
             ResolvedType::Boolean => 1,
             ResolvedType::Unit => 0,
             ResolvedType::Byte => 1,
-            ResolvedType::Byte32 => 4,
+            ResolvedType::B256 => 4,
             ResolvedType::Enum { variant_types, .. } => {
                 // the size of an enum is one word (for the tag) plus the maximum size
                 // of any individual variant
@@ -322,7 +322,7 @@ impl<'sc> ResolvedType<'sc> {
 
             Unit => "unit".into(),
             Byte => "byte".into(),
-            Byte32 => "byte32".into(),
+            B256 => "b256".into(),
             Struct { fields, .. } => {
                 let field_names = {
                     let names = fields

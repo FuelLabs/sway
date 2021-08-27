@@ -1,0 +1,11 @@
+[project]
+author  = "Alexander Hansen <alex.hansen@fuel.sh>"
+license = "MIT"
+name = "basic_func_decl"
+entry = "main.sw"
+
+
+[dependencies]
+std = { path = "../../../../../stdlib" }
+
+

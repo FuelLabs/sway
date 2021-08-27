@@ -138,7 +138,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
         opcode: Either::Left(VirtualOp::SW(
             ra_pointer.clone(),
             selector_register,
-            // offset by 4 words, since a byte32 is 4 words
+            // offset by 4 words, since a b256 is 4 words
             VirtualImmediate12::new_unchecked(4, "infallible constant 4"),
         )),
         comment: "write fn selector to rA + 32 for call".into(),

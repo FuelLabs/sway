@@ -348,6 +348,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::GT(r1, r2, r3)
                 }
+                "lt" => {
+                    let (r1, r2, r3) = check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LT(r1, r2, r3)
+                }
                 "mlog" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -1221,6 +1230,7 @@ impl fmt::Display for Op<'_> {
                 EXP(a, b, c) => format!("exp {} {} {}", a, b, c),
                 EXPI(a, b, c) => format!("expi {} {} {}", a, b, c),
                 GT(a, b, c) => format!("gt {} {} {}", a, b, c),
+                LT(a, b, c) => format!("lt {} {} {}", a, b, c),
                 MLOG(a, b, c) => format!("mlog {} {} {}", a, b, c),
                 MROO(a, b, c) => format!("mroo {} {} {}", a, b, c),
                 MOD(a, b, c) => format!("mod {} {} {}", a, b, c),

@@ -6,7 +6,7 @@ members = [
     "forc",
     "formatter",
     "sway-server",
-    "test_suite"
+    "test"
 ]
 
 [profile.dev.package.sway-server]
