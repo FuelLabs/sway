@@ -673,7 +673,7 @@ pub enum CompileError<'sc> {
         provided_args: usize,
         span: Span<'sc>,
     },
-    #[error("For now, ABI functions must take exactly four parameters, in this order: gas_to_forward: u64, coins_to_forward: u64, color_of_coins: bytes32, <your_function_parameter>: ?")]
+    #[error("For now, ABI functions must take exactly four parameters, in this order: gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, <your_function_parameter>: ?")]
     AbiFunctionRequiresSpecificSignature { span: Span<'sc> },
     #[error("This parameter was declared as type {should_be}, but argument of type {provided} was provided.")]
     ArgumentParameterTypeMismatch {
