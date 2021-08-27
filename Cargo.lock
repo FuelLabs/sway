@@ -1152,7 +1152,7 @@ dependencies = [
 [[package]]
 name = "fuel-client"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-core?branch=graphql-refactor-axum#92733683caaf8546910c08f5143823f83aa15d9e"
+source = "git+ssh://git@github.com/FuelLabs/fuel-core#ae9f426f06200dfb0bb440a2944588d27d323a19"
 dependencies = [
  "async-graphql",
  "cynic",
@@ -1167,7 +1167,7 @@ dependencies = [
 [[package]]
 name = "fuel-core"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-core?branch=graphql-refactor-axum#92733683caaf8546910c08f5143823f83aa15d9e"
+source = "git+ssh://git@github.com/FuelLabs/fuel-core#ae9f426f06200dfb0bb440a2944588d27d323a19"
 dependencies = [
  "async-graphql",
  "bincode",

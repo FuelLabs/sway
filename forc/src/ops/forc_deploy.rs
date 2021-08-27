@@ -1,6 +1,6 @@
 use core_lang::parse;
-use fuel_tx::{crypto, ContractId, Output, Salt, Transaction};
 use fuel_client::client::FuelClient;
+use fuel_tx::{crypto, ContractId, Output, Salt, Transaction};
 
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
