@@ -16,7 +16,7 @@ use crate::{
         TypedAstNode, TypedAstNodeContent, TypedFunctionDeclaration, TypedParseTree,
     },
     types::ResolvedType,
-    Ident,
+    BuildConfig, Ident,
 };
 use either::Either;
 
@@ -609,7 +609,8 @@ impl<'sc> AsmNamespace<'sc> {
 
 pub(crate) fn compile_ast_to_asm<'sc>(
     ast: TypedParseTree<'sc>,
-) -> CompileResult<'sc, FinalizedAsm> {
+    build_config: &BuildConfig,
+) -> CompileResult<'sc, FinalizedAsm<'sc>> {
     let mut register_sequencer = RegisterSequencer::new();
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -689,13 +690,20 @@ pub(crate) fn compile_ast_to_asm<'sc>(
         TypedParseTree::Library { .. } => HllAsmSet::Library,
     };
 
-    ok(
-        asm.remove_unnecessary_jumps()
-            .allocate_registers()
-            .optimize(),
-        warnings,
-        errors,
-    )
+    if build_config.print_intermediate_asm {
+        println!("{}", asm);
+    }
+
+    let finalized_asm = asm
+        .remove_unnecessary_jumps()
+        .allocate_registers()
+        .optimize();
+
+    if build_config.print_finalized_asm {
+        println!("{}", finalized_asm);
+    }
+
+    ok(finalized_asm, warnings, errors)
 }
 
 impl<'sc> HllAsmSet<'sc> {
