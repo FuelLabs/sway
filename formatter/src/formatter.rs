@@ -501,4 +501,54 @@ pub fn tell_a_story() -> Story {
         let (_, formatted_code) = result.unwrap();
         assert_eq!(correct_sway_code, formatted_code);
     }
+
+    #[test]
+    fn test_comparison_operators() {
+        let correct_sway_code = r#"script;
+
+fn main() {
+    if 1 >= 0 {
+
+    } else if 4 <= 0 {
+
+    } else if 5 == 0 {
+    } else if 4 != 4 {
+
+    } else {
+
+    }
+}
+"#;
+
+        let result = get_formatted_data(correct_sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+
+        let sway_code = r#"script;
+
+        fn main() {
+            if 1 >= 0 {
+        
+            }       else if 4 <= 0 
+            
+            {
+        
+            } 
+        else if 5 == 0 { } else if 4 != 4 
+        
+        {
+        
+            } 
+                    else {
+        
+            }    
+        }        
+"#;
+
+        let result = get_formatted_data(sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
 }
