@@ -518,6 +518,16 @@ fn main() {
 
     }
 }
+
+fn one_liner() -> bool {
+    if 1 >= 0 {
+        true
+    } else if 1 <= 0 {
+        true
+    } else {
+        true
+    }
+}
 "#;
 
         let result = get_formatted_data(correct_sway_code, 4);
@@ -544,6 +554,10 @@ fn main() {
         
             }    
         }        
+
+        fn one_liner() -> bool {
+            if 1 >= 0 { true } else if 1 <= 0 { true } else { true }
+        }
 "#;
 
         let result = get_formatted_data(sway_code, 4);
