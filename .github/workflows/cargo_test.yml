@@ -1,12 +1,6 @@
 name: Compile and Test
 
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
+on: [push]
 
 env:
   CARGO_TERM_COLOR: always
