@@ -273,10 +273,15 @@ impl CodeBuilder {
                 iter.next();
                 self.move_rest_to_new_line(line, iter);
             }
-            // if there is more - move to new line, unless it's 'else' statement
-            Some((next_index, _)) => {
+            // if there is more move to new line, unless it's 'else' statement or ')' | '{'
+            Some((next_index, next_char)) => {
                 let next_line = &line[*next_index..].trim();
-                if is_else_statement_next(next_line) {
+                let is_valid_char = *next_char == '{' || *next_char == ')';
+
+                if is_valid_char {
+                    self.add_line(CodeLine::new("}".into()));
+                    self.format_and_add(next_line);
+                } else if is_else_statement_next(next_line) {
                     self.add_line(CodeLine::new("} ".into()));
                     self.format_and_add(next_line);
                 } else {
