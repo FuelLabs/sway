@@ -241,15 +241,15 @@ fn connect_node<'sc>(
                 tree_type,
                 expr.span.clone(),
             )?;
-            for leaf in return_contents {
+            for leaf in return_contents.clone() {
                 graph.add_edge(this_index, leaf, "".into());
             }
             // connect return to the exit node
             if let Some(exit_node) = exit_node {
                 graph.add_edge(this_index, exit_node, "return".into());
-                (vec![], None)
+                (return_contents, None)
             } else {
-                (vec![], None)
+                (return_contents, None)
             }
         }
         TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
