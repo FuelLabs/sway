@@ -12,6 +12,11 @@ pub fn is_comment(line: &str) -> bool {
     chars.next() == Some('/') && chars.next() == Some('/')
 }
 
+pub fn is_else_statement_next(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.len() >= 4 && &trimmed[0..4] == "else"
+}
+
 pub fn is_multiline_comment(line: &str) -> bool {
     let mut chars = line.trim().chars();
     chars.next() == Some('/') && chars.next() == Some('*')
@@ -53,7 +58,7 @@ pub fn handle_whitespace_case(code_line: &mut CodeLine, iter: &mut Peekable<Enum
         let next_char = *next_char;
 
         match next_char {
-            '(' | ';' | ':' | ')' | ',' => {} // do nothing, handle it in next turn
+            '(' | ';' | ':' | ')' | ',' | '}' => {} // do nothing, handle it in next turn
             _ => {
                 // add whitespace if it is not already there
                 code_line.append_whitespace();
