@@ -59,15 +59,6 @@ pub enum ControlFlowGraphNode<'sc> {
     },
 }
 
-impl<'sc> ControlFlowGraphNode<'sc> {
-    pub(crate) fn unwrap_to_node(&self) -> TypedAstNode<'sc> {
-        match self {
-            ControlFlowGraphNode::ProgramNode(node) => node.clone(),
-            _ => panic!("Called unwrap_to_node() on a non-program-node value."),
-        }
-    }
-}
-
 impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = match self {
