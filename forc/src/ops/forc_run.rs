@@ -35,7 +35,8 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
 
                         let build_command = BuildCommand {
                             path: command.path,
-                            print_asm: false,
+                            print_finalized_asm: false,
+                            print_intermediate_asm: false,
                             binary_outfile: None,
                             offline_mode: false,
                         };
