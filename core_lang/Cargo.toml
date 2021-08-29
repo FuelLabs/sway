@@ -9,19 +9,19 @@ selector-debug = ["structopt", "hex"]
 
 [dependencies]
 #pest = "2.0"
-pest_derive = "2.0"
-pest = { git = "https://github.com/sezna/pest.git" , rev = "8aa58791f759daf4caee26e8560e862df5a6afb7" }
-thiserror = "1.0"
+derivative = "2.2.0"
 either = "1.6"
-Inflector = { git = "https://github.com/sezna/Inflector.git" }
-petgraph = "0.5"
-uuid-b64 = "0.1"
 fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
 fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
-sha2 = "0.9"
-derivative = "2.2.0"
-structopt = { version = "0.3", default-features = false, optional = true }
 hex = { version = "0.4", optional = true }
+Inflector = { git = "https://github.com/sezna/Inflector.git" }
+pest_derive = "2.0"
+pest = { git = "https://github.com/sezna/pest.git" , rev = "8aa58791f759daf4caee26e8560e862df5a6afb7" }
+petgraph = "0.5"
+sha2 = "0.9"
+structopt = { version = "0.3", default-features = false, optional = true }
+thiserror = "1.0"
+uuid-b64 = "0.1"
 
 
 [[bin]]
