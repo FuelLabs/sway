@@ -9,6 +9,7 @@ pub fn run() {
         "if_elseif_enum",
         "out_of_order_decl",
         "struct_field_reassignment",
+        "contract_call",
         "enum_in_fn_decl",
     ];
     project_names.into_iter().for_each(|name| {
