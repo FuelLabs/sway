@@ -1204,7 +1204,7 @@ fn load_bal<'sc>(return_register: VirtualRegister) -> Op<'sc> {
         owning_span: None,
     }
 }
-/// Given a register, load the current coin color into it
+/// Given a register, load a pointer to the current coin color into it
 fn load_coin_color<'sc>(return_register: VirtualRegister) -> Op<'sc> {
     Op {
         opcode: Either::Left(VirtualOp::LW(
