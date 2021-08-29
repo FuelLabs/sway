@@ -10,6 +10,7 @@ pub fn run() {
         "out_of_order_decl",
         "struct_field_reassignment",
         "contract_call",
+        "enum_in_fn_decl",
     ];
     project_names.into_iter().for_each(|name| {
         crate::e2e_vm_tests::harness::runs_in_vm(name);
