@@ -78,7 +78,7 @@ fn main() {
   let x = 5;
   let y = match x {
     5 => 5,
-    n => n
+    n => n,
   };
   let first_color: PrimaryColor = PrimaryColor::Green;
   let test = first_color == PrimaryColor::Green;
