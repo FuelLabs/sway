@@ -1,0 +1,153 @@
+name: Deploy Nightly Binaries
+
+## It would be nice to use a matrix to cleanly build everything at once,
+## but not all of our dependencies allow cross compilation. Because of this,
+## we have to break the builds apart into different jobs to run on different runners.
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+jobs:
+  build_x86_64-apple-darwin:
+    name:  Build x86_64-apple-darwin
+    runs-on: macos-latest
+    steps:
+    - name: Setup SSH agent
+      uses: webfactory/ssh-agent@v0.5.2
+      with:
+        ssh-private-key: |
+          ${{ secrets.PRIVATE_KEY_FUEL_ASM }}
+          ${{ secrets.PRIVATE_KEY_FUEL_TX }}
+          ${{ secrets.PRIVATE_KEY_FUEL_VM }}
+          ${{ secrets.PRIVATE_KEY_FUEL_CORE }}
+
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        target: x86_64-apple-darwin
+
+    - name: Build x86_64-apple-darwin
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --release --target=x86_64-apple-darwin
+
+    - name: 'Upload Build Artifacts'
+      uses: actions/upload-artifact@v2
+      with:
+        name: x86_64-apple-darwin
+        path: |
+          target/x86_64-apple-darwin/release/sway-server
+          target/x86_64-apple-darwin/release/forc
+        retention-days: 1
+
+
+  build_x86_64-unknown-linux-gnu:
+    name:  Build x86_64-unknown-linux-gnu
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup SSH agent
+      uses: webfactory/ssh-agent@v0.5.2
+      with:
+        ssh-private-key: |
+          ${{ secrets.PRIVATE_KEY_FUEL_ASM }}
+          ${{ secrets.PRIVATE_KEY_FUEL_TX }}
+          ${{ secrets.PRIVATE_KEY_FUEL_VM }}
+          ${{ secrets.PRIVATE_KEY_FUEL_CORE }}
+
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        target: x86_64-unknown-linux-gnu
+
+    - name: Build x86_64-unknown-linux-gnu
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose --release --target=x86_64-unknown-linux-gnu
+    - name: 'Upload Build Artifacts'
+      uses: actions/upload-artifact@v2
+      with:
+        name: x86_64-unknown-linux-gnu
+        path: |
+          target/x86_64-unknown-linux-gnu/release/sway-server
+          target/x86_64-unknown-linux-gnu/release/forc
+        retention-days: 1
+
+  upload_to_git:
+    name: Publish to sway-nightly-binaries
+    needs: [build_x86_64-apple-darwin,build_x86_64-unknown-linux-gnu] 
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup SSH agent
+      uses: webfactory/ssh-agent@v0.5.2
+      with:
+        ssh-private-key: |
+          ${{ secrets.PRIVATE_KEY_FUEL_NIGHTLY_BINARIES }}
+
+      # needed to get the short sha
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Get current date and SHA
+      id: vars 
+      run: |
+        echo "::set-output name=date::$(date +'%Y-%m-%d:%H:%M:%S')"
+        echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+    - name: Clone Deploy Repository
+      run: |
+        git clone git@github.com:FuelLabs/sway-nightly-binaries
+
+    - name: Download x86_64-apple-darwin  artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: x86_64-apple-darwin
+        path: x86_64-apple-darwin/
+
+    - name: Download x86_64-unknown-linux-gnu artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: x86_64-unknown-linux-gnu 
+        path: x86_64-unknown-linux-gnu/
+
+    - name: Move Binaries
+      run: |
+        mkdir -p sway-nightly-binaries/$FOLDER_NAME/x86_64-apple-darwin
+        mkdir -p sway-nightly-binaries/$FOLDER_NAME/x86_64-unknown-linux-gnu
+        mv x86_64-apple-darwin/sway-server sway-nightly-binaries/$FOLDER_NAME/x86_64-apple-darwin/
+        mv x86_64-apple-darwin/forc sway-nightly-binaries/$FOLDER_NAME/x86_64-apple-darwin/
+        mv x86_64-unknown-linux-gnu/sway-server sway-nightly-binaries/$FOLDER_NAME/x86_64-unknown-linux-gnu/
+        mv x86_64-unknown-linux-gnu/forc sway-nightly-binaries/$FOLDER_NAME/x86_64-unknown-linux-gnu/
+      env: 
+        FOLDER_NAME: nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}
+
+    - name: Push Binaries
+      run: |
+        cd sway-nightly-binaries
+        git config --global user.name "sway-actions[bot]"
+        git config --global user.email "contact@fuel.sh"
+        git add .
+        git commit -m "$FOLDER_NAME"
+        git push origin master
+      env: 
+        FOLDER_NAME: nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}
