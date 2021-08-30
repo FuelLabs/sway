@@ -229,6 +229,20 @@ impl<'sc> Namespace<'sc> {
         ok((), warnings, vec![])
     }
 
+    pub(crate) fn remove(&mut self, name: Ident<'sc>) -> CompileResult<()> {
+        let mut errors = vec![];
+        match self.symbols.remove(&name) {
+            Some(_) => {}
+            None => {
+                errors.push(CompileError::SymbolNotFound {
+                    name: name.primary_name.into(),
+                    span: name.span.clone(),
+                });
+            }
+        }
+        ok((), vec![], errors)
+    }
+
     pub(crate) fn get_symbol(&self, symbol: &Ident<'sc>) -> Option<&TypedDeclaration<'sc>> {
         self.symbols.get(symbol)
     }

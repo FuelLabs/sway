@@ -206,29 +206,30 @@ impl<'sc> TypedExpression<'sc> {
                              condition, result, ..
                          }| {
                             let patterns = match condition {
-                                MatchCondition::CatchAll => todo!(),
-                                MatchCondition::Expression(exp) => TypedExpression::pattern_match(
-                                    exp,
-                                    namespace,
-                                    condition_type.clone(),
-                                )
+                                MatchCondition::CatchAll => vec![],
+                                MatchCondition::Expression(exp) => {
+                                    TypedExpression::pattern_match(exp, condition_type.clone())
+                                }
                             };
                             for (name, typ) in patterns.iter() {
                                 namespace.insert(
                                     name.clone(),
-                                    TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                                        name: name.clone(),
-                                        body: TypedExpression {
-                                            expression: TypedExpressionVariant::VariableExpression {
-                                                name: name.clone(),
-                                                unary_op: None
+                                    TypedDeclaration::VariableDeclaration(
+                                        TypedVariableDeclaration {
+                                            name: name.clone(),
+                                            body: TypedExpression {
+                                                expression:
+                                                    TypedExpressionVariant::VariableExpression {
+                                                        name: name.clone(),
+                                                        unary_op: None,
+                                                    },
+                                                return_type: typ.clone(),
+                                                is_constant: IsConstant::No,
+                                                span: name.span.clone(),
                                             },
-                                            return_type: typ.clone(),
-                                            is_constant: IsConstant::No,
-                                            span: name.span.clone(),
+                                            is_mutable: false,
                                         },
-                                        is_mutable: false, // TODO allow mutable function params?
-                                    }),
+                                    ),
                                 );
                             }
                             let typed_result = check!(
@@ -245,6 +246,9 @@ impl<'sc> TypedExpression<'sc> {
                                 warnings,
                                 errors
                             );
+                            for (name, _) in patterns.iter() {
+                                namespace.remove(name.clone());
+                            }
                             TypedMatchBranch {
                                 patterns: patterns,
                                 result: typed_result,
@@ -875,13 +879,15 @@ impl<'sc> TypedExpression<'sc> {
 
     pub(crate) fn pattern_match(
         other: Expression<'sc>,
-        namespace: &mut Namespace<'sc>,
-        type_annotation: MaybeResolvedType<'sc>,) -> Vec<(Ident<'sc>, MaybeResolvedType<'sc>)> {
-        let mut patterns = vec!();
+        type_annotation: MaybeResolvedType<'sc>,
+    ) -> Vec<(Ident<'sc>, MaybeResolvedType<'sc>)> {
+        let mut patterns = vec![];
         match other {
-            Expression::Literal { .. } => {},
-            Expression::VariableExpression { name, .. } => patterns.push((name, type_annotation.clone())),
-            _ => todo!()
+            Expression::Literal { .. } => {}
+            Expression::VariableExpression { name, .. } => {
+                patterns.push((name, type_annotation.clone()))
+            }
+            _ => todo!(),
         }
         patterns
     }

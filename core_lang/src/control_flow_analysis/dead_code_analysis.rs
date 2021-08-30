@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::parse_tree::CallPath;
-use crate::semantic_analysis::ast_node::TypedStructExpressionField;
+use crate::semantic_analysis::ast_node::{TypedMatchBranch, TypedStructExpressionField};
 use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
     parse_tree::Visibility,
@@ -833,6 +833,36 @@ fn connect_expression<'sc>(
             tree_type,
             address.span.clone(),
         ),
+        MatchExpression {
+            primary_expression,
+            branches,
+        } => {
+            let mut exprs = connect_expression(
+                &primary_expression.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                primary_expression.span.clone(),
+            )?;
+            let branches_exprs: Result<Vec<_>, _> = branches
+                .iter()
+                .map(|TypedMatchBranch { result, .. }| {
+                    connect_expression(
+                        &result.expression,
+                        graph,
+                        leaves,
+                        exit_node,
+                        "match branch",
+                        tree_type,
+                        result.span.clone(),
+                    )
+                })
+                .collect();
+            exprs.append(&mut branches_exprs?.concat());
+            Ok(exprs)
+        }
         a => {
             println!("Unimplemented: {:?}", a);
             return Err(CompileError::Unimplemented(
