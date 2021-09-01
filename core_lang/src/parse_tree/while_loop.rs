@@ -1,4 +1,6 @@
+use crate::build_config::BuildConfig;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::{
     error::{ok, CompileResult},
     CodeBlock, Expression,
@@ -12,22 +14,32 @@ pub struct WhileLoop<'sc> {
 }
 
 impl<'sc> WhileLoop<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Self> {
+        let (pair, config) = input;
+        let path = config.map(|config| config.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut iter = pair.into_inner();
         let _while_keyword = iter.next().unwrap();
         let condition = iter.next().unwrap();
         let body = iter.next().unwrap();
-        let whole_block_span = body.as_span();
+        let whole_block_span = Span {
+            span: body.as_span(),
+            path,
+        };
 
         let condition = eval!(
             Expression::parse_from_pair,
             warnings,
             errors,
-            condition,
+            (condition, config),
             Expression::Unit {
-                span: condition.as_span()
+                span: Span {
+                    span: condition.as_span(),
+                    path
+                }
             }
         );
 
@@ -35,7 +47,7 @@ impl<'sc> WhileLoop<'sc> {
             CodeBlock::parse_from_pair,
             warnings,
             errors,
-            body,
+            (body, config),
             CodeBlock {
                 contents: Default::default(),
                 whole_block_span,

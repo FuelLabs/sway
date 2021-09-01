@@ -1,8 +1,9 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::{Ident, TypeInfo};
 use pest::iterators::Pair;
-use pest::Span;
 
 use super::Expression;
 use crate::types::IntegerBits;
@@ -17,8 +18,15 @@ pub struct AsmExpression<'sc> {
 }
 
 impl<'sc> AsmExpression<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        let whole_block_span = pair.as_span();
+    pub(crate) fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Self> {
+        let (pair, config) = input;
+        let path = config.map(|config| config.dir_of_code);
+        let whole_block_span = Span {
+            span: pair.as_span(),
+            path,
+        };
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut iter = pair.into_inner();
@@ -28,7 +36,7 @@ impl<'sc> AsmExpression<'sc> {
             AsmRegisterDeclaration::parse_from_pair,
             warnings,
             errors,
-            asm_registers,
+            (asm_registers, config),
             return err(warnings, errors)
         );
         let mut asm_op_buf = Vec::new();
@@ -37,7 +45,7 @@ impl<'sc> AsmExpression<'sc> {
         while let Some(pair) = iter.next() {
             match pair.as_rule() {
                 Rule::asm_op => {
-                    let op = eval!(AsmOp::parse_from_pair, warnings, errors, pair, continue);
+                    let op = eval!(AsmOp::parse_from_pair, warnings, errors, (pair, config), continue);
                     asm_op_buf.push(op);
                 }
                 Rule::asm_register => {
@@ -46,10 +54,13 @@ impl<'sc> AsmExpression<'sc> {
                             AsmRegister::parse_from_pair,
                             warnings,
                             errors,
-                            pair,
+                            (pair, config),
                             continue
                         ),
-                        pair.as_span(),
+                        Span {
+                            span: pair.as_span(),
+                            path,
+                        },
                     ));
                 }
                 Rule::type_name => {
@@ -57,7 +68,7 @@ impl<'sc> AsmExpression<'sc> {
                         TypeInfo::parse_from_pair,
                         warnings,
                         errors,
-                        pair,
+                        (pair, config),
                         continue
                     ));
                 }
@@ -116,16 +127,21 @@ impl Into<String> for AsmRegister {
 }
 
 impl<'sc> AsmOp<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    fn parse_from_pair(input: (Pair<'sc, Rule>, Option<BuildConfig>)) -> CompileResult<'sc, Self> {
+        let (pair, config) = input;
+        let path = config.map(|config| config.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let span = pair.as_span();
+        let span = Span {
+            span: pair.as_span(),
+            path,
+        };
         let mut iter = pair.into_inner();
         let opcode = eval!(
             Ident::parse_from_pair,
             warnings,
             errors,
-            iter.next().unwrap(),
+            (iter.next().unwrap(), config),
             return err(warnings, errors)
         );
         let mut args = vec![];
@@ -135,13 +151,19 @@ impl<'sc> AsmOp<'sc> {
                 Rule::asm_register => {
                     args.push(Ident {
                         primary_name: pair.as_str(),
-                        span: pair.as_span(),
+                        span: Span {
+                            span: pair.as_span(),
+                            path,
+                        },
                     });
                 }
                 Rule::asm_immediate => {
                     immediate_value = Some(Ident {
                         primary_name: pair.as_str().trim(),
-                        span: pair.as_span(),
+                        span: Span {
+                            span: pair.as_span(),
+                            path,
+                        },
                     });
                 }
                 _ => unreachable!(),
@@ -168,7 +190,10 @@ pub(crate) struct AsmRegisterDeclaration<'sc> {
 }
 
 impl<'sc> AsmRegisterDeclaration<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Vec<Self>> {
+    fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Vec<Self>> {
+        let (pair, config) = input;
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -184,7 +209,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
                     Expression::parse_from_pair,
                     warnings,
                     errors,
-                    pair,
+                    (pair, config),
                     return err(warnings, errors)
                 ))
             } else {
@@ -192,7 +217,10 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
             };
             reg_buf.push(AsmRegisterDeclaration {
                 name: reg_name.as_str(),
-                name_span: reg_name.as_span(),
+                name_span: Span {
+                    span: reg_name.as_span(),
+                    path: config.map(|config| config.dir_of_code),
+                },
                 initializer,
             })
         }

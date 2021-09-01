@@ -1,11 +1,12 @@
+use crate::build_config::BuildConfig;
 use crate::parse_tree::declaration::TypeParameter;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::types::TypeInfo;
 use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
-use pest::Span;
 
 use super::Visibility;
 
@@ -25,7 +26,11 @@ pub(crate) struct StructField<'sc> {
 }
 
 impl<'sc> StructDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Self> {
+        let (decl, config) = input;
+        let path = config.map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut decl = decl.into_inner();
@@ -60,6 +65,7 @@ impl<'sc> StructDeclaration<'sc> {
         let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
+            config,
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
@@ -75,7 +81,10 @@ impl<'sc> StructDeclaration<'sc> {
             Vec::new()
         };
 
-        let span = name.as_span();
+        let span = Span {
+            span: name.as_span(),
+            path,
+        };
         let name = eval!(
             Ident::parse_from_pair,
             warnings,
@@ -105,13 +114,20 @@ impl<'sc> StructDeclaration<'sc> {
 }
 
 impl<'sc> StructField<'sc> {
-    pub(crate) fn parse_from_pairs(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Vec<Self>> {
+    pub(crate) fn parse_from_pairs(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Vec<Self>> {
+        let (pair, config) = input;
+        let path = config.map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
         for i in (0..fields.len()).step_by(2) {
-            let span = fields[i].as_span();
+            let span = Span {
+                span: fields[i].as_span(),
+                path,
+            };
             let name = eval!(
                 Ident::parse_from_pair,
                 warnings,

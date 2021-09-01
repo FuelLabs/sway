@@ -12,6 +12,7 @@ mod ident;
 pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
+mod span;
 
 pub use crate::parse_tree::*;
 pub use crate::parser::{HllParser, Rule};
@@ -28,7 +29,7 @@ pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
-pub use pest::Span;
+pub use pest;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 pub use types::TypeInfo;
 
@@ -61,13 +62,13 @@ pub struct ParseTree<'sc> {
     /// In this language however, we want to expose multiple public functions at the root
     /// level so the tree is multi-root.
     pub root_nodes: Vec<AstNode<'sc>>,
-    pub span: Span<'sc>,
+    pub span: span::Span<'sc>,
 }
 
 #[derive(Debug, Clone)]
 pub struct AstNode<'sc> {
     pub content: AstNodeContent<'sc>,
-    pub span: Span<'sc>,
+    pub span: span::Span<'sc>,
 }
 
 #[derive(Debug, Clone)]
@@ -82,7 +83,7 @@ pub enum AstNodeContent<'sc> {
 }
 
 impl<'sc> ParseTree<'sc> {
-    pub(crate) fn new(span: Span<'sc>) -> Self {
+    pub(crate) fn new(span: span::Span<'sc>) -> Self {
         ParseTree {
             root_nodes: Vec::new(),
             span,
@@ -96,7 +97,8 @@ impl<'sc> ParseTree<'sc> {
     }
 }
 
-pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
+pub fn parse<'sc>(input: (&'sc str, Option<BuildConfig>)) -> CompileResult<'sc, HllParseTree<'sc>> {
+    let (input, config) = input;
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     let mut parsed = match HllParser::parse(Rule::program, input) {
@@ -105,7 +107,14 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
             return err(
                 Vec::new(),
                 vec![CompileError::ParseFailure {
-                    span: Span::new(input, get_start(&e), get_end(&e)).unwrap(),
+                    span: span::Span {
+                        span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
+                        path: if let Some(config) = config {
+                            Some(config.dir_of_code)
+                        } else {
+                            None
+                        },
+                    },
                     err: e,
                 }],
             )
@@ -115,7 +124,7 @@ pub fn parse<'sc>(input: &'sc str) -> CompileResult<'sc, HllParseTree<'sc>> {
         parse_root_from_pairs,
         warnings,
         errors,
-        (parsed.next().unwrap().into_inner()),
+        (parsed.next().unwrap().into_inner(), Some(config)),
         return err(warnings, errors)
     );
     ok(res, warnings, errors)
@@ -191,7 +200,13 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
 ) -> CompileResult<'sc, InnerDependencyCompileResult<'sc>> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let parse_tree = eval!(parse, warnings, errors, input, return err(warnings, errors));
+    let parse_tree = eval!(
+        parse,
+        warnings,
+        errors,
+        (input, Some(build_config)),
+        return err(warnings, errors)
+    );
     match (
         parse_tree.script_ast,
         parse_tree.predicate_ast,
@@ -200,7 +215,10 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
         (None, None, None) => (),
         _ => {
             errors.push(CompileError::ImportMustBeLibrary {
-                span: Span::new(input, 0, 0).unwrap(),
+                span: span::Span {
+                    span: pest::Span::new(input, 0, 0).unwrap(),
+                    path: Some(build_config.dir_of_code),
+                },
             });
             return err(warnings, errors);
         }
@@ -268,7 +286,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
         parse,
         warnings,
         errors,
-        input,
+        (input, Some(build_config)),
         return CompilationResult::Failure { errors, warnings }
     );
     let mut dead_code_graph = ControlFlowGraph {
@@ -510,8 +528,14 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
 // and if we encounter a function body or block, recursively call this function and build
 // sub-nodes
 fn parse_root_from_pairs<'sc>(
-    input: impl Iterator<Item = Pair<'sc, Rule>>,
+    input: (impl Iterator<Item = Pair<'sc, Rule>>, Option<BuildConfig>),
 ) -> CompileResult<'sc, HllParseTree<'sc>> {
+    let (input, config) = input;
+    let path = if let Some(config) = config {
+        Some(config.dir_of_code)
+    } else {
+        None
+    };
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let mut fuel_ast = HllParseTree {
@@ -521,7 +545,10 @@ fn parse_root_from_pairs<'sc>(
         library_exports: vec![],
     };
     for block in input {
-        let mut parse_tree = ParseTree::new(block.as_span());
+        let mut parse_tree = ParseTree::new(span::Span {
+            span: block.as_span(),
+            path,
+        });
         let rule = block.as_rule();
         let input = block.clone().into_inner();
         let mut library_name = None;
@@ -532,12 +559,15 @@ fn parse_root_from_pairs<'sc>(
                         Declaration::parse_from_pair,
                         warnings,
                         errors,
-                        pair.clone(),
+                        (pair.clone(), config),
                         continue
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::Declaration(decl),
-                        span: pair.as_span(),
+                        span: span::Span {
+                            span: pair.as_span(),
+                            path,
+                        },
                     });
                 }
                 Rule::use_statement => {
@@ -545,12 +575,15 @@ fn parse_root_from_pairs<'sc>(
                         UseStatement::parse_from_pair,
                         warnings,
                         errors,
-                        pair.clone(),
+                        (pair.clone(), config),
                         continue
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::UseStatement(stmt),
-                        span: pair.as_span(),
+                        span: span::Span {
+                            span: pair.as_span(),
+                            path,
+                        },
                     });
                 }
                 Rule::library_name => {
@@ -559,7 +592,7 @@ fn parse_root_from_pairs<'sc>(
                         Ident::parse_from_pair,
                         warnings,
                         errors,
-                        lib_pair,
+                        (lib_pair, config),
                         continue
                     ));
                 }
@@ -569,12 +602,15 @@ fn parse_root_from_pairs<'sc>(
                         IncludeStatement::parse_from_pair,
                         warnings,
                         errors,
-                        pair,
+                        (pair, config),
                         continue
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::IncludeStatement(include_statement),
-                        span: pair.as_span(),
+                        span: span::Span {
+                            span: pair.as_span(),
+                            path,
+                        },
                     });
                 }
                 _ => unreachable!("{:?}", pair.as_str()),
@@ -583,21 +619,30 @@ fn parse_root_from_pairs<'sc>(
         match rule {
             Rule::contract => {
                 if fuel_ast.contract_ast.is_some() {
-                    errors.push(CompileError::MultipleContracts(block.as_span()));
+                    errors.push(CompileError::MultipleContracts(span::Span {
+                        span: block.as_span(),
+                        path,
+                    }));
                 } else {
                     fuel_ast.contract_ast = Some(parse_tree);
                 }
             }
             Rule::script => {
                 if fuel_ast.script_ast.is_some() {
-                    errors.push(CompileError::MultipleScripts(block.as_span()));
+                    errors.push(CompileError::MultipleScripts(span::Span {
+                        span: block.as_span(),
+                        path,
+                    }));
                 } else {
                     fuel_ast.script_ast = Some(parse_tree);
                 }
             }
             Rule::predicate => {
                 if fuel_ast.predicate_ast.is_some() {
-                    errors.push(CompileError::MultiplePredicates(block.as_span()));
+                    errors.push(CompileError::MultiplePredicates(span::Span {
+                        span: block.as_span(),
+                        path,
+                    }));
                 } else {
                     fuel_ast.predicate_ast = Some(parse_tree);
                 }
@@ -612,7 +657,13 @@ fn parse_root_from_pairs<'sc>(
                 ));
             }
             Rule::EOI => (),
-            a => errors.push(CompileError::InvalidTopLevelItem(a, block.as_span())),
+            a => errors.push(CompileError::InvalidTopLevelItem(
+                a,
+                span::Span {
+                    span: block.as_span(),
+                    path,
+                },
+            )),
         }
     }
 
@@ -621,7 +672,7 @@ fn parse_root_from_pairs<'sc>(
 
 #[test]
 fn test_basic_prog() {
-    let prog = parse(
+    let prog = parse((
         r#"
         contract;
 
@@ -703,7 +754,8 @@ fn test_basic_prog() {
         return 5;
     }
     "#,
-    );
+        None,
+    ));
     dbg!(&prog);
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
@@ -711,7 +763,7 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
-    let prog = parse(
+    let prog = parse((
         r#"
         contract;
         pub fn some_abi_func() -> unit {
@@ -719,7 +771,8 @@ fn test_parenthesized() {
             return;
         }
     "#,
-    );
+        None,
+    ));
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     prog.unwrap(&mut warnings, &mut errors);

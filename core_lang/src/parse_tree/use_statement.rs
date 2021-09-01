@@ -1,4 +1,6 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
+use crate::span;
 use crate::Ident;
 use crate::Rule;
 use pest::iterators::Pair;
@@ -19,7 +21,10 @@ pub struct UseStatement<'sc> {
 }
 
 impl<'sc> UseStatement<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        pair: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Self> {
+        let (pair, config) = pair;
         let mut errors = vec![];
         let mut warnings = vec![];
         let stmt = pair.into_inner().next().unwrap();
@@ -40,7 +45,7 @@ impl<'sc> UseStatement<'sc> {
                 Ident::parse_from_pair,
                 warnings,
                 errors,
-                last_item,
+                (last_item, config),
                 return err(warnings, errors)
             )),
             _ => unreachable!(),
@@ -49,7 +54,10 @@ impl<'sc> UseStatement<'sc> {
         for item in import_path_vec.into_iter() {
             if item.as_rule() == Rule::star {
                 errors.push(CompileError::NonFinalAsteriskInPath {
-                    span: item.as_span(),
+                    span: span::Span {
+                        span: item.as_span(),
+                        path: config.map(|config| config.dir_of_code),
+                    },
                 });
                 continue;
             }
@@ -58,7 +66,7 @@ impl<'sc> UseStatement<'sc> {
                     Ident::parse_from_pair,
                     warnings,
                     errors,
-                    item,
+                    (item, config),
                     return err(warnings, errors)
                 ));
             }

@@ -1,8 +1,8 @@
 use super::IntegerBits;
 use crate::semantic_analysis::TypedExpression;
+use crate::span::Span;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use derivative::Derivative;
-use pest::Span;
 
 /// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
 /// Type symbols are ambiguous in the beginning of compilation, as any custom symbol could be

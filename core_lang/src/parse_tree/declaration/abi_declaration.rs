@@ -1,9 +1,10 @@
 use super::FunctionDeclaration;
 use super::TraitFn;
+use crate::build_config::BuildConfig;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::{error::*, Ident};
 use pest::iterators::Pair;
-use pest::Span;
 
 /// An `abi` declaration, which declares an interface for a contract
 /// to implement or for a caller to use to call a contract.
@@ -19,8 +20,14 @@ pub struct AbiDeclaration<'sc> {
 }
 
 impl<'sc> AbiDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        let span = pair.as_span();
+    pub(crate) fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Self> {
+        let (pair, config) = input;
+        let span = Span {
+            span: pair.as_span(),
+            path: config.map(|config| config.dir_of_code),
+        };
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

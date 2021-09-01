@@ -355,4 +355,26 @@ mod test {
             Ok(_) => (),
         }
     }
+
+    #[test]
+    fn test_filename() {
+        let parsed = HllParser::parse(
+            Rule::fn_decl,
+            r#"fn myfunc(x: i32, y: i32) -> i32 {
+            // a function body
+            let x = 5;
+            let y = 10;
+            return 10;
+        }"#,
+        );
+        match parsed {
+            Err(e) => {
+                println!("{:#?}", e);
+                panic!()
+            }
+            Ok(o) => {
+                println!("{:#?}", o);
+            }
+        }
+    }
 }

@@ -1,6 +1,7 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+use crate::span::Span;
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
@@ -8,7 +9,6 @@ use crate::{
     types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
 };
-use pest::Span;
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
@@ -154,7 +154,7 @@ fn type_check_trait_implementation<'sc>(
     interface_surface: &[TypedTraitFn<'sc>],
     functions: &[FunctionDeclaration<'sc>],
     methods: &[TypedFunctionDeclaration<'sc>],
-    trait_name: &Ident<'sc>,
+    trait_name: &'sc Ident<'sc>,
     type_arguments: &[TypeParameter<'sc>],
     namespace: &mut Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,

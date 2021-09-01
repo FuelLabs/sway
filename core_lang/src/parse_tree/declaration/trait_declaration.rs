@@ -1,12 +1,13 @@
 use super::{FunctionDeclaration, FunctionParameter, Visibility};
+use crate::build_config::BuildConfig;
 use crate::parse_tree::TypeParameter;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::types::TypeInfo;
 use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
-use pest::Span;
 
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration<'sc> {
@@ -18,7 +19,11 @@ pub struct TraitDeclaration<'sc> {
 }
 
 impl<'sc> TraitDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Self> {
+        let (pair, config) = input;
+        let path = config.map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut trait_parts = pair.into_inner().peekable();
@@ -95,6 +100,7 @@ impl<'sc> TraitDeclaration<'sc> {
             crate::parse_tree::declaration::TypeParameter::parse_from_type_params_and_where_clause(
                 type_params_pair,
                 where_clause_pair,
+                config,
             )
             .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
         ok(
@@ -120,14 +126,24 @@ pub(crate) struct TraitFn<'sc> {
 }
 
 impl<'sc> TraitFn<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Self> {
+        let (pair, config) = input;
+        let path = config.map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut signature = pair.clone().into_inner();
-        let whole_fn_sig_span = pair.as_span();
+        let whole_fn_sig_span = Span {
+            span: pair.as_span(),
+            path,
+        };
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
-        let name_span = name.as_span();
+        let name_span = Span {
+            span: name.as_span(),
+            path,
+        };
         let name = eval!(
             Ident::parse_from_pair,
             warnings,
@@ -155,7 +171,10 @@ impl<'sc> TraitFn<'sc> {
         let (return_type, return_type_span) = match return_type_signal {
             Some(_) => {
                 let pair = signature.next().unwrap();
-                let span = pair.as_span();
+                let span = Span {
+                    span: pair.as_span(),
+                    path,
+                };
                 (
                     eval!(
                         TypeInfo::parse_from_pair,

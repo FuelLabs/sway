@@ -1,12 +1,13 @@
 use super::WhileLoop;
+use crate::build_config::BuildConfig;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::{
     error::*,
     parse_tree::{Expression, ReturnStatement},
-    AstNode, AstNodeContent, Declaration,
+    span, AstNode, AstNodeContent, Declaration,
 };
 use pest::iterators::Pair;
-use pest::Span;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -17,10 +18,17 @@ pub struct CodeBlock<'sc> {
 }
 
 impl<'sc> CodeBlock<'sc> {
-    pub(crate) fn parse_from_pair(block: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Self> {
+        let (block, config) = input;
+        let path = config.map(|config| config.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let whole_block_span = block.as_span();
+        let whole_block_span = span::Span {
+            span: block.as_span(),
+            path,
+        };
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
         for pair in block_inner {
@@ -33,7 +41,10 @@ impl<'sc> CodeBlock<'sc> {
                         pair.clone(),
                         continue
                     )),
-                    span: pair.as_span(),
+                    span: span::Span {
+                        span: pair.as_span(),
+                        path,
+                    },
                 },
                 Rule::expr_statement => {
                     let evaluated_node = eval!(
@@ -45,7 +56,10 @@ impl<'sc> CodeBlock<'sc> {
                     );
                     AstNode {
                         content: AstNodeContent::Expression(evaluated_node),
-                        span: pair.as_span(),
+                        span: span::Span {
+                            span: pair.as_span(),
+                            path,
+                        },
                     }
                 }
                 Rule::return_statement => {
@@ -58,7 +72,10 @@ impl<'sc> CodeBlock<'sc> {
                     );
                     AstNode {
                         content: AstNodeContent::ReturnStatement(evaluated_node),
-                        span: pair.as_span(),
+                        span: span::Span {
+                            span: pair.as_span(),
+                            path,
+                        },
                     }
                 }
                 Rule::expr => {
@@ -66,7 +83,7 @@ impl<'sc> CodeBlock<'sc> {
                         Expression::parse_from_pair,
                         warnings,
                         errors,
-                        pair.clone(),
+                        (pair.clone(), config),
                         continue
                     );
                     AstNode {
@@ -84,12 +101,21 @@ impl<'sc> CodeBlock<'sc> {
                     );
                     AstNode {
                         content: AstNodeContent::WhileLoop(res),
-                        span: pair.as_span(),
+                        span: span::Span {
+                            span: pair.as_span(),
+                            path,
+                        },
                     }
                 }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
-                    errors.push(CompileError::UnimplementedRule(a, pair.as_span()));
+                    errors.push(CompileError::UnimplementedRule(
+                        a,
+                        span::Span {
+                            span: pair.as_span(),
+                            path,
+                        },
+                    ));
                     continue;
                 }
             })

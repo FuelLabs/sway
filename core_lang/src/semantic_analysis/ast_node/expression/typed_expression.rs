@@ -541,7 +541,7 @@ impl<'sc> TypedExpression<'sc> {
 
                 let field = if let Some(field) = fields
                     .iter()
-                    .find(|TypedStructField { name, .. }| *name == field_to_access)
+                    .find(|TypedStructField { name, .. }| name.clone() == field_to_access)
                 {
                     field
                 } else {

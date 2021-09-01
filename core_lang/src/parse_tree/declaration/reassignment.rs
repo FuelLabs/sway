@@ -1,9 +1,10 @@
+use crate::build_config::BuildConfig;
 use crate::error::{err, ok, CompileError, CompileResult};
 use crate::parse_tree::Expression;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::Ident;
 use pest::iterators::Pair;
-use pest::Span;
 
 #[derive(Debug, Clone)]
 pub struct Reassignment<'sc> {
@@ -15,8 +16,15 @@ pub struct Reassignment<'sc> {
 }
 
 impl<'sc> Reassignment<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<Self> {
-        let span = pair.as_span();
+    pub(crate) fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<Self> {
+        let (pair, config) = input;
+        let path = config.map(|c| c.dir_of_code);
+        let span = Span {
+            span: pair.as_span(),
+            path,
+        };
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut iter = pair.into_inner();
@@ -38,7 +46,10 @@ impl<'sc> Reassignment<'sc> {
                     errors,
                     body.clone(),
                     Expression::Unit {
-                        span: body.as_span()
+                        span: Span {
+                            span: body.as_span(),
+                            path
+                        }
                     }
                 );
 
@@ -56,7 +67,10 @@ impl<'sc> Reassignment<'sc> {
                 let mut iter = variable_or_struct_reassignment.into_inner();
                 let lhs = iter.next().expect("guaranteed by grammar");
                 let rhs = iter.next().expect("guaranteed by grammar");
-                let rhs_span = rhs.as_span();
+                let rhs_span = Span {
+                    span: rhs.as_span(),
+                    path,
+                };
                 let body = eval!(
                     Expression::parse_from_pair,
                     warnings,
@@ -88,7 +102,10 @@ impl<'sc> Reassignment<'sc> {
                     expr = Expression::SubfieldExpression {
                         prefix: Box::new(expr.clone()),
                         unary_op: None, // TODO
-                        span: name_part.as_span(),
+                        span: Span {
+                            span: name_part.as_span(),
+                            path,
+                        },
                         field_to_access: eval!(
                             Ident::parse_from_pair,
                             warnings,
@@ -125,8 +142,10 @@ impl<'sc> Reassignment<'sc> {
 /// (foo()).x = 5;
 /// ```
 fn parse_call_item_ensure_only_var<'sc>(
-    item: Pair<'sc, Rule>,
+    input: (Pair<'sc, Rule>, Option<BuildConfig>),
 ) -> CompileResult<'sc, Expression<'sc>> {
+    let (item, config) = input;
+    let path = config.map(|c| c.dir_of_code);
     let mut warnings = vec![];
     let mut errors = vec![];
     assert_eq!(item.as_rule(), Rule::call_item);
@@ -140,12 +159,18 @@ fn parse_call_item_ensure_only_var<'sc>(
                 item,
                 return err(warnings, errors)
             ),
-            span: item.as_span(),
+            span: Span {
+                span: item.as_span(),
+                path,
+            },
             unary_op: None,
         },
         Rule::expr => {
             errors.push(CompileError::InvalidExpressionOnLhs {
-                span: item.as_span(),
+                span: Span {
+                    span: item.as_span(),
+                    path,
+                },
             });
             return err(warnings, errors);
         }

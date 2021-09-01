@@ -1,7 +1,7 @@
+use crate::span::Span;
 use crate::{parser::Rule, types::MaybeResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
-use pest::Span;
 use thiserror::Error;
 
 macro_rules! check {

@@ -1,6 +1,9 @@
+use crate::build_config::BuildConfig;
+use crate::span::Span;
 use crate::{error::*, types::TypeInfo, Ident};
 use crate::{CompileError, Rule};
 use pest::iterators::Pair;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TypeParameter<'sc> {
     pub(crate) name: TypeInfo<'sc>,
@@ -12,7 +15,9 @@ impl<'sc> TypeParameter<'sc> {
     pub(crate) fn parse_from_type_params_and_where_clause(
         type_params_pair: Option<Pair<'sc, Rule>>,
         where_clause_pair: Option<Pair<'sc, Rule>>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Vec<TypeParameter<'sc>>> {
+        let path = config.map(|c| c.dir_of_code);
         let mut errors = Vec::new();
         let mut warnings = vec![];
         let mut params: Vec<TypeParameter> = match type_params_pair {
@@ -32,9 +37,10 @@ impl<'sc> TypeParameter<'sc> {
                 if let Some(where_clause_pair) = where_clause_pair {
                     return err(
                         Vec::new(),
-                        vec![CompileError::UnexpectedWhereClause(
-                            where_clause_pair.as_span(),
-                        )],
+                        vec![CompileError::UnexpectedWhereClause(Span {
+                            span: where_clause_pair.as_span(),
+                            path,
+                        })],
                     );
                 }
                 Vec::new()
@@ -59,7 +65,10 @@ impl<'sc> TypeParameter<'sc> {
                                 errors.push(CompileError::ConstrainedNonExistentType {
                                     type_name: type_param.as_str(),
                                     trait_name: trait_constraint.as_str(),
-                                    span: trait_constraint.as_span(),
+                                    span: Span {
+                                        span: trait_constraint.as_span(),
+                                        path,
+                                    },
                                 });
                                 continue;
                             }

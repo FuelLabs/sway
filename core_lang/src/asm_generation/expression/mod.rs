@@ -1,4 +1,5 @@
 use super::*;
+use crate::span::Span;
 use crate::{
     asm_lang::{virtual_ops::VirtualRegister, *},
     parse_tree::CallPath,
@@ -11,7 +12,6 @@ use crate::{
     },
     types::{MaybeResolvedType, ResolvedType},
 };
-use pest::Span;
 
 mod contract_call;
 mod enum_instantiation;

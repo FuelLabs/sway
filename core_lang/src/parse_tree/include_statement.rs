@@ -1,8 +1,9 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::Ident;
 use pest::iterators::Pair;
-use pest::Span;
 
 #[derive(Clone, Debug)]
 pub struct IncludeStatement<'sc> {
@@ -13,10 +14,17 @@ pub struct IncludeStatement<'sc> {
 }
 
 impl<'sc> IncludeStatement<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    ) -> CompileResult<'sc, Self> {
+        let (pair, config) = input;
+        let path = config.map(|config| config.dir_of_code);
         let mut warnings = vec![];
         let mut errors = vec![];
-        let span = pair.as_span();
+        let span = Span {
+            span: pair.as_span(),
+            path,
+        };
         let mut iter = pair.into_inner();
         let _include_keyword = iter.next();
         let path_to_file_raw = iter.collect::<Vec<_>>();
@@ -27,13 +35,16 @@ impl<'sc> IncludeStatement<'sc> {
         for item in path_to_file_raw {
             if item.as_rule() == Rule::file_path {
                 file_path = Some(item.as_str().trim());
-                path_span = Some(item.as_span());
+                path_span = Some(Span {
+                    span: item.as_span(),
+                    path,
+                });
             } else if item.as_rule() == Rule::alias {
                 let alias_parsed = eval!(
                     Ident::parse_from_pair,
                     warnings,
                     errors,
-                    item.into_inner().next().unwrap(),
+                    (item.into_inner().next().unwrap(), config),
                     continue
                 );
                 alias = Some(alias_parsed);
