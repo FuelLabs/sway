@@ -144,10 +144,10 @@ jobs:
     - name: Push Binaries
       run: |
         cd sway-nightly-binaries
-        git config --global user.name "sway-actions[bot]"
+        git config --global user.name "fuel-actions[bot]"
         git config --global user.email "contact@fuel.sh"
         git add .
         git commit -m "$FOLDER_NAME"
         git push origin master
       env: 
-        FOLDER_NAME: nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}
+        FOLDER_NAME: sway-nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}
