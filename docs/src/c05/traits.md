@@ -54,7 +54,9 @@ fn play_game_with_deck<T>(a: Vec<T>)
    }
 ```
 
-Now, if you want to use the function `play_game_with_deck` with your own personal struct, you must implement `Card` for your struct.
+_TODO: link to generic docs_
+
+Now, if you want to use the function `play_game_with_deck` with your own personal struct, you must implement `Card` for your struct. Note that the following code example assumes a dependency _games_ has been included in the `Forc.toml` file.
 
 ```
 script;
