@@ -1,3 +1,13 @@
 [workspace]
+resolver = "2"
+members = [
+    "core_lang",
+    "core-types",
+    "forc",
+    "formatter",
+    "sway-server",
+    "test"
+]
 
-members = ["core_lang", "forc", "sway-server", "test_suite"]
+[profile.dev.package.sway-server]
+debug = 2

@@ -1,0 +1,11 @@
+[project]
+author  = "Alexander Hansen <alex.hansen@fuel.sh>"
+license = "MIT"
+name = "if_elseif_enum"
+entry = "main.sw"
+
+
+[dependencies]
+std = { path = "../../../../../stdlib" }
+
+

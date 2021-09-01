@@ -34,7 +34,7 @@ pub struct FunctionDeclaration<'sc> {
 }
 
 impl<'sc> FunctionDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut parts = pair.clone().into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -120,28 +120,12 @@ impl<'sc> FunctionDeclaration<'sc> {
             ),
             None => TypeInfo::Unit,
         };
-        let type_parameters = match TypeParameter::parse_from_type_params_and_where_clause(
+        let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        ) {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                Vec::new()
-            }
-        };
+        )
+        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
+
         // check that all generic types used in function parameters are a part of the type
         // parameters
         /*

@@ -29,7 +29,7 @@ pub(super) fn convert_while_loop_to_asm<'sc>(
 
     // step 1
     let condition_result_register = register_sequencer.next();
-    let mut asm_for_condition = type_check!(
+    let mut asm_for_condition = check!(
         convert_expression_to_asm(
             &r#loop.condition,
             namespace,
@@ -54,7 +54,7 @@ pub(super) fn convert_while_loop_to_asm<'sc>(
     // the implicit return value of a while loop block, if any, should be ignored,
     // so we pass None into the final argument of code block conversion
     // step 3: run the loop body
-    let mut body = type_check!(
+    let mut body = check!(
         convert_code_block_to_asm(&r#loop.body, namespace, register_sequencer, None),
         vec![],
         warnings,

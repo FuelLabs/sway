@@ -1,16 +1,18 @@
+use super::impl_trait::Mode;
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
-use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::{
     build_config::BuildConfig,
     error::*,
-    types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
 };
+use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
 use pest::Span;
+use sha2::{Digest, Sha256};
 
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
@@ -24,7 +26,9 @@ pub enum TypedDeclaration<'sc> {
         trait_name: CallPath<'sc>,
         span: Span<'sc>,
         methods: Vec<TypedFunctionDeclaration<'sc>>,
+        type_implementing_for: MaybeResolvedType<'sc>,
     },
+    AbiDeclaration(TypedAbiDeclaration<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
     ErrorRecovery,
@@ -42,6 +46,7 @@ impl<'sc> TypedDeclaration<'sc> {
             EnumDeclaration(_) => "enum",
             Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
+            AbiDeclaration(..) => "abi",
             SideEffect => "",
             ErrorRecovery => "error",
         }
@@ -96,7 +101,12 @@ impl<'sc> TypedDeclaration<'sc> {
             TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span.clone(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span.clone(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
-            Reassignment(TypedReassignment { lhs, .. }) => lhs.span.clone(),
+            Reassignment(TypedReassignment { lhs, .. }) => {
+                lhs.iter().fold(lhs[0].span(), |acc, this| {
+                    crate::utils::join_spans(acc, this.span())
+                })
+            }
+            AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
             SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
         }
@@ -127,12 +137,27 @@ impl<'sc> TypedDeclaration<'sc> {
                     name.primary_name.into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
                     name.primary_name.into(),
-                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) =>
-                    lhs.primary_name.into(),
+                TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
+                    .iter()
+                    .map(|x| x.name.primary_name)
+                    .collect::<Vec<_>>()
+                    .join("."),
                 _ => String::new(),
             }
         )
     }
+}
+
+/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's [AbiDeclaration].
+#[derive(Clone, Debug)]
+pub struct TypedAbiDeclaration<'sc> {
+    /// The name of the abi trait (also known as a "contract trait")
+    pub(crate) name: Ident<'sc>,
+    /// The methods a contract is required to implement in order opt in to this interface
+    pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
+    /// The methods provided to a contract "for free" upon opting in to this interface
+    pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
+    pub(crate) span: Span<'sc>,
 }
 
 #[derive(Clone, Debug)]
@@ -204,6 +229,180 @@ pub struct TypedFunctionDeclaration<'sc> {
     /// annotation of the function
     pub(crate) return_type_span: Span<'sc>,
     pub(crate) visibility: Visibility,
+    /// whether this function exists in another contract and requires a call to it or not
+    pub(crate) is_contract_call: bool,
+}
+
+impl<'sc> TypedFunctionDeclaration<'sc> {
+    /// If there are parameters, join their spans. Otherwise, use the fn name span.
+    pub(crate) fn parameters_span(&self) -> Span<'sc> {
+        if self.parameters.len() >= 1 {
+            self.parameters.iter().fold(
+                self.parameters[0].name.span.clone(),
+                |acc, TypedFunctionParameter { type_span, .. }| {
+                    crate::utils::join_spans(acc, type_span.clone())
+                },
+            )
+        } else {
+            self.name.span.clone()
+        }
+    }
+    pub(crate) fn replace_self_types(&self, self_type: &MaybeResolvedType<'sc>) -> Self {
+        TypedFunctionDeclaration {
+            name: self.name.clone(),
+            body: self.body.replace_self_types(self_type),
+            parameters: self
+                .parameters
+                .iter()
+                .map(|x| {
+                    let mut x = x.clone();
+                    x.r#type = match x.r#type {
+                        MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => {
+                            self_type.clone()
+                        }
+                        otherwise => otherwise.clone(),
+                    };
+                    x
+                })
+                .collect(),
+            span: self.span.clone(),
+            return_type: match &self.return_type {
+                MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => self_type.clone(),
+                otherwise => otherwise.clone(),
+            },
+            type_parameters: self.type_parameters.clone(),
+            return_type_span: self.return_type_span.clone(),
+            visibility: self.visibility.clone(),
+            is_contract_call: self.is_contract_call,
+        }
+    }
+    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<'sc, Vec<u8>> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+        let mut hasher = Sha256::new();
+        let data = check!(
+            self.to_selector_name(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        hasher.update(data);
+        let hash = hasher.finalize();
+        ok(hash.to_vec(), warnings, errors)
+    }
+    /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
+    /// selectors.
+    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
+    pub fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+        let hash = check!(
+            self.to_fn_selector_value_untruncated(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        // 4 bytes truncation via copying into a 4 byte buffer
+        let mut buf = [0u8; 4];
+        buf.copy_from_slice(&hash[0..4]);
+        ok(buf, warnings, errors)
+    }
+
+    pub fn to_selector_name(&self) -> CompileResult<'sc, String> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+        let named_params = self
+            .parameters
+            .iter()
+            .map(
+                |TypedFunctionParameter {
+                     r#type, type_span, ..
+                 }| r#type.to_selector_name(type_span),
+            )
+            .filter_map(|name| name.ok(&mut warnings, &mut errors))
+            .collect::<Vec<String>>();
+
+        ok(
+            format!("{}({})", self.name.primary_name, named_params.join(","),),
+            warnings,
+            errors,
+        )
+    }
+}
+
+#[test]
+fn test_function_selector_behavior() {
+    use crate::types::IntegerBits;
+    let decl = TypedFunctionDeclaration {
+        name: Ident {
+            primary_name: "foo",
+            span: Span::new(" ", 0, 0).unwrap(),
+        },
+        body: TypedCodeBlock {
+            contents: vec![],
+            whole_block_span: Span::new(" ", 0, 0).unwrap(),
+        },
+        parameters: vec![],
+        span: Span::new(" ", 0, 0).unwrap(),
+        return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
+        type_parameters: vec![],
+        return_type_span: Span::new(" ", 0, 0).unwrap(),
+        visibility: Visibility::Public,
+        is_contract_call: false,
+    };
+
+    let selector_text = match decl.to_selector_name().value {
+        Some(value) => value,
+        _ => panic!("test failure"),
+    };
+
+    assert_eq!(selector_text, "foo()".to_string());
+
+    let decl = TypedFunctionDeclaration {
+        name: Ident {
+            primary_name: "bar",
+            span: Span::new(" ", 0, 0).unwrap(),
+        },
+        body: TypedCodeBlock {
+            contents: vec![],
+            whole_block_span: Span::new(" ", 0, 0).unwrap(),
+        },
+        parameters: vec![
+            TypedFunctionParameter {
+                name: Ident {
+                    primary_name: "foo",
+                    span: Span::new(" ", 0, 0).unwrap(),
+                },
+                r#type: MaybeResolvedType::Resolved(ResolvedType::Str(5)),
+                type_span: Span::new(" ", 0, 0).unwrap(),
+            },
+            TypedFunctionParameter {
+                name: Ident {
+                    primary_name: "baz",
+                    span: Span::new(" ", 0, 0).unwrap(),
+                },
+                r#type: MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                    IntegerBits::ThirtyTwo,
+                )),
+                type_span: Span::new(" ", 0, 0).unwrap(),
+            },
+        ],
+        span: Span::new(" ", 0, 0).unwrap(),
+        return_type: MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+            IntegerBits::SixtyFour,
+        )),
+        type_parameters: vec![],
+        return_type_span: Span::new(" ", 0, 0).unwrap(),
+        visibility: Visibility::Public,
+        is_contract_call: false,
+    };
+
+    let selector_text = match decl.to_selector_name().value {
+        Some(value) => value,
+        _ => panic!("test failure"),
+    };
+
+    assert_eq!(selector_text, "bar(str[5],u32)".to_string());
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -229,14 +428,31 @@ pub struct TypedTraitFn<'sc> {
     pub(crate) return_type_span: Span<'sc>,
 }
 
+/// Represents the left hand side of a reassignment -- a name to locate it in the
+/// namespace, and the type that the name refers to. The type is used for memory layout
+/// in asm generation.
+#[derive(Clone, Debug)]
+pub struct ReassignmentLhs<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) r#type: MaybeResolvedType<'sc>,
+}
+
+impl<'sc> ReassignmentLhs<'sc> {
+    pub(crate) fn span(&self) -> Span<'sc> {
+        self.name.span.clone()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TypedReassignment<'sc> {
-    pub(crate) lhs: Ident<'sc>,
+    // either a direct variable, so length of 1, or
+    // at series of struct fields/array indices (array syntax)
+    pub(crate) lhs: Vec<ReassignmentLhs<'sc>>,
     pub(crate) rhs: TypedExpression<'sc>,
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub(crate) fn type_check(
+    pub fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
         _return_type_annotation: Option<MaybeResolvedType<'sc>>,
@@ -246,6 +462,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        mode: Mode,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -285,7 +502,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) = type_check!(
+        let (body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,
@@ -332,28 +549,37 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         }
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
         for TypedFunctionParameter {
-            ref r#type, name, ..
+            ref r#type,
+            type_span,
+            ..
         } in parameters.iter()
         {
-            let span = name.span.clone();
             if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { name, .. }) = r#type
             {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span.clone(),
-                    |acc,
-                     TypedFunctionParameter {
-                         name: Ident { span, .. },
-                         ..
-                     }| crate::utils::join_spans(acc, span.clone()),
+                    |acc, TypedFunctionParameter { type_span, .. }| {
+                        crate::utils::join_spans(acc, type_span.clone())
+                    },
                 );
                 if type_parameters
                     .iter()
-                    .find(|x| x.name == name.primary_name)
+                    .find(
+                        |TypeParameter {
+                             name: this_name, ..
+                         }| {
+                            if let TypeInfo::Custom { name: this_name } = this_name {
+                                this_name.primary_name == name.primary_name
+                            } else {
+                                false
+                            }
+                        },
+                    )
                     .is_none()
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
                         name: name.primary_name,
-                        span: span.clone(),
+                        span: type_span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
                         fn_name: fn_decl.name.primary_name,
                         args: args_span.as_str(),
@@ -401,6 +627,48 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             }
         }
 
+        // if this is an abi function, it is required that it begins with
+        // the three parameters related to contract calls
+        //  gas_to_forward: u64,
+        //  coins_to_forward: u64,
+        //  color_of_coins: b256,
+        //
+        //  eventually this will be a `ContractRequest`
+        //
+        //  not spending _too_ much time on particularly specific error messages here since
+        //  it is a temporary workaround
+        if mode == Mode::ImplAbiFn {
+            if parameters.len() == 4 {
+                if parameters[0].r#type
+                    != MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    ))
+                {
+                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                        span: parameters[0].type_span.clone(),
+                    });
+                }
+                if parameters[1].r#type
+                    != MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    ))
+                {
+                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                        span: parameters[1].type_span.clone(),
+                    });
+                }
+                if parameters[2].r#type != MaybeResolvedType::Resolved(ResolvedType::B256) {
+                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                        span: parameters[2].type_span.clone(),
+                    });
+                }
+            } else {
+                errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                    span: parameters[0].type_span.clone(),
+                });
+            }
+        }
+
         ok(
             TypedFunctionDeclaration {
                 name,
@@ -411,6 +679,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 type_parameters,
                 return_type_span,
                 visibility,
+                // if this is for a contract, then it is a contract call
+                is_contract_call: mode == Mode::ImplAbiFn,
             },
             warnings,
             errors,
@@ -422,19 +692,20 @@ impl<'sc> TypedTraitFn<'sc> {
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.
-    pub(crate) fn to_dummy_func(&self) -> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration<'sc> {
         TypedFunctionDeclaration {
             name: self.name.clone(),
             body: TypedCodeBlock {
                 contents: vec![],
                 whole_block_span: self.name.span.clone(),
             },
-            parameters: vec![],
+            parameters: self.parameters.clone(),
             span: self.name.span.clone(),
             return_type: self.return_type.clone(),
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],
+            is_contract_call: mode == Mode::ImplAbiFn,
         }
     }
 }

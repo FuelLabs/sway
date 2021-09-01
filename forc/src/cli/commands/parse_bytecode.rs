@@ -5,12 +5,12 @@ use structopt::{self, StructOpt};
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
 
+/// Parse bytecode file into a debug format.
 #[derive(Debug, StructOpt)]
 pub(crate) struct Command {
     file_path: String,
 }
 
-/// Parses the bytecode into a debug format.
 pub(crate) fn exec(command: Command) -> Result<(), String> {
     let mut f = File::open(&command.file_path)
         .map_err(|_| format!("{}: file not found", command.file_path))?;
@@ -20,14 +20,14 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
     f.read(&mut buffer).expect("buffer overflow");
     let mut instructions = vec![];
 
-    for i in (0..buffer.len() - 4).step_by(4) {
+    for i in (0..buffer.len()).step_by(4) {
         let i = i as usize;
         let raw = &buffer[i..i + 4];
         let op = fuel_asm::Opcode::from_bytes_unchecked(raw.try_into().unwrap());
         instructions.push((raw, op));
     }
-    //    println!("word\tbyte\top\t\traw\tnotes");
     let mut table = term_table::Table::new();
+    table.separate_rows = false;
     table.add_row(Row::new(vec![
         TableCell::new("half-word"),
         TableCell::new("byte"),
@@ -39,14 +39,8 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
     for (word_ix, instruction) in instructions.iter().enumerate() {
         use fuel_asm::Opcode::*;
         let notes = match instruction.1 {
-            JI(num) => match instructions.get(num as usize) {
-                Some(op) => format!("jumps to {:?}", op.1),
-                None => format!("invalid jump: destination out of range"),
-            },
-            JNEI(_, _, num) => match instructions.get(num as usize) {
-                Some(op) => format!("conditionally jumps to {:?}", op.1),
-                None => format!("invalid jump: destination out of range"),
-            },
+            JI(num) => format!("conditionally jumps to byte {}", num * 4),
+            JNEI(_, _, num) => format!("conditionally jumps to byte {}", num * 4),
             Undefined if word_ix == 2 || word_ix == 3 => {
                 let parsed_raw = u32::from_be_bytes([
                     instruction.0[0],

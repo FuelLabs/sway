@@ -6,7 +6,8 @@ use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
     parse_tree::Visibility,
     semantic_analysis::ast_node::{
-        TypedExpressionVariant, TypedReturnStatement, TypedStructDeclaration, TypedTraitDeclaration,
+        TypedAbiDeclaration, TypedExpressionVariant, TypedReturnStatement, TypedStructDeclaration,
+        TypedTraitDeclaration,
     },
     CompileError, Ident, TreeType,
 };
@@ -316,7 +317,7 @@ fn connect_node<'sc>(
                 graph.add_edge(*leaf, decl_node, "".into());
             }
             (
-                connect_declaration(&decl, graph, decl_node, span, exit_node, tree_type)?,
+                connect_declaration(&decl, graph, decl_node, span, exit_node, tree_type, leaves)?,
                 exit_node,
             )
         }
@@ -330,6 +331,7 @@ fn connect_declaration<'sc>(
     span: Span<'sc>,
     exit_node: Option<NodeIndex>,
     tree_type: TreeType,
+    leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError<'sc>> {
     use TypedDeclaration::*;
     match decl {
@@ -344,19 +346,23 @@ fn connect_declaration<'sc>(
         ),
         FunctionDeclaration(fn_decl) => {
             connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type)?;
-            Ok(vec![])
+            Ok(leaves.to_vec())
         }
         TraitDeclaration(trait_decl) => {
             connect_trait_declaration(&trait_decl, graph, entry_node);
-            Ok(vec![])
+            Ok(leaves.to_vec())
+        }
+        AbiDeclaration(abi_decl) => {
+            connect_abi_declaration(&abi_decl, graph, entry_node);
+            Ok(leaves.to_vec())
         }
         StructDeclaration(struct_decl) => {
             connect_struct_declaration(&struct_decl, graph, entry_node, tree_type);
-            Ok(vec![])
+            Ok(leaves.to_vec())
         }
         EnumDeclaration(enum_decl) => {
             connect_enum_declaration(&enum_decl, graph, entry_node);
-            Ok(vec![])
+            Ok(leaves.to_vec())
         }
         Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
             &rhs.expression,
@@ -373,11 +379,9 @@ fn connect_declaration<'sc>(
             ..
         } => {
             connect_impl_trait(&trait_name, graph, methods, entry_node, tree_type)?;
-            Ok(vec![])
+            Ok(leaves.to_vec())
         }
-        SideEffect | ErrorRecovery => {
-            unreachable!("These are error cases and should be removed in the type checking stage. ")
-        }
+        SideEffect | ErrorRecovery => Ok(leaves.to_vec()),
     }
 }
 
@@ -500,6 +504,20 @@ fn connect_trait_declaration<'sc>(
     );
 }
 
+/// See [connect_trait_declaration] for implementation details.
+fn connect_abi_declaration<'sc>(
+    decl: &TypedAbiDeclaration<'sc>,
+    graph: &mut ControlFlowGraph<'sc>,
+    entry_node: NodeIndex,
+) {
+    graph.namespace.add_trait(
+        CallPath {
+            suffix: decl.name.clone(),
+            prefixes: vec![],
+        },
+        entry_node,
+    );
+}
 /// For an enum declaration, we want to make a declaration node for every individual enum
 /// variant. When a variant is constructed, we can point an edge at that variant. This way,
 /// we can see clearly, and thusly warn, when individual variants are not ever constructed.
@@ -762,8 +780,8 @@ fn connect_expression<'sc>(
             }
             Ok(vec![exit])
         }
-        SubfieldExpression {
-            name,
+        StructFieldAccess {
+            field_to_access,
             resolved_type_of_parent,
             ..
         } => {
@@ -775,7 +793,7 @@ fn connect_expression<'sc>(
                 MaybeResolvedType::Resolved(ResolvedType::Struct { name, .. }) => name.clone(),
                 _ => panic!("Called subfield on a non-struct"),
             };
-            let field_name = name.last().unwrap();
+            let field_name = &field_to_access.name;
             // find the struct field index in the namespace
             let field_ix = match graph
                 .namespace
@@ -806,6 +824,15 @@ fn connect_expression<'sc>(
             Ok(vec![asm_node])
         }
         Unit => Ok(vec![]),
+        AbiCast { address, .. } => connect_expression(
+            &address.expression,
+            graph,
+            leaves,
+            exit_node,
+            "abi cast address",
+            tree_type,
+            address.span.clone(),
+        ),
         a => {
             println!("Unimplemented: {:?}", a);
             return Err(CompileError::Unimplemented(
@@ -853,6 +880,10 @@ fn connect_enum_instantiation<'sc>(
     vec![enum_instantiation_exit_idx]
 }
 
+/// Given a `TypedAstNode` that we know is not reached in the graph, construct a warning
+/// representing its unreached status. For example, we want to say "this function is never called"
+/// if the node is a function declaration, but "this trait is never used" if it is a trait
+/// declaration.
 fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> CompileWarning<'sc> {
     match node {
         // if this is a function, struct, or trait declaration that is never called, then it is dead
@@ -886,7 +917,7 @@ fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> Compi
             warning_content: Warning::DeadTrait,
         },
         TypedAstNode {
-            content: TypedAstNodeContent::Declaration(TypedDeclaration::EnumDeclaration(..)),
+            content: TypedAstNodeContent::Declaration(..),
             span,
         } => CompileWarning {
             span: span.clone(),

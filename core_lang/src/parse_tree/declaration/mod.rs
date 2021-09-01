@@ -1,5 +1,6 @@
+mod abi_declaration;
 mod enum_declaration;
-mod function_declaration;
+pub mod function_declaration;
 mod impl_trait;
 mod reassignment;
 mod struct_declaration;
@@ -7,6 +8,7 @@ mod trait_declaration;
 mod type_parameter;
 mod variable_declaration;
 
+pub(crate) use abi_declaration::*;
 pub(crate) use enum_declaration::*;
 pub(crate) use function_declaration::*;
 pub(crate) use impl_trait::*;
@@ -33,6 +35,7 @@ pub enum Declaration<'sc> {
     Reassignment(Reassignment<'sc>),
     ImplTrait(ImplTrait<'sc>),
     ImplSelf(ImplSelf<'sc>),
+    AbiDeclaration(AbiDeclaration<'sc>),
 }
 impl<'sc> Declaration<'sc> {
     pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
@@ -135,6 +138,13 @@ impl<'sc> Declaration<'sc> {
             )),
             Rule::impl_self => Declaration::ImplSelf(eval!(
                 ImplSelf::parse_from_pair,
+                warnings,
+                errors,
+                decl_inner,
+                return err(warnings, errors)
+            )),
+            Rule::abi_decl => Declaration::AbiDeclaration(eval!(
+                AbiDeclaration::parse_from_pair,
                 warnings,
                 errors,
                 decl_inner,

@@ -8,8 +8,9 @@ use pest::Span;
 pub struct ImplTrait<'sc> {
     pub(crate) trait_name: CallPath<'sc>,
     pub(crate) type_implementing_for: TypeInfo<'sc>,
+    pub(crate) type_implementing_for_span: Span<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
-    pub(crate) functions: Vec<FunctionDeclaration<'sc>>,
+    pub functions: Vec<FunctionDeclaration<'sc>>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span<'sc>,
     pub(crate) type_arguments_span: Span<'sc>,
@@ -21,7 +22,7 @@ pub struct ImplTrait<'sc> {
 pub struct ImplSelf<'sc> {
     pub(crate) type_implementing_for: TypeInfo<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
-    pub(crate) functions: Vec<FunctionDeclaration<'sc>>,
+    pub functions: Vec<FunctionDeclaration<'sc>>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span<'sc>,
     pub(crate) type_arguments_span: Span<'sc>,
@@ -52,11 +53,13 @@ impl<'sc> ImplTrait<'sc> {
             None
         };
 
+        let type_implementing_for_pair = iter.next().expect("guaranteed by grammar");
+        let type_implementing_for_span = type_implementing_for_pair.as_span();
         let type_implementing_for = eval!(
             TypeInfo::parse_from_pair,
             warnings,
             errors,
-            iter.next().unwrap(),
+            type_implementing_for_pair,
             return err(warnings, errors)
         );
 
@@ -69,28 +72,11 @@ impl<'sc> ImplTrait<'sc> {
             Some(ref x) => x.as_span(),
             None => trait_name.span(),
         };
-        let type_arguments = match TypeParameter::parse_from_type_params_and_where_clause(
+        let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        ) {
-            CompileResult::Ok {
-                errors: mut l_e,
-                warnings: mut l_w,
-                value,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                value
-            }
-            CompileResult::Err {
-                errors: mut l_e,
-                warnings: mut l_w,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                Vec::new()
-            }
-        };
+        )
+        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let mut fn_decls_buf = vec![];
 
@@ -110,6 +96,7 @@ impl<'sc> ImplTrait<'sc> {
                 type_arguments,
                 type_arguments_span,
                 type_implementing_for,
+                type_implementing_for_span,
                 functions: fn_decls_buf,
                 block_span,
             },
@@ -153,28 +140,11 @@ impl<'sc> ImplSelf<'sc> {
             Some(ref x) => x.as_span(),
             None => type_name_span.clone(),
         };
-        let type_arguments = match TypeParameter::parse_from_type_params_and_where_clause(
+        let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-        ) {
-            CompileResult::Ok {
-                errors: mut l_e,
-                warnings: mut l_w,
-                value,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                value
-            }
-            CompileResult::Err {
-                errors: mut l_e,
-                warnings: mut l_w,
-            } => {
-                errors.append(&mut l_e);
-                warnings.append(&mut l_w);
-                Vec::new()
-            }
-        };
+        )
+        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let mut fn_decls_buf = vec![];
 

@@ -105,21 +105,15 @@ impl<'sc> TypedParseTree<'sc> {
             // If we hit the internal "non-decreasing error nodes" error, this helps
             // show what went wrong right beforehand.
             let mut errors_from_this_pass = vec![];
-            for (node, res) in nodes.clone() {
-                match res {
-                    CompileResult::Ok { ref errors, .. } if errors.is_empty() => {
-                        successful_nodes.push(res)
-                    }
-                    CompileResult::Err {
-                        errors: mut l_e, ..
-                    } => {
-                        errors_from_this_pass.append(&mut l_e);
-                        next_pass_nodes.push_front(node);
-                    }
-                    CompileResult::Ok {
-                        errors: mut l_e, ..
-                    } => {
-                        errors_from_this_pass.append(&mut l_e);
+            for (node, mut res) in nodes.clone() {
+                if res.value.is_none() {
+                    errors_from_this_pass.append(&mut res.errors);
+                    next_pass_nodes.push_front(node);
+                } else {
+                    if res.errors.is_empty() {
+                        successful_nodes.push(res);
+                    } else {
+                        errors_from_this_pass.append(&mut res.errors);
                         next_pass_nodes.push_front(node);
                     }
                 }
@@ -127,60 +121,26 @@ impl<'sc> TypedParseTree<'sc> {
             // If we did not solve any issues, i.e. the same number of nodes failed,
             // then this is a genuine error and so we break.
             if next_pass_nodes.len() == num_failed_nodes && !is_first_pass {
-                for (_, failed_node_res) in nodes {
-                    match failed_node_res {
-                        CompileResult::Ok {
-                            errors: mut l_e,
-                            warnings: mut l_w,
-                            ..
-                        } => {
-                            errors.append(&mut l_e);
-                            warnings.append(&mut l_w);
-                        }
-                        CompileResult::Err {
-                            errors: mut l_e,
-                            warnings: mut l_w,
-                        } => {
-                            errors.append(&mut l_e);
-                            warnings.append(&mut l_w);
-                        }
-                    }
+                for (_, mut failed_node_res) in nodes {
+                    warnings.append(&mut failed_node_res.warnings);
+                    errors.append(&mut failed_node_res.errors);
                 }
                 break;
             }
             is_first_pass = false;
-            if !(next_pass_nodes.len() < num_failed_nodes) {
-                errors.push(CompileError::Internal(
-                    "Error nodes did not decrease monotonically in multi-pass compilation.",
-                    pest::Span::new(" ", 0, 0).unwrap(),
-                ));
+            // if the amount of nodes with errors is going up, then bail.
+            if next_pass_nodes.len() > num_failed_nodes {
                 errors.append(&mut errors_from_this_pass);
                 return err(warnings, errors);
             }
             num_failed_nodes = next_pass_nodes.len();
         }
 
-        let mut typed_tree_nodes = Vec::new();
-        for res in successful_nodes {
-            match res {
-                CompileResult::Ok {
-                    value: node,
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    errors.append(&mut l_e);
-                    warnings.append(&mut l_w);
-                    typed_tree_nodes.push(node);
-                }
-                CompileResult::Err {
-                    errors: mut l_e,
-                    warnings: mut l_w,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                }
-            }
-        }
+        let typed_tree_nodes = successful_nodes
+            .into_iter()
+            .filter_map(|res| res.ok(&mut warnings, &mut errors))
+            .collect::<Vec<TypedAstNode<'sc>>>();
+
         // perform validation based on the tree type
         match tree_type {
             TreeType::Predicate => {
@@ -290,8 +250,8 @@ impl<'sc> TypedParseTree<'sc> {
                 errors,
             ),
             TreeType::Contract => {
-                // abi entries should be all public functions,
-                // and all other declarations are not in the abi
+                // abi entries are all functions declared in impl_traits
+                // on the contract type itself
                 let mut abi_entries = vec![];
                 let mut declarations = vec![];
                 let all_nodes = typed_tree_nodes.clone();
@@ -299,16 +259,14 @@ impl<'sc> TypedParseTree<'sc> {
                     match node {
                         TypedAstNode {
                             content:
-                                TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(
-                                    a
-                                    @
-                                    TypedFunctionDeclaration {
-                                        visibility: crate::Visibility::Public,
-                                        ..
-                                    },
-                                )),
+                                TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
+                                    methods,
+                                    type_implementing_for:
+                                        MaybeResolvedType::Resolved(ResolvedType::Contract),
+                                    ..
+                                }),
                             ..
-                        } => abi_entries.push(a),
+                        } => abi_entries.append(&mut methods.clone()),
                         TypedAstNode {
                             content: TypedAstNodeContent::Declaration(a),
                             ..

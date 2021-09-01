@@ -1,5 +1,7 @@
 use super::IntegerBits;
-use crate::{error::*, semantic_analysis::ast_node::TypedStructField, Ident};
+use crate::semantic_analysis::TypedExpression;
+use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use derivative::Derivative;
 use pest::Span;
 
 /// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
@@ -13,7 +15,8 @@ pub enum MaybeResolvedType<'sc> {
     Resolved(ResolvedType<'sc>),
     Partial(PartiallyResolvedType<'sc>),
 }
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ResolvedType<'sc> {
     /// The number in a `Str` represents its size, which must be known at compile time
     Str(u64),
@@ -21,7 +24,7 @@ pub enum ResolvedType<'sc> {
     Boolean,
     Unit,
     Byte,
-    Byte32,
+    B256,
     Struct {
         name: Ident<'sc>,
         fields: Vec<TypedStructField<'sc>>,
@@ -33,6 +36,13 @@ pub enum ResolvedType<'sc> {
     /// Represents the contract's type as a whole. Used for implementing
     /// traits on the contract itself, to enforce a specific type of ABI.
     Contract,
+    /// Represents a type which contains methods to issue a contract call.
+    /// The specific contract is identified via the `Ident` within.
+    ContractCaller {
+        abi_name: CallPath<'sc>,
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        address: Box<TypedExpression<'sc>>,
+    },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -43,6 +53,7 @@ pub enum PartiallyResolvedType<'sc> {
     Numeric,
     SelfType,
     Generic { name: Ident<'sc> },
+    NeedsType,
 }
 
 impl Default for MaybeResolvedType<'_> {
@@ -52,6 +63,34 @@ impl Default for MaybeResolvedType<'_> {
 }
 
 impl<'sc> MaybeResolvedType<'sc> {
+    pub(crate) fn to_selector_name(
+        &self,
+        error_msg_span: &Span<'sc>,
+    ) -> CompileResult<'sc, String> {
+        match self {
+            MaybeResolvedType::Resolved(r) => r.to_selector_name(error_msg_span),
+            _ => {
+                return err(
+                    vec![],
+                    vec![CompileError::InvalidAbiType {
+                        span: error_msg_span.clone(),
+                    }],
+                )
+            }
+        }
+    }
+    pub(crate) fn is_copy_type(&self) -> bool {
+        match self {
+            MaybeResolvedType::Resolved(ty) => match ty {
+                ResolvedType::UnsignedInteger(_)
+                | ResolvedType::Boolean
+                | ResolvedType::Unit
+                | ResolvedType::Byte => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
     pub(crate) fn friendly_type_str(&self) -> String {
         match self {
             MaybeResolvedType::Partial(ty) => ty.friendly_type_str(),
@@ -97,6 +136,8 @@ impl<'sc> MaybeResolvedType<'sc> {
             (MaybeResolvedType::Resolved(r), MaybeResolvedType::Resolved(r2)) if r == r2 => {
                 Ok(None)
             }
+            (_, MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType)) => Ok(None),
+            (MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType), _) => Ok(None),
             _ => Err(TypeError::MismatchedType {
                 expected: other.friendly_type_str(),
                 received: self.friendly_type_str(),
@@ -139,9 +180,10 @@ impl<'sc> MaybeResolvedType<'sc> {
 impl<'sc> PartiallyResolvedType<'sc> {
     pub(crate) fn friendly_type_str(&self) -> String {
         match self {
-            PartiallyResolvedType::Generic { name } => format!("generic {}", name.primary_name),
+            PartiallyResolvedType::Generic { name } => format!("{}", name.primary_name),
             PartiallyResolvedType::Numeric => "numeric".into(),
             PartiallyResolvedType::SelfType => "self".into(),
+            PartiallyResolvedType::NeedsType => "needs_type".into(),
         }
     }
 }
@@ -201,7 +243,7 @@ impl<'sc> ResolvedType<'sc> {
 
             Unit => "()".into(),
             Byte => "byte".into(),
-            Byte32 => "byte32".into(),
+            B256 => "b256".into(),
             Struct {
                 name: Ident { primary_name, .. },
                 ..
@@ -211,6 +253,9 @@ impl<'sc> ResolvedType<'sc> {
                 ..
             } => format!("enum {}", primary_name),
             Contract => "contract".into(),
+            ContractCaller { abi_name, .. } => {
+                format!("{} contract caller", abi_name.suffix.primary_name)
+            }
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
@@ -226,7 +271,7 @@ impl<'sc> ResolvedType<'sc> {
             ResolvedType::Boolean => 1,
             ResolvedType::Unit => 0,
             ResolvedType::Byte => 1,
-            ResolvedType::Byte32 => 4,
+            ResolvedType::B256 => 4,
             ResolvedType::Enum { variant_types, .. } => {
                 // the size of an enum is one word (for the tag) plus the maximum size
                 // of any individual variant
@@ -239,6 +284,9 @@ impl<'sc> ResolvedType<'sc> {
             ResolvedType::Struct { fields, .. } => fields
                 .iter()
                 .fold(0, |acc, x| acc + x.r#type.stack_size_of()),
+            // `ContractCaller` types are unsized and used only in the type system for
+            // calling methods
+            ResolvedType::ContractCaller { .. } => 0,
             ResolvedType::Contract => unreachable!("contract types are never instantiated"),
             ResolvedType::ErrorRecovery => unreachable!(),
         }
@@ -250,5 +298,78 @@ impl<'sc> ResolvedType<'sc> {
         } else {
             false
         }
+    }
+
+    /// maps a type to a name that is used when constructing function selectors
+    pub(crate) fn to_selector_name(
+        &self,
+        error_msg_span: &Span<'sc>,
+    ) -> CompileResult<'sc, String> {
+        use ResolvedType::*;
+        let name = match self {
+            Str(len) => format!("str[{}]", len),
+            UnsignedInteger(bits) => {
+                use IntegerBits::*;
+                match bits {
+                    Eight => "u8",
+                    Sixteen => "u16",
+                    ThirtyTwo => "u32",
+                    SixtyFour => "u64",
+                }
+                .into()
+            }
+            Boolean => "bool".into(),
+
+            Unit => "unit".into(),
+            Byte => "byte".into(),
+            B256 => "b256".into(),
+            Struct { fields, .. } => {
+                let field_names = {
+                    let names = fields
+                        .iter()
+                        .map(|TypedStructField { r#type, .. }| {
+                            r#type.to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for name in names {
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
+                        }
+                    }
+                    buf
+                };
+
+                format!("s({})", field_names.join(","))
+            }
+            Enum { variant_types, .. } => {
+                let variant_names = {
+                    let names = variant_types
+                        .iter()
+                        .map(|ty| ty.to_selector_name(error_msg_span))
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for name in names {
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
+                        }
+                    }
+                    buf
+                };
+
+                format!("e({})", variant_names.join(","))
+            }
+            _ => {
+                return err(
+                    vec![],
+                    vec![CompileError::InvalidAbiType {
+                        span: error_msg_span.clone(),
+                    }],
+                )
+            }
+        };
+        ok(name, vec![], vec![])
     }
 }

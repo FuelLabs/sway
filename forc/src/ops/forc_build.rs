@@ -1,25 +1,34 @@
-use crate::cli::BuildCommand;
+use crate::utils::dependency::{Dependency, DependencyDetails};
+use crate::{
+    cli::BuildCommand,
+    utils::dependency,
+    utils::helpers::{
+        find_manifest_dir, get_main_file, print_green_err, print_red_err, print_yellow_err,
+        read_manifest,
+    },
+};
 use line_col::LineColLookup;
 use source_span::{
     fmt::{Color, Formatter, Style},
     Position, Span,
 };
 use std::fs::File;
-use std::io::{self, Write};
-use termcolor::{BufferWriter, Color as TermColor, ColorChoice, ColorSpec, WriteColor};
+use std::io::Write;
 
-use crate::utils::manifest::{Dependency, DependencyDetails, Manifest};
+use anyhow::Result;
 use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
     Namespace,
 };
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let BuildCommand {
         path,
         binary_outfile,
-        print_asm,
+        print_finalized_asm,
+        print_intermediate_asm,
+        offline_mode,
     } = command;
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(path) = path {
@@ -36,12 +45,47 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
             ))
         }
     };
-    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone());
-    let manifest = read_manifest(&manifest_dir)?;
+    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone())
+        .print_finalized_asm(print_finalized_asm)
+        .print_intermediate_asm(print_intermediate_asm);
+    let mut manifest = read_manifest(&manifest_dir)?;
 
     let mut namespace: Namespace = Default::default();
-    if let Some(ref deps) = manifest.dependencies {
-        for (dependency_name, dependency_details) in deps.iter() {
+    if let Some(ref mut deps) = manifest.dependencies {
+        for (dependency_name, dependency_details) in deps.iter_mut() {
+            // Check if dependency is a git-based dependency.
+            let dep = match dependency_details {
+                Dependency::Simple(..) => {
+                    return Err(
+                        "Not yet implemented: Simple version-spec dependencies require a registry."
+                            .into(),
+                    );
+                }
+                Dependency::Detailed(dep_details) => dep_details,
+            };
+
+            // Download a non-local dependency if the `git` property is set in this dependency.
+            if let Some(git) = &dep.git {
+                let downloaded_dep_path = match dependency::download_github_dep(
+                    dependency_name,
+                    git,
+                    &dep.branch,
+                    &dep.version,
+                    offline_mode.into(),
+                ) {
+                    Ok(path) => path,
+                    Err(e) => {
+                        return Err(format!(
+                            "Couldn't download dependency ({:?}): {:?}",
+                            dependency_name, e
+                        ))
+                    }
+                };
+
+                // Mutate this dependency's path to hold the newly downloaded dependency's path.
+                dep.path = Some(downloaded_dep_path);
+            }
+
             compile_dependency_lib(
                 &this_dir,
                 &dependency_name,
@@ -53,15 +97,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-    if print_asm {
-        let main = compile_to_asm(
-            main_file,
-            &manifest.project.name,
-            &namespace,
-            build_config.clone(),
-        )?;
-        println!("{}", main);
-    }
 
     let main = compile(main_file, &manifest.project.name, &namespace, build_config)?;
     if let Some(outfile) = binary_outfile {
@@ -74,23 +109,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     Ok(main)
 }
 
-/// Continually go up in the file tree until a manifest (Forc.toml) is found.
-fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
-    let mut path = fs::canonicalize(starter_path.clone()).ok()?;
-    let empty_path = PathBuf::from("/");
-    while path != empty_path {
-        path.push(crate::utils::constants::MANIFEST_FILE_NAME);
-        if path.exists() {
-            path.pop();
-            return Some(path);
-        } else {
-            path.pop();
-            path.pop();
-        }
-    }
-    None
-}
-
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
 fn compile_dependency_lib<'source, 'manifest>(
@@ -101,7 +119,9 @@ fn compile_dependency_lib<'source, 'manifest>(
 ) -> Result<(), String> {
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
-            return Err("Simple version-spec dependencies require a registry.".into())
+            return Err(
+                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
+            )
         }
         Dependency::Detailed(DependencyDetails { path, .. }) => path,
     };
@@ -155,28 +175,6 @@ fn compile_dependency_lib<'source, 'manifest>(
     Ok(())
 }
 
-fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
-    let manifest_path = {
-        let mut man = manifest_dir.clone();
-        man.push(crate::utils::constants::MANIFEST_FILE_NAME);
-        man
-    };
-    let manifest_path_str = format!("{:?}", manifest_path);
-    let manifest = match std::fs::read_to_string(manifest_path) {
-        Ok(o) => o,
-        Err(e) => {
-            return Err(format!(
-                "failed to read manifest at {:?}: {}",
-                manifest_path_str, e
-            ))
-        }
-    };
-    match toml::from_str(&manifest) {
-        Ok(o) => Ok(o),
-        Err(e) => Err(format!("Error parsing manifest: {}.", e)),
-    }
-}
-
 fn compile_library<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
@@ -190,9 +188,9 @@ fn compile_library<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled library {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -214,7 +212,7 @@ fn compile_library<'source, 'manifest>(
 
             errors.into_iter().for_each(|e| format_err(e));
 
-            write_red(format!(
+            print_red_err(&format!(
                 "Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
@@ -244,9 +242,9 @@ fn compile<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled script {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled script {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled script {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -264,9 +262,9 @@ fn compile<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled library {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -288,7 +286,7 @@ fn compile<'source, 'manifest>(
 
             errors.into_iter().for_each(|e| format_err(e));
 
-            write_red(format!(
+            print_red_err(&format!(
                 "Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
@@ -364,54 +362,6 @@ fn format_err(err: core_lang::CompileError) {
     println!("{}", formatted);
 }
 
-fn write_red(txt: String) -> io::Result<()> {
-    let txt = txt.as_str();
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
-    let mut buffer = bufwtr.buffer();
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Red)))?;
-    writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)?;
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
-    Ok(())
-}
-
-fn write_green(txt: &str) -> io::Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
-    let mut buffer = bufwtr.buffer();
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Green)))?;
-    writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)?;
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
-    Ok(())
-}
-
-fn write_yellow(txt: &str) -> io::Result<()> {
-    let bufwtr = BufferWriter::stderr(ColorChoice::Always);
-    let mut buffer = bufwtr.buffer();
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::Yellow)))?;
-    writeln!(&mut buffer, "{}", txt)?;
-    bufwtr.print(&buffer)?;
-    buffer.set_color(ColorSpec::new().set_fg(Some(TermColor::White)))?;
-    Ok(())
-}
-
-fn get_main_file(
-    manifest_of_dep: &Manifest,
-    manifest_dir: &PathBuf,
-) -> Result<&'static mut String, String> {
-    let main_path = {
-        let mut code_dir = manifest_dir.clone();
-        code_dir.push("src");
-        code_dir.push(&manifest_of_dep.project.entry);
-        code_dir
-    };
-
-    // some hackery to get around lifetimes for now, until the AST returns a non-lifetime-bound AST
-    let main_file = fs::read_to_string(&main_path).map_err(|e| e.to_string())?;
-    let main_file = Box::new(main_file);
-    let main_file: &'static mut String = Box::leak(main_file);
-    return Ok(main_file);
-}
 fn compile_to_asm<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
@@ -425,9 +375,9 @@ fn compile_to_asm<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled script {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled script {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled script {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -445,9 +395,9 @@ fn compile_to_asm<'source, 'manifest>(
                 format_warning(warning);
             }
             if warnings.is_empty() {
-                let _ = write_green(&format!("Compiled library {:?}.", proj_name));
+                let _ = print_green_err(&format!("Compiled library {:?}.", proj_name));
             } else {
-                let _ = write_yellow(&format!(
+                let _ = print_yellow_err(&format!(
                     "Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
@@ -469,7 +419,7 @@ fn compile_to_asm<'source, 'manifest>(
 
             errors.into_iter().for_each(|e| format_err(e));
 
-            write_red(format!(
+            print_red_err(&format!(
                 "Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }

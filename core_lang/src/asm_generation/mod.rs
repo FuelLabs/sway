@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt};
 
 use crate::{
+    asm_generation::expression::convert_abi_fn_to_asm,
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedRegister},
         virtual_ops::{
@@ -11,8 +12,11 @@ use crate::{
     },
     error::*,
     parse_tree::Literal,
-    semantic_analysis::{TypedAstNode, TypedAstNodeContent, TypedParseTree},
-    Ident,
+    semantic_analysis::{
+        TypedAstNode, TypedAstNodeContent, TypedFunctionDeclaration, TypedParseTree,
+    },
+    types::ResolvedType,
+    BuildConfig, Ident,
 };
 use either::Either;
 
@@ -64,7 +68,10 @@ use while_loop::convert_while_loop_to_asm;
 /// function's ASM, or a predicate's main function's ASM. ASM is never generated for libraries,
 /// as that happens when the library itself is imported.
 pub enum HllAsmSet<'sc> {
-    ContractAbi,
+    ContractAbi {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
     ScriptMain {
         data_section: DataSection<'sc>,
         program_section: AbstractInstructionSet<'sc>,
@@ -129,6 +136,7 @@ impl<'sc> RealizedAbstractInstructionSet<'sc> {
 }
 
 /// An [InstructionSet] is produced by allocating registers on an [AbstractInstructionSet].
+#[derive(Clone)]
 pub struct InstructionSet<'sc> {
     ops: Vec<AllocatedOp<'sc>>,
 }
@@ -259,10 +267,12 @@ impl<'sc> AbstractInstructionSet<'sc> {
     }
 }
 
+#[derive(Debug)]
 struct RegisterAllocationStatus {
     reg: AllocatedRegister,
     in_use: Option<VirtualRegister>,
 }
+#[derive(Debug)]
 pub(crate) struct RegisterPool {
     registers: Vec<RegisterAllocationStatus>,
 }
@@ -298,6 +308,7 @@ impl RegisterPool {
         ) {
             return a.cloned();
         }
+
         // scan to see if any of the old ones are no longer in use
         for RegisterAllocationStatus { in_use, .. } in
             self.registers.iter_mut().filter(|r| r.in_use.is_some())
@@ -314,6 +325,7 @@ impl RegisterPool {
             .registers
             .iter_mut()
             .find(|RegisterAllocationStatus { in_use, .. }| in_use.is_none());
+
         match next_available {
             Some(RegisterAllocationStatus { in_use, reg }) => {
                 *in_use = Some(virtual_register.clone());
@@ -365,6 +377,40 @@ impl<'sc> DataSection<'sc> {
         }
         buf
     }
+
+    /// Calculates the return type of the data held at a specific [DataId].
+    pub(crate) fn type_of_data(&self, id: &DataId) -> Option<ResolvedType<'sc>> {
+        self.value_pairs
+            .iter()
+            .nth(id.0 as usize)
+            .map(|x| x.as_type())
+    }
+
+    /// When generating code, sometimes a hard-coded data pointer is needed to reference
+    /// static values that have a length longer than one word.
+    /// This method appends pointers to the end of the data section (thus, not altering the data
+    /// offsets of previous data).
+    /// `pointer_value` is in _bytes_ and refers to the offset from instruction start to the data
+    /// in question.
+    pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
+        let pointer_as_data = Literal::new_pointer_literal(pointer_value);
+        self.insert_data_value(&pointer_as_data)
+    }
+
+    /// Given any data in the form of a [Literal] (using this type mainly because it includes type
+    /// information and debug spans), insert it into the data section and return its offset as a
+    /// [DataId].
+    pub(crate) fn insert_data_value(&mut self, data: &Literal<'sc>) -> DataId {
+        // if there is an identical data value, use the same id
+        match self.value_pairs.iter().position(|x| x == data) {
+            Some(num) => DataId(num as u32),
+            None => {
+                self.value_pairs.push(data.clone());
+                // the index of the data section where the value is stored
+                DataId((self.value_pairs.len() - 1) as u32)
+            }
+        }
+    }
 }
 
 impl fmt::Display for DataSection<'_> {
@@ -379,8 +425,8 @@ impl fmt::Display for DataSection<'_> {
                 Literal::Boolean(b) => format!(".bool {}", if *b { "0x01" } else { "0x00" }),
                 Literal::String(st) => format!(".str \"{}\"", st),
                 Literal::Byte(b) => format!(".byte {:#08b}", b),
-                Literal::Byte32(b) => format!(
-                    ".byte32 0x{}",
+                Literal::B256(b) => format!(
+                    ".b256 0x{}",
                     b.into_iter()
                         .map(|x| format!("{:02x}", x))
                         .collect::<Vec<_>>()
@@ -406,7 +452,10 @@ impl fmt::Display for HllAsmSet<'_> {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", program_section, data_section),
-            HllAsmSet::ContractAbi { .. } => write!(f, "TODO contract ABI asm is unimplemented"),
+            HllAsmSet::ContractAbi {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
             // Libraries do not directly generate any asm.
             HllAsmSet::Library => write!(f, ""),
         }
@@ -424,9 +473,10 @@ impl fmt::Display for JumpOptimizedAsmSet<'_> {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", program_section, data_section),
-            JumpOptimizedAsmSet::ContractAbi { .. } => {
-                write!(f, "TODO contract ABI asm is unimplemented")
-            }
+            JumpOptimizedAsmSet::ContractAbi {
+                data_section,
+                program_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
             // Libraries do not directly generate any asm.
             JumpOptimizedAsmSet::Library => write!(f, ""),
         }
@@ -448,8 +498,11 @@ impl<'sc> fmt::Display for RegisterAllocatedAsmSet<'sc> {
             } => {
                 write!(f, "{}\n{}", program_section, data_section)
             }
-            RegisterAllocatedAsmSet::ContractAbi { .. } => {
-                write!(f, "TODO contract ABI asm is unimplemented")
+            RegisterAllocatedAsmSet::ContractAbi {
+                program_section,
+                data_section,
+            } => {
+                write!(f, "{}\n{}", program_section, data_section)
             }
             // Libraries do not directly generate any asm.
             RegisterAllocatedAsmSet::Library => write!(f, ""),
@@ -468,9 +521,10 @@ impl<'sc> fmt::Display for FinalizedAsm<'sc> {
                 program_section,
                 data_section,
             } => write!(f, "{}\n{}", program_section, data_section),
-            FinalizedAsm::ContractAbi { .. } => {
-                write!(f, "TODO contract ABI asm is unimplemented")
-            }
+            FinalizedAsm::ContractAbi {
+                program_section,
+                data_section,
+            } => write!(f, "{}\n{}", program_section, data_section),
             // Libraries do not directly generate any asm.
             FinalizedAsm::Library => write!(f, ""),
         }
@@ -512,7 +566,7 @@ pub(crate) struct AsmNamespace<'sc> {
 }
 
 /// An address which refers to a value in the data section of the asm.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct DataId(u32);
 
 impl fmt::Display for DataId {
@@ -530,15 +584,7 @@ impl<'sc> AsmNamespace<'sc> {
         self.variables.insert(var_name, register_location);
     }
     pub(crate) fn insert_data_value(&mut self, data: &Data<'sc>) -> DataId {
-        // if there is an identical data value, use the same id
-        match self.data_section.value_pairs.iter().position(|x| x == data) {
-            Some(num) => DataId(num as u32),
-            None => {
-                self.data_section.value_pairs.push(data.clone());
-                // the index of the data section where the value is stored
-                DataId((self.data_section.value_pairs.len() - 1) as u32)
-            }
-        }
+        self.data_section.insert_data_value(data)
     }
     /// Finds the register which contains variable `var_name`
     /// The `get` is unwrapped, because invalid variable expressions are
@@ -563,7 +609,8 @@ impl<'sc> AsmNamespace<'sc> {
 
 pub(crate) fn compile_ast_to_asm<'sc>(
     ast: TypedParseTree<'sc>,
-) -> CompileResult<'sc, FinalizedAsm> {
+    build_config: &BuildConfig,
+) -> CompileResult<'sc, FinalizedAsm<'sc>> {
     let mut register_sequencer = RegisterSequencer::new();
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -573,7 +620,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
             // start generating from the main function
             let return_register = register_sequencer.next();
-            let mut body = type_check!(
+            let mut body = check!(
                 convert_code_block_to_asm(
                     &main_function.body,
                     &mut namespace,
@@ -599,9 +646,9 @@ pub(crate) fn compile_ast_to_asm<'sc>(
         }
         TypedParseTree::Predicate { main_function, .. } => {
             let mut namespace: AsmNamespace = Default::default();
-            let mut asm_buf = vec![];
+            let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
             // start generating from the main function
-            let mut body = type_check!(
+            let mut body = check!(
                 convert_code_block_to_asm(
                     &main_function.body,
                     &mut namespace,
@@ -619,19 +666,44 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 data_section: namespace.data_section,
             }
         }
-        TypedParseTree::Contract { .. } => {
-            unimplemented!("Contract ABI ASM generation has not been implemented.");
+        TypedParseTree::Contract { abi_entries, .. } => {
+            let mut namespace: AsmNamespace = Default::default();
+            let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
+            let (selectors_and_labels, mut contract_asm) = check!(
+                compile_contract_to_selectors(abi_entries, &mut namespace, &mut register_sequencer),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            asm_buf.append(&mut build_contract_abi_switch(
+                &mut register_sequencer,
+                &mut namespace,
+                selectors_and_labels,
+            ));
+            asm_buf.append(&mut contract_asm);
+
+            HllAsmSet::ContractAbi {
+                program_section: AbstractInstructionSet { ops: asm_buf },
+                data_section: namespace.data_section,
+            }
         }
         TypedParseTree::Library { .. } => HllAsmSet::Library,
     };
 
-    ok(
-        asm.remove_unnecessary_jumps()
-            .allocate_registers()
-            .optimize(),
-        warnings,
-        errors,
-    )
+    if build_config.print_intermediate_asm {
+        println!("{}", asm);
+    }
+
+    let finalized_asm = asm
+        .remove_unnecessary_jumps()
+        .allocate_registers()
+        .optimize();
+
+    if build_config.print_finalized_asm {
+        println!("{}", finalized_asm);
+    }
+
+    ok(finalized_asm, warnings, errors)
 }
 
 impl<'sc> HllAsmSet<'sc> {
@@ -652,7 +724,13 @@ impl<'sc> HllAsmSet<'sc> {
                 program_section: program_section.remove_sequential_jumps(),
             },
             HllAsmSet::Library {} => JumpOptimizedAsmSet::Library,
-            HllAsmSet::ContractAbi {} => JumpOptimizedAsmSet::ContractAbi {},
+            HllAsmSet::ContractAbi {
+                data_section,
+                program_section,
+            } => JumpOptimizedAsmSet::ContractAbi {
+                data_section,
+                program_section: program_section.remove_sequential_jumps(),
+            },
         }
     }
 }
@@ -678,14 +756,23 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 data_section,
                 program_section: program_section.realize_labels().allocate_registers(),
             },
-            JumpOptimizedAsmSet::ContractAbi => RegisterAllocatedAsmSet::ContractAbi,
+            JumpOptimizedAsmSet::ContractAbi {
+                program_section,
+                data_section,
+            } => RegisterAllocatedAsmSet::ContractAbi {
+                program_section: program_section.realize_labels().allocate_registers(),
+                data_section,
+            },
         }
     }
 }
 
 /// Represents an ASM set which has had jump labels and jumps optimized
 pub enum JumpOptimizedAsmSet<'sc> {
-    ContractAbi,
+    ContractAbi {
+        data_section: DataSection<'sc>,
+        program_section: AbstractInstructionSet<'sc>,
+    },
     ScriptMain {
         data_section: DataSection<'sc>,
         program_section: AbstractInstructionSet<'sc>,
@@ -699,7 +786,10 @@ pub enum JumpOptimizedAsmSet<'sc> {
 }
 /// Represents an ASM set which has had registers allocated
 pub enum RegisterAllocatedAsmSet<'sc> {
-    ContractAbi,
+    ContractAbi {
+        data_section: DataSection<'sc>,
+        program_section: InstructionSet<'sc>,
+    },
     ScriptMain {
         data_section: DataSection<'sc>,
         program_section: InstructionSet<'sc>,
@@ -753,7 +843,24 @@ impl<'sc> RegisterAllocatedAsmSet<'sc> {
                     data_section,
                 }
             }
-            RegisterAllocatedAsmSet::ContractAbi => FinalizedAsm::ContractAbi,
+            RegisterAllocatedAsmSet::ContractAbi {
+                mut program_section,
+                data_section,
+            } => {
+                // ensure there's an even number of ops so the
+                // data section offset is valid
+                if program_section.ops.len() & 1 != 0 {
+                    program_section.ops.push(AllocatedOp {
+                        opcode: crate::asm_lang::allocated_ops::AllocatedOpcode::NOOP,
+                        comment: "word-alignment of data section".into(),
+                        owning_span: None,
+                    });
+                }
+                FinalizedAsm::ContractAbi {
+                    program_section,
+                    data_section,
+                }
+            }
         }
     }
 }
@@ -762,6 +869,7 @@ pub(crate) enum NodeAsmResult<'sc> {
     JustAsm(Vec<Op<'sc>>),
     ReturnStatement { asm: Vec<Op<'sc>> },
 }
+
 /// The tuple being returned here contains the opcodes of the code block and,
 /// optionally, a return register in case this node was a return statement
 fn convert_node_to_asm<'sc>(
@@ -775,7 +883,7 @@ fn convert_node_to_asm<'sc>(
     let mut errors = vec![];
     match &node.content {
         TypedAstNodeContent::WhileLoop(r#loop) => {
-            let res = type_check!(
+            let res = check!(
                 convert_while_loop_to_asm(r#loop, namespace, register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -784,7 +892,7 @@ fn convert_node_to_asm<'sc>(
             ok(NodeAsmResult::JustAsm(res), warnings, errors)
         }
         TypedAstNodeContent::Declaration(typed_decl) => {
-            let res = type_check!(
+            let res = check!(
                 convert_decl_to_asm(typed_decl, namespace, register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -800,7 +908,7 @@ fn convert_node_to_asm<'sc>(
             } else {
                 register_sequencer.next()
             };
-            let ops = type_check!(
+            let ops = check!(
                 convert_expression_to_asm(exp, namespace, &return_register, register_sequencer),
                 return err(warnings, errors),
                 warnings,
@@ -820,7 +928,7 @@ fn convert_node_to_asm<'sc>(
             } else {
                 register_sequencer.next()
             };
-            let ops = type_check!(
+            let ops = check!(
                 convert_expression_to_asm(
                     &exp.expr,
                     namespace,
@@ -843,7 +951,7 @@ fn convert_node_to_asm<'sc>(
             } else {
                 register_sequencer.next()
             };
-            let asm = type_check!(
+            let asm = check!(
                 convert_expression_to_asm(
                     typed_expr,
                     namespace,
@@ -913,4 +1021,198 @@ fn build_preamble(register_sequencer: &mut RegisterSequencer) -> [Op<'static>; 6
             owning_span: None,
         },
     ]
+}
+
+/// Builds the contract switch statement, or function selector, which takes the selector
+/// stored in the call frame (see https://github.com/FuelLabs/sway/issues/97#issuecomment-870150684
+/// for an explanation of its location)
+fn build_contract_abi_switch<'sc>(
+    register_sequencer: &mut RegisterSequencer,
+    namespace: &mut AsmNamespace<'sc>,
+    selectors_and_labels: Vec<([u8; 4], Label)>,
+) -> Vec<Op<'sc>> {
+    let input_selector_register = register_sequencer.next();
+    let mut asm_buf = vec![Op {
+        opcode: Either::Right(OrganizationalOp::Comment),
+        comment: "Begin contract ABI selector switch".into(),
+        owning_span: None,
+    }];
+    // load the selector from the call frame
+    asm_buf.push(Op {
+        opcode: Either::Left(VirtualOp::LW(
+            input_selector_register.clone(),
+            VirtualRegister::Constant(ConstantRegister::FramePointer),
+            // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
+            // We expect the last four bytes of this word to contain the selector, and the first
+            // four bytes to all be 0.
+            VirtualImmediate12::new_unchecked(73, "constant infallible value"),
+        )),
+        comment: "load input function selector".into(),
+        owning_span: None,
+    });
+
+    for (selector, label) in selectors_and_labels {
+        // put the selector in the data section
+        let data_label = namespace.insert_data_value(&Literal::U32(u32::from_be_bytes(selector)));
+        // load the data into a register for comparison
+        let prog_selector_register = register_sequencer.next();
+        asm_buf.push(Op {
+            opcode: Either::Left(VirtualOp::LWDataId(
+                prog_selector_register.clone(),
+                data_label,
+            )),
+            comment: "load fn selector for comparison".into(),
+            owning_span: None,
+        });
+        // compare with the input selector
+        let comparison_result_register = register_sequencer.next();
+        asm_buf.push(Op {
+            opcode: Either::Left(VirtualOp::EQ(
+                comparison_result_register.clone(),
+                input_selector_register.clone(),
+                prog_selector_register,
+            )),
+            comment: "function selector comparison".into(),
+            owning_span: None,
+        });
+
+        // jump to the function label if the selector was equal
+        asm_buf.push(Op {
+            // if the comparison result is _not_ equal to 0, then it was indeed equal.
+            opcode: Either::Right(OrganizationalOp::JumpIfNotEq(
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                comparison_result_register,
+                label,
+            )),
+            comment: "jump to selected function".into(),
+            owning_span: None,
+        });
+    }
+
+    // if none of the selectors matched, then revert
+    asm_buf.push(Op {
+        // see https://github.com/FuelLabs/sway/issues/97#issuecomment-875674105
+        opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
+            ConstantRegister::Zero,
+        ))),
+        comment: "revert if no selectors matched".into(),
+        owning_span: None,
+    });
+
+    asm_buf
+}
+
+/// Given a contract's abi entries, compile them to jump destinations and an opcode buffer.
+fn compile_contract_to_selectors<'sc>(
+    abi_entries: Vec<TypedFunctionDeclaration<'sc>>,
+    namespace: &mut AsmNamespace<'sc>,
+    register_sequencer: &mut RegisterSequencer,
+) -> CompileResult<'sc, (Vec<([u8; 4], Label)>, Vec<Op<'sc>>)> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    // for every ABI function, we need:
+    // 0) a jump label
+    // 1) loading the argument from the call frame into the register for the function
+    // 2) the function's bytecode itself
+    // 3) the function selector
+    let mut selectors_labels_buf = vec![];
+    let mut asm_buf = vec![];
+    for decl in abi_entries {
+        // TODO wrapping things in a struct should be doable by the compiler eventually,
+        // allowing users to pass in any number of free-floating parameters (bound by immediate limits maybe).
+        // https://github.com/FuelLabs/sway/pull/115#discussion_r666466414
+        if decl.parameters.len() != 4 {
+            errors.push(CompileError::InvalidNumberOfAbiParams {
+                span: decl.parameters_span(),
+            });
+            continue;
+        }
+        // there are currently four parameters to every ABI function, and they are required to be
+        // in this order
+        let cgas_name = decl.parameters[0].name.clone();
+        let bal_name = decl.parameters[1].name.clone();
+        let coin_color_name = decl.parameters[2].name.clone();
+        let user_argument_name = decl.parameters[3].name.clone();
+        // the function selector is the first four bytes of the hashed declaration/params according
+        // to https://github.com/FuelLabs/sway/issues/96
+        let selector = check!(decl.to_fn_selector_value(), [0u8; 4], warnings, errors);
+        let fn_label = register_sequencer.get_label();
+        asm_buf.push(Op::jump_label(fn_label.clone(), decl.span.clone()));
+        // load the call frame argument into the function argument register
+        let user_argument_register = register_sequencer.next();
+        let cgas_register = register_sequencer.next();
+        let bal_register = register_sequencer.next();
+        let coin_color_register = register_sequencer.next();
+        asm_buf.push(load_user_argument(user_argument_register.clone()));
+        asm_buf.push(load_cgas(cgas_register.clone()));
+        asm_buf.push(load_bal(bal_register.clone()));
+        asm_buf.push(load_coin_color(coin_color_register.clone()));
+
+        asm_buf.append(&mut check!(
+            convert_abi_fn_to_asm(
+                &decl,
+                (user_argument_name, user_argument_register),
+                (cgas_name, cgas_register),
+                (bal_name, bal_register),
+                (coin_color_name, coin_color_register),
+                namespace,
+                register_sequencer
+            ),
+            vec![],
+            warnings,
+            errors
+        ));
+        selectors_labels_buf.push((selector, fn_label));
+    }
+
+    ok((selectors_labels_buf, asm_buf), warnings, errors)
+}
+/// Given a register, load the user-provided argument into it
+fn load_user_argument<'sc>(return_register: VirtualRegister) -> Op<'sc> {
+    Op {
+        opcode: Either::Left(VirtualOp::LW(
+            return_register,
+            VirtualRegister::Constant(ConstantRegister::FramePointer),
+            // see https://github.com/FuelLabs/fuel-specs/pull/193#issuecomment-876496372
+            VirtualImmediate12::new_unchecked(74, "infallible constant 74"),
+        )),
+        comment: "loading argument into abi function".into(),
+        owning_span: None,
+    }
+}
+/// Given a register, load the current value of $cgas into it
+fn load_cgas<'sc>(return_register: VirtualRegister) -> Op<'sc> {
+    Op {
+        opcode: Either::Left(VirtualOp::LW(
+            return_register,
+            VirtualRegister::Constant(ConstantRegister::ContextGas),
+            VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
+        )),
+        comment: "loading cgas into abi function".into(),
+        owning_span: None,
+    }
+}
+/// Given a register, load the current value of $bal into it
+fn load_bal<'sc>(return_register: VirtualRegister) -> Op<'sc> {
+    Op {
+        opcode: Either::Left(VirtualOp::LW(
+            return_register,
+            VirtualRegister::Constant(ConstantRegister::Balance),
+            VirtualImmediate12::new_unchecked(0, "infallible constant 0"),
+        )),
+        comment: "loading coin balance into abi function".into(),
+        owning_span: None,
+    }
+}
+/// Given a register, load a pointer to the current coin color into it
+fn load_coin_color<'sc>(return_register: VirtualRegister) -> Op<'sc> {
+    Op {
+        opcode: Either::Left(VirtualOp::LW(
+            return_register,
+            VirtualRegister::Constant(ConstantRegister::FramePointer),
+            VirtualImmediate12::new_unchecked(5, "infallible constant 5"),
+        )),
+        comment: "loading coin color into abi function".into(),
+        owning_span: None,
+    }
 }

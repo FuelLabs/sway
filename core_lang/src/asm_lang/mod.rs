@@ -34,7 +34,7 @@ pub(crate) struct Op<'sc> {
     pub(crate) owning_span: Option<Span<'sc>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct RealizedOp<'sc> {
     pub(crate) opcode: VirtualOp,
     /// A descriptive comment for ASM readability
@@ -124,7 +124,7 @@ impl<'sc> Op<'sc> {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::LW(reg, data)),
+            opcode: Either::Left(VirtualOp::LWDataId(reg, data)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -184,6 +184,7 @@ impl<'sc> Op<'sc> {
             owning_span: None,
         }
     }
+
     pub(crate) fn register_move_comment(
         r1: VirtualRegister,
         r2: VirtualRegister,
@@ -258,7 +259,7 @@ impl<'sc> Op<'sc> {
         ok(
             match name.primary_name {
                 "add" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -267,7 +268,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::ADD(r1, r2, r3)
                 }
                 "addi" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -276,7 +277,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::ADDI(r1, r2, imm)
                 }
                 "and" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -285,7 +286,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::AND(r1, r2, r3)
                 }
                 "andi" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -294,7 +295,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::ANDI(r1, r2, imm)
                 }
                 "div" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -303,7 +304,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::DIV(r1, r2, r3)
                 }
                 "divi" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -312,7 +313,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::DIVI(r1, r2, imm)
                 }
                 "eq" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -321,7 +322,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::EQ(r1, r2, r3)
                 }
                 "exp" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -330,7 +331,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::EXP(r1, r2, r3)
                 }
                 "expi" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -339,7 +340,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::EXPI(r1, r2, imm)
                 }
                 "gt" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -347,8 +348,17 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::GT(r1, r2, r3)
                 }
+                "lt" => {
+                    let (r1, r2, r3) = check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LT(r1, r2, r3)
+                }
                 "mlog" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -357,7 +367,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MLOG(r1, r2, r3)
                 }
                 "mroo" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -366,7 +376,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MROO(r1, r2, r3)
                 }
                 "mod" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -375,7 +385,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MOD(r1, r2, r3)
                 }
                 "modi" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -384,7 +394,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MODI(r1, r2, imm)
                 }
                 "move" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -393,7 +403,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MOVE(r1, r2)
                 }
                 "mul" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -402,7 +412,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MUL(r1, r2, r3)
                 }
                 "muli" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -411,7 +421,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MULI(r1, r2, imm)
                 }
                 "not" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -420,7 +430,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::NOT(r1, r2)
                 }
                 "or" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -429,7 +439,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::OR(r1, r2, r3)
                 }
                 "ori" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -438,7 +448,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::ORI(r1, r2, imm)
                 }
                 "sll" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -447,7 +457,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SLL(r1, r2, r3)
                 }
                 "slli" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -456,7 +466,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SLLI(r1, r2, imm)
                 }
                 "srl" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -465,7 +475,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SRL(r1, r2, r3)
                 }
                 "srli" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -474,7 +484,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SRLI(r1, r2, imm)
                 }
                 "sub" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -483,7 +493,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SUB(r1, r2, r3)
                 }
                 "subi" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -492,7 +502,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SUBI(r1, r2, imm)
                 }
                 "xor" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -501,7 +511,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::XOR(r1, r2, r3)
                 }
                 "xori" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -510,7 +520,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::XORI(r1, r2, imm)
                 }
                 "cimv" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -519,7 +529,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CIMV(r1, r2, r3)
                 }
                 "ctmv" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -540,7 +550,7 @@ impl<'sc> Op<'sc> {
                     return err(warnings, errors);
                 }
                 "ret" => {
-                    let r1 = type_check!(
+                    let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -549,7 +559,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::RET(r1)
                 }
                 "cfei" => {
-                    let imm = type_check!(
+                    let imm = check!(
                         single_imm_24(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -558,7 +568,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CFEI(imm)
                 }
                 "cfsi" => {
-                    let imm = type_check!(
+                    let imm = check!(
                         single_imm_24(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -567,7 +577,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CFSI(imm)
                 }
                 "lb" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -582,7 +592,7 @@ impl<'sc> Op<'sc> {
                     return err(warnings, errors);
                 }
                 "aloc" => {
-                    let r1 = type_check!(
+                    let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -591,7 +601,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::ALOC(r1)
                 }
                 "mcl" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -600,7 +610,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MCL(r1, r2)
                 }
                 "mcli" => {
-                    let (r1, imm) = type_check!(
+                    let (r1, imm) = check!(
                         single_reg_imm_18(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -609,7 +619,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MCLI(r1, imm)
                 }
                 "mcp" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -618,7 +628,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MCP(r1, r2, r3)
                 }
                 "meq" => {
-                    let (r1, r2, r3, r4) = type_check!(
+                    let (r1, r2, r3, r4) = check!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -627,7 +637,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MEQ(r1, r2, r3, r4)
                 }
                 "sb" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -636,7 +646,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SB(r1, r2, imm)
                 }
                 "sw" => {
-                    let (r1, r2, imm) = type_check!(
+                    let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -645,7 +655,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SW(r1, r2, imm)
                 }
                 "bhsh" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -654,7 +664,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::BHSH(r1, r2)
                 }
                 "bhei" => {
-                    let r1 = type_check!(
+                    let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -663,7 +673,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::BHEI(r1)
                 }
                 "burn" => {
-                    let r1 = type_check!(
+                    let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -672,7 +682,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::BURN(r1)
                 }
                 "call" => {
-                    let (r1, r2, r3, r4) = type_check!(
+                    let (r1, r2, r3, r4) = check!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -681,7 +691,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CALL(r1, r2, r3, r4)
                 }
                 "ccp" => {
-                    let (r1, r2, r3, r4) = type_check!(
+                    let (r1, r2, r3, r4) = check!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -690,7 +700,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CCP(r1, r2, r3, r4)
                 }
                 "croo" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -699,7 +709,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CROO(r1, r2)
                 }
                 "csiz" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -708,7 +718,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CSIZ(r1, r2)
                 }
                 "cb" => {
-                    let r1 = type_check!(
+                    let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -717,7 +727,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CB(r1)
                 }
                 "ldc" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -726,7 +736,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::LDC(r1, r2, r3)
                 }
                 "log" => {
-                    let (r1, r2, r3, r4) = type_check!(
+                    let (r1, r2, r3, r4) = check!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -735,7 +745,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::LOG(r1, r2, r3, r4)
                 }
                 "mint" => {
-                    let r1 = type_check!(
+                    let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -744,7 +754,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::MINT(r1)
                 }
                 "rvrt" => {
-                    let r1 = type_check!(
+                    let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -753,7 +763,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::RVRT(r1)
                 }
                 "sldc" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -762,7 +772,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SLDC(r1, r2, r3)
                 }
                 "srw" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -771,7 +781,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SRW(r1, r2)
                 }
                 "srwq" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -780,7 +790,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SRWQ(r1, r2)
                 }
                 "sww" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -789,7 +799,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SWW(r1, r2)
                 }
                 "swwq" => {
-                    let (r1, r2) = type_check!(
+                    let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -798,7 +808,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::SWWQ(r1, r2)
                 }
                 "tr" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -807,7 +817,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::TR(r1, r2, r3)
                 }
                 "tro" => {
-                    let (r1, r2, r3, r4) = type_check!(
+                    let (r1, r2, r3, r4) = check!(
                         four_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -816,7 +826,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::TRO(r1, r2, r3, r4)
                 }
                 "ecr" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -825,7 +835,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::ECR(r1, r2, r3)
                 }
                 "k256" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -834,7 +844,7 @@ impl<'sc> Op<'sc> {
                     VirtualOp::K256(r1, r2, r3)
                 }
                 "s256" => {
-                    let (r1, r2, r3) = type_check!(
+                    let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -844,7 +854,7 @@ impl<'sc> Op<'sc> {
                 }
                 "noop" => VirtualOp::NOOP,
                 "flag" => {
-                    let r1 = type_check!(
+                    let r1 = check!(
                         single_reg(args, immediate, whole_op_span),
                         return err(warnings, errors),
                         warnings,
@@ -1220,6 +1230,7 @@ impl fmt::Display for Op<'_> {
                 EXP(a, b, c) => format!("exp {} {} {}", a, b, c),
                 EXPI(a, b, c) => format!("expi {} {} {}", a, b, c),
                 GT(a, b, c) => format!("gt {} {} {}", a, b, c),
+                LT(a, b, c) => format!("lt {} {} {}", a, b, c),
                 MLOG(a, b, c) => format!("mlog {} {} {}", a, b, c),
                 MROO(a, b, c) => format!("mroo {} {} {}", a, b, c),
                 MOD(a, b, c) => format!("mod {} {} {}", a, b, c),
@@ -1246,7 +1257,8 @@ impl fmt::Display for Op<'_> {
                 CFEI(a) => format!("cfei {}", a),
                 CFSI(a) => format!("cfsi {}", a),
                 LB(a, b, c) => format!("lb {} {} {}", a, b, c),
-                LW(a, b) => format!("lw {} {}", a, b),
+                LWDataId(a, b) => format!("lw {} {}", a, b),
+                LW(a, b, c) => format!("lw {} {} {}", a, b, c),
                 ALOC(a) => format!("aloc {}", a),
                 MCL(a, b) => format!("mcl {} {}", a, b),
                 MCLI(a, b) => format!("mcli {} {}", a, b),
@@ -1320,7 +1332,7 @@ pub(crate) enum OrganizationalOp {
     Jump(Label),
     // Jumps to a label
     JumpIfNotEq(VirtualRegister, VirtualRegister, Label),
-    // placeholder for the DataSection offset to go
+    // placeholder for the DataSection offset
     DataSectionOffsetPlaceholder,
 }
 impl fmt::Display for OrganizationalOp {

@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate pest_derive;
 #[macro_use]
-mod error;
+pub mod error;
 
 mod asm_generation;
 mod asm_lang;
@@ -9,12 +9,12 @@ mod build_config;
 pub mod constants;
 mod control_flow_analysis;
 mod ident;
-mod parse_tree;
+pub mod parse_tree;
 mod parser;
-mod semantic_analysis;
+pub mod semantic_analysis;
 
 pub use crate::parse_tree::*;
-use crate::parser::{HllParser, Rule};
+pub use crate::parser::{HllParser, Rule};
 use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 pub use build_config::BuildConfig;
@@ -22,7 +22,7 @@ use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
-pub(crate) mod types;
+pub mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 
@@ -149,6 +149,14 @@ pub enum BytecodeCompilationResult<'sc> {
     },
 }
 
+pub fn extract_keyword(line: &str, rule: Rule) -> Option<&str> {
+    if let Ok(pair) = HllParser::parse(rule, line) {
+        Some(pair.as_str().trim())
+    } else {
+        None
+    }
+}
+
 fn get_start(err: &pest::error::Error<Rule>) -> usize {
     match err.location {
         pest::error::InputLocation::Pos(num) => num,
@@ -202,31 +210,15 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
             .library_exports
             .into_iter()
             .filter_map(|(name, tree)| {
-                match TypedParseTree::type_check(
+                TypedParseTree::type_check(
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
                     &build_config,
                     dead_code_graph,
-                ) {
-                    CompileResult::Ok {
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                        value,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                        Some((name, value))
-                    }
-                    CompileResult::Err {
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                        None
-                    }
-                }
+                )
+                .ok(&mut warnings, &mut errors)
+                .map(|value| (name, value))
             })
             .collect();
         let mut exports = LibraryExports {
@@ -285,123 +277,38 @@ pub fn compile_to_asm<'sc, 'manifest>(
         namespace: Default::default(),
     };
 
-    let contract_ast: Option<_> = if let Some(tree) = parse_tree.contract_ast {
-        match TypedParseTree::type_check(
-            tree,
-            initial_namespace.clone(),
-            TreeType::Contract,
-            &build_config,
-            &mut dead_code_graph,
-        ) {
-            CompileResult::Ok {
-                warnings: mut l_w,
-                errors: mut l_e,
-                value,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                Some(value)
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                None
-            }
-        }
-    } else {
-        None
+    let mut type_check_ast = |ast: Option<_>, tree_type| {
+        ast.map(|tree| {
+            TypedParseTree::type_check(
+                tree,
+                initial_namespace.clone(),
+                tree_type,
+                &build_config,
+                &mut dead_code_graph,
+            )
+            .ok(&mut warnings, &mut errors)
+        })
+        .flatten()
     };
-    let predicate_ast: Option<_> = if let Some(tree) = parse_tree.predicate_ast {
-        match TypedParseTree::type_check(
-            tree,
-            initial_namespace.clone(),
-            TreeType::Predicate,
-            &build_config,
-            &mut dead_code_graph,
-        ) {
-            CompileResult::Ok {
-                warnings: mut l_w,
-                errors: mut l_e,
-                value,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                Some(value)
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                None
-            }
-        }
-    } else {
-        None
-    };
-    let script_ast: Option<_> = if let Some(tree) = parse_tree.script_ast {
-        match TypedParseTree::type_check(
-            tree,
-            initial_namespace.clone(),
-            TreeType::Script,
-            &build_config,
-            &mut dead_code_graph,
-        ) {
-            CompileResult::Ok {
-                warnings: mut l_w,
-                errors: mut l_e,
-                value,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                Some(value)
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                warnings.append(&mut l_w);
-                errors.append(&mut l_e);
-                None
-            }
-        }
-    } else {
-        None
-    };
+
+    let contract_ast = type_check_ast(parse_tree.contract_ast, TreeType::Contract);
+    let predicate_ast = type_check_ast(parse_tree.predicate_ast, TreeType::Predicate);
+    let script_ast = type_check_ast(parse_tree.script_ast, TreeType::Script);
+
     let library_exports: LibraryExports = {
         let res: Vec<_> = parse_tree
             .library_exports
             .into_iter()
             .filter_map(|(name, tree)| {
-                match TypedParseTree::type_check(
+                TypedParseTree::type_check(
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
                     &build_config,
                     &mut dead_code_graph,
-                ) {
-                    CompileResult::Ok {
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                        value,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                        Some((name, value))
-                    }
-                    CompileResult::Err {
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                        None
-                    }
-                }
+                )
+                .ok(&mut warnings, &mut errors)
+                .map(|value| (name, value))
             })
             .collect();
         let mut exports = LibraryExports {
@@ -417,6 +324,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
         }
         exports
     };
+
     // If there are errors, display them now before performing control flow analysis.
     // It is necessary that the syntax tree is well-formed for control flow analysis
     // to be correct.
@@ -454,8 +362,8 @@ pub fn compile_to_asm<'sc, 'manifest>(
     // for each syntax tree, generate assembly.
     let predicate_asm = (|| {
         if let Some(tree) = predicate_ast {
-            Some(type_check!(
-                compile_ast_to_asm(tree),
+            Some(check!(
+                compile_ast_to_asm(tree, &build_config),
                 return None,
                 warnings,
                 errors
@@ -467,8 +375,8 @@ pub fn compile_to_asm<'sc, 'manifest>(
 
     let contract_asm = (|| {
         if let Some(tree) = contract_ast {
-            Some(type_check!(
-                compile_ast_to_asm(tree),
+            Some(check!(
+                compile_ast_to_asm(tree, &build_config),
                 return None,
                 warnings,
                 errors
@@ -480,8 +388,8 @@ pub fn compile_to_asm<'sc, 'manifest>(
 
     let script_asm = (|| {
         if let Some(tree) = script_ast {
-            Some(type_check!(
-                compile_ast_to_asm(tree),
+            Some(check!(
+                compile_ast_to_asm(tree, &build_config),
                 return None,
                 warnings,
                 errors
@@ -498,13 +406,10 @@ pub fn compile_to_asm<'sc, 'manifest>(
                 asm: pred,
                 warnings,
             },
-            (None, Some(_contract), None, o) if o.trees.is_empty() => {
-                errors.push(CompileError::Unimplemented(
-                    "Contracts are not implemented yet. ",
-                    Span::new(input, 0, input.len() - 1).unwrap(),
-                ));
-                return CompilationResult::Failure { errors, warnings };
-            }
+            (None, Some(contract), None, o) if o.trees.is_empty() => CompilationResult::Success {
+                asm: contract,
+                warnings,
+            },
             (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::Success {
                 asm: script,
                 warnings,
@@ -532,33 +437,24 @@ pub fn compile_to_bytecode<'sc, 'manifest>(
     build_config: BuildConfig,
 ) -> BytecodeCompilationResult<'sc> {
     match compile_to_asm(input, initial_namespace, build_config) {
-        CompilationResult::Success { asm, mut warnings } => {
-            let bytes = match asm.to_bytecode() {
-                CompileResult::Ok {
-                    value,
-                    warnings: mut l_w,
-                    errors,
-                } if errors.is_empty() => {
-                    warnings.append(&mut l_w);
-                    value
+        CompilationResult::Success {
+            mut asm,
+            mut warnings,
+        } => {
+            let mut asm_res = asm.to_bytecode();
+            warnings.append(&mut asm_res.warnings);
+            if asm_res.value.is_none() || !asm_res.errors.is_empty() {
+                BytecodeCompilationResult::Failure {
+                    warnings,
+                    errors: asm_res.errors,
                 }
-                CompileResult::Ok {
-                    warnings: mut l_w,
-                    errors,
-                    ..
-                } => {
-                    warnings.append(&mut l_w);
-                    return BytecodeCompilationResult::Failure { warnings, errors };
+            } else {
+                // asm_res is confirmed to be Some(bytes).
+                BytecodeCompilationResult::Success {
+                    bytes: asm_res.value.unwrap(),
+                    warnings,
                 }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors,
-                } => {
-                    warnings.append(&mut l_w);
-                    return BytecodeCompilationResult::Failure { warnings, errors };
-                }
-            };
-            BytecodeCompilationResult::Success { bytes, warnings }
+            }
         }
         CompilationResult::Failure { warnings, errors } => {
             BytecodeCompilationResult::Failure { warnings, errors }
@@ -809,18 +705,22 @@ fn test_basic_prog() {
     "#,
     );
     dbg!(&prog);
-    prog.unwrap();
+    let mut warnings: Vec<CompileWarning> = Vec::new();
+    let mut errors: Vec<CompileError> = Vec::new();
+    prog.unwrap(&mut warnings, &mut errors);
 }
 #[test]
 fn test_parenthesized() {
     let prog = parse(
         r#"
         contract;
-        pub fn abi_func() -> unit {
+        pub fn some_abi_func() -> unit {
             let x = (5 + 6 / (1 + (2 / 1) + 4));
             return;
         }
     "#,
     );
-    prog.unwrap();
+    let mut warnings: Vec<CompileWarning> = Vec::new();
+    let mut errors: Vec<CompileError> = Vec::new();
+    prog.unwrap(&mut warnings, &mut errors);
 }

@@ -160,112 +160,113 @@ impl Divide for u8 {
   }
 }
 
-
-pub trait Eq {
-    fn equals(self, other: Self) -> bool;
-}
-
-
-impl Eq for u64 {
-  fn equals(self, other: Self) -> bool {
-    asm(r1: self, r2: other, r3) {
-      eq r3 r1 r2;
+impl bool {
+  fn or(self, other: Self) -> bool {
+    asm(r1: self, r2: other, r3) { 
+      or r3 r1 r2;
       r3: bool
     }
   }
 }
 
-impl Eq for u32 {
-  fn equals(self, other: Self) -> bool {
-    asm(r1: self, r2: other, r3) {
-      eq r3 r1 r2;
-      r3: bool
-    }
-  }
-}
-
-impl Eq for u16 {
-  fn equals(self, other: Self) -> bool {
-    asm(r1: self, r2: other, r3) {
-      eq r3 r1 r2;
-      r3: bool
-    }
-  }
-}
-
-impl Eq for u8 {
-  fn equals(self, other: Self) -> bool {
-    asm(r1: self, r2: other, r3) {
-      eq r3 r1 r2;
-      r3: bool
-    }
-  }
-}
-
-
-enum Ordering {
-  LessOrEqual : (),
-  Greater : (),
-}
-
-impl Eq for Ordering {
-  fn equals(self, other: Self) -> bool {
-    asm(r1: self, r2: other, r3) {
-      eq r3 r1 r2;
-      r3: bool
-    }
-  }
-}
 
 pub trait Ord {
-  fn cmp(self, other: Self) -> Ordering;
+  fn gt(self, other: Self) -> bool;
+  fn lt(self, other: Self) -> bool;
+  fn eq(self, other: Self) -> bool;
 } {
-  fn less_or_equal(self, other: Self) -> bool {
-    let res = self.cmp(other);
-    res.equals(Ordering::LessOrEqual)
+  fn le(self, other: Self) -> bool {
+    (self.lt(other)).or(self.eq(other))
   }
-  fn greater_than(self, other: Self) -> bool {
-    let res = self.cmp(other);
-    res.equals(Ordering::Greater)
+  fn ge(self, other: Self) -> bool {
+    (self.gt(other)).or(self.eq(other))
+  }
+  fn neq(self, other: Self) -> bool {
+    // TODO unary operator negation
+    if self.eq(other) { false } else { true }
   }
 }
 
 impl Ord for u64 {
-  fn cmp(self, other: Self) -> Ordering {
-    let is_greater_than = asm(r1: self, r2: other, r3) {
+  fn gt(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
         gt r3 r1 r2;
         r3: bool
-    };
-    if is_greater_than { Ordering::Greater } else { Ordering::LessOrEqual }
+    }
+  }
+  fn lt(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
+        lt r3 r1 r2;
+        r3: bool
+    }
+  }
+  fn eq(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
+        eq r3 r1 r2;
+        r3: bool
+    }
   }
 }
 
 impl Ord for u32 {
-  fn cmp(self, other: Self) -> Ordering {
-    let is_greater_than = asm(r1: self, r2: other, r3) {
+  fn gt(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
         gt r3 r1 r2;
         r3: bool
-    };
-    if is_greater_than { Ordering::Greater } else { Ordering::LessOrEqual }
+    }
+  }
+  fn lt(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
+        lt r3 r1 r2;
+        r3: bool
+    }
+  }
+  fn eq(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
+        eq r3 r1 r2;
+        r3: bool
+    }
   }
 }
 
 impl Ord for u16 {
-  fn cmp(self, other: Self) -> Ordering {
-    let is_greater_than = asm(r1: self, r2: other, r3) {
+  fn gt(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
         gt r3 r1 r2;
         r3: bool
-    };
-    if is_greater_than { Ordering::Greater } else { Ordering::LessOrEqual }
+    }
+  }
+  fn lt(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
+        lt r3 r1 r2;
+        r3: bool
+    }
+  }
+  fn eq(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
+        eq r3 r1 r2;
+        r3: bool
+    }
   }
 }
 
 impl Ord for u8 {
-  fn cmp(self, other: Self) -> Ordering {
-    let is_greater_than = asm(r1: self, r2: other, r3) {
+  fn gt(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
         gt r3 r1 r2;
         r3: bool
-    };
-    if is_greater_than { Ordering::Greater } else { Ordering::LessOrEqual }
+    }
+  }
+  fn lt(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
+        lt r3 r1 r2;
+        r3: bool
+    }
+  }
+  fn eq(self, other: Self) -> bool {
+     asm(r1: self, r2: other, r3) {
+        eq r3 r1 r2;
+        r3: bool
+    }
   }
 }

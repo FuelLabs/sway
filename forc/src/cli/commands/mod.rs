@@ -1,11 +1,8 @@
-pub mod analysis;
-pub mod benchmark;
 pub mod build;
-pub mod coverage;
 pub mod deploy;
+pub mod format;
 pub mod init;
-pub mod mvprun;
 pub mod parse_bytecode;
-pub mod publish;
-pub mod serve;
+pub mod run;
 pub mod test;
+pub mod update;

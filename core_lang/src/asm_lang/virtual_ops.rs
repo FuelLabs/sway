@@ -115,7 +115,7 @@ impl fmt::Display for ConstantRegister {
 }
 
 /// 6-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate06 {
     pub(crate) value: u8,
 }
@@ -141,7 +141,7 @@ impl fmt::Display for VirtualImmediate06 {
 }
 
 /// 12-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate12 {
     pub(crate) value: u16,
 }
@@ -177,7 +177,7 @@ impl fmt::Display for VirtualImmediate12 {
 }
 
 /// 18-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate18 {
     pub(crate) value: u32,
 }
@@ -212,7 +212,7 @@ impl fmt::Display for VirtualImmediate18 {
 }
 
 /// 24-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate24 {
     pub(crate) value: u32,
 }
@@ -250,7 +250,7 @@ impl fmt::Display for VirtualImmediate24 {
 /// allows me to use the compiler's internal [VirtualRegister] types and maintain type safety
 /// between virtual ops and the real opcodes. A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum VirtualOp {
     ADD(VirtualRegister, VirtualRegister, VirtualRegister),
     ADDI(VirtualRegister, VirtualRegister, VirtualImmediate12),
@@ -262,6 +262,7 @@ pub(crate) enum VirtualOp {
     EXP(VirtualRegister, VirtualRegister, VirtualRegister),
     EXPI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     GT(VirtualRegister, VirtualRegister, VirtualRegister),
+    LT(VirtualRegister, VirtualRegister, VirtualRegister),
     MLOG(VirtualRegister, VirtualRegister, VirtualRegister),
     MROO(VirtualRegister, VirtualRegister, VirtualRegister),
     MOD(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -288,11 +289,14 @@ pub(crate) enum VirtualOp {
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    // LW takes a virtual register and a DataId, which points to a labeled piece
+    // LWDataId takes a virtual register and a DataId, which points to a labeled piece
     // of data in the data section. Note that the ASM op corresponding to a LW is
     // subtly complex: $rB is in bytes and points to some mem address. The immediate
     // third argument is a _word_ offset from that byte address.
-    LW(VirtualRegister, DataId),
+    LWDataId(VirtualRegister, DataId),
+    // A raw LW that doesn't refer to a deferred placeholder and instead refers
+    // directly to memory
+    LW(VirtualRegister, VirtualRegister, VirtualImmediate12),
     ALOC(VirtualRegister),
     MCL(VirtualRegister, VirtualRegister),
     MCLI(VirtualRegister, VirtualImmediate18),
@@ -368,6 +372,7 @@ impl VirtualOp {
             EXP(r1, r2, r3) => vec![r1, r2, r3],
             EXPI(r1, r2, _i) => vec![r1, r2],
             GT(r1, r2, r3) => vec![r1, r2, r3],
+            LT(r1, r2, r3) => vec![r1, r2, r3],
             MLOG(r1, r2, r3) => vec![r1, r2, r3],
             MROO(r1, r2, r3) => vec![r1, r2, r3],
             MOD(r1, r2, r3) => vec![r1, r2, r3],
@@ -394,7 +399,8 @@ impl VirtualOp {
             CFEI(_imm) => vec![],
             CFSI(_imm) => vec![],
             LB(r1, r2, _i) => vec![r1, r2],
-            LW(r1, _i) => vec![r1],
+            LWDataId(r1, _i) => vec![r1],
+            LW(r1, r2, _i) => vec![r1, r2],
             ALOC(_imm) => vec![],
             MCL(r1, r2) => vec![r1, r2],
             MCLI(r1, _imm) => vec![r1],
@@ -449,7 +455,7 @@ impl VirtualOp {
             .map(|x| match x {
                 VirtualRegister::Constant(c) => (x, Some(AllocatedRegister::Constant(c.clone()))),
                 VirtualRegister::Virtual(_) => {
-                    (x, pool.get_register(x, &op_register_mapping[ix + 1..]))
+                    (x, pool.get_register(x, &op_register_mapping[ix..]))
                 }
             })
             .map(|(x, res)| match res {
@@ -519,6 +525,11 @@ impl VirtualOp {
                 imm.clone(),
             ),
             GT(reg1, reg2, reg3) => AllocatedOpcode::GT(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            LT(reg1, reg2, reg3) => AllocatedOpcode::LT(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
@@ -631,7 +642,14 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            LW(reg1, imm) => AllocatedOpcode::LW(map_reg(&mapping, reg1), imm.clone()),
+            LWDataId(reg1, label) => {
+                AllocatedOpcode::LWDataId(map_reg(&mapping, reg1), label.clone())
+            }
+            LW(reg1, reg2, imm) => AllocatedOpcode::LW(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
             ALOC(reg) => AllocatedOpcode::ALOC(map_reg(&mapping, reg)),
             MCL(reg1, reg2) => {
                 AllocatedOpcode::MCL(map_reg(&mapping, reg1), map_reg(&mapping, reg2))

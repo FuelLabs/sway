@@ -1,12 +1,6 @@
 name: Compile and Test
 
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
+on: [push]
 
 env:
   CARGO_TERM_COLOR: always
@@ -27,12 +21,13 @@ jobs:
           ${{ secrets.PRIVATE_KEY_FUEL_ASM }}
           ${{ secrets.PRIVATE_KEY_FUEL_TX }}
           ${{ secrets.PRIVATE_KEY_FUEL_VM }}
+          ${{ secrets.PRIVATE_KEY_FUEL_CORE }}
 
     - name: Install toolchain
       uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: 1.52.0
+        toolchain: stable
         override: true
 
     - name: Install rustfmt
@@ -49,6 +44,8 @@ jobs:
       with:
         command: build
         args: --verbose
+      env:
+        RUSTFLAGS: "-D warnings"
 
     - name: Run tests
       uses: actions-rs/cargo@v1
@@ -60,4 +57,4 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: run
-        args: --bin test_suite
+        args: --bin test
