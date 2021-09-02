@@ -3,8 +3,8 @@
 [The Sway Programming Language](./README.md)
 
 - [Getting Started](./getting-started/README.md)
-  - [Installation](./getting-started/s01.md)
-  - [Hello, World!](./getting-started/s02.md)
+  - [Installation](./getting-started/installation.md)
+  - [Hello, World!](./getting-started/hello_world.md)
 - [Examples](./examples/README.md)
   - [Hello, World!](./examples/hello_world.md)
   - [FizzBuzz](./examples/fizzbuzz.md)
