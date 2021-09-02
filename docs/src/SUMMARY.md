@@ -4,6 +4,7 @@
 
 - [Getting Started](./getting-started/README.md)
   - [Installation](./getting-started/installation.md)
+  - [The Sway Toolchain](./getting-started/sway-toolchain.md)
   - [Hello, World!](./getting-started/hello_world.md)
 - [Examples](./examples/README.md)
   - [Hello, World!](./examples/hello_world.md)
