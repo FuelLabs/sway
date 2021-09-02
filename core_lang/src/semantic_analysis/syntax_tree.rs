@@ -1,3 +1,4 @@
+use super::node_dependencies;
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
@@ -73,15 +74,15 @@ impl<'sc> TypedParseTree<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Self> {
-        let mut initial_namespace = initial_namespace.clone();
-
+        let mut new_namespace = initial_namespace.clone();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
+        let ordered_nodes = node_dependencies::order_astnodes_by_dependency(&parsed.root_nodes);
         let typed_nodes = check!(
-            TypedParseTree::get_typed_nodes(
-                parsed.root_nodes,
-                &mut initial_namespace,
+            TypedParseTree::type_check_nodes(
+                ordered_nodes,
+                &mut new_namespace,
                 build_config,
                 dead_code_graph
             ),
@@ -93,28 +94,27 @@ impl<'sc> TypedParseTree<'sc> {
         TypedParseTree::validate_typed_nodes(
             typed_nodes,
             parsed.span,
-            initial_namespace,
+            new_namespace,
             tree_type,
             warnings,
             errors,
         )
     }
 
-    fn get_typed_nodes(
+    fn type_check_nodes(
         nodes: Vec<AstNode<'sc>>,
-        initial_namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let typed_nodes = nodes
-            .clone()
             .into_iter()
             .map(|node| {
                 TypedAstNode::type_check(
-                    node,
-                    initial_namespace,
+                    node.clone(),
+                    namespace,
                     None,
                     "",
                     // TODO only allow impl traits on contract trees, do something else
