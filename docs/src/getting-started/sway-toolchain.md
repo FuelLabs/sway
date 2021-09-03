@@ -2,9 +2,9 @@
 
 The Sway toolchain consists of several components.
 
-## `forc`
+## Forc (`forc`)
 
-The "Fuel Orchestrator" `forc` is our equivalent of Rust's [Cargo](https://doc.rust-lang.org/cargo/). It is the primary entry point for creating, building, testing, and deploying Sway projects. The next pages in this section will introduce how to use `forc`.
+The "Fuel Orchestrator" Forc is our equivalent of Rust's [Cargo](https://doc.rust-lang.org/cargo/). It is the primary entry point for creating, building, testing, and deploying Sway projects. The next pages in this section will introduce how to use Forc.
 
 ## `sway-server`
 
