@@ -1,5 +1,4 @@
-<!-- markdownlint-disable-next-line no-trailing-punctuation -->
-# Hello, World!
+# A Forc Project
 
 To initialize a new project with Forc, use `forc init`:
 
