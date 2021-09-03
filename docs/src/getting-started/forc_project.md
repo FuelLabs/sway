@@ -61,8 +61,8 @@ Bytecode size is 28 bytes.
 
 To run this script, use `forc run`:
 
-<!--TODO
 ```console
-
+$ forc run
+Bytecode size is 28 bytes.
+[Return { id: ContractId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), val: 0, pc: 488, is: 464 }]
 ```
--->
