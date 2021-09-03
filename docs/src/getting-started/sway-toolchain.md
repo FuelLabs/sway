@@ -12,4 +12,4 @@ The Sway Language Server `sway-server` is provided to expose features to IDEs. C
 
 ## `fuel-core`
 
-While not directly part of the Sway toolchain, an implementation of the Fuel full node, `fuel-core`, is provided. Note that there is no need to manually run `fuel-core`, however it should be included in your `$PATH`.
+While not directly part of the Sway toolchain, an implementation of the Fuel full node, `fuel-core`, is provided. Note that for now, users must manually run `fuel-core` to deploy contracts or run scripts. In the future, an instance of `fuel-core` will be initialized through `forc`.
