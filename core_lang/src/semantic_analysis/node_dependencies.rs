@@ -6,7 +6,7 @@ use crate::{
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any
 /// dependencies breaking.
 
-pub(crate) fn order_astnodes_by_dependency<'sc>(nodes: &[AstNode<'sc>]) -> Vec<AstNode<'sc>> {
+pub(crate) fn order_ast_nodes_by_dependency<'sc>(nodes: &[AstNode<'sc>]) -> Vec<AstNode<'sc>> {
     let decl_dependencies: Vec<(DependentSymbol, Dependencies)> = nodes
         .iter()
         .filter_map(|node| Dependencies::gather_from_decl_node(node))
@@ -40,12 +40,17 @@ fn insert_into_ordered_nodes<'sc>(
     ordered_nodes
 }
 
+// dependant: noun; thing depending on another thing.
+// dependee: noun; thing which is depended upon by another thing.
+//
+// Does the dependant depend on the dependee?
+
 fn depends_on<'sc>(
     decl_dependencies: &[(DependentSymbol, Dependencies)],
-    depender_node: &AstNode<'sc>,
-    dependent_node: &AstNode<'sc>,
+    dependant_node: &AstNode<'sc>,
+    dependee_node: &AstNode<'sc>,
 ) -> bool {
-    match (&depender_node.content, &dependent_node.content) {
+    match (&dependant_node.content, &dependee_node.content) {
         // Include statements first.
         (AstNodeContent::IncludeStatement(_), AstNodeContent::IncludeStatement(_)) => false,
         (_, AstNodeContent::IncludeStatement(_)) => true,
@@ -58,14 +63,14 @@ fn depends_on<'sc>(
         // Then declarations, ordered using the dependecies list.
         (AstNodeContent::IncludeStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
-        (AstNodeContent::Declaration(depender), AstNodeContent::Declaration(dependent)) => {
-            match (decl_name(depender), decl_name(dependent)) {
-                (Some(depender_name), Some(dependent_name)) => {
+        (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {
+            match (decl_name(dependant), decl_name(dependee)) {
+                (Some(dependant_name), Some(dependee_name)) => {
                     // Rather than iterating through each dependency we could use a HashMap here.
                     decl_dependencies.iter().any(|(key, names)| {
                         // Is this the right list of dependencies and is the dependent in the list?
-                        key == &depender_name
-                            && names.deps.iter().any(|name| dependent_name.is(name))
+                        key == &dependant_name
+                            && names.deps.iter().any(|name| dependee_name.is(name))
                     })
                 }
                 _ => false,
@@ -345,8 +350,8 @@ impl<'sc> Dependencies<'sc> {
 
 // -------------------------------------------------------------------------------------------------
 // Most declarations can be uniquely identified by a name str.  ImplSelf and ImplTrait don't have a
-// name of their on though.  They can be identified as been an impl of another type, so we make the
-// distinction here with DependentSymbol.
+// name of their own though.  They can be identified as being an impl of another type, so we make
+// the distinction here with DependentSymbol.
 //
 // At the same time, we don't need to identify ImplSelf and ImplTrait as dependencies, as while
 // they themselves depend on other declarations, no declarations depend on them.  This is

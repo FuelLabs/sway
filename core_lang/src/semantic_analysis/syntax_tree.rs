@@ -78,7 +78,7 @@ impl<'sc> TypedParseTree<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let ordered_nodes = node_dependencies::order_astnodes_by_dependency(&parsed.root_nodes);
+        let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(&parsed.root_nodes);
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
