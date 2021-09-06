@@ -266,7 +266,7 @@ impl<'sc> ResolvedType<'sc> {
         match self {
             // Each char is a byte, so the size is the num of characters / 8
             // rounded up to the nearest word
-            ResolvedType::Str(len) => (len + 7 & !7) / 8,
+            ResolvedType::Str(len) => (len + 7) / 8,
             // Since things are unpacked, all unsigned integers are 64 bits.....for now
             ResolvedType::UnsignedInteger(_) => 1,
             ResolvedType::Boolean => 1,

@@ -20,7 +20,7 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
     f.read(&mut buffer).expect("buffer overflow");
     let mut instructions = vec![];
 
-    for i in (0..buffer.len() - 1).step_by(4) {
+    for i in (0..buffer.len()).step_by(4) {
         let i = i as usize;
         let raw = &buffer[i..i + 4];
         let op = fuel_asm::Opcode::from_bytes_unchecked(raw.try_into().unwrap());
