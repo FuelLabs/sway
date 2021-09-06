@@ -8,7 +8,7 @@ use rand::{Rng, SeedableRng};
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
-pub(crate) fn runs_in_vm(file_name: &str) {
+pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     let mut storage = MemoryStorage::default();
     let program = vec![Opcode::NOOP, Opcode::RET(1)];
 
@@ -75,7 +75,10 @@ pub(crate) fn runs_in_vm(file_name: &str) {
     );
     let block_height = (u32::MAX >> 1) as u64;
     tx_to_test.validate(block_height).unwrap();
-    Interpreter::transition(&mut storage, tx_to_test).unwrap();
+    Interpreter::transition(&mut storage, tx_to_test)
+        .unwrap()
+        .state()
+        .clone()
 }
 
 /// Returns `true` if a file compiled without any errors or warnings,

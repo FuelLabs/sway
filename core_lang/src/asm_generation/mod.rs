@@ -355,7 +355,7 @@ fn label_is_used<'sc>(buf: &[Op<'sc>], label: &Label) -> bool {
 #[derive(Default, Clone)]
 pub struct DataSection<'sc> {
     /// the data to be put in the data section of the asm
-    value_pairs: Vec<Data<'sc>>,
+    pub value_pairs: Vec<Data<'sc>>,
 }
 
 impl<'sc> DataSection<'sc> {
@@ -567,7 +567,7 @@ pub(crate) struct AsmNamespace<'sc> {
 
 /// An address which refers to a value in the data section of the asm.
 #[derive(Clone, Debug)]
-pub(crate) struct DataId(u32);
+pub(crate) struct DataId(pub(crate) u32);
 
 impl fmt::Display for DataId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

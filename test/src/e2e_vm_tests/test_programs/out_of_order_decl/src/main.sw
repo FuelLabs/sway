@@ -13,7 +13,7 @@ fn main() -> bool {
     b: false
   };
 
-  return true;
+  true
 }
 
 struct FuelStruct {
