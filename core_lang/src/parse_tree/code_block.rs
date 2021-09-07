@@ -19,10 +19,10 @@ pub struct CodeBlock<'sc> {
 
 impl<'sc> CodeBlock<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        block: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (block, config) = input;
-        let path = config.map(|config| config.dir_of_code);
+        let path = config.map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let whole_block_span = span::Span {
@@ -34,11 +34,12 @@ impl<'sc> CodeBlock<'sc> {
         for pair in block_inner {
             contents.push(match pair.as_rule() {
                 Rule::declaration => AstNode {
-                    content: AstNodeContent::Declaration(eval!(
+                    content: AstNodeContent::Declaration(eval2!(
                         Declaration::parse_from_pair,
                         warnings,
                         errors,
                         pair.clone(),
+                        config,
                         continue
                     )),
                     span: span::Span {
@@ -47,11 +48,12 @@ impl<'sc> CodeBlock<'sc> {
                     },
                 },
                 Rule::expr_statement => {
-                    let evaluated_node = eval!(
+                    let evaluated_node = eval2!(
                         Expression::parse_from_pair,
                         warnings,
                         errors,
                         pair.clone().into_inner().next().unwrap().clone(),
+                        config,
                         continue
                     );
                     AstNode {
@@ -63,11 +65,12 @@ impl<'sc> CodeBlock<'sc> {
                     }
                 }
                 Rule::return_statement => {
-                    let evaluated_node = eval!(
+                    let evaluated_node = eval2!(
                         ReturnStatement::parse_from_pair,
                         warnings,
                         errors,
                         pair.clone(),
+                        config,
                         continue
                     );
                     AstNode {
@@ -79,11 +82,12 @@ impl<'sc> CodeBlock<'sc> {
                     }
                 }
                 Rule::expr => {
-                    let res = eval!(
+                    let res = eval2!(
                         Expression::parse_from_pair,
                         warnings,
                         errors,
-                        (pair.clone(), config),
+                        pair.clone(),
+                        config,
                         continue
                     );
                     AstNode {
@@ -92,11 +96,12 @@ impl<'sc> CodeBlock<'sc> {
                     }
                 }
                 Rule::while_loop => {
-                    let res = eval!(
+                    let res = eval2!(
                         WhileLoop::parse_from_pair,
                         warnings,
                         errors,
                         pair.clone(),
+                        config,
                         continue
                     );
                     AstNode {

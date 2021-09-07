@@ -27,10 +27,10 @@ pub(crate) struct StructField<'sc> {
 
 impl<'sc> StructDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        decl: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (decl, config) = input;
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut decl = decl.into_inner();
@@ -65,16 +65,17 @@ impl<'sc> StructDeclaration<'sc> {
         let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-            config,
+            config.clone(),
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let fields = if let Some(fields) = fields_pair {
-            eval!(
+            eval2!(
                 StructField::parse_from_pairs,
                 warnings,
                 errors,
                 fields,
+                config.clone(),
                 Vec::new()
             )
         } else {
@@ -83,13 +84,14 @@ impl<'sc> StructDeclaration<'sc> {
 
         let span = Span {
             span: name.as_span(),
-            path,
+            path: path.clone(),
         };
-        let name = eval!(
+        let name = eval2!(
             Ident::parse_from_pair,
             warnings,
             errors,
             name,
+            config.clone(),
             return err(warnings, errors)
         );
         assert_or_warn!(
@@ -115,10 +117,10 @@ impl<'sc> StructDeclaration<'sc> {
 
 impl<'sc> StructField<'sc> {
     pub(crate) fn parse_from_pairs(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Vec<Self>> {
-        let (pair, config) = input;
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let fields = pair.into_inner().collect::<Vec<_>>();
@@ -126,13 +128,14 @@ impl<'sc> StructField<'sc> {
         for i in (0..fields.len()).step_by(2) {
             let span = Span {
                 span: fields[i].as_span(),
-                path,
+                path: path.clone(),
             };
-            let name = eval!(
+            let name = eval2!(
                 Ident::parse_from_pair,
                 warnings,
                 errors,
                 fields[i],
+                config.clone(),
                 return err(warnings, errors)
             );
             assert_or_warn!(
@@ -143,11 +146,12 @@ impl<'sc> StructField<'sc> {
                     field_name: name.primary_name.clone()
                 }
             );
-            let r#type = eval!(
+            let r#type = eval2!(
                 TypeInfo::parse_from_pair_inner,
                 warnings,
                 errors,
                 fields[i + 1].clone(),
+                config.clone(),
                 TypeInfo::Unit
             );
             fields_buf.push(StructField { name, r#type, span });

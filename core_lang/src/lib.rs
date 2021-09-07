@@ -97,8 +97,7 @@ impl<'sc> ParseTree<'sc> {
     }
 }
 
-pub fn parse<'sc>(input: (&'sc str, Option<BuildConfig>)) -> CompileResult<'sc, HllParseTree<'sc>> {
-    let (input, config) = input;
+pub fn parse<'sc>(input: &'sc str, config: Option<BuildConfig>) -> CompileResult<'sc, HllParseTree<'sc>> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     let mut parsed = match HllParser::parse(Rule::program, input) {
@@ -120,11 +119,12 @@ pub fn parse<'sc>(input: (&'sc str, Option<BuildConfig>)) -> CompileResult<'sc, 
             )
         }
     };
-    let res = eval!(
+    let res = eval2!(
         parse_root_from_pairs,
         warnings,
         errors,
-        (parsed.next().unwrap().into_inner(), Some(config)),
+        parsed.next().unwrap().into_inner(),
+        config,
         return err(warnings, errors)
     );
     ok(res, warnings, errors)
@@ -200,11 +200,12 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
 ) -> CompileResult<'sc, InnerDependencyCompileResult<'sc>> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let parse_tree = eval!(
+    let parse_tree = eval2!(
         parse,
         warnings,
         errors,
-        (input, Some(build_config)),
+        input,
+        Some(build_config),
         return err(warnings, errors)
     );
     match (
@@ -282,11 +283,12 @@ pub fn compile_to_asm<'sc, 'manifest>(
 ) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let parse_tree = eval!(
+    let parse_tree = eval2!(
         parse,
         warnings,
         errors,
-        (input, Some(build_config)),
+        input,
+        Some(build_config),
         return CompilationResult::Failure { errors, warnings }
     );
     let mut dead_code_graph = ControlFlowGraph {
@@ -528,9 +530,9 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
 // and if we encounter a function body or block, recursively call this function and build
 // sub-nodes
 fn parse_root_from_pairs<'sc>(
-    input: (impl Iterator<Item = Pair<'sc, Rule>>, Option<BuildConfig>),
+    input: impl Iterator<Item = Pair<'sc, Rule>>,
+    config: Option<BuildConfig>,
 ) -> CompileResult<'sc, HllParseTree<'sc>> {
-    let (input, config) = input;
     let path = if let Some(config) = config {
         Some(config.dir_of_code)
     } else {
@@ -555,11 +557,12 @@ fn parse_root_from_pairs<'sc>(
         for pair in input {
             match pair.as_rule() {
                 Rule::declaration => {
-                    let decl = eval!(
+                    let decl = eval2!(
                         Declaration::parse_from_pair,
                         warnings,
                         errors,
-                        (pair.clone(), config),
+                        pair.clone(),
+                        config,
                         continue
                     );
                     parse_tree.push(AstNode {
@@ -571,11 +574,12 @@ fn parse_root_from_pairs<'sc>(
                     });
                 }
                 Rule::use_statement => {
-                    let stmt = eval!(
+                    let stmt = eval2!(
                         UseStatement::parse_from_pair,
                         warnings,
                         errors,
-                        (pair.clone(), config),
+                        pair.clone(),
+                        config,
                         continue
                     );
                     parse_tree.push(AstNode {
@@ -588,21 +592,23 @@ fn parse_root_from_pairs<'sc>(
                 }
                 Rule::library_name => {
                     let lib_pair = pair.into_inner().next().unwrap();
-                    library_name = Some(eval!(
+                    library_name = Some(eval2!(
                         Ident::parse_from_pair,
                         warnings,
                         errors,
-                        (lib_pair, config),
+                        lib_pair,
+                        config,
                         continue
                     ));
                 }
                 Rule::include_statement => {
                     // parse the include statement into a reference to a specific file
-                    let include_statement = eval!(
+                    let include_statement = eval2!(
                         IncludeStatement::parse_from_pair,
                         warnings,
                         errors,
-                        (pair, config),
+                        pair,
+                        config,
                         continue
                     );
                     parse_tree.push(AstNode {
@@ -672,7 +678,7 @@ fn parse_root_from_pairs<'sc>(
 
 #[test]
 fn test_basic_prog() {
-    let prog = parse((
+    let prog = parse(
         r#"
         contract;
 
@@ -755,7 +761,7 @@ fn test_basic_prog() {
     }
     "#,
         None,
-    ));
+    );
     dbg!(&prog);
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
@@ -763,7 +769,7 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
-    let prog = parse((
+    let prog = parse(
         r#"
         contract;
         pub fn some_abi_func() -> unit {
@@ -772,7 +778,7 @@ fn test_parenthesized() {
         }
     "#,
         None,
-    ));
+    );
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     prog.unwrap(&mut warnings, &mut errors);

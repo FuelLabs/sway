@@ -22,9 +22,9 @@ pub struct UseStatement<'sc> {
 
 impl<'sc> UseStatement<'sc> {
     pub(crate) fn parse_from_pair(
-        pair: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (pair, config) = pair;
         let mut errors = vec![];
         let mut warnings = vec![];
         let stmt = pair.into_inner().next().unwrap();
@@ -41,11 +41,12 @@ impl<'sc> UseStatement<'sc> {
         let last_item = import_path_vec.pop().unwrap();
         let import_type = match last_item.as_rule() {
             Rule::star => ImportType::Star,
-            Rule::ident => ImportType::Item(eval!(
+            Rule::ident => ImportType::Item(eval2!(
                 Ident::parse_from_pair,
                 warnings,
                 errors,
-                (last_item, config),
+                last_item,
+                config,
                 return err(warnings, errors)
             )),
             _ => unreachable!(),
@@ -56,17 +57,18 @@ impl<'sc> UseStatement<'sc> {
                 errors.push(CompileError::NonFinalAsteriskInPath {
                     span: span::Span {
                         span: item.as_span(),
-                        path: config.map(|config| config.dir_of_code),
+                        path: config.clone().map(|c| c.dir_of_code),
                     },
                 });
                 continue;
             }
             if item.as_rule() == Rule::ident {
-                import_path_buf.push(eval!(
+                import_path_buf.push(eval2!(
                     Ident::parse_from_pair,
                     warnings,
                     errors,
-                    (item, config),
+                    item,
+                    config,
                     return err(warnings, errors)
                 ));
             }

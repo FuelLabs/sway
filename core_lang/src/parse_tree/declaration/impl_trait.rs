@@ -32,26 +32,27 @@ pub struct ImplSelf<'sc> {
 
 impl<'sc> ImplTrait<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (pair, config) = input;
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let block_span = Span {
             span: pair.as_span(),
-            path,
+            path: path.clone(),
         };
         let mut iter = pair.into_inner();
         let impl_keyword = iter.next().unwrap();
         assert_eq!(impl_keyword.as_str(), "impl");
         let trait_name = iter.next().unwrap();
         assert_eq!(trait_name.as_rule(), Rule::trait_name);
-        let trait_name = eval!(
+        let trait_name = eval2!(
             CallPath::parse_from_pair,
             warnings,
             errors,
             trait_name,
+            config.clone(),
             return err(warnings, errors)
         );
         let mut iter = iter.peekable();
@@ -64,13 +65,14 @@ impl<'sc> ImplTrait<'sc> {
         let type_implementing_for_pair = iter.next().expect("guaranteed by grammar");
         let type_implementing_for_span = Span {
             span: type_implementing_for_pair.as_span(),
-            path,
+            path: path.clone(),
         };
-        let type_implementing_for = eval!(
+        let type_implementing_for = eval2!(
             TypeInfo::parse_from_pair,
             warnings,
             errors,
             type_implementing_for_pair,
+            config.clone(),
             return err(warnings, errors)
         );
 
@@ -82,25 +84,26 @@ impl<'sc> ImplTrait<'sc> {
         let type_arguments_span = match type_params_pair {
             Some(ref x) => Span {
                 span: x.as_span(),
-                path,
+                path: path.clone(),
             },
             None => trait_name.span(),
         };
         let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-            config,
+            config.clone(),
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let mut fn_decls_buf = vec![];
 
         for pair in iter {
-            fn_decls_buf.push(eval!(
+            fn_decls_buf.push(eval2!(
                 FunctionDeclaration::parse_from_pair,
                 warnings,
                 errors,
                 pair,
+                config.clone(),
                 continue
             ));
         }
@@ -123,15 +126,15 @@ impl<'sc> ImplTrait<'sc> {
 
 impl<'sc> ImplSelf<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (pair, config) = input;
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let block_span = Span {
             span: pair.as_span(),
-            path,
+            path: path.clone(),
         };
         let mut iter = pair.into_inner();
         let impl_keyword = iter.next().unwrap();
@@ -145,14 +148,15 @@ impl<'sc> ImplSelf<'sc> {
         let type_pair = iter.next().unwrap();
         let type_name_span = Span {
             span: type_pair.as_span(),
-            path,
+            path: path.clone(),
         };
 
-        let type_implementing_for = eval!(
+        let type_implementing_for = eval2!(
             TypeInfo::parse_from_pair,
             warnings,
             errors,
             type_pair,
+            config.clone(),
             return err(warnings, errors)
         );
 
@@ -164,25 +168,26 @@ impl<'sc> ImplSelf<'sc> {
         let type_arguments_span = match type_params_pair {
             Some(ref x) => Span {
                 span: x.as_span(),
-                path,
+                path: path.clone(),
             },
             None => type_name_span.clone(),
         };
         let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-            config,
+            config.clone(),
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let mut fn_decls_buf = vec![];
 
         for pair in iter {
-            fn_decls_buf.push(eval!(
+            fn_decls_buf.push(eval2!(
                 FunctionDeclaration::parse_from_pair,
                 warnings,
                 errors,
                 pair,
+                config.clone(),
                 continue
             ));
         }

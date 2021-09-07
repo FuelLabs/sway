@@ -15,10 +15,10 @@ pub struct IncludeStatement<'sc> {
 
 impl<'sc> IncludeStatement<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (pair, config) = input;
-        let path = config.map(|config| config.dir_of_code);
+        let path = config.map(|c| c.dir_of_code);
         let mut warnings = vec![];
         let mut errors = vec![];
         let span = Span {
@@ -40,11 +40,12 @@ impl<'sc> IncludeStatement<'sc> {
                     path,
                 });
             } else if item.as_rule() == Rule::alias {
-                let alias_parsed = eval!(
+                let alias_parsed = eval2!(
                     Ident::parse_from_pair,
                     warnings,
                     errors,
-                    (item.into_inner().next().unwrap(), config),
+                    item.into_inner().next().unwrap(),
+                    config,
                     continue
                 );
                 alias = Some(alias_parsed);

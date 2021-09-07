@@ -17,13 +17,13 @@ pub struct Reassignment<'sc> {
 
 impl<'sc> Reassignment<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<Self> {
-        let (pair, config) = input;
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let span = Span {
             span: pair.as_span(),
-            path,
+            path: path.clone(),
         };
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -32,19 +32,21 @@ impl<'sc> Reassignment<'sc> {
         match variable_or_struct_reassignment.as_rule() {
             Rule::variable_reassignment => {
                 let mut iter = variable_or_struct_reassignment.into_inner();
-                let name = eval!(
+                let name = eval2!(
                     Expression::parse_from_pair_inner,
                     warnings,
                     errors,
                     iter.next().unwrap(),
+                    config.clone(),
                     return err(warnings, errors)
                 );
                 let body = iter.next().unwrap();
-                let body = eval!(
+                let body = eval2!(
                     Expression::parse_from_pair,
                     warnings,
                     errors,
                     body.clone(),
+                    config.clone(),
                     Expression::Unit {
                         span: Span {
                             span: body.as_span(),
@@ -69,13 +71,14 @@ impl<'sc> Reassignment<'sc> {
                 let rhs = iter.next().expect("guaranteed by grammar");
                 let rhs_span = Span {
                     span: rhs.as_span(),
-                    path,
+                    path: path.clone(),
                 };
-                let body = eval!(
+                let body = eval2!(
                     Expression::parse_from_pair,
                     warnings,
                     errors,
                     rhs,
+                    config.clone(),
                     Expression::Unit { span: rhs_span }
                 );
 
@@ -90,11 +93,12 @@ impl<'sc> Reassignment<'sc> {
                 // the first thing is either an exp or a var, everything subsequent must be
                 // a field
                 let mut name_parts = name_parts.into_iter();
-                let mut expr = eval!(
+                let mut expr = eval2!(
                     parse_call_item_ensure_only_var,
                     warnings,
                     errors,
                     name_parts.next().expect("guaranteed by grammar"),
+                    config.clone(),
                     return err(warnings, errors)
                 );
 
@@ -104,13 +108,14 @@ impl<'sc> Reassignment<'sc> {
                         unary_op: None, // TODO
                         span: Span {
                             span: name_part.as_span(),
-                            path,
+                            path: path.clone(),
                         },
-                        field_to_access: eval!(
+                        field_to_access: eval2!(
                             Ident::parse_from_pair,
                             warnings,
                             errors,
                             name_part,
+                            config.clone(),
                             continue
                         ),
                     }
@@ -142,26 +147,27 @@ impl<'sc> Reassignment<'sc> {
 /// (foo()).x = 5;
 /// ```
 fn parse_call_item_ensure_only_var<'sc>(
-    input: (Pair<'sc, Rule>, Option<BuildConfig>),
+    item: Pair<'sc, Rule>,
+    config: Option<BuildConfig>,
 ) -> CompileResult<'sc, Expression<'sc>> {
-    let (item, config) = input;
-    let path = config.map(|c| c.dir_of_code);
+    let path = config.clone().map(|c| c.dir_of_code);
     let mut warnings = vec![];
     let mut errors = vec![];
     assert_eq!(item.as_rule(), Rule::call_item);
     let item = item.into_inner().next().expect("guaranteed by grammar");
     let exp = match item.as_rule() {
         Rule::ident => Expression::VariableExpression {
-            name: eval!(
+            name: eval2!(
                 Ident::parse_from_pair,
                 warnings,
                 errors,
                 item,
+                config.clone(),
                 return err(warnings, errors)
             ),
             span: Span {
                 span: item.as_span(),
-                path,
+                path: path.clone(),
             },
             unary_op: None,
         },
@@ -169,7 +175,7 @@ fn parse_call_item_ensure_only_var<'sc>(
             errors.push(CompileError::InvalidExpressionOnLhs {
                 span: Span {
                     span: item.as_span(),
-                    path,
+                    path: path.clone(),
                 },
             });
             return err(warnings, errors);

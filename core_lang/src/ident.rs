@@ -32,9 +32,9 @@ impl Eq for Ident<'_> {}
 
 impl<'sc> Ident<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Ident> {
-        let (pair, config) = input;
         let path = if let Some(config) = config {
             Some(config.dir_of_code)
         } else {

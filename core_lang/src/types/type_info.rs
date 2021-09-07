@@ -69,17 +69,17 @@ impl<'sc> TypeInfo<'sc> {
     }
 
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        input: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (input, config) = input;
         let mut r#type = input.into_inner();
-        Self::parse_from_pair_inner((r#type.next().unwrap(), config))
+        Self::parse_from_pair_inner(r#type.next().unwrap(), config)
     }
 
     pub(crate) fn parse_from_pair_inner(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        input: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (input, config) = input;
         let mut warnings = vec![];
         let mut errors = vec![];
         let input = if let Some(input) = input.clone().into_inner().next() {
@@ -117,11 +117,12 @@ impl<'sc> TypeInfo<'sc> {
                     errors
                 ),
                 _other => TypeInfo::Custom {
-                    name: eval!(
+                    name: eval2!(
                         Ident::parse_from_pair,
                         warnings,
                         errors,
                         input,
+                        config,
                         return err(warnings, errors)
                     ),
                 },

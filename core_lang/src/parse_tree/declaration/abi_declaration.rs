@@ -21,22 +21,23 @@ pub struct AbiDeclaration<'sc> {
 
 impl<'sc> AbiDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (pair, config) = input;
         let span = Span {
             span: pair.as_span(),
-            path: config.map(|config| config.dir_of_code),
+            path: config.clone().map(|c| c.dir_of_code),
         };
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let _abi_keyword = iter.next().expect("guaranteed by grammar");
-        let name = eval!(
+        let name = eval2!(
             Ident::parse_from_pair,
             warnings,
             errors,
             iter.next().expect("guaranteed by grammar"),
+            config.clone(),
             return err(warnings, errors)
         );
         let mut interface_surface = vec![];
@@ -44,18 +45,20 @@ impl<'sc> AbiDeclaration<'sc> {
         let trait_methods = iter.next().expect("guaranteed by grammar");
         for func in trait_methods.into_inner() {
             match func.as_rule() {
-                Rule::fn_signature => interface_surface.push(eval!(
+                Rule::fn_signature => interface_surface.push(eval2!(
                     TraitFn::parse_from_pair,
                     warnings,
                     errors,
                     func,
+                    config.clone(),
                     continue
                 )),
-                Rule::fn_decl => methods.push(eval!(
+                Rule::fn_decl => methods.push(eval2!(
                     FunctionDeclaration::parse_from_pair,
                     warnings,
                     errors,
                     func,
+                    config,
                     continue
                 )),
                 _ => unreachable!("guaranteed by grammar"),

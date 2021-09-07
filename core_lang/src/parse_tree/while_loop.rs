@@ -15,10 +15,10 @@ pub struct WhileLoop<'sc> {
 
 impl<'sc> WhileLoop<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (pair, config) = input;
-        let path = config.map(|config| config.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut iter = pair.into_inner();
@@ -30,11 +30,12 @@ impl<'sc> WhileLoop<'sc> {
             path,
         };
 
-        let condition = eval!(
+        let condition = eval2!(
             Expression::parse_from_pair,
             warnings,
             errors,
-            (condition, config),
+            condition,
+            config,
             Expression::Unit {
                 span: Span {
                     span: condition.as_span(),
@@ -43,11 +44,12 @@ impl<'sc> WhileLoop<'sc> {
             }
         );
 
-        let body = eval!(
+        let body = eval2!(
             CodeBlock::parse_from_pair,
             warnings,
             errors,
-            (body, config),
+            body,
+            config,
             CodeBlock {
                 contents: Default::default(),
                 whole_block_span,

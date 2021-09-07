@@ -12,12 +12,12 @@ pub struct ReturnStatement<'sc> {
 
 impl<'sc> ReturnStatement<'sc> {
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (pair, config) = input;
         let span = span::Span {
             span: pair.as_span(),
-            path: config.map(|config| config.dir_of_code),
+            path: config.map(|c| c.dir_of_code),
         };
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -29,11 +29,12 @@ impl<'sc> ReturnStatement<'sc> {
                 expr: Expression::Unit { span },
             },
             Some(expr_pair) => {
-                let expr = eval!(
+                let expr = eval2!(
                     Expression::parse_from_pair,
                     warnings,
                     errors,
-                    (expr_pair, config),
+                    expr_pair,
+                    config,
                     Expression::Unit { span }
                 );
                 ReturnStatement { expr }

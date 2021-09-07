@@ -56,13 +56,13 @@ impl<'sc> EnumDeclaration<'sc> {
     }
 
     pub(crate) fn parse_from_pair(
-        input: (Pair<'sc, Rule>, Option<BuildConfig>),
+        decl_inner: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let (decl_inner, config) = input;
-        let path = config.map(|config| config.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let whole_enum_span = Span {
             span: decl_inner.as_span(),
-            path,
+            path: path.clone(),
         };
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -93,17 +93,18 @@ impl<'sc> EnumDeclaration<'sc> {
         let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params,
             where_clause,
-            config,
+            config.clone(),
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();
-        let name = eval!(
+        let name = eval2!(
             Ident::parse_from_pair,
             warnings,
             errors,
             enum_name,
+            config.clone(),
             return err(warnings, errors)
         );
         assert_or_warn!(
@@ -111,18 +112,19 @@ impl<'sc> EnumDeclaration<'sc> {
             warnings,
             Span {
                 span: enum_name.as_span(),
-                path
+                path: path.clone()
             },
             Warning::NonClassCaseEnumName {
                 enum_name: name.primary_name
             }
         );
 
-        let variants = eval!(
+        let variants = eval2!(
             EnumVariant::parse_from_pairs,
             warnings,
             errors,
             variants,
+            config.clone(),
             Vec::new()
         );
 
@@ -172,9 +174,9 @@ impl<'sc> EnumVariant<'sc> {
         )
     }
     pub(crate) fn parse_from_pairs(
-        input: (Option<Pair<'sc, Rule>>, Option<BuildConfig>),
+        decl_inner: Option<Pair<'sc, Rule>>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Vec<Self>> {
-        let (decl_inner, config) = input;
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut fields_buf = Vec::new();
@@ -184,13 +186,14 @@ impl<'sc> EnumVariant<'sc> {
             for i in (0..fields.len()).step_by(2) {
                 let variant_span = Span {
                     span: fields[i].as_span(),
-                    path: config.map(|config| config.dir_of_code),
+                    path: config.clone().map(|c| c.dir_of_code),
                 };
-                let name = eval!(
+                let name = eval2!(
                     Ident::parse_from_pair,
                     warnings,
                     errors,
                     fields[i],
+                    config.clone(),
                     return err(warnings, errors)
                 );
                 assert_or_warn!(
@@ -201,11 +204,12 @@ impl<'sc> EnumVariant<'sc> {
                         variant_name: name.primary_name
                     }
                 );
-                let r#type = eval!(
+                let r#type = eval2!(
                     TypeInfo::parse_from_pair_inner,
                     warnings,
                     errors,
                     fields[i + 1].clone(),
+                    config.clone(),
                     TypeInfo::Unit
                 );
                 fields_buf.push(EnumVariant {

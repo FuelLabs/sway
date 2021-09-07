@@ -35,10 +35,10 @@ impl<'sc> Literal<'sc> {
         }
     }
     pub(crate) fn parse_from_pair(
-        lit: (Pair<'sc, Rule>, Option<BuildConfig>),
+        lit: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
     ) -> CompileResult<'sc, (Self, span::Span<'sc>)> {
-        let (lit, config) = lit;
-        let path = config.map(|config| config.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
             Rule::integer => {
@@ -135,8 +135,8 @@ impl<'sc> Literal<'sc> {
                 };
                 (
                     match inner_byte.as_rule() {
-                        Rule::binary_byte => parse_binary_from_pair((inner_byte, config)),
-                        Rule::hex_byte => parse_hex_from_pair((inner_byte, config)),
+                        Rule::binary_byte => parse_binary_from_pair(inner_byte, config),
+                        Rule::hex_byte => parse_hex_from_pair(inner_byte, config),
                         _ => unreachable!(),
                     },
                     span,
@@ -216,10 +216,10 @@ impl<'sc> Literal<'sc> {
 }
 
 fn parse_hex_from_pair<'sc>(
-    pair: (Pair<'sc, Rule>, Option<BuildConfig>),
+    pair: Pair<'sc, Rule>,
+    config: Option<BuildConfig>,
 ) -> Result<Literal<'sc>, CompileError<'sc>> {
-    let (pair, config) = pair;
-    let path = config.map(|config| config.dir_of_code);
+    let path = config.clone().map(|c| c.dir_of_code);
     let hex = &pair.as_str()[2..]
         .chars()
         .filter(|x| *x != '_')
@@ -278,10 +278,10 @@ fn parse_hex_from_pair<'sc>(
 }
 
 fn parse_binary_from_pair<'sc>(
-    pair: (Pair<'sc, Rule>, Option<BuildConfig>),
+    pair: Pair<'sc, Rule>,
+    config: Option<BuildConfig>,
 ) -> Result<Literal<'sc>, CompileError<'sc>> {
-    let (pair, config) = pair;
-    let path = config.map(|config| config.dir_of_code);
+    let path = config.clone().map(|c| c.dir_of_code);
     let bin = &pair.as_str()[2..]
         .chars()
         .filter(|x| *x != '_')

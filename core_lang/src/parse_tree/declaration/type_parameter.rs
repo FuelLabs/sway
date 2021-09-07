@@ -17,7 +17,7 @@ impl<'sc> TypeParameter<'sc> {
         where_clause_pair: Option<Pair<'sc, Rule>>,
         config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Vec<TypeParameter<'sc>>> {
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut errors = Vec::new();
         let mut warnings = vec![];
         let mut params: Vec<TypeParameter> = match type_params_pair {
@@ -25,8 +25,8 @@ impl<'sc> TypeParameter<'sc> {
                 let mut buf = vec![];
                 for pair in type_params_pair.into_inner() {
                     buf.push(TypeParameter {
-                        name_ident: eval!(Ident::parse_from_pair, warnings, errors, pair, continue),
-                        name: eval!(TypeInfo::parse_from_pair, warnings, errors, pair, continue),
+                        name_ident: eval2!(Ident::parse_from_pair, warnings, errors, pair, config.clone(), continue),
+                        name: eval2!(TypeInfo::parse_from_pair, warnings, errors, pair, config.clone(), continue),
                         trait_constraints: Vec::new(),
                     });
                 }
@@ -39,7 +39,7 @@ impl<'sc> TypeParameter<'sc> {
                         Vec::new(),
                         vec![CompileError::UnexpectedWhereClause(Span {
                             span: where_clause_pair.as_span(),
-                            path,
+                            path: path.clone(),
                         })],
                     );
                 }
@@ -67,7 +67,7 @@ impl<'sc> TypeParameter<'sc> {
                                     trait_name: trait_constraint.as_str(),
                                     span: Span {
                                         span: trait_constraint.as_span(),
-                                        path,
+                                        path: path.clone(),
                                     },
                                 });
                                 continue;
@@ -75,11 +75,12 @@ impl<'sc> TypeParameter<'sc> {
                         };
 
                     param_to_edit.trait_constraints.push(TraitConstraint {
-                        name: eval!(
+                        name: eval2!(
                             Ident::parse_from_pair,
                             warnings,
                             errors,
                             trait_constraint,
+                            config,
                             continue
                         ),
                     });
