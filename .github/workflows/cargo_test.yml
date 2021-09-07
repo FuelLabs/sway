@@ -1,12 +1,6 @@
 name: Compile and Test
 
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
+on: [push]
 
 env:
   CARGO_TERM_COLOR: always
@@ -50,6 +44,8 @@ jobs:
       with:
         command: build
         args: --verbose
+      env:
+        RUSTFLAGS: "-D warnings"
 
     - name: Run tests
       uses: actions-rs/cargo@v1
@@ -61,4 +57,4 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: run
-        args: --bin test_suite
+        args: --bin test

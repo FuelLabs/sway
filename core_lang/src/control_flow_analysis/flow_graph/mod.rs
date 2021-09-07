@@ -14,7 +14,7 @@ pub(crate) use namespace::FunctionNamespaceEntry;
 pub type EntryPoint = NodeIndex;
 pub type ExitPoint = NodeIndex;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 /// A graph that can be used to model the control flow of a fuel HLL program.
 /// This graph is used as the basis for all of the algorithms in the control flow analysis portion
 /// of the compiler.
@@ -57,15 +57,6 @@ pub enum ControlFlowGraphNode<'sc> {
         struct_field_name: Ident<'sc>,
         span: Span<'sc>,
     },
-}
-
-impl<'sc> ControlFlowGraphNode<'sc> {
-    pub(crate) fn unwrap_to_node(&self) -> TypedAstNode<'sc> {
-        match self {
-            ControlFlowGraphNode::ProgramNode(node) => node.clone(),
-            _ => panic!("Called unwrap_to_node() on a non-program-node value."),
-        }
-    }
 }
 
 impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {

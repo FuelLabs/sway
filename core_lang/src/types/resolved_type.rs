@@ -1,5 +1,7 @@
 use super::IntegerBits;
+use crate::semantic_analysis::TypedExpression;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use derivative::Derivative;
 use pest::Span;
 
 /// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
@@ -13,7 +15,8 @@ pub enum MaybeResolvedType<'sc> {
     Resolved(ResolvedType<'sc>),
     Partial(PartiallyResolvedType<'sc>),
 }
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ResolvedType<'sc> {
     /// The number in a `Str` represents its size, which must be known at compile time
     Str(u64),
@@ -21,7 +24,7 @@ pub enum ResolvedType<'sc> {
     Boolean,
     Unit,
     Byte,
-    Byte32,
+    B256,
     Struct {
         name: Ident<'sc>,
         fields: Vec<TypedStructField<'sc>>,
@@ -35,7 +38,11 @@ pub enum ResolvedType<'sc> {
     Contract,
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
-    ContractCaller(CallPath<'sc>),
+    ContractCaller {
+        abi_name: CallPath<'sc>,
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        address: Box<TypedExpression<'sc>>,
+    },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -46,6 +53,7 @@ pub enum PartiallyResolvedType<'sc> {
     Numeric,
     SelfType,
     Generic { name: Ident<'sc> },
+    NeedsType,
 }
 
 impl Default for MaybeResolvedType<'_> {
@@ -128,6 +136,8 @@ impl<'sc> MaybeResolvedType<'sc> {
             (MaybeResolvedType::Resolved(r), MaybeResolvedType::Resolved(r2)) if r == r2 => {
                 Ok(None)
             }
+            (_, MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType)) => Ok(None),
+            (MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType), _) => Ok(None),
             _ => Err(TypeError::MismatchedType {
                 expected: other.friendly_type_str(),
                 received: self.friendly_type_str(),
@@ -173,6 +183,7 @@ impl<'sc> PartiallyResolvedType<'sc> {
             PartiallyResolvedType::Generic { name } => format!("{}", name.primary_name),
             PartiallyResolvedType::Numeric => "numeric".into(),
             PartiallyResolvedType::SelfType => "self".into(),
+            PartiallyResolvedType::NeedsType => "needs_type".into(),
         }
     }
 }
@@ -232,7 +243,7 @@ impl<'sc> ResolvedType<'sc> {
 
             Unit => "()".into(),
             Byte => "byte".into(),
-            Byte32 => "byte32".into(),
+            B256 => "b256".into(),
             Struct {
                 name: Ident { primary_name, .. },
                 ..
@@ -242,7 +253,9 @@ impl<'sc> ResolvedType<'sc> {
                 ..
             } => format!("enum {}", primary_name),
             Contract => "contract".into(),
-            ContractCaller(id) => format!("{} contract caller", id.suffix.primary_name),
+            ContractCaller { abi_name, .. } => {
+                format!("{} contract caller", abi_name.suffix.primary_name)
+            }
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
@@ -258,7 +271,7 @@ impl<'sc> ResolvedType<'sc> {
             ResolvedType::Boolean => 1,
             ResolvedType::Unit => 0,
             ResolvedType::Byte => 1,
-            ResolvedType::Byte32 => 4,
+            ResolvedType::B256 => 4,
             ResolvedType::Enum { variant_types, .. } => {
                 // the size of an enum is one word (for the tag) plus the maximum size
                 // of any individual variant
@@ -273,7 +286,7 @@ impl<'sc> ResolvedType<'sc> {
                 .fold(0, |acc, x| acc + x.r#type.stack_size_of()),
             // `ContractCaller` types are unsized and used only in the type system for
             // calling methods
-            ResolvedType::ContractCaller(_) => 0,
+            ResolvedType::ContractCaller { .. } => 0,
             ResolvedType::Contract => unreachable!("contract types are never instantiated"),
             ResolvedType::ErrorRecovery => unreachable!(),
         }
@@ -309,7 +322,7 @@ impl<'sc> ResolvedType<'sc> {
 
             Unit => "unit".into(),
             Byte => "byte".into(),
-            Byte32 => "byte32".into(),
+            B256 => "b256".into(),
             Struct { fields, .. } => {
                 let field_names = {
                     let names = fields
@@ -320,9 +333,9 @@ impl<'sc> ResolvedType<'sc> {
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
                     for name in names {
-                        match name {
-                            CompileResult::Ok { value, .. } => buf.push(value),
-                            e => return e,
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
                         }
                     }
                     buf
@@ -338,9 +351,9 @@ impl<'sc> ResolvedType<'sc> {
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
                     for name in names {
-                        match name {
-                            CompileResult::Ok { value, .. } => buf.push(value),
-                            e => return e,
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
                         }
                     }
                     buf

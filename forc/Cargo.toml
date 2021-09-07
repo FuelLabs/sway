@@ -2,7 +2,6 @@
 authors = ["Alex Hansen <alex.hansen@fuel.sh>"]
 edition = "2018"
 name = "forc"
-rust = "1.50"
 version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -31,5 +30,5 @@ term-table = "1.3"
 termcolor = "1.1"
 tokio = {version = "1.8.0", features = ["macros", "rt-multi-thread"]}
 toml = "0.5"
-tx-client = {git = "ssh://git@github.com/FuelLabs/fuel-core"}
+fuel-client = { git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false }
 whoami = "1.1"

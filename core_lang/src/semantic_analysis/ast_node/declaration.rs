@@ -7,7 +7,7 @@ use crate::semantic_analysis::Namespace;
 use crate::{
     build_config::BuildConfig,
     error::*,
-    types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
 };
 use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
@@ -276,55 +276,51 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             is_contract_call: self.is_contract_call,
         }
     }
-    /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
-    /// selectors.
-    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub(crate) fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
+    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<'sc, Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
-        let data = type_check!(
+        let data = check!(
             self.to_selector_name(),
             return err(warnings, errors),
             warnings,
             errors
         );
         hasher.update(data);
+        let hash = hasher.finalize();
+        ok(hash.to_vec(), warnings, errors)
+    }
+    /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
+    /// selectors.
+    /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
+    pub fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
+        let mut errors = vec![];
+        let mut warnings = vec![];
+        let hash = check!(
+            self.to_fn_selector_value_untruncated(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
         // 4 bytes truncation via copying into a 4 byte buffer
         let mut buf = [0u8; 4];
-        let hash = hasher.finalize();
         buf.copy_from_slice(&hash[0..4]);
         ok(buf, warnings, errors)
     }
 
-    pub(crate) fn to_selector_name(&self) -> CompileResult<'sc, String> {
+    pub fn to_selector_name(&self) -> CompileResult<'sc, String> {
         let mut errors = vec![];
         let mut warnings = vec![];
-        let named_params = {
-            let names = self
-                .parameters
-                .iter()
-                .map(
-                    |TypedFunctionParameter {
-                         r#type, type_span, ..
-                     }| r#type.to_selector_name(type_span),
-                )
-                .collect::<Vec<CompileResult<String>>>();
-            let mut buf = vec![];
-            for name in names {
-                match name {
-                    CompileResult::Ok { value, .. } => buf.push(value),
-                    CompileResult::Err {
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                    }
-                }
-            }
-            buf
-        };
+        let named_params = self
+            .parameters
+            .iter()
+            .map(
+                |TypedFunctionParameter {
+                     r#type, type_span, ..
+                 }| r#type.to_selector_name(type_span),
+            )
+            .filter_map(|name| name.ok(&mut warnings, &mut errors))
+            .collect::<Vec<String>>();
 
         ok(
             format!("{}({})", self.name.primary_name, named_params.join(","),),
@@ -355,8 +351,8 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name() {
-        CompileResult::Ok { value, .. } => value,
+    let selector_text = match decl.to_selector_name().value {
+        Some(value) => value,
         _ => panic!("test failure"),
     };
 
@@ -401,8 +397,8 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name() {
-        CompileResult::Ok { value, .. } => value,
+    let selector_text = match decl.to_selector_name().value {
+        Some(value) => value,
         _ => panic!("test failure"),
     };
 
@@ -456,7 +452,7 @@ pub struct TypedReassignment<'sc> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub(crate) fn type_check(
+    pub fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
         _return_type_annotation: Option<MaybeResolvedType<'sc>>,
@@ -506,7 +502,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
-        let (body, _implicit_block_return) = type_check!(
+        let (body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,
@@ -628,6 +624,48 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 Err(err) => {
                     errors.push(err.into());
                 }
+            }
+        }
+
+        // if this is an abi function, it is required that it begins with
+        // the three parameters related to contract calls
+        //  gas_to_forward: u64,
+        //  coins_to_forward: u64,
+        //  color_of_coins: b256,
+        //
+        //  eventually this will be a `ContractRequest`
+        //
+        //  not spending _too_ much time on particularly specific error messages here since
+        //  it is a temporary workaround
+        if mode == Mode::ImplAbiFn {
+            if parameters.len() == 4 {
+                if parameters[0].r#type
+                    != MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    ))
+                {
+                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                        span: parameters[0].type_span.clone(),
+                    });
+                }
+                if parameters[1].r#type
+                    != MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                        IntegerBits::SixtyFour,
+                    ))
+                {
+                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                        span: parameters[1].type_span.clone(),
+                    });
+                }
+                if parameters[2].r#type != MaybeResolvedType::Resolved(ResolvedType::B256) {
+                    errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                        span: parameters[2].type_span.clone(),
+                    });
+                }
+            } else {
+                errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
+                    span: parameters[0].type_span.clone(),
+                });
             }
         }
 

@@ -1,6 +1,6 @@
 use core_lang::parse;
-use fuel_tx::{crypto::hash, ContractId, Output, Salt, Transaction};
-use tx_client::client::TxClient;
+use fuel_client::client::FuelClient;
+use fuel_tx::{crypto, ContractId, Output, Salt, Transaction};
 
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
@@ -19,16 +19,14 @@ pub async fn deploy(_: DeployCommand) -> Result<(), CliError> {
             let main_file = get_main_file(&manifest, &manifest_dir)?;
 
             // parse the main file and check is it a contract
-            match parse(main_file) {
-                core_lang::CompileResult::Ok {
-                    value: parse_tree,
-                    warnings: _,
-                    errors: _,
-                } => {
+            let parsed_result = parse(main_file);
+            match parsed_result.value {
+                Some(parse_tree) => {
                     if let Some(_) = &parse_tree.contract_ast {
                         let build_command = BuildCommand {
                             path: None,
-                            print_asm: false,
+                            print_finalized_asm: false,
+                            print_intermediate_asm: false,
                             binary_outfile: None,
                             offline_mode: false,
                         };
@@ -41,7 +39,7 @@ pub async fn deploy(_: DeployCommand) -> Result<(), CliError> {
                             _ => DEFAULT_NODE_URL,
                         };
 
-                        let client = TxClient::new(node_url)?;
+                        let client = FuelClient::new(node_url)?;
 
                         match client.transact(&tx).await {
                             Ok(logs) => {
@@ -68,10 +66,7 @@ pub async fn deploy(_: DeployCommand) -> Result<(), CliError> {
                         ))
                     }
                 }
-                core_lang::CompileResult::Err {
-                    warnings: _,
-                    errors,
-                } => Err(CliError::parsing_failed(project_name, errors)),
+                None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
             }
         }
         None => Err(CliError::manifest_file_missing(curr_dir)),
@@ -89,7 +84,7 @@ fn create_contract_tx(compiled_contract: Vec<u8>) -> Transaction {
     let static_contracts = vec![];
     let inputs = vec![];
 
-    let zero_hash = hash("0".as_bytes());
+    let zero_hash = crypto::Hasher::hash("0".as_bytes());
 
     let outputs = vec![Output::ContractCreated {
         contract_id: ContractId::new(zero_hash.into()),

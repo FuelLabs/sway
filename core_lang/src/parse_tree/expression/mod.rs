@@ -8,31 +8,10 @@ use pest::Span;
 use std::collections::{HashMap, VecDeque};
 
 mod asm;
+mod method_name;
 use crate::utils::join_spans;
 pub(crate) use asm::*;
-
-#[derive(Debug, Clone)]
-pub enum MethodName<'sc> {
-    /// Represents a method lookup with a type somewhere in the path
-    FromType {
-        call_path: CallPath<'sc>,
-        // if this is `None`, then use the first argument to determine the type
-        type_name: Option<TypeInfo<'sc>>,
-        is_absolute: bool,
-    },
-    /// Represents a method lookup that does not contain any types in the path
-    FromModule { method_name: Ident<'sc> },
-}
-
-impl<'sc> MethodName<'sc> {
-    /// To be used for error messages and debug strings
-    pub(crate) fn easy_name(&self) -> &'sc str {
-        match self {
-            MethodName::FromType { call_path, .. } => call_path.suffix.primary_name,
-            MethodName::FromModule { method_name, .. } => method_name.primary_name,
-        }
-    }
-}
+pub(crate) use method_name::*;
 
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
@@ -183,25 +162,9 @@ impl<'sc> Expression<'sc> {
         while let Some(op) = expr_iter.next() {
             let op_str = op.as_str();
             let op_span = op.as_span();
-            let op = match parse_op(op) {
-                CompileResult::Ok {
-                    warnings: mut l_w,
-                    value,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    value
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    return err(warnings, errors);
-                }
-            };
+
+            let op = check!(parse_op(op), return err(warnings, errors), warnings, errors);
+
             // an op is necessarily followed by an expression
             let next_expr = match expr_iter.next() {
                 Some(o) => eval!(
@@ -232,28 +195,10 @@ impl<'sc> Expression<'sc> {
         if expr_or_op_buf.len() == 1 {
             ok(first_expr, warnings, errors)
         } else {
-            let expr =
-                match arrange_by_order_of_operations(expr_or_op_buf, expr_for_debug.as_span()) {
-                    CompileResult::Ok {
-                        value,
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                        value
-                    }
-                    CompileResult::Err {
-                        warnings: mut l_w,
-                        errors: mut l_e,
-                    } => {
-                        warnings.append(&mut l_w);
-                        errors.append(&mut l_e);
-                        Expression::Unit {
-                            span: expr_for_debug.as_span(),
-                        }
-                    }
-                };
+            let expr = arrange_by_order_of_operations(expr_or_op_buf, expr_for_debug.as_span())
+                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit {
+                    span: expr_for_debug.as_span(),
+                });
             ok(expr, warnings, errors)
         }
     }
@@ -263,25 +208,9 @@ impl<'sc> Expression<'sc> {
         let mut warnings = Vec::new();
         let span = expr.as_span();
         let parsed = match expr.as_rule() {
-            Rule::literal_value => match Literal::parse_from_pair(expr.clone()) {
-                CompileResult::Ok {
-                    value: (value, span),
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    Expression::Literal { value, span }
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    warnings.append(&mut l_w);
-                    errors.append(&mut l_e);
-                    Expression::Unit { span }
-                }
-            },
+            Rule::literal_value => Literal::parse_from_pair(expr.clone())
+                .map(|(value, span)| Expression::Literal { value, span })
+                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit { span }),
             Rule::func_app => {
                 let span = expr.as_span();
                 let mut func_app_parts = expr.into_inner();
@@ -960,6 +889,8 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>) -> CompileResult<'sc, Op> {
         "&" => BinaryAnd,
         ">" => GreaterThan,
         "<" => LessThan,
+        ">=" => GreaterThanOrEqualTo,
+        "<=" => LessThanOrEqualTo,
         a => {
             errors.push(CompileError::ExpectedOp {
                 op: a,
@@ -1009,6 +940,8 @@ enum OpVariant {
     BinaryAnd,
     GreaterThan,
     LessThan,
+    GreaterThanOrEqualTo,
+    LessThanOrEqualTo,
 }
 
 impl OpVariant {
@@ -1022,13 +955,15 @@ impl OpVariant {
             Modulo => "modulo",
             Or => "or",
             And => "and",
-            Equals => "equals",
-            NotEquals => "not_equals",
+            Equals => "eq",
+            NotEquals => "neq",
             Xor => "xor",
             BinaryOr => "binary_or",
             BinaryAnd => "binary_and",
-            GreaterThan => "greater_than",
-            LessThan => "less_than",
+            GreaterThan => "gt",
+            LessThan => "lt",
+            LessThanOrEqualTo => "le",
+            GreaterThanOrEqualTo => "ge",
         }
     }
     fn precedence(&self) -> usize {
@@ -1049,6 +984,8 @@ impl OpVariant {
             BinaryAnd => 0,
             GreaterThan => 0,
             LessThan => 0,
+            GreaterThanOrEqualTo => 0,
+            LessThanOrEqualTo => 0,
         }
     }
 }

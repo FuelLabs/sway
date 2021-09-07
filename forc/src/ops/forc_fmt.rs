@@ -18,7 +18,8 @@ use std::{
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {
         path: None,
-        print_asm: false,
+        print_finalized_asm: false,
+        print_intermediate_asm: false,
         binary_outfile: None,
         offline_mode: false,
     };

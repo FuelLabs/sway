@@ -31,14 +31,11 @@ pub(crate) fn implementation_of_trait<'sc>(
     namespace.insert_trait_methods(&type_arguments[..]);
     let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
     let self_type = type_implementing_for.clone();
-    match namespace.get_call_path(&trait_name) {
-        CompileResult::Ok {
-            value: TypedDeclaration::TraitDeclaration(tr),
-            warnings: mut l_w,
-            errors: mut l_e,
-        } => {
-            errors.append(&mut l_e);
-            warnings.append(&mut l_w);
+    match namespace
+        .get_call_path(&trait_name)
+        .ok(&mut warnings, &mut errors)
+    {
+        Some(TypedDeclaration::TraitDeclaration(tr)) => {
             let tr = tr.clone();
             if type_arguments.len() != tr.type_parameters.len() {
                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
@@ -48,7 +45,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                 })
             }
 
-            let functions_buf = type_check!(
+            let functions_buf = check!(
                 type_check_trait_implementation(
                     &tr.interface_surface,
                     &functions,
@@ -86,18 +83,11 @@ pub(crate) fn implementation_of_trait<'sc>(
                 errors,
             )
         }
-        CompileResult::Ok {
-            value: TypedDeclaration::AbiDeclaration(abi),
-            warnings: mut l_w,
-            errors: mut l_e,
-        } => {
+        Some(TypedDeclaration::AbiDeclaration(abi)) => {
             // if you are comparing this with the `impl_trait` branch above, note that
             // there are no type arguments here because we don't support generic types
             // in contract ABIs yet (or ever?) due to the complexity of communicating
             // the ABI layout in the descriptor file.
-            errors.append(&mut l_e);
-            warnings.append(&mut l_w);
-
             if type_implementing_for != MaybeResolvedType::Resolved(ResolvedType::Contract) {
                 errors.push(CompileError::ImplAbiForNonContract {
                     span: type_implementing_for_span.clone(),
@@ -105,7 +95,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                 });
             }
 
-            let functions_buf = type_check!(
+            let functions_buf = check!(
                 type_check_trait_implementation(
                     &abi.interface_surface,
                     &functions,
@@ -144,25 +134,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                 errors,
             )
         }
-        CompileResult::Ok {
-            value: _,
-            errors: mut l_e,
-            warnings: mut l_w,
-        } => {
-            errors.append(&mut l_e);
-            warnings.append(&mut l_w);
-            errors.push(CompileError::NotATrait {
-                span: trait_name.span(),
-                name: trait_name.suffix.primary_name.clone(),
-            });
-            ok(ERROR_RECOVERY_DECLARATION.clone(), warnings, errors)
-        }
-        CompileResult::Err {
-            warnings: mut l_w,
-            errors: mut l_e,
-        } => {
-            errors.append(&mut l_e);
-            warnings.append(&mut l_w);
+        Some(_) | None => {
             errors.push(CompileError::UnknownTrait {
                 name: trait_name.suffix.primary_name,
                 span: trait_name.span(),
@@ -173,7 +145,7 @@ pub(crate) fn implementation_of_trait<'sc>(
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Mode {
+pub enum Mode {
     ImplAbiFn,
     NonAbi,
 }
@@ -207,7 +179,7 @@ fn type_check_trait_implementation<'sc>(
         // i.e. fn add(self, other: u64) -> Self becomes fn
         // add(self: u64, other: u64) -> u64
 
-        let mut fn_decl = type_check!(
+        let mut fn_decl = check!(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
                 &namespace,
@@ -287,7 +259,7 @@ fn type_check_trait_implementation<'sc>(
                                     }),
                                 }
                             } else {
-                                let fn_decl_param_type = type_check!(
+                                let fn_decl_param_type = check!(
                                     fn_decl_param
                                         .r#type
                                         .force_resolution(&self_type, &fn_decl_param.type_span),
@@ -295,7 +267,7 @@ fn type_check_trait_implementation<'sc>(
                                     warnings,
                                     errors
                                 );
-                                let trait_param_type = type_check!(
+                                let trait_param_type = check!(
                                     trait_param
                                         .r#type
                                         .force_resolution(&self_type, &fn_decl_param.type_span),
@@ -321,7 +293,7 @@ fn type_check_trait_implementation<'sc>(
                     {
                         errors.append(&mut maybe_err);
                     }
-                    let return_type = type_check!(
+                    let return_type = check!(
                         return_type.force_resolution(&self_type, return_type_span),
                         ResolvedType::ErrorRecovery,
                         warnings,
@@ -354,13 +326,6 @@ fn type_check_trait_implementation<'sc>(
     for function in methods {
         let fn_decl = function.replace_self_types(type_implementing_for);
         functions_buf.push(fn_decl);
-    }
-
-    for mut fn_decl in functions_buf.iter_mut() {
-        match mode {
-            Mode::ImplAbiFn => fn_decl.is_contract_call = true,
-            _ => (),
-        }
     }
 
     // check that the implementation checklist is complete

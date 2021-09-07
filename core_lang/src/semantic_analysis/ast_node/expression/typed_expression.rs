@@ -5,8 +5,11 @@ use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
 
+mod method_application;
+use method_application::type_check_method_application;
+
 #[derive(Clone, Debug)]
-pub(crate) struct TypedExpression<'sc> {
+pub struct TypedExpression<'sc> {
     pub(crate) expression: TypedExpressionVariant<'sc>,
     pub(crate) return_type: MaybeResolvedType<'sc>,
     /// whether or not this expression is constantly evaluatable (if the result is known at compile
@@ -57,7 +60,7 @@ impl<'sc> TypedExpression<'sc> {
                     )),
                     Literal::Boolean(_) => MaybeResolvedType::Resolved(ResolvedType::Boolean),
                     Literal::Byte(_) => MaybeResolvedType::Resolved(ResolvedType::Byte),
-                    Literal::Byte32(_) => MaybeResolvedType::Resolved(ResolvedType::Byte32),
+                    Literal::B256(_) => MaybeResolvedType::Resolved(ResolvedType::B256),
                 };
                 TypedExpression {
                     expression: TypedExpressionVariant::Literal(lit),
@@ -106,58 +109,46 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 ..
             } => {
-                let function_declaration = type_check!(
+                let function_declaration = check!(
                     namespace.get_call_path(&name),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 match function_declaration {
-                    TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-                        parameters,
-                        return_type,
-                        body,
-                        is_contract_call,
-                        ..
-                    }) => {
+                    TypedDeclaration::FunctionDeclaration(decl) => {
+                        let TypedFunctionDeclaration {
+                            parameters,
+                            return_type,
+                            body,
+                            ..
+                        } = decl.clone();
                         // type check arguments in function application vs arguments in function
                         // declaration. Use parameter type annotations as annotations for the
                         // arguments
                         //
-                        let mut typed_call_arguments = Vec::new();
-                        for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
-                            let res = TypedExpression::type_check(
-                                arg.clone(),
-                                namespace,
-                                Some(param.r#type.clone()),
-                                "The argument that has been provided to this function's type does \
-                                 not match the declared type of the parameter in the function \
-                                 declaration.",
-                                self_type,
-                                build_config,
-                                dead_code_graph,
-                            );
-                            let arg = match res {
-                                CompileResult::Ok {
-                                    value,
-                                    warnings: mut l_w,
-                                    errors: mut l_e,
-                                } => {
-                                    warnings.append(&mut l_w);
-                                    errors.append(&mut l_e);
-                                    value
-                                }
-                                CompileResult::Err {
-                                    warnings: mut l_w,
-                                    errors: mut l_e,
-                                } => {
-                                    warnings.append(&mut l_w);
-                                    errors.append(&mut l_e);
-                                    error_recovery_expr(arg.span())
-                                }
-                            };
-                            typed_call_arguments.push((param.name.clone(), arg));
-                        }
+                        let typed_call_arguments = arguments
+                            .into_iter()
+                            .zip(parameters.iter())
+                            .map(|(arg, param)| {
+                                (param.name.clone(), TypedExpression::type_check(
+                                    arg.clone(),
+                                    namespace,
+                                    Some(param.r#type.clone()),
+                                    "The argument that has been provided to this function's type does \
+                                    not match the declared type of the parameter in the function \
+                                    declaration.",
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph,
+                                )
+                                .unwrap_or_else(
+                                    &mut warnings,
+                                    &mut errors,
+                                    || error_recovery_expr(arg.span()),
+                                ))
+                            })
+                            .collect();
 
                         TypedExpression {
                             return_type: return_type.clone(),
@@ -171,7 +162,7 @@ impl<'sc> TypedExpression<'sc> {
                                 arguments: typed_call_arguments,
                                 name: name.clone(),
                                 function_body: body.clone(),
-                                is_contract_call,
+                                selector: None, // regular functions cannot be in a contract call; only methods
                             },
                             span,
                         }
@@ -193,13 +184,13 @@ impl<'sc> TypedExpression<'sc> {
                 ));
                 return err(warnings, errors);
                 /*
-                let typed_primary_expression = type_check!(
+                let typed_primary_expression = check!(
                     TypedExpression::type_check(*primary_expression, &namespace, None, ""),
                     ERROR_RECOVERY_EXPR.clone(),
                     warnings,
                     errors
                 );
-                let first_branch_result = type_check!(
+                let first_branch_result = check!(
                     TypedExpression::type_check(
                         branches[0].result.clone(),
                         &namespace,
@@ -221,7 +212,7 @@ impl<'sc> TypedExpression<'sc> {
                         |MatchBranch {
                              condition, result, ..
                          }| {
-                            type_check!(
+                            check!(
                                 TypedExpression::type_check(
                                     result,
                                     &namespace,
@@ -247,7 +238,7 @@ impl<'sc> TypedExpression<'sc> {
                 */
             }
             Expression::CodeBlock { contents, span, .. } => {
-                let (typed_block, block_return_type) = type_check!(
+                let (typed_block, block_return_type) = check!(
                     TypedCodeBlock::type_check(
                         contents.clone(),
                         &namespace,
@@ -299,7 +290,7 @@ impl<'sc> TypedExpression<'sc> {
                 r#else,
                 span,
             } => {
-                let condition = Box::new(type_check!(
+                let condition = Box::new(check!(
                     TypedExpression::type_check(
                         *condition.clone(),
                         namespace,
@@ -313,7 +304,7 @@ impl<'sc> TypedExpression<'sc> {
                     warnings,
                     errors
                 ));
-                let then = Box::new(type_check!(
+                let then = Box::new(check!(
                     TypedExpression::type_check(
                         *then.clone(),
                         namespace,
@@ -328,7 +319,7 @@ impl<'sc> TypedExpression<'sc> {
                     errors
                 ));
                 let r#else = if let Some(expr) = r#else {
-                    Some(Box::new(type_check!(
+                    Some(Box::new(check!(
                         TypedExpression::type_check(
                             *expr.clone(),
                             namespace,
@@ -383,7 +374,7 @@ impl<'sc> TypedExpression<'sc> {
                                 name_span: name_span.clone(),
                                 name,
                                 initializer: initializer.map(|initializer| {
-                                    type_check!(
+                                    check!(
                                         TypedExpression::type_check(
                                             initializer.clone(),
                                             namespace,
@@ -467,7 +458,7 @@ impl<'sc> TypedExpression<'sc> {
                             }
                         };
 
-                    let typed_field = type_check!(
+                    let typed_field = check!(
                         TypedExpression::type_check(
                             expr_field.value,
                             namespace,
@@ -523,7 +514,7 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 field_to_access,
             } => {
-                let parent = type_check!(
+                let parent = check!(
                     TypedExpression::type_check(
                         *prefix,
                         namespace,
@@ -537,7 +528,7 @@ impl<'sc> TypedExpression<'sc> {
                     warnings,
                     errors
                 );
-                let (fields, struct_name) = type_check!(
+                let (fields, struct_name) = check!(
                     namespace.get_struct_type_fields(
                         &parent.return_type,
                         parent.span.as_str(),
@@ -583,200 +574,20 @@ impl<'sc> TypedExpression<'sc> {
                 method_name,
                 arguments,
                 span,
-            } => {
-                match method_name {
-                    // something like a.b(c)
-                    MethodName::FromModule { method_name } => {
-                        let mut args_buf = vec![];
-                        for arg in arguments {
-                            let sp = arg.span().clone();
-                            args_buf.push(type_check!(
-                                TypedExpression::type_check(
-                                    arg,
-                                    namespace,
-                                    None,
-                                    "",
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph
-                                ),
-                                error_recovery_expr(sp),
-                                warnings,
-                                errors
-                            ));
-                        }
-                        let method = match namespace
-                            .find_method_for_type(&args_buf[0].return_type, method_name.clone())
-                        {
-                            Some(o) => o,
-                            None => {
-                                if args_buf[0].return_type
-                                    != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-                                {
-                                    errors.push(CompileError::MethodNotFound {
-                                        method_name: method_name.primary_name,
-                                        type_name: args_buf[0].return_type.friendly_type_str(),
-                                        span: method_name.span.clone(),
-                                    });
-                                }
-                                return err(warnings, errors);
-                            }
-                        };
-
-                        // + 1 for the "self" param
-                        if args_buf.len() > (method.parameters.len() + 1) {
-                            errors.push(CompileError::TooManyArgumentsForFunction {
-                                span: span.clone(),
-                                method_name: method_name.primary_name,
-                                expected: method.parameters.len(),
-                                received: args_buf.len(),
-                            });
-                        }
-
-                        if args_buf.len() < method.parameters.len() {
-                            errors.push(CompileError::TooFewArgumentsForFunction {
-                                span: span.clone(),
-                                method_name: method_name.primary_name,
-                                expected: method.parameters.len(),
-                                received: args_buf.len(),
-                            });
-                        }
-
-                        let args_and_names = method
-                            .parameters
-                            .iter()
-                            .zip(args_buf.into_iter())
-                            .map(|(param, arg)| (param.name.clone(), arg))
-                            .collect::<Vec<(_, _)>>();
-
-                        TypedExpression {
-                            expression: TypedExpressionVariant::FunctionApplication {
-                                name: CallPath {
-                                    prefixes: vec![],
-                                    suffix: method_name,
-                                },
-                                arguments: args_and_names,
-                                function_body: method.body.clone(),
-                                is_contract_call: method.is_contract_call,
-                            },
-                            return_type: method.return_type,
-                            is_constant: IsConstant::No,
-                            span,
-                        }
-                    }
-                    // something like blah::blah::~Type::foo()
-                    MethodName::FromType {
-                        ref call_path,
-                        ref type_name,
-                        ref is_absolute,
-                    } => {
-                        let mut args_buf = vec![];
-                        for arg in arguments {
-                            args_buf.push(type_check!(
-                                TypedExpression::type_check(
-                                    arg,
-                                    namespace,
-                                    None,
-                                    "",
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph
-                                ),
-                                continue,
-                                warnings,
-                                errors
-                            ));
-                        }
-
-                        let method = if let Some(type_name) = type_name {
-                            let module = type_check!(
-                                namespace.find_module(&call_path.prefixes[..], *is_absolute),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            let type_name = module.resolve_type(&type_name, self_type);
-                            match module.find_method_for_type(&type_name, call_path.suffix.clone())
-                            {
-                                Some(o) => o,
-                                None => {
-                                    if type_name
-                                        != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-                                    {
-                                        errors.push(CompileError::MethodNotFound {
-                                            method_name: call_path.suffix.primary_name.clone(),
-                                            type_name: type_name.friendly_type_str(),
-                                            span: call_path.suffix.span.clone(),
-                                        });
-                                    }
-                                    return err(warnings, errors);
-                                }
-                            }
-                        } else {
-                            // there is a special case for the stdlib where type_name is `None`, handle
-                            // that:
-                            let module = type_check!(
-                                namespace.find_module(&call_path.prefixes[..], *is_absolute),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            );
-                            let r#type = &args_buf[0].return_type;
-                            match module.find_method_for_type(r#type, call_path.suffix.clone()) {
-                                Some(o) => o,
-                                None => {
-                                    if *r#type
-                                        != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-                                    {
-                                        errors.push(CompileError::MethodNotFound {
-                                            method_name: call_path.suffix.primary_name.clone(),
-                                            type_name: r#type.friendly_type_str(),
-                                            span: call_path.suffix.span.clone(),
-                                        });
-                                    }
-                                    return err(warnings, errors);
-                                }
-                            }
-                        };
-
-                        if args_buf.len() > method.parameters.len() {
-                            errors.push(CompileError::TooManyArgumentsForFunction {
-                                span: span.clone(),
-                                method_name: method_name.easy_name(),
-                                expected: method.parameters.len(),
-                                received: args_buf.len(),
-                            });
-                        }
-
-                        if args_buf.len() < method.parameters.len() {
-                            errors.push(CompileError::TooFewArgumentsForFunction {
-                                span: span.clone(),
-                                method_name: method_name.easy_name(),
-                                expected: method.parameters.len(),
-                                received: args_buf.len(),
-                            });
-                        }
-
-                        let args_and_names = method
-                            .parameters
-                            .iter()
-                            .zip(args_buf.into_iter())
-                            .map(|(param, arg)| (param.name.clone(), arg))
-                            .collect::<Vec<(_, _)>>();
-                        TypedExpression {
-                            expression: TypedExpressionVariant::FunctionApplication {
-                                name: call_path.clone(),
-                                arguments: args_and_names,
-                                function_body: method.body.clone(),
-                                is_contract_call: method.is_contract_call,
-                            },
-                            return_type: method.return_type,
-                            is_constant: IsConstant::No,
-                            span,
-                        }
-                    }
-                }
-            }
+            } => check!(
+                type_check_method_application(
+                    method_name,
+                    arguments,
+                    span.clone(),
+                    namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph
+                ),
+                error_recovery_expr(span),
+                warnings,
+                errors
+            ),
             Expression::Unit { span } => TypedExpression {
                 expression: TypedExpressionVariant::Unit,
                 return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
@@ -795,17 +606,18 @@ impl<'sc> TypedExpression<'sc> {
                 // Instead, we try to resolve both paths.
                 // If only one exists, then we use that one. Otherwise, if both exist, it is
                 // an ambiguous reference error.
+                let mut probe_warnings = Vec::new();
+                let mut probe_errors = Vec::new();
                 let module_result = namespace
                     .find_module(&call_path.prefixes, false)
-                    .ok()
-                    .cloned();
+                    .ok(&mut probe_warnings, &mut probe_errors);
                 let enum_module_combined_result = {
                     // also, check if this is an enum _in_ another module.
                     let (module_path, enum_name) =
                         call_path.prefixes.split_at(call_path.prefixes.len() - 1);
                     let enum_name = enum_name[0].clone();
                     let namespace = namespace.find_module(module_path, false);
-                    let namespace = namespace.ok();
+                    let namespace = namespace.ok(&mut warnings, &mut errors);
                     namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
                 };
 
@@ -833,7 +645,7 @@ impl<'sc> TypedExpression<'sc> {
                                 }
                             }
                         }
-                        (None, Some(enum_decl)) => Either::Right(type_check!(
+                        (None, Some(enum_decl)) => Either::Right(check!(
                             instantiate_enum(
                                 enum_decl,
                                 call_path.suffix,
@@ -874,15 +686,15 @@ impl<'sc> TypedExpression<'sc> {
                 address,
                 span,
             } => {
-                // TODO use stdlib's Address type instead of byte32
+                // TODO use stdlib's Address type instead of b256
                 // type check the address and make sure it is
                 let err_span = address.span();
-                let address = type_check!(
+                let address = check!(
                     TypedExpression::type_check(
                         *address,
                         namespace,
-                        Some(MaybeResolvedType::Resolved(ResolvedType::Byte32)),
-                        "An address that is being ABI cast must be of type byte32",
+                        Some(MaybeResolvedType::Resolved(ResolvedType::B256)),
+                        "An address that is being ABI cast must be of type b256",
                         self_type,
                         build_config,
                         dead_code_graph,
@@ -892,7 +704,7 @@ impl<'sc> TypedExpression<'sc> {
                     errors
                 );
                 // look up the call path and get the declaration it references
-                let abi = type_check!(
+                let abi = check!(
                     namespace.get_call_path(&abi_name),
                     return err(warnings, errors),
                     warnings,
@@ -909,8 +721,10 @@ impl<'sc> TypedExpression<'sc> {
                         return err(warnings, errors);
                     }
                 };
-                let return_type =
-                    MaybeResolvedType::Resolved(ResolvedType::ContractCaller(abi_name.clone()));
+                let return_type = MaybeResolvedType::Resolved(ResolvedType::ContractCaller {
+                    abi_name: abi_name.clone(),
+                    address: Box::new(address.clone()),
+                });
                 let mut functions_buf = abi
                     .interface_surface
                     .iter()
@@ -922,8 +736,6 @@ impl<'sc> TypedExpression<'sc> {
                     return_type.clone(),
                     functions_buf,
                 );
-                // send some out-of-band flag that these are contract calls so the code
-                // generation knows what's up
                 TypedExpression {
                     expression: TypedExpressionVariant::AbiCast {
                         abi_name,
@@ -967,7 +779,10 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             // The annotation will result in a cast, so set the return type accordingly.
-            typed_expression.return_type = type_annotation
+            match type_annotation {
+                MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType) => {}
+                ty => typed_expression.return_type = ty,
+            };
         }
 
         ok(typed_expression, warnings, errors)

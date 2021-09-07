@@ -4,12 +4,9 @@ use ropey::Rope;
 
 /// returns number of lines and formatted text
 pub fn get_formatted_data(file: &str, tab_size: u32) -> Result<(usize, String), Vec<String>> {
-    match core_lang::parse(&file) {
-        core_lang::CompileResult::Ok {
-            value: parse_tree,
-            warnings: _,
-            errors: _,
-        } => {
+    let parsed_res = core_lang::parse(&file);
+    match parsed_res.value {
+        Some(parse_tree) => {
             let changes = traverse_for_changes(&parse_tree);
             let mut rope_file = Rope::from_str(file);
 
@@ -34,23 +31,17 @@ pub fn get_formatted_data(file: &str, tab_size: u32) -> Result<(usize, String), 
 
             Ok(code_builder.get_final_edits())
         }
-        core_lang::CompileResult::Err {
-            errors,
-            warnings: _,
-        } => {
-            let res = errors
-                .iter()
-                .map(|e| {
-                    format!(
-                        "{:?} at line: {}",
-                        e.to_friendly_error_string(),
-                        e.line_col().0.line,
-                    )
-                })
-                .collect();
-
-            Err(res)
-        }
+        None => Err(parsed_res
+            .errors
+            .iter()
+            .map(|e| {
+                format!(
+                    "{:?} at line: {}",
+                    e.to_friendly_error_string(),
+                    e.line_col().0.line,
+                )
+            })
+            .collect()),
     }
 }
 
@@ -502,6 +493,70 @@ pub fn tell_a_story() -> Story {
         
         pub fn tell_a_story() ->Story {
                 Story   :: Gain
+        }
+"#;
+
+        let result = get_formatted_data(sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+    }
+
+    #[test]
+    fn test_comparison_operators() {
+        let correct_sway_code = r#"script;
+
+fn main() {
+    if 1 >= 0 {
+
+    } else if 4 <= 0 {
+
+    } else if 5 == 0 {
+    } else if 4 != 4 {
+
+    } else {
+
+    }
+}
+
+fn one_liner() -> bool {
+    if 1 >= 0 {
+        true
+    } else if 1 <= 0 {
+        true
+    } else {
+        true
+    }
+}
+"#;
+
+        let result = get_formatted_data(correct_sway_code, 4);
+        assert!(result.is_ok());
+        let (_, formatted_code) = result.unwrap();
+        assert_eq!(correct_sway_code, formatted_code);
+
+        let sway_code = r#"script;
+
+        fn main() {
+            if 1 >= 0 {
+        
+            }       else if 4 <= 0 
+            
+            {
+        
+            } 
+        else if 5 == 0 { } else if 4 != 4 
+        
+        {
+        
+            } 
+                    else {
+        
+            }    
+        }        
+
+        fn one_liner() -> bool {
+            if 1 >= 0 { true } else if 1 <= 0 { true } else { true }
         }
 "#;
 

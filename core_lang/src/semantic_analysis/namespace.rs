@@ -3,12 +3,14 @@ use super::ast_node::{
     TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
 };
 use crate::error::*;
+use crate::parse_tree::MethodName;
+use crate::semantic_analysis::TypedExpression;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
 use pest::Span;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 type ModuleName = String;
 type TraitName<'a> = Ident<'a>;
@@ -148,12 +150,13 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, ()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let namespace = type_check!(
+        let namespace = check!(
             self.find_module(&path, is_absolute),
             return err(warnings, errors),
             warnings,
             errors
-        );
+        )
+        .clone();
 
         match namespace.symbols.get(item) {
             Some(TypedDeclaration::TraitDeclaration(tr)) => {
@@ -240,7 +243,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module = type_check!(
+        let module = check!(
             self.find_module(&path.prefixes, false),
             return err(warnings, errors),
             warnings,
@@ -263,25 +266,25 @@ impl<'sc> Namespace<'sc> {
         &self,
         path: &[Ident<'sc>],
         is_absolute: bool,
-    ) -> CompileResult<'sc, Namespace<'sc>> {
+    ) -> CompileResult<'sc, &Namespace<'sc>> {
         let mut namespace = if is_absolute {
             if let Some(ns) = &*self.crate_namespace {
                 // this is an absolute import and this is a submodule, so we want the
                 // crate global namespace here
-                ns.clone()
+                ns
             } else {
                 // this is an absolute import and we are in the root module, so we want
                 // this namespace
-                self.clone()
+                self
             }
         } else {
-            self.clone()
+            self
         };
         let mut errors = vec![];
         let warnings = vec![];
         for ident in path {
             match namespace.modules.get(ident.primary_name) {
-                Some(o) => namespace = o.clone(),
+                Some(o) => namespace = o,
                 None => {
                     errors.push(CompileError::ModuleNotFound {
                         span: path.iter().fold(path[0].span.clone(), |acc, this_one| {
@@ -334,7 +337,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let module_to_insert_into = type_check!(
+        let module_to_insert_into = check!(
             self.find_module_mut(&trait_name.prefixes),
             return err(warnings, errors),
             warnings,
@@ -385,7 +388,7 @@ impl<'sc> Namespace<'sc> {
             }
         };
         if ident_iter.peek().is_none() {
-            let ty = type_check!(
+            let ty = check!(
                 symbol.return_type(),
                 return err(warnings, errors),
                 warnings,
@@ -393,35 +396,22 @@ impl<'sc> Namespace<'sc> {
             );
             return ok((ty.clone(), ty), warnings, errors);
         }
-        let mut symbol = type_check!(
+        let mut symbol = check!(
             symbol.return_type(),
             return err(warnings, errors),
             warnings,
             errors
         );
-        let (mut fields, struct_name) =
-            match self.get_struct_type_fields(&symbol, first_ident.primary_name, &first_ident.span)
-            {
-                CompileResult::Ok {
-                    value,
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    errors.append(&mut l_e);
-                    warnings.append(&mut l_w);
-                    value
-                }
-                CompileResult::Err {
-                    warnings: mut l_w,
-                    errors: mut l_e,
-                } => {
-                    errors.append(&mut l_e);
-                    warnings.append(&mut l_w);
-                    // if it is missing, the error message comes from within the above method
-                    // so we don't need to re-add it here
-                    return err(warnings, errors);
-                }
-            };
+        let mut type_fields =
+            self.get_struct_type_fields(&symbol, first_ident.primary_name, &first_ident.span);
+        warnings.append(&mut type_fields.warnings);
+        errors.append(&mut type_fields.errors);
+        let (mut fields, struct_name) = match type_fields.value {
+            // if it is missing, the error message comes from within the above method
+            // so we don't need to re-add it here
+            None => return err(warnings, errors),
+            Some(value) => value,
+        };
 
         let mut parent_rover = symbol.clone();
 
@@ -538,7 +528,7 @@ impl<'sc> Namespace<'sc> {
         {
             let r#type = self.resolve_type_without_self(name);
             for trait_constraint in trait_constraints {
-                let methods_for_trait = type_check!(
+                let methods_for_trait = check!(
                     self.find_trait_methods(&trait_constraint.name),
                     continue,
                     warnings,
@@ -555,15 +545,62 @@ impl<'sc> Namespace<'sc> {
         }
     }
 
+    /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
+    /// method in the namespace. Requires `args_buf` because of some special casing for the
+    /// standard library where we pull the type from the arguments buffer.
+    ///
+    /// This function will generate a missing method error if the method is not found.
     pub(crate) fn find_method_for_type(
         &self,
         r#type: &MaybeResolvedType<'sc>,
-        method_name: Ident<'sc>,
-    ) -> Option<TypedFunctionDeclaration<'sc>> {
-        let methods = self.get_methods_for_type(r#type);
-        methods
+        method_name: &MethodName<'sc>,
+        self_type: &MaybeResolvedType<'sc>,
+        args_buf: &VecDeque<TypedExpression<'sc>>,
+    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let (namespace, method_name, r#type) = match method_name {
+            // something like a.b(c)
+            MethodName::FromModule { ref method_name } => (self, method_name, r#type.clone()),
+            // something like blah::blah::~Type::foo()
+            MethodName::FromType {
+                ref call_path,
+                ref type_name,
+                ref is_absolute,
+            } => {
+                let module = check!(
+                    self.find_module(&call_path.prefixes[..], *is_absolute),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let r#type = if let Some(type_name) = type_name {
+                    module.resolve_type(&type_name, self_type)
+                } else {
+                    args_buf[0].return_type.clone()
+                };
+                (module, &call_path.suffix, r#type)
+            }
+        };
+        let methods = namespace.get_methods_for_type(&r#type);
+        match methods
             .into_iter()
-            .find(|TypedFunctionDeclaration { name, .. }| *name == method_name)
+            .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
+        {
+            Some(o) => ok(o, warnings, errors),
+            None => {
+                if args_buf.get(0).map(|x| &x.return_type)
+                    != Some(&MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery))
+                {
+                    errors.push(CompileError::MethodNotFound {
+                        method_name: method_name.primary_name,
+                        type_name: args_buf[0].return_type.friendly_type_str(),
+                        span: method_name.span.clone(),
+                    });
+                }
+                err(warnings, errors)
+            }
+        }
     }
     /// given a declaration that may refer to a variable which contains a struct,
     /// find that struct's fields and name for use in determining if a subfield expression is valid

@@ -115,7 +115,7 @@ impl fmt::Display for ConstantRegister {
 }
 
 /// 6-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate06 {
     pub(crate) value: u8,
 }
@@ -141,7 +141,7 @@ impl fmt::Display for VirtualImmediate06 {
 }
 
 /// 12-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate12 {
     pub(crate) value: u16,
 }
@@ -177,7 +177,7 @@ impl fmt::Display for VirtualImmediate12 {
 }
 
 /// 18-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate18 {
     pub(crate) value: u32,
 }
@@ -212,7 +212,7 @@ impl fmt::Display for VirtualImmediate18 {
 }
 
 /// 24-bits immediate value type
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VirtualImmediate24 {
     pub(crate) value: u32,
 }
@@ -250,7 +250,7 @@ impl fmt::Display for VirtualImmediate24 {
 /// allows me to use the compiler's internal [VirtualRegister] types and maintain type safety
 /// between virtual ops and the real opcodes. A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum VirtualOp {
     ADD(VirtualRegister, VirtualRegister, VirtualRegister),
     ADDI(VirtualRegister, VirtualRegister, VirtualImmediate12),
@@ -262,6 +262,7 @@ pub(crate) enum VirtualOp {
     EXP(VirtualRegister, VirtualRegister, VirtualRegister),
     EXPI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     GT(VirtualRegister, VirtualRegister, VirtualRegister),
+    LT(VirtualRegister, VirtualRegister, VirtualRegister),
     MLOG(VirtualRegister, VirtualRegister, VirtualRegister),
     MROO(VirtualRegister, VirtualRegister, VirtualRegister),
     MOD(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -371,6 +372,7 @@ impl VirtualOp {
             EXP(r1, r2, r3) => vec![r1, r2, r3],
             EXPI(r1, r2, _i) => vec![r1, r2],
             GT(r1, r2, r3) => vec![r1, r2, r3],
+            LT(r1, r2, r3) => vec![r1, r2, r3],
             MLOG(r1, r2, r3) => vec![r1, r2, r3],
             MROO(r1, r2, r3) => vec![r1, r2, r3],
             MOD(r1, r2, r3) => vec![r1, r2, r3],
@@ -453,7 +455,7 @@ impl VirtualOp {
             .map(|x| match x {
                 VirtualRegister::Constant(c) => (x, Some(AllocatedRegister::Constant(c.clone()))),
                 VirtualRegister::Virtual(_) => {
-                    (x, pool.get_register(x, &op_register_mapping[ix + 1..]))
+                    (x, pool.get_register(x, &op_register_mapping[ix..]))
                 }
             })
             .map(|(x, res)| match res {
@@ -523,6 +525,11 @@ impl VirtualOp {
                 imm.clone(),
             ),
             GT(reg1, reg2, reg3) => AllocatedOpcode::GT(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            LT(reg1, reg2, reg3) => AllocatedOpcode::LT(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
@@ -635,7 +642,9 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 imm.clone(),
             ),
-            LWDataId(reg1, imm) => AllocatedOpcode::LWDataId(map_reg(&mapping, reg1), imm.clone()),
+            LWDataId(reg1, label) => {
+                AllocatedOpcode::LWDataId(map_reg(&mapping, reg1), label.clone())
+            }
             LW(reg1, reg2, imm) => AllocatedOpcode::LW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),

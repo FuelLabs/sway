@@ -4,28 +4,14 @@ use inflector::cases::snakecase::to_snake_case;
 use pest::Span;
 use thiserror::Error;
 
-macro_rules! type_check {
-    ($fn_expr: expr, $err_recov: expr, $warnings: ident, $errors: ident) => {{
-        use crate::CompileResult;
-        let res = $fn_expr;
-        match res {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $warnings.append(&mut l_w);
-                $errors.append(&mut l_e);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $warnings.append(&mut l_w);
-                $errors.append(&mut l_e);
-                $err_recov
-            }
+macro_rules! check {
+    ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident) => {{
+        let mut res = $fn_expr;
+        $warnings.append(&mut res.warnings);
+        $errors.append(&mut res.errors);
+        match res.value {
+            None => $error_recovery,
+            Some(value) => value,
         }
     }};
 }
@@ -33,27 +19,13 @@ macro_rules! type_check {
 /// evaluates `$fn` with argument `$arg`, and pushes any warnings to the `$warnings` buffer.
 macro_rules! eval {
     ($fn: expr, $warnings: ident, $errors: ident, $arg: expr, $error_recovery: expr) => {{
-        use crate::CompileResult;
-        let res = match $fn($arg.clone()) {
-            CompileResult::Ok {
-                value,
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $warnings.append(&mut l_w);
-                $errors.append(&mut l_e);
-                value
-            }
-            CompileResult::Err {
-                warnings: mut l_w,
-                errors: mut l_e,
-            } => {
-                $errors.append(&mut l_e);
-                $warnings.append(&mut l_w);
-                $error_recovery
-            }
-        };
-        res
+        let mut res = $fn($arg.clone());
+        $warnings.append(&mut res.warnings);
+        $errors.append(&mut res.errors);
+        match res.value {
+            None => $error_recovery,
+            Some(value) => value,
+        }
     }};
 }
 
@@ -74,7 +46,11 @@ pub(crate) fn err<'sc, T>(
     warnings: Vec<CompileWarning<'sc>>,
     errors: Vec<CompileError<'sc>>,
 ) -> CompileResult<'sc, T> {
-    CompileResult::Err { warnings, errors }
+    CompileResult {
+        value: None,
+        warnings,
+        errors,
+    }
 }
 
 /// Denotes a recovered or non-error state
@@ -83,40 +59,54 @@ pub(crate) fn ok<'sc, T>(
     warnings: Vec<CompileWarning<'sc>>,
     errors: Vec<CompileError<'sc>>,
 ) -> CompileResult<'sc, T> {
-    CompileResult::Ok {
+    CompileResult {
+        value: Some(value),
         warnings,
-        value,
         errors,
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum CompileResult<'sc, T> {
-    Ok {
-        value: T,
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
-    },
-    Err {
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
-    },
+pub struct CompileResult<'sc, T> {
+    pub value: Option<T>,
+    pub warnings: Vec<CompileWarning<'sc>>,
+    pub errors: Vec<CompileError<'sc>>,
 }
 
 impl<'sc, T> CompileResult<'sc, T> {
-    pub fn unwrap(&self) -> &T {
-        match self {
-            CompileResult::Ok { value, .. } => value,
-            CompileResult::Err { errors, .. } => {
-                panic!("Unwrapped an err {:?}", errors);
-            }
+    pub fn ok(
+        mut self,
+        warnings: &mut Vec<CompileWarning<'sc>>,
+        errors: &mut Vec<CompileError<'sc>>,
+    ) -> Option<T> {
+        warnings.append(&mut self.warnings);
+        errors.append(&mut self.errors);
+        self.value
+    }
+
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> CompileResult<'sc, U> {
+        match self.value {
+            None => err(self.warnings, self.errors),
+            Some(value) => ok(f(value), self.warnings, self.errors),
         }
     }
-    pub fn ok(&self) -> Option<&T> {
-        match self {
-            CompileResult::Ok { value, .. } => Some(value),
-            _ => None,
-        }
+
+    pub fn unwrap(
+        self,
+        warnings: &mut Vec<CompileWarning<'sc>>,
+        errors: &mut Vec<CompileError<'sc>>,
+    ) -> T {
+        let panic_msg = format!("Unwrapped an err {:?}", self.errors);
+        self.unwrap_or_else(warnings, errors, || panic!("{}", panic_msg))
+    }
+
+    pub fn unwrap_or_else<F: FnOnce() -> T>(
+        self,
+        warnings: &mut Vec<CompileWarning<'sc>>,
+        errors: &mut Vec<CompileError<'sc>>,
+        or_else: F,
+    ) -> T {
+        self.ok(warnings, errors).unwrap_or_else(or_else)
     }
 }
 
@@ -666,7 +656,7 @@ pub enum CompileError<'sc> {
     },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
     InvalidAbiType { span: Span<'sc> },
-    #[error("An ABI function must accept exactly one argument. If you need to accept more values, try putting them in a struct, and then accepting a parameter of that struct type.")]
+    #[error("An ABI function must accept exactly four arguments.")]
     InvalidNumberOfAbiParams { span: Span<'sc> },
     #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
     NotAnAbi {
@@ -682,6 +672,14 @@ pub enum CompileError<'sc> {
         num_args: usize,
         provided_args: usize,
         span: Span<'sc>,
+    },
+    #[error("For now, ABI functions must take exactly four parameters, in this order: gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, <your_function_parameter>: ?")]
+    AbiFunctionRequiresSpecificSignature { span: Span<'sc> },
+    #[error("This parameter was declared as type {should_be}, but argument of type {provided} was provided.")]
+    ArgumentParameterTypeMismatch {
+        span: Span<'sc>,
+        should_be: String,
+        provided: String,
     },
 }
 
@@ -850,6 +848,8 @@ impl<'sc> CompileError<'sc> {
             NotAnAbi { span, .. } => span,
             ImplAbiForNonContract { span, .. } => span,
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span,
+            AbiFunctionRequiresSpecificSignature { span, .. } => span,
+            ArgumentParameterTypeMismatch { span, .. } => span,
         }
     }
 
