@@ -139,15 +139,15 @@ jobs:
         mv x86_64-unknown-linux-gnu/sway-server sway-nightly-binaries/$FOLDER_NAME/x86_64-unknown-linux-gnu/
         mv x86_64-unknown-linux-gnu/forc sway-nightly-binaries/$FOLDER_NAME/x86_64-unknown-linux-gnu/
       env: 
-        FOLDER_NAME: nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}
+        FOLDER_NAME: sway-nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}
 
     - name: Push Binaries
       run: |
         cd sway-nightly-binaries
-        git config --global user.name "sway-actions[bot]"
+        git config --global user.name "fuel-actions[bot]"
         git config --global user.email "contact@fuel.sh"
         git add .
         git commit -m "$FOLDER_NAME"
         git push origin master
       env: 
-        FOLDER_NAME: nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}
+        FOLDER_NAME: sway-nightly-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha_short }}

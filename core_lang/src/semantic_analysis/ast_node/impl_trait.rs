@@ -328,13 +328,6 @@ fn type_check_trait_implementation<'sc>(
         functions_buf.push(fn_decl);
     }
 
-    for mut fn_decl in functions_buf.iter_mut() {
-        match mode {
-            Mode::ImplAbiFn => fn_decl.is_contract_call = true,
-            _ => (),
-        }
-    }
-
     // check that the implementation checklist is complete
     if !function_checklist.is_empty() {
         errors.push(CompileError::MissingInterfaceSurfaceMethods {

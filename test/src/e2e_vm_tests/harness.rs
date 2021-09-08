@@ -88,7 +88,8 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Vec<u8> {
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
-        print_asm: false,
+        print_finalized_asm: false,
+        print_intermediate_asm: false,
         binary_outfile: None,
         offline_mode: false,
     })
