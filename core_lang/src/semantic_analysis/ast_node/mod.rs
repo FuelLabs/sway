@@ -324,18 +324,24 @@ impl<'sc> TypedAstNode<'sc> {
                                     errors
                                 ));
                             }
-                            namespace.insert_trait_implementation(
-                                CallPath {
-                                    prefixes: vec![],
-                                    suffix: Ident {
-                                        primary_name: "r#Self",
-                                        span: block_span.clone(),
-                                    },
+                            let trait_name = CallPath {
+                                prefixes: vec![],
+                                suffix: Ident {
+                                    primary_name: "r#Self",
+                                    span: block_span.clone(),
                                 },
-                                type_implementing_for_resolved,
-                                functions_buf,
+                            };
+                            namespace.insert_trait_implementation(
+                                trait_name.clone(),
+                                type_implementing_for_resolved.clone(),
+                                functions_buf.clone(),
                             );
-                            TypedDeclaration::SideEffect
+                            TypedDeclaration::ImplTrait {
+                                trait_name,
+                                span: block_span,
+                                methods: functions_buf,
+                                type_implementing_for: type_implementing_for_resolved,
+                            }
                         }
                         Declaration::StructDeclaration(decl) => {
                             // look up any generic or struct types in the namespace
