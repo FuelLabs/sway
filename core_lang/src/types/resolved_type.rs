@@ -113,8 +113,9 @@ impl<'sc> ResolvedType<'sc> {
     /// This is _in words_!
     pub(crate) fn stack_size_of(&self) -> u64 {
         match self {
-            // Each char is a word, so the size is the num of characters
-            ResolvedType::Str(len) => *len,
+            // Each char is a byte, so the size is the num of characters / 8
+            // rounded up to the nearest word
+            ResolvedType::Str(len) => (len + 7) / 8,
             // Since things are unpacked, all unsigned integers are 64 bits.....for now
             ResolvedType::UnsignedInteger(_) => 1,
             ResolvedType::Boolean => 1,
