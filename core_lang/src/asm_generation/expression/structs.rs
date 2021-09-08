@@ -7,7 +7,6 @@ use crate::{
     },
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
-    span::Span,
     types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     CompileResult, Ident,
 };
