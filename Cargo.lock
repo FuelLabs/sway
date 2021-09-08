@@ -193,9 +193,9 @@ name = "async-graphql"
 version = "2.9.12"
 source = "git+https://github.com/async-graphql/async-graphql?rev=1c3eda4ac1efffb3e4869b6bef5c3230c83b82ae#1c3eda4ac1efffb3e4869b6bef5c3230c83b82ae"
 dependencies = [
- "async-graphql-derive",
- "async-graphql-parser",
- "async-graphql-value",
+ "async-graphql-derive 2.9.12",
+ "async-graphql-parser 2.9.12",
+ "async-graphql-value 2.9.12",
  "async-stream",
  "async-trait",
  "bytes 1.1.0",
@@ -215,12 +215,56 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-graphql"
+version = "2.9.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c71544a682df369941c6eac4a75020a3259bc0e13a3ce9b48849109c65a60c53"
+dependencies = [
+ "async-graphql-derive 2.9.14",
+ "async-graphql-parser 2.9.14",
+ "async-graphql-value 2.9.14",
+ "async-stream",
+ "async-trait",
+ "bytes 1.1.0",
+ "fnv",
+ "futures-util",
+ "http",
+ "indexmap",
+ "mime",
+ "multer",
+ "once_cell",
+ "pin-project-lite",
+ "regex",
+ "serde",
+ "serde_json",
+ "static_assertions",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "async-graphql-derive"
 version = "2.9.12"
 source = "git+https://github.com/async-graphql/async-graphql?rev=1c3eda4ac1efffb3e4869b6bef5c3230c83b82ae#1c3eda4ac1efffb3e4869b6bef5c3230c83b82ae"
 dependencies = [
  "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "async-graphql-parser",
+ "async-graphql-parser 2.9.12",
+ "darling",
+ "proc-macro-crate",
+ "proc-macro2 1.0.28",
+ "quote 1.0.9",
+ "syn 1.0.75",
+ "thiserror",
+]
+
+[[package]]
+name = "async-graphql-derive"
+version = "2.9.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa783e684f90d2946817f9975e13adcf0c02378f881f87e3f5aa588c4a52ced8"
+dependencies = [
+ "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "async-graphql-parser 2.9.14",
  "darling",
  "proc-macro-crate",
  "proc-macro2 1.0.28",
@@ -234,7 +278,20 @@ name = "async-graphql-parser"
 version = "2.9.12"
 source = "git+https://github.com/async-graphql/async-graphql?rev=1c3eda4ac1efffb3e4869b6bef5c3230c83b82ae#1c3eda4ac1efffb3e4869b6bef5c3230c83b82ae"
 dependencies = [
- "async-graphql-value",
+ "async-graphql-value 2.9.12",
+ "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pest_derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "async-graphql-parser"
+version = "2.9.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eeaffd5e8cd9af7a1ad1b3f03e2edbe740cba01a1a19ace731990609d20d1f54"
+dependencies = [
+ "async-graphql-value 2.9.14",
  "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest_derive",
  "serde",
@@ -245,6 +302,17 @@ dependencies = [
 name = "async-graphql-value"
 version = "2.9.12"
 source = "git+https://github.com/async-graphql/async-graphql?rev=1c3eda4ac1efffb3e4869b6bef5c3230c83b82ae#1c3eda4ac1efffb3e4869b6bef5c3230c83b82ae"
+dependencies = [
+ "bytes 1.1.0",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "async-graphql-value"
+version = "2.9.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6049d700a40f7f33600855f34cf03ecde474ea6daeace3d5e921e936244693f0"
 dependencies = [
  "bytes 1.1.0",
  "serde",
@@ -992,9 +1060,9 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.8.4"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a19187fea3ac7e84da7dacf48de0c45d63c6a76f9490dae389aead16c243fce3"
+checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
 dependencies = [
  "atty",
  "humantime",
@@ -1153,7 +1221,7 @@ checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#c2f4cbb712e90d34391bf0e8bdb6d744066eeed6"
+source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#a30a54d47aa903135c63f350feb322e04fe40b5d"
 dependencies = [
  "serde",
 ]
@@ -1161,9 +1229,9 @@ dependencies = [
 [[package]]
 name = "fuel-client"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-core#ae9f426f06200dfb0bb440a2944588d27d323a19"
+source = "git+ssh://git@github.com/FuelLabs/fuel-core#cf281dd5233097a17fd52c9962cd12b82e37cc35"
 dependencies = [
- "async-graphql",
+ "async-graphql 2.9.12",
  "cynic",
  "fuel-core",
  "fuel-vm",
@@ -1176,9 +1244,9 @@ dependencies = [
 [[package]]
 name = "fuel-core"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-core#ae9f426f06200dfb0bb440a2944588d27d323a19"
+source = "git+ssh://git@github.com/FuelLabs/fuel-core#cf281dd5233097a17fd52c9962cd12b82e37cc35"
 dependencies = [
- "async-graphql",
+ "async-graphql 2.9.14",
  "bincode",
  "dirs 3.0.2",
  "env_logger",
@@ -1204,7 +1272,7 @@ dependencies = [
 [[package]]
 name = "fuel-tx"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#b02d6376c9f920033edff427733397b22f89273d"
+source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#c4e5e5808772df005e206adc74e64f14f7f68e95"
 dependencies = [
  "fuel-asm",
  "itertools",
@@ -1216,7 +1284,7 @@ dependencies = [
 [[package]]
 name = "fuel-vm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#d464139b38eafb7b84c6f7e3bb56bdc5f960737b"
+source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#4f9d0dccb5b67bdc0933909716c13f1cc0ea3a69"
 dependencies = [
  "fuel-asm",
  "fuel-tx",
