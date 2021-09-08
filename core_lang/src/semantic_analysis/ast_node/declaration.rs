@@ -614,11 +614,11 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     .is_none()
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: name.primary_name,
+                        name: name.primary_name.to_string(),
                         span: type_span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: fn_decl.name.primary_name,
-                        args: args_span.as_str(),
+                        fn_name: fn_decl.name.primary_name.to_string(),
+                        args: args_span.as_str().to_string(),
                     });
                 }
             }

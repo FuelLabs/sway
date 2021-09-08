@@ -22,12 +22,12 @@ impl<'sc> CodeBlock<'sc> {
         block: Pair<'sc, Rule>,
         config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let whole_block_span = span::Span {
             span: block.as_span(),
-            path,
+            path: path.clone(),
         };
         let block_inner = block.into_inner();
         let mut contents = Vec::new();
@@ -39,12 +39,12 @@ impl<'sc> CodeBlock<'sc> {
                         warnings,
                         errors,
                         pair.clone(),
-                        config,
+                        config.clone(),
                         continue
                     )),
                     span: span::Span {
                         span: pair.as_span(),
-                        path,
+                        path: path.clone(),
                     },
                 },
                 Rule::expr_statement => {
@@ -53,14 +53,14 @@ impl<'sc> CodeBlock<'sc> {
                         warnings,
                         errors,
                         pair.clone().into_inner().next().unwrap().clone(),
-                        config,
+                        config.clone(),
                         continue
                     );
                     AstNode {
                         content: AstNodeContent::Expression(evaluated_node),
                         span: span::Span {
                             span: pair.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                     }
                 }
@@ -70,14 +70,14 @@ impl<'sc> CodeBlock<'sc> {
                         warnings,
                         errors,
                         pair.clone(),
-                        config,
+                        config.clone(),
                         continue
                     );
                     AstNode {
                         content: AstNodeContent::ReturnStatement(evaluated_node),
                         span: span::Span {
                             span: pair.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                     }
                 }
@@ -101,14 +101,14 @@ impl<'sc> CodeBlock<'sc> {
                         warnings,
                         errors,
                         pair.clone(),
-                        config,
+                        config.clone(),
                         continue
                     );
                     AstNode {
                         content: AstNodeContent::WhileLoop(res),
                         span: span::Span {
                             span: pair.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                     }
                 }
@@ -118,7 +118,7 @@ impl<'sc> CodeBlock<'sc> {
                         a,
                         span::Span {
                             span: pair.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                     ));
                     continue;

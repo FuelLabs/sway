@@ -49,7 +49,7 @@ impl<'sc> Literal<'sc> {
                 }
                 let span = span::Span {
                     span: int_inner.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 (
                     match rule {
@@ -94,7 +94,7 @@ impl<'sc> Literal<'sc> {
                                     "Called incorrect internal core_lang on literal type.",
                                     span::Span {
                                         span: int_inner.as_span(),
-                                        path,
+                                        path: path.clone(),
                                     },
                                 )
                             }),
@@ -109,7 +109,7 @@ impl<'sc> Literal<'sc> {
                                     "Called incorrect internal core_lang on literal type.",
                                     span::Span {
                                         span: int_inner.as_span(),
-                                        path,
+                                        path: path.clone(),
                                     },
                                 )
                             }),
@@ -123,7 +123,7 @@ impl<'sc> Literal<'sc> {
                 let lit_str = lit_inner.as_str();
                 let span = span::Span {
                     span: lit_inner.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 (Ok(Literal::String(&lit_str[1..lit_str.len() - 1])), span)
             }
@@ -131,7 +131,7 @@ impl<'sc> Literal<'sc> {
                 let inner_byte = lit_inner.into_inner().next().unwrap();
                 let span = span::Span {
                     span: inner_byte.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 (
                     match inner_byte.as_rule() {
@@ -145,7 +145,7 @@ impl<'sc> Literal<'sc> {
             Rule::boolean => {
                 let span = span::Span {
                     span: lit_inner.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 (
                     Ok(match lit_inner.as_str() {
@@ -167,12 +167,12 @@ impl<'sc> Literal<'sc> {
                         a,
                         span::Span {
                             span: lit_inner.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                     )),
                     span::Span {
                         span: lit_inner.as_span(),
-                        path,
+                        path: path.clone(),
                     },
                 )
             }
@@ -231,7 +231,7 @@ fn parse_hex_from_pair<'sc>(
                 "Attempted to parse hex string from invalid hex",
                 span::Span {
                     span: pair.as_span(),
-                    path,
+                    path: path.clone(),
                 },
             )
         })?),
@@ -248,7 +248,7 @@ fn parse_hex_from_pair<'sc>(
                             "Attempted to parse individual byte from invalid hex string.",
                             span::Span {
                                 span: pair.as_span(),
-                                path,
+                                path: path.clone(),
                             },
                         )
                     })?)
@@ -259,7 +259,7 @@ fn parse_hex_from_pair<'sc>(
                     "Attempted to parse bytes32 from hex literal of incorrect length. ",
                     span::Span {
                         span: pair.as_span(),
-                        path,
+                        path: path.clone(),
                     },
                 )
             })?;
@@ -269,7 +269,7 @@ fn parse_hex_from_pair<'sc>(
             return Err(CompileError::InvalidByteLiteralLength {
                 span: span::Span {
                     span: pair.as_span(),
-                    path,
+                    path: path.clone(),
                 },
                 byte_length: a,
             })
@@ -293,7 +293,7 @@ fn parse_binary_from_pair<'sc>(
                 "Attempted to parse bin string from invalid bin string.",
                 span::Span {
                     span: pair.as_span(),
-                    path,
+                    path: path.clone(),
                 },
             )
         })?),
@@ -310,7 +310,7 @@ fn parse_binary_from_pair<'sc>(
                             "Attempted to parse individual byte from invalid bin.",
                             span::Span {
                                 span: pair.as_span(),
-                                path,
+                                path: path.clone(),
                             },
                         )
                     })?)
@@ -321,7 +321,7 @@ fn parse_binary_from_pair<'sc>(
                     "Attempted to parse bytes32 from bin literal of incorrect length. ",
                     span::Span {
                         span: pair.as_span(),
-                        path,
+                        path: path.clone(),
                     },
                 )
             })?;
@@ -331,7 +331,7 @@ fn parse_binary_from_pair<'sc>(
             return Err(CompileError::InvalidByteLiteralLength {
                 span: span::Span {
                     span: pair.as_span(),
-                    path,
+                    path: path.clone(),
                 },
                 byte_length: a,
             })

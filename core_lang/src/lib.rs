@@ -27,9 +27,10 @@ pub mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 
+pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
-pub use pest;
+use pest;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 pub use types::TypeInfo;
 
@@ -97,7 +98,10 @@ impl<'sc> ParseTree<'sc> {
     }
 }
 
-pub fn parse<'sc>(input: &'sc str, config: Option<BuildConfig>) -> CompileResult<'sc, HllParseTree<'sc>> {
+pub fn parse<'sc>(
+    input: &'sc str,
+    config: Option<BuildConfig>,
+) -> CompileResult<'sc, HllParseTree<'sc>> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     let mut parsed = match HllParser::parse(Rule::program, input) {
@@ -205,7 +209,7 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
         warnings,
         errors,
         input,
-        Some(build_config),
+        Some(build_config.clone()),
         return err(warnings, errors)
     );
     match (
@@ -218,7 +222,7 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
             errors.push(CompileError::ImportMustBeLibrary {
                 span: span::Span {
                     span: pest::Span::new(input, 0, 0).unwrap(),
-                    path: Some(build_config.dir_of_code),
+                    path: Some(build_config.clone().dir_of_code),
                 },
             });
             return err(warnings, errors);
@@ -233,7 +237,7 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
-                    &build_config,
+                    &build_config.clone(),
                     dead_code_graph,
                 )
                 .ok(&mut warnings, &mut errors)
@@ -288,7 +292,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
         warnings,
         errors,
         input,
-        Some(build_config),
+        Some(build_config.clone()),
         return CompilationResult::Failure { errors, warnings }
     );
     let mut dead_code_graph = ControlFlowGraph {
@@ -303,7 +307,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
                 tree,
                 initial_namespace.clone(),
                 tree_type,
-                &build_config,
+                &build_config.clone(),
                 &mut dead_code_graph,
             )
             .ok(&mut warnings, &mut errors)
@@ -324,7 +328,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
-                    &build_config,
+                    &build_config.clone(),
                     &mut dead_code_graph,
                 )
                 .ok(&mut warnings, &mut errors)
@@ -533,7 +537,7 @@ fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
     config: Option<BuildConfig>,
 ) -> CompileResult<'sc, HllParseTree<'sc>> {
-    let path = if let Some(config) = config {
+    let path = if let Some(config) = config.clone() {
         Some(config.dir_of_code)
     } else {
         None
@@ -549,7 +553,7 @@ fn parse_root_from_pairs<'sc>(
     for block in input {
         let mut parse_tree = ParseTree::new(span::Span {
             span: block.as_span(),
-            path,
+            path: path.clone(),
         });
         let rule = block.as_rule();
         let input = block.clone().into_inner();
@@ -562,14 +566,14 @@ fn parse_root_from_pairs<'sc>(
                         warnings,
                         errors,
                         pair.clone(),
-                        config,
+                        config.clone(),
                         continue
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::Declaration(decl),
                         span: span::Span {
                             span: pair.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                     });
                 }
@@ -579,14 +583,14 @@ fn parse_root_from_pairs<'sc>(
                         warnings,
                         errors,
                         pair.clone(),
-                        config,
+                        config.clone(),
                         continue
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::UseStatement(stmt),
                         span: span::Span {
                             span: pair.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                     });
                 }
@@ -597,7 +601,7 @@ fn parse_root_from_pairs<'sc>(
                         warnings,
                         errors,
                         lib_pair,
-                        config,
+                        config.clone(),
                         continue
                     ));
                 }
@@ -608,14 +612,14 @@ fn parse_root_from_pairs<'sc>(
                         warnings,
                         errors,
                         pair,
-                        config,
+                        config.clone(),
                         continue
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::IncludeStatement(include_statement),
                         span: span::Span {
                             span: pair.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                     });
                 }
@@ -627,7 +631,7 @@ fn parse_root_from_pairs<'sc>(
                 if fuel_ast.contract_ast.is_some() {
                     errors.push(CompileError::MultipleContracts(span::Span {
                         span: block.as_span(),
-                        path,
+                        path: path.clone(),
                     }));
                 } else {
                     fuel_ast.contract_ast = Some(parse_tree);
@@ -637,7 +641,7 @@ fn parse_root_from_pairs<'sc>(
                 if fuel_ast.script_ast.is_some() {
                     errors.push(CompileError::MultipleScripts(span::Span {
                         span: block.as_span(),
-                        path,
+                        path: path.clone(),
                     }));
                 } else {
                     fuel_ast.script_ast = Some(parse_tree);
@@ -647,7 +651,7 @@ fn parse_root_from_pairs<'sc>(
                 if fuel_ast.predicate_ast.is_some() {
                     errors.push(CompileError::MultiplePredicates(span::Span {
                         span: block.as_span(),
-                        path,
+                        path: path.clone(),
                     }));
                 } else {
                     fuel_ast.predicate_ast = Some(parse_tree);
@@ -667,7 +671,7 @@ fn parse_root_from_pairs<'sc>(
                 a,
                 span::Span {
                     span: block.as_span(),
-                    path,
+                    path: path.clone(),
                 },
             )),
         }

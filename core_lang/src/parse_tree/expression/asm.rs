@@ -46,7 +46,14 @@ impl<'sc> AsmExpression<'sc> {
         while let Some(pair) = iter.next() {
             match pair.as_rule() {
                 Rule::asm_op => {
-                    let op = eval2!(AsmOp::parse_from_pair, warnings, errors, pair, config, continue);
+                    let op = eval2!(
+                        AsmOp::parse_from_pair,
+                        warnings,
+                        errors,
+                        pair,
+                        config,
+                        continue
+                    );
                     asm_op_buf.push(op);
                 }
                 Rule::asm_register => {
@@ -129,7 +136,10 @@ impl Into<String> for AsmRegister {
 }
 
 impl<'sc> AsmOp<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>, config: Option<BuildConfig>) -> CompileResult<'sc, Self> {
+    fn parse_from_pair(
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
         let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

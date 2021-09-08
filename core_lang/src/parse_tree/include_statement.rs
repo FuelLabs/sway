@@ -18,12 +18,12 @@ impl<'sc> IncludeStatement<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = vec![];
         let mut errors = vec![];
         let span = Span {
             span: pair.as_span(),
-            path,
+            path: path.clone(),
         };
         let mut iter = pair.into_inner();
         let _include_keyword = iter.next();
@@ -37,7 +37,7 @@ impl<'sc> IncludeStatement<'sc> {
                 file_path = Some(item.as_str().trim());
                 path_span = Some(Span {
                     span: item.as_span(),
-                    path,
+                    path: path.clone(),
                 });
             } else if item.as_rule() == Rule::alias {
                 let alias_parsed = eval2!(
@@ -45,7 +45,7 @@ impl<'sc> IncludeStatement<'sc> {
                     warnings,
                     errors,
                     item.into_inner().next().unwrap(),
-                    config,
+                    config.clone(),
                     continue
                 );
                 alias = Some(alias_parsed);

@@ -27,7 +27,7 @@ impl<'sc> WhileLoop<'sc> {
         let body = iter.next().unwrap();
         let whole_block_span = Span {
             span: body.as_span(),
-            path,
+            path: path.clone(),
         };
 
         let condition = eval2!(
@@ -39,7 +39,7 @@ impl<'sc> WhileLoop<'sc> {
             Expression::Unit {
                 span: Span {
                     span: condition.as_span(),
-                    path
+                    path: path.clone()
                 }
             }
         );

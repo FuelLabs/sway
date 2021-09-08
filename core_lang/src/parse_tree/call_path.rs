@@ -1,9 +1,9 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::Ident;
 use pest::iterators::Pair;
-use crate::build_config::BuildConfig;
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -35,7 +35,10 @@ impl<'sc> CallPath<'sc> {
             crate::utils::join_spans(prefixes_span, self.suffix.span.clone())
         }
     }
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>, config: Option<BuildConfig>) -> CompileResult<Self> {
+    pub(crate) fn parse_from_pair(
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut pairs_buf = vec![];

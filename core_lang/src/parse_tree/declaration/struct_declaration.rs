@@ -99,7 +99,7 @@ impl<'sc> StructDeclaration<'sc> {
             warnings,
             span,
             Warning::NonClassCaseStructName {
-                struct_name: name.primary_name
+                struct_name: name.primary_name.to_string()
             }
         );
         ok(
@@ -143,7 +143,7 @@ impl<'sc> StructField<'sc> {
                 warnings,
                 span.clone(),
                 Warning::NonSnakeCaseStructFieldName {
-                    field_name: name.primary_name.clone()
+                    field_name: name.primary_name.clone().to_string()
                 }
             );
             let r#type = eval2!(

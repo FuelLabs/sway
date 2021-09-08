@@ -141,7 +141,13 @@ fn parse_str_type<'sc>(raw: &'sc str, span: Span<'sc>) -> CompileResult<'sc, Typ
                 return ok(TypeInfo::Str(num), vec![], vec![]);
             }
         }
-        return err(vec![], vec![CompileError::InvalidStrType { raw, span }]);
+        return err(
+            vec![],
+            vec![CompileError::InvalidStrType {
+                raw: raw.to_string(),
+                span,
+            }],
+        );
     }
     return err(vec![], vec![CompileError::UnknownType { span }]);
 }

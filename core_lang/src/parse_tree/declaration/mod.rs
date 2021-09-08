@@ -18,13 +18,13 @@ pub(crate) use trait_declaration::*;
 pub(crate) use type_parameter::*;
 pub use variable_declaration::*;
 
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parse_tree::Expression;
 use crate::parser::Rule;
 use crate::types::TypeInfo;
 use crate::Ident;
 use pest::iterators::Pair;
-use crate::build_config::BuildConfig;
 
 #[derive(Debug, Clone)]
 pub enum Declaration<'sc> {
@@ -39,7 +39,10 @@ pub enum Declaration<'sc> {
     AbiDeclaration(AbiDeclaration<'sc>),
 }
 impl<'sc> Declaration<'sc> {
-    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>, config: Option<BuildConfig>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        decl: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut pair = decl.clone().into_inner();

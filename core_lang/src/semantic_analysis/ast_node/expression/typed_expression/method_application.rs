@@ -66,7 +66,7 @@ pub(crate) fn type_check_method_application<'sc>(
                 if args_buf.len() > method.parameters.len() {
                     errors.push(CompileError::TooManyArgumentsForFunction {
                         span: span.clone(),
-                        method_name: method_name.primary_name,
+                        method_name: method_name.primary_name.to_string(),
                         expected: method.parameters.len(),
                         received: args_buf.len(),
                     });
@@ -75,7 +75,7 @@ pub(crate) fn type_check_method_application<'sc>(
                 if args_buf.len() < method.parameters.len() {
                     errors.push(CompileError::TooFewArgumentsForFunction {
                         span: span.clone(),
-                        method_name: method_name.primary_name,
+                        method_name: method_name.primary_name.to_string(),
                         expected: method.parameters.len(),
                         received: args_buf.len(),
                     });
@@ -129,7 +129,7 @@ pub(crate) fn type_check_method_application<'sc>(
                 if args_buf.len() > method.parameters.len() {
                     errors.push(CompileError::TooManyArgumentsForFunction {
                         span: span.clone(),
-                        method_name: method_name.easy_name(),
+                        method_name: method_name.easy_name().to_string(),
                         expected: method.parameters.len(),
                         received: args_buf.len(),
                     });
@@ -138,7 +138,7 @@ pub(crate) fn type_check_method_application<'sc>(
                 if args_buf.len() < method.parameters.len() {
                     errors.push(CompileError::TooFewArgumentsForFunction {
                         span: span.clone(),
-                        method_name: method_name.easy_name(),
+                        method_name: method_name.easy_name().to_string(),
                         expected: method.parameters.len(),
                         received: args_buf.len(),
                     });

@@ -136,7 +136,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         }
         Some(_) | None => {
             errors.push(CompileError::UnknownTrait {
-                name: trait_name.suffix.primary_name,
+                name: trait_name.suffix.primary_name.to_string(),
                 span: trait_name.span(),
             });
             ok(ERROR_RECOVERY_DECLARATION.clone(), warnings, errors)
@@ -154,7 +154,7 @@ fn type_check_trait_implementation<'sc>(
     interface_surface: &[TypedTraitFn<'sc>],
     functions: &[FunctionDeclaration<'sc>],
     methods: &[TypedFunctionDeclaration<'sc>],
-    trait_name: &'sc Ident<'sc>,
+    trait_name: &Ident<'sc>,
     type_arguments: &[TypeParameter<'sc>],
     namespace: &mut Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
@@ -202,8 +202,8 @@ fn type_check_trait_implementation<'sc>(
             Some(ix) => ix,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                    name: fn_decl.name.primary_name.clone(),
-                    trait_name: trait_name.span.as_str(),
+                    name: fn_decl.name.primary_name.clone().to_string(),
+                    trait_name: trait_name.span.as_str().to_string(),
                     span: fn_decl.name.span.clone(),
                 });
                 return err(warnings, errors);
@@ -229,8 +229,8 @@ fn type_check_trait_implementation<'sc>(
                         errors.push(
                             CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
                                 span: fn_decl.parameters_span(),
-                                fn_name: fn_decl.name.primary_name,
-                                trait_name: trait_name.primary_name,
+                                fn_name: fn_decl.name.primary_name.to_string(),
+                                trait_name: trait_name.primary_name.to_string(),
                                 num_args: parameters.len(),
                                 provided_args: fn_decl.parameters.len(),
                             },

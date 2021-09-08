@@ -146,7 +146,7 @@ impl<'sc> Expression<'sc> {
         expr: Pair<'sc, Rule>,
         config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let expr_for_debug = expr.clone();
@@ -158,11 +158,11 @@ impl<'sc> Expression<'sc> {
             warnings,
             errors,
             first_expr,
-            config,
+            config.clone(),
             Expression::Unit {
                 span: span::Span {
                     span: first_expr.as_span(),
-                    path,
+                    path: path.clone(),
                 }
             }
         );
@@ -173,11 +173,11 @@ impl<'sc> Expression<'sc> {
             let op_str = op.as_str();
             let op_span = span::Span {
                 span: op.as_span(),
-                path,
+                path: path.clone(),
             };
 
             let op = check!(
-                parse_op(op, config),
+                parse_op(op, config.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -190,20 +190,20 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     o,
-                    config,
+                    config.clone(),
                     Expression::Unit {
                         span: span::Span {
                             span: o.as_span(),
-                            path
+                            path: path.clone()
                         }
                     }
                 ),
                 None => {
                     errors.push(CompileError::ExpectedExprAfterOp {
-                        op: op_str,
+                        op: op_str.to_string(),
                         span: span::Span {
                             span: expr_for_debug.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                     });
                     Expression::Unit { span: op_span }
@@ -226,13 +226,13 @@ impl<'sc> Expression<'sc> {
                 expr_or_op_buf,
                 span::Span {
                     span: expr_for_debug.as_span(),
-                    path,
+                    path: path.clone(),
                 },
             )
             .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit {
                 span: span::Span {
                     span: expr_for_debug.as_span(),
-                    path,
+                    path: path.clone(),
                 },
             });
             ok(expr, warnings, errors)
@@ -243,21 +243,21 @@ impl<'sc> Expression<'sc> {
         expr: Pair<'sc, Rule>,
         config: Option<BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code);
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
         let span = span::Span {
             span: expr.as_span(),
-            path,
+            path: path.clone(),
         };
         let parsed = match expr.as_rule() {
-            Rule::literal_value => Literal::parse_from_pair(expr.clone(), config)
+            Rule::literal_value => Literal::parse_from_pair(expr.clone(), config.clone())
                 .map(|(value, span)| Expression::Literal { value, span })
                 .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit { span }),
             Rule::func_app => {
                 let span = span::Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 let mut func_app_parts = expr.into_inner();
                 let name = eval2!(
@@ -265,7 +265,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     func_app_parts.next().unwrap(),
-                    config,
+                    config.clone(),
                     return err(warnings, errors)
                 );
                 let arguments = func_app_parts.next().unwrap();
@@ -276,11 +276,11 @@ impl<'sc> Expression<'sc> {
                         warnings,
                         errors,
                         argument,
-                        config,
+                        config.clone(),
                         Expression::Unit {
                             span: span::Span {
                                 span: argument.as_span(),
-                                path
+                                path: path.clone()
                             }
                         }
                     );
@@ -302,8 +302,14 @@ impl<'sc> Expression<'sc> {
                 while let Some(pair) = var_exp_parts.next() {
                     match pair.as_rule() {
                         Rule::unary_op => {
-                            unary_op =
-                                eval2!(UnaryOp::parse_from_pair, warnings, errors, pair, config, None);
+                            unary_op = eval2!(
+                                UnaryOp::parse_from_pair,
+                                warnings,
+                                errors,
+                                pair,
+                                config.clone(),
+                                None
+                            );
                         }
                         Rule::var_name_ident => {
                             name = Some(eval2!(
@@ -311,7 +317,7 @@ impl<'sc> Expression<'sc> {
                                 warnings,
                                 errors,
                                 pair,
-                                config,
+                                config.clone(),
                                 Ident {
                                     primary_name: "error parsing var name",
                                     span: span.clone()
@@ -338,7 +344,7 @@ impl<'sc> Expression<'sc> {
                         warnings,
                         errors,
                         expr,
-                        config,
+                        config.clone(),
                         Expression::Unit { span: span.clone() }
                     ));
                 }
@@ -351,7 +357,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     expr_iter.next().unwrap(),
-                    config,
+                    config.clone(),
                     Expression::Unit { span: span.clone() }
                 );
                 let primary_expression = Box::new(primary_expression);
@@ -362,7 +368,7 @@ impl<'sc> Expression<'sc> {
                         warnings,
                         errors,
                         exp,
-                        config,
+                        config.clone(),
                         MatchBranch {
                             condition: MatchCondition::CatchAll,
                             result: Expression::Unit { span: span.clone() },
@@ -385,7 +391,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     struct_name,
-                    config,
+                    config.clone(),
                     return err(warnings, errors)
                 );
                 let fields = expr_iter.next().unwrap().into_inner().collect::<Vec<_>>();
@@ -396,19 +402,19 @@ impl<'sc> Expression<'sc> {
                         warnings,
                         errors,
                         fields[i],
-                        config,
+                        config.clone(),
                         return err(warnings, errors)
                     );
                     let span = span::Span {
                         span: fields[i].as_span(),
-                        path,
+                        path: path.clone(),
                     };
                     let value = eval2!(
                         Expression::parse_from_pair,
                         warnings,
                         errors,
                         fields[i + 1].clone(),
-                        config,
+                        config.clone(),
                         Expression::Unit { span: span.clone() }
                     );
                     fields_buf.push(StructExpressionField { name, value, span });
@@ -426,11 +432,11 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     expr.clone().into_inner().next().unwrap(),
-                    config,
+                    config.clone(),
                     Expression::Unit {
                         span: span::Span {
                             span: expr.as_span(),
-                            path
+                            path: path.clone()
                         }
                     }
                 );
@@ -446,7 +452,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     expr,
-                    config,
+                    config.clone(),
                     crate::CodeBlock {
                         contents: Vec::new(),
                         whole_block_span,
@@ -461,7 +467,7 @@ impl<'sc> Expression<'sc> {
             Rule::if_exp => {
                 let span = span::Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 let mut if_exp_pairs = expr.into_inner();
                 let condition_pair = if_exp_pairs.next().unwrap();
@@ -472,7 +478,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     condition_pair,
-                    config,
+                    config.clone(),
                     Expression::Unit { span: span.clone() }
                 ));
                 let then = Box::new(eval2!(
@@ -480,7 +486,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     then_pair,
-                    config,
+                    config.clone(),
                     Expression::Unit { span: span.clone() }
                 ));
                 let r#else = match else_pair {
@@ -489,7 +495,7 @@ impl<'sc> Expression<'sc> {
                         warnings,
                         errors,
                         else_pair,
-                        config,
+                        config.clone(),
                         Expression::Unit { span: span.clone() }
                     ))),
                     None => None,
@@ -504,14 +510,14 @@ impl<'sc> Expression<'sc> {
             Rule::asm_expression => {
                 let whole_block_span = span::Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 let asm = eval2!(
                     AsmExpression::parse_from_pair,
                     warnings,
                     errors,
                     expr,
-                    config,
+                    config.clone(),
                     return err(warnings, errors)
                 );
                 Expression::AsmExpression {
@@ -522,7 +528,7 @@ impl<'sc> Expression<'sc> {
             Rule::method_exp => {
                 let whole_exp_span = span::Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 let mut parts = expr.into_inner();
                 let pair = parts.next().unwrap();
@@ -548,7 +554,7 @@ impl<'sc> Expression<'sc> {
                             warnings,
                             errors,
                             name_parts.pop().unwrap(),
-                            config,
+                            config.clone(),
                             return err(warnings, errors)
                         );
                         let mut arguments_buf = VecDeque::new();
@@ -558,11 +564,11 @@ impl<'sc> Expression<'sc> {
                                 warnings,
                                 errors,
                                 argument,
-                                config,
+                                config.clone(),
                                 Expression::Unit {
                                     span: span::Span {
                                         span: argument.as_span(),
-                                        path
+                                        path: path.clone()
                                     }
                                 }
                             );
@@ -576,7 +582,7 @@ impl<'sc> Expression<'sc> {
                             warnings,
                             errors,
                             name_parts.next().expect("guaranteed by grammar"),
-                            config,
+                            config.clone(),
                             return err(warnings, errors)
                         );
 
@@ -586,14 +592,14 @@ impl<'sc> Expression<'sc> {
                                 unary_op: None, // TODO
                                 span: span::Span {
                                     span: name_part.as_span(),
-                                    path,
+                                    path: path.clone(),
                                 },
                                 field_to_access: eval2!(
                                     Ident::parse_from_pair,
                                     warnings,
                                     errors,
                                     name_part,
-                                    config,
+                                    config.clone(),
                                     continue
                                 ),
                             }
@@ -620,7 +626,7 @@ impl<'sc> Expression<'sc> {
                                         warnings,
                                         errors,
                                         pair,
-                                        config,
+                                        config.clone(),
                                         continue
                                     ));
                                 }
@@ -641,7 +647,7 @@ impl<'sc> Expression<'sc> {
                             warnings,
                             errors,
                             type_name.expect("guaranteed by grammar"),
-                            config,
+                            config.clone(),
                             TypeInfo::ErrorRecovery
                         );
 
@@ -654,7 +660,7 @@ impl<'sc> Expression<'sc> {
                                     warnings,
                                     errors,
                                     method_name.expect("guaranteed by grammar"),
-                                    config,
+                                    config.clone(),
                                     return err(warnings, errors)
                                 ),
                             },
@@ -671,11 +677,11 @@ impl<'sc> Expression<'sc> {
                                     warnings,
                                     errors,
                                     argument,
-                                    config,
+                                    config.clone(),
                                     Expression::Unit {
                                         span: span::Span {
                                             span: argument.as_span(),
-                                            path
+                                            path: path.clone()
                                         }
                                     }
                                 );
@@ -697,7 +703,7 @@ impl<'sc> Expression<'sc> {
                 // up in libraries
                 let span = span::Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
@@ -707,7 +713,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     path_component,
-                    config,
+                    config.clone(),
                     return err(warnings, errors)
                 );
 
@@ -719,7 +725,7 @@ impl<'sc> Expression<'sc> {
                             warnings,
                             errors,
                             exp,
-                            config,
+                            config.clone(),
                             return err(warnings, errors)
                         );
                         buf.push(exp);
@@ -743,7 +749,7 @@ impl<'sc> Expression<'sc> {
             Rule::unit => Expression::Unit {
                 span: span::Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 },
             },
             Rule::struct_field_access => {
@@ -763,7 +769,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     name_parts.next().expect("guaranteed by grammar"),
-                    config,
+                    config.clone(),
                     return err(warnings, errors)
                 );
 
@@ -773,14 +779,14 @@ impl<'sc> Expression<'sc> {
                         unary_op: None, // TODO
                         span: span::Span {
                             span: name_part.as_span(),
-                            path,
+                            path: path.clone(),
                         },
                         field_to_access: eval2!(
                             Ident::parse_from_pair,
                             warnings,
                             errors,
                             name_part,
-                            config,
+                            config.clone(),
                             continue
                         ),
                     }
@@ -791,7 +797,7 @@ impl<'sc> Expression<'sc> {
             Rule::abi_cast => {
                 let span = span::Span {
                     span: expr.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 let mut iter = expr.into_inner();
                 let _abi_keyword = iter.next();
@@ -801,7 +807,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     abi_name,
-                    config,
+                    config.clone(),
                     return err(warnings, errors)
                 );
                 let address = iter.next().expect("guaranteed by grammar");
@@ -810,7 +816,7 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors,
                     address,
-                    config,
+                    config.clone(),
                     return err(warnings, errors)
                 );
                 Expression::AbiCast {
@@ -830,14 +836,14 @@ impl<'sc> Expression<'sc> {
                     a,
                     span::Span {
                         span: expr.as_span(),
-                        path,
+                        path: path.clone(),
                     },
                 ));
                 // construct unit expression for error recovery
                 Expression::Unit {
                     span: span::Span {
                         span: expr.as_span(),
-                        path,
+                        path: path.clone(),
                     },
                 }
             }
@@ -864,12 +870,12 @@ fn parse_call_item<'sc>(
                 warnings,
                 errors,
                 item,
-                config,
+                config.clone(),
                 return err(warnings, errors)
             ),
             span: span::Span {
                 span: item.as_span(),
-                path: config.map(|config| config.dir_of_code),
+                path: config.clone().map(|c| c.dir_of_code),
             },
             unary_op: None,
         },
@@ -878,7 +884,7 @@ fn parse_call_item<'sc>(
             warnings,
             errors,
             item,
-            config,
+            config.clone(),
             return err(warnings, errors)
         ),
         a => unreachable!("{:?}", a),
@@ -900,13 +906,16 @@ pub(crate) enum MatchCondition<'sc> {
 }
 
 impl<'sc> MatchBranch<'sc> {
-    fn parse_from_pair(pair: Pair<'sc, Rule>, config: Option<BuildConfig>) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code);
+    fn parse_from_pair(
+        pair: Pair<'sc, Rule>,
+        config: Option<BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
+        let path = config.clone().map(|c| c.dir_of_code);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let span = span::Span {
             span: pair.as_span(),
-            path,
+            path: path.clone(),
         };
         let mut branch = pair.clone().into_inner();
         let condition = match branch.next() {
@@ -916,7 +925,7 @@ impl<'sc> MatchBranch<'sc> {
                     "Unexpected empty iterator in match branch parsing.",
                     span::Span {
                         span: pair.as_span(),
-                        path,
+                        path: path.clone(),
                     },
                 ));
                 return err(warnings, errors);
@@ -929,11 +938,11 @@ impl<'sc> MatchBranch<'sc> {
                     warnings,
                     errors,
                     e,
-                    config,
+                    config.clone(),
                     Expression::Unit {
                         span: span::Span {
                             span: e.as_span(),
-                            path
+                            path: path.clone()
                         }
                     }
                 );
@@ -949,7 +958,7 @@ impl<'sc> MatchBranch<'sc> {
                     "Unexpected empty iterator in match branch parsing.",
                     span::Span {
                         span: pair.as_span(),
-                        path,
+                        path: path.clone(),
                     },
                 ));
                 return err(warnings, errors);
@@ -961,7 +970,7 @@ impl<'sc> MatchBranch<'sc> {
                 warnings,
                 errors,
                 result,
-                config,
+                config.clone(),
                 Expression::Unit {
                     span: span::Span {
                         span: result.as_span(),
@@ -972,7 +981,7 @@ impl<'sc> MatchBranch<'sc> {
             Rule::code_block => {
                 let span = span::Span {
                     span: result.as_span(),
-                    path,
+                    path: path.clone(),
                 };
                 Expression::CodeBlock {
                     contents: eval2!(
@@ -980,7 +989,7 @@ impl<'sc> MatchBranch<'sc> {
                         warnings,
                         errors,
                         result,
-                        config,
+                        config.clone(),
                         CodeBlock {
                             contents: Vec::new(),
                             whole_block_span: span.clone(),
@@ -1058,10 +1067,10 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<BuildConfig>) -> CompileRes
         "<=" => LessThanOrEqualTo,
         a => {
             errors.push(CompileError::ExpectedOp {
-                op: a,
+                op: a.to_string(),
                 span: span::Span {
                     span: op.as_span(),
-                    path,
+                    path: path.clone(),
                 },
             });
             return err(Vec::new(), errors);
@@ -1071,7 +1080,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<BuildConfig>) -> CompileRes
         Op {
             span: span::Span {
                 span: op.as_span(),
-                path,
+                path: path.clone(),
             },
             op_variant,
         },

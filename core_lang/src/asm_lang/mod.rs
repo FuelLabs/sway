@@ -865,7 +865,7 @@ impl<'sc> Op<'sc> {
 
                 other => {
                     errors.push(CompileError::UnrecognizedOp {
-                        op_name: other,
+                        op_name: other.to_string(),
                         span: name.span.clone(),
                     });
                     return err(warnings, errors);

@@ -71,7 +71,7 @@ impl<'sc> FunctionDeclaration<'sc> {
             warnings,
             name_span,
             Warning::NonSnakeCaseFunctionName {
-                name: name.primary_name
+                name: name.primary_name.to_string()
             }
         );
         let mut type_params_pair = None;

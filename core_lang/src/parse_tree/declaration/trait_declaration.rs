@@ -51,7 +51,7 @@ impl<'sc> TraitDeclaration<'sc> {
             warnings,
             span,
             Warning::NonClassCaseTraitName {
-                name: name_pair.as_str().trim()
+                name: name_pair.as_str().trim().to_string()
             }
         );
         let mut type_params_pair = None;
@@ -159,7 +159,7 @@ impl<'sc> TraitFn<'sc> {
             warnings,
             name_span,
             Warning::NonSnakeCaseFunctionName {
-                name: name.primary_name
+                name: name.primary_name.to_string()
             }
         );
         let parameters = signature.next().unwrap();

@@ -25,8 +25,22 @@ impl<'sc> TypeParameter<'sc> {
                 let mut buf = vec![];
                 for pair in type_params_pair.into_inner() {
                     buf.push(TypeParameter {
-                        name_ident: eval2!(Ident::parse_from_pair, warnings, errors, pair, config.clone(), continue),
-                        name: eval2!(TypeInfo::parse_from_pair, warnings, errors, pair, config.clone(), continue),
+                        name_ident: eval2!(
+                            Ident::parse_from_pair,
+                            warnings,
+                            errors,
+                            pair,
+                            config.clone(),
+                            continue
+                        ),
+                        name: eval2!(
+                            TypeInfo::parse_from_pair,
+                            warnings,
+                            errors,
+                            pair,
+                            config.clone(),
+                            continue
+                        ),
                         trait_constraints: Vec::new(),
                     });
                 }
@@ -63,8 +77,8 @@ impl<'sc> TypeParameter<'sc> {
                             Some(o) => o,
                             None => {
                                 errors.push(CompileError::ConstrainedNonExistentType {
-                                    type_name: type_param.as_str(),
-                                    trait_name: trait_constraint.as_str(),
+                                    type_name: type_param.as_str().to_string(),
+                                    trait_name: trait_constraint.as_str().to_string(),
                                     span: Span {
                                         span: trait_constraint.as_span(),
                                         path: path.clone(),

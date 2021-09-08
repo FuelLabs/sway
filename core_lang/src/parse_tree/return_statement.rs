@@ -17,7 +17,7 @@ impl<'sc> ReturnStatement<'sc> {
     ) -> CompileResult<'sc, Self> {
         let span = span::Span {
             span: pair.as_span(),
-            path: config.map(|c| c.dir_of_code),
+            path: config.clone().map(|c| c.dir_of_code),
         };
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -34,7 +34,7 @@ impl<'sc> ReturnStatement<'sc> {
                     warnings,
                     errors,
                     expr_pair,
-                    config,
+                    config.clone(),
                     Expression::Unit { span }
                 );
                 ReturnStatement { expr }

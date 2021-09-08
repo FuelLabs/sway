@@ -651,7 +651,7 @@ fn reassignment<'sc>(
                     // early-returning, for the sake of better error reporting
                     if !is_mutable {
                         errors.push(CompileError::AssignmentToNonMutable(
-                            name.primary_name,
+                            name.primary_name.to_string(),
                             span.clone(),
                         ));
                     }
@@ -660,15 +660,15 @@ fn reassignment<'sc>(
                 }
                 Some(o) => {
                     errors.push(CompileError::ReassignmentToNonVariable {
-                        name: name.primary_name,
-                        kind: o.friendly_name(),
+                        name: name.primary_name.to_string(),
+                        kind: o.friendly_name().to_string(),
                         span,
                     });
                     return err(warnings, errors);
                 }
                 None => {
                     errors.push(CompileError::UnknownVariable {
-                        var_name: name.primary_name,
+                        var_name: name.primary_name.to_string(),
                         span: name.span.clone(),
                     });
                     return err(warnings, errors);
@@ -930,11 +930,11 @@ fn type_check_trait_methods<'sc>(
                     .is_none()
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: name.primary_name,
+                        name: name.primary_name.to_string(),
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: fn_name.primary_name,
-                        args: args_span.as_str(),
+                        fn_name: fn_name.primary_name.to_string(),
+                        args: args_span.as_str().to_string(),
                     });
                 }
             }
