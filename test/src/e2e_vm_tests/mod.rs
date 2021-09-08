@@ -11,6 +11,7 @@ pub fn run() {
         "struct_field_reassignment",
         "contract_call",
         "enum_in_fn_decl",
+        "empty_impl",
     ];
     project_names.into_iter().for_each(|name| {
         crate::e2e_vm_tests::harness::runs_in_vm(name);
