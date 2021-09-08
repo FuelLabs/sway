@@ -12,6 +12,7 @@ pub fn run() {
         ("struct_field_reassignment", ProgramState::Return(0)),
         ("contract_call", ProgramState::Return(0)),
         ("enum_in_fn_decl", ProgramState::Return(255)),
+        ("empty_impl", ProgramState::Return(0)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
