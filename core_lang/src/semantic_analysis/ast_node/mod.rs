@@ -70,6 +70,7 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
         f.write_str(&text)
     }
 }
+
 impl<'sc> TypedAstNode<'sc> {
     fn type_info(&self) -> MaybeResolvedType<'sc> {
         // return statement should be ()
@@ -176,7 +177,7 @@ impl<'sc> TypedAstNode<'sc> {
                         Declaration::FunctionDeclaration(fn_decl) => {
                             let decl = check!(
                                 TypedFunctionDeclaration::type_check(
-                                    fn_decl,
+                                    fn_decl.clone(),
                                     &namespace,
                                     None,
                                     "",
@@ -185,7 +186,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     dead_code_graph,
                                     Mode::NonAbi,
                                 ),
-                                return err(warnings, errors),
+                                error_recovery_function_declaration(fn_decl),
                                 warnings,
                                 errors
                             );
@@ -991,4 +992,35 @@ fn type_check_trait_methods<'sc>(
         });
     }
     ok(methods_buf, warnings, errors)
+}
+
+/// Used to create a stubbed out function when the function fails to compile, preventing cascading
+/// namespace errors
+fn error_recovery_function_declaration<'sc>(
+    decl: FunctionDeclaration<'sc>,
+) -> TypedFunctionDeclaration<'sc> {
+    let FunctionDeclaration {
+        name,
+        return_type,
+        span,
+        return_type_span,
+        visibility,
+        ..
+    } = decl;
+    TypedFunctionDeclaration {
+        name,
+        body: TypedCodeBlock {
+            contents: Default::default(),
+            whole_block_span: span.clone(),
+        },
+        span,
+        is_contract_call: false,
+        return_type_span,
+        parameters: Default::default(),
+        visibility,
+        return_type: return_type
+            .attempt_naive_resolution()
+            .unwrap_or(MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)),
+        type_parameters: Default::default(),
+    }
 }

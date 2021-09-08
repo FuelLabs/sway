@@ -43,11 +43,15 @@ impl<'sc> TypeInfo<'sc> {
     /// a custom (enum, struct, user-defined) or generic type.
     /// This function just passes all the trivial types through to a [ResolvedType].
     pub(crate) fn to_resolved(&self) -> MaybeResolvedType<'sc> {
-        match self {
-            TypeInfo::Custom { .. } | TypeInfo::SelfType => panic!(
-                "Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for \
-                 more details."
-            ),
+        self.attempt_naive_resolution().expect(
+            "Invalid use of `to_resolved`. See documentation of [TypeInfo::to_resolved] for \
+                 more details.",
+        )
+    }
+    /// Like `to_resolved()`, but instead of panicking on failure, it returns an option.
+    pub(crate) fn attempt_naive_resolution(&self) -> Option<MaybeResolvedType<'sc>> {
+        Some(match self {
+            TypeInfo::Custom { .. } | TypeInfo::SelfType => return None,
             TypeInfo::Boolean => MaybeResolvedType::Resolved(ResolvedType::Boolean),
             TypeInfo::Str(len) => MaybeResolvedType::Resolved(ResolvedType::Str(*len)),
             TypeInfo::Contract => MaybeResolvedType::Resolved(ResolvedType::Contract),
@@ -59,7 +63,7 @@ impl<'sc> TypeInfo<'sc> {
             TypeInfo::Byte => MaybeResolvedType::Resolved(ResolvedType::Byte),
             TypeInfo::B256 => MaybeResolvedType::Resolved(ResolvedType::B256),
             TypeInfo::ErrorRecovery => MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
-        }
+        })
     }
     pub(crate) fn parse_from_pair(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
         let mut r#type = input.into_inner();

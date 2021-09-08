@@ -363,7 +363,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
     let predicate_asm = (|| {
         if let Some(tree) = predicate_ast {
             Some(check!(
-                compile_ast_to_asm(tree),
+                compile_ast_to_asm(tree, &build_config),
                 return None,
                 warnings,
                 errors
@@ -376,7 +376,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
     let contract_asm = (|| {
         if let Some(tree) = contract_ast {
             Some(check!(
-                compile_ast_to_asm(tree),
+                compile_ast_to_asm(tree, &build_config),
                 return None,
                 warnings,
                 errors
@@ -389,7 +389,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
     let script_asm = (|| {
         if let Some(tree) = script_ast {
             Some(check!(
-                compile_ast_to_asm(tree),
+                compile_ast_to_asm(tree, &build_config),
                 return None,
                 warnings,
                 errors

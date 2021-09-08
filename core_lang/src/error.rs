@@ -656,7 +656,7 @@ pub enum CompileError<'sc> {
     },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
     InvalidAbiType { span: Span<'sc> },
-    #[error("An ABI function must accept exactly one argument. If you need to accept more values, try putting them in a struct, and then accepting a parameter of that struct type.")]
+    #[error("An ABI function must accept exactly four arguments.")]
     InvalidNumberOfAbiParams { span: Span<'sc> },
     #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
     NotAnAbi {
@@ -672,6 +672,14 @@ pub enum CompileError<'sc> {
         num_args: usize,
         provided_args: usize,
         span: Span<'sc>,
+    },
+    #[error("For now, ABI functions must take exactly four parameters, in this order: gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, <your_function_parameter>: ?")]
+    AbiFunctionRequiresSpecificSignature { span: Span<'sc> },
+    #[error("This parameter was declared as type {should_be}, but argument of type {provided} was provided.")]
+    ArgumentParameterTypeMismatch {
+        span: Span<'sc>,
+        should_be: String,
+        provided: String,
     },
 }
 
@@ -840,6 +848,8 @@ impl<'sc> CompileError<'sc> {
             NotAnAbi { span, .. } => span,
             ImplAbiForNonContract { span, .. } => span,
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span,
+            AbiFunctionRequiresSpecificSignature { span, .. } => span,
+            ArgumentParameterTypeMismatch { span, .. } => span,
         }
     }
 

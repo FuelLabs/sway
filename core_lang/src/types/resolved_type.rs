@@ -1,9 +1,12 @@
 use super::IntegerBits;
-use super::MaybeResolvedType;
+use crate::types::MaybeResolvedType;
+use crate::semantic_analysis::TypedExpression;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use derivative::Derivative;
 use pest::Span;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ResolvedType<'sc> {
     /// The number in a `Str` represents its size, which must be known at compile time
     Str(u64),
@@ -25,7 +28,11 @@ pub enum ResolvedType<'sc> {
     Contract,
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
-    ContractCaller(CallPath<'sc>),
+    ContractCaller {
+        abi_name: CallPath<'sc>,
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        address: Box<TypedExpression<'sc>>,
+    },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -95,7 +102,9 @@ impl<'sc> ResolvedType<'sc> {
                 ..
             } => format!("enum {}", primary_name),
             Contract => "contract".into(),
-            ContractCaller(id) => format!("{} contract caller", id.suffix.primary_name),
+            ContractCaller { abi_name, .. } => {
+                format!("{} contract caller", abi_name.suffix.primary_name)
+            }
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
@@ -126,7 +135,7 @@ impl<'sc> ResolvedType<'sc> {
                 .fold(0, |acc, x| acc + x.r#type.stack_size_of()),
             // `ContractCaller` types are unsized and used only in the type system for
             // calling methods
-            ResolvedType::ContractCaller(_) => 0,
+            ResolvedType::ContractCaller { .. } => 0,
             ResolvedType::Contract => unreachable!("contract types are never instantiated"),
             ResolvedType::ErrorRecovery => unreachable!(),
         }

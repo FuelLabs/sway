@@ -63,7 +63,7 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
 
     let then_branch_result = register_sequencer.next();
     let mut then_branch = check!(
-        convert_expression_to_asm(then, namespace, &condition_result, register_sequencer),
+        convert_expression_to_asm(then, namespace, &then_branch_result, register_sequencer),
         return err(warnings, errors),
         warnings,
         errors
@@ -86,12 +86,13 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
             "beginning of else branch",
         ));
         let else_branch_result = register_sequencer.next();
-        let _else_branch = check!(
+        let mut else_branch = check!(
             convert_expression_to_asm(&r#else, namespace, &else_branch_result, register_sequencer),
             return err(warnings, errors),
             warnings,
             errors
         );
+        asm_buf.append(&mut else_branch);
 
         // move the result of the else branch into the return register
         asm_buf.push(Op::register_move(

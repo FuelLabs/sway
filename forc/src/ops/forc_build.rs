@@ -26,7 +26,8 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let BuildCommand {
         path,
         binary_outfile,
-        print_asm,
+        print_finalized_asm,
+        print_intermediate_asm,
         offline_mode,
     } = command;
     // find manifest directory, even if in subdirectory
@@ -44,7 +45,9 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
             ))
         }
     };
-    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone());
+    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone())
+        .print_finalized_asm(print_finalized_asm)
+        .print_intermediate_asm(print_intermediate_asm);
     let mut manifest = read_manifest(&manifest_dir)?;
 
     let mut namespace: Namespace = Default::default();
@@ -94,15 +97,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
-    if print_asm {
-        let main = compile_to_asm(
-            main_file,
-            &manifest.project.name,
-            &namespace,
-            build_config.clone(),
-        )?;
-        println!("{}", main);
-    }
 
     let main = compile(main_file, &manifest.project.name, &namespace, build_config)?;
     if let Some(outfile) = binary_outfile {
