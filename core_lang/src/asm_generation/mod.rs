@@ -15,7 +15,7 @@ use crate::{
     semantic_analysis::{
         TypedAstNode, TypedAstNodeContent, TypedFunctionDeclaration, TypedParseTree,
     },
-    types::ResolvedType,
+    types::{MaybeResolvedType, ResolvedType},
     BuildConfig, Ident,
 };
 use either::Either;
@@ -633,11 +633,21 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 errors
             );
             asm_buf.append(&mut body);
-            asm_buf.push(Op {
-                owning_span: None,
-                opcode: Either::Left(VirtualOp::RET(return_register)),
-                comment: "main fn return value".into(),
-            });
+            if main_function.return_type == MaybeResolvedType::Resolved(ResolvedType::Unit) {
+                asm_buf.push(Op {
+                    owning_span: None,
+                    opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
+                        ConstantRegister::Zero,
+                    ))),
+                    comment: "main fn returns unit value".into(),
+                });
+            } else {
+                asm_buf.push(Op {
+                    owning_span: None,
+                    opcode: Either::Left(VirtualOp::RET(return_register)),
+                    comment: "main fn return value".into(),
+                });
+            }
 
             HllAsmSet::ScriptMain {
                 program_section: AbstractInstructionSet { ops: asm_buf },
