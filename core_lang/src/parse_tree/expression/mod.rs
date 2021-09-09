@@ -7,13 +7,19 @@ use crate::{CodeBlock, Ident};
 use either::Either;
 use pest;
 use pest::iterators::Pair;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 mod asm;
+mod match_branch;
+mod match_condition;
 mod method_name;
+mod unary_op;
 use crate::utils::join_spans;
 pub(crate) use asm::*;
-pub(crate) use method_name::*;
+pub(crate) use match_branch::MatchBranch;
+pub(crate) use match_condition::MatchCondition;
+pub(crate) use method_name::MethodName;
+pub(crate) use unary_op::UnaryOp;
 
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
@@ -892,157 +898,6 @@ fn parse_call_item<'sc>(
     ok(exp, warnings, errors)
 }
 
-#[derive(Debug, Clone)]
-pub struct MatchBranch<'sc> {
-    pub(crate) condition: MatchCondition<'sc>,
-    pub(crate) result: Expression<'sc>,
-    pub(crate) span: span::Span<'sc>,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum MatchCondition<'sc> {
-    CatchAll,
-    Expression(Expression<'sc>),
-}
-
-impl<'sc> MatchBranch<'sc> {
-    fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
-        let mut warnings = Vec::new();
-        let mut errors = Vec::new();
-        let span = span::Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
-        let mut branch = pair.clone().into_inner();
-        let condition = match branch.next() {
-            Some(o) => o,
-            None => {
-                errors.push(CompileError::Internal(
-                    "Unexpected empty iterator in match branch parsing.",
-                    span::Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    },
-                ));
-                return err(warnings, errors);
-            }
-        };
-        let condition = match condition.into_inner().next() {
-            Some(e) => {
-                let expr = eval2!(
-                    Expression::parse_from_pair,
-                    warnings,
-                    errors,
-                    e,
-                    config.clone(),
-                    Expression::Unit {
-                        span: span::Span {
-                            span: e.as_span(),
-                            path: path.clone()
-                        }
-                    }
-                );
-                MatchCondition::Expression(expr)
-            }
-            // the "_" case
-            None => MatchCondition::CatchAll,
-        };
-        let result = match branch.next() {
-            Some(o) => o,
-            None => {
-                errors.push(CompileError::Internal(
-                    "Unexpected empty iterator in match branch parsing.",
-                    span::Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    },
-                ));
-                return err(warnings, errors);
-            }
-        };
-        let result = match result.as_rule() {
-            Rule::expr => eval2!(
-                Expression::parse_from_pair,
-                warnings,
-                errors,
-                result,
-                config.clone(),
-                Expression::Unit {
-                    span: span::Span {
-                        span: result.as_span(),
-                        path
-                    }
-                }
-            ),
-            Rule::code_block => {
-                let span = span::Span {
-                    span: result.as_span(),
-                    path: path.clone(),
-                };
-                Expression::CodeBlock {
-                    contents: eval2!(
-                        CodeBlock::parse_from_pair,
-                        warnings,
-                        errors,
-                        result,
-                        config.clone(),
-                        CodeBlock {
-                            contents: Vec::new(),
-                            whole_block_span: span.clone(),
-                            scope: HashMap::default()
-                        }
-                    ),
-                    span,
-                }
-            }
-            _ => unreachable!(),
-        };
-        ok(
-            MatchBranch {
-                condition,
-                result,
-                span,
-            },
-            warnings,
-            errors,
-        )
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum UnaryOp {
-    Not,
-    Ref,
-    Deref,
-}
-
-impl UnaryOp {
-    fn parse_from_pair<'sc>(
-        pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
-    ) -> CompileResult<'sc, Option<Self>> {
-        use UnaryOp::*;
-        match pair.as_str() {
-            "!" => ok(Some(Not), Vec::new(), Vec::new()),
-            "ref" => ok(Some(Ref), Vec::new(), Vec::new()),
-            "deref" => ok(Some(Deref), Vec::new(), Vec::new()),
-            _ => {
-                let errors = vec![CompileError::Internal(
-                    "Attempted to parse unary op from invalid op string.",
-                    span::Span {
-                        span: pair.as_span(),
-                        path: config.map(|c| c.dir_of_code),
-                    },
-                )];
-                return err(Vec::new(), errors);
-            }
-        }
-    }
-}
 
 fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<BuildConfig>) -> CompileResult<'sc, Op> {
     let path = config.map(|c| c.dir_of_code);

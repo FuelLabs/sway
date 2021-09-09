@@ -58,7 +58,7 @@ impl<'sc> ControlFlowGraph<'sc> {
             .into_iter()
             .filter_map(|x| match &self.graph[x] {
                 ControlFlowGraphNode::ProgramNode(node) => {
-                    Some(construct_dead_code_warning_from_node(node))
+                    construct_dead_code_warning_from_node(node)
                 }
                 ControlFlowGraphNode::EnumVariant { span, variant_name } => Some(CompileWarning {
                     span: span.clone(),
@@ -241,15 +241,15 @@ fn connect_node<'sc>(
                 tree_type,
                 expr.span.clone(),
             )?;
-            for leaf in return_contents {
+            for leaf in return_contents.clone() {
                 graph.add_edge(this_index, leaf, "".into());
             }
             // connect return to the exit node
             if let Some(exit_node) = exit_node {
                 graph.add_edge(this_index, exit_node, "return".into());
-                (vec![], None)
+                (return_contents, None)
             } else {
-                (vec![], None)
+                (return_contents, None)
             }
         }
         TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
@@ -884,8 +884,10 @@ fn connect_enum_instantiation<'sc>(
 /// representing its unreached status. For example, we want to say "this function is never called"
 /// if the node is a function declaration, but "this trait is never used" if it is a trait
 /// declaration.
-fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> CompileWarning<'sc> {
-    match node {
+fn construct_dead_code_warning_from_node<'sc>(
+    node: &TypedAstNode<'sc>,
+) -> Option<CompileWarning<'sc>> {
+    Some(match node {
         // if this is a function, struct, or trait declaration that is never called, then it is dead
         // code.
         TypedAstNode {
@@ -917,6 +919,10 @@ fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> Compi
             warning_content: Warning::DeadTrait,
         },
         TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::AbiDeclaration { .. }),
+            ..
+        } => return None,
+        TypedAstNode {
             content: TypedAstNodeContent::Declaration(..),
             span,
         } => CompileWarning {
@@ -928,5 +934,5 @@ fn construct_dead_code_warning_from_node<'sc>(node: &TypedAstNode<'sc>) -> Compi
             span: span.clone(),
             warning_content: Warning::UnreachableCode,
         },
-    }
+    })
 }
