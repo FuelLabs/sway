@@ -41,7 +41,7 @@ pub enum Declaration<'sc> {
 impl<'sc> Declaration<'sc> {
     pub(crate) fn parse_from_pair(
         decl: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

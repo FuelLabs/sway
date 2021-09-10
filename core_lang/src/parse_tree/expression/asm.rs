@@ -20,9 +20,9 @@ pub struct AsmExpression<'sc> {
 impl<'sc> AsmExpression<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let whole_block_span = Span {
             span: pair.as_span(),
             path: path.clone(),
@@ -33,7 +33,7 @@ impl<'sc> AsmExpression<'sc> {
         let _asm_keyword = iter.next();
         let asm_registers = iter.next().unwrap();
         let asm_registers = check!(
-            AsmRegisterDeclaration::parse_from_pair(asm_registers, config.clone()),
+            AsmRegisterDeclaration::parse_from_pair(asm_registers, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -45,7 +45,7 @@ impl<'sc> AsmExpression<'sc> {
             match pair.as_rule() {
                 Rule::asm_op => {
                     let op = check!(
-                        AsmOp::parse_from_pair(pair, config.clone()),
+                        AsmOp::parse_from_pair(pair, config),
                         continue,
                         warnings,
                         errors
@@ -69,7 +69,7 @@ impl<'sc> AsmExpression<'sc> {
                 }
                 Rule::type_name => {
                     implicit_op_type = Some(check!(
-                        TypeInfo::parse_from_pair(pair, config.clone()),
+                        TypeInfo::parse_from_pair(pair, config),
                         continue,
                         warnings,
                         errors
@@ -132,9 +132,9 @@ impl Into<String> for AsmRegister {
 impl<'sc> AsmOp<'sc> {
     fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let span = Span {
@@ -143,7 +143,7 @@ impl<'sc> AsmOp<'sc> {
         };
         let mut iter = pair.into_inner();
         let opcode = check!(
-            Ident::parse_from_pair(iter.next().unwrap(), config.clone()),
+            Ident::parse_from_pair(iter.next().unwrap(), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -196,7 +196,7 @@ pub(crate) struct AsmRegisterDeclaration<'sc> {
 impl<'sc> AsmRegisterDeclaration<'sc> {
     fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Vec<Self>> {
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();
@@ -210,7 +210,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
             // assigned to that register
             let initializer = if let Some(pair) = iter.next() {
                 Some(check!(
-                    Expression::parse_from_pair(pair, config.clone()),
+                    Expression::parse_from_pair(pair, config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -222,7 +222,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
                 name: reg_name.as_str(),
                 name_span: Span {
                     span: reg_name.as_span(),
-                    path: config.clone().map(|c| c.dir_of_code),
+                    path: config.map(|c| c.dir_of_code.clone()),
                 },
                 initializer,
             })

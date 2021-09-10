@@ -18,9 +18,9 @@ pub struct Reassignment<'sc> {
 impl<'sc> Reassignment<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
-    ) -> CompileResult<Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Reassignment<'sc>> {
+        let path = config.map(|c| c.dir_of_code.clone());
         let span = Span {
             span: pair.as_span(),
             path: path.clone(),
@@ -33,14 +33,14 @@ impl<'sc> Reassignment<'sc> {
             Rule::variable_reassignment => {
                 let mut iter = variable_or_struct_reassignment.into_inner();
                 let name = check!(
-                    Expression::parse_from_pair_inner(iter.next().unwrap(), config.clone()),
+                    Expression::parse_from_pair_inner(iter.next().unwrap(), config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 let body = iter.next().unwrap();
                 let body = check!(
-                    Expression::parse_from_pair(body.clone(), config.clone()),
+                    Expression::parse_from_pair(body.clone(), config),
                     Expression::Unit {
                         span: Span {
                             span: body.as_span(),
@@ -70,7 +70,7 @@ impl<'sc> Reassignment<'sc> {
                     path: path.clone(),
                 };
                 let body = check!(
-                    Expression::parse_from_pair(rhs, config.clone()),
+                    Expression::parse_from_pair(rhs, config),
                     Expression::Unit { span: rhs_span },
                     warnings,
                     errors
@@ -90,7 +90,7 @@ impl<'sc> Reassignment<'sc> {
                 let mut expr = check!(
                     parse_call_item_ensure_only_var(
                         name_parts.next().expect("guaranteed by grammar"),
-                        config.clone()
+                        config
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -106,7 +106,7 @@ impl<'sc> Reassignment<'sc> {
                             path: path.clone(),
                         },
                         field_to_access: check!(
-                            Ident::parse_from_pair(name_part, config.clone()),
+                            Ident::parse_from_pair(name_part, config),
                             continue,
                             warnings,
                             errors
@@ -141,9 +141,9 @@ impl<'sc> Reassignment<'sc> {
 /// ```
 fn parse_call_item_ensure_only_var<'sc>(
     item: Pair<'sc, Rule>,
-    config: Option<BuildConfig>,
+    config: Option<&BuildConfig>,
 ) -> CompileResult<'sc, Expression<'sc>> {
-    let path = config.clone().map(|c| c.dir_of_code);
+    let path = config.map(|c| c.dir_of_code.clone());
     let mut warnings = vec![];
     let mut errors = vec![];
     assert_eq!(item.as_rule(), Rule::call_item);
@@ -151,7 +151,7 @@ fn parse_call_item_ensure_only_var<'sc>(
     let exp = match item.as_rule() {
         Rule::ident => Expression::VariableExpression {
             name: check!(
-                Ident::parse_from_pair(item.clone(), config.clone()),
+                Ident::parse_from_pair(item.clone(), config),
                 return err(warnings, errors),
                 warnings,
                 errors

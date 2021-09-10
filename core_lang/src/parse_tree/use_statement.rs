@@ -23,7 +23,7 @@ pub struct UseStatement<'sc> {
 impl<'sc> UseStatement<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -42,7 +42,7 @@ impl<'sc> UseStatement<'sc> {
         let import_type = match last_item.as_rule() {
             Rule::star => ImportType::Star,
             Rule::ident => ImportType::Item(check!(
-                Ident::parse_from_pair(last_item, config.clone()),
+                Ident::parse_from_pair(last_item, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -55,14 +55,14 @@ impl<'sc> UseStatement<'sc> {
                 errors.push(CompileError::NonFinalAsteriskInPath {
                     span: span::Span {
                         span: item.as_span(),
-                        path: config.clone().map(|c| c.dir_of_code),
+                        path: config.map(|c| c.dir_of_code.clone()),
                     },
                 });
                 continue;
             }
             if item.as_rule() == Rule::ident {
                 import_path_buf.push(check!(
-                    Ident::parse_from_pair(item, config.clone()),
+                    Ident::parse_from_pair(item, config),
                     return err(warnings, errors),
                     warnings,
                     errors

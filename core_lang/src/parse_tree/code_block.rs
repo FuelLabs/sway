@@ -20,9 +20,9 @@ pub struct CodeBlock<'sc> {
 impl<'sc> CodeBlock<'sc> {
     pub(crate) fn parse_from_pair(
         block: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let whole_block_span = span::Span {
@@ -35,7 +35,7 @@ impl<'sc> CodeBlock<'sc> {
             contents.push(match pair.as_rule() {
                 Rule::declaration => AstNode {
                     content: AstNodeContent::Declaration(check!(
-                        Declaration::parse_from_pair(pair.clone(), config.clone()),
+                        Declaration::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
@@ -49,7 +49,7 @@ impl<'sc> CodeBlock<'sc> {
                     let evaluated_node = check!(
                         Expression::parse_from_pair(
                             pair.clone().into_inner().next().unwrap().clone(),
-                            config.clone()
+                            config
                         ),
                         continue,
                         warnings,
@@ -65,7 +65,7 @@ impl<'sc> CodeBlock<'sc> {
                 }
                 Rule::return_statement => {
                     let evaluated_node = check!(
-                        ReturnStatement::parse_from_pair(pair.clone(), config.clone()),
+                        ReturnStatement::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
@@ -80,7 +80,7 @@ impl<'sc> CodeBlock<'sc> {
                 }
                 Rule::expr => {
                     let res = check!(
-                        Expression::parse_from_pair(pair.clone(), config.clone()),
+                        Expression::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
@@ -92,7 +92,7 @@ impl<'sc> CodeBlock<'sc> {
                 }
                 Rule::while_loop => {
                     let res = check!(
-                        WhileLoop::parse_from_pair(pair.clone(), config.clone()),
+                        WhileLoop::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors

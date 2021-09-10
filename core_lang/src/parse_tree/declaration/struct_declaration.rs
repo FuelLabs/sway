@@ -28,9 +28,9 @@ pub(crate) struct StructField<'sc> {
 impl<'sc> StructDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         decl: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut decl = decl.into_inner();
@@ -65,13 +65,13 @@ impl<'sc> StructDeclaration<'sc> {
         let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-            config.clone(),
+            config,
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let fields = if let Some(fields) = fields_pair {
             check!(
-                StructField::parse_from_pairs(fields, config.clone()),
+                StructField::parse_from_pairs(fields, config),
                 Vec::new(),
                 warnings,
                 errors
@@ -85,7 +85,7 @@ impl<'sc> StructDeclaration<'sc> {
             path: path.clone(),
         };
         let name = check!(
-            Ident::parse_from_pair(name, config.clone()),
+            Ident::parse_from_pair(name, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -114,9 +114,9 @@ impl<'sc> StructDeclaration<'sc> {
 impl<'sc> StructField<'sc> {
     pub(crate) fn parse_from_pairs(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Vec<Self>> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let fields = pair.into_inner().collect::<Vec<_>>();
@@ -127,7 +127,7 @@ impl<'sc> StructField<'sc> {
                 path: path.clone(),
             };
             let name = check!(
-                Ident::parse_from_pair(fields[i].clone(), config.clone()),
+                Ident::parse_from_pair(fields[i].clone(), config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -141,7 +141,7 @@ impl<'sc> StructField<'sc> {
                 }
             );
             let r#type = check!(
-                TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config.clone()),
+                TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config),
                 TypeInfo::Unit,
                 warnings,
                 errors

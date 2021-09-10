@@ -70,7 +70,7 @@ impl<'sc> TypeInfo<'sc> {
 
     pub(crate) fn parse_from_pair(
         input: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
         let mut r#type = input.into_inner();
         Self::parse_from_pair_inner(r#type.next().unwrap(), config)
@@ -78,7 +78,7 @@ impl<'sc> TypeInfo<'sc> {
 
     pub(crate) fn parse_from_pair_inner(
         input: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -106,7 +106,7 @@ impl<'sc> TypeInfo<'sc> {
                         Span {
                             span: input.as_span(),
                             path: if let Some(config) = config {
-                                Some(config.dir_of_code)
+                                Some(config.dir_of_code.clone())
                             } else {
                                 None
                             }

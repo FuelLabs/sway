@@ -22,18 +22,18 @@ pub struct AbiDeclaration<'sc> {
 impl<'sc> AbiDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
         let span = Span {
             span: pair.as_span(),
-            path: config.clone().map(|c| c.dir_of_code),
+            path: config.map(|c| c.dir_of_code.clone()),
         };
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let _abi_keyword = iter.next().expect("guaranteed by grammar");
         let name = check!(
-            Ident::parse_from_pair(iter.next().expect("guaranteed by grammar"), config.clone()),
+            Ident::parse_from_pair(iter.next().expect("guaranteed by grammar"), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -44,13 +44,13 @@ impl<'sc> AbiDeclaration<'sc> {
         for func in trait_methods.into_inner() {
             match func.as_rule() {
                 Rule::fn_signature => interface_surface.push(check!(
-                    TraitFn::parse_from_pair(func, config.clone()),
+                    TraitFn::parse_from_pair(func, config),
                     continue,
                     warnings,
                     errors
                 )),
                 Rule::fn_decl => methods.push(check!(
-                    FunctionDeclaration::parse_from_pair(func, config.clone()),
+                    FunctionDeclaration::parse_from_pair(func, config),
                     continue,
                     warnings,
                     errors

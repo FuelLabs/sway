@@ -14,7 +14,7 @@ pub enum UnaryOp {
 impl UnaryOp {
     pub fn parse_from_pair<'sc>(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Option<Self>> {
         use UnaryOp::*;
         match pair.as_str() {
@@ -26,7 +26,7 @@ impl UnaryOp {
                     "Attempted to parse unary op from invalid op string.",
                     span::Span {
                         span: pair.as_span(),
-                        path: config.map(|c| c.dir_of_code),
+                        path: config.map(|c| c.dir_of_code.clone()),
                     },
                 )];
                 return err(Vec::new(), errors);

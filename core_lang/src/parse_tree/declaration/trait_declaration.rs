@@ -21,7 +21,7 @@ pub struct TraitDeclaration<'sc> {
 impl<'sc> TraitDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -38,7 +38,7 @@ impl<'sc> TraitDeclaration<'sc> {
             };
         let name_pair = trait_parts.next().unwrap();
         let name = check!(
-            Ident::parse_from_pair(name_pair.clone(), config.clone()),
+            Ident::parse_from_pair(name_pair.clone(), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -74,7 +74,7 @@ impl<'sc> TraitDeclaration<'sc> {
                 match fn_sig_or_decl.as_rule() {
                     Rule::fn_signature => {
                         interface.push(check!(
-                            TraitFn::parse_from_pair(fn_sig_or_decl, config.clone()),
+                            TraitFn::parse_from_pair(fn_sig_or_decl, config),
                             continue,
                             warnings,
                             errors
@@ -82,7 +82,7 @@ impl<'sc> TraitDeclaration<'sc> {
                     }
                     Rule::fn_decl => {
                         methods.push(check!(
-                            FunctionDeclaration::parse_from_pair(fn_sig_or_decl, config.clone()),
+                            FunctionDeclaration::parse_from_pair(fn_sig_or_decl, config),
                             continue,
                             warnings,
                             errors
@@ -96,7 +96,7 @@ impl<'sc> TraitDeclaration<'sc> {
             crate::parse_tree::declaration::TypeParameter::parse_from_type_params_and_where_clause(
                 type_params_pair,
                 where_clause_pair,
-                config.clone(),
+                config,
             )
             .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
         ok(
@@ -124,9 +124,9 @@ pub(crate) struct TraitFn<'sc> {
 impl<'sc> TraitFn<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut signature = pair.clone().into_inner();
@@ -141,7 +141,7 @@ impl<'sc> TraitFn<'sc> {
             path: path.clone(),
         };
         let name = check!(
-            Ident::parse_from_pair(name, config.clone()),
+            Ident::parse_from_pair(name, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -156,7 +156,7 @@ impl<'sc> TraitFn<'sc> {
         );
         let parameters = signature.next().unwrap();
         let parameters = check!(
-            FunctionParameter::list_from_pairs(parameters.into_inner(), config.clone()),
+            FunctionParameter::list_from_pairs(parameters.into_inner(), config),
             Vec::new(),
             warnings,
             errors
@@ -171,7 +171,7 @@ impl<'sc> TraitFn<'sc> {
                 };
                 (
                     check!(
-                        TypeInfo::parse_from_pair(pair, config.clone()),
+                        TypeInfo::parse_from_pair(pair, config),
                         TypeInfo::ErrorRecovery,
                         warnings,
                         errors

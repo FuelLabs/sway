@@ -36,9 +36,9 @@ impl<'sc> Literal<'sc> {
     }
     pub(crate) fn parse_from_pair(
         lit: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, (Self, span::Span<'sc>)> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
             Rule::integer => {
@@ -217,9 +217,9 @@ impl<'sc> Literal<'sc> {
 
 fn parse_hex_from_pair<'sc>(
     pair: Pair<'sc, Rule>,
-    config: Option<BuildConfig>,
+    config: Option<&BuildConfig>,
 ) -> Result<Literal<'sc>, CompileError<'sc>> {
-    let path = config.clone().map(|c| c.dir_of_code);
+    let path = config.map(|c| c.dir_of_code.clone());
     let hex = &pair.as_str()[2..]
         .chars()
         .filter(|x| *x != '_')
@@ -279,9 +279,9 @@ fn parse_hex_from_pair<'sc>(
 
 fn parse_binary_from_pair<'sc>(
     pair: Pair<'sc, Rule>,
-    config: Option<BuildConfig>,
+    config: Option<&BuildConfig>,
 ) -> Result<Literal<'sc>, CompileError<'sc>> {
-    let path = config.clone().map(|c| c.dir_of_code);
+    let path = config.map(|c| c.dir_of_code.clone());
     let bin = &pair.as_str()[2..]
         .chars()
         .filter(|x| *x != '_')

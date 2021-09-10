@@ -37,15 +37,15 @@ impl<'sc> CallPath<'sc> {
     }
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
-    ) -> CompileResult<Self> {
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, CallPath<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut pairs_buf = vec![];
         for pair in pair.clone().into_inner() {
             if pair.as_rule() != Rule::path_separator {
                 pairs_buf.push(check!(
-                    Ident::parse_from_pair(pair, config.clone()),
+                    Ident::parse_from_pair(pair, config),
                     continue,
                     warnings,
                     errors

@@ -33,9 +33,9 @@ pub struct ImplSelf<'sc> {
 impl<'sc> ImplTrait<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let block_span = Span {
@@ -48,7 +48,7 @@ impl<'sc> ImplTrait<'sc> {
         let trait_name = iter.next().unwrap();
         assert_eq!(trait_name.as_rule(), Rule::trait_name);
         let trait_name = check!(
-            CallPath::parse_from_pair(trait_name, config.clone()),
+            CallPath::parse_from_pair(trait_name, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -66,7 +66,7 @@ impl<'sc> ImplTrait<'sc> {
             path: path.clone(),
         };
         let type_implementing_for = check!(
-            TypeInfo::parse_from_pair(type_implementing_for_pair, config.clone()),
+            TypeInfo::parse_from_pair(type_implementing_for_pair, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -87,7 +87,7 @@ impl<'sc> ImplTrait<'sc> {
         let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-            config.clone(),
+            config,
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
@@ -95,7 +95,7 @@ impl<'sc> ImplTrait<'sc> {
 
         for pair in iter {
             fn_decls_buf.push(check!(
-                FunctionDeclaration::parse_from_pair(pair, config.clone()),
+                FunctionDeclaration::parse_from_pair(pair, config),
                 continue,
                 warnings,
                 errors
@@ -121,9 +121,9 @@ impl<'sc> ImplTrait<'sc> {
 impl<'sc> ImplSelf<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let block_span = Span {
@@ -146,7 +146,7 @@ impl<'sc> ImplSelf<'sc> {
         };
 
         let type_implementing_for = check!(
-            TypeInfo::parse_from_pair(type_pair, config.clone()),
+            TypeInfo::parse_from_pair(type_pair, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -166,7 +166,7 @@ impl<'sc> ImplSelf<'sc> {
         let type_arguments = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-            config.clone(),
+            config,
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
@@ -174,7 +174,7 @@ impl<'sc> ImplSelf<'sc> {
 
         for pair in iter {
             fn_decls_buf.push(check!(
-                FunctionDeclaration::parse_from_pair(pair, config.clone()),
+                FunctionDeclaration::parse_from_pair(pair, config),
                 continue,
                 warnings,
                 errors

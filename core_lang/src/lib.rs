@@ -100,7 +100,7 @@ impl<'sc> ParseTree<'sc> {
 
 pub fn parse<'sc>(
     input: &'sc str,
-    config: Option<BuildConfig>,
+    config: Option<&BuildConfig>,
 ) -> CompileResult<'sc, HllParseTree<'sc>> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
@@ -113,7 +113,7 @@ pub fn parse<'sc>(
                     span: span::Span {
                         span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
                         path: if let Some(config) = config {
-                            Some(config.dir_of_code)
+                            Some(config.dir_of_code.clone())
                         } else {
                             None
                         },
@@ -124,7 +124,7 @@ pub fn parse<'sc>(
         }
     };
     let res = check!(
-        parse_root_from_pairs(parsed.next().unwrap().into_inner(), config.clone()),
+        parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
         return err(warnings, errors),
         warnings,
         errors
@@ -203,7 +203,7 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
-        parse(input, Some(build_config.clone())),
+        parse(input, Some(&build_config)),
         return err(warnings, errors),
         warnings,
         errors
@@ -284,7 +284,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
-        parse(input, Some(build_config.clone())),
+        parse(input, Some(&build_config)),
         return CompilationResult::Failure { errors, warnings },
         warnings,
         errors
@@ -529,10 +529,10 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
 // sub-nodes
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
-    config: Option<BuildConfig>,
+    config: Option<&BuildConfig>,
 ) -> CompileResult<'sc, HllParseTree<'sc>> {
     let path = if let Some(config) = config.clone() {
-        Some(config.dir_of_code)
+        Some(config.dir_of_code.clone())
     } else {
         None
     };

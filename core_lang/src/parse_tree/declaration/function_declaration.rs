@@ -37,9 +37,9 @@ pub struct FunctionDeclaration<'sc> {
 impl<'sc> FunctionDeclaration<'sc> {
     pub fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut parts = pair.clone().into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -59,7 +59,7 @@ impl<'sc> FunctionDeclaration<'sc> {
             path: path.clone(),
         };
         let name = check!(
-            Ident::parse_from_pair(name, config.clone()),
+            Ident::parse_from_pair(name, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -108,10 +108,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         let parameters_span = parameters_pair.as_span();
 
         let parameters = check!(
-            FunctionParameter::list_from_pairs(
-                parameters_pair.clone().into_inner(),
-                config.clone()
-            ),
+            FunctionParameter::list_from_pairs(parameters_pair.clone().into_inner(), config),
             Vec::new(),
             warnings,
             errors
@@ -127,7 +124,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         };
         let return_type = match return_type_pair {
             Some(ref pair) => check!(
-                TypeInfo::parse_from_pair(pair.clone(), config.clone()),
+                TypeInfo::parse_from_pair(pair.clone(), config),
                 TypeInfo::Unit,
                 warnings,
                 errors
@@ -137,7 +134,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
-            config.clone(),
+            config,
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
@@ -179,7 +176,7 @@ impl<'sc> FunctionDeclaration<'sc> {
             path: path.clone(),
         };
         let body = check!(
-            CodeBlock::parse_from_pair(body, config.clone()),
+            CodeBlock::parse_from_pair(body, config),
             crate::CodeBlock {
                 contents: Vec::new(),
                 whole_block_span,
@@ -218,9 +215,9 @@ pub(crate) struct FunctionParameter<'sc> {
 impl<'sc> FunctionParameter<'sc> {
     pub(crate) fn list_from_pairs(
         pairs: impl Iterator<Item = Pair<'sc, Rule>>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Vec<FunctionParameter<'sc>>> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut pairs_buf = Vec::new();
@@ -248,7 +245,7 @@ impl<'sc> FunctionParameter<'sc> {
             let mut parts = pair.clone().into_inner();
             let name_pair = parts.next().unwrap();
             let name = check!(
-                Ident::parse_from_pair(name_pair, config.clone()),
+                Ident::parse_from_pair(name_pair, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -259,7 +256,7 @@ impl<'sc> FunctionParameter<'sc> {
                 path: path.clone(),
             };
             let r#type = check!(
-                TypeInfo::parse_from_pair_inner(type_pair, config.clone()),
+                TypeInfo::parse_from_pair_inner(type_pair, config),
                 TypeInfo::ErrorRecovery,
                 warnings,
                 errors

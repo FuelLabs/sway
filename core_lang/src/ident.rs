@@ -33,10 +33,10 @@ impl Eq for Ident<'_> {}
 impl<'sc> Ident<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
-    ) -> CompileResult<'sc, Ident> {
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Ident<'sc>> {
         let path = if let Some(config) = config {
-            Some(config.dir_of_code)
+            Some(config.dir_of_code.clone())
         } else {
             None
         };

@@ -15,9 +15,9 @@ impl<'sc> TypeParameter<'sc> {
     pub(crate) fn parse_from_type_params_and_where_clause(
         type_params_pair: Option<Pair<'sc, Rule>>,
         where_clause_pair: Option<Pair<'sc, Rule>>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Vec<TypeParameter<'sc>>> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut errors = Vec::new();
         let mut warnings = vec![];
         let mut params: Vec<TypeParameter> = match type_params_pair {
@@ -26,13 +26,13 @@ impl<'sc> TypeParameter<'sc> {
                 for pair in type_params_pair.into_inner() {
                     buf.push(TypeParameter {
                         name_ident: check!(
-                            Ident::parse_from_pair(pair.clone(), config.clone()),
+                            Ident::parse_from_pair(pair.clone(), config),
                             continue,
                             warnings,
                             errors
                         ),
                         name: check!(
-                            TypeInfo::parse_from_pair(pair.clone(), config.clone()),
+                            TypeInfo::parse_from_pair(pair.clone(), config),
                             continue,
                             warnings,
                             errors
@@ -86,7 +86,7 @@ impl<'sc> TypeParameter<'sc> {
 
                     param_to_edit.trait_constraints.push(TraitConstraint {
                         name: check!(
-                            Ident::parse_from_pair(trait_constraint, config.clone()),
+                            Ident::parse_from_pair(trait_constraint, config),
                             continue,
                             warnings,
                             errors

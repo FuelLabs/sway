@@ -57,9 +57,9 @@ impl<'sc> EnumDeclaration<'sc> {
 
     pub(crate) fn parse_from_pair(
         decl_inner: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let whole_enum_span = Span {
             span: decl_inner.as_span(),
             path: path.clone(),
@@ -93,14 +93,14 @@ impl<'sc> EnumDeclaration<'sc> {
         let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params,
             where_clause,
-            config.clone(),
+            config,
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();
         let name = check!(
-            Ident::parse_from_pair(enum_name.clone(), config.clone()),
+            Ident::parse_from_pair(enum_name.clone(), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -118,7 +118,7 @@ impl<'sc> EnumDeclaration<'sc> {
         );
 
         let variants = check!(
-            EnumVariant::parse_from_pairs(variants, config.clone()),
+            EnumVariant::parse_from_pairs(variants, config),
             Vec::new(),
             warnings,
             errors
@@ -171,7 +171,7 @@ impl<'sc> EnumVariant<'sc> {
     }
     pub(crate) fn parse_from_pairs(
         decl_inner: Option<Pair<'sc, Rule>>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Vec<Self>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -182,10 +182,10 @@ impl<'sc> EnumVariant<'sc> {
             for i in (0..fields.len()).step_by(2) {
                 let variant_span = Span {
                     span: fields[i].as_span(),
-                    path: config.clone().map(|c| c.dir_of_code),
+                    path: config.map(|c| c.dir_of_code.clone()),
                 };
                 let name = check!(
-                    Ident::parse_from_pair(fields[i].clone(), config.clone()),
+                    Ident::parse_from_pair(fields[i].clone(), config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -199,7 +199,7 @@ impl<'sc> EnumVariant<'sc> {
                     }
                 );
                 let r#type = check!(
-                    TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config.clone()),
+                    TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config),
                     TypeInfo::Unit,
                     warnings,
                     errors

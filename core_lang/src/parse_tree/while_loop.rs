@@ -16,9 +16,9 @@ pub struct WhileLoop<'sc> {
 impl<'sc> WhileLoop<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
-        config: Option<BuildConfig>,
+        config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.clone().map(|c| c.dir_of_code);
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut iter = pair.into_inner();
@@ -31,7 +31,7 @@ impl<'sc> WhileLoop<'sc> {
         };
 
         let condition = check!(
-            Expression::parse_from_pair(condition.clone(), config.clone()),
+            Expression::parse_from_pair(condition.clone(), config),
             Expression::Unit {
                 span: Span {
                     span: condition.as_span(),
@@ -43,7 +43,7 @@ impl<'sc> WhileLoop<'sc> {
         );
 
         let body = check!(
-            CodeBlock::parse_from_pair(body, config.clone()),
+            CodeBlock::parse_from_pair(body, config),
             CodeBlock {
                 contents: Default::default(),
                 whole_block_span,
