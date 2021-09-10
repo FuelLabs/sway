@@ -1,8 +1,8 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
-use pest::iterators::Pair;
-use crate::build_config::BuildConfig;
 use crate::span;
+use pest::iterators::Pair;
 
 #[derive(Clone, Debug)]
 pub enum UnaryOp {

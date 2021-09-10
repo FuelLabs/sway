@@ -1,9 +1,9 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
+use crate::span;
 use crate::CodeBlock;
 use pest::iterators::Pair;
-use crate::span;
-use crate::build_config::BuildConfig;
 use std::collections::HashMap;
 
 use super::{Expression, MatchCondition};
@@ -43,18 +43,16 @@ impl<'sc> MatchBranch<'sc> {
         };
         let condition = match condition.into_inner().next() {
             Some(e) => {
-                let expr = eval2!(
-                    Expression::parse_from_pair,
-                    warnings,
-                    errors,
-                    e,
-                    config.clone(),
+                let expr = check!(
+                    Expression::parse_from_pair(e.clone(), config.clone()),
                     Expression::Unit {
                         span: span::Span {
                             span: e.as_span(),
                             path: path.clone()
                         }
-                    }
+                    },
+                    warnings,
+                    errors
                 );
                 MatchCondition::Expression(expr)
             }
@@ -75,18 +73,16 @@ impl<'sc> MatchBranch<'sc> {
             }
         };
         let result = match result.as_rule() {
-            Rule::expr => eval2!(
-                Expression::parse_from_pair,
-                warnings,
-                errors,
-                result,
-                config.clone(),
+            Rule::expr => check!(
+                Expression::parse_from_pair(result.clone(), config.clone()),
                 Expression::Unit {
                     span: span::Span {
                         span: result.as_span(),
                         path
                     }
-                }
+                },
+                warnings,
+                errors
             ),
             Rule::code_block => {
                 let span = span::Span {
@@ -94,17 +90,15 @@ impl<'sc> MatchBranch<'sc> {
                     path: path.clone(),
                 };
                 Expression::CodeBlock {
-                    contents: eval2!(
-                        CodeBlock::parse_from_pair,
-                        warnings,
-                        errors,
-                        result,
-                        config.clone(),
+                    contents: check!(
+                        CodeBlock::parse_from_pair(result, config.clone()),
                         CodeBlock {
                             contents: Vec::new(),
                             whole_block_span: span.clone(),
                             scope: HashMap::default()
-                        }
+                        },
+                        warnings,
+                        errors
                     ),
                     span,
                 }

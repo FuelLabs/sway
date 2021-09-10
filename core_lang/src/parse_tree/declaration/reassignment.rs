@@ -32,27 +32,23 @@ impl<'sc> Reassignment<'sc> {
         match variable_or_struct_reassignment.as_rule() {
             Rule::variable_reassignment => {
                 let mut iter = variable_or_struct_reassignment.into_inner();
-                let name = eval2!(
-                    Expression::parse_from_pair_inner,
+                let name = check!(
+                    Expression::parse_from_pair_inner(iter.next().unwrap(), config.clone()),
+                    return err(warnings, errors),
                     warnings,
-                    errors,
-                    iter.next().unwrap(),
-                    config.clone(),
-                    return err(warnings, errors)
+                    errors
                 );
                 let body = iter.next().unwrap();
-                let body = eval2!(
-                    Expression::parse_from_pair,
-                    warnings,
-                    errors,
-                    body.clone(),
-                    config.clone(),
+                let body = check!(
+                    Expression::parse_from_pair(body.clone(), config.clone()),
                     Expression::Unit {
                         span: Span {
                             span: body.as_span(),
                             path
                         }
-                    }
+                    },
+                    warnings,
+                    errors
                 );
 
                 ok(
@@ -73,13 +69,11 @@ impl<'sc> Reassignment<'sc> {
                     span: rhs.as_span(),
                     path: path.clone(),
                 };
-                let body = eval2!(
-                    Expression::parse_from_pair,
+                let body = check!(
+                    Expression::parse_from_pair(rhs, config.clone()),
+                    Expression::Unit { span: rhs_span },
                     warnings,
-                    errors,
-                    rhs,
-                    config.clone(),
-                    Expression::Unit { span: rhs_span }
+                    errors
                 );
 
                 let inner = lhs.into_inner().next().expect("guaranteed by gramar");
@@ -93,13 +87,14 @@ impl<'sc> Reassignment<'sc> {
                 // the first thing is either an exp or a var, everything subsequent must be
                 // a field
                 let mut name_parts = name_parts.into_iter();
-                let mut expr = eval2!(
-                    parse_call_item_ensure_only_var,
+                let mut expr = check!(
+                    parse_call_item_ensure_only_var(
+                        name_parts.next().expect("guaranteed by grammar"),
+                        config.clone()
+                    ),
+                    return err(warnings, errors),
                     warnings,
-                    errors,
-                    name_parts.next().expect("guaranteed by grammar"),
-                    config.clone(),
-                    return err(warnings, errors)
+                    errors
                 );
 
                 for name_part in name_parts {
@@ -110,13 +105,11 @@ impl<'sc> Reassignment<'sc> {
                             span: name_part.as_span(),
                             path: path.clone(),
                         },
-                        field_to_access: eval2!(
-                            Ident::parse_from_pair,
+                        field_to_access: check!(
+                            Ident::parse_from_pair(name_part, config.clone()),
+                            continue,
                             warnings,
-                            errors,
-                            name_part,
-                            config.clone(),
-                            continue
+                            errors
                         ),
                     }
                 }
@@ -157,13 +150,11 @@ fn parse_call_item_ensure_only_var<'sc>(
     let item = item.into_inner().next().expect("guaranteed by grammar");
     let exp = match item.as_rule() {
         Rule::ident => Expression::VariableExpression {
-            name: eval2!(
-                Ident::parse_from_pair,
+            name: check!(
+                Ident::parse_from_pair(item.clone(), config.clone()),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                item,
-                config.clone(),
-                return err(warnings, errors)
+                errors
             ),
             span: Span {
                 span: item.as_span(),

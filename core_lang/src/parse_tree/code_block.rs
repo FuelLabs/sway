@@ -34,13 +34,11 @@ impl<'sc> CodeBlock<'sc> {
         for pair in block_inner {
             contents.push(match pair.as_rule() {
                 Rule::declaration => AstNode {
-                    content: AstNodeContent::Declaration(eval2!(
-                        Declaration::parse_from_pair,
+                    content: AstNodeContent::Declaration(check!(
+                        Declaration::parse_from_pair(pair.clone(), config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        pair.clone(),
-                        config.clone(),
-                        continue
+                        errors
                     )),
                     span: span::Span {
                         span: pair.as_span(),
@@ -48,13 +46,14 @@ impl<'sc> CodeBlock<'sc> {
                     },
                 },
                 Rule::expr_statement => {
-                    let evaluated_node = eval2!(
-                        Expression::parse_from_pair,
+                    let evaluated_node = check!(
+                        Expression::parse_from_pair(
+                            pair.clone().into_inner().next().unwrap().clone(),
+                            config.clone()
+                        ),
+                        continue,
                         warnings,
-                        errors,
-                        pair.clone().into_inner().next().unwrap().clone(),
-                        config.clone(),
-                        continue
+                        errors
                     );
                     AstNode {
                         content: AstNodeContent::Expression(evaluated_node),
@@ -65,13 +64,11 @@ impl<'sc> CodeBlock<'sc> {
                     }
                 }
                 Rule::return_statement => {
-                    let evaluated_node = eval2!(
-                        ReturnStatement::parse_from_pair,
+                    let evaluated_node = check!(
+                        ReturnStatement::parse_from_pair(pair.clone(), config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        pair.clone(),
-                        config.clone(),
-                        continue
+                        errors
                     );
                     AstNode {
                         content: AstNodeContent::ReturnStatement(evaluated_node),
@@ -82,13 +79,11 @@ impl<'sc> CodeBlock<'sc> {
                     }
                 }
                 Rule::expr => {
-                    let res = eval2!(
-                        Expression::parse_from_pair,
+                    let res = check!(
+                        Expression::parse_from_pair(pair.clone(), config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        pair.clone(),
-                        config,
-                        continue
+                        errors
                     );
                     AstNode {
                         content: AstNodeContent::ImplicitReturnExpression(res.clone()),
@@ -96,13 +91,11 @@ impl<'sc> CodeBlock<'sc> {
                     }
                 }
                 Rule::while_loop => {
-                    let res = eval2!(
-                        WhileLoop::parse_from_pair,
+                    let res = check!(
+                        WhileLoop::parse_from_pair(pair.clone(), config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        pair.clone(),
-                        config.clone(),
-                        continue
+                        errors
                     );
                     AstNode {
                         content: AstNodeContent::WhileLoop(res),

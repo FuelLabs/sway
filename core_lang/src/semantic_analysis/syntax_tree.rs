@@ -3,12 +3,12 @@ use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDe
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::Namespace;
+use crate::span::Span;
 use crate::{
     error::*,
     types::{MaybeResolvedType, ResolvedType},
 };
 use crate::{AstNode, ParseTree};
-use crate::span::Span;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TreeType {

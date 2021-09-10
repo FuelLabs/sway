@@ -25,21 +25,17 @@ impl<'sc> TypeParameter<'sc> {
                 let mut buf = vec![];
                 for pair in type_params_pair.into_inner() {
                     buf.push(TypeParameter {
-                        name_ident: eval2!(
-                            Ident::parse_from_pair,
+                        name_ident: check!(
+                            Ident::parse_from_pair(pair.clone(), config.clone()),
+                            continue,
                             warnings,
-                            errors,
-                            pair,
-                            config.clone(),
-                            continue
+                            errors
                         ),
-                        name: eval2!(
-                            TypeInfo::parse_from_pair,
+                        name: check!(
+                            TypeInfo::parse_from_pair(pair.clone(), config.clone()),
+                            continue,
                             warnings,
-                            errors,
-                            pair,
-                            config.clone(),
-                            continue
+                            errors
                         ),
                         trait_constraints: Vec::new(),
                     });
@@ -89,13 +85,11 @@ impl<'sc> TypeParameter<'sc> {
                         };
 
                     param_to_edit.trait_constraints.push(TraitConstraint {
-                        name: eval2!(
-                            Ident::parse_from_pair,
+                        name: check!(
+                            Ident::parse_from_pair(trait_constraint, config.clone()),
+                            continue,
                             warnings,
-                            errors,
-                            trait_constraint,
-                            config,
-                            continue
+                            errors
                         ),
                     });
                 }

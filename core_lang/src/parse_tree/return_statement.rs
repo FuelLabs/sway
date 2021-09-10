@@ -29,13 +29,11 @@ impl<'sc> ReturnStatement<'sc> {
                 expr: Expression::Unit { span },
             },
             Some(expr_pair) => {
-                let expr = eval2!(
-                    Expression::parse_from_pair,
+                let expr = check!(
+                    Expression::parse_from_pair(expr_pair, config.clone()),
+                    Expression::Unit { span },
                     warnings,
-                    errors,
-                    expr_pair,
-                    config.clone(),
-                    Expression::Unit { span }
+                    errors
                 );
                 ReturnStatement { expr }
             }

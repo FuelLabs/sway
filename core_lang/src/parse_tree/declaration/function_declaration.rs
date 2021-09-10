@@ -58,13 +58,11 @@ impl<'sc> FunctionDeclaration<'sc> {
             span: name.as_span(),
             path: path.clone(),
         };
-        let name = eval2!(
-            Ident::parse_from_pair,
+        let name = check!(
+            Ident::parse_from_pair(name, config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            name,
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
         assert_or_warn!(
             is_snake_case(name.primary_name),
@@ -109,13 +107,14 @@ impl<'sc> FunctionDeclaration<'sc> {
         let parameters_pair = parameters_pair.unwrap();
         let parameters_span = parameters_pair.as_span();
 
-        let parameters = eval2!(
-            FunctionParameter::list_from_pairs,
+        let parameters = check!(
+            FunctionParameter::list_from_pairs(
+                parameters_pair.clone().into_inner(),
+                config.clone()
+            ),
+            Vec::new(),
             warnings,
-            errors,
-            parameters_pair.clone().into_inner(),
-            config.clone(),
-            Vec::new()
+            errors
         );
         let return_type_span = Span {
             span: if let Some(ref pair) = return_type_pair {
@@ -127,13 +126,11 @@ impl<'sc> FunctionDeclaration<'sc> {
             path: path.clone(),
         };
         let return_type = match return_type_pair {
-            Some(ref pair) => eval2!(
-                TypeInfo::parse_from_pair,
+            Some(ref pair) => check!(
+                TypeInfo::parse_from_pair(pair.clone(), config.clone()),
+                TypeInfo::Unit,
                 warnings,
-                errors,
-                pair,
-                config.clone(),
-                TypeInfo::Unit
+                errors
             ),
             None => TypeInfo::Unit,
         };
@@ -181,17 +178,15 @@ impl<'sc> FunctionDeclaration<'sc> {
             span: body.as_span(),
             path: path.clone(),
         };
-        let body = eval2!(
-            CodeBlock::parse_from_pair,
-            warnings,
-            errors,
-            body,
-            config.clone(),
+        let body = check!(
+            CodeBlock::parse_from_pair(body, config.clone()),
             crate::CodeBlock {
                 contents: Vec::new(),
                 whole_block_span,
                 scope: Default::default()
-            }
+            },
+            warnings,
+            errors
         );
         ok(
             FunctionDeclaration {
@@ -252,26 +247,22 @@ impl<'sc> FunctionParameter<'sc> {
             }
             let mut parts = pair.clone().into_inner();
             let name_pair = parts.next().unwrap();
-            let name = eval2!(
-                Ident::parse_from_pair,
+            let name = check!(
+                Ident::parse_from_pair(name_pair, config.clone()),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                name_pair,
-                config.clone(),
-                return err(warnings, errors)
+                errors
             );
             let type_pair = parts.next().unwrap();
             let type_span = Span {
                 span: type_pair.as_span(),
                 path: path.clone(),
             };
-            let r#type = eval2!(
-                TypeInfo::parse_from_pair_inner,
+            let r#type = check!(
+                TypeInfo::parse_from_pair_inner(type_pair, config.clone()),
+                TypeInfo::ErrorRecovery,
                 warnings,
-                errors,
-                type_pair,
-                config.clone(),
-                TypeInfo::ErrorRecovery
+                errors
             );
             pairs_buf.push(FunctionParameter {
                 name,

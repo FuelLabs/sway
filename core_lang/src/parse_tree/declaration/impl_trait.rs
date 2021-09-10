@@ -47,13 +47,11 @@ impl<'sc> ImplTrait<'sc> {
         assert_eq!(impl_keyword.as_str(), "impl");
         let trait_name = iter.next().unwrap();
         assert_eq!(trait_name.as_rule(), Rule::trait_name);
-        let trait_name = eval2!(
-            CallPath::parse_from_pair,
+        let trait_name = check!(
+            CallPath::parse_from_pair(trait_name, config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            trait_name,
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
         let mut iter = iter.peekable();
         let type_params_pair = if iter.peek().unwrap().as_rule() == Rule::type_params {
@@ -67,13 +65,11 @@ impl<'sc> ImplTrait<'sc> {
             span: type_implementing_for_pair.as_span(),
             path: path.clone(),
         };
-        let type_implementing_for = eval2!(
-            TypeInfo::parse_from_pair,
+        let type_implementing_for = check!(
+            TypeInfo::parse_from_pair(type_implementing_for_pair, config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            type_implementing_for_pair,
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
 
         let where_clause_pair = if iter.peek().unwrap().as_rule() == Rule::trait_bounds {
@@ -98,13 +94,11 @@ impl<'sc> ImplTrait<'sc> {
         let mut fn_decls_buf = vec![];
 
         for pair in iter {
-            fn_decls_buf.push(eval2!(
-                FunctionDeclaration::parse_from_pair,
+            fn_decls_buf.push(check!(
+                FunctionDeclaration::parse_from_pair(pair, config.clone()),
+                continue,
                 warnings,
-                errors,
-                pair,
-                config.clone(),
-                continue
+                errors
             ));
         }
 
@@ -151,13 +145,11 @@ impl<'sc> ImplSelf<'sc> {
             path: path.clone(),
         };
 
-        let type_implementing_for = eval2!(
-            TypeInfo::parse_from_pair,
+        let type_implementing_for = check!(
+            TypeInfo::parse_from_pair(type_pair, config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            type_pair,
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
 
         let where_clause_pair = match iter.peek() {
@@ -181,13 +173,11 @@ impl<'sc> ImplSelf<'sc> {
         let mut fn_decls_buf = vec![];
 
         for pair in iter {
-            fn_decls_buf.push(eval2!(
-                FunctionDeclaration::parse_from_pair,
+            fn_decls_buf.push(check!(
+                FunctionDeclaration::parse_from_pair(pair, config.clone()),
+                continue,
                 warnings,
-                errors,
-                pair,
-                config.clone(),
-                continue
+                errors
             ));
         }
 

@@ -29,19 +29,6 @@ macro_rules! eval {
     }};
 }
 
-/// evaluates `$fn` with argument `$arg`, and pushes any warnings to the `$warnings` buffer.
-macro_rules! eval2 {
-    ($fn: expr, $warnings: ident, $errors: ident, $arg1: expr, $arg2: expr, $error_recovery: expr) => {{
-        let mut res = $fn($arg1.clone(), $arg2.clone());
-        $warnings.append(&mut res.warnings);
-        $errors.append(&mut res.errors);
-        match res.value {
-            None => $error_recovery,
-            Some(value) => value,
-        }
-    }};
-}
-
 macro_rules! assert_or_warn {
     ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr) => {
         if !$bool_expr {

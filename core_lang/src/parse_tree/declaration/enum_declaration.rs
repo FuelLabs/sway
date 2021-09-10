@@ -99,13 +99,11 @@ impl<'sc> EnumDeclaration<'sc> {
 
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();
-        let name = eval2!(
-            Ident::parse_from_pair,
+        let name = check!(
+            Ident::parse_from_pair(enum_name.clone(), config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            enum_name,
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
         assert_or_warn!(
             is_class_case(name.primary_name),
@@ -119,13 +117,11 @@ impl<'sc> EnumDeclaration<'sc> {
             }
         );
 
-        let variants = eval2!(
-            EnumVariant::parse_from_pairs,
+        let variants = check!(
+            EnumVariant::parse_from_pairs(variants, config.clone()),
+            Vec::new(),
             warnings,
-            errors,
-            variants,
-            config.clone(),
-            Vec::new()
+            errors
         );
 
         ok(
@@ -188,13 +184,11 @@ impl<'sc> EnumVariant<'sc> {
                     span: fields[i].as_span(),
                     path: config.clone().map(|c| c.dir_of_code),
                 };
-                let name = eval2!(
-                    Ident::parse_from_pair,
+                let name = check!(
+                    Ident::parse_from_pair(fields[i].clone(), config.clone()),
+                    return err(warnings, errors),
                     warnings,
-                    errors,
-                    fields[i],
-                    config.clone(),
-                    return err(warnings, errors)
+                    errors
                 );
                 assert_or_warn!(
                     is_class_case(name.primary_name),
@@ -204,13 +198,11 @@ impl<'sc> EnumVariant<'sc> {
                         variant_name: name.primary_name.to_string()
                     }
                 );
-                let r#type = eval2!(
-                    TypeInfo::parse_from_pair_inner,
+                let r#type = check!(
+                    TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config.clone()),
+                    TypeInfo::Unit,
                     warnings,
-                    errors,
-                    fields[i + 1].clone(),
-                    config.clone(),
-                    TypeInfo::Unit
+                    errors
                 );
                 fields_buf.push(EnumVariant {
                     name,

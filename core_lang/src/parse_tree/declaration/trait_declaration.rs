@@ -37,13 +37,11 @@ impl<'sc> TraitDeclaration<'sc> {
                 (Visibility::Private, trait_keyword_or_visibility)
             };
         let name_pair = trait_parts.next().unwrap();
-        let name = eval2!(
-            Ident::parse_from_pair,
+        let name = check!(
+            Ident::parse_from_pair(name_pair.clone(), config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            name_pair,
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
         let span = name.span.clone();
         assert_or_warn!(
@@ -75,23 +73,19 @@ impl<'sc> TraitDeclaration<'sc> {
             for fn_sig_or_decl in methods_and_interface.into_inner() {
                 match fn_sig_or_decl.as_rule() {
                     Rule::fn_signature => {
-                        interface.push(eval2!(
-                            TraitFn::parse_from_pair,
+                        interface.push(check!(
+                            TraitFn::parse_from_pair(fn_sig_or_decl, config.clone()),
+                            continue,
                             warnings,
-                            errors,
-                            fn_sig_or_decl,
-                            config.clone(),
-                            continue
+                            errors
                         ));
                     }
                     Rule::fn_decl => {
-                        methods.push(eval2!(
-                            FunctionDeclaration::parse_from_pair,
+                        methods.push(check!(
+                            FunctionDeclaration::parse_from_pair(fn_sig_or_decl, config.clone()),
+                            continue,
                             warnings,
-                            errors,
-                            fn_sig_or_decl,
-                            config.clone(),
-                            continue
+                            errors
                         ));
                     }
                     a => unreachable!("{:?}", a),
@@ -146,13 +140,11 @@ impl<'sc> TraitFn<'sc> {
             span: name.as_span(),
             path: path.clone(),
         };
-        let name = eval2!(
-            Ident::parse_from_pair,
+        let name = check!(
+            Ident::parse_from_pair(name, config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            name,
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
         assert_or_warn!(
             is_snake_case(name.primary_name),
@@ -163,13 +155,11 @@ impl<'sc> TraitFn<'sc> {
             }
         );
         let parameters = signature.next().unwrap();
-        let parameters = eval2!(
-            FunctionParameter::list_from_pairs,
+        let parameters = check!(
+            FunctionParameter::list_from_pairs(parameters.into_inner(), config.clone()),
+            Vec::new(),
             warnings,
-            errors,
-            parameters.into_inner(),
-            config.clone(),
-            Vec::new()
+            errors
         );
         let return_type_signal = signature.next();
         let (return_type, return_type_span) = match return_type_signal {
@@ -180,13 +170,11 @@ impl<'sc> TraitFn<'sc> {
                     path: path.clone(),
                 };
                 (
-                    eval2!(
-                        TypeInfo::parse_from_pair,
+                    check!(
+                        TypeInfo::parse_from_pair(pair, config.clone()),
+                        TypeInfo::ErrorRecovery,
                         warnings,
-                        errors,
-                        pair,
-                        config.clone(),
-                        TypeInfo::ErrorRecovery
+                        errors
                     ),
                     span,
                 )

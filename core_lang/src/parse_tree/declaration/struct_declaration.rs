@@ -70,13 +70,11 @@ impl<'sc> StructDeclaration<'sc> {
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let fields = if let Some(fields) = fields_pair {
-            eval2!(
-                StructField::parse_from_pairs,
+            check!(
+                StructField::parse_from_pairs(fields, config.clone()),
+                Vec::new(),
                 warnings,
-                errors,
-                fields,
-                config.clone(),
-                Vec::new()
+                errors
             )
         } else {
             Vec::new()
@@ -86,13 +84,11 @@ impl<'sc> StructDeclaration<'sc> {
             span: name.as_span(),
             path: path.clone(),
         };
-        let name = eval2!(
-            Ident::parse_from_pair,
+        let name = check!(
+            Ident::parse_from_pair(name, config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            name,
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
         assert_or_warn!(
             is_class_case(name.primary_name),
@@ -130,13 +126,11 @@ impl<'sc> StructField<'sc> {
                 span: fields[i].as_span(),
                 path: path.clone(),
             };
-            let name = eval2!(
-                Ident::parse_from_pair,
+            let name = check!(
+                Ident::parse_from_pair(fields[i].clone(), config.clone()),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                fields[i],
-                config.clone(),
-                return err(warnings, errors)
+                errors
             );
             assert_or_warn!(
                 is_snake_case(name.primary_name),
@@ -146,13 +140,11 @@ impl<'sc> StructField<'sc> {
                     field_name: name.primary_name.clone().to_string()
                 }
             );
-            let r#type = eval2!(
-                TypeInfo::parse_from_pair_inner,
+            let r#type = check!(
+                TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config.clone()),
+                TypeInfo::Unit,
                 warnings,
-                errors,
-                fields[i + 1].clone(),
-                config.clone(),
-                TypeInfo::Unit
+                errors
             );
             fields_buf.push(StructField { name, r#type, span });
         }

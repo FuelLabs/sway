@@ -32,34 +32,28 @@ impl<'sc> AbiDeclaration<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let _abi_keyword = iter.next().expect("guaranteed by grammar");
-        let name = eval2!(
-            Ident::parse_from_pair,
+        let name = check!(
+            Ident::parse_from_pair(iter.next().expect("guaranteed by grammar"), config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            iter.next().expect("guaranteed by grammar"),
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
         let mut interface_surface = vec![];
         let mut methods = vec![];
         let trait_methods = iter.next().expect("guaranteed by grammar");
         for func in trait_methods.into_inner() {
             match func.as_rule() {
-                Rule::fn_signature => interface_surface.push(eval2!(
-                    TraitFn::parse_from_pair,
+                Rule::fn_signature => interface_surface.push(check!(
+                    TraitFn::parse_from_pair(func, config.clone()),
+                    continue,
                     warnings,
-                    errors,
-                    func,
-                    config.clone(),
-                    continue
+                    errors
                 )),
-                Rule::fn_decl => methods.push(eval2!(
-                    FunctionDeclaration::parse_from_pair,
+                Rule::fn_decl => methods.push(check!(
+                    FunctionDeclaration::parse_from_pair(func, config.clone()),
+                    continue,
                     warnings,
-                    errors,
-                    func,
-                    config,
-                    continue
+                    errors
                 )),
                 _ => unreachable!("guaranteed by grammar"),
             }

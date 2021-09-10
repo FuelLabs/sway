@@ -123,13 +123,11 @@ pub fn parse<'sc>(
             )
         }
     };
-    let res = eval2!(
-        parse_root_from_pairs,
+    let res = check!(
+        parse_root_from_pairs(parsed.next().unwrap().into_inner(), config.clone()),
+        return err(warnings, errors),
         warnings,
-        errors,
-        parsed.next().unwrap().into_inner(),
-        config,
-        return err(warnings, errors)
+        errors
     );
     ok(res, warnings, errors)
 }
@@ -204,13 +202,11 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
 ) -> CompileResult<'sc, InnerDependencyCompileResult<'sc>> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let parse_tree = eval2!(
-        parse,
+    let parse_tree = check!(
+        parse(input, Some(build_config.clone())),
+        return err(warnings, errors),
         warnings,
-        errors,
-        input,
-        Some(build_config.clone()),
-        return err(warnings, errors)
+        errors
     );
     match (
         parse_tree.script_ast,
@@ -287,13 +283,11 @@ pub fn compile_to_asm<'sc, 'manifest>(
 ) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let parse_tree = eval2!(
-        parse,
+    let parse_tree = check!(
+        parse(input, Some(build_config.clone())),
+        return CompilationResult::Failure { errors, warnings },
         warnings,
-        errors,
-        input,
-        Some(build_config.clone()),
-        return CompilationResult::Failure { errors, warnings }
+        errors
     );
     let mut dead_code_graph = ControlFlowGraph {
         graph: Graph::new(),
@@ -561,13 +555,11 @@ fn parse_root_from_pairs<'sc>(
         for pair in input {
             match pair.as_rule() {
                 Rule::declaration => {
-                    let decl = eval2!(
-                        Declaration::parse_from_pair,
+                    let decl = check!(
+                        Declaration::parse_from_pair(pair.clone(), config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        pair.clone(),
-                        config.clone(),
-                        continue
+                        errors
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::Declaration(decl),
@@ -578,13 +570,11 @@ fn parse_root_from_pairs<'sc>(
                     });
                 }
                 Rule::use_statement => {
-                    let stmt = eval2!(
-                        UseStatement::parse_from_pair,
+                    let stmt = check!(
+                        UseStatement::parse_from_pair(pair.clone(), config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        pair.clone(),
-                        config.clone(),
-                        continue
+                        errors
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::UseStatement(stmt),
@@ -596,24 +586,20 @@ fn parse_root_from_pairs<'sc>(
                 }
                 Rule::library_name => {
                     let lib_pair = pair.into_inner().next().unwrap();
-                    library_name = Some(eval2!(
-                        Ident::parse_from_pair,
+                    library_name = Some(check!(
+                        Ident::parse_from_pair(lib_pair, config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        lib_pair,
-                        config.clone(),
-                        continue
+                        errors
                     ));
                 }
                 Rule::include_statement => {
                     // parse the include statement into a reference to a specific file
-                    let include_statement = eval2!(
-                        IncludeStatement::parse_from_pair,
+                    let include_statement = check!(
+                        IncludeStatement::parse_from_pair(pair.clone(), config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        pair,
-                        config.clone(),
-                        continue
+                        errors
                     );
                     parse_tree.push(AstNode {
                         content: AstNodeContent::IncludeStatement(include_statement),

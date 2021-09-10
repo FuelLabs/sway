@@ -41,13 +41,11 @@ impl<'sc> UseStatement<'sc> {
         let last_item = import_path_vec.pop().unwrap();
         let import_type = match last_item.as_rule() {
             Rule::star => ImportType::Star,
-            Rule::ident => ImportType::Item(eval2!(
-                Ident::parse_from_pair,
+            Rule::ident => ImportType::Item(check!(
+                Ident::parse_from_pair(last_item, config.clone()),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                last_item,
-                config,
-                return err(warnings, errors)
+                errors
             )),
             _ => unreachable!(),
         };
@@ -63,13 +61,11 @@ impl<'sc> UseStatement<'sc> {
                 continue;
             }
             if item.as_rule() == Rule::ident {
-                import_path_buf.push(eval2!(
-                    Ident::parse_from_pair,
+                import_path_buf.push(check!(
+                    Ident::parse_from_pair(item, config.clone()),
+                    return err(warnings, errors),
                     warnings,
-                    errors,
-                    item,
-                    config,
-                    return err(warnings, errors)
+                    errors
                 ));
             }
         }

@@ -40,13 +40,11 @@ impl<'sc> IncludeStatement<'sc> {
                     path: path.clone(),
                 });
             } else if item.as_rule() == Rule::alias {
-                let alias_parsed = eval2!(
-                    Ident::parse_from_pair,
+                let alias_parsed = check!(
+                    Ident::parse_from_pair(item.into_inner().next().unwrap(), config.clone()),
+                    continue,
                     warnings,
-                    errors,
-                    item.into_inner().next().unwrap(),
-                    config.clone(),
-                    continue
+                    errors
                 );
                 alias = Some(alias_parsed);
             }

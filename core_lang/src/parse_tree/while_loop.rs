@@ -30,31 +30,27 @@ impl<'sc> WhileLoop<'sc> {
             path: path.clone(),
         };
 
-        let condition = eval2!(
-            Expression::parse_from_pair,
-            warnings,
-            errors,
-            condition,
-            config,
+        let condition = check!(
+            Expression::parse_from_pair(condition.clone(), config.clone()),
             Expression::Unit {
                 span: Span {
                     span: condition.as_span(),
                     path: path.clone()
                 }
-            }
+            },
+            warnings,
+            errors
         );
 
-        let body = eval2!(
-            CodeBlock::parse_from_pair,
-            warnings,
-            errors,
-            body,
-            config,
+        let body = check!(
+            CodeBlock::parse_from_pair(body, config.clone()),
             CodeBlock {
                 contents: Default::default(),
                 whole_block_span,
                 scope: Default::default()
-            }
+            },
+            warnings,
+            errors
         );
 
         ok(WhileLoop { condition, body }, warnings, errors)

@@ -117,13 +117,11 @@ impl<'sc> TypeInfo<'sc> {
                     errors
                 ),
                 _other => TypeInfo::Custom {
-                    name: eval2!(
-                        Ident::parse_from_pair,
+                    name: check!(
+                        Ident::parse_from_pair(input, config),
+                        return err(warnings, errors),
                         warnings,
-                        errors,
-                        input,
-                        config,
-                        return err(warnings, errors)
+                        errors
                     ),
                 },
             },

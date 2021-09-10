@@ -48,13 +48,11 @@ impl<'sc> Declaration<'sc> {
         let mut pair = decl.clone().into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
-            Rule::fn_decl => Declaration::FunctionDeclaration(eval2!(
-                FunctionDeclaration::parse_from_pair,
+            Rule::fn_decl => Declaration::FunctionDeclaration(check!(
+                FunctionDeclaration::parse_from_pair(decl_inner, config),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                decl_inner,
-                config,
-                return err(warnings, errors)
+                errors
             )),
             Rule::var_decl => {
                 let mut var_decl_parts = decl_inner.into_inner();
@@ -76,94 +74,74 @@ impl<'sc> Declaration<'sc> {
                     _ => None,
                 };
                 let type_ascription = if let Some(ascription) = type_ascription {
-                    Some(eval2!(
-                        TypeInfo::parse_from_pair,
+                    Some(check!(
+                        TypeInfo::parse_from_pair(ascription, config.clone()),
+                        TypeInfo::Unit,
                         warnings,
-                        errors,
-                        ascription,
-                        config,
-                        TypeInfo::Unit
+                        errors
                     ))
                 } else {
                     None
                 };
-                let body = eval2!(
-                    Expression::parse_from_pair,
+                let body = check!(
+                    Expression::parse_from_pair(maybe_body, config.clone()),
+                    return err(warnings, errors),
                     warnings,
-                    errors,
-                    maybe_body,
-                    config,
-                    return err(warnings, errors)
+                    errors
                 );
                 Declaration::VariableDeclaration(VariableDeclaration {
-                    name: eval2!(
-                        Ident::parse_from_pair,
+                    name: check!(
+                        Ident::parse_from_pair(name_pair, config.clone()),
+                        return err(warnings, errors),
                         warnings,
-                        errors,
-                        name_pair,
-                        config,
-                        return err(warnings, errors)
+                        errors
                     ),
                     body,
                     is_mutable,
                     type_ascription,
                 })
             }
-            Rule::trait_decl => Declaration::TraitDeclaration(eval2!(
-                TraitDeclaration::parse_from_pair,
+            Rule::trait_decl => Declaration::TraitDeclaration(check!(
+                TraitDeclaration::parse_from_pair(decl_inner, config),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                decl_inner,
-                config,
-                return err(warnings, errors)
+                errors
             )),
-            Rule::struct_decl => Declaration::StructDeclaration(eval2!(
-                StructDeclaration::parse_from_pair,
+            Rule::struct_decl => Declaration::StructDeclaration(check!(
+                StructDeclaration::parse_from_pair(decl_inner, config),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                decl_inner,
-                config,
-                return err(warnings, errors)
+                errors
             )),
-            Rule::enum_decl => Declaration::EnumDeclaration(eval2!(
-                EnumDeclaration::parse_from_pair,
+            Rule::enum_decl => Declaration::EnumDeclaration(check!(
+                EnumDeclaration::parse_from_pair(decl_inner, config),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                decl_inner,
-                config,
-                return err(warnings, errors)
+                errors
             )),
-            Rule::reassignment => Declaration::Reassignment(eval2!(
-                Reassignment::parse_from_pair,
+            Rule::reassignment => Declaration::Reassignment(check!(
+                Reassignment::parse_from_pair(decl_inner, config),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                decl_inner,
-                config,
-                return err(warnings, errors)
+                errors
             )),
-            Rule::impl_trait => Declaration::ImplTrait(eval2!(
-                ImplTrait::parse_from_pair,
+            Rule::impl_trait => Declaration::ImplTrait(check!(
+                ImplTrait::parse_from_pair(decl_inner, config),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                decl_inner,
-                config,
-                return err(warnings, errors)
+                errors
             )),
-            Rule::impl_self => Declaration::ImplSelf(eval2!(
-                ImplSelf::parse_from_pair,
+            Rule::impl_self => Declaration::ImplSelf(check!(
+                ImplSelf::parse_from_pair(decl_inner, config),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                decl_inner,
-                config,
-                return err(warnings, errors)
+                errors
             )),
-            Rule::abi_decl => Declaration::AbiDeclaration(eval2!(
-                AbiDeclaration::parse_from_pair,
+            Rule::abi_decl => Declaration::AbiDeclaration(check!(
+                AbiDeclaration::parse_from_pair(decl_inner, config),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                decl_inner,
-                config,
-                return err(warnings, errors)
+                errors
             )),
             a => unreachable!("declarations don't have any other sub-types: {:?}", a),
         };

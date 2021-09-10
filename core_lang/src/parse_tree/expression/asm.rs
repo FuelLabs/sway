@@ -32,13 +32,11 @@ impl<'sc> AsmExpression<'sc> {
         let mut iter = pair.into_inner();
         let _asm_keyword = iter.next();
         let asm_registers = iter.next().unwrap();
-        let asm_registers = eval2!(
-            AsmRegisterDeclaration::parse_from_pair,
+        let asm_registers = check!(
+            AsmRegisterDeclaration::parse_from_pair(asm_registers, config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            asm_registers,
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
         let mut asm_op_buf = Vec::new();
         let mut implicit_op_return = None;
@@ -46,13 +44,11 @@ impl<'sc> AsmExpression<'sc> {
         while let Some(pair) = iter.next() {
             match pair.as_rule() {
                 Rule::asm_op => {
-                    let op = eval2!(
-                        AsmOp::parse_from_pair,
+                    let op = check!(
+                        AsmOp::parse_from_pair(pair, config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        pair,
-                        config,
-                        continue
+                        errors
                     );
                     asm_op_buf.push(op);
                 }
@@ -72,13 +68,11 @@ impl<'sc> AsmExpression<'sc> {
                     ));
                 }
                 Rule::type_name => {
-                    implicit_op_type = Some(eval2!(
-                        TypeInfo::parse_from_pair,
+                    implicit_op_type = Some(check!(
+                        TypeInfo::parse_from_pair(pair, config.clone()),
+                        continue,
                         warnings,
-                        errors,
-                        pair,
-                        config.clone(),
-                        continue
+                        errors
                     ));
                 }
                 a => unreachable!("{:?}", a),
@@ -148,13 +142,11 @@ impl<'sc> AsmOp<'sc> {
             path: path.clone(),
         };
         let mut iter = pair.into_inner();
-        let opcode = eval2!(
-            Ident::parse_from_pair,
+        let opcode = check!(
+            Ident::parse_from_pair(iter.next().unwrap(), config.clone()),
+            return err(warnings, errors),
             warnings,
-            errors,
-            iter.next().unwrap(),
-            config.clone(),
-            return err(warnings, errors)
+            errors
         );
         let mut args = vec![];
         let mut immediate_value = None;
@@ -217,13 +209,11 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
             // if there is still anything in the iterator, then it is a variable expression to be
             // assigned to that register
             let initializer = if let Some(pair) = iter.next() {
-                Some(eval2!(
-                    Expression::parse_from_pair,
+                Some(check!(
+                    Expression::parse_from_pair(pair, config.clone()),
+                    return err(warnings, errors),
                     warnings,
-                    errors,
-                    pair,
-                    config.clone(),
-                    return err(warnings, errors)
+                    errors
                 ))
             } else {
                 None
