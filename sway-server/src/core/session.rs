@@ -31,8 +31,7 @@ impl Session {
         }
     }
 
-    // todo: use this function to handle deleted files
-    pub fn _remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
         match self.documents.remove(url.path()) {
             Some((_, text_document)) => Ok(text_document),
             None => Err(DocumentError::DocumentNotFound),

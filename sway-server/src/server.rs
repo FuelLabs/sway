@@ -1,18 +1,18 @@
+use crate::core::{document::DocumentError, session::Session};
+use crate::{capabilities, core::document::TextDocument};
+
+use lsp::{
+    CompletionParams, CompletionResponse, Hover, HoverParams, HoverProviderCapability,
+    InitializeParams, InitializeResult, MessageType, OneOf,
+};
 use lspower::{jsonrpc, lsp, Client, LanguageServer};
+
 use std::{
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
     sync::Arc,
 };
-
-use lsp::{
-    CompletionParams, CompletionResponse, Hover, HoverParams, HoverProviderCapability,
-    InitializeParams, InitializeResult, MessageType, OneOf,
-};
-
-use crate::core::{document::DocumentError, session::Session};
-use crate::{capabilities, core::document::TextDocument};
 
 #[derive(Debug)]
 pub struct Backend {
@@ -175,6 +175,11 @@ impl LanguageServer for Backend {
                 .publish_diagnostics(params.text_document.uri, diagnostics, None)
                 .await;
         }
+    }
+
+    async fn did_change_watched_files(&self, params: lsp::DidChangeWatchedFilesParams) {
+        let events = params.changes;
+        capabilities::file_sync::handle_watched_files(self.session.clone(), events);
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {
