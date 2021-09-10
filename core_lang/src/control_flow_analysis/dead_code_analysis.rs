@@ -919,6 +919,10 @@ fn construct_dead_code_warning_from_node<'sc>(
             warning_content: Warning::DeadTrait,
         },
         TypedAstNode {
+            content: TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait { methods, .. }),
+            ..
+        } if methods.is_empty() => return None,
+        TypedAstNode {
             content: TypedAstNodeContent::Declaration(TypedDeclaration::AbiDeclaration { .. }),
             ..
         } => return None,

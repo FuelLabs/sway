@@ -21,9 +21,10 @@ fn main() -> bool {
     a: y,
     b: z,
   };
+
   let v = WrapperEnum::Variant(u);
 
-  return true;
+  true
 }
 
 struct FuelWrapper {

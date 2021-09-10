@@ -198,11 +198,26 @@ impl<'sc> Literal<'sc> {
             }
             U64(val) => val.to_be_bytes().to_vec(),
             Boolean(b) => {
-                let bytes = (if *b { 1u64 } else { 0u64 }).to_be_bytes();
-                vec![0, 0, 0, 0, 0, 0, 0, bytes[0]]
+                vec![
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    if *b { 0b00000001 } else { 0b00000000 },
+                ]
             }
             // assume utf8 for now
-            String(st) => st.to_string().into_bytes(),
+            String(st) => {
+                let mut buf = st.to_string().into_bytes();
+                // pad to word alignment
+                while buf.len() % 8 != 0 {
+                    buf.push(0);
+                }
+                buf
+            }
             Byte(b) => vec![0, 0, 0, 0, 0, 0, 0, b.to_be_bytes()[0]],
             B256(b) => b.to_vec(),
         }
