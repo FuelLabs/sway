@@ -2,6 +2,8 @@ mod harness;
 use fuel_vm::prelude::*;
 
 pub fn run() {
+    // programs that should successfully compile and terminate
+    // with some known state
     let project_names = vec![
         ("asm_expr_basic", ProgramState::Return(6)),
         ("basic_func_decl", ProgramState::Return(1)), // 1 == true
@@ -18,4 +20,10 @@ pub fn run() {
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
     });
+
+    // source code that should _not_ compile
+    let project_names = vec!["recursive_calls"];
+    project_names
+        .into_iter()
+        .for_each(|name| does_not_compile(name));
 }

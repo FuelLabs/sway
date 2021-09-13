@@ -55,7 +55,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
         state_root: rng.gen(),
     };
 
-    let script = compile_to_bytes(file_name);
+    let script = compile_to_bytes(file_name).unwrap();
     let gas_price = 10;
     let gas_limit = 10000;
     let maturity = 0;
@@ -81,9 +81,17 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
         .clone()
 }
 
+/// Panics if code _does_ compile, used for test cases where the source
+/// code should have been rejected by the compiler.
+pub(crate) fn does_not_compile(file_name: &str) {
+    if let Ok(o) = compile_to_bytes(file_name) {
+        panic!("{} should not have compiled.", file_name);
+    }
+}
+
 /// Returns `true` if a file compiled without any errors or warnings,
 /// and `false` if it did not.
-pub(crate) fn compile_to_bytes(file_name: &str) -> Vec<u8> {
+pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
     println!("Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     forc::ops::forc_build::build(BuildCommand {
@@ -96,5 +104,4 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Vec<u8> {
         binary_outfile: None,
         offline_mode: false,
     })
-    .unwrap()
 }
