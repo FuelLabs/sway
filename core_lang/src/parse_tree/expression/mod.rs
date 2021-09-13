@@ -746,11 +746,14 @@ fn convert_unary_to_fn_calls<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, E
     let mut expr = None;
     for item in iter {
         match item.as_rule() {
-            Rule::unary_op => unary_stack.push(check!(
-                UnaryOp::parse_from_pair(item),
-                return err(warnings, errors),
-                warnings,
-                errors
+            Rule::unary_op => unary_stack.push((
+                item.as_span(),
+                check!(
+                    UnaryOp::parse_from_pair(item),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
             )),
             Rule::expr => {
                 expr = Some(check!(
@@ -766,8 +769,12 @@ fn convert_unary_to_fn_calls<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, E
 
     let mut expr = expr.expect("guaranteed by grammar");
     assert!(!unary_stack.is_empty(), "guaranteed by grammar");
-    while let Some(unary_op) = unary_stack.pop() {
-        expr = unary_op.to_fn_application(expr);
+    while let Some((op_span, unary_op)) = unary_stack.pop() {
+        expr = unary_op.to_fn_application(
+            expr.clone(),
+            join_spans(op_span.clone(), expr.span()),
+            op_span,
+        );
     }
     ok(expr, warnings, errors)
 }

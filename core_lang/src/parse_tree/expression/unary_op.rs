@@ -1,7 +1,9 @@
 use crate::error::*;
-use crate::parse_tree::Expression;
+use crate::parse_tree::{CallPath, Expression};
 use crate::parser::Rule;
+use crate::Ident;
 use pest::iterators::Pair;
+use pest::Span;
 
 #[derive(Clone, Debug)]
 pub enum UnaryOp {
@@ -27,7 +29,40 @@ impl UnaryOp {
         }
     }
 
-    pub fn to_fn_application<'sc>(&self, arg: Expression<'sc>) -> Expression<'sc> {
-        todo!()
+    fn to_var_name(&self) -> &'static str {
+        use UnaryOp::*;
+        match self {
+            Ref => "ref",
+            Deref => "deref",
+            Not => "not",
+        }
+    }
+
+    pub fn to_fn_application<'sc>(
+        &self,
+        arg: Expression<'sc>,
+        span: Span<'sc>,
+        op_span: Span<'sc>,
+    ) -> Expression<'sc> {
+        Expression::FunctionApplication {
+            name: CallPath {
+                prefixes: vec![
+                    Ident {
+                        primary_name: "std".into(),
+                        span: op_span.clone(),
+                    },
+                    Ident {
+                        primary_name: "ops".into(),
+                        span: op_span.clone(),
+                    },
+                ],
+                suffix: Ident {
+                    primary_name: self.to_var_name(),
+                    span: op_span,
+                },
+            },
+            arguments: vec![arg],
+            span,
+        }
     }
 }

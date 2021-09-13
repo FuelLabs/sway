@@ -270,3 +270,13 @@ impl Ord for u8 {
     }
   }
 }
+
+// should this be a trait eventually? do we want to allow people to customize what `!` does? 
+// Scala says yes, Rust says perhaps...
+pub fn not(a: bool) -> bool {
+  // using direct asm for perf
+  asm(r1: a, r2) {
+    eq r2 r1 zero;
+    r2: bool
+  }
+}
