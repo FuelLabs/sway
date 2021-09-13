@@ -1,7 +1,7 @@
 [project]
 author  = "Alex Hansen <alex.hansen@fuel.sh>"
 license = "MIT"
-name = "unary_not_basic"
+name = "unary_not_basic_2"
 entry = "main.sw"
 
 [dependencies]
