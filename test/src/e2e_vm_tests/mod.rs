@@ -14,6 +14,7 @@ pub fn run() {
         ("enum_in_fn_decl", ProgramState::Return(255)),
         ("empty_impl", ProgramState::Return(0)),
         ("main_returns_unit", ProgramState::Return(0)),
+        ("unary_not_basic", ProgramState::Return(1)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);

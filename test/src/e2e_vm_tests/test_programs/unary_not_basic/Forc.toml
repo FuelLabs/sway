@@ -1,0 +1,5 @@
+[project]
+author  = "Alex Hansen <alex.hansen@fuel.sh>"
+license = "MIT"
+name = "unary_not"
+entry = "main.sw"
