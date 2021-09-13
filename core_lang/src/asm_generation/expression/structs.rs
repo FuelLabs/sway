@@ -7,7 +7,6 @@ use crate::{
     },
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
-    span::Span,
     types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     CompileResult, Ident,
 };
@@ -65,6 +64,7 @@ impl<'sc> StructMemoryLayoutDescriptor<'sc> {
 
 #[test]
 fn test_struct_memory_layout() {
+    use crate::span::Span;
     let first_field_name = Ident {
         span: Span {
             span: pest::Span::new(" ", 0, 0).unwrap(),
