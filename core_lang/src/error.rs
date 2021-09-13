@@ -678,6 +678,16 @@ pub enum CompileError<'sc> {
         should_be: String,
         provided: String,
     },
+    #[error("Function {fn_name} is recursive, which is unsupported at this time.")]
+    RecursiveCall { fn_name: &'sc str, span: Span<'sc> },
+    #[error(
+        "Function {fn_name} is recursive via {call_chain}, which is unsupported at this time."
+    )]
+    RecursiveCallChain {
+        fn_name: &'sc str,
+        call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -847,6 +857,8 @@ impl<'sc> CompileError<'sc> {
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span,
             AbiFunctionRequiresSpecificSignature { span, .. } => span,
             ArgumentParameterTypeMismatch { span, .. } => span,
+            RecursiveCall { span, .. } => span,
+            RecursiveCallChain { span, .. } => span,
         }
     }
 
