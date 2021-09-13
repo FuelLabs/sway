@@ -2,6 +2,13 @@ use super::*;
 use crate::parse_tree::AsmOp;
 use crate::semantic_analysis::ast_node::*;
 use crate::Ident;
+
+#[derive(Clone, Debug)]
+pub(crate) struct ContractCallMetadata<'sc> {
+    pub(crate) func_selector: [u8; 4],
+    pub(crate) contract_address: Box<TypedExpression<'sc>>,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) enum TypedExpressionVariant<'sc> {
     Literal(Literal<'sc>),
@@ -9,7 +16,9 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         name: CallPath<'sc>,
         arguments: Vec<(Ident<'sc>, TypedExpression<'sc>)>,
         function_body: TypedCodeBlock<'sc>,
-        is_contract_call: bool,
+        /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
+        /// there is no selector.
+        selector: Option<ContractCallMetadata<'sc>>,
     },
     VariableExpression {
         unary_op: Option<UnaryOp>,
@@ -87,7 +96,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                     Literal::String(content) => content.to_string(),
                     Literal::Boolean(content) => content.to_string(),
                     Literal::Byte(content) => content.to_string(),
-                    Literal::Byte32(content) => content
+                    Literal::B256(content) => content
                         .iter()
                         .map(|x| x.to_string())
                         .collect::<Vec<_>>()

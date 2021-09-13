@@ -25,7 +25,8 @@ fn get_gas() -> GasCounts {
 	}
 }
 
-fn main() {
+fn main() -> u32 {
 	let block_height = blockheight();
 	let remaining_gas = get_gas();
+  return 6u32;
 }

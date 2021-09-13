@@ -3,7 +3,9 @@ use std::{
     str::Chars,
 };
 
-use crate::code_builder_helpers::{get_already_formatted_line_pattern, get_new_line_pattern};
+use crate::code_builder_helpers::{
+    get_already_formatted_line_pattern, get_new_line_pattern, is_else_statement_next,
+};
 
 use super::{
     code_builder_helpers::{
@@ -45,7 +47,7 @@ impl CodeBuilder {
 
     /// formats line of code and adds it to Vec<CodeLine>
     pub fn format_and_add(&mut self, line: &str) {
-        let mut code_line = self.get_unfinished_code_line_or_new();
+        let mut code_line = self.get_unfinished_code_line_or_new(line);
 
         let is_string_or_multiline_comment =
             code_line.is_string() || code_line.is_multiline_comment();
@@ -196,11 +198,20 @@ impl CodeBuilder {
     }
 
     /// if previous line is not completed get it, otherwise start a new one
-    fn get_unfinished_code_line_or_new(&mut self) -> CodeLine {
+    fn get_unfinished_code_line_or_new(&mut self, incoming_line: &str) -> CodeLine {
         match self.edits.last() {
             Some(code_line) => {
                 if code_line.is_completed {
-                    CodeLine::default()
+                    // check if 'else' statement is incoming
+                    if code_line.get_last_char() == Some('}')
+                        && is_else_statement_next(incoming_line)
+                    {
+                        let mut code_line = self.edits.pop().unwrap();
+                        code_line.append_whitespace();
+                        code_line
+                    } else {
+                        CodeLine::default()
+                    }
                 } else {
                     self.edits.pop().unwrap()
                 }
@@ -262,10 +273,21 @@ impl CodeBuilder {
                 iter.next();
                 self.move_rest_to_new_line(line, iter);
             }
-            // if there is more - move to new line!
-            Some(_) => {
-                self.complete_and_add_line(CodeLine::new("}".into()));
-                self.move_rest_to_new_line(line, iter);
+            // if there is more move to new line, unless it's 'else' statement or ')' | '{'
+            Some((next_index, next_char)) => {
+                let next_line = &line[*next_index..].trim();
+                let is_valid_char = *next_char == '{' || *next_char == ')';
+
+                if is_valid_char {
+                    self.add_line(CodeLine::new("}".into()));
+                    self.format_and_add(next_line);
+                } else if is_else_statement_next(next_line) {
+                    self.add_line(CodeLine::new("} ".into()));
+                    self.format_and_add(next_line);
+                } else {
+                    self.complete_and_add_line(CodeLine::new("}".into()));
+                    self.move_rest_to_new_line(line, iter);
+                }
             }
             None => {
                 self.complete_and_add_line(CodeLine::new("}".into()));

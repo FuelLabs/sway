@@ -14,5 +14,5 @@ fn main() -> bool {
   };
   let db = DoubleBar { a: 5u32 };
   let bar = Bar { a: 5u32 };
-  return true;
+  false
 }

@@ -1,19 +1,12 @@
 use super::IntegerBits;
+use crate::semantic_analysis::TypedExpression;
+use crate::types::MaybeResolvedType;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use derivative::Derivative;
 use pest::Span;
 
-/// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
-/// Type symbols are ambiguous in the beginning of compilation, as any custom symbol could be
-/// an enum, struct, or generic type name. This enum is similar to [TypeInfo], except it lacks
-/// the capability to be `TypeInfo::Custom`, i.e., pending this resolution of whether it is generic
-/// or a known type. This allows us to ensure structurally that no unresolved types bleed into the
-/// syntax tree.
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum MaybeResolvedType<'sc> {
-    Resolved(ResolvedType<'sc>),
-    Partial(PartiallyResolvedType<'sc>),
-}
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ResolvedType<'sc> {
     /// The number in a `Str` represents its size, which must be known at compile time
     Str(u64),
@@ -21,7 +14,7 @@ pub enum ResolvedType<'sc> {
     Boolean,
     Unit,
     Byte,
-    Byte32,
+    B256,
     Struct {
         name: Ident<'sc>,
         fields: Vec<TypedStructField<'sc>>,
@@ -35,154 +28,17 @@ pub enum ResolvedType<'sc> {
     Contract,
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
-    ContractCaller(CallPath<'sc>),
+    ContractCaller {
+        abi_name: CallPath<'sc>,
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        address: Box<TypedExpression<'sc>>,
+    },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
-/// A partially resolved type is pending further information to be typed.
-/// This could be the number of bits in an integer, or it could be a generic/self type.
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum PartiallyResolvedType<'sc> {
-    Numeric,
-    SelfType,
-    Generic { name: Ident<'sc> },
-    NeedsType,
-}
-
-impl Default for MaybeResolvedType<'_> {
-    fn default() -> Self {
-        MaybeResolvedType::Resolved(ResolvedType::Unit)
-    }
-}
-
-impl<'sc> MaybeResolvedType<'sc> {
-    pub(crate) fn to_selector_name(
-        &self,
-        error_msg_span: &Span<'sc>,
-    ) -> CompileResult<'sc, String> {
-        match self {
-            MaybeResolvedType::Resolved(r) => r.to_selector_name(error_msg_span),
-            _ => {
-                return err(
-                    vec![],
-                    vec![CompileError::InvalidAbiType {
-                        span: error_msg_span.clone(),
-                    }],
-                )
-            }
-        }
-    }
-    pub(crate) fn is_copy_type(&self) -> bool {
-        match self {
-            MaybeResolvedType::Resolved(ty) => match ty {
-                ResolvedType::UnsignedInteger(_)
-                | ResolvedType::Boolean
-                | ResolvedType::Unit
-                | ResolvedType::Byte => true,
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-    pub(crate) fn friendly_type_str(&self) -> String {
-        match self {
-            MaybeResolvedType::Partial(ty) => ty.friendly_type_str(),
-            MaybeResolvedType::Resolved(ty) => ty.friendly_type_str(),
-        }
-    }
-    /// Whether or not this potentially resolved type is a numeric type.
-    fn is_numeric(&self) -> bool {
-        match self {
-            MaybeResolvedType::Resolved(x) => x.is_numeric(),
-            MaybeResolvedType::Partial(p) => p == &PartiallyResolvedType::Numeric,
-        }
-    }
-
-    fn numeric_cast_compat(&self, other: &MaybeResolvedType<'sc>) -> Result<(), Warning<'sc>> {
-        assert_eq!(self.is_numeric(), other.is_numeric());
-        match (self, other) {
-            (MaybeResolvedType::Resolved(ref r), &MaybeResolvedType::Resolved(ref r_2)) => {
-                r.numeric_cast_compat(&r_2)
-            }
-            // because we know `p` and `r` are numeric, this is safe
-            (MaybeResolvedType::Partial(_p), MaybeResolvedType::Resolved(_r)) => Ok(()),
-            // because we know `p` and `r` are numeric, this is safe
-            (MaybeResolvedType::Resolved(_r), MaybeResolvedType::Partial(_p)) => Ok(()),
-            (MaybeResolvedType::Partial(_p), MaybeResolvedType::Partial(_p2)) => Ok(()),
-        }
-    }
-
-    pub(crate) fn is_convertible(
-        &self,
-        other: &Self,
-        debug_span: Span<'sc>,
-        help_text: impl Into<String>,
-    ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
-        let help_text = help_text.into();
-        match (self, other) {
-            (s, o) if s.is_numeric() && o.is_numeric() => match s.numeric_cast_compat(o) {
-                Ok(()) => Ok(None),
-                Err(warn) => Ok(Some(warn)),
-            },
-            (MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery), _) => Ok(None),
-            (_, MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)) => Ok(None),
-            (MaybeResolvedType::Resolved(r), MaybeResolvedType::Resolved(r2)) if r == r2 => {
-                Ok(None)
-            }
-            (_, MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType)) => Ok(None),
-            (MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType), _) => Ok(None),
-            _ => Err(TypeError::MismatchedType {
-                expected: other.friendly_type_str(),
-                received: self.friendly_type_str(),
-                help_text,
-                span: debug_span,
-            }),
-        }
-    }
-    /// Force this type into a [ResolvedType]. This returns an error if the type is not resolvable.
-    pub(crate) fn force_resolution(
-        &self,
-        self_type: &MaybeResolvedType<'sc>,
-        debug_span: &Span<'sc>,
-    ) -> CompileResult<'sc, ResolvedType<'sc>> {
-        ok(
-            match (self, self_type) {
-                (MaybeResolvedType::Resolved(r), _) => r.clone(),
-                (MaybeResolvedType::Partial(PartiallyResolvedType::Numeric), _) => {
-                    ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
-                }
-                (
-                    MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
-                    MaybeResolvedType::Resolved(r),
-                ) => r.clone(),
-                _ => {
-                    return err(
-                        vec![],
-                        vec![CompileError::TypeMustBeKnown {
-                            ty: self.friendly_type_str(),
-                            span: debug_span.clone(),
-                        }],
-                    )
-                }
-            },
-            vec![],
-            vec![],
-        )
-    }
-}
-impl<'sc> PartiallyResolvedType<'sc> {
-    pub(crate) fn friendly_type_str(&self) -> String {
-        match self {
-            PartiallyResolvedType::Generic { name } => format!("{}", name.primary_name),
-            PartiallyResolvedType::Numeric => "numeric".into(),
-            PartiallyResolvedType::SelfType => "self".into(),
-            PartiallyResolvedType::NeedsType => "needs_type".into(),
-        }
-    }
-}
 
 impl<'sc> ResolvedType<'sc> {
-    fn numeric_cast_compat(&self, other: &ResolvedType<'sc>) -> Result<(), Warning<'sc>> {
+    pub fn numeric_cast_compat(&self, other: &ResolvedType<'sc>) -> Result<(), Warning<'sc>> {
         assert_eq!(self.is_numeric(), other.is_numeric());
         use ResolvedType::*;
         // if this is a downcast, warn for loss of precision. if upcast, then no warning.
@@ -236,7 +92,7 @@ impl<'sc> ResolvedType<'sc> {
 
             Unit => "()".into(),
             Byte => "byte".into(),
-            Byte32 => "byte32".into(),
+            B256 => "b256".into(),
             Struct {
                 name: Ident { primary_name, .. },
                 ..
@@ -246,7 +102,9 @@ impl<'sc> ResolvedType<'sc> {
                 ..
             } => format!("enum {}", primary_name),
             Contract => "contract".into(),
-            ContractCaller(id) => format!("{} contract caller", id.suffix.primary_name),
+            ContractCaller { abi_name, .. } => {
+                format!("{} contract caller", abi_name.suffix.primary_name)
+            }
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
@@ -255,14 +113,15 @@ impl<'sc> ResolvedType<'sc> {
     /// This is _in words_!
     pub(crate) fn stack_size_of(&self) -> u64 {
         match self {
-            // Each char is a word, so the size is the num of characters
-            ResolvedType::Str(len) => *len,
+            // Each char is a byte, so the size is the num of characters / 8
+            // rounded up to the nearest word
+            ResolvedType::Str(len) => (len + 7) / 8,
             // Since things are unpacked, all unsigned integers are 64 bits.....for now
             ResolvedType::UnsignedInteger(_) => 1,
             ResolvedType::Boolean => 1,
             ResolvedType::Unit => 0,
             ResolvedType::Byte => 1,
-            ResolvedType::Byte32 => 4,
+            ResolvedType::B256 => 4,
             ResolvedType::Enum { variant_types, .. } => {
                 // the size of an enum is one word (for the tag) plus the maximum size
                 // of any individual variant
@@ -277,13 +136,13 @@ impl<'sc> ResolvedType<'sc> {
                 .fold(0, |acc, x| acc + x.r#type.stack_size_of()),
             // `ContractCaller` types are unsized and used only in the type system for
             // calling methods
-            ResolvedType::ContractCaller(_) => 0,
+            ResolvedType::ContractCaller { .. } => 0,
             ResolvedType::Contract => unreachable!("contract types are never instantiated"),
             ResolvedType::ErrorRecovery => unreachable!(),
         }
     }
 
-    fn is_numeric(&self) -> bool {
+    pub fn is_numeric(&self) -> bool {
         if let ResolvedType::UnsignedInteger(_) = self {
             true
         } else {
@@ -313,7 +172,7 @@ impl<'sc> ResolvedType<'sc> {
 
             Unit => "unit".into(),
             Byte => "byte".into(),
-            Byte32 => "byte32".into(),
+            B256 => "b256".into(),
             Struct { fields, .. } => {
                 let field_names = {
                     let names = fields

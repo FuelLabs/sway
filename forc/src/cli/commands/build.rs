@@ -9,7 +9,10 @@ pub struct Command {
     pub path: Option<String>,
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
     #[structopt(long)]
-    pub print_asm: bool,
+    pub print_finalized_asm: bool,
+    /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
+    #[structopt(long)]
+    pub print_intermediate_asm: bool,
     /// If set, outputs a binary file representing the script bytes.
     #[structopt(short = "o")]
     pub binary_outfile: Option<String>,

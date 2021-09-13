@@ -74,21 +74,17 @@ impl<'sc> ControlFlowGraph<'sc> {
         let mut max_iterations = 50;
         while rovers.len() >= 1 && rovers[0] != exit_point && max_iterations > 0 {
             max_iterations -= 1;
-            /*
-            println!(
-                "{:?}",
-                rovers
-                    .iter()
-                    .map(|ix| self.graph[*ix].clone())
-                    .collect::<Vec<_>>()
-            );
-            */
             rovers = rovers
                 .into_iter()
                 .filter(|idx| *idx != exit_point)
                 .collect();
             let mut next_rovers = vec![];
+            let mut last_discovered_span = None;
             for rover in rovers {
+                if let ControlFlowGraphNode::ProgramNode(ref node) = self.graph[rover] {
+                    last_discovered_span = Some(node.span.clone());
+                }
+
                 let mut neighbors = self
                     .graph
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
@@ -96,10 +92,17 @@ impl<'sc> ControlFlowGraph<'sc> {
                 if neighbors.is_empty()
                     && *return_ty != MaybeResolvedType::Resolved(ResolvedType::Unit)
                 {
+                    let span = match last_discovered_span {
+                        Some(ref o) => o.clone(),
+                        None => {
+                            errors.push(CompileError::Internal("Attempted to construct return path error but no source span was found.", Span::new(" ", 0, 0).unwrap()));
+                            return errors;
+                        }
+                    };
                     errors.push(CompileError::PathDoesNotReturn {
                         // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
                         // different. To save some code duplication,
-                        span: self.graph[rover].unwrap_to_node().span.clone(),
+                        span,
                         function_name,
                         ty: return_ty.friendly_type_str(),
                     });
@@ -172,7 +175,7 @@ fn connect_declaration<'sc>(
     use TypedDeclaration::*;
     match decl {
         TraitDeclaration(_) | AbiDeclaration(_) | StructDeclaration(_) | EnumDeclaration(_) => {
-            vec![]
+            leaves.to_vec()
         }
         VariableDeclaration(TypedVariableDeclaration { .. }) => {
             let entry_node = graph.add_node(node.into());
@@ -187,7 +190,7 @@ fn connect_declaration<'sc>(
                 graph.add_edge(*leaf, entry_node, "".into());
             }
             connect_typed_fn_decl(fn_decl, graph, entry_node, span);
-            vec![]
+            leaves.to_vec()
         }
         Reassignment(TypedReassignment { .. }) => {
             let entry_node = graph.add_node(node.into());
@@ -206,7 +209,7 @@ fn connect_declaration<'sc>(
                 graph.add_edge(*leaf, entry_node, "".into());
             }
             connect_impl_trait(&trait_name, graph, methods, entry_node);
-            vec![]
+            leaves.to_vec()
         }
         SideEffect | ErrorRecovery => leaves.to_vec(),
     }
