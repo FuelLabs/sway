@@ -84,7 +84,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
 /// Panics if code _does_ compile, used for test cases where the source
 /// code should have been rejected by the compiler.
 pub(crate) fn does_not_compile(file_name: &str) {
-    if let Ok(o) = compile_to_bytes(file_name) {
+    if let Ok(_) = compile_to_bytes(file_name) {
         panic!("{} should not have compiled.", file_name);
     }
 }

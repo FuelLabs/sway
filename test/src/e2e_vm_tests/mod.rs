@@ -25,5 +25,7 @@ pub fn run() {
     let project_names = vec!["recursive_calls"];
     project_names
         .into_iter()
-        .for_each(|name| does_not_compile(name));
+        .for_each(|name| crate::e2e_vm_tests::harness::does_not_compile(name));
+
+    println!("_________________________________\nTests passed.");
 }
