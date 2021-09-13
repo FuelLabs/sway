@@ -31,7 +31,6 @@ pub enum Expression<'sc> {
         span: Span<'sc>,
     },
     VariableExpression {
-        unary_op: Option<UnaryOp>,
         name: Ident<'sc>,
         span: Span<'sc>,
     },
@@ -80,7 +79,6 @@ pub enum Expression<'sc> {
     SubfieldExpression {
         prefix: Box<Expression<'sc>>,
         span: Span<'sc>,
-        unary_op: Option<UnaryOp>,
         field_to_access: Ident<'sc>,
     },
     /// A [DelineatedPath] is anything of the form:
@@ -252,18 +250,9 @@ impl<'sc> Expression<'sc> {
                 let mut var_exp_parts = expr.into_inner();
                 // this means that this is something like `!`, `ref`, or `deref` and the next
                 // token is the actual expr value
-                let mut unary_op = None;
                 let mut name = None;
                 while let Some(pair) = var_exp_parts.next() {
                     match pair.as_rule() {
-                        Rule::unary_op => {
-                            unary_op = Some(check!(
-                                UnaryOp::parse_from_pair(pair),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ));
-                        }
                         Rule::var_name_ident => {
                             name = Some(eval!(
                                 Ident::parse_from_pair,
@@ -281,11 +270,7 @@ impl<'sc> Expression<'sc> {
                 }
                 // this is non-optional and part of the parse rule so it won't fail
                 let name = name.unwrap();
-                Expression::VariableExpression {
-                    name,
-                    unary_op,
-                    span,
-                }
+                Expression::VariableExpression { name, span }
             }
             Rule::array_exp => {
                 let array_exps = expr.into_inner();
@@ -505,7 +490,6 @@ impl<'sc> Expression<'sc> {
                         for name_part in name_parts {
                             expr = Expression::SubfieldExpression {
                                 prefix: Box::new(expr.clone()),
-                                unary_op: None, // TODO
                                 span: name_part.as_span(),
                                 field_to_access: eval!(
                                     Ident::parse_from_pair,
@@ -672,7 +656,6 @@ impl<'sc> Expression<'sc> {
                 for name_part in name_parts {
                     expr = Expression::SubfieldExpression {
                         prefix: Box::new(expr.clone()),
-                        unary_op: None, // TODO
                         span: name_part.as_span(),
                         field_to_access: eval!(
                             Ident::parse_from_pair,
@@ -739,7 +722,7 @@ impl<'sc> Expression<'sc> {
 }
 
 fn convert_unary_to_fn_calls<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, Expression<'sc>> {
-    let mut iter = item.into_inner();
+    let iter = item.into_inner();
     let mut unary_stack = vec![];
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -797,7 +780,6 @@ fn parse_call_item<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, Expression<
                 return err(warnings, errors)
             ),
             span: item.as_span(),
-            unary_op: None,
         },
         Rule::expr => eval!(
             Expression::parse_from_pair,

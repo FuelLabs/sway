@@ -69,40 +69,36 @@ impl<'sc> TypedExpression<'sc> {
                     span,
                 }
             }
-            Expression::VariableExpression {
-                name,
-                unary_op,
-                span,
-                ..
-            } => match namespace.get_symbol(&name) {
-                Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    body,
-                    ..
-                })) => TypedExpression {
-                    return_type: body.return_type.clone(),
-                    is_constant: body.is_constant,
-                    expression: TypedExpressionVariant::VariableExpression {
-                        unary_op: unary_op.clone(),
-                        name: name.clone(),
+            Expression::VariableExpression { name, span, .. } => {
+                match namespace.get_symbol(&name) {
+                    Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                        body,
+                        ..
+                    })) => TypedExpression {
+                        return_type: body.return_type.clone(),
+                        is_constant: body.is_constant,
+                        expression: TypedExpressionVariant::VariableExpression {
+                            name: name.clone(),
+                        },
+                        span,
                     },
-                    span,
-                },
-                Some(a) => {
-                    errors.push(CompileError::NotAVariable {
-                        name: name.span.as_str(),
-                        span: name.span.clone(),
-                        what_it_is: a.friendly_name(),
-                    });
-                    error_recovery_expr(name.span.clone())
+                    Some(a) => {
+                        errors.push(CompileError::NotAVariable {
+                            name: name.span.as_str(),
+                            span: name.span.clone(),
+                            what_it_is: a.friendly_name(),
+                        });
+                        error_recovery_expr(name.span.clone())
+                    }
+                    None => {
+                        errors.push(CompileError::UnknownVariable {
+                            var_name: name.span.as_str().trim(),
+                            span: name.span.clone(),
+                        });
+                        error_recovery_expr(name.span.clone())
+                    }
                 }
-                None => {
-                    errors.push(CompileError::UnknownVariable {
-                        var_name: name.span.as_str().trim(),
-                        span: name.span.clone(),
-                    });
-                    error_recovery_expr(name.span.clone())
-                }
-            },
+            }
             Expression::FunctionApplication {
                 name,
                 arguments,
@@ -509,7 +505,6 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             Expression::SubfieldExpression {
-                unary_op,
                 prefix,
                 span,
                 field_to_access,
@@ -560,7 +555,6 @@ impl<'sc> TypedExpression<'sc> {
 
                 TypedExpression {
                     expression: TypedExpressionVariant::StructFieldAccess {
-                        unary_op,
                         resolved_type_of_parent: parent.return_type.clone(),
                         prefix: Box::new(parent),
                         field_to_access: field.clone(),
