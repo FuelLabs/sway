@@ -131,10 +131,9 @@ impl<'sc> ImplSelf<'sc> {
             return err(warnings, errors)
         );
 
-        let where_clause_pair = if iter.peek().unwrap().as_rule() == Rule::trait_bounds {
-            iter.next()
-        } else {
-            None
+        let where_clause_pair = match iter.peek() {
+            Some(pair) if pair.as_rule() == Rule::trait_bounds => iter.next(),
+            _ => None,
         };
         let type_arguments_span = match type_params_pair {
             Some(ref x) => x.as_span(),

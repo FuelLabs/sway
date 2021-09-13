@@ -74,7 +74,7 @@ impl Color for PrimaryColor {
   }
 }
 
-fn main() {
+fn main() -> u32 {
   let x = 5;
   let y = match x {
     5 => 5,
@@ -91,4 +91,5 @@ fn main() {
   let second_rgb = second_color.rgb();
   let second_color = PrimaryColor::Blue;
   let second_rgb = second_color.rgb();
+  10u32
 }
