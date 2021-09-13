@@ -257,8 +257,12 @@ impl<'sc> Expression<'sc> {
                 while let Some(pair) = var_exp_parts.next() {
                     match pair.as_rule() {
                         Rule::unary_op => {
-                            unary_op =
-                                eval!(UnaryOp::parse_from_pair, warnings, errors, pair, None);
+                            unary_op = Some(check!(
+                                UnaryOp::parse_from_pair(pair),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            ));
                         }
                         Rule::var_name_ident => {
                             name = Some(eval!(
@@ -708,6 +712,14 @@ impl<'sc> Expression<'sc> {
                     abi_name,
                 }
             }
+            Rule::unary_op_expr => {
+                check!(
+                    convert_unary_to_fn_calls(expr),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -724,6 +736,40 @@ impl<'sc> Expression<'sc> {
         };
         ok(parsed, warnings, errors)
     }
+}
+
+fn convert_unary_to_fn_calls<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, Expression<'sc>> {
+    let mut iter = item.into_inner();
+    let mut unary_stack = vec![];
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut expr = None;
+    for item in iter {
+        match item.as_rule() {
+            Rule::unary_op => unary_stack.push(check!(
+                UnaryOp::parse_from_pair(item),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
+            Rule::expr => {
+                expr = Some(check!(
+                    Expression::parse_from_pair(item),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ))
+            }
+            _ => unreachable!("guaranteed by grammar"),
+        }
+    }
+
+    let mut expr = expr.expect("guaranteed by grammar");
+    assert!(!unary_stack.is_empty(), "guaranteed by grammar");
+    while let Some(unary_op) = unary_stack.pop() {
+        expr = unary_op.to_fn_application(expr);
+    }
+    ok(expr, warnings, errors)
 }
 
 // A call item is parsed as either an `ident` or a parenthesized `expr`. This method's job is to

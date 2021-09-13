@@ -1,7 +1,7 @@
 script;
 
 
-fn main(): bool {
+fn main() -> bool {
   let a: bool = true;
   let b = !a; // false
   let c = !!b; // false
