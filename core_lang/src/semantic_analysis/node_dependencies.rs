@@ -3,7 +3,7 @@ use std::iter::FromIterator;
 
 use crate::{
     error::*, parse_tree::*, types::IntegerBits, AstNode, AstNodeContent, CodeBlock, Declaration,
-    Expression, ReturnStatement, TypeInfo, WhileLoop,
+    Expression, ReturnStatement, TypeInfo, WhileLoop, span::Span
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ fn find_recursive_call<'sc>(
 fn find_recursive_call_chain<'sc>(
     decl_dependencies: &DependencyMap<'sc>,
     fn_sym: &DependentSymbol<'sc>,
-    fn_span: &pest::Span<'sc>,
+    fn_span: &Span<'sc>,
     chain: &mut Vec<&'sc str>,
 ) -> Option<CompileError<'sc>> {
     if let DependentSymbol::Fn(fn_sym_str, _) = fn_sym {
@@ -103,7 +103,7 @@ fn find_recursive_call_chain<'sc>(
 
 fn build_recursion_error<'sc>(
     fn_sym: &'sc str,
-    span: pest::Span<'sc>,
+    span: Span<'sc>,
     chain: &[&'sc str],
 ) -> CompileError<'sc> {
     match chain.len() {
@@ -485,7 +485,7 @@ impl<'sc> Dependencies<'sc> {
 #[derive(Debug, Eq)]
 enum DependentSymbol<'sc> {
     Symbol(&'sc str),
-    Fn(&'sc str, Option<pest::Span<'sc>>),
+    Fn(&'sc str, Option<Span<'sc>>),
     Impl(&'sc str, &'sc str), // Trait or self, and type implementing for.
 }
 
