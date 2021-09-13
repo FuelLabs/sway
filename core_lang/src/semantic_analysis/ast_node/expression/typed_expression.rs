@@ -144,14 +144,14 @@ impl<'sc> TypedExpression<'sc> {
                 namespace,
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
             ),
             Expression::Unit { span } => {
                 let exp = TypedExpression {
                     expression: TypedExpressionVariant::Unit,
                     return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
                     is_constant: IsConstant::Yes,
-                    span
+                    span,
                 };
                 ok(exp, vec![], vec![])
             }
@@ -197,7 +197,7 @@ impl<'sc> TypedExpression<'sc> {
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
-            None => return res
+            None => return res,
         };
         let mut warnings = res.warnings;
         let mut errors = res.errors;
@@ -231,23 +231,24 @@ impl<'sc> TypedExpression<'sc> {
         ok(typed_expression, warnings, errors)
     }
 
-    fn type_check_literal(lit: Literal<'sc>, span: pest::Span<'sc>) -> CompileResult<'sc, TypedExpression<'sc>> {
+    fn type_check_literal(
+        lit: Literal<'sc>,
+        span: pest::Span<'sc>,
+    ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let return_type = match lit {
-            Literal::String(s) => {
-                MaybeResolvedType::Resolved(ResolvedType::Str(s.len() as u64))
+            Literal::String(s) => MaybeResolvedType::Resolved(ResolvedType::Str(s.len() as u64)),
+            Literal::U8(_) => {
+                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Eight))
             }
-            Literal::U8(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                IntegerBits::Eight,
-            )),
-            Literal::U16(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                IntegerBits::Sixteen,
-            )),
-            Literal::U32(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                IntegerBits::ThirtyTwo,
-            )),
-            Literal::U64(_) => MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                IntegerBits::SixtyFour,
-            )),
+            Literal::U16(_) => {
+                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Sixteen))
+            }
+            Literal::U32(_) => {
+                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo))
+            }
+            Literal::U64(_) => {
+                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::SixtyFour))
+            }
             Literal::Boolean(_) => MaybeResolvedType::Resolved(ResolvedType::Boolean),
             Literal::Byte(_) => MaybeResolvedType::Resolved(ResolvedType::Byte),
             Literal::B256(_) => MaybeResolvedType::Resolved(ResolvedType::B256),
@@ -328,11 +329,12 @@ impl<'sc> TypedExpression<'sc> {
                 // declaration. Use parameter type annotations as annotations for the
                 // arguments
                 //
-                let typed_call_arguments = arguments
-                    .into_iter()
-                    .zip(parameters.iter())
-                    .map(|(arg, param)| {
-                        (param.name.clone(), TypedExpression::type_check(
+                let typed_call_arguments =
+                    arguments
+                        .into_iter()
+                        .zip(parameters.iter())
+                        .map(|(arg, param)| {
+                            (param.name.clone(), TypedExpression::type_check(
                             arg.clone(),
                             namespace,
                             Some(param.r#type.clone()),
@@ -348,8 +350,8 @@ impl<'sc> TypedExpression<'sc> {
                             &mut errors,
                             || error_recovery_expr(arg.span()),
                         ))
-                    })
-                    .collect();
+                        })
+                        .collect();
 
                 TypedExpression {
                     return_type: return_type.clone(),
@@ -965,11 +967,7 @@ impl<'sc> TypedExpression<'sc> {
             .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
             .collect::<Vec<_>>();
         functions_buf.append(&mut abi.methods.clone());
-        namespace.insert_trait_implementation(
-            abi_name.clone(),
-            return_type.clone(),
-            functions_buf,
-        );
+        namespace.insert_trait_implementation(abi_name.clone(), return_type.clone(), functions_buf);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::AbiCast {
                 abi_name,
