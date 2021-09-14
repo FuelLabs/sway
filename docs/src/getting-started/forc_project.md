@@ -59,7 +59,7 @@ Compiled script "hello_world".
 Bytecode size is 28 bytes.
 ```
 
-To run this script, use `forc run`:
+To run this script, use `forc run` (note that `fuel-core` must be running for this to work):
 
 ```console
 $ forc run
