@@ -1,5 +1,5 @@
 [book]
-authors = ["John Adler"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 language = "en"
 multilingual = false
 src = "src"
