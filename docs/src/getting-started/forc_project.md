@@ -52,7 +52,7 @@ DATA_SECTION_OFFSET[0..32]
 DATA_SECTION_OFFSET[32..64]
 lw   $ds $is 1
 add  $ds $ds $is
-ret  $r0                      ; main fn return value
+ret  $zero                    ; main fn returns unit value
 .data:
 
 Compiled script "hello_world".
