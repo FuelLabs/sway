@@ -16,11 +16,13 @@ use pest::Span;
 mod contract_call;
 mod enum_instantiation;
 mod if_exp;
+mod match_exp;
 mod structs;
 mod subfield;
 use contract_call::convert_contract_call_to_asm;
 use enum_instantiation::convert_enum_instantiation_to_asm;
 use if_exp::convert_if_exp_to_asm;
+use match_exp::convert_match_exp_to_asm;
 pub(crate) use structs::{convert_struct_expression_to_asm, get_struct_memory_layout};
 use subfield::convert_subfield_expression_to_asm;
 
@@ -273,6 +275,16 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             &**condition,
             &**then,
             r#else,
+            return_register,
+            namespace,
+            register_sequencer,
+        ),
+        TypedExpressionVariant::MatchExpression {
+            primary_expression,
+            branches
+        } => convert_match_exp_to_asm(
+            &**primary_expression,
+            &branches,
             return_register,
             namespace,
             register_sequencer,
