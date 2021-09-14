@@ -74,7 +74,7 @@ impl Color for PrimaryColor {
   }
 }
 
-fn main() {
+fn main() -> u32 {
   let first_color: PrimaryColor = PrimaryColor::Green;
   let test = first_color == PrimaryColor::Green;
   // Specifically, when we call methods in the below way, `self` is undefined
@@ -86,4 +86,5 @@ fn main() {
   let second_rgb = second_color.rgb();
   let second_color = PrimaryColor::Blue;
   let second_rgb = second_color.rgb();
+  10u32
 }

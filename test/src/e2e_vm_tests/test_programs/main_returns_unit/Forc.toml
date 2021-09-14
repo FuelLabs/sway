@@ -1,0 +1,5 @@
+[project]
+author  = "Toby Hutton <toby.hutton@fuel.sh>"
+license = "MIT"
+name = "main_returns_unit"
+entry = "main.sw"

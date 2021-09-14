@@ -1,5 +1,6 @@
 pub mod ast_node;
 mod namespace;
+mod node_dependencies;
 mod syntax_tree;
 pub(crate) use ast_node::{TypedAstNode, TypedAstNodeContent, TypedExpression};
 pub use ast_node::{TypedDeclaration, TypedFunctionDeclaration};
