@@ -63,7 +63,7 @@ abi_name = {ident}
 
 if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
 
-op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"|"|"||"|"&"|"&&"|"^"|"%"|"<"|">"}
+op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"||"|"|"|"&&"|"&"|"^"|"%"|"<"|">"}
 unary_op =  {"!"|"ref"|"deref"}
 
 // // note that decimal/float exprs might be removed since vm doesn't support them

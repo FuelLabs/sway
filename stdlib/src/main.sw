@@ -167,6 +167,12 @@ impl bool {
       r3: bool
     }
   }
+  fn and(self, other: Self) -> bool {
+    asm(r1: self, r2: other, r3) { 
+      and r3 r1 r2;
+      r3: bool
+    }
+  }
 }
 
 
