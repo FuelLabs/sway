@@ -7,7 +7,7 @@ fn main() -> bool {
   let c = !(!b); // false
   let d = !(!!c); // true
   let e = (!!!(d));
-  and_true(e) || false
+  !(and_true(a)) || true 
 }
 
 fn and_true(x: bool) -> bool {
