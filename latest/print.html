@@ -388,6 +388,80 @@ pub struct MyStruct {
 <p>TODO</p>
 <h1 id="advanced-concepts"><a class="header" href="#advanced-concepts">Advanced Concepts</a></h1>
 <h1 id="generic-types"><a class="header" href="#generic-types">Generic Types</a></h1>
+<p><em>N.B.: Generic types in Sway are a work in progress, and are currently only partially implemented.</em></p>
+<h2 id="basics-1"><a class="header" href="#basics-1">Basics</a></h2>
+<p>In Sway, generic types follow a very similar pattern to those in Rust. Let's look as some example syntax, 
+starting with a generic function:</p>
+<pre><code class="language-sway">fn noop&lt;T&gt;(argument: T) -&gt; T {
+  argument
+}
+</code></pre>
+<p>Here, the <code>noop()</code> function trivially returns exactly what was given to it. <code>T</code> is a <em>type parameter</em>, and it saying
+that this function exists for all types T. More formally, this function could be typed as:</p>
+<pre><code>noop :: ∀T. T -&gt; T
+</code></pre>
+<p>Generic types are a way to refer to types <em>in general</em>, meaning without specifying a single type. Clearly, our <code>noop</code> function
+would work with any type in the language, so we don't need to specify <code>noop(argument: u8) -&gt; u8</code>, <code>noop(argument: u16) -&gt; u16</code>, etc.</p>
+<h2 id="code-generation"><a class="header" href="#code-generation">Code Generation</a></h2>
+<p>One question that arises when dealing with generic types is: how does the assembly handle this? There are a few approaches to handling
+generic types at the lowest level. Sway uses a technique called <a href="https://en.wikipedia.org/wiki/Monomorphization">monomorphization</a>. This
+means that the generic function is compiled to a non-generic version for every type it is called on. In this way, generic functions are
+purely shorthand for the sake of ergonomics.</p>
+<h2 id="trait-constraints"><a class="header" href="#trait-constraints">Trait Constraints</a></h2>
+<p>Of course, our <code>noop()</code> function is not useful. Often, a programmer will want to declare functions over a types which satisfy certain traits.
+For example, let's try to implement the successor function, <code>successor()</code>, for all numeric types.</p>
+<pre><code class="language-sway">fn successor&lt;T&gt;(argument: T)
+  where T: Add
+{
+    argument + 1
+}
+</code></pre>
+<p>Run <code>forc build</code>, and you will get:</p>
+<pre><code>.. |
+ 9 |   where T: Add 
+10 |   {
+11 |     argument + 1                                        
+   |                ^ Mismatched types: expected type &quot;T&quot; but saw type &quot;u64&quot;
+12 |   }
+13 |
+
+</code></pre>
+<p>This is because we don't know for a fact that <code>1</code>, which in this case defaulted to <code>1u64</code>, actually can be added to <code>T</code>. What if <code>T</code> is <code>f64</code>? Or <code>b256</code>? What does it mean to add <code>1u64</code> in these cases?</p>
+<p>We can solve this problem with another trait constraint. We can only find the successor of some value of type <code>T</code> if that type <code>T</code> defines some incrementor. Let's make a trait:</p>
+<pre><code class="language-sway">trait Incrementable {
+  /// Returns the value to add when calculating the successor of a value.
+  fn incrementor() -&gt; Self;
+}
+</code></pre>
+<p>Now, we can modify our <code>successor()</code> function:</p>
+<pre><code class="language-sway">fn successor&lt;T&gt;(argument: T)
+  where T: Add,
+        T: Incrementable
+{
+    argument + ~T::incrementor()
+}
+</code></pre>
+<p><em>(There's a little bit of new syntax here. When directly referring to a type to execute a method from it, a tilde (<code>~</code>) is used, This may change in the future.)</em></p>
+<h2 id="generic-structs-and-enums"><a class="header" href="#generic-structs-and-enums">Generic Structs and Enums</a></h2>
+<p>Just like functions, structs and enums can be generic. Let's take a look at the standard library version of <code>Option&lt;T&gt;</code>:</p>
+<pre><code class="language-sway">enum Option&lt;T&gt; {
+  Some: T,
+  None: ()
+}
+</code></pre>
+<p>Just like an unconstrained generic function, this type exists for all (∀) types <code>T</code>. <code>Result&lt;T, E&gt;</code> is another example:</p>
+<pre><code class="language-sway">enum Result&lt;T, E&gt; {
+  Ok: T,
+  Err: E
+}
+</code></pre>
+<p>Both generic enums and generic structs can be trait constrained, as well. Consider this struct:</p>
+<pre><code class="language-sway">struct Foo&lt;T&gt;
+  where T: Add 
+{
+    field_one: T
+}
+</code></pre>
 <h1 id="traits"><a class="header" href="#traits">Traits</a></h1>
 <h2 id="declaring-a-trait"><a class="header" href="#declaring-a-trait">Declaring a Trait</a></h2>
 <p>A <em>trait</em> opts a type into a certain type of behavior or functionality that can be shared among types. This allows for easy reuse of code and generic programming. If you have ever used a typeclass in Haskell, a trait in Rust, or even an interface in Java, these are similar concepts.</p>
@@ -464,7 +538,7 @@ fn random_suit(i: u64) -&gt; Suit {
 }
 </code></pre>
 <p>To learn more about <code>where</code> clauses and how to use trait constraints, see <a href="advanced/./trait_constraints">Trait Constraints</a>.</p>
-<h1 id="trait-constraints"><a class="header" href="#trait-constraints">Trait Constraints</a></h1>
+<h1 id="trait-constraints-1"><a class="header" href="#trait-constraints-1">Trait Constraints</a></h1>
 <h1 id="conventions"><a class="header" href="#conventions">Conventions</a></h1>
 <h1 id="capitalization"><a class="header" href="#capitalization">Capitalization</a></h1>
 
