@@ -75,11 +75,6 @@ impl Color for PrimaryColor {
 }
 
 fn main() -> u32 {
-  let x = 5;
-  let y = match x {
-    5 => 5,
-    n => n,
-  };
   let first_color: PrimaryColor = PrimaryColor::Green;
   let test = first_color == PrimaryColor::Green;
   // Specifically, when we call methods in the below way, `self` is undefined
