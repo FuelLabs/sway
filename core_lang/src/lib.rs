@@ -24,6 +24,7 @@ use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
 pub(crate) mod utils;
+use crate::parse_tree::declaration::FunctionDeclaration;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
@@ -723,4 +724,44 @@ fn test_parenthesized() {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     prog.unwrap(&mut warnings, &mut errors);
+}
+
+#[test]
+fn test_unary_ordering() {
+    let prog = parse(
+        r#"
+    script;
+    fn main() -> bool {
+        let a = true;
+        let b = true;
+        !a && b;
+    }"#,
+    );
+    let mut warnings: Vec<CompileWarning> = Vec::new();
+    let mut errors: Vec<CompileError> = Vec::new();
+    let prog = prog.unwrap(&mut warnings, &mut errors);
+    dbg!(&prog);
+    // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
+    // expression should be `and()`
+    if let AstNode {
+        content:
+            AstNodeContent::Declaration(Declaration::FunctionDeclaration(FunctionDeclaration {
+                body,
+                ..
+            })),
+        ..
+    } = &prog.script_ast.unwrap().root_nodes[0]
+    {
+        if let AstNode {
+            content: AstNodeContent::Expression(Expression::FunctionApplication { name, .. }),
+            ..
+        } = &body.contents[2]
+        {
+            assert_eq!(name.suffix.primary_name, "and")
+        } else {
+            panic!()
+        }
+    } else {
+        panic!()
+    };
 }
