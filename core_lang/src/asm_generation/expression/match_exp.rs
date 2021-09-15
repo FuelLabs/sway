@@ -19,48 +19,30 @@ pub(crate) fn convert_match_exp_to_asm<'sc>(
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     /*
     the asm order is:
-    condition evaluation
-    conditional jump to 1st branch
-    conditional jump to 2nd branch
-    ...
-    conditional jump to nth branch
-    1st branch label
-    1st branch
-    move 1st branch result to return register
-    jump to after last branch
-    2nd branch label
-    2nd branch
-    move 2nd branch result to return register
-    jump to after last branch
-    ...
-    n-1 branch label
-    n-1 branch
-    move n-1 branch result to return register
-    jump to after last branch
-    nth branch label
-    nth branch
-    move nth branch result to return register
-    after last branch label
+    1. condition evaluation
+    2. conditional jump to 1st branch
+        conditional jump to 2nd branch
+        ...
+        conditional jump to nth branch
+    3. 1st branch label
+        1st branch
+        move 1st branch result to return register
+        jump to after last branch
+        2nd branch label
+        2nd branch
+        move 2nd branch result to return register
+        jump to after last branch
+        ...
+        n-1 branch label
+        n-1 branch
+        move n-1 branch result to return register
+        jump to after last branch
+        nth branch label
+        nth branch
+        move nth branch result to return register
+    4. after last branch label
     */
 
-
-    // step 0: construct 2 jump labels: to the else, and to after the else.
-    // step 1: evaluate the condition
-    // step 2: conditional jump -- if the condition is false, jump to the else label. If there is no
-    // else, jump to the end. step 2: add jump to after the else from the end of the `then`
-    // branch
-    //
-    // to recap, the asm order is: condition evaluation,
-    //         conditional jump to else or after else,
-    //         then branch,
-    //         move then result to return register
-    //         jump to after else,
-    //         else branch label
-    //         else branch,
-    //         move else result to return register
-    //         after else branch label
-
-    // step 3: put return value from whatever branch was evaluated into the return register
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut asm_buf = vec![];
@@ -79,10 +61,17 @@ pub(crate) fn convert_match_exp_to_asm<'sc>(
     );
     asm_buf.push(Op::new_comment("begin match expression"));
     asm_buf.append(&mut primary_expression);
+    let patterns_results: Vec<VirtualRegister> = branches
+        .iter()
+        .map(|_| register_sequencer.next())
+        .collect();
     for i in 0..branches.len() {
+        let branch = branches[i].clone();
+        let pattern_result = patterns_results[i].clone();
+        let branch = todo!();
         // if the condition is not false, jump to the approporiate branch
         asm_buf.push(Op::jump_if_not_equal(
-            primary_expression_result.clone(),
+            pattern_result.clone(),
             VirtualRegister::Constant(ConstantRegister::Zero),
             branches_labels[i]
         ));
@@ -91,51 +80,36 @@ pub(crate) fn convert_match_exp_to_asm<'sc>(
         .iter()
         .map(|_| register_sequencer.next())
         .collect();
-
-    let then_branch_result = register_sequencer.next();
-    let mut then_branch = check!(
-        convert_expression_to_asm(then, namespace, &then_branch_result, register_sequencer),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    asm_buf.append(&mut then_branch);
-    // move the result of the then branch into the return register
-    asm_buf.push(Op::register_move(
-        return_register.clone(),
-        then_branch_result,
-        then.clone().span,
-    ));
-    asm_buf.push(Op::jump_to_label_comment(
-        after_else_label.clone(),
-        "end of then branch",
-    ));
-    if let Some(r#else) = r#else {
-        asm_buf.push(Op::jump_label_comment(
-            else_label,
-            r#else.span.clone(),
-            "beginning of else branch",
-        ));
-        let else_branch_result = register_sequencer.next();
-        let mut else_branch = check!(
-            convert_expression_to_asm(&r#else, namespace, &else_branch_result, register_sequencer),
+    for i in 0..branches.len() {
+        let branch = branches[i].clone();
+        let branch_result = branches_results[i].clone();
+        let branch_label = branches_labels[i].clone();
+        let mut branch2 = check!(
+            convert_expression_to_asm(&branches[i].result, namespace, &branch_result, register_sequencer),
             return err(warnings, errors),
             warnings,
             errors
         );
-        asm_buf.append(&mut else_branch);
-
-        // move the result of the else branch into the return register
+        asm_buf.push(Op::jump_label_comment(
+            branch_label,
+            branch.clone().result.span,
+            format!("end of branch {:?}", i),
+        ));
+        asm_buf.append(&mut branch2);
         asm_buf.push(Op::register_move(
             return_register.clone(),
-            else_branch_result,
-            r#else.clone().span,
+            branch_result,
+            branch.clone().result.span
+        ));
+        asm_buf.push(Op::jump_to_label_comment(
+            after_branches_label.clone(),
+            format!("end of branch {:?}", i),
         ));
     }
 
     asm_buf.push(Op::unowned_jump_label_comment(
-        after_else_label,
-        "End of if exp",
+        after_branches_label,
+        "end of match exp",
     ));
 
     ok(asm_buf, warnings, errors)
