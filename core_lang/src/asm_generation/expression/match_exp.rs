@@ -6,7 +6,7 @@ use crate::asm_lang::{
 use crate::error::*;
 
 use crate::semantic_analysis::{
-    ast_node::{PatternVariant, TypedMatchBranch, TypedMatchPattern, TypedExpressionVariant},
+    ast_node::{PatternVariant, TypedExpressionVariant, TypedMatchBranch, TypedMatchPattern},
     TypedExpression,
 };
 
@@ -148,11 +148,11 @@ pub(crate) fn convert_pattern_to_asm<'sc>(
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     match pattern.pattern {
         PatternVariant::CatchAll => todo!(),
-        PatternVariant::Expression(pattern_exp) => {
-            match (pattern_exp.expression, primary_expression.expression) {
+        PatternVariant::Expression(ref pattern_exp) => {
+            match (&pattern_exp.expression, &primary_expression.expression) {
                 (
-                    TypedExpressionVariant::Literal(pattern_lit),
-                    TypedExpressionVariant::Literal(primary_lit),
+                    TypedExpressionVariant::Literal(ref pattern_lit),
+                    TypedExpressionVariant::Literal(ref primary_lit),
                 ) => todo!(),
                 _ => unimplemented!(),
             }
