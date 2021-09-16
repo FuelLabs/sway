@@ -6,8 +6,8 @@ use crate::asm_lang::{
 use crate::error::*;
 
 use crate::semantic_analysis::{
-    ast_node::{PatternVariant, TypedMatchBranch, TypedMatchPattern},
-    TypedExpression, TypedExpressionVariant,
+    ast_node::{PatternVariant, TypedMatchBranch, TypedMatchPattern, TypedExpressionVariant},
+    TypedExpression,
 };
 
 use crate::CompileResult;
