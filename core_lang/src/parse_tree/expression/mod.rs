@@ -738,15 +738,14 @@ fn convert_unary_to_fn_calls<'sc>(item: Pair<'sc, Rule>) -> CompileResult<'sc, E
                     errors
                 ),
             )),
-            Rule::expr => {
+            _ => {
                 expr = Some(check!(
-                    Expression::parse_from_pair(item),
+                    Expression::parse_from_pair_inner(item),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ))
             }
-            _ => unreachable!("guaranteed by grammar"),
         }
     }
 

@@ -24,7 +24,6 @@ use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
 pub(crate) mod utils;
-use crate::parse_tree::declaration::FunctionDeclaration;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
@@ -728,6 +727,7 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
+    use crate::parse_tree::declaration::FunctionDeclaration;
     let prog = parse(
         r#"
     script;
@@ -753,15 +753,19 @@ fn test_unary_ordering() {
     } = &prog.script_ast.unwrap().root_nodes[0]
     {
         if let AstNode {
-            content: AstNodeContent::Expression(Expression::FunctionApplication { name, .. }),
+            content:
+                AstNodeContent::Expression(Expression::MethodApplication {
+                    method_name: MethodName::FromType { call_path, .. },
+                    ..
+                }),
             ..
         } = &body.contents[2]
         {
-            assert_eq!(name.suffix.primary_name, "and")
+            assert_eq!(call_path.suffix.primary_name, "and")
         } else {
-            panic!()
+            panic!("Was not method application")
         }
     } else {
-        panic!()
+        panic!("Was not ast node")
     };
 }

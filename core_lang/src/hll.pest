@@ -36,7 +36,7 @@ alias             = { "as" ~ ident }
 // expressions
 expr_inner               = _{literal_value|if_exp|asm_expression|code_block|func_app|struct_expression|method_exp|struct_field_access|delineated_path|unary_op_expr|var_exp|array_exp|abi_cast|parenthesized_expression|match_expression|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
-unary_op_expr = { unary_op ~ expr }
+unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
 func_app                 =  {fn_name ~ fn_args}
