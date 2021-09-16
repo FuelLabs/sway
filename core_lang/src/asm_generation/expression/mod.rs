@@ -124,9 +124,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     ConstantRegister::parse_register_name(name).is_none(),
                     warnings,
                     name_span.clone(),
-                    Warning::ShadowingReservedRegister {
-                        reg_name: name.to_string()
-                    }
+                    Warning::ShadowingReservedRegister { reg_name: &name }
                 );
 
                 mapping_of_real_registers_to_declared_names.insert(name, register.clone());

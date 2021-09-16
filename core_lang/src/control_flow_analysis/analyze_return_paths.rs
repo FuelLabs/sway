@@ -106,7 +106,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                         // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
                         // different. To save some code duplication,
                         span,
-                        function_name: function_name.to_string(),
+                        function_name: function_name,
                         ty: return_ty.friendly_type_str(),
                     });
                 }

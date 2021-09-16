@@ -151,22 +151,22 @@ impl<'sc> CompileWarning<'sc> {
 #[derive(Debug, Clone)]
 pub enum Warning<'sc> {
     NonClassCaseStructName {
-        struct_name: String,
+        struct_name: &'sc str,
     },
     NonClassCaseTraitName {
-        name: String,
+        name: &'sc str,
     },
     NonClassCaseEnumName {
-        enum_name: String,
+        enum_name: &'sc str,
     },
     NonClassCaseEnumVariantName {
-        variant_name: String,
+        variant_name: &'sc str,
     },
     NonSnakeCaseStructFieldName {
-        field_name: String,
+        field_name: &'sc str,
     },
     NonSnakeCaseFunctionName {
-        name: String,
+        name: &'sc str,
     },
     LossOfPrecision {
         initial_type: MaybeResolvedType<'sc>,
@@ -176,9 +176,9 @@ pub enum Warning<'sc> {
         r#type: MaybeResolvedType<'sc>,
     },
     SimilarMethodFound {
-        lib: String,
-        module: String,
-        name: String,
+        lib: &'sc str,
+        module: &'sc str,
+        name: &'sc str,
     },
     OverridesOtherSymbol {
         name: String,
@@ -195,7 +195,7 @@ pub enum Warning<'sc> {
     DeadMethod,
     StructFieldNeverRead,
     ShadowingReservedRegister {
-        reg_name: String,
+        reg_name: &'sc str,
     },
 }
 
@@ -288,9 +288,9 @@ pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: String, span: Span<'sc> },
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariablePath { var_name: String, span: Span<'sc> },
+    UnknownVariablePath { var_name: &'sc str, span: Span<'sc> },
     #[error("Function \"{name}\" does not exist in this scope.")]
-    UnknownFunction { name: String, span: Span<'sc> },
+    UnknownFunction { name: &'sc str, span: Span<'sc> },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
     NotAVariable {
         name: String,
@@ -333,9 +333,9 @@ pub enum CompileError<'sc> {
     )]
     InvalidByteLiteralLength { byte_length: usize, span: Span<'sc> },
     #[error("Expected an expression to follow operator \"{op}\"")]
-    ExpectedExprAfterOp { op: String, span: Span<'sc> },
+    ExpectedExprAfterOp { op: &'sc str, span: Span<'sc> },
     #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
-    ExpectedOp { op: String, span: Span<'sc> },
+    ExpectedOp { op: &'sc str, span: Span<'sc> },
     #[error(
         "Where clause was specified but there are no generic type parameters. Where clauses can \
          only be applied to generic type parameters."
@@ -345,7 +345,10 @@ pub enum CompileError<'sc> {
         "Specified generic type in where clause \"{type_name}\" not found in generic type \
          arguments of function."
     )]
-    UndeclaredGenericTypeInWhereClause { type_name: String, span: Span<'sc> },
+    UndeclaredGenericTypeInWhereClause {
+        type_name: &'sc str,
+        span: Span<'sc>,
+    },
     #[error(
         "Program contains multiple contracts. A valid program should only contain at most one \
          contract."
@@ -367,8 +370,8 @@ pub enum CompileError<'sc> {
          in this scope."
     )]
     ConstrainedNonExistentType {
-        trait_name: String,
-        type_name: String,
+        trait_name: &'sc str,
+        type_name: &'sc str,
         span: Span<'sc>,
     },
     #[error(
@@ -394,8 +397,8 @@ pub enum CompileError<'sc> {
          variable, it is a {kind}."
     )]
     ReassignmentToNonVariable {
-        name: String,
-        kind: String,
+        name: &'sc str,
+        kind: &'sc str,
         span: Span<'sc>,
     },
     #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
@@ -406,10 +409,10 @@ pub enum CompileError<'sc> {
          {fn_name}<{comma_separated_generic_params}>({args}) -> ... `"
     )]
     TypeParameterNotInTypeScope {
-        name: String,
+        name: &'sc str,
         span: Span<'sc>,
         comma_separated_generic_params: String,
-        fn_name: String,
+        fn_name: &'sc str,
         args: String,
     },
     #[error(
@@ -426,12 +429,12 @@ pub enum CompileError<'sc> {
         expected: String,
     },
     #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\". ")]
-    NotATrait { span: Span<'sc>, name: String },
+    NotATrait { span: Span<'sc>, name: &'sc str },
     #[error("Trait \"{name}\" cannot be found in the current scope.")]
-    UnknownTrait { span: Span<'sc>, name: String },
+    UnknownTrait { span: Span<'sc>, name: &'sc str },
     #[error("Function \"{name}\" is not a part of trait \"{trait_name}\"'s interface surface.")]
     FunctionNotAPartOfInterfaceSurface {
-        name: String,
+        name: &'sc str,
         trait_name: String,
         span: Span<'sc>,
     },
@@ -450,19 +453,19 @@ pub enum CompileError<'sc> {
         "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
     )]
-    StructNotFound { name: String, span: Span<'sc> },
+    StructNotFound { name: &'sc str, span: Span<'sc> },
     #[error(
         "The name \"{name}\" does not refer to a struct, but this is an attempted struct \
          declaration."
     )]
-    DeclaredNonStructAsStruct { name: String, span: Span<'sc> },
+    DeclaredNonStructAsStruct { name: &'sc str, span: Span<'sc> },
     #[error(
         "Attempted to access field \"{field_name}\" of non-struct \"{name}\". Field accesses are \
          only valid on structs."
     )]
     AccessedFieldOfNonStruct {
-        field_name: String,
-        name: String,
+        field_name: &'sc str,
+        name: &'sc str,
         span: Span<'sc>,
     },
     #[error(
@@ -470,20 +473,20 @@ pub enum CompileError<'sc> {
          not a type with methods."
     )]
     MethodOnNonValue {
-        name: String,
-        thing: String,
+        name: &'sc str,
+        thing: &'sc str,
         span: Span<'sc>,
     },
     #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
     StructMissingField {
-        field_name: String,
-        struct_name: String,
+        field_name: &'sc str,
+        struct_name: &'sc str,
         span: Span<'sc>,
     },
     #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
     StructDoesNotHaveField {
-        field_name: String,
-        struct_name: String,
+        field_name: &'sc str,
+        struct_name: &'sc str,
         span: Span<'sc>,
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
@@ -507,13 +510,13 @@ pub enum CompileError<'sc> {
          {available_fields}"
     )]
     FieldNotFound {
-        field_name: String,
+        field_name: &'sc str,
         available_fields: String,
-        struct_name: String,
+        struct_name: &'sc str,
         span: Span<'sc>,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { span: Span<'sc>, name: String },
+    SymbolNotFound { span: Span<'sc>, name: &'sc str },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -528,7 +531,7 @@ pub enum CompileError<'sc> {
     NotAType {
         span: Span<'sc>,
         name: String,
-        actually_is: String,
+        actually_is: &'sc str,
     },
     #[error(
         "This enum variant requires an instantiation expression. Try initializing it with \
@@ -542,7 +545,7 @@ pub enum CompileError<'sc> {
     PathDoesNotReturn {
         span: Span<'sc>,
         ty: String,
-        function_name: String,
+        function_name: &'sc str,
     },
     #[error("Expected block to implicitly return a value of type \"{ty}\".")]
     ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
@@ -567,12 +570,12 @@ pub enum CompileError<'sc> {
     InvalidAssemblyMismatchedReturn { span: Span<'sc> },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
     UnknownEnumVariant {
-        enum_name: String,
-        variant_name: String,
+        enum_name: &'sc str,
+        variant_name: &'sc str,
         span: Span<'sc>,
     },
     #[error("Unknown opcode: \"{op_name}\".")]
-    UnrecognizedOp { op_name: String, span: Span<'sc> },
+    UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
     #[error("Unknown type \"{ty}\".")]
     TypeMustBeKnown { ty: String, span: Span<'sc> },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
@@ -630,7 +633,7 @@ pub enum CompileError<'sc> {
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span<'sc> },
     #[error("Trait \"{name}\" does not exist in this scope.")]
-    TraitNotFound { name: String, span: Span<'sc> },
+    TraitNotFound { name: &'sc str, span: Span<'sc> },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span<'sc> },
     #[error(
@@ -638,7 +641,7 @@ pub enum CompileError<'sc> {
     )]
     TooManyArgumentsForFunction {
         span: Span<'sc>,
-        method_name: String,
+        method_name: &'sc str,
         expected: usize,
         received: usize,
     },
@@ -647,7 +650,7 @@ pub enum CompileError<'sc> {
     )]
     TooFewArgumentsForFunction {
         span: Span<'sc>,
-        method_name: String,
+        method_name: &'sc str,
         expected: usize,
         received: usize,
     },
@@ -664,8 +667,8 @@ pub enum CompileError<'sc> {
     ImplAbiForNonContract { span: Span<'sc>, ty: String },
     #[error("The trait function \"{fn_name}\" in trait \"{trait_name}\" expects {num_args} arguments, but the provided implementation only takes {provided_args} arguments.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
-        fn_name: String,
-        trait_name: String,
+        fn_name: &'sc str,
+        trait_name: &'sc str,
         num_args: usize,
         provided_args: usize,
         span: Span<'sc>,

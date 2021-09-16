@@ -666,8 +666,8 @@ fn reassignment<'sc>(
                 }
                 Some(o) => {
                     errors.push(CompileError::ReassignmentToNonVariable {
-                        name: name.primary_name.to_string(),
-                        kind: o.friendly_name().to_string(),
+                        name: name.primary_name,
+                        kind: o.friendly_name(),
                         span,
                     });
                     return err(warnings, errors);
@@ -936,10 +936,10 @@ fn type_check_trait_methods<'sc>(
                     .is_none()
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: name.primary_name.to_string(),
+                        name: name.primary_name,
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: fn_name.primary_name.to_string(),
+                        fn_name: fn_name.primary_name,
                         args: args_span.as_str().to_string(),
                     });
                 }

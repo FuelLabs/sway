@@ -32,8 +32,8 @@ pub(crate) fn instantiate_enum<'sc>(
         Some(o) => (o.r#type.clone(), o.tag, o.name.clone()),
         None => {
             errors.push(CompileError::UnknownEnumVariant {
-                enum_name: enum_decl.name.primary_name.to_string(),
-                variant_name: enum_field_name.primary_name.to_string(),
+                enum_name: enum_decl.name.primary_name,
+                variant_name: enum_field_name.primary_name,
                 span: enum_field_name.clone().span,
             });
             return err(warnings, errors);

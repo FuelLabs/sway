@@ -113,7 +113,7 @@ impl<'sc> EnumDeclaration<'sc> {
                 path: path.clone()
             },
             Warning::NonClassCaseEnumName {
-                enum_name: name.primary_name.to_string()
+                enum_name: name.primary_name
             }
         );
 
@@ -195,7 +195,7 @@ impl<'sc> EnumVariant<'sc> {
                     warnings,
                     name.span.clone(),
                     Warning::NonClassCaseEnumVariantName {
-                        variant_name: name.primary_name.to_string()
+                        variant_name: name.primary_name
                     }
                 );
                 let r#type = check!(

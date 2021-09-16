@@ -271,8 +271,7 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = vec![];
         let exp = match namespace.get_symbol(&name) {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                body,
-                ..
+                body, ..
             })) => TypedExpression {
                 return_type: body.return_type.clone(),
                 is_constant: body.is_constant,
@@ -658,14 +657,14 @@ impl<'sc> TypedExpression<'sc> {
             Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
             Some(_) => {
                 errors.push(CompileError::DeclaredNonStructAsStruct {
-                    name: struct_name.primary_name.to_string(),
+                    name: struct_name.primary_name,
                     span: span.clone(),
                 });
                 return err(warnings, errors);
             }
             None => {
                 errors.push(CompileError::StructNotFound {
-                    name: struct_name.primary_name.to_string(),
+                    name: struct_name.primary_name,
                     span: span.clone(),
                 });
                 return err(warnings, errors);
@@ -681,8 +680,8 @@ impl<'sc> TypedExpression<'sc> {
                 Some(val) => val.clone(),
                 None => {
                     errors.push(CompileError::StructMissingField {
-                        field_name: def_field.name.primary_name.to_string(),
-                        struct_name: definition.name.primary_name.to_string(),
+                        field_name: def_field.name.primary_name,
+                        struct_name: definition.name.primary_name,
                         span: span.clone(),
                     });
                     typed_fields_buf.push(TypedStructExpressionField {
@@ -729,8 +728,8 @@ impl<'sc> TypedExpression<'sc> {
                 .is_none()
             {
                 errors.push(CompileError::StructDoesNotHaveField {
-                    field_name: field.name.primary_name.clone().to_string(),
-                    struct_name: definition.name.primary_name.to_string(),
+                    field_name: field.name.primary_name.clone(),
+                    struct_name: definition.name.primary_name,
                     span: field.span,
                 });
             }
@@ -799,8 +798,8 @@ impl<'sc> TypedExpression<'sc> {
                     .map(|TypedStructField { name, .. }| name.primary_name.clone())
                     .collect::<Vec<_>>()
                     .join("\n"),
-                field_name: field_to_access.primary_name.to_string(),
-                struct_name: struct_name.primary_name.to_string(),
+                field_name: field_to_access.primary_name,
+                struct_name: struct_name.primary_name,
             });
             return err(warnings, errors);
         };

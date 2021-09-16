@@ -83,7 +83,7 @@ impl<'sc> TypedDeclaration<'sc> {
                         vec![CompileError::NotAType {
                             span: decl.span(),
                             name: decl.pretty_print(),
-                            actually_is: decl.friendly_name().to_string(),
+                            actually_is: decl.friendly_name(),
                         }],
                     )
                 }
@@ -614,10 +614,10 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     .is_none()
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: name.primary_name.to_string(),
+                        name: name.primary_name,
                         span: type_span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: fn_decl.name.primary_name.to_string(),
+                        fn_name: fn_decl.name.primary_name,
                         args: args_span.as_str().to_string(),
                     });
                 }

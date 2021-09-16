@@ -428,8 +428,8 @@ impl<'sc> Namespace<'sc> {
                         .collect::<Vec<_>>();
 
                     errors.push(CompileError::FieldNotFound {
-                        field_name: field_name.to_string(),
-                        struct_name: struct_name.primary_name.clone().to_string(),
+                        field_name: field_name,
+                        struct_name: struct_name.primary_name.clone(),
                         available_fields: available_fields.join(", "),
                         span: ident.span.clone(),
                     });
@@ -492,7 +492,7 @@ impl<'sc> Namespace<'sc> {
                 return err(
                     vec![],
                     vec![CompileError::TraitNotFound {
-                        name: trait_name.primary_name.to_string(),
+                        name: trait_name.primary_name,
                         span: trait_name.span.clone(),
                     }],
                 )

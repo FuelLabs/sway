@@ -73,8 +73,8 @@ impl<'sc> TypeParameter<'sc> {
                             Some(o) => o,
                             None => {
                                 errors.push(CompileError::ConstrainedNonExistentType {
-                                    type_name: type_param.as_str().to_string(),
-                                    trait_name: trait_constraint.as_str().to_string(),
+                                    type_name: type_param.as_str(),
+                                    trait_name: trait_constraint.as_str(),
                                     span: Span {
                                         span: trait_constraint.as_span(),
                                         path: path.clone(),
