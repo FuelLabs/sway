@@ -979,7 +979,7 @@ fn four_regs<'sc>(
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
                 span: whole_op_span.clone(),
-                expected: 1,
+                expected: 4,
                 received: args.len(),
             });
             return err(warnings, errors);
