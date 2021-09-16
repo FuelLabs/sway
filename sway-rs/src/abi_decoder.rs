@@ -1,9 +1,8 @@
+#![allow(dead_code)] // Temporary while it's a WIP.
+
 use crate::types::{Bits256, ParamType, Token, Word, WORD_SIZE};
-use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::str;
-
-//const WORD_SIZE: usize = 8;
 
 #[derive(Debug, Clone)]
 struct DecodeResult<'a> {
@@ -211,6 +210,7 @@ fn peek_word(data: &[u8], offset: usize) -> Result<Word, String> {
     })
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

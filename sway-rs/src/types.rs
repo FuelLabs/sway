@@ -1,4 +1,4 @@
-use std::ops::Not;
+#![allow(dead_code)] // Temporary while it's a WIP.
 
 pub type Word = [u8; 8];
 pub const WORD_SIZE: isize = 8;
@@ -8,7 +8,6 @@ pub type EnumSelector<'a> = (u8, Token<'a>);
 
 // Sway types
 #[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
 pub enum Token<'a> {
     U8(u8),
     U16(u16),
@@ -25,7 +24,6 @@ pub enum Token<'a> {
 
 // Experimental
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum ParamType {
     U8,
     U16,

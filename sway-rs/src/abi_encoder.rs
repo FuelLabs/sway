@@ -1,11 +1,9 @@
+#![allow(dead_code)] // Temporary while it's a WIP.
+
 use crate::types;
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
-use std::{io::Read, vec};
 use thiserror::Error;
 use types::Token;
-
-pub const WORD_SIZE: isize = 8;
 
 #[derive(Debug, Clone, Error)]
 pub enum ABIError {
@@ -81,6 +79,7 @@ impl ABIEncoder {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
