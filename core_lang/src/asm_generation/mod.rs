@@ -15,7 +15,7 @@ use crate::{
     semantic_analysis::{
         TypedAstNode, TypedAstNodeContent, TypedFunctionDeclaration, TypedParseTree,
     },
-    types::ResolvedType,
+    types::{MaybeResolvedType, ResolvedType},
     BuildConfig, Ident,
 };
 use either::Either;
@@ -355,7 +355,7 @@ fn label_is_used<'sc>(buf: &[Op<'sc>], label: &Label) -> bool {
 #[derive(Default, Clone)]
 pub struct DataSection<'sc> {
     /// the data to be put in the data section of the asm
-    value_pairs: Vec<Data<'sc>>,
+    pub value_pairs: Vec<Data<'sc>>,
 }
 
 impl<'sc> DataSection<'sc> {
@@ -567,7 +567,7 @@ pub(crate) struct AsmNamespace<'sc> {
 
 /// An address which refers to a value in the data section of the asm.
 #[derive(Clone, Debug)]
-pub(crate) struct DataId(u32);
+pub(crate) struct DataId(pub(crate) u32);
 
 impl fmt::Display for DataId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -633,11 +633,21 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 errors
             );
             asm_buf.append(&mut body);
-            asm_buf.push(Op {
-                owning_span: None,
-                opcode: Either::Left(VirtualOp::RET(return_register)),
-                comment: "main fn return value".into(),
-            });
+            if main_function.return_type == MaybeResolvedType::Resolved(ResolvedType::Unit) {
+                asm_buf.push(Op {
+                    owning_span: None,
+                    opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
+                        ConstantRegister::Zero,
+                    ))),
+                    comment: "main fn returns unit value".into(),
+                });
+            } else {
+                asm_buf.push(Op {
+                    owning_span: None,
+                    opcode: Either::Left(VirtualOp::RET(return_register)),
+                    comment: "main fn return value".into(),
+                });
+            }
 
             HllAsmSet::ScriptMain {
                 program_section: AbstractInstructionSet { ops: asm_buf },
