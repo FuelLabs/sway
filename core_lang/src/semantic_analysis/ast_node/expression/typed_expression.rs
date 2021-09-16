@@ -62,8 +62,8 @@ impl<'sc> TypedExpression<'sc> {
             ),
             Expression::MatchExpression {
                 primary_expression,
-                branches, 
-                span
+                branches,
+                span,
             } => Self::type_check_match_exp(
                 primary_expression,
                 branches,
@@ -239,16 +239,42 @@ impl<'sc> TypedExpression<'sc> {
     pub(crate) fn pattern_match(
         other: Expression<'sc>,
         type_annotation: MaybeResolvedType<'sc>,
-    ) -> Vec<(Ident<'sc>, MaybeResolvedType<'sc>)> {
-        let mut patterns = vec![];
+    ) -> (
+        TypedMatchPattern<'sc>,
+        Vec<(Ident<'sc>, MaybeResolvedType<'sc>)>,
+    ) {
         match other {
-            Expression::Literal { .. } => {}
-            Expression::VariableExpression { name, .. } => {
-                patterns.push((name, type_annotation.clone()))
+            Expression::Literal { value, span } => {
+                let ids = vec![];
+                let pattern = TypedMatchPattern {
+                    pattern: PatternVariant::Expression(TypedExpression {
+                        expression: TypedExpressionVariant::Literal(value),
+                        is_constant: IsConstant::No,
+                        return_type: type_annotation.clone(),
+                        span: span,
+                    }),
+                    return_type: type_annotation.clone(),
+                };
+                (pattern, ids)
             }
-            _ => todo!(),
+            Expression::VariableExpression { name, span, .. } => {
+                let ids = vec![(name.clone(), type_annotation.clone())];
+                let pattern = TypedMatchPattern {
+                    pattern: PatternVariant::Expression(TypedExpression {
+                        expression: TypedExpressionVariant::VariableExpression {
+                            unary_op: None,
+                            name: name.clone(),
+                        },
+                        is_constant: IsConstant::No,
+                        return_type: type_annotation.clone(),
+                        span: span,
+                    }),
+                    return_type: type_annotation.clone(),
+                };
+                (pattern, ids)
+            }
+            n => unimplemented!("{:?}", n),
         }
-        patterns
     }
 
     fn type_check_literal(
@@ -980,31 +1006,35 @@ impl<'sc> TypedExpression<'sc> {
                 |MatchBranch {
                      condition, result, ..
                  }| {
-                    let patterns = match condition {
-                        MatchCondition::CatchAll => vec![],
+                    let (pattern, ids) = match condition {
+                        MatchCondition::CatchAll => {
+                            let ids = vec![];
+                            let pattern = TypedMatchPattern {
+                                pattern: PatternVariant::CatchAll,
+                                return_type: condition_type.clone(),
+                            };
+                            (pattern, ids)
+                        }
                         MatchCondition::Expression(exp) => {
                             TypedExpression::pattern_match(exp, condition_type.clone())
                         }
                     };
-                    for (name, typ) in patterns.iter() {
+                    for (name, typ) in ids.iter() {
                         namespace.insert(
                             name.clone(),
-                            TypedDeclaration::VariableDeclaration(
-                                TypedVariableDeclaration {
-                                    name: name.clone(),
-                                    body: TypedExpression {
-                                        expression:
-                                            TypedExpressionVariant::VariableExpression {
-                                                name: name.clone(),
-                                                unary_op: None,
-                                            },
-                                        return_type: typ.clone(),
-                                        is_constant: IsConstant::No,
-                                        span: name.span.clone(),
+                            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                                name: name.clone(),
+                                body: TypedExpression {
+                                    expression: TypedExpressionVariant::VariableExpression {
+                                        name: name.clone(),
+                                        unary_op: None,
                                     },
-                                    is_mutable: false,
+                                    return_type: typ.clone(),
+                                    is_constant: IsConstant::No,
+                                    span: name.span.clone(),
                                 },
-                            ),
+                                is_mutable: false,
+                            }),
                         );
                     }
                     let typed_result = check!(
@@ -1021,11 +1051,11 @@ impl<'sc> TypedExpression<'sc> {
                         warnings,
                         errors
                     );
-                    for (name, _) in patterns.iter() {
+                    for (name, _) in ids.iter() {
                         namespace.remove(name.clone());
                     }
                     TypedMatchBranch {
-                        patterns: patterns,
+                        pattern: pattern,
                         result: typed_result,
                     }
                 },

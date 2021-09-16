@@ -1,12 +1,14 @@
 use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
 use crate::asm_lang::{
-    virtual_ops::{ConstantRegister, VirtualRegister, Label},
+    virtual_ops::{ConstantRegister, Label, VirtualRegister},
     Op,
 };
 use crate::error::*;
 
-use crate::semantic_analysis::{TypedExpression, ast_node::TypedMatchBranch};
-
+use crate::semantic_analysis::{
+    ast_node::{PatternVariant, TypedMatchBranch, TypedMatchPattern},
+    TypedExpression, TypedExpressionVariant,
+};
 
 use crate::CompileResult;
 
@@ -47,70 +49,113 @@ pub(crate) fn convert_match_exp_to_asm<'sc>(
     let mut errors = vec![];
     let mut asm_buf = vec![];
 
+    // construct labels to refer to each branch
     let branches_labels: Vec<Label> = branches
         .iter()
         .map(|_| register_sequencer.get_label())
         .collect();
+
+    // construct label to refer to after the last branch
     let after_branches_label = register_sequencer.get_label();
-    let primary_expression_result = register_sequencer.next();
-    let mut primary_expression = check!(
-        convert_expression_to_asm(primary_expression, namespace, &primary_expression_result, register_sequencer),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    asm_buf.push(Op::new_comment("begin match expression"));
-    asm_buf.append(&mut primary_expression);
-    let patterns_results: Vec<VirtualRegister> = branches
-        .iter()
-        .map(|_| register_sequencer.next())
-        .collect();
+
+    // construct registers that pattern results go in
+    let pattern_match_results: Vec<VirtualRegister> =
+        branches.iter().map(|_| register_sequencer.next()).collect();
+
+    // transform pattern matches to asm
+    let mut pattern_matches = vec![];
     for i in 0..branches.len() {
-        let branch = branches[i].clone();
-        let pattern_result = patterns_results[i].clone();
-        let branch = todo!();
-        // if the condition is not false, jump to the approporiate branch
-        asm_buf.push(Op::jump_if_not_equal(
-            pattern_result.clone(),
-            VirtualRegister::Constant(ConstantRegister::Zero),
-            branches_labels[i]
+        pattern_matches.push(check!(
+            convert_pattern_to_asm(
+                &branches[i].clone().pattern,
+                primary_expression,
+                &pattern_match_results[i].clone(),
+                namespace,
+                register_sequencer
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
         ));
     }
-    let branches_results: Vec<VirtualRegister> = branches
-        .iter()
-        .map(|_| register_sequencer.next())
-        .collect();
+
+    // push pattern matches onto asm_buf
+    asm_buf.push(Op::new_comment("begin match expression"));
     for i in 0..branches.len() {
-        let branch = branches[i].clone();
-        let branch_result = branches_results[i].clone();
-        let branch_label = branches_labels[i].clone();
-        let mut branch2 = check!(
-            convert_expression_to_asm(&branches[i].result, namespace, &branch_result, register_sequencer),
+        asm_buf.append(&mut pattern_matches[i].clone());
+        // if the condition is not false, jump to the approporiate branch
+        asm_buf.push(Op::jump_if_not_equal(
+            pattern_match_results[i].clone(),
+            VirtualRegister::Constant(ConstantRegister::Zero),
+            branches_labels[i].clone(),
+        ));
+    }
+
+    // construct registers that branch results go in
+    let branches_results: Vec<VirtualRegister> =
+        branches.iter().map(|_| register_sequencer.next()).collect();
+
+    for i in 0..branches.len() {
+        let span = branches[i].clone().result.span;
+        // convert branches to asm
+        let mut branch = check!(
+            convert_expression_to_asm(
+                &branches[i].result,
+                namespace,
+                &branches_results[i].clone(),
+                register_sequencer
+            ),
             return err(warnings, errors),
             warnings,
             errors
         );
+        // push branch labels onto asm_buf
         asm_buf.push(Op::jump_label_comment(
-            branch_label,
-            branch.clone().result.span,
+            branches_labels[i].clone(),
+            span.clone(),
             format!("end of branch {:?}", i),
         ));
-        asm_buf.append(&mut branch2);
+        // push branch asm onto asm_bug
+        asm_buf.append(&mut branch);
+        // push onto asm_buf moving the result to the return register
         asm_buf.push(Op::register_move(
             return_register.clone(),
-            branch_result,
-            branch.clone().result.span
+            branches_results[i].clone(),
+            span,
         ));
+        // push a jump to the after branches label to asm_buf
         asm_buf.push(Op::jump_to_label_comment(
             after_branches_label.clone(),
             format!("end of branch {:?}", i),
         ));
     }
 
+    // push the after branches label to asm_buf
     asm_buf.push(Op::unowned_jump_label_comment(
         after_branches_label,
         "end of match exp",
     ));
 
     ok(asm_buf, warnings, errors)
+}
+
+pub(crate) fn convert_pattern_to_asm<'sc>(
+    pattern: &TypedMatchPattern<'sc>,
+    primary_expression: &TypedExpression<'sc>,
+    return_register: &VirtualRegister,
+    namespace: &mut AsmNamespace<'sc>,
+    register_sequencer: &mut RegisterSequencer,
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    match pattern.pattern {
+        PatternVariant::CatchAll => todo!(),
+        PatternVariant::Expression(pattern_exp) => {
+            match (pattern_exp.expression, primary_expression.expression) {
+                (
+                    TypedExpressionVariant::Literal(pattern_lit),
+                    TypedExpressionVariant::Literal(primary_lit),
+                ) => todo!(),
+                _ => unimplemented!(),
+            }
+        }
+    }
 }

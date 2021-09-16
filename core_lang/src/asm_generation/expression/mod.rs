@@ -281,7 +281,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
         ),
         TypedExpressionVariant::MatchExpression {
             primary_expression,
-            branches
+            branches,
         } => convert_match_exp_to_asm(
             &**primary_expression,
             &branches,
