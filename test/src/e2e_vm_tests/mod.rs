@@ -17,7 +17,7 @@ pub fn run() {
         ("empty_impl", ProgramState::Return(0)),
         ("main_returns_unit", ProgramState::Return(0)),
         ("unary_not_basic", ProgramState::Return(1)), // 1 == true
-        ("unary_not_basic_2", ProgramState::Return(0)), // 0 == false
+        ("unary_not_basic_2", ProgramState::Return(1)), // 1 == true
     ];
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
