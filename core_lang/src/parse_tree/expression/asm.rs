@@ -54,12 +54,11 @@ impl<'sc> AsmExpression<'sc> {
                 }
                 Rule::asm_register => {
                     implicit_op_return = Some((
-                        eval!(
-                            AsmRegister::parse_from_pair,
+                        check!(
+                            AsmRegister::parse_from_pair(pair.clone()),
+                            continue,
                             warnings,
-                            errors,
-                            pair,
-                            continue
+                            errors
                         ),
                         Span {
                             span: pair.as_span(),
