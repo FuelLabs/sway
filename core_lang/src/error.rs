@@ -597,7 +597,7 @@ pub enum CompileError<'sc> {
     )]
     DisallowedLw { span: Span<'sc> },
     #[error(
-        "This op expects {expected} registers as arguments, but you provided {received} registers."
+        "This op expects {expected} register(s) as arguments, but you provided {received} register(s)."
     )]
     IncorrectNumberOfAsmRegisters {
         span: Span<'sc>,
