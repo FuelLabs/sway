@@ -40,12 +40,9 @@ impl<'sc> TypedExpression<'sc> {
         let expr_span = other.span();
         let res = match other {
             Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
-            Expression::VariableExpression {
-                name,
-                unary_op,
-                span,
-                ..
-            } => Self::type_check_variable_expression(name, unary_op, span, namespace),
+            Expression::VariableExpression { name, span, .. } => {
+                Self::type_check_variable_expression(name, span, namespace)
+            }
             Expression::FunctionApplication {
                 name,
                 arguments,
@@ -119,12 +116,10 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
             ),
             Expression::SubfieldExpression {
-                unary_op,
                 prefix,
                 span,
                 field_to_access,
             } => Self::type_check_subfield_expression(
-                unary_op,
                 prefix,
                 span,
                 field_to_access,
@@ -264,7 +259,6 @@ impl<'sc> TypedExpression<'sc> {
 
     fn type_check_variable_expression(
         name: Ident<'sc>,
-        unary_op: Option<UnaryOp>,
         span: pest::Span<'sc>,
         namespace: &mut Namespace<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -275,10 +269,7 @@ impl<'sc> TypedExpression<'sc> {
             })) => TypedExpression {
                 return_type: body.return_type.clone(),
                 is_constant: body.is_constant,
-                expression: TypedExpressionVariant::VariableExpression {
-                    unary_op: unary_op.clone(),
-                    name: name.clone(),
-                },
+                expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
                 span,
             },
             Some(a) => {
@@ -750,7 +741,6 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_subfield_expression(
-        unary_op: Option<UnaryOp>,
         prefix: Box<Expression<'sc>>,
         span: pest::Span<'sc>,
         field_to_access: Ident<'sc>,
@@ -806,7 +796,6 @@ impl<'sc> TypedExpression<'sc> {
 
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructFieldAccess {
-                unary_op,
                 resolved_type_of_parent: parent.return_type.clone(),
                 prefix: Box::new(parent),
                 field_to_access: field.clone(),
