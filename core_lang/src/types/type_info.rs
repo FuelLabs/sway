@@ -122,7 +122,7 @@ fn parse_str_type<'sc>(raw: &'sc str, span: pest::Span<'sc>) -> CompileResult<'s
         }
         return err(vec![], vec![CompileError::InvalidStrType { raw, span }]);
     }
-    return err(vec![], vec![CompileError::UnknownType { span }]);
+    err(vec![], vec![CompileError::UnknownType { span }])
 }
 
 #[test]
