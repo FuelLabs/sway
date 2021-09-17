@@ -4,6 +4,7 @@ use super::{
 };
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
+use crate::span::Span;
 use crate::{
     build_config::BuildConfig,
     error::*,
@@ -11,7 +12,6 @@ use crate::{
     Ident,
 };
 use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
-use pest::Span;
 use sha2::{Digest, Sha256};
 
 #[derive(Clone, Debug)]
@@ -83,7 +83,7 @@ impl<'sc> TypedDeclaration<'sc> {
                         vec![CompileError::NotAType {
                             span: decl.span(),
                             name: decl.pretty_print(),
-                            actually_is: decl.friendly_name().to_string(),
+                            actually_is: decl.friendly_name(),
                         }],
                     )
                 }
@@ -222,7 +222,7 @@ pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) body: TypedCodeBlock<'sc>,
     pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
-    pub(crate) span: pest::Span<'sc>,
+    pub(crate) span: Span<'sc>,
     pub(crate) return_type: MaybeResolvedType<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     /// Used for error messages -- the span pointing to the return type
@@ -336,17 +336,29 @@ fn test_function_selector_behavior() {
     let decl = TypedFunctionDeclaration {
         name: Ident {
             primary_name: "foo",
-            span: Span::new(" ", 0, 0).unwrap(),
+            span: Span {
+                span: pest::Span::new(" ", 0, 0).unwrap(),
+                path: None,
+            },
         },
         body: TypedCodeBlock {
             contents: vec![],
-            whole_block_span: Span::new(" ", 0, 0).unwrap(),
+            whole_block_span: Span {
+                span: pest::Span::new(" ", 0, 0).unwrap(),
+                path: None,
+            },
         },
         parameters: vec![],
-        span: Span::new(" ", 0, 0).unwrap(),
+        span: Span {
+            span: pest::Span::new(" ", 0, 0).unwrap(),
+            path: None,
+        },
         return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
         type_parameters: vec![],
-        return_type_span: Span::new(" ", 0, 0).unwrap(),
+        return_type_span: Span {
+            span: pest::Span::new(" ", 0, 0).unwrap(),
+            path: None,
+        },
         visibility: Visibility::Public,
         is_contract_call: false,
     };
@@ -361,38 +373,62 @@ fn test_function_selector_behavior() {
     let decl = TypedFunctionDeclaration {
         name: Ident {
             primary_name: "bar",
-            span: Span::new(" ", 0, 0).unwrap(),
+            span: Span {
+                span: pest::Span::new(" ", 0, 0).unwrap(),
+                path: None,
+            },
         },
         body: TypedCodeBlock {
             contents: vec![],
-            whole_block_span: Span::new(" ", 0, 0).unwrap(),
+            whole_block_span: Span {
+                span: pest::Span::new(" ", 0, 0).unwrap(),
+                path: None,
+            },
         },
         parameters: vec![
             TypedFunctionParameter {
                 name: Ident {
                     primary_name: "foo",
-                    span: Span::new(" ", 0, 0).unwrap(),
+                    span: Span {
+                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                        path: None,
+                    },
                 },
                 r#type: MaybeResolvedType::Resolved(ResolvedType::Str(5)),
-                type_span: Span::new(" ", 0, 0).unwrap(),
+                type_span: Span {
+                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                    path: None,
+                },
             },
             TypedFunctionParameter {
                 name: Ident {
                     primary_name: "baz",
-                    span: Span::new(" ", 0, 0).unwrap(),
+                    span: Span {
+                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                        path: None,
+                    },
                 },
                 r#type: MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
                     IntegerBits::ThirtyTwo,
                 )),
-                type_span: Span::new(" ", 0, 0).unwrap(),
+                type_span: Span {
+                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                    path: None,
+                },
             },
         ],
-        span: Span::new(" ", 0, 0).unwrap(),
+        span: Span {
+            span: pest::Span::new(" ", 0, 0).unwrap(),
+            path: None,
+        },
         return_type: MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
             IntegerBits::SixtyFour,
         )),
         type_parameters: vec![],
-        return_type_span: Span::new(" ", 0, 0).unwrap(),
+        return_type_span: Span {
+            span: pest::Span::new(" ", 0, 0).unwrap(),
+            path: None,
+        },
         visibility: Visibility::Public,
         is_contract_call: false,
     };
@@ -582,13 +618,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         span: type_span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
                         fn_name: fn_decl.name.primary_name,
-                        args: args_span.as_str(),
+                        args: args_span.as_str().to_string(),
                     });
                 }
             }
         }
         // handle the return statement(s)
-        let return_statements: Vec<(&TypedExpression, &pest::Span<'sc>)> = body
+        let return_statements: Vec<(&TypedExpression, &Span<'sc>)> = body
             .contents
             .iter()
             .filter_map(|x| {

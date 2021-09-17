@@ -5,9 +5,9 @@
 //! Only things needed for opcode serialization and generation are included here.
 #![allow(dead_code)]
 
+use crate::span::Span;
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
-use pest::Span;
 use std::{collections::HashSet, fmt};
 use virtual_ops::{
     ConstantRegister, Label, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,

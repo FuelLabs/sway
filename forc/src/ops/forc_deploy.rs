@@ -20,7 +20,7 @@ pub async fn deploy(_: DeployCommand) -> Result<(), CliError> {
             let main_file = get_main_file(&manifest, &manifest_dir)?;
 
             // parse the main file and check is it a contract
-            let parsed_result = parse(main_file);
+            let parsed_result = parse(main_file, None);
             match parsed_result.value {
                 Some(parse_tree) => {
                     if let Some(_) = &parse_tree.contract_ast {

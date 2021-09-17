@@ -1,4 +1,6 @@
+use crate::build_config::BuildConfig;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::{
     error::{ok, CompileResult},
     CodeBlock, Expression,
@@ -12,35 +14,43 @@ pub struct WhileLoop<'sc> {
 }
 
 impl<'sc> WhileLoop<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        pair: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut iter = pair.into_inner();
         let _while_keyword = iter.next().unwrap();
         let condition = iter.next().unwrap();
         let body = iter.next().unwrap();
-        let whole_block_span = body.as_span();
+        let whole_block_span = Span {
+            span: body.as_span(),
+            path: path.clone(),
+        };
 
-        let condition = eval!(
-            Expression::parse_from_pair,
-            warnings,
-            errors,
-            condition,
+        let condition = check!(
+            Expression::parse_from_pair(condition.clone(), config),
             Expression::Unit {
-                span: condition.as_span()
-            }
+                span: Span {
+                    span: condition.as_span(),
+                    path: path.clone()
+                }
+            },
+            warnings,
+            errors
         );
 
-        let body = eval!(
-            CodeBlock::parse_from_pair,
-            warnings,
-            errors,
-            body,
+        let body = check!(
+            CodeBlock::parse_from_pair(body, config),
             CodeBlock {
                 contents: Default::default(),
                 whole_block_span,
                 scope: Default::default()
-            }
+            },
+            warnings,
+            errors
         );
 
         ok(WhileLoop { condition, body }, warnings, errors)

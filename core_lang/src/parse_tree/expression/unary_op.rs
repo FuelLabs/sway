@@ -1,9 +1,10 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parse_tree::{CallPath, Expression};
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::Ident;
 use pest::iterators::Pair;
-use pest::Span;
 
 #[derive(Clone, Debug)]
 pub enum UnaryOp {
@@ -13,7 +14,10 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
-    pub fn parse_from_pair<'sc>(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub fn parse_from_pair<'sc>(
+        pair: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
         use UnaryOp::*;
         match pair.as_str() {
             "!" => ok(Not, Vec::new(), Vec::new()),
@@ -22,7 +26,10 @@ impl UnaryOp {
             _ => {
                 let errors = vec![CompileError::Internal(
                     "Attempted to parse unary op from invalid op string.",
-                    pair.as_span(),
+                    Span {
+                        span: pair.as_span(),
+                        path: config.map(|c| c.dir_of_code.clone()),
+                    },
                 )];
                 return err(Vec::new(), errors);
             }

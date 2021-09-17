@@ -105,7 +105,7 @@ impl TextDocument {
 impl TextDocument {
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
         let text = &self.get_text();
-        let parsed_result = parse(text);
+        let parsed_result = parse(text, None);
         match parsed_result.value {
             None => Err(capabilities::diagnostic::get_diagnostics(
                 parsed_result.warnings,

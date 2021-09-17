@@ -10,7 +10,7 @@ use super::{
 };
 use crate::asm_generation::RegisterPool;
 use crate::error::*;
-use pest::Span;
+use crate::span::Span;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::fmt;
