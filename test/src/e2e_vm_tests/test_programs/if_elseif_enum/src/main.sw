@@ -1,6 +1,4 @@
 script;
-use std::*;
-use std::ops::Ord;
 
 struct Rgb {
   red: u64,
@@ -18,7 +16,7 @@ enum PrimaryColor {
    Blue : ()
 }
 
-impl std::ops::Ord for PrimaryColor {
+impl std::std::ops::Ord for PrimaryColor {
   fn lt(self, other: Self) -> bool {
    asm(r1: self, r2: other, r3) {
       lt r3 r1 r2;
@@ -74,7 +72,7 @@ impl Color for PrimaryColor {
   }
 }
 
-fn main() -> u32 {
+fn main() {
   let first_color: PrimaryColor = PrimaryColor::Green;
   let test = first_color == PrimaryColor::Green;
   // Specifically, when we call methods in the below way, `self` is undefined
@@ -86,5 +84,4 @@ fn main() -> u32 {
   let second_rgb = second_color.rgb();
   let second_color = PrimaryColor::Blue;
   let second_rgb = second_color.rgb();
-  10u32
 }

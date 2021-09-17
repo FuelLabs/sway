@@ -1,5 +1,5 @@
 script;
-use std::*;
+use std::std::*;
 
 fn main() -> bool {
   let a: bool = true;

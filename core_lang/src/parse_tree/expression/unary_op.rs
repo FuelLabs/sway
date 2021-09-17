@@ -59,6 +59,10 @@ impl UnaryOp {
                         span: op_span.clone(),
                     },
                     Ident {
+                        primary_name: "std".into(),
+                        span: op_span.clone(),
+                    },
+                    Ident {
                         primary_name: "ops".into(),
                         span: op_span.clone(),
                     },

@@ -9,7 +9,7 @@ pub fn run() {
         ("basic_func_decl", ProgramState::Return(1)), // 1 == true
         ("contract_abi_impl", ProgramState::Return(0)),
         ("dependencies", ProgramState::Return(0)), // 0 == false
-        ("if_elseif_enum", ProgramState::Return(10)),
+        ("if_elseif_enum", ProgramState::Return(0)),
         ("out_of_order_decl", ProgramState::Return(1)),
         ("struct_field_reassignment", ProgramState::Return(0)),
         ("contract_call", ProgramState::Return(0)),

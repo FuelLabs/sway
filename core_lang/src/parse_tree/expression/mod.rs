@@ -1093,6 +1093,10 @@ fn arrange_by_order_of_operations<'sc>(
                             span: op.span.clone(),
                         },
                         Ident {
+                            primary_name: "std".into(),
+                            span: op.span.clone(),
+                        },
+                        Ident {
                             primary_name: "ops".into(),
                             span: op.span.clone(),
                         },
