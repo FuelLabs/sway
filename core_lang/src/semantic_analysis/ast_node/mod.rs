@@ -1,13 +1,13 @@
 use crate::build_config::BuildConfig;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 use crate::semantic_analysis::Namespace;
+use crate::span::Span;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 pub(crate) use impl_trait::Mode;
-use pest::Span;
 use std::path::Path;
 
 mod code_block;
@@ -639,11 +639,7 @@ fn reassignment<'sc>(
     let mut warnings = vec![];
     // ensure that the lhs is a variable expression or struct field access
     match *lhs {
-        Expression::VariableExpression {
-            unary_op: _,
-            name,
-            span,
-        } => {
+        Expression::VariableExpression { name, span } => {
             // check that the reassigned name exists
             let thing_to_reassign = match namespace.clone().get_symbol(&name) {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -657,7 +653,7 @@ fn reassignment<'sc>(
                     // early-returning, for the sake of better error reporting
                     if !is_mutable {
                         errors.push(CompileError::AssignmentToNonMutable(
-                            name.primary_name,
+                            name.primary_name.to_string(),
                             span.clone(),
                         ));
                     }
@@ -674,7 +670,7 @@ fn reassignment<'sc>(
                 }
                 None => {
                     errors.push(CompileError::UnknownVariable {
-                        var_name: name.primary_name,
+                        var_name: name.primary_name.to_string(),
                         span: name.span.clone(),
                     });
                     return err(warnings, errors);
@@ -710,7 +706,6 @@ fn reassignment<'sc>(
         }
         Expression::SubfieldExpression {
             prefix,
-            unary_op: _,
             field_to_access,
             span,
         } => {
@@ -940,7 +935,7 @@ fn type_check_trait_methods<'sc>(
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
                         fn_name: fn_name.primary_name,
-                        args: args_span.as_str(),
+                        args: args_span.as_str().to_string(),
                     });
                 }
             }

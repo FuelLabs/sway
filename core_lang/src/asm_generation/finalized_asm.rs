@@ -1,8 +1,10 @@
 use super::{DataSection, InstructionSet};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
+use crate::span::Span;
 use either::Either;
 use std::io::Read;
+
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
 #[derive(Clone)]
@@ -53,7 +55,10 @@ fn to_bytecode<'sc>(
         println!("ops len: {}", program_section.ops.len());
         errors.push(CompileError::Internal(
             "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
-            pest::Span::new(" ", 0, 0).unwrap(),
+            Span {
+                span: pest::Span::new(" ", 0, 0).unwrap(),
+                path: None,
+            },
         ));
         return err(vec![], errors);
     }

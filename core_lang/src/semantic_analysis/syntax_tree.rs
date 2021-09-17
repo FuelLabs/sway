@@ -3,6 +3,7 @@ use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDe
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::Namespace;
+use crate::span::Span;
 use crate::{
     error::*,
     types::{MaybeResolvedType, ResolvedType},
@@ -142,7 +143,7 @@ impl<'sc> TypedParseTree<'sc> {
 
     fn validate_typed_nodes(
         typed_tree_nodes: Vec<TypedAstNode<'sc>>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         namespace: Namespace<'sc>,
         tree_type: TreeType,
         warnings: Vec<CompileWarning<'sc>>,

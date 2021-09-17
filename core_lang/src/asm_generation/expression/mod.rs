@@ -1,4 +1,5 @@
 use super::*;
+use crate::span::Span;
 use crate::{
     asm_lang::{virtual_ops::VirtualRegister, *},
     parse_tree::CallPath,
@@ -11,7 +12,6 @@ use crate::{
     },
     types::{MaybeResolvedType, ResolvedType},
 };
-use pest::Span;
 
 mod contract_call;
 mod enum_instantiation;
@@ -83,7 +83,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                 )
             }
         }
-        TypedExpressionVariant::VariableExpression { unary_op: _, name } => {
+        TypedExpressionVariant::VariableExpression { name } => {
             let var = check!(
                 namespace.look_up_variable(name),
                 return err(warnings, errors),
@@ -124,7 +124,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     ConstantRegister::parse_register_name(name).is_none(),
                     warnings,
                     name_span.clone(),
-                    Warning::ShadowingReservedRegister { reg_name: name }
+                    Warning::ShadowingReservedRegister { reg_name: &name }
                 );
 
                 mapping_of_real_registers_to_declared_names.insert(name, register.clone());
@@ -237,12 +237,10 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             fields,
         } => convert_struct_expression_to_asm(struct_name, fields, namespace, register_sequencer),
         TypedExpressionVariant::StructFieldAccess {
-            unary_op,
             resolved_type_of_parent,
             prefix,
             field_to_access,
         } => convert_subfield_expression_to_asm(
-            unary_op,
             &exp.span,
             prefix,
             field_to_access,

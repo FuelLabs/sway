@@ -5,11 +5,11 @@ use super::ast_node::{
 use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
+use crate::span::Span;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
-use pest::Span;
 use std::collections::{HashMap, VecDeque};
 
 type ModuleName = String;
@@ -221,7 +221,7 @@ impl<'sc> Namespace<'sc> {
             warnings.push(CompileWarning {
                 span: name.span.clone(),
                 warning_content: Warning::OverridesOtherSymbol {
-                    name: name.span.clone().as_str(),
+                    name: name.clone().span.str(),
                 },
             });
         }
@@ -382,7 +382,7 @@ impl<'sc> Namespace<'sc> {
             Some(s) => s,
             None => {
                 errors.push(CompileError::UnknownVariable {
-                    var_name: first_ident.primary_name,
+                    var_name: first_ident.primary_name.to_string(),
                     span: first_ident.span.clone(),
                 });
                 return err(warnings, errors);
@@ -594,7 +594,7 @@ impl<'sc> Namespace<'sc> {
                     != Some(&MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery))
                 {
                     errors.push(CompileError::MethodNotFound {
-                        method_name: method_name.primary_name,
+                        method_name: method_name.primary_name.to_string(),
                         type_name: args_buf[0].return_type.friendly_type_str(),
                         span: method_name.span.clone(),
                     });

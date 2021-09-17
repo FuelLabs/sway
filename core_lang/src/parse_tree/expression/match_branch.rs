@@ -1,8 +1,9 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
+use crate::span;
 use crate::CodeBlock;
 use pest::iterators::Pair;
-use pest::Span;
 use std::collections::HashMap;
 
 use super::{Expression, MatchCondition};
@@ -11,33 +12,47 @@ use super::{Expression, MatchCondition};
 pub struct MatchBranch<'sc> {
     pub(crate) condition: MatchCondition<'sc>,
     pub(crate) result: Expression<'sc>,
-    pub(crate) span: Span<'sc>,
+    pub(crate) span: span::Span<'sc>,
 }
 
 impl<'sc> MatchBranch<'sc> {
-    pub fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub fn parse_from_pair(
+        pair: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let span = pair.as_span();
+        let span = span::Span {
+            span: pair.as_span(),
+            path: path.clone(),
+        };
         let mut branch = pair.clone().into_inner();
         let condition = match branch.next() {
             Some(o) => o,
             None => {
                 errors.push(CompileError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
-                    pair.as_span(),
+                    span::Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    },
                 ));
                 return err(warnings, errors);
             }
         };
         let condition = match condition.into_inner().next() {
             Some(e) => {
-                let expr = eval!(
-                    Expression::parse_from_pair,
+                let expr = check!(
+                    Expression::parse_from_pair(e.clone(), config),
+                    Expression::Unit {
+                        span: span::Span {
+                            span: e.as_span(),
+                            path: path.clone()
+                        }
+                    },
                     warnings,
-                    errors,
-                    e,
-                    Expression::Unit { span: e.as_span() }
+                    errors
                 );
                 MatchCondition::Expression(expr)
             }
@@ -49,34 +64,41 @@ impl<'sc> MatchBranch<'sc> {
             None => {
                 errors.push(CompileError::Internal(
                     "Unexpected empty iterator in match branch parsing.",
-                    pair.as_span(),
+                    span::Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    },
                 ));
                 return err(warnings, errors);
             }
         };
         let result = match result.as_rule() {
-            Rule::expr => eval!(
-                Expression::parse_from_pair,
-                warnings,
-                errors,
-                result,
+            Rule::expr => check!(
+                Expression::parse_from_pair(result.clone(), config),
                 Expression::Unit {
-                    span: result.as_span()
-                }
+                    span: span::Span {
+                        span: result.as_span(),
+                        path
+                    }
+                },
+                warnings,
+                errors
             ),
             Rule::code_block => {
-                let span = result.as_span();
+                let span = span::Span {
+                    span: result.as_span(),
+                    path: path.clone(),
+                };
                 Expression::CodeBlock {
-                    contents: eval!(
-                        CodeBlock::parse_from_pair,
-                        warnings,
-                        errors,
-                        result,
+                    contents: check!(
+                        CodeBlock::parse_from_pair(result, config),
                         CodeBlock {
                             contents: Vec::new(),
                             whole_block_span: span.clone(),
                             scope: HashMap::default()
-                        }
+                        },
+                        warnings,
+                        errors
                     ),
                     span,
                 }

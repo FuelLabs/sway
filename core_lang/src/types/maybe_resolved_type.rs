@@ -1,7 +1,7 @@
 use super::IntegerBits;
 use super::{PartiallyResolvedType, ResolvedType};
 use crate::error::*;
-use pest::Span;
+use crate::span::Span;
 
 /// [ResolvedType] refers to a fully qualified type that has been looked up in the namespace.
 /// Type symbols are ambiguous in the beginning of compilation, as any custom symbol could be

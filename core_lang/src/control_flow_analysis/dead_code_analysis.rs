@@ -2,6 +2,7 @@ use super::*;
 
 use crate::parse_tree::CallPath;
 use crate::semantic_analysis::ast_node::TypedStructExpressionField;
+use crate::span::Span;
 use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
     parse_tree::Visibility,
@@ -21,7 +22,6 @@ use crate::{
     },
     CompileWarning, Warning,
 };
-use pest::Span;
 use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
 

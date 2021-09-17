@@ -40,12 +40,9 @@ impl<'sc> TypedExpression<'sc> {
         let expr_span = other.span();
         let res = match other {
             Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
-            Expression::VariableExpression {
-                name,
-                unary_op,
-                span,
-                ..
-            } => Self::type_check_variable_expression(name, unary_op, span, namespace),
+            Expression::VariableExpression { name, span, .. } => {
+                Self::type_check_variable_expression(name, span, namespace)
+            }
             Expression::FunctionApplication {
                 name,
                 arguments,
@@ -119,12 +116,10 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
             ),
             Expression::SubfieldExpression {
-                unary_op,
                 prefix,
                 span,
                 field_to_access,
             } => Self::type_check_subfield_expression(
-                unary_op,
                 prefix,
                 span,
                 field_to_access,
@@ -233,7 +228,7 @@ impl<'sc> TypedExpression<'sc> {
 
     fn type_check_literal(
         lit: Literal<'sc>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let return_type = match lit {
             Literal::String(s) => MaybeResolvedType::Resolved(ResolvedType::Str(s.len() as u64)),
@@ -264,8 +259,7 @@ impl<'sc> TypedExpression<'sc> {
 
     fn type_check_variable_expression(
         name: Ident<'sc>,
-        unary_op: Option<UnaryOp>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut errors = vec![];
@@ -275,15 +269,12 @@ impl<'sc> TypedExpression<'sc> {
             })) => TypedExpression {
                 return_type: body.return_type.clone(),
                 is_constant: body.is_constant,
-                expression: TypedExpressionVariant::VariableExpression {
-                    unary_op: unary_op.clone(),
-                    name: name.clone(),
-                },
+                expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
                 span,
             },
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
-                    name: name.span.as_str(),
+                    name: name.span.as_str().to_string(),
                     span: name.span.clone(),
                     what_it_is: a.friendly_name(),
                 });
@@ -291,7 +282,7 @@ impl<'sc> TypedExpression<'sc> {
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
-                    var_name: name.span.as_str().trim(),
+                    var_name: name.span.as_str().trim().to_string(),
                     span: name.span.clone(),
                 });
                 error_recovery_expr(name.span.clone())
@@ -303,7 +294,7 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_function_application(
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
@@ -372,7 +363,7 @@ impl<'sc> TypedExpression<'sc> {
             }
             a => {
                 errors.push(CompileError::NotAFunction {
-                    name: name.span().as_str(),
+                    name: name.span().as_str().to_string(),
                     span: name.span(),
                     what_it_is: a.friendly_name(),
                 });
@@ -441,7 +432,7 @@ impl<'sc> TypedExpression<'sc> {
 
     fn type_check_code_block(
         contents: CodeBlock<'sc>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
@@ -501,7 +492,7 @@ impl<'sc> TypedExpression<'sc> {
         condition: Box<Expression<'sc>>,
         then: Box<Expression<'sc>>,
         r#else: Option<Box<Expression<'sc>>>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         type_annotation: Option<MaybeResolvedType<'sc>>,
         self_type: &MaybeResolvedType<'sc>,
@@ -582,7 +573,7 @@ impl<'sc> TypedExpression<'sc> {
 
     fn type_check_asm_expression(
         asm: AsmExpression<'sc>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
@@ -639,7 +630,7 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_struct_expression(
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         struct_name: Ident<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
         namespace: &mut Namespace<'sc>,
@@ -750,9 +741,8 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_subfield_expression(
-        unary_op: Option<UnaryOp>,
         prefix: Box<Expression<'sc>>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         field_to_access: Ident<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
@@ -806,7 +796,6 @@ impl<'sc> TypedExpression<'sc> {
 
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructFieldAccess {
-                unary_op,
                 resolved_type_of_parent: parent.return_type.clone(),
                 prefix: Box::new(parent),
                 field_to_access: field.clone(),
@@ -820,7 +809,7 @@ impl<'sc> TypedExpression<'sc> {
 
     fn type_check_delineated_path(
         call_path: CallPath<'sc>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         args: Vec<Expression<'sc>>,
         type_arguments: Vec<TypeInfo<'sc>>,
         namespace: &mut Namespace<'sc>,
@@ -914,7 +903,7 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_abi_cast(
         abi_name: CallPath<'sc>,
         address: Box<Expression<'sc>>,
-        span: pest::Span<'sc>,
+        span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,

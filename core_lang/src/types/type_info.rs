@@ -1,5 +1,7 @@
 use super::{MaybeResolvedType, ResolvedType};
+use crate::build_config::BuildConfig;
 use crate::error::*;
+use crate::span::Span;
 use crate::types::PartiallyResolvedType;
 use crate::{Ident, Rule};
 use pest::iterators::Pair;
@@ -65,11 +67,19 @@ impl<'sc> TypeInfo<'sc> {
             TypeInfo::ErrorRecovery => MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
         })
     }
-    pub(crate) fn parse_from_pair(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+
+    pub(crate) fn parse_from_pair(
+        input: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
         let mut r#type = input.into_inner();
-        Self::parse_from_pair_inner(r#type.next().unwrap())
+        Self::parse_from_pair_inner(r#type.next().unwrap(), config)
     }
-    pub(crate) fn parse_from_pair_inner(input: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+
+    pub(crate) fn parse_from_pair_inner(
+        input: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let input = if let Some(input) = input.clone().into_inner().next() {
@@ -91,18 +101,27 @@ impl<'sc> TypeInfo<'sc> {
                 "Contract" => TypeInfo::Contract,
                 "()" => TypeInfo::Unit,
                 a if a.contains("str[") => check!(
-                    parse_str_type(a, input.as_span()),
+                    parse_str_type(
+                        a,
+                        Span {
+                            span: input.as_span(),
+                            path: if let Some(config) = config {
+                                Some(config.dir_of_code.clone())
+                            } else {
+                                None
+                            }
+                        }
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ),
                 _other => TypeInfo::Custom {
-                    name: eval!(
-                        Ident::parse_from_pair,
+                    name: check!(
+                        Ident::parse_from_pair(input, config),
+                        return err(warnings, errors),
                         warnings,
-                        errors,
-                        input,
-                        return err(warnings, errors)
+                        errors
                     ),
                 },
             },
@@ -112,7 +131,7 @@ impl<'sc> TypeInfo<'sc> {
     }
 }
 
-fn parse_str_type<'sc>(raw: &'sc str, span: pest::Span<'sc>) -> CompileResult<'sc, TypeInfo<'sc>> {
+fn parse_str_type<'sc>(raw: &'sc str, span: Span<'sc>) -> CompileResult<'sc, TypeInfo<'sc>> {
     if raw.starts_with("str[") {
         let mut rest = raw.split_at("str[".len()).1.chars().collect::<Vec<_>>();
         if let Some(']') = rest.pop() {
@@ -120,43 +139,113 @@ fn parse_str_type<'sc>(raw: &'sc str, span: pest::Span<'sc>) -> CompileResult<'s
                 return ok(TypeInfo::Str(num), vec![], vec![]);
             }
         }
-        return err(vec![], vec![CompileError::InvalidStrType { raw, span }]);
+        return err(
+            vec![],
+            vec![CompileError::InvalidStrType {
+                raw: raw.to_string(),
+                span,
+            }],
+        );
     }
     err(vec![], vec![CompileError::UnknownType { span }])
 }
 
 #[test]
 fn test_str_parse() {
-    match parse_str_type("str[20]", pest::Span::new("", 0, 0).unwrap()).value {
+    match parse_str_type(
+        "str[20]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
         Some(value) if value == TypeInfo::Str(20) => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("str[]", pest::Span::new("", 0, 0).unwrap()).value {
+    match parse_str_type(
+        "str[]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("str[ab]", pest::Span::new("", 0, 0).unwrap()).value {
+    match parse_str_type(
+        "str[ab]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("str [ab]", pest::Span::new("", 0, 0).unwrap()).value {
+    match parse_str_type(
+        "str [ab]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
         None => (),
         _ => panic!("failed test"),
     }
 
-    match parse_str_type("not even a str[ type", pest::Span::new("", 0, 0).unwrap()).value {
+    match parse_str_type(
+        "not even a str[ type",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("", pest::Span::new("", 0, 0).unwrap()).value {
+    match parse_str_type(
+        "",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("20", pest::Span::new("", 0, 0).unwrap()).value {
+    match parse_str_type(
+        "20",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
         None => (),
         _ => panic!("failed test"),
     }
-    match parse_str_type("[20]", pest::Span::new("", 0, 0).unwrap()).value {
+    match parse_str_type(
+        "[20]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
         None => (),
         _ => panic!("failed test"),
     }
