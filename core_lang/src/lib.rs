@@ -98,7 +98,10 @@ impl<'sc> ParseTree<'sc> {
     }
 }
 
-pub fn parse<'sc>(input: &'sc str, config: Option<&BuildConfig>) -> CompileResult<'sc, HllParseTree<'sc>> {
+pub fn parse<'sc>(
+    input: &'sc str,
+    config: Option<&BuildConfig>,
+) -> CompileResult<'sc, HllParseTree<'sc>> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     let mut parsed = match HllParser::parse(Rule::program, input) {

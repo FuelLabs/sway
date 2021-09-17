@@ -618,19 +618,17 @@ impl<'sc> Namespace<'sc> {
             MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields }) => {
                 ok((fields.to_vec(), name.clone()), vec![], vec![])
             }
-            a => {
-                err(
-                    vec![],
-                    match a {
-                        MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery) => vec![],
-                        _ => vec![CompileError::NotAStruct {
-                            name: debug_string.into(),
-                            span: debug_span.clone(),
-                            actually: a.friendly_type_str(),
-                        }],
-                    },
-                )
-            }
+            a => err(
+                vec![],
+                match a {
+                    MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery) => vec![],
+                    _ => vec![CompileError::NotAStruct {
+                        name: debug_string.into(),
+                        span: debug_span.clone(),
+                        actually: a.friendly_type_str(),
+                    }],
+                },
+            ),
         }
     }
 }
