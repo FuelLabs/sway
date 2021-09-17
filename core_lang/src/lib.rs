@@ -773,3 +773,48 @@ fn test_parenthesized() {
     let mut errors: Vec<CompileError> = Vec::new();
     prog.unwrap(&mut warnings, &mut errors);
 }
+
+#[test]
+fn test_unary_ordering() {
+    use crate::parse_tree::declaration::FunctionDeclaration;
+    let prog = parse(
+        r#"
+    script;
+    fn main() -> bool {
+        let a = true;
+        let b = true;
+        !a && b;
+    }"#,
+    );
+    let mut warnings: Vec<CompileWarning> = Vec::new();
+    let mut errors: Vec<CompileError> = Vec::new();
+    let prog = prog.unwrap(&mut warnings, &mut errors);
+    dbg!(&prog);
+    // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
+    // expression should be `and()`
+    if let AstNode {
+        content:
+            AstNodeContent::Declaration(Declaration::FunctionDeclaration(FunctionDeclaration {
+                body,
+                ..
+            })),
+        ..
+    } = &prog.script_ast.unwrap().root_nodes[0]
+    {
+        if let AstNode {
+            content:
+                AstNodeContent::Expression(Expression::MethodApplication {
+                    method_name: MethodName::FromType { call_path, .. },
+                    ..
+                }),
+            ..
+        } = &body.contents[2]
+        {
+            assert_eq!(call_path.suffix.primary_name, "and")
+        } else {
+            panic!("Was not method application")
+        }
+    } else {
+        panic!("Was not ast node")
+    };
+}

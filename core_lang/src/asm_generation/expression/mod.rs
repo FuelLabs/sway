@@ -83,7 +83,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                 )
             }
         }
-        TypedExpressionVariant::VariableExpression { unary_op: _, name } => {
+        TypedExpressionVariant::VariableExpression { name } => {
             let var = check!(
                 namespace.look_up_variable(name),
                 return err(warnings, errors),
@@ -237,12 +237,10 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             fields,
         } => convert_struct_expression_to_asm(struct_name, fields, namespace, register_sequencer),
         TypedExpressionVariant::StructFieldAccess {
-            unary_op,
             resolved_type_of_parent,
             prefix,
             field_to_access,
         } => convert_subfield_expression_to_asm(
-            unary_op,
             &exp.span,
             prefix,
             field_to_access,

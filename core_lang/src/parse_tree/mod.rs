@@ -1,6 +1,6 @@
 mod call_path;
 mod code_block;
-mod declaration;
+pub mod declaration;
 mod expression;
 mod include_statement;
 mod literal;

@@ -639,11 +639,7 @@ fn reassignment<'sc>(
     let mut warnings = vec![];
     // ensure that the lhs is a variable expression or struct field access
     match *lhs {
-        Expression::VariableExpression {
-            unary_op: _,
-            name,
-            span,
-        } => {
+        Expression::VariableExpression { name, span } => {
             // check that the reassigned name exists
             let thing_to_reassign = match namespace.clone().get_symbol(&name) {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -710,7 +706,6 @@ fn reassignment<'sc>(
         }
         Expression::SubfieldExpression {
             prefix,
-            unary_op: _,
             field_to_access,
             span,
         } => {

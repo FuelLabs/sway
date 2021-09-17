@@ -100,7 +100,6 @@ impl<'sc> Reassignment<'sc> {
                 for name_part in name_parts {
                     expr = Expression::SubfieldExpression {
                         prefix: Box::new(expr.clone()),
-                        unary_op: None, // TODO
                         span: Span {
                             span: name_part.as_span(),
                             path: path.clone(),
@@ -160,7 +159,6 @@ fn parse_call_item_ensure_only_var<'sc>(
                 span: item.as_span(),
                 path: path.clone(),
             },
-            unary_op: None,
         },
         Rule::expr => {
             errors.push(CompileError::InvalidExpressionOnLhs {
