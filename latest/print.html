@@ -255,6 +255,36 @@ Bytecode size is 28 bytes.
 <!-- markdownlint-disable-next-line no-trailing-punctuation -->
 <h1 id="hello-world"><a class="header" href="#hello-world">Hello, World!</a></h1>
 <h1 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h1>
+<p>This example is not the traditional fizzbuzz, instead it is the smart contract version! A script can call this contract with some u64 value
+and receive back its fizzbuzzability as an enum. Note that the deserialization scheme for the fizzbuzz enum will be included in the ABI descriptor
+so the caller knows what to do with the bytes.</p>
+<pre><code class="language-sway">contract;
+
+enum FizzBuzzResult {
+  Fizz: (),
+  Buzz: (),
+  FizzBuzz: (),
+  Other: u64
+}
+
+abi FizzBuzz {
+  fn fizzbuzz(gas: u64, coins: u64, color: b256, input: u64) -&gt; FizzBuzzResult;
+}
+
+impl FizzBuzz for Contract {
+  fn fizzbuzz(gas: u64, coins: u64, color: b256, input: u64) -&gt; FizzBuzzResult {
+    if input % 15 == 0 {
+      FizzBuzzResult::FizzBuzz
+    } else if input % 3 == 0 {
+      FizzBuzzResult::Fizz
+    } else if input % 5 == 0 {
+      FizzBuzzResult::Buzz  
+    } else {
+      FizzBuzzResult::Other(input)
+    }
+  }
+}
+</code></pre>
 <h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
 <h1 id="basics"><a class="header" href="#basics">Basics</a></h1>
 <h1 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h1>
