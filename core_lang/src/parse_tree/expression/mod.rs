@@ -794,7 +794,10 @@ impl<'sc> Expression<'sc> {
     }
 }
 
-fn convert_unary_to_fn_calls<'sc>(item: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileResult<'sc, Expression<'sc>> {
+fn convert_unary_to_fn_calls<'sc>(
+    item: Pair<'sc, Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<'sc, Expression<'sc>> {
     let iter = item.into_inner();
     let mut unary_stack = vec![];
     let mut warnings = vec![];
@@ -805,7 +808,7 @@ fn convert_unary_to_fn_calls<'sc>(item: Pair<'sc, Rule>, config: Option<&BuildCo
             Rule::unary_op => unary_stack.push((
                 Span {
                     span: item.as_span(),
-                    path: config.map(|c| c.dir_of_code.clone())
+                    path: config.map(|c| c.dir_of_code.clone()),
                 },
                 check!(
                     UnaryOp::parse_from_pair(item, config),
