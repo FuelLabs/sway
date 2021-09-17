@@ -28,22 +28,23 @@ impl<'sc> MaybeResolvedType<'sc> {
     ) -> CompileResult<'sc, String> {
         match self {
             MaybeResolvedType::Resolved(r) => r.to_selector_name(error_msg_span),
-            _ => {
-                err(
-                    vec![],
-                    vec![CompileError::InvalidAbiType {
-                        span: error_msg_span.clone(),
-                    }],
-                )
-            }
+            _ => err(
+                vec![],
+                vec![CompileError::InvalidAbiType {
+                    span: error_msg_span.clone(),
+                }],
+            ),
         }
     }
     pub(crate) fn is_copy_type(&self) -> bool {
         match self {
-            MaybeResolvedType::Resolved(ty) => matches!(ty, ResolvedType::UnsignedInteger(_)
-                | ResolvedType::Boolean
-                | ResolvedType::Unit
-                | ResolvedType::Byte),
+            MaybeResolvedType::Resolved(ty) => matches!(
+                ty,
+                ResolvedType::UnsignedInteger(_)
+                    | ResolvedType::Boolean
+                    | ResolvedType::Unit
+                    | ResolvedType::Byte
+            ),
             _ => false,
         }
     }
