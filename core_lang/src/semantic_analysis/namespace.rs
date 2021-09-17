@@ -217,7 +217,7 @@ impl<'sc> Namespace<'sc> {
         item: TypedDeclaration<'sc>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
-        if let Some(_) = self.symbols.get(&name) {
+        if self.symbols.get(&name).is_some() {
             warnings.push(CompileWarning {
                 span: name.span.clone(),
                 warning_content: Warning::OverridesOtherSymbol {
@@ -343,9 +343,10 @@ impl<'sc> Namespace<'sc> {
             warnings,
             errors
         );
-        if let Some(_) = module_to_insert_into
+        if module_to_insert_into
             .implemented_traits
             .get(&(trait_name.suffix.clone(), type_implementing_for.clone()))
+            .is_some()
         {
             warnings.push(CompileWarning {
                 warning_content: Warning::OverridingTraitImplementation,
@@ -375,9 +376,9 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, (MaybeResolvedType<'sc>, MaybeResolvedType<'sc>)> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut ident_iter = subfield_exp.into_iter().peekable();
+        let mut ident_iter = subfield_exp.iter().peekable();
         let first_ident = ident_iter.next().unwrap();
-        let symbol = match self.symbols.get(&first_ident) {
+        let symbol = match self.symbols.get(first_ident) {
             Some(s) => s,
             None => {
                 errors.push(CompileError::UnknownVariable {
@@ -421,15 +422,15 @@ impl<'sc> Namespace<'sc> {
                 Some(field) => field.clone(),
                 None => {
                     // gather available fields for the error message
-                    let field_name = ident.primary_name.clone();
+                    let field_name = &(*ident.primary_name);
                     let available_fields = fields
                         .iter()
-                        .map(|x| x.name.primary_name.clone())
+                        .map(|x| &(*x.name.primary_name))
                         .collect::<Vec<_>>();
 
                     errors.push(CompileError::FieldNotFound {
                         field_name,
-                        struct_name: struct_name.primary_name.clone(),
+                        struct_name: &(*struct_name.primary_name),
                         available_fields: available_fields.join(", "),
                         span: ident.span.clone(),
                     });
@@ -501,9 +502,9 @@ impl<'sc> Namespace<'sc> {
 
         ok(
             [
-                methods.into_iter().cloned().collect::<Vec<_>>(),
+                methods.iter().cloned().collect::<Vec<_>>(),
                 interface_surface
-                    .into_iter()
+                    .iter()
                     .map(|x| x.to_dummy_func(Mode::NonAbi))
                     .collect(),
             ]
@@ -575,7 +576,7 @@ impl<'sc> Namespace<'sc> {
                     errors
                 );
                 let r#type = if let Some(type_name) = type_name {
-                    module.resolve_type(&type_name, self_type)
+                    module.resolve_type(type_name, self_type)
                 } else {
                     args_buf[0].return_type.clone()
                 };
@@ -618,7 +619,7 @@ impl<'sc> Namespace<'sc> {
                 ok((fields.to_vec(), name.clone()), vec![], vec![])
             }
             a => {
-                return err(
+                err(
                     vec![],
                     match a {
                         MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery) => vec![],
