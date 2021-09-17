@@ -785,6 +785,7 @@ fn test_unary_ordering() {
         let b = true;
         !a && b;
     }"#,
+    None
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
