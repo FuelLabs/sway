@@ -642,11 +642,66 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     comment: "main fn returns unit value".into(),
                 });
             } else {
-                asm_buf.push(Op {
-                    owning_span: None,
-                    opcode: Either::Left(VirtualOp::RET(return_register)),
-                    comment: "main fn return value".into(),
-                });
+                let size_of_main_func_return_bytes = check!(
+                    main_function.return_type.force_resolution(
+                        &MaybeResolvedType::Resolved(ResolvedType::Unit),
+                        &main_function.return_type_span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .stack_size_of()
+                    * 8;
+                if size_of_main_func_return_bytes == 8 {
+                    asm_buf.push(Op {
+                        owning_span: None,
+                        opcode: Either::Left(VirtualOp::RET(return_register)),
+                        comment: "main fn return value".into(),
+                    });
+                } else {
+                    // if the type is larger than one word, then we use RETD to return data
+                    // calculate the value of $rB by adding the stack size * 8 to the start pointer
+                    let rb_register = register_sequencer.next();
+                    let size_in_bytes = match VirtualImmediate12::new(
+                        size_of_main_func_return_bytes,
+                        main_function.return_type_span.clone(),
+                    ) {
+                        Ok(o) => o,
+                        Err(e) => {
+                            errors.push(e);
+                            return err(warnings, errors);
+                        }
+                    };
+                    let ra_register = register_sequencer.next();
+                    // add `is` to $rA
+                    asm_buf.push(Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            ra_register.clone(),
+                            ra_register.clone(),
+                            VirtualRegister::Constant(ConstantRegister::InstructionStart),
+                        )),
+                        owning_span: Some(main_function.return_type_span.clone()),
+                        comment: "adding $is to $rA for RETD".into(),
+                    });
+                    // `return_register` is $rA
+                    asm_buf.push(Op {
+                        opcode: Either::Left(VirtualOp::ADDI(
+                            rb_register.clone(),
+                            ra_register.clone(),
+                            size_in_bytes,
+                        )),
+                        owning_span: Some(main_function.return_type_span),
+                        comment: "calculating rB for RETD".into(),
+                    });
+
+                    // now $rB has $rA + size_of_type_in_bytes
+                    asm_buf.push(Op {
+                        owning_span: None,
+                        opcode: Either::Left(VirtualOp::RETD(ra_register, rb_register)),
+                        comment: "main fn return value".into(),
+                    });
+                }
             }
 
             HllAsmSet::ScriptMain {
@@ -1099,13 +1154,13 @@ fn build_contract_abi_switch<'sc>(
         });
     }
 
-    // if none of the selectors matched, then revert
+    // if none of the selectors matched, then ret
     asm_buf.push(Op {
         // see https://github.com/FuelLabs/sway/issues/97#issuecomment-875674105
         opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
             ConstantRegister::Zero,
         ))),
-        comment: "revert if no selectors matched".into(),
+        comment: "return if no selectors matched".into(),
         owning_span: None,
     });
 

@@ -18,6 +18,20 @@ pub fn run() {
         ("main_returns_unit", ProgramState::Return(0)),
         ("unary_not_basic", ProgramState::Return(1)), // 1 == true
         ("unary_not_basic_2", ProgramState::Return(1)), // 1 == true
+        (
+            "retd_b256",
+            ProgramState::ReturnData(Bytes32::from([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0,
+            ])),
+        ),
+        /*        (
+            "retd_struct",
+            ProgramState::ReturnData(Bytes32::from([
+                198, 228, 61, 7, 162, 207, 184, 14, 142, 15, 158, 36, 138, 121, 140, 194, 99, 64,
+                11, 124, 131, 161, 54, 143, 146, 216, 146, 99, 203, 92, 89, 164,
+            ])),
+        )*/
     ];
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
