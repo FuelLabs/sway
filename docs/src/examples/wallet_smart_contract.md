@@ -22,8 +22,8 @@ impl Wallet for Contract {
     fn send_funds(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, req: SendFundsRequest) {
         assert(sender() == OWNER_ADDRESS);
         assert(balance > req.amount_to_send);
+        balance -= req.amount_to_send;
         transfer_coins(color_of_coins, req.recipient_address, req.amount_to_send);
-        balance -= value;
     }
 }
 
