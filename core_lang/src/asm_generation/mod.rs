@@ -673,22 +673,11 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                             return err(warnings, errors);
                         }
                     };
-                    let ra_register = register_sequencer.next();
-                    // add `is` to $rA
-                    asm_buf.push(Op {
-                        opcode: Either::Left(VirtualOp::ADD(
-                            ra_register.clone(),
-                            ra_register.clone(),
-                            VirtualRegister::Constant(ConstantRegister::InstructionStart),
-                        )),
-                        owning_span: Some(main_function.return_type_span.clone()),
-                        comment: "adding $is to $rA for RETD".into(),
-                    });
                     // `return_register` is $rA
                     asm_buf.push(Op {
                         opcode: Either::Left(VirtualOp::ADDI(
                             rb_register.clone(),
-                            ra_register.clone(),
+                            return_register.clone(),
                             size_in_bytes,
                         )),
                         owning_span: Some(main_function.return_type_span),
@@ -698,7 +687,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     // now $rB has $rA + size_of_type_in_bytes
                     asm_buf.push(Op {
                         owning_span: None,
-                        opcode: Either::Left(VirtualOp::RETD(ra_register, rb_register)),
+                        opcode: Either::Left(VirtualOp::RETD(return_register, rb_register)),
                         comment: "main fn return value".into(),
                     });
                 }
