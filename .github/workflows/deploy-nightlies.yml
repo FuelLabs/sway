@@ -5,9 +5,8 @@ name: Deploy Nightly Binaries
 ## we have to break the builds apart into different jobs to run on different runners.
 
 on:
-  push:
-    branches:
-      - master
+  release:
+    types: [published]
 
 env:
   CARGO_TERM_COLOR: always
