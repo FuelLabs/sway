@@ -196,7 +196,12 @@
 </code></pre>
 <p>The default numeric type is <code>u64</code>. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.</p>
 <h2 id="boolean-type"><a class="header" href="#boolean-type">Boolean Type</a></h2>
-<p>TODO</p>
+<p>The boolean type (<code>bool</code>) has two potential values: <code>true</code> or <code>false</code>. Boolean values are typically used for conditional logic or validation, for example in <code>if</code> expressions. Booleans can be negated, or flipped, with the unary negation operator <code>!</code>. For example:</p>
+<pre><code class="language-sway">fn returns_false() -&gt; bool {
+  let boolean_value: bool = true;
+  !true
+}
+</code></pre>
 <h2 id="string-type"><a class="header" href="#string-type">String Type</a></h2>
 <p>In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for storage of that data. The size of the string is denoted with square brackets. Let's take a look:</p>
 <pre><code class="language-sway">let my_string: str[4] = &quot;fuel&quot;;

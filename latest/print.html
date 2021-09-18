@@ -352,7 +352,12 @@ let baz: bool = true;
 </code></pre>
 <p>The default numeric type is <code>u64</code>. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.</p>
 <h2 id="boolean-type"><a class="header" href="#boolean-type">Boolean Type</a></h2>
-<p>TODO</p>
+<p>The boolean type (<code>bool</code>) has two potential values: <code>true</code> or <code>false</code>. Boolean values are typically used for conditional logic or validation, for example in <code>if</code> expressions. Booleans can be negated, or flipped, with the unary negation operator <code>!</code>. For example:</p>
+<pre><code class="language-sway">fn returns_false() -&gt; bool {
+  let boolean_value: bool = true;
+  !true
+}
+</code></pre>
 <h2 id="string-type"><a class="header" href="#string-type">String Type</a></h2>
 <p>In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for storage of that data. The size of the string is denoted with square brackets. Let's take a look:</p>
 <pre><code class="language-sway">let my_string: str[4] = &quot;fuel&quot;;
@@ -411,12 +416,42 @@ pub struct MyStruct {
 }
 </code></pre>
 <h1 id="smart-contracts"><a class="header" href="#smart-contracts">Smart Contracts</a></h1>
-<p>TODO</p>
+<p>A smart contract is a callable entity that is deployed to the chain with some defined interface for interaction. See <a href="sway-on-chain/../examples/wallet_smart_contract.html">this contract</a> for an example.</p>
 <h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
-<p>TODO</p>
+<p>A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract.</p>
+<p>This example script calls a contract.</p>
+<pre><code class="language-sway">script;
+
+use example_contract::MyContract;
+
+struct InputStruct { 
+  field_1: bool,
+  field_2: u64
+}
+
+fn main () {
+  let x = abi(MyContract, 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
+  let color = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
+  let input = InputStruct {
+    field_1: true,
+    field_2: 3,
+  };
+  x.foo(5000, 0, color, input);
+}
+</code></pre>
 <h1 id="predicates"><a class="header" href="#predicates">Predicates</a></h1>
-<p>TODO</p>
+<p>From the perspective of Sway, predicates are programs which return a boolean value and which represent ownership of some resource upon execution to true. They have no access to contract storage. Here is a trivial predicate, which always evaluates to true:</p>
+<pre><code class="language-sway">predicate;
+
+fn main() -&gt; bool {
+  true
+}
+</code></pre>
 <h1 id="advanced-concepts"><a class="header" href="#advanced-concepts">Advanced Concepts</a></h1>
+<ul>
+<li><a href="advanced/./generic_types.html">Generic Types</a> </li>
+<li><a href="advanced/./generic_types.html">Traits</a> </li>
+</ul>
 <h1 id="generic-types"><a class="header" href="#generic-types">Generic Types</a></h1>
 <p><em>N.B.: Generic types in Sway are a work in progress, and are currently only partially implemented.</em></p>
 <h2 id="basics-1"><a class="header" href="#basics-1">Basics</a></h2>
@@ -535,7 +570,6 @@ fn play_game_with_deck&lt;T&gt;(a: Vec&lt;T&gt;) where T: Card {
     // insert some creative card game here
   }
 </code></pre>
-<!-- TODO: link to generic docs -->
 <p>Now, if you want to use the function <code>play_game_with_deck</code> with your own personal struct, you must implement <code>Card</code> for your struct. Note that the following code example assumes a dependency <em>games</em> has been included in the <code>Forc.toml</code> file.</p>
 <pre><code class="language-sway">script;
 use games::*;
@@ -558,19 +592,19 @@ fn main() {
     let mut deck: Vec&lt;MyCard&gt; = Vec::with_capacity(50);
     while i &gt; 0 {
         i = i - 1;
-        deck.push(MyCard { suit: random_suit(), value: i % 4}
+        deck.push(MyCard { suit: generate_random_suit(), value: i % 4}
     }
     play_game_with_deck(deck);
 }
 
 fn random_suit(i: u64) -&gt; Suit {
-    // TODO
+  [ ... ]
 }
 </code></pre>
-<p>To learn more about <code>where</code> clauses and how to use trait constraints, see <a href="advanced/./trait_constraints">Trait Constraints</a>.</p>
 <h1 id="trait-constraints-1"><a class="header" href="#trait-constraints-1">Trait Constraints</a></h1>
 <h1 id="conventions"><a class="header" href="#conventions">Conventions</a></h1>
 <h1 id="capitalization"><a class="header" href="#capitalization">Capitalization</a></h1>
+<p>In Sway, structs, traits, and enums are <code>CapitalCase</code>. Modules, variables, and functions are <code>snake_case</code>, constants are <code>SCREAMING_SNAKE_CASE</code>. The compiler will warn you if your capitalization is ever unidiomatic.</p>
 
                     </main>
 
