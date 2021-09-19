@@ -250,9 +250,9 @@ Bytecode size is 28 bytes.
 <h1 id="example"><a class="header" href="#example">Example</a></h1>
 <p>Some basic example contracts to see how Sway and Forc work.</p>
 <ul>
-<li><a href="examples/./hello_world.html">Hello, World!</a></li>
+<li><a href="examples/./fizzbuzz.html">FizzBuzz</a></li>
+<li><a href="examples/./wallet_smart_contract.html">Wallet Smart Contract</a></li>
 </ul>
-<!-- markdownlint-disable-next-line no-trailing-punctuation -->
 <h1 id="hello-world"><a class="header" href="#hello-world">Hello, World!</a></h1>
 <h1 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h1>
 <p>This example is not the traditional fizzbuzz, instead it is the smart contract version! A script can call this contract with some u64 value
@@ -286,6 +286,38 @@ impl FizzBuzz for Contract {
 }
 </code></pre>
 <h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
+<pre><code class="language-sway">contract;
+
+const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
+const ETH_COLOR: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+use std::*;
+
+abi Wallet {
+    storage balance: u64 = 0;
+    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, unused: ());
+    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, req: SendFundsRequest);
+}
+
+impl Wallet for Contract {
+    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, unused: ()) {
+        if color_of_coins == ETH_COLOR {
+            balance += coins_to_forward;
+        };
+    }
+
+    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, req: SendFundsRequest) {
+        assert(sender() == OWNER_ADDRESS);
+        assert(balance &gt; req.amount_to_send);
+        balance -= req.amount_to_send;
+        transfer_coins(color_of_coins, req.recipient_address, req.amount_to_send);
+    }
+}
+
+struct SendFundsRequest {
+    amount_to_send: u64,
+    recipient_address: b256,
+}
+</code></pre>
 <h1 id="basics"><a class="header" href="#basics">Basics</a></h1>
 <h1 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h1>
 <p>If you have used Rust, the structure of a Sway project will feel very familiar to you. It looks like this:</p>
