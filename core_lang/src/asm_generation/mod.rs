@@ -661,27 +661,15 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     });
                 } else {
                     // if the type is larger than one word, then we use RETD to return data
-                    // calculate the value of $rB by adding the stack size * 8 to the start pointer
+                    // RB is the size_in_bytes
                     let rb_register = register_sequencer.next();
-                    let size_in_bytes = match VirtualImmediate12::new(
-                        size_of_main_func_return_bytes,
-                        main_function.return_type_span.clone(),
-                    ) {
-                        Ok(o) => o,
-                        Err(e) => {
-                            errors.push(e);
-                            return err(warnings, errors);
-                        }
-                    };
+                    let size_bytes =
+                        namespace.insert_data_value(&Literal::U64(size_of_main_func_return_bytes));
                     // `return_register` is $rA
                     asm_buf.push(Op {
-                        opcode: Either::Left(VirtualOp::ADDI(
-                            rb_register.clone(),
-                            return_register.clone(),
-                            size_in_bytes,
-                        )),
+                        opcode: Either::Left(VirtualOp::LWDataId(rb_register.clone(), size_bytes)),
                         owning_span: Some(main_function.return_type_span),
-                        comment: "calculating rB for RETD".into(),
+                        comment: "loading rB for RETD".into(),
                     });
                     asm_buf.push(Op {
                         opcode: Either::Left(VirtualOp::LOG(
@@ -694,7 +682,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                         comment: "".into(),
                     });
 
-                    // now $rB has $rA + size_of_type_in_bytes
+                    // now $rB has the size of the type in bytes
                     asm_buf.push(Op {
                         owning_span: None,
                         opcode: Either::Left(VirtualOp::RETD(return_register, rb_register)),
