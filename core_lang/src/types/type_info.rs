@@ -106,7 +106,7 @@ impl<'sc> TypeInfo<'sc> {
                         Span {
                             span: input.as_span(),
                             path: if let Some(config) = config {
-                                Some(config.file_path.clone())
+                                Some(config.path())
                             } else {
                                 None
                             }

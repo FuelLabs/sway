@@ -26,7 +26,7 @@ impl<'sc> AbiDeclaration<'sc> {
     ) -> CompileResult<'sc, Self> {
         let span = Span {
             span: pair.as_span(),
-            path: config.map(|c| c.file_path.clone()),
+            path: config.map(|c| c.path()),
         };
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();

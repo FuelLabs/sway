@@ -38,7 +38,7 @@ impl<'sc> Literal<'sc> {
         lit: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, (Self, span::Span<'sc>)> {
-        let path = config.map(|c| c.file_path.clone());
+        let path = config.map(|c| c.path());
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
             Rule::integer => {
@@ -234,7 +234,7 @@ fn parse_hex_from_pair<'sc>(
     pair: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
 ) -> Result<Literal<'sc>, CompileError<'sc>> {
-    let path = config.map(|c| c.file_path.clone());
+    let path = config.map(|c| c.path());
     let hex = &pair.as_str()[2..]
         .chars()
         .filter(|x| *x != '_')
@@ -296,7 +296,7 @@ fn parse_binary_from_pair<'sc>(
     pair: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
 ) -> Result<Literal<'sc>, CompileError<'sc>> {
-    let path = config.map(|c| c.file_path.clone());
+    let path = config.map(|c| c.path());
     let bin = &pair.as_str()[2..]
         .chars()
         .filter(|x| *x != '_')

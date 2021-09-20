@@ -30,7 +30,7 @@ impl<'sc> StructDeclaration<'sc> {
         decl: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.file_path.clone());
+        let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut decl = decl.into_inner();
@@ -116,7 +116,7 @@ impl<'sc> StructField<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Vec<Self>> {
-        let path = config.map(|c| c.file_path.clone());
+        let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let fields = pair.into_inner().collect::<Vec<_>>();

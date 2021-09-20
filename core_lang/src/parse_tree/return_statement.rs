@@ -17,7 +17,7 @@ impl<'sc> ReturnStatement<'sc> {
     ) -> CompileResult<'sc, Self> {
         let span = span::Span {
             span: pair.as_span(),
-            path: config.map(|c| c.file_path.clone()),
+            path: config.map(|c| c.path()),
         };
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
