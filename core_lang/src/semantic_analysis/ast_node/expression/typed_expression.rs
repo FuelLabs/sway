@@ -316,6 +316,35 @@ impl<'sc> TypedExpression<'sc> {
                     body,
                     ..
                 } = decl.clone();
+                if arguments.len() > parameters.len() {
+                    let arguments_span = arguments.iter().fold(
+                        arguments
+                            .get(0)
+                            .map(|x| x.span())
+                            .unwrap_or_else(|| name.span()),
+                        |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                    );
+                    errors.push(CompileError::TooManyArgumentsForFunction {
+                        span: arguments_span,
+                        method_name: name.suffix.primary_name,
+                        expected: parameters.len(),
+                        received: arguments.len(),
+                    });
+                } else if arguments.len() < parameters.len() {
+                    let arguments_span = arguments.iter().fold(
+                        arguments
+                            .get(0)
+                            .map(|x| x.span())
+                            .unwrap_or_else(|| name.span()),
+                        |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                    );
+                    errors.push(CompileError::TooFewArgumentsForFunction {
+                        span: arguments_span,
+                        method_name: name.suffix.primary_name,
+                        expected: parameters.len(),
+                        received: arguments.len(),
+                    });
+                }
                 // type check arguments in function application vs arguments in function
                 // declaration. Use parameter type annotations as annotations for the
                 // arguments

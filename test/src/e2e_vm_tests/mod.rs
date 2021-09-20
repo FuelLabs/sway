@@ -24,7 +24,11 @@ pub fn run() {
     });
 
     // source code that should _not_ compile
-    let project_names = vec!["recursive_calls"];
+    let project_names = vec![
+        "recursive_calls",
+        "missing_fn_arguments",
+        "excess_fn_arguments",
+    ];
     project_names
         .into_iter()
         .for_each(|name| crate::e2e_vm_tests::harness::does_not_compile(name));
