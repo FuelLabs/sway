@@ -19,6 +19,8 @@ fn_returns          =  {"->"}
 path_separator      =  {"::"}
 include_keyword     =  {"dep"}
 abi_keyword         =  {"abi"}
+ref_keyword         =  {"ref"}
+deref_keyword       =  {"deref"}
 
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
@@ -34,7 +36,7 @@ file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { "as" ~ ident }
 // expressions
-expr_inner               = _{match_expression|abi_cast|literal_value|if_exp|asm_expression|code_block|func_app|struct_expression|method_exp|struct_field_access|delineated_path|unary_op_expr|var_exp|array_exp|parenthesized_expression|unit}
+expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|literal_value|if_exp|code_block|func_app|struct_expression|method_exp|struct_field_access|delineated_path|var_exp|array_exp|parenthesized_expression|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
@@ -64,7 +66,7 @@ abi_name = {ident}
 if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
 
 op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"||"|"|"|"&&"|"&"|"^"|"%"|"<"|">"}
-unary_op =  {"!"|"ref"|"deref"}
+unary_op =  {"!"|ref_keyword|deref_keyword}
 
 // // note that decimal/float exprs might be removed since vm doesn't support them
 literal_value =  {integer|byte|string|boolean}
@@ -177,5 +179,5 @@ char           = @{
 }
 unit           =  {"(" ~ ")"}
 ident          = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")* }
-reserved_words =  {(abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword) ~ !ASCII_ALPHANUMERIC}
+reserved_words =  {(asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword) ~ !ASCII_ALPHANUMERIC}
 
