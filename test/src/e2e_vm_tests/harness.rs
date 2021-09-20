@@ -75,7 +75,8 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     );
     let block_height = (u32::MAX >> 1) as u64;
     tx_to_test.validate(block_height).unwrap();
-    dbg!(Interpreter::transition(&mut storage, tx_to_test).unwrap())
+    Interpreter::transition(&mut storage, tx_to_test)
+        .unwrap()
         .state()
         .clone()
 }

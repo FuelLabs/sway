@@ -671,16 +671,6 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                         owning_span: Some(main_function.return_type_span),
                         comment: "loading rB for RETD".into(),
                     });
-                    asm_buf.push(Op {
-                        opcode: Either::Left(VirtualOp::LOG(
-                            return_register.clone(),
-                            rb_register.clone(),
-                            VirtualRegister::Constant(ConstantRegister::Zero),
-                            VirtualRegister::Constant(ConstantRegister::Zero),
-                        )),
-                        owning_span: None,
-                        comment: "".into(),
-                    });
 
                     // now $rB has the size of the type in bytes
                     asm_buf.push(Op {
