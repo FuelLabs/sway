@@ -981,22 +981,22 @@ impl OpVariant {
         use OpVariant::*;
         // a higher number means the operation has higher precedence
         match self {
-            Add => 1,
-            Subtract => 1,
-            Divide => 2,
-            Multiply => 2,
-            Modulo => 2,
-            Or => 0,
-            And => 0,
-            Equals => 0,
-            NotEquals => 0,
-            Xor => 0,
-            BinaryOr => 0,
-            BinaryAnd => 0,
-            GreaterThan => 0,
-            LessThan => 0,
-            GreaterThanOrEqualTo => 0,
-            LessThanOrEqualTo => 0,
+            Add => 2,
+            Subtract => 2,
+            Divide => 3,
+            Multiply => 3,
+            Modulo => 3,
+            Or => 2,
+            And => 2,
+            Equals => 3,
+            NotEquals => 3,
+            Xor => 3,
+            BinaryOr => 2,
+            BinaryAnd => 2,
+            GreaterThan => 3,
+            LessThan => 3,
+            GreaterThanOrEqualTo => 3,
+            LessThanOrEqualTo => 3,
         }
     }
 }
@@ -1038,19 +1038,23 @@ fn arrange_by_order_of_operations<'sc>(
                     }
                     let lhs = lhs.unwrap();
                     let rhs = rhs.unwrap();
-                    expression_stack.push(Expression::FunctionApplication {
-                        name: CallPath {
-                            prefixes: vec![
-                                Ident {
-                                    primary_name: "std".into(),
-                                    span: new_op.span.clone(),
-                                },
-                                Ident {
-                                    primary_name: "ops".into(),
-                                    span: new_op.span.clone(),
-                                },
-                            ],
-                            suffix: new_op.to_var_name(),
+                    expression_stack.push(Expression::MethodApplication {
+                        method_name: MethodName::FromType {
+                            call_path: CallPath {
+                                prefixes: vec![
+                                    Ident {
+                                        primary_name: "std".into(),
+                                        span: new_op.span.clone(),
+                                    },
+                                    Ident {
+                                        primary_name: "ops".into(),
+                                        span: new_op.span.clone(),
+                                    },
+                                ],
+                                suffix: new_op.to_var_name(),
+                            },
+                            type_name: None,
+                            is_absolute: true,
                         },
                         arguments: vec![lhs, rhs],
                         span: debug_span.clone(),
