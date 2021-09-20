@@ -28,25 +28,23 @@ impl<'sc> MaybeResolvedType<'sc> {
     ) -> CompileResult<'sc, String> {
         match self {
             MaybeResolvedType::Resolved(r) => r.to_selector_name(error_msg_span),
-            _ => {
-                return err(
-                    vec![],
-                    vec![CompileError::InvalidAbiType {
-                        span: error_msg_span.clone(),
-                    }],
-                )
-            }
+            _ => err(
+                vec![],
+                vec![CompileError::InvalidAbiType {
+                    span: error_msg_span.clone(),
+                }],
+            ),
         }
     }
     pub(crate) fn is_copy_type(&self) -> bool {
         match self {
-            MaybeResolvedType::Resolved(ty) => match ty {
+            MaybeResolvedType::Resolved(ty) => matches!(
+                ty,
                 ResolvedType::UnsignedInteger(_)
-                | ResolvedType::Boolean
-                | ResolvedType::Unit
-                | ResolvedType::Byte => true,
-                _ => false,
-            },
+                    | ResolvedType::Boolean
+                    | ResolvedType::Unit
+                    | ResolvedType::Byte
+            ),
             _ => false,
         }
     }
@@ -68,7 +66,7 @@ impl<'sc> MaybeResolvedType<'sc> {
         assert_eq!(self.is_numeric(), other.is_numeric());
         match (self, other) {
             (MaybeResolvedType::Resolved(ref r), &MaybeResolvedType::Resolved(ref r_2)) => {
-                r.numeric_cast_compat(&r_2)
+                r.numeric_cast_compat(r_2)
             }
             // because we know `p` and `r` are numeric, this is safe
             (MaybeResolvedType::Partial(_p), MaybeResolvedType::Resolved(_r)) => Ok(()),

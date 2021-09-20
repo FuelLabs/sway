@@ -48,7 +48,7 @@ pub(crate) fn order_ast_nodes_by_dependency<'sc>(
 fn find_recursive_calls<'sc>(decl_dependencies: &DependencyMap<'sc>) -> Vec<CompileError<'sc>> {
     decl_dependencies
         .iter()
-        .filter_map(|(dep_sym, _)| find_recursive_call(&decl_dependencies, dep_sym))
+        .filter_map(|(dep_sym, _)| find_recursive_call(decl_dependencies, dep_sym))
         .collect()
 }
 
@@ -86,7 +86,7 @@ fn find_recursive_call_chain<'sc>(
             };
         }
         decl_dependencies
-            .get(&fn_sym)
+            .get(fn_sym)
             .map(|deps_set| {
                 chain.push(fn_sym_str);
                 let result = deps_set.deps.iter().find_map(|dep_sym| {
@@ -119,7 +119,7 @@ fn build_recursion_error<'sc>(
             span: span,
         },
         n => {
-            let msg = chain[0..(n - 1)].join(", ").to_owned();
+            let msg = chain[0..(n - 1)].join(", ");
             CompileError::RecursiveCallChain {
                 fn_name: fn_sym,
                 call_chain: msg + " and " + chain[n - 1],
@@ -224,8 +224,8 @@ impl<'sc> Dependencies<'sc> {
                 body,
                 ..
             }) => self
-                .gather_from_option_typeinfo(&type_ascription)
-                .gather_from_expr(&body),
+                .gather_from_option_typeinfo(type_ascription)
+                .gather_from_expr(body),
             Declaration::FunctionDeclaration(fn_decl) => self.gather_from_fn_decl(fn_decl),
             Declaration::StructDeclaration(StructDeclaration {
                 fields,
@@ -314,9 +314,9 @@ impl<'sc> Dependencies<'sc> {
         self.gather_from_iter(parameters.iter(), |deps, param| {
             deps.gather_from_typeinfo(&param.r#type)
         })
-        .gather_from_typeinfo(&return_type)
-        .gather_from_block(&body)
-        .gather_from_traits(&type_parameters)
+        .gather_from_typeinfo(return_type)
+        .gather_from_block(body)
+        .gather_from_traits(type_parameters)
     }
 
     fn gather_from_expr(mut self, expr: &Expression<'sc>) -> Self {
@@ -407,13 +407,13 @@ impl<'sc> Dependencies<'sc> {
     fn gather_from_node(self, node: &AstNode<'sc>) -> Self {
         match &node.content {
             AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
-                self.gather_from_expr(&expr)
+                self.gather_from_expr(expr)
             }
-            AstNodeContent::Expression(expr) => self.gather_from_expr(&expr),
-            AstNodeContent::ImplicitReturnExpression(expr) => self.gather_from_expr(&expr),
-            AstNodeContent::Declaration(decl) => self.gather_from_decl(&decl),
+            AstNodeContent::Expression(expr) => self.gather_from_expr(expr),
+            AstNodeContent::ImplicitReturnExpression(expr) => self.gather_from_expr(expr),
+            AstNodeContent::Declaration(decl) => self.gather_from_decl(decl),
             AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
-                self.gather_from_expr(&condition).gather_from_block(&body)
+                self.gather_from_expr(condition).gather_from_block(body)
             }
 
             // No deps from these guys.
