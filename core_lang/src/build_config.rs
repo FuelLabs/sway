@@ -12,7 +12,10 @@ pub struct BuildConfig {
 impl BuildConfig {
     // note this is intentionally not the trait Default
     // since we need at least a manifest path to work with
-    pub fn root_from_file_name_and_manifest_path(file_name: PathBuf, canonicalized_manifest_path: PathBuf) -> Self {
+    pub fn root_from_file_name_and_manifest_path(
+        file_name: PathBuf,
+        canonicalized_manifest_path: PathBuf,
+    ) -> Self {
         let mut path = canonicalized_manifest_path.clone();
         path.push("src");
         Self {
