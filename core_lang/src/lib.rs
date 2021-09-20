@@ -596,7 +596,7 @@ fn parse_root_from_pairs<'sc>(
                 Rule::include_statement => {
                     // parse the include statement into a reference to a specific file
                     let include_statement = check!(
-                        IncludeStatement::parse_from_pair(pair.clone(), config.clone()),
+                        IncludeStatement::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
