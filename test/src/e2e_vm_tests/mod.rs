@@ -44,6 +44,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("asm_without_return", ProgramState::Return(0)),
         ("op_precedence", ProgramState::Return(0)), // 1 == false
         ("b256_bad_jumps", ProgramState::Return(1)),
+        ("b256_ops", ProgramState::Return(100)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
