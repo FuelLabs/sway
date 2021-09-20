@@ -1,6 +1,7 @@
 use core_lang::parse;
 use fuel_client::client::FuelClient;
-use fuel_tx::{crypto, ContractId, Output, Salt, Transaction};
+use fuel_tx::{Output, Salt, Transaction};
+use fuel_vm::prelude::*;
 
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
@@ -19,7 +20,7 @@ pub async fn deploy(_: DeployCommand) -> Result<(), CliError> {
             let main_file = get_main_file(&manifest, &manifest_dir)?;
 
             // parse the main file and check is it a contract
-            let parsed_result = parse(main_file);
+            let parsed_result = parse(main_file, None);
             match parsed_result.value {
                 Some(parse_tree) => {
                     if let Some(_) = &parse_tree.contract_ast {
@@ -78,17 +79,17 @@ fn create_contract_tx(compiled_contract: Vec<u8>) -> Transaction {
     let gas_limit = 10000000;
     let maturity = 0;
     let bytecode_witness_index = 0;
-    let witnesses = vec![compiled_contract.into()];
+    let witnesses = vec![compiled_contract.clone().into()];
 
     let salt = Salt::new([0; 32]);
     let static_contracts = vec![];
     let inputs = vec![];
 
-    let zero_hash = crypto::Hasher::hash("0".as_bytes());
+    let contract = Contract::from(compiled_contract);
+    let root = contract.root();
+    let id = contract.id(&salt, &root);
 
-    let outputs = vec![Output::ContractCreated {
-        contract_id: ContractId::new(zero_hash.into()),
-    }];
+    let outputs = vec![Output::ContractCreated { contract_id: id }];
 
     Transaction::create(
         gas_price,

@@ -34,14 +34,15 @@ file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { "as" ~ ident }
 // expressions
-expr_inner               = _{literal_value|if_exp|asm_expression|code_block|func_app|struct_expression|method_exp|struct_field_access|delineated_path|var_exp|array_exp|abi_cast|parenthesized_expression|match_expression|unit}
+expr_inner               = _{literal_value|if_exp|asm_expression|code_block|func_app|struct_expression|method_exp|struct_field_access|delineated_path|unary_op_expr|var_exp|array_exp|abi_cast|parenthesized_expression|match_expression|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
+unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
 func_app                 =  {fn_name ~ fn_args}
 fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 fn_name                  =  {var_exp}
-var_exp                  =  {unary_op? ~ var_name_ident}
+var_exp                  =  {var_name_ident}
 var_name_ident           =  {ident}
 struct_field_access      =  {subfield_path}
 method_exp               =  {subfield_exp | fully_qualified_method}
@@ -62,7 +63,7 @@ abi_name = {ident}
 
 if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
 
-op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"|"|"||"|"&"|"&&"|"^"|"%"|"<"|">"}
+op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"||"|"|"|"&&"|"&"|"^"|"%"|"<"|">"}
 unary_op =  {"!"|"ref"|"deref"}
 
 // // note that decimal/float exprs might be removed since vm doesn't support them

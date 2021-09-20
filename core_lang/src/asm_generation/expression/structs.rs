@@ -64,12 +64,19 @@ impl<'sc> StructMemoryLayoutDescriptor<'sc> {
 
 #[test]
 fn test_struct_memory_layout() {
+    use crate::span::Span;
     let first_field_name = Ident {
-        span: pest::Span::new(" ", 0, 0).unwrap(),
+        span: Span {
+            span: pest::Span::new(" ", 0, 0).unwrap(),
+            path: None,
+        },
         primary_name: "foo",
     };
     let second_field_name = Ident {
-        span: pest::Span::new(" ", 0, 0).unwrap(),
+        span: Span {
+            span: pest::Span::new(" ", 0, 0).unwrap(),
+            path: None,
+        },
         primary_name: "bar",
     };
 

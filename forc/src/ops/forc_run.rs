@@ -25,7 +25,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
             let main_file = get_main_file(&manifest, &manifest_dir)?;
 
             // parse the main file and check is it a script
-            let parsed_result = parse(main_file);
+            let parsed_result = parse(main_file, None);
             match parsed_result.value {
                 Some(parse_tree) => {
                     if let Some(_) = &parse_tree.script_ast {

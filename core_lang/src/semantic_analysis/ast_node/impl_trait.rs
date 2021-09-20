@@ -1,6 +1,7 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+use crate::span::Span;
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
@@ -8,7 +9,6 @@ use crate::{
     types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     Ident,
 };
-use pest::Span;
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
@@ -203,7 +203,7 @@ fn type_check_trait_implementation<'sc>(
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
                     name: fn_decl.name.primary_name.clone(),
-                    trait_name: trait_name.span.as_str(),
+                    trait_name: trait_name.span.as_str().to_string(),
                     span: fn_decl.name.span.clone(),
                 });
                 return err(warnings, errors);

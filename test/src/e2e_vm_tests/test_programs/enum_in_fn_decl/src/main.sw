@@ -1,6 +1,6 @@
 script;
 fn main() -> u64 {
-  let a = 1;
+  let a = 255;
 
   enum X {
     Y: bool,

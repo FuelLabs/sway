@@ -1,11 +1,12 @@
+use crate::build_config::BuildConfig;
 use crate::parse_tree::declaration::TypeParameter;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::types::TypeInfo;
 use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
-use pest::Span;
 
 use super::Visibility;
 
@@ -25,7 +26,11 @@ pub(crate) struct StructField<'sc> {
 }
 
 impl<'sc> StructDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(decl: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    pub(crate) fn parse_from_pair(
+        decl: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut decl = decl.into_inner();
@@ -60,28 +65,30 @@ impl<'sc> StructDeclaration<'sc> {
         let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,
             where_clause_pair,
+            config,
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
         let fields = if let Some(fields) = fields_pair {
-            eval!(
-                StructField::parse_from_pairs,
+            check!(
+                StructField::parse_from_pairs(fields, config),
+                Vec::new(),
                 warnings,
-                errors,
-                fields,
-                Vec::new()
+                errors
             )
         } else {
             Vec::new()
         };
 
-        let span = name.as_span();
-        let name = eval!(
-            Ident::parse_from_pair,
+        let span = Span {
+            span: name.as_span(),
+            path: path.clone(),
+        };
+        let name = check!(
+            Ident::parse_from_pair(name, config),
+            return err(warnings, errors),
             warnings,
-            errors,
-            name,
-            return err(warnings, errors)
+            errors
         );
         assert_or_warn!(
             is_class_case(name.primary_name),
@@ -105,19 +112,25 @@ impl<'sc> StructDeclaration<'sc> {
 }
 
 impl<'sc> StructField<'sc> {
-    pub(crate) fn parse_from_pairs(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Vec<Self>> {
+    pub(crate) fn parse_from_pairs(
+        pair: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Vec<Self>> {
+        let path = config.map(|c| c.dir_of_code.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
         for i in (0..fields.len()).step_by(2) {
-            let span = fields[i].as_span();
-            let name = eval!(
-                Ident::parse_from_pair,
+            let span = Span {
+                span: fields[i].as_span(),
+                path: path.clone(),
+            };
+            let name = check!(
+                Ident::parse_from_pair(fields[i].clone(), config),
+                return err(warnings, errors),
                 warnings,
-                errors,
-                fields[i],
-                return err(warnings, errors)
+                errors
             );
             assert_or_warn!(
                 is_snake_case(name.primary_name),
@@ -127,12 +140,11 @@ impl<'sc> StructField<'sc> {
                     field_name: name.primary_name.clone()
                 }
             );
-            let r#type = eval!(
-                TypeInfo::parse_from_pair_inner,
+            let r#type = check!(
+                TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config),
+                TypeInfo::Unit,
                 warnings,
-                errors,
-                fields[i + 1].clone(),
-                TypeInfo::Unit
+                errors
             );
             fields_buf.push(StructField { name, r#type, span });
         }

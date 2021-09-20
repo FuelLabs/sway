@@ -1,5 +1,7 @@
+use crate::build_config::BuildConfig;
 use crate::error::ok;
 use crate::parser::Rule;
+use crate::span;
 use crate::{CompileResult, Expression};
 use pest::iterators::Pair;
 
@@ -9,8 +11,14 @@ pub struct ReturnStatement<'sc> {
 }
 
 impl<'sc> ReturnStatement<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        let span = pair.as_span();
+    pub(crate) fn parse_from_pair(
+        pair: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
+        let span = span::Span {
+            span: pair.as_span(),
+            path: config.map(|c| c.dir_of_code.clone()),
+        };
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut inner = pair.into_inner();
@@ -21,12 +29,11 @@ impl<'sc> ReturnStatement<'sc> {
                 expr: Expression::Unit { span },
             },
             Some(expr_pair) => {
-                let expr = eval!(
-                    Expression::parse_from_pair,
+                let expr = check!(
+                    Expression::parse_from_pair(expr_pair, config),
+                    Expression::Unit { span },
                     warnings,
-                    errors,
-                    expr_pair,
-                    Expression::Unit { span }
+                    errors
                 );
                 ReturnStatement { expr }
             }

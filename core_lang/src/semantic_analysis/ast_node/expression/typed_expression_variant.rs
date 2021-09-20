@@ -21,7 +21,6 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         selector: Option<ContractCallMetadata<'sc>>,
     },
     VariableExpression {
-        unary_op: Option<UnaryOp>,
         name: Ident<'sc>,
     },
     Unit,
@@ -55,7 +54,6 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     // like a variable expression but it has multiple parts,
     // like looking up a field in a struct
     StructFieldAccess {
-        unary_op: Option<UnaryOp>,
         prefix: Box<TypedExpression<'sc>>,
         field_to_access: TypedStructField<'sc>,
         resolved_type_of_parent: MaybeResolvedType<'sc>,

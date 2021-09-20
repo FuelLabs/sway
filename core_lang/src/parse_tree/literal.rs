@@ -1,9 +1,10 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
+use crate::span;
 use crate::types::{IntegerBits, ResolvedType};
 use crate::CompileError;
 use pest::iterators::Pair;
-use pest::Span;
 use std::convert::TryInto;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -33,7 +34,11 @@ impl<'sc> Literal<'sc> {
             B256(_) => ResolvedType::B256,
         }
     }
-    pub(crate) fn parse_from_pair(lit: Pair<'sc, Rule>) -> CompileResult<'sc, (Self, Span<'sc>)> {
+    pub(crate) fn parse_from_pair(
+        lit: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, (Self, span::Span<'sc>)> {
+        let path = config.map(|c| c.dir_of_code.clone());
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
             Rule::integer => {
@@ -42,7 +47,10 @@ impl<'sc> Literal<'sc> {
                 if int_inner.as_rule() != Rule::basic_integer {
                     int_inner = int_inner.into_inner().next().unwrap()
                 }
-                let span = int_inner.as_span();
+                let span = span::Span {
+                    span: int_inner.as_span(),
+                    path: path.clone(),
+                };
                 (
                     match rule {
                         Rule::u8_integer => int_inner
@@ -54,7 +62,10 @@ impl<'sc> Literal<'sc> {
                             .map_err(|_| {
                                 CompileError::Internal(
                                     "Called incorrect internal core_lang on literal type.",
-                                    int_inner.as_span(),
+                                    span::Span {
+                                        span: int_inner.as_span(),
+                                        path,
+                                    },
                                 )
                             }),
                         Rule::u16_integer => int_inner
@@ -66,7 +77,10 @@ impl<'sc> Literal<'sc> {
                             .map_err(|_| {
                                 CompileError::Internal(
                                     "Called incorrect internal core_lang on literal type.",
-                                    int_inner.as_span(),
+                                    span::Span {
+                                        span: int_inner.as_span(),
+                                        path,
+                                    },
                                 )
                             }),
                         Rule::u32_integer => int_inner
@@ -78,7 +92,10 @@ impl<'sc> Literal<'sc> {
                             .map_err(|_| {
                                 CompileError::Internal(
                                     "Called incorrect internal core_lang on literal type.",
-                                    int_inner.as_span(),
+                                    span::Span {
+                                        span: int_inner.as_span(),
+                                        path: path.clone(),
+                                    },
                                 )
                             }),
                         Rule::u64_integer => int_inner
@@ -90,7 +107,10 @@ impl<'sc> Literal<'sc> {
                             .map_err(|_| {
                                 CompileError::Internal(
                                     "Called incorrect internal core_lang on literal type.",
-                                    int_inner.as_span(),
+                                    span::Span {
+                                        span: int_inner.as_span(),
+                                        path: path.clone(),
+                                    },
                                 )
                             }),
                         _ => unreachable!(),
@@ -101,23 +121,32 @@ impl<'sc> Literal<'sc> {
             Rule::string => {
                 // remove opening and closing quotes
                 let lit_str = lit_inner.as_str();
-                let span = lit_inner.as_span();
+                let span = span::Span {
+                    span: lit_inner.as_span(),
+                    path: path.clone(),
+                };
                 (Ok(Literal::String(&lit_str[1..lit_str.len() - 1])), span)
             }
             Rule::byte => {
                 let inner_byte = lit_inner.into_inner().next().unwrap();
-                let span = inner_byte.as_span();
+                let span = span::Span {
+                    span: inner_byte.as_span(),
+                    path: path.clone(),
+                };
                 (
                     match inner_byte.as_rule() {
-                        Rule::binary_byte => parse_binary_from_pair(inner_byte),
-                        Rule::hex_byte => parse_hex_from_pair(inner_byte),
+                        Rule::binary_byte => parse_binary_from_pair(inner_byte, config),
+                        Rule::hex_byte => parse_hex_from_pair(inner_byte, config),
                         _ => unreachable!(),
                     },
                     span,
                 )
             }
             Rule::boolean => {
-                let span = lit_inner.as_span();
+                let span = span::Span {
+                    span: lit_inner.as_span(),
+                    path: path.clone(),
+                };
                 (
                     Ok(match lit_inner.as_str() {
                         "true" => Literal::Boolean(true),
@@ -134,8 +163,17 @@ impl<'sc> Literal<'sc> {
                     lit_inner.as_str()
                 );
                 (
-                    Err(CompileError::UnimplementedRule(a, lit_inner.as_span())),
-                    lit_inner.as_span(),
+                    Err(CompileError::UnimplementedRule(
+                        a,
+                        span::Span {
+                            span: lit_inner.as_span(),
+                            path: path.clone(),
+                        },
+                    )),
+                    span::Span {
+                        span: lit_inner.as_span(),
+                        path: path.clone(),
+                    },
                 )
             }
         };
@@ -160,11 +198,26 @@ impl<'sc> Literal<'sc> {
             }
             U64(val) => val.to_be_bytes().to_vec(),
             Boolean(b) => {
-                let bytes = (if *b { 1u64 } else { 0u64 }).to_be_bytes();
-                vec![0, 0, 0, 0, 0, 0, 0, bytes[0]]
+                vec![
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    if *b { 0b00000001 } else { 0b00000000 },
+                ]
             }
             // assume utf8 for now
-            String(st) => st.to_string().into_bytes(),
+            String(st) => {
+                let mut buf = st.to_string().into_bytes();
+                // pad to word alignment
+                while buf.len() % 8 != 0 {
+                    buf.push(0);
+                }
+                buf
+            }
             Byte(b) => vec![0, 0, 0, 0, 0, 0, 0, b.to_be_bytes()[0]],
             B256(b) => b.to_vec(),
         }
@@ -177,7 +230,11 @@ impl<'sc> Literal<'sc> {
     }
 }
 
-fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, CompileError<'sc>> {
+fn parse_hex_from_pair<'sc>(
+    pair: Pair<'sc, Rule>,
+    config: Option<&BuildConfig>,
+) -> Result<Literal<'sc>, CompileError<'sc>> {
+    let path = config.map(|c| c.dir_of_code.clone());
     let hex = &pair.as_str()[2..]
         .chars()
         .filter(|x| *x != '_')
@@ -187,7 +244,10 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
         2 => Literal::Byte(u8::from_str_radix(hex, 16).map_err(|_| {
             CompileError::Internal(
                 "Attempted to parse hex string from invalid hex",
-                pair.as_span(),
+                span::Span {
+                    span: pair.as_span(),
+                    path: path.clone(),
+                },
             )
         })?),
         64 => {
@@ -201,7 +261,10 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
                     Ok(u8::from_str_radix(&str_buf, 16).map_err(|_| {
                         CompileError::Internal(
                             "Attempted to parse individual byte from invalid hex string.",
-                            pair.as_span(),
+                            span::Span {
+                                span: pair.as_span(),
+                                path: path.clone(),
+                            },
                         )
                     })?)
                 })
@@ -209,21 +272,31 @@ fn parse_hex_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Compi
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|_| {
                 CompileError::Internal(
                     "Attempted to parse bytes32 from hex literal of incorrect length. ",
-                    pair.as_span(),
+                    span::Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    },
                 )
             })?;
             Literal::B256(arr)
         }
         a => {
             return Err(CompileError::InvalidByteLiteralLength {
-                span: pair.as_span(),
+                span: span::Span {
+                    span: pair.as_span(),
+                    path: path.clone(),
+                },
                 byte_length: a,
             })
         }
     })
 }
 
-fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, CompileError<'sc>> {
+fn parse_binary_from_pair<'sc>(
+    pair: Pair<'sc, Rule>,
+    config: Option<&BuildConfig>,
+) -> Result<Literal<'sc>, CompileError<'sc>> {
+    let path = config.map(|c| c.dir_of_code.clone());
     let bin = &pair.as_str()[2..]
         .chars()
         .filter(|x| *x != '_')
@@ -233,7 +306,10 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Co
         8 => Literal::Byte(u8::from_str_radix(bin, 2).map_err(|_| {
             CompileError::Internal(
                 "Attempted to parse bin string from invalid bin string.",
-                pair.as_span(),
+                span::Span {
+                    span: pair.as_span(),
+                    path: path.clone(),
+                },
             )
         })?),
         256 => {
@@ -247,7 +323,10 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Co
                     Ok(u8::from_str_radix(&str_buf, 2).map_err(|_| {
                         CompileError::Internal(
                             "Attempted to parse individual byte from invalid bin.",
-                            pair.as_span(),
+                            span::Span {
+                                span: pair.as_span(),
+                                path: path.clone(),
+                            },
                         )
                     })?)
                 })
@@ -255,14 +334,20 @@ fn parse_binary_from_pair<'sc>(pair: Pair<'sc, Rule>) -> Result<Literal<'sc>, Co
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|_| {
                 CompileError::Internal(
                     "Attempted to parse bytes32 from bin literal of incorrect length. ",
-                    pair.as_span(),
+                    span::Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    },
                 )
             })?;
             Literal::B256(arr)
         }
         a => {
             return Err(CompileError::InvalidByteLiteralLength {
-                span: pair.as_span(),
+                span: span::Span {
+                    span: pair.as_span(),
+                    path: path.clone(),
+                },
                 byte_length: a,
             })
         }

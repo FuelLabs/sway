@@ -2,8 +2,8 @@
 //! execution.
 
 use crate::semantic_analysis::{ast_node::TypedStructField, TypedAstNode};
+use crate::span::Span;
 use crate::{semantic_analysis::ast_node::TypedEnumVariant, Ident};
-use pest::Span;
 
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 

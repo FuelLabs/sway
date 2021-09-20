@@ -167,6 +167,12 @@ impl bool {
       r3: bool
     }
   }
+  fn and(self, other: Self) -> bool {
+    asm(r1: self, r2: other, r3) { 
+      and r3 r1 r2;
+      r3: bool
+    }
+  }
 }
 
 
@@ -268,5 +274,15 @@ impl Ord for u8 {
         eq r3 r1 r2;
         r3: bool
     }
+  }
+}
+
+// should this be a trait eventually? do we want to allow people to customize what `!` does? 
+// Scala says yes, Rust says perhaps...
+pub fn not(a: bool) -> bool {
+  // using direct asm for perf
+  asm(r1: a, r2) {
+    eq r2 r1 zero;
+    r2: bool
   }
 }
