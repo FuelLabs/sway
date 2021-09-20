@@ -36,7 +36,7 @@ impl<'sc> Ident<'sc> {
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Ident<'sc>> {
         let path = if let Some(config) = config {
-            Some(config.dir_of_code.clone())
+            Some(config.file_path.clone())
         } else {
             None
         };

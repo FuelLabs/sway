@@ -18,7 +18,7 @@ impl<'sc> IncludeStatement<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.file_path.clone());
         let mut warnings = vec![];
         let mut errors = vec![];
         let span = Span {

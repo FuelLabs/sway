@@ -22,7 +22,7 @@ impl<'sc> CodeBlock<'sc> {
         block: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.file_path.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let whole_block_span = span::Span {

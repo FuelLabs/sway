@@ -113,7 +113,7 @@ pub fn parse<'sc>(
                     span: span::Span {
                         span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
                         path: if let Some(config) = config {
-                            Some(config.dir_of_code.clone())
+                            Some(config.file_path.clone())
                         } else {
                             None
                         },
@@ -218,7 +218,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
             errors.push(CompileError::ImportMustBeLibrary {
                 span: span::Span {
                     span: pest::Span::new(input, 0, 0).unwrap(),
-                    path: Some(build_config.clone().dir_of_code),
+                    path: Some(build_config.clone().file_path),
                 },
             });
             return err(warnings, errors);
@@ -532,7 +532,7 @@ fn parse_root_from_pairs<'sc>(
     config: Option<&BuildConfig>,
 ) -> CompileResult<'sc, HllParseTree<'sc>> {
     let path = if let Some(config) = config.clone() {
-        Some(config.dir_of_code.clone())
+        Some(config.file_path.clone())
     } else {
         None
     };

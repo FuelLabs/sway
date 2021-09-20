@@ -55,7 +55,7 @@ impl<'sc> UseStatement<'sc> {
                 errors.push(CompileError::NonFinalAsteriskInPath {
                     span: span::Span {
                         span: item.as_span(),
-                        path: config.map(|c| c.dir_of_code.clone()),
+                        path: config.map(|c| c.file_path.clone()),
                     },
                 });
                 continue;

@@ -39,7 +39,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.file_path.clone());
         let mut parts = pair.clone().into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -217,7 +217,7 @@ impl<'sc> FunctionParameter<'sc> {
         pairs: impl Iterator<Item = Pair<'sc, Rule>>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Vec<FunctionParameter<'sc>>> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.file_path.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut pairs_buf = Vec::new();

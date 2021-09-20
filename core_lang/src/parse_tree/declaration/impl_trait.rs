@@ -35,7 +35,7 @@ impl<'sc> ImplTrait<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.file_path.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let block_span = Span {
@@ -123,7 +123,7 @@ impl<'sc> ImplSelf<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.file_path.clone());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let block_span = Span {

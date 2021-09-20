@@ -28,7 +28,7 @@ impl UnaryOp {
                     "Attempted to parse unary op from invalid op string.",
                     Span {
                         span: pair.as_span(),
-                        path: config.map(|c| c.dir_of_code.clone()),
+                        path: config.map(|c| c.file_path.clone()),
                     },
                 )];
                 return err(Vec::new(), errors);
