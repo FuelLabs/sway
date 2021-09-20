@@ -16,8 +16,7 @@ impl BuildConfig {
         file_name: PathBuf,
         canonicalized_manifest_path: PathBuf,
     ) -> Self {
-        let mut path = canonicalized_manifest_path.clone();
-        path.push("src");
+        let path = canonicalized_manifest_path.clone();
         Self {
             file_name: file_name,
             dir_of_code: path,
@@ -42,7 +41,6 @@ impl BuildConfig {
 
     pub fn path(&self) -> PathBuf {
         let path = self.dir_of_code.clone().join(self.file_name.clone());
-        println!("{:?}", path);
         path
     }
 }

@@ -46,9 +46,15 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         }
     };
 
-    let mut file_path_dir = manifest_dir.clone();
-    file_path_dir.pop();
-    let file_name = match manifest_dir.strip_prefix(file_path_dir.clone()) {
+    let mut manifest = read_manifest(&manifest_dir)?;
+
+    let main_path = {
+        let mut code_dir = manifest_dir.clone();
+        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(&manifest.project.entry);
+        code_dir
+    };
+    let file_name = match main_path.strip_prefix(manifest_dir.clone()) {
         Ok(o) => o,
         Err(err) => return Err(err.to_string()),
     };
@@ -59,7 +65,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     )
     .print_finalized_asm(print_finalized_asm)
     .print_intermediate_asm(print_intermediate_asm);
-    let mut manifest = read_manifest(&manifest_dir)?;
 
     let mut namespace: Namespace = Default::default();
     if let Some(ref mut deps) = manifest.dependencies {
@@ -158,9 +163,15 @@ fn compile_dependency_lib<'source, 'manifest>(
         None => return Err("Manifest not found for dependency.".into()),
     };
 
-    let mut file_path_dir = manifest_dir.clone();
-    file_path_dir.pop();
-    let file_name = match manifest_dir.strip_prefix(file_path_dir.clone()) {
+    let manifest = read_manifest(&manifest_dir)?;
+
+    let main_path = {
+        let mut code_dir = manifest_dir.clone();
+        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(&manifest.project.entry);
+        code_dir
+    };
+    let file_name = match main_path.strip_prefix(manifest_dir.clone()) {
         Ok(o) => o,
         Err(err) => return Err(err.to_string()),
     };
