@@ -45,17 +45,20 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
             ))
         }
     };
-    
+
     let mut file_path_dir = manifest_dir.clone();
     file_path_dir.pop();
     let file_name = match manifest_dir.strip_prefix(file_path_dir.clone()) {
         Ok(o) => o,
-        Err(err) => return Err(err.to_string())
+        Err(err) => return Err(err.to_string()),
     };
 
-    let build_config = BuildConfig::root_from_file_name_and_manifest_path(file_name.clone().to_path_buf(), manifest_dir.clone())
-        .print_finalized_asm(print_finalized_asm)
-        .print_intermediate_asm(print_intermediate_asm);
+    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+        file_name.clone().to_path_buf(),
+        manifest_dir.clone(),
+    )
+    .print_finalized_asm(print_finalized_asm)
+    .print_intermediate_asm(print_intermediate_asm);
     let mut manifest = read_manifest(&manifest_dir)?;
 
     let mut namespace: Namespace = Default::default();
@@ -159,10 +162,13 @@ fn compile_dependency_lib<'source, 'manifest>(
     file_path_dir.pop();
     let file_name = match manifest_dir.strip_prefix(file_path_dir.clone()) {
         Ok(o) => o,
-        Err(err) => return Err(err.to_string())
+        Err(err) => return Err(err.to_string()),
     };
 
-    let build_config = BuildConfig::root_from_file_name_and_manifest_path(file_name.clone().to_path_buf(), manifest_dir.clone());
+    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+        file_name.clone().to_path_buf(),
+        manifest_dir.clone(),
+    );
 
     let manifest_of_dep = read_manifest(&manifest_dir)?;
 
