@@ -14,13 +14,14 @@ dirs = "3.0.2"
 flate2 = "1.0.20"
 formatter = {path = "../formatter"}
 fuel-asm = {git = "ssh://git@github.com/FuelLabs/fuel-asm.git"}
+fuel-client = {git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false}
 fuel-tx = {git = "ssh://git@github.com/FuelLabs/fuel-tx.git"}
 fuel-vm = {git = "ssh://git@github.com/FuelLabs/fuel-vm.git"}
 hex = "0.4.3"
 line-col = "0.2"
 pest = {git = "https://github.com/sezna/pest.git", rev = "8aa58791f759daf4caee26e8560e862df5a6afb7"}
 prettydiff = "0.4.0"
-reqwest = { version = "0.11.4", features = ["json"] }
+reqwest = {version = "0.11.4", features = ["json"]}
 semver = "1.0.3"
 serde = {version = "1.0", features = ["derive"]}
 source-span = "2.4"
@@ -30,5 +31,9 @@ term-table = "1.3"
 termcolor = "1.1"
 tokio = {version = "1.8.0", features = ["macros", "rt-multi-thread"]}
 toml = "0.5"
-fuel-client = { git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false }
 whoami = "1.1"
+
+[features]
+default = []
+test = []
+util = []

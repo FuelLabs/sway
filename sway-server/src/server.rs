@@ -1,18 +1,15 @@
-use crate::core::{document::DocumentError, session::Session};
-use crate::{capabilities, core::document::TextDocument};
-
+use crate::capabilities;
+use crate::core::{
+    document::{DocumentError, TextDocument},
+    session::Session,
+};
+use forc::util::helpers::{find_manifest_dir, get_sway_files};
 use lsp::{
     CompletionParams, CompletionResponse, Hover, HoverParams, HoverProviderCapability,
     InitializeParams, InitializeResult, MessageType, OneOf,
 };
 use lspower::{jsonrpc, lsp, Client, LanguageServer};
-
-use std::{
-    ffi::OsStr,
-    fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Backend {
@@ -52,55 +49,6 @@ impl Backend {
 
         Ok(())
     }
-}
-
-// todo: code-duplication from @forc, extract to separate lib
-fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
-    let mut files = vec![];
-    let mut dir_entries = vec![path];
-
-    while let Some(next_dir) = dir_entries.pop() {
-        if let Ok(read_dir) = fs::read_dir(next_dir) {
-            for inner_entry in read_dir {
-                if let Ok(entry) = inner_entry {
-                    let path = entry.path();
-
-                    if path.is_dir() {
-                        dir_entries.push(path);
-                    } else {
-                        if is_sway_file(&path) {
-                            files.push(path)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    files
-}
-
-// todo: code-duplication from @forc, extract to separate lib
-fn is_sway_file(file: &Path) -> bool {
-    let res = file.extension();
-    Some(OsStr::new("sw")) == res
-}
-
-// todo: code-duplication from @forc, extract to separate lib
-fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
-    let mut path = std::fs::canonicalize(starter_path.clone()).ok()?;
-    let empty_path = PathBuf::from("/");
-    while path != empty_path {
-        path.push("Forc.toml");
-        if path.exists() {
-            path.pop();
-            return Some(path);
-        } else {
-            path.pop();
-            path.pop();
-        }
-    }
-    None
 }
 
 #[lspower::async_trait]
