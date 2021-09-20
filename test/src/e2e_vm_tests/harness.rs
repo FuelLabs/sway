@@ -1,5 +1,4 @@
-use forc;
-use forc::cli::BuildCommand;
+use forc::test::{forc_build, BuildCommand};
 use fuel_tx::{Input, Output, Transaction};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
@@ -83,7 +82,7 @@ pub(crate) fn runs_in_vm(file_name: &str) {
 pub(crate) fn compile_to_bytes(file_name: &str) -> Vec<u8> {
     println!("Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    forc::ops::forc_build::build(BuildCommand {
+    forc_build::build(BuildCommand {
         path: Some(format!(
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
