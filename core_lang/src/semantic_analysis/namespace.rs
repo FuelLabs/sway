@@ -186,7 +186,7 @@ impl<'sc> Namespace<'sc> {
             }
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: item.primary_name.into(),
+                    name: item.primary_name,
                     span: item.span.clone(),
                 });
 
@@ -254,7 +254,7 @@ impl<'sc> Namespace<'sc> {
             Some(o) => ok(o, warnings, errors),
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: path.suffix.primary_name.into(),
+                    name: path.suffix.primary_name,
                     span: path.suffix.span.clone(),
                 });
                 err(warnings, errors)
@@ -502,7 +502,7 @@ impl<'sc> Namespace<'sc> {
 
         ok(
             [
-                methods.iter().cloned().collect::<Vec<_>>(),
+                methods.to_vec(),
                 interface_surface
                     .iter()
                     .map(|x| x.to_dummy_func(Mode::NonAbi))
