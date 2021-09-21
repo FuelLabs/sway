@@ -121,10 +121,35 @@ fn where_x() -> u64 {
 }
 
 fn main() -> u32 {
-	let where_y = abi_x() + enum_x() + fn_x() + let_x() + match_x() + return_x() +
-		struct_x() + trait_x() + use_x() + while_x() + asm_x() + as_x() + contract_x() +
-		dep_x() + deref_x() + false_x() + for_x() + i64_x() + impl_x() + library_x() +
-		mut_x() + predicate_x() + pub_x() + ref_x() + script_x() + self_x() + str_x() +
-		true_x() + u64_x() + where_x();
+	let where_y = abi_x()
+		+ enum_x()
+		+ fn_x()
+		+ let_x()
+		+ match_x()
+		+ return_x()
+		+ struct_x()
+		+ trait_x()
+		+ use_x()
+		+ while_x()
+		+ asm_x()
+		+ as_x()
+		+ contract_x()
+		+ dep_x()
+		+ deref_x()
+		+ false_x()
+		+ for_x()
+		+ i64_x()
+		+ impl_x()
+		+ library_x()
+		+ mut_x()
+		+ predicate_x()
+		+ pub_x()
+		+ ref_x()
+		+ script_x()
+		+ self_x()
+		+ str_x()
+		+ true_x()
+		+ u64_x()
+		+ where_x();
 	return where_y;
 }
