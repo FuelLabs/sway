@@ -21,7 +21,6 @@ include_keyword     =  {"dep"}
 abi_keyword         =  {"abi"}
 ref_keyword         =  {"ref "}
 deref_keyword       =  {"deref "}
-where_keyword       =  {"where"}
 true_keyword        =  {"true"}
 false_keyword       =  {"false"}
 
@@ -133,7 +132,7 @@ return_type        =  {ident}
 fn_decl_name       =  {ident}
 type_name          =  {(str_type|ident ~ type_params?)|unit}
 str_type           =  { "str" ~ "[" ~ basic_integer ~ "]" }
-trait_bounds       =  {where_keyword ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)*}
+trait_bounds       =  {"where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)*}
 generic_type_param =  {ident}
 
 // statements
@@ -182,5 +181,5 @@ char           = @{
 }
 unit           =  {"(" ~ ")"}
 ident          = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")* }
-reserved_words = @{(true_keyword|false_keyword|where_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
+reserved_words = @{(true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
 
