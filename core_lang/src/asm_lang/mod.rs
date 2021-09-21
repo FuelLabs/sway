@@ -558,6 +558,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::RET(r1)
                 }
+                "retd" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::RETD(r1, r2)
+                }
                 "cfei" => {
                     let imm = check!(
                         single_imm_24(args, immediate, whole_op_span),
@@ -1254,6 +1263,7 @@ impl fmt::Display for Op<'_> {
                 JI(a) => format!("ji {}", a),
                 JNEI(a, b, c) => format!("jnei {} {} {}", a, b, c),
                 RET(a) => format!("ret {}", a),
+                RETD(a, b) => format!("retd {} {}", a, b),
                 CFEI(a) => format!("cfei {}", a),
                 CFSI(a) => format!("cfsi {}", a),
                 LB(a, b, c) => format!("lb {} {} {}", a, b, c),

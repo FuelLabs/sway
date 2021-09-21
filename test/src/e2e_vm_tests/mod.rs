@@ -18,6 +18,21 @@ pub fn run() {
         ("main_returns_unit", ProgramState::Return(0)),
         ("unary_not_basic", ProgramState::Return(1)), // 1 == true
         ("unary_not_basic_2", ProgramState::Return(1)), // 1 == true
+        (
+            "retd_b256",
+            ProgramState::ReturnData(Bytes32::from([
+                102, 104, 122, 173, 248, 98, 189, 119, 108, 143, 193, 139, 142, 159, 142, 32, 8,
+                151, 20, 133, 110, 226, 51, 179, 144, 42, 89, 29, 13, 95, 41, 37,
+            ])),
+        ),
+        (
+            "retd_struct",
+            ProgramState::ReturnData(Bytes32::from([
+                2, 23, 32, 21, 62, 98, 71, 190, 175, 43, 135, 133, 106, 105, 116, 64, 126, 40, 204,
+                235, 151, 159, 245, 170, 112, 203, 40, 158, 9, 238, 188, 213,
+            ])),
+        ),
+        ("op_precedence", ProgramState::Return(0)),
         ("asm_without_return", ProgramState::Return(0)),
         ("op_precedence", ProgramState::Return(0)), // 1 == false
     ];
