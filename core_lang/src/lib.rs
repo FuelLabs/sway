@@ -112,11 +112,7 @@ pub fn parse<'sc>(
                 vec![CompileError::ParseFailure {
                     span: span::Span {
                         span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
-                        path: if let Some(config) = config {
-                            Some(config.dir_of_code.clone())
-                        } else {
-                            None
-                        },
+                        path: config.clone().map(|config| config.dir_of_code.clone()),
                     },
                     err: e,
                 }],
@@ -531,11 +527,7 @@ fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<'sc, HllParseTree<'sc>> {
-    let path = if let Some(config) = config.clone() {
-        Some(config.dir_of_code.clone())
-    } else {
-        None
-    };
+    let path = config.clone().map(|config| config.dir_of_code.clone());
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let mut fuel_ast = HllParseTree {
@@ -556,7 +548,7 @@ fn parse_root_from_pairs<'sc>(
             match pair.as_rule() {
                 Rule::declaration => {
                     let decl = check!(
-                        Declaration::parse_from_pair(pair.clone(), config.clone()),
+                        Declaration::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
@@ -571,7 +563,7 @@ fn parse_root_from_pairs<'sc>(
                 }
                 Rule::use_statement => {
                     let stmt = check!(
-                        UseStatement::parse_from_pair(pair.clone(), config.clone()),
+                        UseStatement::parse_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
@@ -587,7 +579,7 @@ fn parse_root_from_pairs<'sc>(
                 Rule::library_name => {
                     let lib_pair = pair.into_inner().next().unwrap();
                     library_name = Some(check!(
-                        Ident::parse_from_pair(lib_pair, config.clone()),
+                        Ident::parse_from_pair(lib_pair, config),
                         continue,
                         warnings,
                         errors
