@@ -12,7 +12,7 @@ use crate::core::{
 pub fn handle_open_file(
     session: Arc<Session>,
     params: &DidOpenTextDocumentParams,
-) -> Option<Vec<Diagnostic>> {
+) -> Vec<Diagnostic> {
     let path = params.text_document.uri.path();
 
     if !session.contains_sway_file(&params.text_document.uri) {
@@ -22,15 +22,9 @@ pub fn handle_open_file(
     }
 
     match session.parse_document(path) {
-        Ok(diagnostics) => {
-            if diagnostics.is_empty() {
-                None
-            } else {
-                Some(diagnostics)
-            }
-        }
-        Err(DocumentError::FailedToParse(diagnostics)) => Some(diagnostics),
-        _ => None,
+        Ok(diagnostics) => diagnostics,
+        Err(DocumentError::FailedToParse(diagnostics)) => diagnostics,
+        _ => vec![],
     }
 }
 

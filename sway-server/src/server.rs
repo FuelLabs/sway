@@ -99,9 +99,9 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: lsp::DidOpenTextDocumentParams) {
-        if let Some(diagnostics) =
-            capabilities::text_sync::handle_open_file(self.session.clone(), &params)
-        {
+        let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
+
+        if !diagnostics.is_empty() {
             self.client
                 .publish_diagnostics(params.text_document.uri, diagnostics, None)
                 .await;
