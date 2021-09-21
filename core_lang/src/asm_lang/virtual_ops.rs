@@ -286,6 +286,7 @@ pub(crate) enum VirtualOp {
     JI(VirtualImmediate24),
     JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     RET(VirtualRegister),
+    RETD(VirtualRegister, VirtualRegister),
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(VirtualRegister, VirtualRegister, VirtualImmediate12),
@@ -396,6 +397,7 @@ impl VirtualOp {
             JI(_im) => vec![],
             JNEI(r1, r2, _i) => vec![r1, r2],
             RET(r1) => vec![r1],
+            RETD(r1, r2) => vec![r1, r2],
             CFEI(_imm) => vec![],
             CFSI(_imm) => vec![],
             LB(r1, r2, _i) => vec![r1, r2],
@@ -635,6 +637,9 @@ impl VirtualOp {
                 imm.clone(),
             ),
             RET(reg) => AllocatedOpcode::RET(map_reg(&mapping, reg)),
+            RETD(reg1, reg2) => {
+                AllocatedOpcode::RETD(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             CFEI(imm) => AllocatedOpcode::CFEI(imm.clone()),
             CFSI(imm) => AllocatedOpcode::CFSI(imm.clone()),
             LB(reg1, reg2, imm) => AllocatedOpcode::LB(

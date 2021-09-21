@@ -1,17 +1,15 @@
-use lspower::{
-    jsonrpc,
-    lsp::{self},
-    Client, LanguageServer,
+use crate::capabilities;
+use crate::core::{
+    document::{DocumentError, TextDocument},
+    session::Session,
 };
-use std::sync::Arc;
-
+use forc::util::helpers::{find_manifest_dir, get_sway_files};
 use lsp::{
     CompletionParams, CompletionResponse, Hover, HoverParams, HoverProviderCapability,
     InitializeParams, InitializeResult, MessageType, OneOf,
 };
-
-use crate::capabilities;
-use crate::core::session::Session;
+use lspower::{jsonrpc, lsp, Client, LanguageServer};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Backend {
@@ -28,6 +26,29 @@ impl Backend {
     async fn log_info_message(&self, message: &str) {
         self.client.log_message(MessageType::Info, message).await;
     }
+
+    fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
+        let curr_dir = std::env::current_dir().unwrap();
+
+        match find_manifest_dir(&curr_dir) {
+            Some(path) => {
+                let files = get_sway_files(path);
+
+                for file_path in files {
+                    if let Some(path) = file_path.to_str() {
+                        // store the document
+                        let text_document = TextDocument::build_from_path(path)?;
+                        self.session.store_document(text_document)?;
+                        // parse the document for tokens
+                        let _ = self.session.parse_document(path);
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
 }
 
 #[lspower::async_trait]
@@ -36,6 +57,9 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::Info, "Initializing the Server")
             .await;
+
+        // iterate over the project dir, parse all sway files
+        let _ = self.parse_and_store_sway_files();
 
         Ok(lsp::InitializeResult {
             server_info: None,
@@ -75,9 +99,9 @@ impl LanguageServer for Backend {
 
     // Document Handlers
     async fn did_open(&self, params: lsp::DidOpenTextDocumentParams) {
-        if let Some(diagnostics) =
-            capabilities::text_sync::handle_open_file(self.session.clone(), &params)
-        {
+        let diagnostics = capabilities::text_sync::handle_open_file(self.session.clone(), &params);
+
+        if !diagnostics.is_empty() {
             self.client
                 .publish_diagnostics(params.text_document.uri, diagnostics, None)
                 .await;
@@ -101,8 +125,9 @@ impl LanguageServer for Backend {
         }
     }
 
-    async fn did_close(&self, params: lsp::DidCloseTextDocumentParams) {
-        let _ = capabilities::text_sync::handle_close_file(self.session.clone(), params);
+    async fn did_change_watched_files(&self, params: lsp::DidChangeWatchedFilesParams) {
+        let events = params.changes;
+        capabilities::file_sync::handle_watched_files(self.session.clone(), events);
     }
 
     async fn hover(&self, params: HoverParams) -> jsonrpc::Result<Option<Hover>> {

@@ -1,8 +1,7 @@
 use dashmap::DashMap;
 use lspower::lsp::{
     CompletionItem, Diagnostic, FormattingOptions, GotoDefinitionResponse, Hover, Position, Range,
-    SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextDocumentItem, TextEdit,
-    Url,
+    SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
 use crate::capabilities::{self, formatting::get_format_text_edits};
@@ -11,7 +10,7 @@ use super::document::{DocumentError, TextDocument};
 
 #[derive(Debug)]
 pub struct Session {
-    documents: DashMap<Url, TextDocument>,
+    documents: DashMap<String, TextDocument>,
 }
 
 impl Session {
@@ -22,36 +21,40 @@ impl Session {
     }
 
     // Document
-    pub fn store_document(&self, document: &TextDocumentItem) -> Result<(), DocumentError> {
-        let text_document = TextDocument::new(document);
-        let url = document.uri.clone();
-
-        match self.documents.insert(url, text_document) {
+    pub fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
+        match self
+            .documents
+            .insert(text_document.get_uri().into(), text_document)
+        {
             None => Ok(()),
             _ => Err(DocumentError::DocumentAlreadyStored),
         }
     }
 
-    pub fn remove_document(&self, uri: &Url) -> Result<TextDocument, DocumentError> {
-        match self.documents.remove(uri) {
+    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+        match self.documents.remove(url.path()) {
             Some((_, text_document)) => Ok(text_document),
             None => Err(DocumentError::DocumentNotFound),
         }
     }
 
-    pub fn parse_document(&self, url: &Url) -> Result<Vec<Diagnostic>, DocumentError> {
-        match self.documents.get_mut(&url) {
+    pub fn parse_document(&self, path: &str) -> Result<Vec<Diagnostic>, DocumentError> {
+        match self.documents.get_mut(path) {
             Some(ref mut document) => document.parse(),
             _ => Err(DocumentError::DocumentNotFound),
         }
     }
 
+    pub fn contains_sway_file(&self, url: &Url) -> bool {
+        self.documents.contains_key(url.path())
+    }
+
     pub fn update_text_document(
         &self,
-        uri: &Url,
+        url: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
     ) -> Result<(), DocumentError> {
-        match self.documents.get_mut(&uri) {
+        match self.documents.get_mut(url.path()) {
             Some(ref mut document) => {
                 changes.iter().for_each(|change| {
                     document.apply_change(change);
@@ -64,7 +67,7 @@ impl Session {
 
     // Token
     pub fn get_token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        if let Some(document) = self.documents.get(url) {
+        if let Some(document) = self.documents.get(url.path()) {
             if let Some(token) = document.get_token_at_position(position) {
                 let result = document
                     .get_all_tokens_by_single_name(&token.name)
@@ -81,7 +84,7 @@ impl Session {
     }
 
     pub fn get_token_hover_content(&self, url: &Url, position: Position) -> Option<Hover> {
-        if let Some(document) = self.documents.get(url) {
+        if let Some(document) = self.documents.get(url.path()) {
             if let Some(token) = document.get_token_at_position(position) {
                 return Some(capabilities::hover::to_hover_content(token));
             }
@@ -95,16 +98,23 @@ impl Session {
         url: Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        if let Some(document) = self.documents.get(&url) {
+        let key = url.path();
+
+        if let Some(document) = self.documents.get(key) {
             if let Some(token) = document.get_token_at_position(position) {
                 if token.is_initial_declaration() {
                     return Some(capabilities::go_to::to_definition_response(url, token));
                 } else {
-                    if let Some(other_token) = document.get_declared_token(&token.name) {
-                        return Some(capabilities::go_to::to_definition_response(
-                            url,
-                            other_token,
-                        ));
+                    for document_ref in &self.documents {
+                        if let Some(declared_token) = document_ref.get_declared_token(&token.name) {
+                            return match Url::from_file_path(document_ref.key()) {
+                                Ok(url) => Some(capabilities::go_to::to_definition_response(
+                                    url,
+                                    declared_token,
+                                )),
+                                Err(_) => None,
+                            };
+                        }
                     }
                 }
             }
@@ -114,7 +124,7 @@ impl Session {
     }
 
     pub fn get_completion_items(&self, url: &Url) -> Option<Vec<CompletionItem>> {
-        if let Some(document) = self.documents.get(url) {
+        if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::completion::to_completion_items(
                 document.get_tokens(),
             ));
@@ -124,7 +134,7 @@ impl Session {
     }
 
     pub fn get_semantic_tokens(&self, url: &Url) -> Option<Vec<SemanticToken>> {
-        if let Some(document) = self.documents.get(url) {
+        if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::semantic_tokens::to_semantic_tokes(
                 document.get_tokens(),
             ));
@@ -134,7 +144,7 @@ impl Session {
     }
 
     pub fn get_symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        if let Some(document) = self.documents.get(url) {
+        if let Some(document) = self.documents.get(url.path()) {
             return Some(capabilities::document_symbol::to_symbol_information(
                 document.get_tokens(),
                 url.clone(),
@@ -145,7 +155,7 @@ impl Session {
     }
 
     pub fn format_text(&self, url: &Url, options: FormattingOptions) -> Option<Vec<TextEdit>> {
-        if let Some(document) = self.documents.get(url) {
+        if let Some(document) = self.documents.get(url.path()) {
             get_format_text_edits(&document.get_text(), options)
         } else {
             None

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use core_lang::parse;
-use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent, TextDocumentItem};
+use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 
 use ropey::Rope;
 
@@ -24,15 +24,18 @@ pub struct TextDocument {
 }
 
 impl TextDocument {
-    pub fn new(item: &TextDocumentItem) -> Self {
-        Self {
-            language_id: item.language_id.clone(),
-            version: item.version,
-            uri: item.uri.to_string(),
-            content: Rope::from_str(&item.text),
-            tokens: vec![],
-            lines: HashMap::new(),
-            values: HashMap::new(),
+    pub fn build_from_path(path: &str) -> Result<Self, DocumentError> {
+        match std::fs::read_to_string(&path) {
+            Ok(content) => Ok(Self {
+                language_id: "sway".into(),
+                version: 1,
+                uri: path.into(),
+                content: Rope::from_str(&content),
+                tokens: vec![],
+                lines: HashMap::new(),
+                values: HashMap::new(),
+            }),
+            Err(_) => Err(DocumentError::DocumentNotFound),
         }
     }
 
@@ -74,6 +77,10 @@ impl TextDocument {
 
     pub fn get_tokens(&self) -> &Vec<Token> {
         &self.tokens
+    }
+
+    pub fn get_uri(&self) -> &str {
+        &self.uri
     }
 
     pub fn parse(&mut self) -> Result<Vec<Diagnostic>, DocumentError> {

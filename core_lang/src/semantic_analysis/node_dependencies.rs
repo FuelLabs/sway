@@ -110,20 +110,20 @@ fn build_recursion_error<'sc>(
         // An empty chain indicates immediate recursion.
         0 => CompileError::RecursiveCall {
             fn_name: fn_sym,
-            span: span,
+            span,
         },
         // Chain entries indicate mutual recursion.
         1 => CompileError::RecursiveCallChain {
             fn_name: fn_sym,
             call_chain: chain[0].to_owned(),
-            span: span,
+            span,
         },
         n => {
             let msg = chain[0..(n - 1)].join(", ");
             CompileError::RecursiveCallChain {
                 fn_name: fn_sym,
                 call_chain: msg + " and " + chain[n - 1],
-                span: span,
+                span,
             }
         }
     }

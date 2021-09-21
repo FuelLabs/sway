@@ -642,11 +642,43 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     comment: "main fn returns unit value".into(),
                 });
             } else {
-                asm_buf.push(Op {
-                    owning_span: None,
-                    opcode: Either::Left(VirtualOp::RET(return_register)),
-                    comment: "main fn return value".into(),
-                });
+                let size_of_main_func_return_bytes = check!(
+                    main_function.return_type.force_resolution(
+                        &MaybeResolvedType::Resolved(ResolvedType::Unit),
+                        &main_function.return_type_span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+                .stack_size_of()
+                    * 8;
+                if size_of_main_func_return_bytes == 8 {
+                    asm_buf.push(Op {
+                        owning_span: None,
+                        opcode: Either::Left(VirtualOp::RET(return_register)),
+                        comment: "main fn return value".into(),
+                    });
+                } else {
+                    // if the type is larger than one word, then we use RETD to return data
+                    // RB is the size_in_bytes
+                    let rb_register = register_sequencer.next();
+                    let size_bytes =
+                        namespace.insert_data_value(&Literal::U64(size_of_main_func_return_bytes));
+                    // `return_register` is $rA
+                    asm_buf.push(Op {
+                        opcode: Either::Left(VirtualOp::LWDataId(rb_register.clone(), size_bytes)),
+                        owning_span: Some(main_function.return_type_span),
+                        comment: "loading rB for RETD".into(),
+                    });
+
+                    // now $rB has the size of the type in bytes
+                    asm_buf.push(Op {
+                        owning_span: None,
+                        opcode: Either::Left(VirtualOp::RETD(return_register, rb_register)),
+                        comment: "main fn return value".into(),
+                    });
+                }
             }
 
             HllAsmSet::ScriptMain {
@@ -1099,13 +1131,13 @@ fn build_contract_abi_switch<'sc>(
         });
     }
 
-    // if none of the selectors matched, then revert
+    // if none of the selectors matched, then ret
     asm_buf.push(Op {
         // see https://github.com/FuelLabs/sway/issues/97#issuecomment-875674105
         opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
             ConstantRegister::Zero,
         ))),
-        comment: "revert if no selectors matched".into(),
+        comment: "return if no selectors matched".into(),
         owning_span: None,
     });
 

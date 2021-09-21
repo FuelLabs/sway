@@ -182,10 +182,10 @@ fn type_check_trait_implementation<'sc>(
         let mut fn_decl = check!(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
-                &namespace,
+                namespace,
                 None,
                 "",
-                &self_type,
+                self_type,
                 build_config,
                 dead_code_graph,
                 mode
@@ -202,7 +202,7 @@ fn type_check_trait_implementation<'sc>(
             Some(ix) => ix,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                    name: fn_decl.name.primary_name.clone(),
+                    name: &(*fn_decl.name.primary_name),
                     trait_name: trait_name.span.as_str().to_string(),
                     span: fn_decl.name.span.clone(),
                 });
@@ -211,7 +211,7 @@ fn type_check_trait_implementation<'sc>(
         };
         function_checklist.remove(ix_of_thing_to_remove);
 
-        let type_arguments = type_arguments.clone();
+        let type_arguments = &(*type_arguments);
         // add generic params from impl trait into function type params
         fn_decl.type_parameters.append(&mut type_arguments.to_vec());
 
@@ -262,7 +262,7 @@ fn type_check_trait_implementation<'sc>(
                                 let fn_decl_param_type = check!(
                                     fn_decl_param
                                         .r#type
-                                        .force_resolution(&self_type, &fn_decl_param.type_span),
+                                        .force_resolution(self_type, &fn_decl_param.type_span),
                                     return Some(errors),
                                     warnings,
                                     errors
@@ -270,7 +270,7 @@ fn type_check_trait_implementation<'sc>(
                                 let trait_param_type = check!(
                                     trait_param
                                         .r#type
-                                        .force_resolution(&self_type, &fn_decl_param.type_span),
+                                        .force_resolution(self_type, &fn_decl_param.type_span),
                                     return Some(errors),
                                     warnings,
                                     errors
@@ -294,7 +294,7 @@ fn type_check_trait_implementation<'sc>(
                         errors.append(&mut maybe_err);
                     }
                     let return_type = check!(
-                        return_type.force_resolution(&self_type, return_type_span),
+                        return_type.force_resolution(self_type, return_type_span),
                         ResolvedType::ErrorRecovery,
                         warnings,
                         errors
