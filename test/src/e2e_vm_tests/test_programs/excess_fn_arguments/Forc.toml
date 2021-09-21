@@ -1,0 +1,8 @@
+[project]
+author  = "Alex Hansen <alex.hansen@fuel.sh>"
+license = "MIT"
+name = "excess_fn_arguments"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../stdlib" }
