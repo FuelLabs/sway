@@ -18,6 +18,7 @@ pub fn run() {
         ("main_returns_unit", ProgramState::Return(0)),
         ("unary_not_basic", ProgramState::Return(1)), // 1 == true
         ("unary_not_basic_2", ProgramState::Return(1)), // 1 == true
+        ("fix_opcode_bug", ProgramState::Return(30)),
         (
             "retd_b256",
             ProgramState::ReturnData(Bytes32::from([
