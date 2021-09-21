@@ -19,6 +19,7 @@ pub fn run() {
         ("unary_not_basic", ProgramState::Return(1)), // 1 == true
         ("unary_not_basic_2", ProgramState::Return(1)), // 1 == true
         ("asm_without_return", ProgramState::Return(0)),
+        ("op_precedence", ProgramState::Return(0)), // 1 == false
     ];
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
@@ -29,6 +30,8 @@ pub fn run() {
         "recursive_calls",
         "asm_missing_return",
         "asm_should_not_have_return",
+        "missing_fn_arguments",
+        "excess_fn_arguments",
     ];
     project_names
         .into_iter()
