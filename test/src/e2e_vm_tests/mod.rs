@@ -19,13 +19,18 @@ pub fn run() {
         ("unary_not_basic", ProgramState::Return(1)), // 1 == true
         ("unary_not_basic_2", ProgramState::Return(1)), // 1 == true
         ("fix_opcode_bug", ProgramState::Return(30)),
+        ("op_precedence", ProgramState::Return(0)),   // 1 == false
     ];
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
     });
 
     // source code that should _not_ compile
-    let project_names = vec!["recursive_calls"];
+    let project_names = vec![
+        "recursive_calls",
+        "missing_fn_arguments",
+        "excess_fn_arguments",
+    ];
     project_names
         .into_iter()
         .for_each(|name| crate::e2e_vm_tests::harness::does_not_compile(name));

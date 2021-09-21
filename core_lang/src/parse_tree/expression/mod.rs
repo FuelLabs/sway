@@ -150,7 +150,7 @@ impl<'sc> Expression<'sc> {
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let expr_for_debug = expr.clone();
@@ -243,7 +243,7 @@ impl<'sc> Expression<'sc> {
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
         let span = Span {
@@ -808,7 +808,7 @@ fn convert_unary_to_fn_calls<'sc>(
             Rule::unary_op => unary_stack.push((
                 Span {
                     span: item.as_span(),
-                    path: config.map(|c| c.dir_of_code.clone()),
+                    path: config.map(|c| c.path()),
                 },
                 check!(
                     UnaryOp::parse_from_pair(item, config),
@@ -861,7 +861,7 @@ fn parse_call_item<'sc>(
             ),
             span: Span {
                 span: item.as_span(),
-                path: config.map(|c| c.dir_of_code.clone()),
+                path: config.map(|c| c.path()),
             },
         },
         Rule::expr => check!(
@@ -876,7 +876,7 @@ fn parse_call_item<'sc>(
 }
 
 fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileResult<'sc, Op<'sc>> {
-    let path = config.map(|c| c.dir_of_code.clone());
+    let path = config.map(|c| c.path());
     use OpVariant::*;
     let mut errors = Vec::new();
     let op_variant = match op.as_str() {
@@ -981,22 +981,27 @@ impl OpVariant {
         use OpVariant::*;
         // a higher number means the operation has higher precedence
         match self {
-            Add => 1,
-            Subtract => 1,
-            Divide => 2,
-            Multiply => 2,
-            Modulo => 2,
             Or => 0,
             And => 0,
-            Equals => 0,
-            NotEquals => 0,
-            Xor => 0,
-            BinaryOr => 0,
-            BinaryAnd => 0,
-            GreaterThan => 0,
-            LessThan => 0,
-            GreaterThanOrEqualTo => 0,
-            LessThanOrEqualTo => 0,
+
+            Equals => 1,
+            NotEquals => 1,
+
+            GreaterThan => 2,
+            LessThan => 2,
+            GreaterThanOrEqualTo => 2,
+            LessThanOrEqualTo => 2,
+
+            Add => 3,
+            Subtract => 3,
+
+            Divide => 4,
+            Multiply => 4,
+            Modulo => 4,
+
+            BinaryOr => 5,
+            BinaryAnd => 5,
+            Xor => 5,
         }
     }
 }
@@ -1038,19 +1043,23 @@ fn arrange_by_order_of_operations<'sc>(
                     }
                     let lhs = lhs.unwrap();
                     let rhs = rhs.unwrap();
-                    expression_stack.push(Expression::FunctionApplication {
-                        name: CallPath {
-                            prefixes: vec![
-                                Ident {
-                                    primary_name: "std".into(),
-                                    span: new_op.span.clone(),
-                                },
-                                Ident {
-                                    primary_name: "ops".into(),
-                                    span: new_op.span.clone(),
-                                },
-                            ],
-                            suffix: new_op.to_var_name(),
+                    expression_stack.push(Expression::MethodApplication {
+                        method_name: MethodName::FromType {
+                            call_path: CallPath {
+                                prefixes: vec![
+                                    Ident {
+                                        primary_name: "std".into(),
+                                        span: new_op.span.clone(),
+                                    },
+                                    Ident {
+                                        primary_name: "ops".into(),
+                                        span: new_op.span.clone(),
+                                    },
+                                ],
+                                suffix: new_op.to_var_name(),
+                            },
+                            type_name: None,
+                            is_absolute: true,
                         },
                         arguments: vec![lhs, rhs],
                         span: debug_span.clone(),
