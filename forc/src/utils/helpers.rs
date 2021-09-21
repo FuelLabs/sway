@@ -1,8 +1,40 @@
-use super::constants::SRC_DIR;
+use super::constants::{SRC_DIR, SWAY_EXTENSION};
 use super::manifest::Manifest;
+use std::ffi::OsStr;
 use std::io::{self, Write};
-use std::{path::PathBuf, str};
+use std::path::{Path, PathBuf};
+use std::{fs, str};
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
+pub fn is_sway_file(file: &Path) -> bool {
+    let res = file.extension();
+    Some(OsStr::new(SWAY_EXTENSION)) == res
+}
+
+pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
+    let mut files = vec![];
+    let mut dir_entries = vec![path];
+
+    while let Some(next_dir) = dir_entries.pop() {
+        if let Ok(read_dir) = fs::read_dir(next_dir) {
+            for inner_entry in read_dir {
+                if let Ok(entry) = inner_entry {
+                    let path = entry.path();
+
+                    if path.is_dir() {
+                        dir_entries.push(path);
+                    } else {
+                        if is_sway_file(&path) {
+                            files.push(path)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    files
+}
 
 // Continually go up in the file tree until a manifest (Forc.toml) is found.
 pub fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
