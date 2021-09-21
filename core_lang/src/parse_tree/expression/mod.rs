@@ -981,22 +981,27 @@ impl OpVariant {
         use OpVariant::*;
         // a higher number means the operation has higher precedence
         match self {
-            Add => 2,
-            Subtract => 2,
-            Divide => 3,
-            Multiply => 3,
-            Modulo => 3,
-            Or => 2,
-            And => 2,
-            Equals => 3,
-            NotEquals => 3,
-            Xor => 3,
-            BinaryOr => 2,
-            BinaryAnd => 2,
-            GreaterThan => 3,
-            LessThan => 3,
-            GreaterThanOrEqualTo => 3,
-            LessThanOrEqualTo => 3,
+            Or => 0,
+            And => 0,
+
+            Equals => 1,
+            NotEquals => 1,
+
+            GreaterThan => 2,
+            LessThan => 2,
+            GreaterThanOrEqualTo => 2,
+            LessThanOrEqualTo => 2,
+
+            Add => 3,
+            Subtract => 3,
+
+            Divide => 4,
+            Multiply => 4,
+            Modulo => 4,
+
+            BinaryOr => 5,
+            BinaryAnd => 5,
+            Xor => 5,
         }
     }
 }
