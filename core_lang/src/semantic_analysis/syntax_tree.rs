@@ -218,7 +218,7 @@ impl<'sc> TypedParseTree<'sc> {
                     main_function: mains[0].clone(),
                     all_nodes,
                     namespace,
-                    declarations: declarations,
+                    declarations,
                 }
             }
             TreeType::Library => TypedParseTree::Library {

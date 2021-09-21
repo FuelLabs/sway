@@ -105,11 +105,7 @@ impl<'sc> TypeInfo<'sc> {
                         a,
                         Span {
                             span: input.as_span(),
-                            path: if let Some(config) = config {
-                                Some(config.path())
-                            } else {
-                                None
-                            }
+                            path: config.map(|config| config.dir_of_code.clone())
                         }
                     ),
                     return err(warnings, errors),

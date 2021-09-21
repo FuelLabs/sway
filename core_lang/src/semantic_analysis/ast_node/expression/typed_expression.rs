@@ -58,11 +58,10 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
             ),
             Expression::MatchExpression { span, .. } => {
-                let mut errors = vec![];
-                errors.push(CompileError::Unimplemented(
+                let errors = vec![CompileError::Unimplemented(
                     "Match expressions and pattern matching have not been implemented.",
                     span,
-                ));
+                )];
                 return err(vec![], errors);
             }
             Expression::CodeBlock { contents, span, .. } => Self::type_check_code_block(
@@ -473,7 +472,7 @@ impl<'sc> TypedExpression<'sc> {
         let (typed_block, block_return_type) = check!(
             TypedCodeBlock::type_check(
                 contents.clone(),
-                &namespace,
+                namespace,
                 type_annotation.clone(),
                 help_text.clone(),
                 self_type,
@@ -740,14 +739,9 @@ impl<'sc> TypedExpression<'sc> {
 
         // check that there are no extra fields
         for field in fields {
-            if definition
-                .fields
-                .iter()
-                .find(|x| x.name == field.name)
-                .is_none()
-            {
+            if !definition.fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
-                    field_name: field.name.primary_name.clone(),
+                    field_name: &(*field.name.primary_name),
                     struct_name: definition.name.primary_name,
                     span: field.span,
                 });
@@ -813,7 +807,7 @@ impl<'sc> TypedExpression<'sc> {
                 span: field_to_access.span.clone(),
                 available_fields: fields
                     .iter()
-                    .map(|TypedStructField { name, .. }| name.primary_name.clone())
+                    .map(|TypedStructField { name, .. }| &(*name.primary_name))
                     .collect::<Vec<_>>()
                     .join("\n"),
                 field_name: field_to_access.primary_name,
@@ -884,7 +878,7 @@ impl<'sc> TypedExpression<'sc> {
                     Some(decl) => Either::Left(decl),
                     None => {
                         errors.push(CompileError::SymbolNotFound {
-                            name: call_path.suffix.primary_name.into(),
+                            name: call_path.suffix.primary_name,
                             span: call_path.suffix.span.clone(),
                         });
                         return err(warnings, errors);
@@ -908,7 +902,7 @@ impl<'sc> TypedExpression<'sc> {
                 (None, None) => {
                     errors.push(CompileError::SymbolNotFound {
                         span,
-                        name: call_path.suffix.primary_name.into(),
+                        name: call_path.suffix.primary_name,
                     });
                     return err(warnings, errors);
                 }
