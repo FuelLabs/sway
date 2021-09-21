@@ -54,7 +54,9 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         code_dir.push(&manifest.project.entry);
         code_dir
     };
-    let file_name = match main_path.strip_prefix(manifest_dir.clone()) {
+    let mut file_path = manifest_dir.clone();
+    file_path.push("src");
+    let file_name = match main_path.strip_prefix(file_path.clone()) {
         Ok(o) => o,
         Err(err) => return Err(err.to_string()),
     };
@@ -163,15 +165,17 @@ fn compile_dependency_lib<'source, 'manifest>(
         None => return Err("Manifest not found for dependency.".into()),
     };
 
-    let manifest = read_manifest(&manifest_dir)?;
+    let manifest_of_dep = read_manifest(&manifest_dir)?;
 
     let main_path = {
         let mut code_dir = manifest_dir.clone();
         code_dir.push(crate::utils::constants::SRC_DIR);
-        code_dir.push(&manifest.project.entry);
+        code_dir.push(&manifest_of_dep.project.entry);
         code_dir
     };
-    let file_name = match main_path.strip_prefix(manifest_dir.clone()) {
+    let mut file_path = manifest_dir.clone();
+    file_path.push("src");
+    let file_name = match main_path.strip_prefix(file_path.clone()) {
         Ok(o) => o,
         Err(err) => return Err(err.to_string()),
     };
@@ -180,8 +184,6 @@ fn compile_dependency_lib<'source, 'manifest>(
         file_name.clone().to_path_buf(),
         manifest_dir.clone(),
     );
-
-    let manifest_of_dep = read_manifest(&manifest_dir)?;
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {

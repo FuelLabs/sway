@@ -16,7 +16,8 @@ impl BuildConfig {
         file_name: PathBuf,
         canonicalized_manifest_path: PathBuf,
     ) -> Self {
-        let path = canonicalized_manifest_path.clone();
+        let mut path = canonicalized_manifest_path.clone();
+        path.push("src");
         Self {
             file_name: file_name,
             dir_of_code: path,
