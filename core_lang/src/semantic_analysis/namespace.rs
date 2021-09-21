@@ -225,7 +225,7 @@ impl<'sc> Namespace<'sc> {
                 },
             });
         }
-        self.symbols.insert(name, item.clone());
+        self.symbols.insert(name.clone(), item.clone());
         ok((), warnings, vec![])
     }
 

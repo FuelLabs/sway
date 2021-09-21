@@ -150,7 +150,7 @@ impl<'sc> Expression<'sc> {
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let expr_for_debug = expr.clone();
@@ -243,7 +243,7 @@ impl<'sc> Expression<'sc> {
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
         let span = Span {
@@ -808,7 +808,7 @@ fn convert_unary_to_fn_calls<'sc>(
             Rule::unary_op => unary_stack.push((
                 Span {
                     span: item.as_span(),
-                    path: config.map(|c| c.dir_of_code.clone()),
+                    path: config.map(|c| c.path()),
                 },
                 check!(
                     UnaryOp::parse_from_pair(item, config),
@@ -861,7 +861,7 @@ fn parse_call_item<'sc>(
             ),
             span: Span {
                 span: item.as_span(),
-                path: config.map(|c| c.dir_of_code.clone()),
+                path: config.map(|c| c.path()),
             },
         },
         Rule::expr => check!(
@@ -876,7 +876,7 @@ fn parse_call_item<'sc>(
 }
 
 fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileResult<'sc, Op<'sc>> {
-    let path = config.map(|c| c.dir_of_code.clone());
+    let path = config.map(|c| c.path());
     use OpVariant::*;
     let mut errors = Vec::new();
     let op_variant = match op.as_str() {
