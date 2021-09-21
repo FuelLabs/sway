@@ -144,7 +144,7 @@ impl<'sc> TypedAstNode<'sc> {
                                          not match up with the assigned expression's type.",
                                         type_ascription
                                             .map(|x| x.friendly_type_str())
-                                            .unwrap_or("none".into())
+                                            .unwrap_or_else(|| "none".into())
                                     ),
                                     self_type,
                                     build_config,
@@ -178,7 +178,7 @@ impl<'sc> TypedAstNode<'sc> {
                             let decl = check!(
                                 TypedFunctionDeclaration::type_check(
                                     fn_decl.clone(),
-                                    &namespace,
+                                    namespace,
                                     None,
                                     "",
                                     self_type,
@@ -209,7 +209,7 @@ impl<'sc> TypedAstNode<'sc> {
                         }) => {
                             // type check the interface surface
                             let interface_surface =
-                                type_check_interface_surface(interface_surface, &namespace);
+                                type_check_interface_surface(interface_surface, namespace);
                             let mut trait_namespace = namespace.clone();
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
@@ -311,7 +311,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 functions_buf.push(check!(
                                     TypedFunctionDeclaration::type_check(
                                         fn_decl,
-                                        &namespace,
+                                        namespace,
                                         None,
                                         "",
                                         &type_implementing_for_resolved,
@@ -393,11 +393,11 @@ impl<'sc> TypedAstNode<'sc> {
                             // so we don't support the case of calling a contract's own interface
                             // from itself. This is by design.
                             let interface_surface =
-                                type_check_interface_surface(interface_surface, &namespace);
+                                type_check_interface_surface(interface_surface, namespace);
                             let methods = check!(
                                 type_check_trait_methods(
                                     methods,
-                                    &namespace,
+                                    namespace,
                                     self_type,
                                     build_config,
                                     dead_code_graph,
@@ -492,7 +492,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let (typed_body, _block_implicit_return) = check!(
                         TypedCodeBlock::type_check(
                             body.clone(),
-                            &namespace,
+                            namespace,
                             Some(MaybeResolvedType::Resolved(ResolvedType::Unit)),
                             "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
@@ -596,7 +596,7 @@ fn import_new_file<'sc>(
         mut library_exports,
     } = check!(
         crate::compile_inner_dependency(
-            &static_file_string,
+            static_file_string,
             &dep_namespace,
             dep_config,
             dead_code_graph
@@ -801,7 +801,7 @@ fn reassignment<'sc>(
         }
         _ => {
             errors.push(CompileError::InvalidExpressionOnLhs { span });
-            return err(warnings, errors);
+            err(warnings, errors)
         }
     }
 }

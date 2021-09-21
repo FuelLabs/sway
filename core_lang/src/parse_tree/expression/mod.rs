@@ -637,7 +637,7 @@ impl<'sc> Expression<'sc> {
                         }
 
                         Expression::MethodApplication {
-                            method_name: method_name,
+                            method_name,
                             arguments: arguments_buf,
                             span: whole_exp_span,
                         }
