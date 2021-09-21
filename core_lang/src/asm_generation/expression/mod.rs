@@ -224,6 +224,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
+                _ if exp.return_type == MaybeResolvedType::Resolved(ResolvedType::Unit) => (),
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),
