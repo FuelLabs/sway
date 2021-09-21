@@ -33,6 +33,8 @@ pub fn run() {
             ])),
         ),
         ("op_precedence", ProgramState::Return(0)),
+        ("asm_without_return", ProgramState::Return(0)),
+        ("op_precedence", ProgramState::Return(0)), // 1 == false
     ];
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
@@ -41,6 +43,8 @@ pub fn run() {
     // source code that should _not_ compile
     let project_names = vec![
         "recursive_calls",
+        "asm_missing_return",
+        "asm_should_not_have_return",
         "missing_fn_arguments",
         "excess_fn_arguments",
     ];

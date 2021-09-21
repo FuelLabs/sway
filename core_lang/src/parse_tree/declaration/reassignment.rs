@@ -20,7 +20,7 @@ impl<'sc> Reassignment<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Reassignment<'sc>> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let span = Span {
             span: pair.as_span(),
             path: path.clone(),
@@ -142,7 +142,7 @@ fn parse_call_item_ensure_only_var<'sc>(
     item: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<'sc, Expression<'sc>> {
-    let path = config.map(|c| c.dir_of_code.clone());
+    let path = config.map(|c| c.path());
     let mut warnings = vec![];
     let mut errors = vec![];
     assert_eq!(item.as_rule(), Rule::call_item);

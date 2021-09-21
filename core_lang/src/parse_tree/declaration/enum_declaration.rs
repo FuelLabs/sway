@@ -59,7 +59,7 @@ impl<'sc> EnumDeclaration<'sc> {
         decl_inner: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let whole_enum_span = Span {
             span: decl_inner.as_span(),
             path: path.clone(),
@@ -182,7 +182,7 @@ impl<'sc> EnumVariant<'sc> {
             for i in (0..fields.len()).step_by(2) {
                 let variant_span = Span {
                     span: fields[i].as_span(),
-                    path: config.map(|c| c.dir_of_code.clone()),
+                    path: config.map(|c| c.path()),
                 };
                 let name = check!(
                     Ident::parse_from_pair(fields[i].clone(), config),

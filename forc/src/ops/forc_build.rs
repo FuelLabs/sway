@@ -31,7 +31,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         offline_mode,
     } = command;
     // find manifest directory, even if in subdirectory
-    let this_dir = if let Some(path) = path {
+    let this_dir = if let Some(path) = path.clone() {
         PathBuf::from(path)
     } else {
         std::env::current_dir().unwrap()
@@ -45,10 +45,28 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
             ))
         }
     };
-    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone())
-        .print_finalized_asm(print_finalized_asm)
-        .print_intermediate_asm(print_intermediate_asm);
+
     let mut manifest = read_manifest(&manifest_dir)?;
+
+    let main_path = {
+        let mut code_dir = manifest_dir.clone();
+        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(&manifest.project.entry);
+        code_dir
+    };
+    let mut file_path = manifest_dir.clone();
+    file_path.push("src");
+    let file_name = match main_path.strip_prefix(file_path.clone()) {
+        Ok(o) => o,
+        Err(err) => return Err(err.to_string()),
+    };
+
+    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+        file_name.clone().to_path_buf(),
+        manifest_dir.clone(),
+    )
+    .print_finalized_asm(print_finalized_asm)
+    .print_intermediate_asm(print_intermediate_asm);
 
     let mut namespace: Namespace = Default::default();
     if let Some(ref mut deps) = manifest.dependencies {
@@ -112,7 +130,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
 fn compile_dependency_lib<'source, 'manifest>(
-    project_path: &PathBuf,
+    project_file_path: &PathBuf,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
@@ -137,7 +155,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         };
 
     // dependency paths are relative to the path of the project being compiled
-    let mut project_path = project_path.clone();
+    let mut project_path = project_file_path.clone();
     project_path.push(dep_path);
 
     // compile the dependencies of this dependency
@@ -147,9 +165,25 @@ fn compile_dependency_lib<'source, 'manifest>(
         None => return Err("Manifest not found for dependency.".into()),
     };
 
-    let build_config = BuildConfig::root_from_manifest_path(manifest_dir.clone());
-
     let manifest_of_dep = read_manifest(&manifest_dir)?;
+
+    let main_path = {
+        let mut code_dir = manifest_dir.clone();
+        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(&manifest_of_dep.project.entry);
+        code_dir
+    };
+    let mut file_path = manifest_dir.clone();
+    file_path.push("src");
+    let file_name = match main_path.strip_prefix(file_path.clone()) {
+        Ok(o) => o,
+        Err(err) => return Err(err.to_string()),
+    };
+
+    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+        file_name.clone().to_path_buf(),
+        manifest_dir.clone(),
+    );
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {

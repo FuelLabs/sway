@@ -126,7 +126,7 @@ impl<'sc> TraitFn<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut signature = pair.clone().into_inner();
