@@ -32,13 +32,18 @@ pub fn run() {
                 235, 151, 159, 245, 170, 112, 203, 40, 158, 9, 238, 188, 213,
             ])),
         ),
+        ("op_precedence", ProgramState::Return(0)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
     });
 
     // source code that should _not_ compile
-    let project_names = vec!["recursive_calls"];
+    let project_names = vec![
+        "recursive_calls",
+        "missing_fn_arguments",
+        "excess_fn_arguments",
+    ];
     project_names
         .into_iter()
         .for_each(|name| crate::e2e_vm_tests::harness::does_not_compile(name));

@@ -13,7 +13,7 @@ pub enum PartiallyResolvedType<'sc> {
 impl<'sc> PartiallyResolvedType<'sc> {
     pub(crate) fn friendly_type_str(&self) -> String {
         match self {
-            PartiallyResolvedType::Generic { name } => format!("{}", name.primary_name),
+            PartiallyResolvedType::Generic { name } => name.primary_name.to_string(),
             PartiallyResolvedType::Numeric => "numeric".into(),
             PartiallyResolvedType::SelfType => "self".into(),
             PartiallyResolvedType::NeedsType => "needs_type".into(),

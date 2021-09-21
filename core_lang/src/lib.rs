@@ -194,7 +194,7 @@ pub(crate) struct InnerDependencyCompileResult<'sc> {
 /// TODO -- there is _so_ much duplicated code and messiness in this file around the
 /// different types of compilation and stuff. After we get to a good state with the MVP,
 /// clean up the types here with the power of hindsight
-pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
+pub(crate) fn compile_inner_dependency<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
@@ -276,7 +276,7 @@ pub(crate) fn compile_inner_dependency<'sc, 'manifest>(
     )
 }
 
-pub fn compile_to_asm<'sc, 'manifest>(
+pub fn compile_to_asm<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
@@ -449,7 +449,7 @@ pub fn compile_to_asm<'sc, 'manifest>(
         CompilationResult::Failure { errors, warnings }
     }
 }
-pub fn compile_to_bytecode<'sc, 'manifest>(
+pub fn compile_to_bytecode<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,

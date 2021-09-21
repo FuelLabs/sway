@@ -147,7 +147,7 @@ fn parse_str_type<'sc>(raw: &'sc str, span: Span<'sc>) -> CompileResult<'sc, Typ
             }],
         );
     }
-    return err(vec![], vec![CompileError::UnknownType { span }]);
+    err(vec![], vec![CompileError::UnknownType { span }])
 }
 
 #[test]
