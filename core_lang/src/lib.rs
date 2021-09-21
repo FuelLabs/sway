@@ -213,7 +213,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
             errors.push(CompileError::ImportMustBeLibrary {
                 span: span::Span {
                     span: pest::Span::new(input, 0, 0).unwrap(),
-                    path: Some(build_config.clone().dir_of_code),
+                    path: Some(build_config.clone().path()),
                 },
             });
             return err(warnings, errors);

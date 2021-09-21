@@ -63,7 +63,6 @@ impl<'sc> TypedExpression<'sc> {
                     span,
                 )];
                 return err(vec![], errors);
-                // type_check_match_expression()
             }
             Expression::CodeBlock { contents, span, .. } => Self::type_check_code_block(
                 contents,
@@ -75,7 +74,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
             ),
-            // TODO if _condition_ is constant, evaluate it and compile this to a regular
+            // TODO if _condition_ is constant, evaluate it and compile this to an
             // expression with only one branch
             Expression::IfExp {
                 condition,
@@ -315,6 +314,35 @@ impl<'sc> TypedExpression<'sc> {
                     body,
                     ..
                 } = decl.clone();
+                if arguments.len() > parameters.len() {
+                    let arguments_span = arguments.iter().fold(
+                        arguments
+                            .get(0)
+                            .map(|x| x.span())
+                            .unwrap_or_else(|| name.span()),
+                        |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                    );
+                    errors.push(CompileError::TooManyArgumentsForFunction {
+                        span: arguments_span,
+                        method_name: name.suffix.primary_name,
+                        expected: parameters.len(),
+                        received: arguments.len(),
+                    });
+                } else if arguments.len() < parameters.len() {
+                    let arguments_span = arguments.iter().fold(
+                        arguments
+                            .get(0)
+                            .map(|x| x.span())
+                            .unwrap_or_else(|| name.span()),
+                        |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                    );
+                    errors.push(CompileError::TooFewArgumentsForFunction {
+                        span: arguments_span,
+                        method_name: name.suffix.primary_name,
+                        expected: parameters.len(),
+                        received: arguments.len(),
+                    });
+                }
                 // type check arguments in function application vs arguments in function
                 // declaration. Use parameter type annotations as annotations for the
                 // arguments
@@ -711,10 +739,7 @@ impl<'sc> TypedExpression<'sc> {
 
         // check that there are no extra fields
         for field in fields {
-            if !definition
-                .fields
-                .iter().any(|x| x.name == field.name)
-            {
+            if !definition.fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
                     field_name: &(*field.name.primary_name),
                     struct_name: definition.name.primary_name,

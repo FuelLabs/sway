@@ -22,7 +22,7 @@ impl<'sc> AsmExpression<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let whole_block_span = Span {
             span: pair.as_span(),
             path: path.clone(),
@@ -54,12 +54,11 @@ impl<'sc> AsmExpression<'sc> {
                 }
                 Rule::asm_register => {
                     implicit_op_return = Some((
-                        eval!(
-                            AsmRegister::parse_from_pair,
+                        check!(
+                            AsmRegister::parse_from_pair(pair.clone()),
+                            continue,
                             warnings,
-                            errors,
-                            pair,
-                            continue
+                            errors
                         ),
                         Span {
                             span: pair.as_span(),
@@ -134,7 +133,7 @@ impl<'sc> AsmOp<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let span = Span {
@@ -222,7 +221,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
                 name: reg_name.as_str(),
                 name_span: Span {
                     span: reg_name.as_span(),
-                    path: config.map(|c| c.dir_of_code.clone()),
+                    path: config.map(|c| c.path()),
                 },
                 initializer,
             })

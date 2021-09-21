@@ -17,7 +17,7 @@ impl<'sc> TypeParameter<'sc> {
         where_clause_pair: Option<Pair<'sc, Rule>>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Vec<TypeParameter<'sc>>> {
-        let path = config.map(|c| c.dir_of_code.clone());
+        let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = vec![];
         let mut params: Vec<TypeParameter> = match type_params_pair {

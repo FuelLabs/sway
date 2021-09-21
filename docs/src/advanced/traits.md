@@ -58,7 +58,6 @@ fn play_game_with_deck<T>(a: Vec<T>) where T: Card {
   }
 ```
 
-<!-- TODO: link to generic docs -->
 
 Now, if you want to use the function `play_game_with_deck` with your own personal struct, you must implement `Card` for your struct. Note that the following code example assumes a dependency _games_ has been included in the `Forc.toml` file.
 
@@ -84,14 +83,13 @@ fn main() {
     let mut deck: Vec<MyCard> = Vec::with_capacity(50);
     while i > 0 {
         i = i - 1;
-        deck.push(MyCard { suit: random_suit(), value: i % 4}
+        deck.push(MyCard { suit: generate_random_suit(), value: i % 4}
     }
     play_game_with_deck(deck);
 }
 
 fn random_suit(i: u64) -> Suit {
-    // TODO
+  [ ... ]
 }
 ```
 
-To learn more about `where` clauses and how to use trait constraints, see [Trait Constraints](./trait_constraints).
