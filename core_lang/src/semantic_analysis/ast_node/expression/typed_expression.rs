@@ -64,7 +64,6 @@ impl<'sc> TypedExpression<'sc> {
                     span,
                 ));
                 return err(vec![], errors);
-                // type_check_match_expression()
             }
             Expression::CodeBlock { contents, span, .. } => Self::type_check_code_block(
                 contents,
@@ -76,7 +75,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
             ),
-            // TODO if _condition_ is constant, evaluate it and compile this to a regular
+            // TODO if _condition_ is constant, evaluate it and compile this to an
             // expression with only one branch
             Expression::IfExp {
                 condition,
