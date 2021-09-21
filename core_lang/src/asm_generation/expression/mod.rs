@@ -461,26 +461,14 @@ pub(crate) fn convert_abi_fn_to_asm<'sc>(
 
     asm_buf.append(&mut body);
     // return the value from the abi function
-    asm_buf.push(Op {
-        // TODO we are just returning zero for now and not supporting return values from abi
-        // functions
-        opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
-            ConstantRegister::Zero,
-        ))),
-        owning_span: None,
-        comment: format!("{} abi fn return", decl.name.primary_name),
-    });
+    asm_buf.append(&mut check!(
+        ret_or_retd_value(&decl, return_register, register_sequencer, &mut namespace),
+        return err(warnings, errors),
+        warnings,
+        errors
+    ));
+
     parent_namespace.data_section = namespace.data_section;
-    // because we are not supporting return values right now, throw an error if the function
-    // returns anything.
-    if decl.return_type != MaybeResolvedType::Resolved(ResolvedType::Unit)
-        && decl.return_type != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-    {
-        errors.push(CompileError::Unimplemented(
-            "ABI function return values are not yet implemented",
-            decl.return_type_span.clone(),
-        ));
-    }
 
     // the return  value is already put in its proper register via the above statement, so the buf
     // is done
