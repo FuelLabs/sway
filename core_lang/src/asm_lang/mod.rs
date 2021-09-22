@@ -1095,7 +1095,7 @@ fn single_imm_24<'sc>(
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name.parse() {
+        Some(i) => match i.primary_name[1..].parse() {
             Ok(o) => (o, i.span.clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
@@ -1148,7 +1148,7 @@ fn single_reg_imm_18<'sc>(
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name.parse() {
+        Some(i) => match i.primary_name[1..].parse() {
             Ok(o) => (o, i.span.clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
@@ -1201,7 +1201,7 @@ fn two_regs_imm_12<'sc>(
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name.parse() {
+        Some(i) => match i.primary_name[1..].parse() {
             Ok(o) => (o, i.span.clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {

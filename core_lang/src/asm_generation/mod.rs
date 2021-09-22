@@ -190,13 +190,24 @@ impl<'sc> AbstractInstructionSet<'sc> {
 
     /// Runs two passes -- one to get the instruction offsets of the labels
     /// and one to replace the labels in the organizational ops
-    fn realize_labels(self) -> RealizedAbstractInstructionSet<'sc> {
+    fn realize_labels(self, data_section: &DataSection) -> RealizedAbstractInstructionSet<'sc> {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
         for op in &self.ops {
             match op.opcode {
                 Either::Right(OrganizationalOp::Label(ref lab)) => {
                     label_namespace.insert(lab, counter);
+                }
+                // A special case for LWDataId which may be 1 or 2 ops, depending on the source size.
+                Either::Left(VirtualOp::LWDataId(_, ref data_id)) => {
+                    let type_of_data = data_section.type_of_data(data_id).expect(
+                        "Internal miscalculation in data section -- data id did not match up to any actual data",
+                    );
+                    counter += if type_of_data.stack_size_of() > 1 {
+                        2
+                    } else {
+                        1
+                    };
                 }
                 // these ops will end up being exactly one op, so the counter goes up one
                 Either::Right(OrganizationalOp::Jump(..))
@@ -748,25 +759,34 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
             JumpOptimizedAsmSet::ScriptMain {
                 data_section,
                 program_section,
-            } => RegisterAllocatedAsmSet::ScriptMain {
-                data_section,
-                program_section: program_section
-                    .clone()
-                    .realize_labels()
-                    .allocate_registers(),
-            },
+            } => {
+                let program_section = program_section
+                    .realize_labels(&data_section)
+                    .allocate_registers();
+                RegisterAllocatedAsmSet::ScriptMain {
+                    data_section,
+                    program_section,
+                }
+            }
             JumpOptimizedAsmSet::PredicateMain {
                 data_section,
                 program_section,
-            } => RegisterAllocatedAsmSet::PredicateMain {
-                data_section,
-                program_section: program_section.realize_labels().allocate_registers(),
-            },
+            } => {
+                let program_section = program_section
+                    .realize_labels(&data_section)
+                    .allocate_registers();
+                RegisterAllocatedAsmSet::PredicateMain {
+                    data_section,
+                    program_section,
+                }
+            }
             JumpOptimizedAsmSet::ContractAbi {
                 program_section,
                 data_section,
             } => RegisterAllocatedAsmSet::ContractAbi {
-                program_section: program_section.realize_labels().allocate_registers(),
+                program_section: program_section
+                    .realize_labels(&data_section)
+                    .allocate_registers(),
                 data_section,
             },
         }
