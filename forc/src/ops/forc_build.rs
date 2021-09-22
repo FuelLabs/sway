@@ -54,8 +54,10 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         code_dir.push(&manifest.project.entry);
         code_dir
     };
+    println!("{:?}", main_path);
     let mut file_path = manifest_dir.clone();
-    file_path.push("src");
+    file_path.pop();
+    println!("{:?}", file_path);
     let file_name = match main_path.strip_prefix(file_path.clone()) {
         Ok(o) => o,
         Err(err) => return Err(err.to_string()),
@@ -174,7 +176,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         code_dir
     };
     let mut file_path = manifest_dir.clone();
-    file_path.push("src");
+    file_path.pop();
     let file_name = match main_path.strip_prefix(file_path.clone()) {
         Ok(o) => o,
         Err(err) => return Err(err.to_string()),
@@ -218,9 +220,12 @@ fn compile_library<'source, 'manifest>(
     let res = core_lang::compile_to_asm(&source, namespace, build_config);
     match res {
         CompilationResult::Library { exports, warnings } => {
-            for ref warning in warnings.iter() {
-                format_warning(warning);
-            }
+            warnings
+                .iter()
+                .fold(vec![], |files_already_printed, warning| {
+                    format_warning(warning, files_already_printed)
+                });
+
             if warnings.is_empty() {
                 let _ = print_green_err(&format!("Compiled library {:?}.", proj_name));
             } else {
@@ -240,11 +245,17 @@ fn compile_library<'source, 'manifest>(
         CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
-            for ref warning in warnings.iter() {
-                format_warning(warning);
-            }
+            warnings
+                .iter()
+                .fold(vec![], |files_already_printed, warning| {
+                    format_warning(warning, files_already_printed)
+                });
 
-            errors.into_iter().for_each(|e| format_err(e));
+            errors
+                .into_iter()
+                .fold(vec![], |files_already_printed, error| {
+                    format_err(error, files_already_printed)
+                });
 
             print_red_err(&format!(
                 "Aborting due to {} {}.",
@@ -272,9 +283,12 @@ fn compile<'source, 'manifest>(
     let res = core_lang::compile_to_bytecode(&source, namespace, build_config);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
-            for ref warning in warnings.iter() {
-                format_warning(warning);
-            }
+            warnings
+                .iter()
+                .fold(vec![], |files_already_printed, warning| {
+                    format_warning(warning, files_already_printed)
+                });
+
             if warnings.is_empty() {
                 let _ = print_green_err(&format!("Compiled script {:?}.", proj_name));
             } else {
@@ -292,9 +306,12 @@ fn compile<'source, 'manifest>(
             Ok(bytes)
         }
         BytecodeCompilationResult::Library { warnings } => {
-            for ref warning in warnings.iter() {
-                format_warning(warning);
-            }
+            warnings
+                .iter()
+                .fold(vec![], |files_already_printed, warning| {
+                    format_warning(warning, files_already_printed)
+                });
+
             if warnings.is_empty() {
                 let _ = print_green_err(&format!("Compiled library {:?}.", proj_name));
             } else {
@@ -314,11 +331,17 @@ fn compile<'source, 'manifest>(
         BytecodeCompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
-            for ref warning in warnings.iter() {
-                format_warning(warning);
-            }
+            warnings
+                .into_iter()
+                .fold(vec![], |files_already_printed, warning| {
+                    format_warning(&warning, files_already_printed)
+                });
 
-            errors.into_iter().for_each(|e| format_err(e));
+            errors
+                .into_iter()
+                .fold(vec![], |files_already_printed, error| {
+                    format_err(error, files_already_printed)
+                });
 
             print_red_err(&format!(
                 "Aborting due to {} {}.",
@@ -331,9 +354,13 @@ fn compile<'source, 'manifest>(
     }
 }
 
-fn format_warning(err: &core_lang::CompileWarning) {
+fn format_warning(
+    err: &core_lang::CompileWarning,
+    files_already_printed: Vec<String>,
+) -> Vec<String> {
     let input = err.span.input();
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+    let mut files_already_printed = files_already_printed;
 
     let metrics = source_span::DEFAULT_METRICS;
     let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
@@ -360,13 +387,20 @@ fn format_warning(err: &core_lang::CompileWarning) {
 
     let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
 
-    print_yellow_err(&format!("{}", err.path())).unwrap();
+    let name = err.path();
+    if !files_already_printed.contains(&name) {
+        files_already_printed.push(name.clone());
+        print_yellow_err(&format!("{}", name)).unwrap();
+    }
     println!("{}", formatted);
+
+    files_already_printed
 }
 
-fn format_err(err: core_lang::CompileError) {
+fn format_err(err: core_lang::CompileError, files_already_printed: Vec<String>) -> Vec<String> {
     let input = err.internal_span().input();
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+    let mut files_already_printed = files_already_printed;
 
     let metrics = source_span::DEFAULT_METRICS;
     let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
@@ -394,8 +428,14 @@ fn format_err(err: core_lang::CompileError) {
         Style::Error,
     );
 
-    print_red_err(&format!("{}", err.path())).unwrap();
+    let name = err.path();
+    if !files_already_printed.contains(&name) {
+        files_already_printed.push(name.clone());
+        print_red_err(&format!("{}", name)).unwrap();
+    }
     println!("{}", formatted);
+
+    files_already_printed
 }
 
 fn compile_to_asm<'source, 'manifest>(
@@ -407,9 +447,12 @@ fn compile_to_asm<'source, 'manifest>(
     let res = core_lang::compile_to_asm(&source, namespace, build_config);
     match res {
         CompilationResult::Success { asm, warnings } => {
-            for ref warning in warnings.iter() {
-                format_warning(warning);
-            }
+            warnings
+                .iter()
+                .fold(vec![], |files_already_printed, warning| {
+                    format_warning(warning, files_already_printed)
+                });
+
             if warnings.is_empty() {
                 let _ = print_green_err(&format!("Compiled script {:?}.", proj_name));
             } else {
@@ -427,9 +470,12 @@ fn compile_to_asm<'source, 'manifest>(
             Ok(asm)
         }
         CompilationResult::Library { warnings, .. } => {
-            for ref warning in warnings.iter() {
-                format_warning(warning);
-            }
+            warnings
+                .iter()
+                .fold(vec![], |files_already_printed, warning| {
+                    format_warning(warning, files_already_printed)
+                });
+
             if warnings.is_empty() {
                 let _ = print_green_err(&format!("Compiled library {:?}.", proj_name));
             } else {
@@ -449,11 +495,17 @@ fn compile_to_asm<'source, 'manifest>(
         CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
-            for ref warning in warnings.iter() {
-                format_warning(warning);
-            }
+            warnings
+                .iter()
+                .fold(vec![], |files_already_printed, warning| {
+                    format_warning(warning, files_already_printed)
+                });
 
-            errors.into_iter().for_each(|e| format_err(e));
+            errors
+                .into_iter()
+                .fold(vec![], |files_already_printed, error| {
+                    format_err(error, files_already_printed)
+                });
 
             print_red_err(&format!(
                 "Aborting due to {} {}.",

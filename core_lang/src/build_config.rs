@@ -41,7 +41,8 @@ impl BuildConfig {
     }
 
     pub fn path(&self) -> PathBuf {
-        let path = self.dir_of_code.clone().join(self.file_name.clone());
-        path
+        //let path = self.dir_of_code.clone().join(self.file_name.clone());
+        //path
+        self.file_name.clone()
     }
 }
