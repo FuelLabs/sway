@@ -203,7 +203,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         build_config.clone(),
     )?;
 
-    namespace.insert_module(dependency_name.to_string(), compiled.namespace);
+    namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())

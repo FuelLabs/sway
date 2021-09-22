@@ -362,6 +362,16 @@ impl<'sc> Namespace<'sc> {
     pub fn insert_module(&mut self, module_name: String, module_contents: Namespace<'sc>) {
         self.modules.insert(module_name, module_contents);
     }
+    pub fn insert_dependency_module(
+        &mut self,
+        module_name: String,
+        module_contents: Namespace<'sc>,
+    ) {
+        self.modules.insert(
+            module_name,
+            module_contents.modules.into_iter().next().unwrap().1,
+        );
+    }
     pub(crate) fn find_enum(&self, enum_name: &Ident<'sc>) -> Option<TypedEnumDeclaration<'sc>> {
         match self.get_symbol(enum_name) {
             Some(TypedDeclaration::EnumDeclaration(inner)) => Some(inner.clone()),
