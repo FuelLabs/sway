@@ -3214,6 +3214,7 @@ dependencies = [
  "fuel-tx",
  "fuel-vm",
  "rand 0.8.4",
+ "regex",
 ]
 
 [[package]]

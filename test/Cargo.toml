@@ -12,3 +12,4 @@ fuel-asm = {git = "ssh://git@github.com/FuelLabs/fuel-asm.git"}
 fuel-tx = {git = "ssh://git@github.com/FuelLabs/fuel-tx.git"}
 fuel-vm = {git = "ssh://git@github.com/FuelLabs/fuel-vm.git"}
 rand = "0.8"
+regex = "1"

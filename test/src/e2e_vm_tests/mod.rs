@@ -1,7 +1,14 @@
 mod harness;
 use fuel_vm::prelude::*;
 
-pub fn run() {
+pub fn run(filter_regex: Option<regex::Regex>) {
+    let filter = |name| {
+        filter_regex
+            .as_ref()
+            .map(|regex| regex.is_match(name))
+            .unwrap_or(true)
+    };
+
     // programs that should successfully compile and terminate
     // with some known state
     let project_names = vec![
@@ -38,7 +45,9 @@ pub fn run() {
         ("op_precedence", ProgramState::Return(0)), // 1 == false
     ];
     project_names.into_iter().for_each(|(name, res)| {
-        assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
+        if filter(name) {
+            assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
+        }
     });
 
     // source code that should _not_ compile
@@ -49,9 +58,11 @@ pub fn run() {
         "missing_fn_arguments",
         "excess_fn_arguments",
     ];
-    project_names
-        .into_iter()
-        .for_each(|name| crate::e2e_vm_tests::harness::does_not_compile(name));
+    project_names.into_iter().for_each(|name| {
+        if filter(name) {
+            crate::e2e_vm_tests::harness::does_not_compile(name)
+        }
+    });
 
     println!("_________________________________\nTests passed.");
 }
