@@ -36,6 +36,7 @@ pub fn run() {
         ("op_precedence", ProgramState::Return(0)),
         ("asm_without_return", ProgramState::Return(0)),
         ("op_precedence", ProgramState::Return(0)), // 1 == false
+        ("tuple_types", ProgramState::Return(3)), // 1 == false
     ];
     project_names.into_iter().for_each(|(name, res)| {
         assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);

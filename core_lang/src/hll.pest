@@ -38,7 +38,7 @@ file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { "as" ~ ident }
 // expressions
-expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|struct_field_access|delineated_path|var_exp|array_exp|parenthesized_expression|unit}
+expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|tuple_index|struct_field_access|delineated_path|var_exp|array_exp|parenthesized_expression|tuple_exp|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
@@ -97,6 +97,8 @@ code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 struct_expression  =  {struct_name ~ "{" ~ struct_expr_fields ~ "}"}
 struct_expr_fields =  {struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?}
 array_exp          =  {"[" ~ (expr ~ ("," ~ expr)*) ~ "]"}
+tuple_exp          =  {"(" ~ (expr ~ ("," ~ expr)*) ~ ")"}
+tuple_index        = ${(call_item ~ ".")+ ~ ASCII_DIGIT+}
 
 // declarations
 declaration               =  {(enum_decl|var_decl|fn_decl|trait_decl|abi_decl|struct_decl|reassignment|impl_trait|impl_self)}
