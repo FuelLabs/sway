@@ -3135,9 +3135,12 @@ dependencies = [
  "bytes 1.1.0",
  "glob",
  "hex",
+ "regex",
  "serde",
  "serde_json",
  "sha2",
+ "strum",
+ "strum_macros",
  "thiserror",
 ]
 

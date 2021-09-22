@@ -89,6 +89,7 @@ impl ABIDecoder {
             ParamType::Bool => {
                 // Grab last byte of the word and compare it to 0x00
                 let b = peek_word(data, offset)?.last().unwrap() != &0u8;
+                println!("b: {:?}\n", b);
 
                 let result = DecodeResult {
                     token: Token::Bool(b),

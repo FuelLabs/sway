@@ -1,4 +1,6 @@
 #![allow(dead_code)] // Temporary while it's a WIP.
+use serde::{Deserialize, Serialize};
+use strum_macros::{EnumString, ToString};
 
 pub type Word = [u8; 8];
 pub const WORD_SIZE: isize = 8;
@@ -7,7 +9,8 @@ pub type Bits256 = [u8; 32];
 pub type EnumSelector<'a> = (u8, Token<'a>);
 
 // Sway types
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, EnumString)]
+#[strum(ascii_case_insensitive)]
 pub enum Token<'a> {
     U8(u8),
     U16(u16),
@@ -22,8 +25,15 @@ pub enum Token<'a> {
     Enum(Box<EnumSelector<'a>>),
 }
 
+impl<'a> Default for Token<'a> {
+    fn default() -> Self {
+        Token::U8(0)
+    }
+}
+
 // Experimental
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumString, ToString)]
+#[strum(ascii_case_insensitive)]
 pub enum ParamType {
     U8,
     U16,
@@ -33,9 +43,45 @@ pub enum ParamType {
     Byte,
     B256,
     Array(Box<ParamType>, usize),
+    #[strum(serialize = "str")]
     String(usize),
     Struct(Vec<ParamType>),
     Enum(Vec<ParamType>),
+}
+
+impl Default for ParamType {
+    fn default() -> Self {
+        ParamType::U8
+    }
+}
+
+pub type JsonABI = Vec<Entry>;
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Entry {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub inputs: Vec<Property>,
+    pub name: String,
+    pub outputs: Vec<Property>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Property {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub components: Vec<Component>, // Used for custom types
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Component {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_name: String,
 }
 
 /// Converts a u8 to a right aligned array of 8 bytes.
