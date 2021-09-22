@@ -20,6 +20,11 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         /// there is no selector.
         selector: Option<ContractCallMetadata<'sc>>,
     },
+    LazyOperator {
+        op: LazyOp,
+        lhs: Box<TypedExpression<'sc>>,
+        rhs: Box<TypedExpression<'sc>>,
+    },
     VariableExpression {
         name: Ident<'sc>,
     },
@@ -104,6 +109,10 @@ impl<'sc> TypedExpressionVariant<'sc> {
             TypedExpressionVariant::FunctionApplication { name, .. } => {
                 format!("\"{}\" fn entry", name.suffix.primary_name)
             }
+            TypedExpressionVariant::LazyOperator { op, .. } => match op {
+                LazyOp::And => "&&".into(),
+                LazyOp::Or => "||".into(),
+            },
             TypedExpressionVariant::Unit => "unit".into(),
             TypedExpressionVariant::Array { .. } => "array".into(),
             TypedExpressionVariant::MatchExpression { .. } => "match exp".into(),

@@ -16,6 +16,7 @@ use crate::{
 mod contract_call;
 mod enum_instantiation;
 mod if_exp;
+mod lazy_op;
 mod structs;
 mod subfield;
 use contract_call::convert_contract_call_to_asm;
@@ -82,6 +83,16 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     register_sequencer,
                 )
             }
+        }
+        TypedExpressionVariant::LazyOperator { op, lhs, rhs } => {
+            lazy_op::convert_lazy_operator_to_asm(
+                op,
+                lhs,
+                rhs,
+                return_register,
+                namespace,
+                register_sequencer,
+            )
         }
         TypedExpressionVariant::VariableExpression { name } => {
             let var = check!(

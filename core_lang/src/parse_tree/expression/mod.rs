@@ -32,6 +32,12 @@ pub enum Expression<'sc> {
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
+    LazyOperator {
+        op: LazyOp,
+        lhs: Box<Expression<'sc>>,
+        rhs: Box<Expression<'sc>>,
+        span: Span<'sc>,
+    },
     VariableExpression {
         name: Ident<'sc>,
         span: Span<'sc>,
@@ -119,6 +125,22 @@ pub enum Expression<'sc> {
 }
 
 #[derive(Debug, Clone)]
+pub enum LazyOp {
+    And,
+    Or,
+}
+
+impl LazyOp {
+    fn from(op_variant: OpVariant) -> Self {
+        match op_variant {
+            OpVariant::And => Self::And,
+            OpVariant::Or => Self::Or,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct StructExpressionField<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) value: Expression<'sc>,
@@ -131,6 +153,7 @@ impl<'sc> Expression<'sc> {
         (match self {
             Literal { span, .. } => span,
             FunctionApplication { span, .. } => span,
+            LazyOperator { span, .. } => span,
             VariableExpression { span, .. } => span,
             Unit { span } => span,
             Array { span, .. } => span,
@@ -964,8 +987,8 @@ impl OpVariant {
             Divide => "divide",
             Multiply => "multiply",
             Modulo => "modulo",
-            Or => "or",
-            And => "and",
+            Or => "$or$",
+            And => "$and$",
             Equals => "eq",
             NotEquals => "neq",
             Xor => "xor",
@@ -1043,26 +1066,38 @@ fn arrange_by_order_of_operations<'sc>(
                     }
                     let lhs = lhs.unwrap();
                     let rhs = rhs.unwrap();
-                    expression_stack.push(Expression::MethodApplication {
-                        method_name: MethodName::FromType {
-                            call_path: CallPath {
-                                prefixes: vec![
-                                    Ident {
-                                        primary_name: "std".into(),
-                                        span: new_op.span.clone(),
-                                    },
-                                    Ident {
-                                        primary_name: "ops".into(),
-                                        span: new_op.span.clone(),
-                                    },
-                                ],
-                                suffix: new_op.to_var_name(),
-                            },
-                            type_name: None,
-                            is_absolute: true,
+
+                    // We special case `&&` and `||` here because they are binary operators and are
+                    // bound by the precedence rules, but they are not overloaded by std::ops since
+                    // they must be evaluated lazily.
+                    expression_stack.push(match new_op.op_variant {
+                        OpVariant::And | OpVariant::Or => Expression::LazyOperator {
+                            op: LazyOp::from(new_op.op_variant),
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                            span: debug_span.clone(),
                         },
-                        arguments: vec![lhs, rhs],
-                        span: debug_span.clone(),
+                        _ => Expression::MethodApplication {
+                            method_name: MethodName::FromType {
+                                call_path: CallPath {
+                                    prefixes: vec![
+                                        Ident {
+                                            primary_name: "std".into(),
+                                            span: new_op.span.clone(),
+                                        },
+                                        Ident {
+                                            primary_name: "ops".into(),
+                                            span: new_op.span.clone(),
+                                        },
+                                    ],
+                                    suffix: new_op.to_var_name(),
+                                },
+                                type_name: None,
+                                is_absolute: true,
+                            },
+                            arguments: vec![lhs, rhs],
+                            span: debug_span.clone(),
+                        },
                     });
                 }
                 op_stack.push(op)
@@ -1093,26 +1128,36 @@ fn arrange_by_order_of_operations<'sc>(
         let lhs = lhs.unwrap();
         let rhs = rhs.unwrap();
 
-        expression_stack.push(Expression::MethodApplication {
-            method_name: MethodName::FromType {
-                call_path: CallPath {
-                    prefixes: vec![
-                        Ident {
-                            primary_name: "std".into(),
-                            span: op.span.clone(),
-                        },
-                        Ident {
-                            primary_name: "ops".into(),
-                            span: op.span.clone(),
-                        },
-                    ],
-                    suffix: op.to_var_name(),
-                },
-                type_name: None,
-                is_absolute: true,
+        // See above about special casing `&&` and `||`.
+        let span = join_spans(join_spans(lhs.span(), op.span.clone()), rhs.span());
+        expression_stack.push(match op.op_variant {
+            OpVariant::And | OpVariant::Or => Expression::LazyOperator {
+                op: LazyOp::from(op.op_variant),
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span,
             },
-            arguments: vec![lhs.clone(), rhs.clone()],
-            span: join_spans(join_spans(lhs.span(), op.span.clone()), rhs.span()),
+            _ => Expression::MethodApplication {
+                method_name: MethodName::FromType {
+                    call_path: CallPath {
+                        prefixes: vec![
+                            Ident {
+                                primary_name: "std".into(),
+                                span: op.span.clone(),
+                            },
+                            Ident {
+                                primary_name: "ops".into(),
+                                span: op.span.clone(),
+                            },
+                        ],
+                        suffix: op.to_var_name(),
+                    },
+                    type_name: None,
+                    is_absolute: true,
+                },
+                arguments: vec![lhs.clone(), rhs.clone()],
+                span,
+            },
         });
     }
 
