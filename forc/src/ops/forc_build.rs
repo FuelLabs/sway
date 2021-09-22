@@ -360,11 +360,12 @@ fn format_warning(err: &core_lang::CompileWarning) {
 
     let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
 
+    print_yellow_err(&format!("{}", err.path())).unwrap();
     println!("{}", formatted);
 }
 
 fn format_err(err: core_lang::CompileError) {
-    let input = err.pest_span().input();
+    let input = err.internal_span().input();
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;
@@ -393,6 +394,7 @@ fn format_err(err: core_lang::CompileError) {
         Style::Error,
     );
 
+    print_red_err(&format!("{}", err.path())).unwrap();
     println!("{}", formatted);
 }
 

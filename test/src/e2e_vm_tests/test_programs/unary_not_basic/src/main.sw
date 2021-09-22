@@ -6,5 +6,6 @@ fn main() -> bool {
   let b = !a; // false
   let c = !!b; // false
   let d = !!!c; // true
-  d
+  //d
+  e
 }
