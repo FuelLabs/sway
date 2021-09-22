@@ -633,53 +633,17 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 errors
             );
             asm_buf.append(&mut body);
-            if main_function.return_type == MaybeResolvedType::Resolved(ResolvedType::Unit) {
-                asm_buf.push(Op {
-                    owning_span: None,
-                    opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
-                        ConstantRegister::Zero,
-                    ))),
-                    comment: "main fn returns unit value".into(),
-                });
-            } else {
-                let size_of_main_func_return_bytes = check!(
-                    main_function.return_type.force_resolution(
-                        &MaybeResolvedType::Resolved(ResolvedType::Unit),
-                        &main_function.return_type_span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-                .stack_size_of()
-                    * 8;
-                if size_of_main_func_return_bytes == 8 {
-                    asm_buf.push(Op {
-                        owning_span: None,
-                        opcode: Either::Left(VirtualOp::RET(return_register)),
-                        comment: "main fn return value".into(),
-                    });
-                } else {
-                    // if the type is larger than one word, then we use RETD to return data
-                    // RB is the size_in_bytes
-                    let rb_register = register_sequencer.next();
-                    let size_bytes =
-                        namespace.insert_data_value(&Literal::U64(size_of_main_func_return_bytes));
-                    // `return_register` is $rA
-                    asm_buf.push(Op {
-                        opcode: Either::Left(VirtualOp::LWDataId(rb_register.clone(), size_bytes)),
-                        owning_span: Some(main_function.return_type_span),
-                        comment: "loading rB for RETD".into(),
-                    });
-
-                    // now $rB has the size of the type in bytes
-                    asm_buf.push(Op {
-                        owning_span: None,
-                        opcode: Either::Left(VirtualOp::RETD(return_register, rb_register)),
-                        comment: "main fn return value".into(),
-                    });
-                }
-            }
+            asm_buf.append(&mut check!(
+                ret_or_retd_value(
+                    &main_function,
+                    return_register,
+                    &mut register_sequencer,
+                    &mut namespace
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
 
             HllAsmSet::ScriptMain {
                 program_section: AbstractInstructionSet { ops: asm_buf },
@@ -1257,4 +1221,71 @@ fn load_coin_color<'sc>(return_register: VirtualRegister) -> Op<'sc> {
         comment: "loading coin color into abi function".into(),
         owning_span: None,
     }
+}
+
+/// Given a [TypedFunctionDeclaration] and a `return_register`, return
+/// the return value of the function using either a `RET` or a `RETD` opcode.
+fn ret_or_retd_value<'sc>(
+    func: &TypedFunctionDeclaration<'sc>,
+    return_register: VirtualRegister,
+    register_sequencer: &mut RegisterSequencer,
+    namespace: &mut AsmNamespace<'sc>,
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    let mut errors = vec![];
+    let mut warnings = vec![];
+    let mut asm_buf = vec![];
+    let main_func_ret_ty = check!(
+        func.return_type.force_resolution(
+            &MaybeResolvedType::Resolved(ResolvedType::Unit),
+            &func.return_type_span
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    if main_func_ret_ty == ResolvedType::Unit {
+        // unit returns should always be zero, although because they can be
+        // omitted from functions, the register is sometimes uninitialized.
+        // Manually return zero in this case.
+        return ok(
+            vec![Op {
+                opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
+                    ConstantRegister::Zero,
+                ))),
+                owning_span: Some(func.return_type_span.clone()),
+                comment: format!("fn {} returns unit", func.name.primary_name),
+            }],
+            warnings,
+            errors,
+        );
+    }
+
+    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of() * 8;
+    if size_of_main_func_return_bytes <= 8 {
+        asm_buf.push(Op {
+            owning_span: None,
+            opcode: Either::Left(VirtualOp::RET(return_register)),
+            comment: format!("{} fn return value", func.name.primary_name),
+        });
+    } else {
+        // if the type is larger than one word, then we use RETD to return data
+        // RB is the size_in_bytes
+        let rb_register = register_sequencer.next();
+        let size_bytes = namespace.insert_data_value(&Literal::U64(size_of_main_func_return_bytes));
+        // `return_register` is $rA
+        asm_buf.push(Op {
+            opcode: Either::Left(VirtualOp::LWDataId(rb_register.clone(), size_bytes)),
+            owning_span: Some(func.return_type_span.clone()),
+            comment: "loading rB for RETD".into(),
+        });
+
+        // now $rB has the size of the type in bytes
+        asm_buf.push(Op {
+            owning_span: None,
+            opcode: Either::Left(VirtualOp::RETD(return_register, rb_register)),
+            comment: format!("{} fn return value", func.name.primary_name),
+        });
+    }
+    ok(asm_buf, warnings, errors)
 }
