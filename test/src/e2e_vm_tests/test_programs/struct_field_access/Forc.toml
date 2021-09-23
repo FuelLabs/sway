@@ -1,7 +1,7 @@
 [project]
-author  = "Alexander Hansen <alex.hansen@fuel.sh>"
+author  = "Emily Herbert <emily.herbert@fuel.sh>"
 license = "MIT"
-name = "asm_expr_basic"
+name = "struct_field_access"
 entry = "main.sw"
 
 
