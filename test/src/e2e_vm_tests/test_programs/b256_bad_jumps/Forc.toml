@@ -1,11 +1,8 @@
 [project]
-author  = "Emily Herbert <emily.herbert@fuel.sh>"
+author  = "Toby Hutton <toby.hutton@fuel.sh>"
 license = "MIT"
-name = "tuple_types"
+name = "b256_bad_jumps"
 entry = "main.sw"
-
 
 [dependencies]
 std = { path = "../../../../../stdlib" }
-
-
