@@ -124,7 +124,7 @@ pub enum Expression<'sc> {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LazyOp {
     And,
     Or,
