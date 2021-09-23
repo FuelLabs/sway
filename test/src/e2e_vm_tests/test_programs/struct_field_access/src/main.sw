@@ -4,6 +4,7 @@ fn main() -> u64 {
   let mut data = Data { 
 		uselessnumber: 42
     };
+  data.uselessnumber = 43;
 
   return data.uselessnumber;
 }
