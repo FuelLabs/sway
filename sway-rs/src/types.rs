@@ -6,12 +6,12 @@ pub type Word = [u8; 8];
 pub const WORD_SIZE: isize = 8;
 
 pub type Bits256 = [u8; 32];
-pub type EnumSelector<'a> = (u8, Token<'a>);
+pub type EnumSelector = (u8, Token);
 
 // Sway types
 #[derive(Debug, Clone, PartialEq, EnumString)]
 #[strum(ascii_case_insensitive)]
-pub enum Token<'a> {
+pub enum Token {
     U8(u8),
     U16(u16),
     U32(u32),
@@ -19,13 +19,13 @@ pub enum Token<'a> {
     Bool(bool),
     Byte(u8),
     B256(Bits256),
-    Array(Vec<Token<'a>>),
-    String(&'a str),
-    Struct(Vec<Token<'a>>),
-    Enum(Box<EnumSelector<'a>>),
+    Array(Vec<Token>),
+    String(String),
+    Struct(Vec<Token>),
+    Enum(Box<EnumSelector>),
 }
 
-impl<'a> Default for Token<'a> {
+impl<'a> Default for Token {
     fn default() -> Self {
         Token::U8(0)
     }
@@ -73,16 +73,16 @@ pub struct Property {
     pub name: String,
     #[serde(rename = "type")]
     pub type_field: String,
-    pub components: Vec<Component>, // Used for custom types
+    pub components: Option<Vec<Property>>, // Used for custom types
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Component {
-    pub name: String,
-    #[serde(rename = "type")]
-    pub type_name: String,
-}
+// #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+// #[serde(rename_all = "camelCase")]
+// pub struct Component {
+//     pub name: String,
+//     #[serde(rename = "type")]
+//     pub type_name: String,
+// }
 
 /// Converts a u8 to a right aligned array of 8 bytes.
 pub fn pad_u8(value: u8) -> Word {

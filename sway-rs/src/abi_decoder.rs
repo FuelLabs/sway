@@ -5,8 +5,8 @@ use std::convert::TryInto;
 use std::str;
 
 #[derive(Debug, Clone)]
-struct DecodeResult<'a> {
-    token: Token<'a>,
+struct DecodeResult {
+    token: Token,
     new_offset: usize,
 }
 
@@ -27,7 +27,7 @@ impl ABIDecoder {
         &mut self,
         types: &[ParamType],
         data: &'a [u8],
-    ) -> Result<Vec<Token<'a>>, String> {
+    ) -> Result<Vec<Token>, String> {
         let mut tokens: Vec<Token> = Vec::new();
         let mut offset = 0;
         for param in types {
@@ -44,7 +44,7 @@ impl ABIDecoder {
         param: &ParamType,
         data: &'a [u8],
         offset: usize,
-    ) -> Result<DecodeResult<'a>, String> {
+    ) -> Result<DecodeResult, String> {
         match &*param {
             ParamType::U8 => {
                 let slice = peek_word(data, offset)?;
@@ -132,7 +132,7 @@ impl ABIDecoder {
                 let pad_length = (WORD_SIZE - *length as isize).rem_euclid(WORD_SIZE);
 
                 let result = DecodeResult {
-                    token: Token::String(decoded),
+                    token: Token::String(decoded.to_string()),
                     new_offset: offset + length + pad_length as usize,
                 };
 

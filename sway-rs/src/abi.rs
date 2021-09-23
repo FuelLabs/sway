@@ -15,6 +15,7 @@ use serde_json;
 
 // TODO: clean-up this disaster of code
 // TODO: improve error handling, error messages
+// TODO: Update ABI documentation wrt to JSON for strucs/enums
 
 pub struct ABI {}
 
@@ -42,6 +43,7 @@ impl ABI {
                     .map(|param| self.parse_param(param).unwrap())
                     .zip(values.iter().map(|v| v as &str))
                     .collect();
+
                 let tokens = self.parse_tokens(&params).unwrap();
 
                 let encoded = encoder.encode(&tokens).unwrap();
@@ -59,45 +61,112 @@ impl ABI {
         Err("wrong function name".into())
     }
 
-    pub fn parse_tokens<'a>(
-        &self,
-        params: &'a [(ParamType, &str)],
-    ) -> Result<Vec<Token<'a>>, String> {
+    pub fn parse_tokens<'a>(&self, params: &'a [(ParamType, &str)]) -> Result<Vec<Token>, String> {
         params
             .iter()
-            .map(|&(ref param, value)| self.tokenize(param, value))
+            .map(|&(ref param, value)| self.tokenize(param, value.to_string()))
             .collect::<Result<_, _>>()
             .map_err(From::from)
     }
 
-    pub fn tokenize<'a>(&self, param: &ParamType, value: &'a str) -> Result<Token<'a>, String> {
+    pub fn tokenize<'a>(&self, param: &ParamType, value: String) -> Result<Token, String> {
+        let trimmed_value = value.trim();
         match &*param {
-            ParamType::U8 => Ok(Token::U8(value.parse::<u8>().unwrap())),
-            ParamType::U16 => Ok(Token::U16(value.parse::<u16>().unwrap())),
-            ParamType::U32 => Ok(Token::U32(value.parse::<u32>().unwrap())),
-            ParamType::U64 => Ok(Token::U64(value.parse::<u64>().unwrap())),
-            ParamType::Bool => Ok(Token::Bool(value.parse::<bool>().unwrap())),
-            ParamType::Byte => Ok(Token::Byte(value.parse::<u8>().unwrap())),
+            ParamType::U8 => Ok(Token::U8(trimmed_value.parse::<u8>().unwrap())),
+            ParamType::U16 => Ok(Token::U16(trimmed_value.parse::<u16>().unwrap())),
+            ParamType::U32 => Ok(Token::U32(trimmed_value.parse::<u32>().unwrap())),
+            ParamType::U64 => Ok(Token::U64(trimmed_value.parse::<u64>().unwrap())),
+            ParamType::Bool => Ok(Token::Bool(trimmed_value.parse::<bool>().unwrap())),
+            ParamType::Byte => Ok(Token::Byte(trimmed_value.parse::<u8>().unwrap())),
             ParamType::B256 => {
-                let v = Vec::from_hex(value).expect("invalid hex string");
+                let v = Vec::from_hex(trimmed_value).expect("invalid hex string");
                 let s: [u8; 32] = v.as_slice().try_into().unwrap();
                 Ok(Token::B256(s))
             }
-            ParamType::Array(t, s) => {
-                let tokens = self.tokenize_array(value, &*t).unwrap();
-                Ok(tokens)
+            ParamType::Array(t, _) => Ok(self.tokenize_array(trimmed_value, &*t).unwrap()),
+            ParamType::String(_) => Ok(Token::String(trimmed_value.to_string())),
+            ParamType::Struct(struct_params) => {
+                Ok(self.tokenize_struct(trimmed_value, struct_params).unwrap())
             }
-            ParamType::String(s) => Ok(Token::String(value)),
-            ParamType::Struct(s) => unimplemented!(),
-            ParamType::Enum(s) => unimplemented!(),
+            ParamType::Enum(s) => {
+                let discriminant = self.get_enum_discriminant_from_string(&value);
+                let value = self.get_enum_value_from_string(&value);
+
+                let token = self.tokenize(&s[discriminant], value.to_owned())?;
+
+                Ok(Token::Enum(Box::new((discriminant as u8, token))))
+            }
         }
     }
 
-    pub fn tokenize_array<'a>(
-        &self,
-        value: &'a str,
-        param: &ParamType,
-    ) -> Result<Token<'a>, String> {
+    pub fn tokenize_struct(&self, value: &str, params: &[ParamType]) -> Result<Token, String> {
+        if !value.starts_with('(') || !value.ends_with(')') {
+            return Err("invalid data 1".into());
+        }
+
+        if value.chars().count() == 2 {
+            return Ok(Token::Struct(vec![]));
+        }
+
+        let mut result = vec![];
+        let mut nested = 0isize;
+        let mut ignore = false;
+        let mut last_item = 1;
+        let mut params_iter = params.iter();
+
+        for (pos, ch) in value.chars().enumerate() {
+            match ch {
+                '(' if !ignore => {
+                    nested += 1;
+                }
+                ')' if !ignore => {
+                    nested -= 1;
+
+                    match nested.cmp(&0) {
+                        std::cmp::Ordering::Less => {
+                            return Err("invalid data".into());
+                        }
+                        std::cmp::Ordering::Equal => {
+                            let sub = &value[last_item..pos];
+
+                            let token = self.tokenize(
+                                params_iter.next().ok_or("invalid data 2")?,
+                                sub.to_string(),
+                            )?;
+                            result.push(token);
+                            last_item = pos + 1;
+                        }
+                        _ => {}
+                    }
+                }
+                '"' => {
+                    ignore = !ignore;
+                }
+                ',' if nested == 1 && !ignore => {
+                    let sub = &value[last_item..pos];
+                    // If we've encountered an array within a struct property
+                    // keep iterating until we see the end of it "]".
+                    if sub.contains("[") && !sub.contains("]") {
+                        continue;
+                    }
+
+                    let token = self
+                        .tokenize(params_iter.next().ok_or("invalid data 2")?, sub.to_string())?;
+                    result.push(token);
+                    last_item = pos + 1;
+                }
+                _ => (),
+            }
+        }
+
+        if ignore {
+            return Err("invalid data 3".into());
+        }
+
+        Ok(Token::Struct(result))
+    }
+
+    pub fn tokenize_array<'a>(&self, value: &'a str, param: &ParamType) -> Result<Token, String> {
         if !value.starts_with('[') || !value.ends_with(']') {
             return Err("invalid data 1".into());
         }
@@ -132,10 +201,10 @@ impl ABI {
                                         self.get_array_length_from_string(sub),
                                     );
 
-                                    result.push(self.tokenize(&arr_param, sub)?);
+                                    result.push(self.tokenize(&arr_param, sub.to_string())?);
                                 }
                                 false => {
-                                    result.push(self.tokenize(param, sub)?);
+                                    result.push(self.tokenize(param, sub.to_string())?);
                                 }
                             }
 
@@ -156,10 +225,10 @@ impl ABI {
                                 self.get_array_length_from_string(sub),
                             );
 
-                            result.push(self.tokenize(&arr_param, sub)?);
+                            result.push(self.tokenize(&arr_param, sub.to_string())?);
                         }
                         false => {
-                            result.push(self.tokenize(param, sub)?);
+                            result.push(self.tokenize(param, sub.to_string())?);
                         }
                     }
                     last_item = i + 1;
@@ -177,6 +246,22 @@ impl ABI {
 
     pub fn is_array(&self, ele: &str) -> bool {
         ele.starts_with("[") && ele.ends_with("]")
+    }
+
+    pub fn get_enum_discriminant_from_string(&self, ele: &str) -> usize {
+        let mut chars = ele.chars();
+        chars.next(); // Remove "("
+        chars.next_back(); // Remove ")"
+        let v: Vec<_> = chars.as_str().split(",").collect();
+        v[0].parse().unwrap()
+    }
+
+    pub fn get_enum_value_from_string(&self, ele: &str) -> String {
+        let mut chars = ele.chars();
+        chars.next(); // Remove "("
+        chars.next_back(); // Remove ")"
+        let v: Vec<_> = chars.as_str().split(",").collect();
+        v[1].to_string()
     }
 
     pub fn get_array_length_from_string(&self, ele: &str) -> usize {
@@ -217,7 +302,7 @@ impl ABI {
         abi: &str,
         fn_name: &str,
         value: &'a [u8],
-    ) -> Result<Vec<Token<'a>>, String> {
+    ) -> Result<Vec<Token>, String> {
         let parsed_abi: JsonABI = serde_json::from_str(abi).unwrap();
 
         for entry in parsed_abi {
@@ -241,6 +326,25 @@ impl ABI {
 
     /// Turns a JSON property into ParamType
     pub fn parse_param(&self, param: &Property) -> Result<ParamType, String> {
+        if param.type_field == "struct" {
+            let mut params: Vec<ParamType> = vec![];
+            let components = param.components.as_ref().unwrap();
+            for component in components {
+                params.push(self.parse_param(&component)?);
+            }
+
+            return Ok(ParamType::Struct(params));
+        }
+        if param.type_field == "enum" {
+            let mut params: Vec<ParamType> = vec![];
+            let components = param.components.as_ref().unwrap();
+            for component in components {
+                params.push(self.parse_param(&component)?);
+            }
+
+            return Ok(ParamType::Enum(params));
+        }
+
         match param.type_field.contains("[") && param.type_field.contains("]") {
             // Simple case (u<M>, bool, etc.)
             false => Ok(ParamType::from_str(&param.type_field.clone()).unwrap()),
@@ -578,7 +682,7 @@ mod tests {
 
         let decoded_return = abi.decode(json_abi, function_name, &return_value).unwrap();
 
-        let expected_return = vec![Token::String("OK")];
+        let expected_return = vec![Token::String("OK".into())];
 
         assert_eq!(decoded_return, expected_return);
     }
@@ -611,26 +715,154 @@ mod tests {
         ]
         "#;
 
-        let values = vec!["This is a full sentence"];
+        let values = vec!["(42, true)"];
 
         let abi = ABI::new();
 
-        let function_name = "takes_string";
+        let function_name = "takes_struct";
 
         let encoded = abi.encode(json_abi, function_name, &values).unwrap();
         println!("encoded: {:?}\n", encoded);
 
-        let expected_encode = "00000000d56e76515468697320697320612066756c6c2073656e74656e636500";
+        let expected_encode = "00000000f5957fce000000000000002a0000000000000001";
+        assert_eq!(encoded, expected_encode);
+    }
+
+    #[test]
+    fn nested_struct_encode_and_decode() {
+        let json_abi = r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"MyNestedStruct",
+                        "type":"struct",
+                        "components": [
+                            {
+                                "name": "x",
+                                "type": "u16"
+                            },
+                            {
+                                "name": "y",
+                                "type": "struct",
+                                "components": [
+                                    {
+                                        "name":"a",
+                                        "type": "bool"
+                                    },
+                                    {
+                                        "name":"b",
+                                        "type": "u8[2]"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "name":"takes_nested_struct",
+                "outputs":[]
+            }
+        ]
+        "#;
+
+        let values = vec!["(10, (true, [1,2]))"];
+
+        let abi = ABI::new();
+
+        let function_name = "takes_nested_struct";
+
+        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        println!("encoded: {:?}\n", encoded);
+
+        let expected_encode =
+            "00000000e8a04d9c000000000000000a000000000000000100000000000000010000000000000002";
         assert_eq!(encoded, expected_encode);
 
-        let return_value = [
-            0x4f, 0x4b, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // "OK" encoded in utf8
-        ];
+        let json_abi = r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"MyNestedStruct",
+                        "type":"struct",
+                        "components": [
+                            {
+                                "name": "x",
+                                "type": "struct",
+                                "components": [
+                                    {
+                                        "name":"a",
+                                        "type": "bool"
+                                    },
+                                    {
+                                        "name":"b",
+                                        "type": "u8[2]"
+                                    }
+                                ]
+                            },
+                            {
+                                "name": "y",
+                                "type": "u16"
+                            }
+                        ]
+                    }
+                ],
+                "name":"takes_nested_struct",
+                "outputs":[]
+            }
+        ]
+        "#;
 
-        let decoded_return = abi.decode(json_abi, function_name, &return_value).unwrap();
+        let values = vec!["((true, [1,2]), 10)"];
 
-        let expected_return = vec![Token::String("OK")];
+        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        println!("encoded: {:?}\n", encoded);
 
-        assert_eq!(decoded_return, expected_return);
+        let expected_encode =
+            "00000000e8a04d9c000000000000000100000000000000010000000000000002000000000000000a";
+        assert_eq!(encoded, expected_encode);
+    }
+
+    #[test]
+    fn enum_encode_and_decode() {
+        let json_abi = r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"MyEnum",
+                        "type":"enum",
+                        "components": [
+                            {
+                                "name": "x",
+                                "type": "u32"
+                            },
+                            {
+                                "name": "y",
+                                "type": "bool"
+                            }
+                        ]
+                    }
+                ],
+                "name":"takes_enum",
+                "outputs":[]
+            }
+        ]
+        "#;
+
+        let values = vec!["(0, 42)"];
+
+        let abi = ABI::new();
+
+        let function_name = "takes_enum";
+
+        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        println!("encoded: {:?}\n", encoded);
+
+        let expected_encode = "000000009542a3c90000000000000000000000000000002a";
+        assert_eq!(encoded, expected_encode);
     }
 }
