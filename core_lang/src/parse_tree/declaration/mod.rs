@@ -51,12 +51,21 @@ impl<'sc> Declaration<'sc> {
         let mut pair = decl.clone().into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
-            Rule::fn_decl => Declaration::FunctionDeclaration(check!(
-                FunctionDeclaration::parse_from_pair(decl_inner, config, docstrings),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
+            Rule::fn_decl => {
+                let fn_decl = check!(
+                    FunctionDeclaration::parse_from_pair(decl_inner, config, docstrings),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if unassigned_docstrings.len() > 0 {
+                    docstrings.insert(
+                        format!("fn.{}", fn_decl.name.primary_name),
+                        unassigned_docstrings
+                    );
+                }
+                Declaration::FunctionDeclaration(fn_decl)
+            },
             Rule::var_decl => {
                 let mut var_decl_parts = decl_inner.into_inner();
                 let _let_keyword = var_decl_parts.next();
