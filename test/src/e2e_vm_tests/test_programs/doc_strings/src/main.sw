@@ -24,6 +24,7 @@ struct Data {
 	address: byte,
 }
 
+/// The main function that does all the things!
 fn main() -> u64 {
   let mut data = Data { 
                   value: NumberOrString::Number(20),
