@@ -21,7 +21,7 @@ impl<'sc> CodeBlock<'sc> {
     pub(crate) fn parse_from_pair(
         block: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>
+        docstrings: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -31,7 +31,7 @@ impl<'sc> CodeBlock<'sc> {
             path: path.clone(),
         };
         let block_inner = block.into_inner();
-        let mut unassigned_docstrings: Vec<String> = vec!();
+        let mut unassigned_docstrings: Vec<String> = vec![];
         let mut contents = Vec::new();
         for pair in block_inner {
             let content = match pair.as_rule() {
@@ -48,7 +48,12 @@ impl<'sc> CodeBlock<'sc> {
                         _ => {
                             let decl_stmt = AstNode {
                                 content: AstNodeContent::Declaration(check!(
-                                    Declaration::parse_from_pair(pair.clone(), config, unassigned_docstrings.clone(), docstrings),
+                                    Declaration::parse_from_pair(
+                                        pair.clone(),
+                                        config,
+                                        unassigned_docstrings.clone(),
+                                        docstrings
+                                    ),
                                     continue,
                                     warnings,
                                     errors
@@ -62,7 +67,7 @@ impl<'sc> CodeBlock<'sc> {
                             Some(decl_stmt)
                         }
                     }
-                },
+                }
                 Rule::expr_statement => {
                     let evaluated_node = check!(
                         Expression::parse_from_pair(

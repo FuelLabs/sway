@@ -7,8 +7,8 @@ use crate::{CodeBlock, Ident};
 use either::Either;
 use pest;
 use pest::iterators::Pair;
-use std::collections::VecDeque;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 
 mod asm;
 mod match_branch;
@@ -173,7 +173,7 @@ impl<'sc> Expression<'sc> {
     pub(crate) fn parse_from_pair(
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>
+        docstrings: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -267,7 +267,7 @@ impl<'sc> Expression<'sc> {
     pub(crate) fn parse_from_pair_inner(
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>
+        docstrings: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
@@ -421,7 +421,11 @@ impl<'sc> Expression<'sc> {
             }
             Rule::parenthesized_expression => {
                 let expr = check!(
-                    Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config, docstrings),
+                    Expression::parse_from_pair(
+                        expr.clone().into_inner().next().unwrap(),
+                        config,
+                        docstrings
+                    ),
                     Expression::Unit {
                         span: Span {
                             span: expr.as_span(),
@@ -649,7 +653,11 @@ impl<'sc> Expression<'sc> {
                         if let Some(arguments) = arguments {
                             for argument in arguments.into_inner() {
                                 let arg = check!(
-                                    Expression::parse_from_pair(argument.clone(), config, docstrings),
+                                    Expression::parse_from_pair(
+                                        argument.clone(),
+                                        config,
+                                        docstrings
+                                    ),
                                     Expression::Unit {
                                         span: Span {
                                             span: argument.as_span(),
@@ -735,7 +743,11 @@ impl<'sc> Expression<'sc> {
                 // a field
                 let mut name_parts = name_parts.into_iter();
                 let mut expr = check!(
-                    parse_call_item(name_parts.next().expect("guaranteed by grammar"), config, docstrings),
+                    parse_call_item(
+                        name_parts.next().expect("guaranteed by grammar"),
+                        config,
+                        docstrings
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -824,7 +836,7 @@ impl<'sc> Expression<'sc> {
 fn convert_unary_to_fn_calls<'sc>(
     item: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
-    docstrings: &mut HashMap<String, Vec<String>>
+    docstrings: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, Expression<'sc>> {
     let iter = item.into_inner();
     let mut unary_stack = vec![];
@@ -874,7 +886,7 @@ fn convert_unary_to_fn_calls<'sc>(
 fn parse_call_item<'sc>(
     item: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
-    docstrings: &mut HashMap<String, Vec<String>>
+    docstrings: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, Expression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];

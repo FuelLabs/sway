@@ -24,7 +24,7 @@ impl<'sc> AbiDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>
+        docstrings: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
         let span = Span {
             span: pair.as_span(),

@@ -23,7 +23,7 @@ impl<'sc> TraitDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>
+        docstrings: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -84,7 +84,11 @@ impl<'sc> TraitDeclaration<'sc> {
                     }
                     Rule::fn_decl => {
                         methods.push(check!(
-                            FunctionDeclaration::parse_from_pair(fn_sig_or_decl, config, docstrings),
+                            FunctionDeclaration::parse_from_pair(
+                                fn_sig_or_decl,
+                                config,
+                                docstrings
+                            ),
                             continue,
                             warnings,
                             errors

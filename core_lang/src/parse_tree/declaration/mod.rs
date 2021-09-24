@@ -44,7 +44,7 @@ impl<'sc> Declaration<'sc> {
         decl: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
         unassigned_docstrings: Vec<String>,
-        docstrings: &mut HashMap<String, Vec<String>>
+        docstrings: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -61,11 +61,11 @@ impl<'sc> Declaration<'sc> {
                 if unassigned_docstrings.len() > 0 {
                     docstrings.insert(
                         format!("fn.{}", fn_decl.name.primary_name),
-                        unassigned_docstrings
+                        unassigned_docstrings,
                     );
                 }
                 Declaration::FunctionDeclaration(fn_decl)
-            },
+            }
             Rule::var_decl => {
                 let mut var_decl_parts = decl_inner.into_inner();
                 let _let_keyword = var_decl_parts.next();
@@ -129,14 +129,14 @@ impl<'sc> Declaration<'sc> {
                 if unassigned_docstrings.len() > 0 {
                     docstrings.insert(
                         format!("struct.{}", struct_decl.name.primary_name),
-                        unassigned_docstrings
+                        unassigned_docstrings,
                     );
                 }
                 Declaration::StructDeclaration(struct_decl)
-            },
+            }
             Rule::enum_decl => {
                 let enum_decl = check!(
-                    EnumDeclaration::parse_from_pair(decl_inner, config),
+                    EnumDeclaration::parse_from_pair(decl_inner, config, docstrings),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -144,11 +144,11 @@ impl<'sc> Declaration<'sc> {
                 if unassigned_docstrings.len() > 0 {
                     docstrings.insert(
                         format!("enum.{}", enum_decl.name.primary_name),
-                        unassigned_docstrings
+                        unassigned_docstrings,
                     );
                 }
                 Declaration::EnumDeclaration(enum_decl)
-            },
+            }
             Rule::reassignment => Declaration::Reassignment(check!(
                 Reassignment::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),

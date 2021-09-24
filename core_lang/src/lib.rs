@@ -528,7 +528,7 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
     config: Option<&BuildConfig>,
-    docstrings: &mut HashMap<String, Vec<String>>
+    docstrings: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, HllParseTree<'sc>> {
     let path = config.map(|config| config.dir_of_code.clone());
     let mut warnings = Vec::new();
@@ -539,7 +539,7 @@ fn parse_root_from_pairs<'sc>(
         predicate_ast: None,
         library_exports: vec![],
     };
-    let mut unassigned_docstrings = vec!();
+    let mut unassigned_docstrings = vec![];
     for block in input {
         let mut parse_tree = ParseTree::new(span::Span {
             span: block.as_span(),
@@ -559,7 +559,12 @@ fn parse_root_from_pairs<'sc>(
                         }
                         _ => {
                             let decl = check!(
-                                Declaration::parse_from_pair(pair.clone(), config, unassigned_docstrings.clone(), docstrings),
+                                Declaration::parse_from_pair(
+                                    pair.clone(),
+                                    config,
+                                    unassigned_docstrings.clone(),
+                                    docstrings
+                                ),
                                 continue,
                                 warnings,
                                 errors

@@ -7,9 +7,9 @@ script;
 /// `NumberOrString::Number(42)`
 /// `NumberOrString::String("foo")`
 enum NumberOrString {
-	// e /// The `Number` variant in `NumberOrString`
+	/// The `Number` variant in `NumberOrString`
 	Number: u64,
-	// e /// The `String` variant in `NumberOrString`
+	/// The `String` variant in `NumberOrString`
 	String: str[4],
 }
 
