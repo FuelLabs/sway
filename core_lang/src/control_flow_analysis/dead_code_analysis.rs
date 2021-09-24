@@ -664,6 +664,27 @@ fn connect_expression<'sc>(
                 Ok(vec![fn_entrypoint])
             }
         }
+        LazyOperator { lhs, rhs, .. } => {
+            let lhs_expr = connect_expression(
+                &lhs.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                lhs.span.clone(),
+            )?;
+            let rhs_expr = connect_expression(
+                &rhs.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                rhs.span.clone(),
+            )?;
+            Ok([lhs_expr, rhs_expr].concat())
+        }
         Literal(_) => {
             let node = graph.add_node("Literal value".into());
             for leaf in leaves {

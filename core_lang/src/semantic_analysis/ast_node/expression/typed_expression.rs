@@ -57,6 +57,16 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
             ),
+            Expression::LazyOperator { op, lhs, rhs, span } => Self::type_check_lazy_operator(
+                op,
+                *lhs,
+                *rhs,
+                span,
+                namespace,
+                self_type,
+                build_config,
+                dead_code_graph,
+            ),
             Expression::MatchExpression { span, .. } => {
                 let errors = vec![CompileError::Unimplemented(
                     "Match expressions and pattern matching have not been implemented.",
@@ -398,6 +408,65 @@ impl<'sc> TypedExpression<'sc> {
             }
         };
         ok(exp, warnings, errors)
+    }
+
+    fn type_check_lazy_operator(
+        op: LazyOp,
+        lhs: Expression<'sc>,
+        rhs: Expression<'sc>,
+        span: Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        self_type: &MaybeResolvedType<'sc>,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let typed_lhs = check!(
+            TypedExpression::type_check(
+                lhs.clone(),
+                namespace,
+                Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
+                "",
+                self_type,
+                build_config,
+                dead_code_graph
+            ),
+            error_recovery_expr(lhs.span()),
+            warnings,
+            errors
+        );
+
+        let typed_rhs = check!(
+            TypedExpression::type_check(
+                rhs.clone(),
+                namespace,
+                Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
+                "",
+                self_type,
+                build_config,
+                dead_code_graph
+            ),
+            error_recovery_expr(rhs.span()),
+            warnings,
+            errors
+        );
+
+        ok(
+            TypedExpression {
+                expression: TypedExpressionVariant::LazyOperator {
+                    op,
+                    lhs: Box::new(typed_lhs),
+                    rhs: Box::new(typed_rhs),
+                },
+                return_type: MaybeResolvedType::Resolved(ResolvedType::Boolean),
+                is_constant: IsConstant::No, // Maybe.
+                span,
+            },
+            warnings,
+            errors,
+        )
     }
 
     pub fn type_check_match_expression() -> CompileResult<'sc, TypedExpression<'sc>> {

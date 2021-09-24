@@ -160,32 +160,16 @@ impl Divide for u8 {
   }
 }
 
-impl bool {
-  fn or(self, other: Self) -> bool {
-    asm(r1: self, r2: other, r3) {
-      or r3 r1 r2;
-      r3: bool
-    }
-  }
-  fn and(self, other: Self) -> bool {
-    asm(r1: self, r2: other, r3) { 
-      and r3 r1 r2;
-      r3: bool
-    }
-  }
-}
-
-
 pub trait Ord {
   fn gt(self, other: Self) -> bool;
   fn lt(self, other: Self) -> bool;
   fn eq(self, other: Self) -> bool;
 } {
   fn le(self, other: Self) -> bool {
-    (self.lt(other)).or(self.eq(other))
+    self.lt(other) || self.eq(other)
   }
   fn ge(self, other: Self) -> bool {
-    (self.gt(other)).or(self.eq(other))
+    self.gt(other) || self.eq(other)
   }
   fn neq(self, other: Self) -> bool {
     // TODO unary operator negation
