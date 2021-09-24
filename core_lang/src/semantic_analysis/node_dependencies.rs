@@ -327,6 +327,9 @@ impl<'sc> Dependencies<'sc> {
             } => self
                 .gather_from_call_path(name, false, true)
                 .gather_from_iter(arguments.iter(), |deps, arg| deps.gather_from_expr(arg)),
+            Expression::LazyOperator { lhs, rhs, .. } => {
+                self.gather_from_expr(lhs).gather_from_expr(rhs)
+            }
             Expression::IfExp {
                 condition,
                 then,

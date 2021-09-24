@@ -39,4 +39,11 @@ impl<'sc> Span<'sc> {
     pub fn input(&self) -> &str {
         self.span.input()
     }
+
+    pub fn path(&self) -> String {
+        self.path
+            .clone()
+            .map(|p| p.into_os_string().into_string().unwrap())
+            .unwrap_or("".to_string())
+    }
 }

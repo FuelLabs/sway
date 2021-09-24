@@ -1,6 +1,6 @@
 use crate::cli::{BuildCommand, FormatCommand};
 use crate::ops::forc_build;
-use crate::utils::helpers::{find_manifest_dir, get_sway_files, print_green, print_red};
+use crate::utils::helpers::{find_manifest_dir, get_sway_files, println_green, println_red};
 use formatter::get_formatted_data;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{fmt, fs, io, path::PathBuf};
@@ -58,22 +58,22 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                                             DiffOp::Insert(new) => {
                                                 count_of_updates += 1;
                                                 for n in new {
-                                                    print_green(&format!("+{}", n))?;
+                                                    println_green(&format!("+{}", n))?;
                                                 }
                                             }
                                             DiffOp::Remove(old) => {
                                                 count_of_updates += 1;
                                                 for o in old {
-                                                    print_red(&format!("-{}", o))?;
+                                                    println_red(&format!("-{}", o))?;
                                                 }
                                             }
                                             DiffOp::Replace(old, new) => {
                                                 count_of_updates += 1;
                                                 for o in old {
-                                                    print_red(&format!("-{}", o))?;
+                                                    println_red(&format!("-{}", o))?;
                                                 }
                                                 for n in new {
-                                                    print_green(&format!("+{}", n))?;
+                                                    println_green(&format!("+{}", n))?;
                                                 }
                                             }
                                         }

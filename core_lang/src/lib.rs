@@ -783,7 +783,7 @@ fn test_unary_ordering() {
     let prog = prog.unwrap(&mut warnings, &mut errors);
     dbg!(&prog);
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
-    // expression should be `and()`
+    // expression should be `&&`
     if let AstNode {
         content:
             AstNodeContent::Declaration(Declaration::FunctionDeclaration(FunctionDeclaration {
@@ -794,17 +794,13 @@ fn test_unary_ordering() {
     } = &prog.script_ast.unwrap().root_nodes[0]
     {
         if let AstNode {
-            content:
-                AstNodeContent::Expression(Expression::MethodApplication {
-                    method_name: MethodName::FromType { call_path, .. },
-                    ..
-                }),
+            content: AstNodeContent::Expression(Expression::LazyOperator { op, .. }),
             ..
         } = &body.contents[2]
         {
-            assert_eq!(call_path.suffix.primary_name, "and")
+            assert_eq!(op, &LazyOp::And)
         } else {
-            panic!("Was not method application")
+            panic!("Was not lazy operator.")
         }
     } else {
         panic!("Was not ast node")

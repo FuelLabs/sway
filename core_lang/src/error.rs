@@ -126,6 +126,10 @@ impl<'sc> CompileWarning<'sc> {
         (self.span.start(), self.span.end())
     }
 
+    pub fn path(&self) -> String {
+        self.span.path()
+    }
+
     /// Returns the line and column start and end
     pub fn line_col(&self) -> (LineCol, LineCol) {
         (
@@ -701,7 +705,7 @@ pub enum TypeError<'sc> {
 }
 
 impl<'sc> TypeError<'sc> {
-    pub(crate) fn pest_span(&self) -> &Span<'sc> {
+    pub(crate) fn internal_span(&self) -> &Span<'sc> {
         use TypeError::*;
         match self {
             MismatchedType { span, .. } => span,
@@ -750,11 +754,15 @@ impl<'sc> CompileError<'sc> {
     }
 
     pub fn span(&self) -> (usize, usize) {
-        let sp = self.pest_span();
+        let sp = self.internal_span();
         (sp.start(), sp.end())
     }
 
-    pub fn pest_span(&self) -> &Span<'sc> {
+    pub fn path(&self) -> String {
+        self.internal_span().path()
+    }
+
+    pub fn internal_span(&self) -> &Span<'sc> {
         use CompileError::*;
         match self {
             UnknownVariable { span, .. } => span,
@@ -763,7 +771,7 @@ impl<'sc> CompileError<'sc> {
             NotAVariable { span, .. } => span,
             NotAFunction { span, .. } => span,
             Unimplemented(_, span) => span,
-            TypeError(err) => err.pest_span(),
+            TypeError(err) => err.internal_span(),
             ParseFailure { span, .. } => span,
             InvalidTopLevelItem(_, span) => span,
             Internal(_, span) => span,
@@ -855,8 +863,8 @@ impl<'sc> CompileError<'sc> {
     /// Returns the line and column start and end
     pub fn line_col(&self) -> (LineCol, LineCol) {
         (
-            self.pest_span().start_pos().line_col().into(),
-            self.pest_span().end_pos().line_col().into(),
+            self.internal_span().start_pos().line_col().into(),
+            self.internal_span().end_pos().line_col().into(),
         )
     }
 }
