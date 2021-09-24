@@ -7,6 +7,7 @@ use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
+use std::collections::HashMap;
 
 use super::Visibility;
 
@@ -29,6 +30,7 @@ impl<'sc> StructDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         decl: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        docstrings: &mut HashMap<String, Vec<String>>
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -69,17 +71,6 @@ impl<'sc> StructDeclaration<'sc> {
         )
         .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
 
-        let fields = if let Some(fields) = fields_pair {
-            check!(
-                StructField::parse_from_pairs(fields, config),
-                Vec::new(),
-                warnings,
-                errors
-            )
-        } else {
-            Vec::new()
-        };
-
         let span = Span {
             span: name.as_span(),
             path: path.clone(),
@@ -98,6 +89,16 @@ impl<'sc> StructDeclaration<'sc> {
                 struct_name: name.primary_name
             }
         );
+        let fields = if let Some(fields) = fields_pair {
+            check!(
+                StructField::parse_from_pairs(fields, config, name.primary_name.to_string(), docstrings),
+                Vec::new(),
+                warnings,
+                errors
+            )
+        } else {
+            Vec::new()
+        };
         ok(
             StructDeclaration {
                 name,
@@ -115,38 +116,59 @@ impl<'sc> StructField<'sc> {
     pub(crate) fn parse_from_pairs(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        struct_name: String,
+        docstrings: &mut HashMap<String, Vec<String>>
     ) -> CompileResult<'sc, Vec<Self>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
-        for i in (0..fields.len()).step_by(2) {
-            let span = Span {
-                span: fields[i].as_span(),
-                path: path.clone(),
-            };
-            let name = check!(
-                Ident::parse_from_pair(fields[i].clone(), config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            assert_or_warn!(
-                is_snake_case(name.primary_name),
-                warnings,
-                span.clone(),
-                Warning::NonSnakeCaseStructFieldName {
-                    field_name: name.primary_name.clone()
+        let mut unassigned_docstrings = vec!();
+        let mut i = 0;
+        while i < fields.len() {
+            let field = &fields[i];
+            match field.as_rule() {
+                Rule::docstring => {
+                    unassigned_docstrings.push(field.as_str().to_string());
+                    i = i + 1;
+                },
+                _ => {
+                    let span = Span {
+                        span: fields[i].as_span(),
+                        path: path.clone(),
+                    };
+                    let name = check!(
+                        Ident::parse_from_pair(fields[i].clone(), config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if unassigned_docstrings.len() > 0 {
+                        docstrings.insert(
+                            format!("struct.{}.{}", struct_name, name.primary_name),
+                            unassigned_docstrings.clone(),
+                        );
+                        unassigned_docstrings.clear();
+                    }
+                    assert_or_warn!(
+                        is_snake_case(name.primary_name),
+                        warnings,
+                        span.clone(),
+                        Warning::NonSnakeCaseStructFieldName {
+                            field_name: name.primary_name.clone()
+                        }
+                    );
+                    let r#type = check!(
+                        TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config),
+                        TypeInfo::Unit,
+                        warnings,
+                        errors
+                    );
+                    fields_buf.push(StructField { name, r#type, span });
+                    i = i+2;
                 }
-            );
-            let r#type = check!(
-                TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config),
-                TypeInfo::Unit,
-                warnings,
-                errors
-            );
-            fields_buf.push(StructField { name, r#type, span });
+            }
         }
         ok(fields_buf, warnings, errors)
     }

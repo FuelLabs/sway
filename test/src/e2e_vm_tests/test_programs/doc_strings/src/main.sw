@@ -18,9 +18,9 @@ enum NumberOrString {
 /// 1. A `value` of type `NumberOrString`
 /// 2. An `address` of type `byte`
 struct Data {
-	// e /// The `value` field in `Data`
+	/// The `value` field in `Data`
 	value: NumberOrString,
-	// e /// The `address` field in `Data`
+	/// The `address` field in `Data`
 	address: byte,
 }
 

@@ -121,7 +121,7 @@ impl<'sc> Declaration<'sc> {
             )),
             Rule::struct_decl => {
                 let struct_decl = check!(
-                    StructDeclaration::parse_from_pair(decl_inner, config),
+                    StructDeclaration::parse_from_pair(decl_inner, config, docstrings),
                     return err(warnings, errors),
                     warnings,
                     errors
