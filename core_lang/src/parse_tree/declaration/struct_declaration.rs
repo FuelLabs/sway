@@ -30,7 +30,7 @@ impl<'sc> StructDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         decl: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>
+        docstrings: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -91,7 +91,12 @@ impl<'sc> StructDeclaration<'sc> {
         );
         let fields = if let Some(fields) = fields_pair {
             check!(
-                StructField::parse_from_pairs(fields, config, name.primary_name.to_string(), docstrings),
+                StructField::parse_from_pairs(
+                    fields,
+                    config,
+                    name.primary_name.to_string(),
+                    docstrings
+                ),
                 Vec::new(),
                 warnings,
                 errors
@@ -117,14 +122,14 @@ impl<'sc> StructField<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
         struct_name: String,
-        docstrings: &mut HashMap<String, Vec<String>>
+        docstrings: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Vec<Self>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
-        let mut unassigned_docstrings = vec!();
+        let mut unassigned_docstrings = vec![];
         let mut i = 0;
         while i < fields.len() {
             let field = &fields[i];
@@ -132,7 +137,7 @@ impl<'sc> StructField<'sc> {
                 Rule::docstring => {
                     unassigned_docstrings.push(field.as_str().to_string());
                     i = i + 1;
-                },
+                }
                 _ => {
                     let span = Span {
                         span: fields[i].as_span(),
@@ -166,7 +171,7 @@ impl<'sc> StructField<'sc> {
                         errors
                     );
                     fields_buf.push(StructField { name, r#type, span });
-                    i = i+2;
+                    i = i + 2;
                 }
             }
         }
