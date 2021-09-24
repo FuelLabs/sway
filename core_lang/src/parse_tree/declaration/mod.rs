@@ -25,6 +25,7 @@ use crate::parser::Rule;
 use crate::types::TypeInfo;
 use crate::Ident;
 use pest::iterators::Pair;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub enum Declaration<'sc> {
@@ -42,6 +43,8 @@ impl<'sc> Declaration<'sc> {
     pub(crate) fn parse_from_pair(
         decl: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        unassigned_docstrings: Vec<String>,
+        docstrings: &mut HashMap<String, Vec<String>>
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -49,7 +52,7 @@ impl<'sc> Declaration<'sc> {
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
             Rule::fn_decl => Declaration::FunctionDeclaration(check!(
-                FunctionDeclaration::parse_from_pair(decl_inner, config),
+                FunctionDeclaration::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -84,7 +87,7 @@ impl<'sc> Declaration<'sc> {
                     None
                 };
                 let body = check!(
-                    Expression::parse_from_pair(maybe_body, config.clone()),
+                    Expression::parse_from_pair(maybe_body, config.clone(), docstrings),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -102,43 +105,61 @@ impl<'sc> Declaration<'sc> {
                 })
             }
             Rule::trait_decl => Declaration::TraitDeclaration(check!(
-                TraitDeclaration::parse_from_pair(decl_inner, config),
+                TraitDeclaration::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),
                 warnings,
                 errors
             )),
-            Rule::struct_decl => Declaration::StructDeclaration(check!(
-                StructDeclaration::parse_from_pair(decl_inner, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
-            Rule::enum_decl => Declaration::EnumDeclaration(check!(
-                EnumDeclaration::parse_from_pair(decl_inner, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
+            Rule::struct_decl => {
+                let struct_decl = check!(
+                    StructDeclaration::parse_from_pair(decl_inner, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if unassigned_docstrings.len() > 0 {
+                    docstrings.insert(
+                        format!("struct.{}", struct_decl.name.primary_name),
+                        unassigned_docstrings
+                    );
+                }
+                Declaration::StructDeclaration(struct_decl)
+            },
+            Rule::enum_decl => {
+                let enum_decl = check!(
+                    EnumDeclaration::parse_from_pair(decl_inner, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if unassigned_docstrings.len() > 0 {
+                    docstrings.insert(
+                        format!("enum.{}", enum_decl.name.primary_name),
+                        unassigned_docstrings
+                    );
+                }
+                Declaration::EnumDeclaration(enum_decl)
+            },
             Rule::reassignment => Declaration::Reassignment(check!(
-                Reassignment::parse_from_pair(decl_inner, config),
+                Reassignment::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),
                 warnings,
                 errors
             )),
             Rule::impl_trait => Declaration::ImplTrait(check!(
-                ImplTrait::parse_from_pair(decl_inner, config),
+                ImplTrait::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),
                 warnings,
                 errors
             )),
             Rule::impl_self => Declaration::ImplSelf(check!(
-                ImplSelf::parse_from_pair(decl_inner, config),
+                ImplSelf::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),
                 warnings,
                 errors
             )),
             Rule::abi_decl => Declaration::AbiDeclaration(check!(
-                AbiDeclaration::parse_from_pair(decl_inner, config),
+                AbiDeclaration::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),
                 warnings,
                 errors

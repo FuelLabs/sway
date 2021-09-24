@@ -6,6 +6,7 @@ use crate::types::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Visibility {
@@ -38,6 +39,7 @@ impl<'sc> FunctionDeclaration<'sc> {
     pub fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        docstrings: &mut HashMap<String, Vec<String>>
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut parts = pair.clone().into_inner();
@@ -176,7 +178,7 @@ impl<'sc> FunctionDeclaration<'sc> {
             path: path.clone(),
         };
         let body = check!(
-            CodeBlock::parse_from_pair(body, config),
+            CodeBlock::parse_from_pair(body, config, docstrings),
             crate::CodeBlock {
                 contents: Vec::new(),
                 whole_block_span,

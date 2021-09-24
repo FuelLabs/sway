@@ -21,6 +21,7 @@ impl<'sc> CodeBlock<'sc> {
     pub(crate) fn parse_from_pair(
         block: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        docstrings: &mut HashMap<String, Vec<String>>
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -30,80 +31,106 @@ impl<'sc> CodeBlock<'sc> {
             path: path.clone(),
         };
         let block_inner = block.into_inner();
+        let mut unassigned_docstrings: Vec<String> = vec!();
         let mut contents = Vec::new();
         for pair in block_inner {
-            contents.push(match pair.as_rule() {
-                Rule::declaration => AstNode {
-                    content: AstNodeContent::Declaration(check!(
-                        Declaration::parse_from_pair(pair.clone(), config),
-                        continue,
-                        warnings,
-                        errors
-                    )),
-                    span: span::Span {
-                        span: pair.as_span(),
-                        path: path.clone(),
-                    },
+            let content = match pair.as_rule() {
+                Rule::declaration => {
+                    let mut decl = pair.clone().into_inner();
+                    let decl_inner = decl.next().unwrap();
+                    match decl_inner.as_rule() {
+                        Rule::docstring => {
+                            let mut parts = decl_inner.clone().into_inner();
+                            let docstring = parts.next().unwrap().as_str().trim();
+                            unassigned_docstrings.push(docstring.to_string());
+                            None
+                        }
+                        _ => {
+                            let decl_stmt = AstNode {
+                                content: AstNodeContent::Declaration(check!(
+                                    Declaration::parse_from_pair(pair.clone(), config, unassigned_docstrings.clone(), docstrings),
+                                    continue,
+                                    warnings,
+                                    errors
+                                )),
+                                span: span::Span {
+                                    span: pair.as_span(),
+                                    path: path.clone(),
+                                },
+                            };
+                            unassigned_docstrings.clear();
+                            Some(decl_stmt)
+                        }
+                    }
                 },
                 Rule::expr_statement => {
                     let evaluated_node = check!(
                         Expression::parse_from_pair(
                             pair.clone().into_inner().next().unwrap().clone(),
-                            config
+                            config,
+                            docstrings
                         ),
                         continue,
                         warnings,
                         errors
                     );
-                    AstNode {
+                    let expr_stmt = AstNode {
                         content: AstNodeContent::Expression(evaluated_node),
                         span: span::Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
-                    }
+                    };
+                    unassigned_docstrings.clear();
+                    Some(expr_stmt)
                 }
                 Rule::return_statement => {
                     let evaluated_node = check!(
-                        ReturnStatement::parse_from_pair(pair.clone(), config),
+                        ReturnStatement::parse_from_pair(pair.clone(), config, docstrings),
                         continue,
                         warnings,
                         errors
                     );
-                    AstNode {
+                    let return_stmt = AstNode {
                         content: AstNodeContent::ReturnStatement(evaluated_node),
                         span: span::Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
-                    }
+                    };
+                    unassigned_docstrings.clear();
+                    Some(return_stmt)
                 }
                 Rule::expr => {
                     let res = check!(
-                        Expression::parse_from_pair(pair.clone(), config),
+                        Expression::parse_from_pair(pair.clone(), config, docstrings),
                         continue,
                         warnings,
                         errors
                     );
-                    AstNode {
+                    let expr = AstNode {
                         content: AstNodeContent::ImplicitReturnExpression(res.clone()),
                         span: res.span(),
-                    }
+                    };
+                    unassigned_docstrings.clear();
+                    Some(expr)
                 }
                 Rule::while_loop => {
                     let res = check!(
-                        WhileLoop::parse_from_pair(pair.clone(), config),
+                        WhileLoop::parse_from_pair(pair.clone(), config, docstrings),
                         continue,
                         warnings,
                         errors
                     );
-                    AstNode {
+                    let while_stmt = AstNode {
                         content: AstNodeContent::WhileLoop(res),
                         span: span::Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
-                    }
+                    };
+                    unassigned_docstrings.clear();
+                    Some(while_stmt)
                 }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
@@ -116,7 +143,10 @@ impl<'sc> CodeBlock<'sc> {
                     ));
                     continue;
                 }
-            })
+            };
+            if let Some(content) = content {
+                contents.push(content);
+            }
         }
 
         ok(

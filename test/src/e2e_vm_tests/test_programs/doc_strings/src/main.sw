@@ -7,9 +7,9 @@ script;
 /// `NumberOrString::Number(42)`
 /// `NumberOrString::String("foo")`
 enum NumberOrString {
-	/// The `Number` variant in `NumberOrString`
+	// e /// The `Number` variant in `NumberOrString`
 	Number: u64,
-	/// The `String` variant in `NumberOrString`
+	// e /// The `String` variant in `NumberOrString`
 	String: str[4],
 }
 
@@ -18,9 +18,9 @@ enum NumberOrString {
 /// 1. A `value` of type `NumberOrString`
 /// 2. An `address` of type `byte`
 struct Data {
-	/// The `value` field in `Data`
+	// e /// The `value` field in `Data`
 	value: NumberOrString,
-	/// The `address` field in `Data`
+	// e /// The `address` field in `Data`
 	address: byte,
 }
 

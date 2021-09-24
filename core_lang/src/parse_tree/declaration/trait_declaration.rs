@@ -8,6 +8,7 @@ use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration<'sc> {
@@ -22,6 +23,7 @@ impl<'sc> TraitDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        docstrings: &mut HashMap<String, Vec<String>>
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -82,7 +84,7 @@ impl<'sc> TraitDeclaration<'sc> {
                     }
                     Rule::fn_decl => {
                         methods.push(check!(
-                            FunctionDeclaration::parse_from_pair(fn_sig_or_decl, config),
+                            FunctionDeclaration::parse_from_pair(fn_sig_or_decl, config, docstrings),
                             continue,
                             warnings,
                             errors
