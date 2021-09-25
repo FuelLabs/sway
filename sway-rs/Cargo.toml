@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1"
 blake2 = "0.9"
 bytes = { version = "1.0.1", features = ["serde"] }
 glob = { version = "0.3.0", default-features = false }
@@ -18,3 +19,4 @@ sha2 = "0.9.5"
 strum = "0.21"
 strum_macros = "0.21"
 thiserror = { version = "1.0.26", default-features = false }
+itertools = "0.10.1"

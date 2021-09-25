@@ -3128,13 +3128,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "sway-abi-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "hex",
+ "itertools",
+ "sha3",
+ "structopt 0.3.22",
+ "sway-rs",
+]
+
+[[package]]
 name = "sway-rs"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "blake2",
  "bytes 1.1.0",
  "glob",
  "hex",
+ "itertools",
  "regex",
  "serde",
  "serde_json",

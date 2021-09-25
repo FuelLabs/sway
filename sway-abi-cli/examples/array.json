@@ -1,0 +1,18 @@
+[
+    {
+        "type": "function",
+        "inputs": [
+            {
+                "name": "arg",
+                "type": "u16[3]"
+            }
+        ],
+        "name": "takes_array",
+        "outputs": [
+            {
+                "name": "",
+                "type": "u16[2]"
+            }
+        ]
+    }
+]

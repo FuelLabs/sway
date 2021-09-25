@@ -1,5 +1,6 @@
 #![allow(dead_code)] // Temporary while it's a WIP.
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter, Result};
 use strum_macros::{EnumString, ToString};
 
 pub type Word = [u8; 8];
@@ -23,6 +24,12 @@ pub enum Token {
     String(String),
     Struct(Vec<Token>),
     Enum(Box<EnumSelector>),
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl<'a> Default for Token {
@@ -75,14 +82,6 @@ pub struct Property {
     pub type_field: String,
     pub components: Option<Vec<Property>>, // Used for custom types
 }
-
-// #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct Component {
-//     pub name: String,
-//     #[serde(rename = "type")]
-//     pub type_name: String,
-// }
 
 /// Converts a u8 to a right aligned array of 8 bytes.
 pub fn pad_u8(value: u8) -> Word {

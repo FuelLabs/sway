@@ -1,0 +1,13 @@
+[package]
+name = "sway-abi-cli"
+authors = ["digorithm <rodrigo.araujo@fuel.sh>"]
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+anyhow = "1"
+hex = "0.4"
+sha3 = "0.9"
+structopt = "0.3"
+itertools = "0.10"
+sway-rs = {path = "../sway-rs"}

@@ -1,6 +1,7 @@
+use anyhow::anyhow;
 use core::panic;
-use hex::decode;
 use hex::FromHex;
+use itertools::Itertools;
 use regex::{Captures, Regex};
 use std::convert::TryInto;
 use std::str;
@@ -9,13 +10,13 @@ use std::str::FromStr;
 use crate::{
     abi_decoder::ABIDecoder,
     abi_encoder::ABIEncoder,
-    types::{Bits256, JsonABI, ParamType, Property, Token},
+    errors::Error,
+    types::{JsonABI, ParamType, Property, Token},
 };
 use serde_json;
 
 // TODO: clean-up this disaster of code
 // TODO: improve error handling, error messages
-// TODO: Update ABI documentation wrt to JSON for strucs/enums
 
 pub struct ABI {}
 
@@ -28,39 +29,76 @@ impl ABI {
     /// Encode is essentially a wrapper on top of `abi_encoder`,
     /// but it is responsible for parsing strings into proper `Token`s
     /// that can be encoded by the `abi_encoder`.
-    pub fn encode(&self, abi: &str, fn_name: &str, values: &[&str]) -> Result<String, String> {
-        let parsed_abi: JsonABI = serde_json::from_str(abi).unwrap();
+    pub fn encode(&self, abi: &str, fn_name: &str, values: &[String]) -> Result<String, Error> {
+        let parsed_abi: JsonABI = serde_json::from_str(abi)?;
 
-        for entry in parsed_abi {
-            if entry.name == fn_name {
-                let raw_selector = self.build_fn_selector(fn_name, &entry.inputs);
+        let entry = parsed_abi.iter().find(|e| e.name == fn_name);
 
-                let mut encoder = ABIEncoder::new(raw_selector.as_bytes());
-
-                let params: Vec<_> = entry
-                    .inputs
-                    .iter()
-                    .map(|param| self.parse_param(param).unwrap())
-                    .zip(values.iter().map(|v| v as &str))
-                    .collect();
-
-                let tokens = self.parse_tokens(&params).unwrap();
-
-                let encoded = encoder.encode(&tokens).unwrap();
-
-                let selector = encoder.function_selector;
-
-                let mut encoded_abi: Vec<u8> = Vec::new();
-
-                encoded_abi.extend_from_slice(&selector);
-                encoded_abi.extend(encoded);
-
-                return Ok(hex::encode(encoded_abi));
-            }
+        if entry.is_none() {
+            return Err(Error::InvalidName(format!(
+                "couldn't find function name: {}",
+                fn_name
+            )));
         }
-        Err("wrong function name".into())
+
+        let entry = entry.unwrap();
+
+        let mut encoder =
+            ABIEncoder::new(self.build_fn_selector(fn_name, &entry.inputs).as_bytes());
+
+        let params: Vec<_> = entry
+            .inputs
+            .iter()
+            .map(|param| self.parse_param(param).unwrap())
+            .zip(values.iter().map(|v| v as &str))
+            .collect();
+
+        let tokens = self.parse_tokens(&params).unwrap();
+
+        let encoded = encoder.encode(&tokens).unwrap();
+
+        let selector = encoder.function_selector;
+
+        let mut encoded_abi: Vec<u8> = Vec::new();
+
+        encoded_abi.extend_from_slice(&selector);
+        encoded_abi.extend(encoded);
+
+        return Ok(hex::encode(encoded_abi));
     }
 
+    /// Similar to encode, but it encodes only an array of strings containing
+    /// [<type_1>, <param_1>, <type_2>, <param_2>, <type_n>, <param_n>]
+    /// Without having to reference to a JSON specification of the ABI.
+    pub fn encode_params(&self, params: &[String]) -> Result<String, String> {
+        let pairs: Vec<_> = params.chunks(2).collect_vec();
+
+        let mut param_type_pairs: Vec<(ParamType, &str)> = vec![];
+
+        let mut encoder = ABIEncoder::new(&[0]);
+
+        for pair in pairs {
+            let prop = Property {
+                name: "".to_string(),
+                type_field: pair[0].clone(),
+                components: None,
+            };
+            let p = self.parse_param(&prop).unwrap();
+
+            let t: (ParamType, &str) = (p, &pair[1]);
+            param_type_pairs.push(t);
+        }
+
+        let tokens = self.parse_tokens(&param_type_pairs).unwrap();
+
+        let encoded = encoder.encode(&tokens).unwrap();
+
+        Ok(hex::encode(encoded))
+    }
+
+    /// Helper function to turn a list of tuples(ParamType, &str) into
+    /// a vector of Tokens ready to be encoded.
+    /// Essentially a wrapper on `tokenize`.
     pub fn parse_tokens<'a>(&self, params: &'a [(ParamType, &str)]) -> Result<Vec<Token>, String> {
         params
             .iter()
@@ -69,6 +107,9 @@ impl ABI {
             .map_err(From::from)
     }
 
+    /// Takes a ParamType and a value string and joins them as a single
+    /// Token that holds the value within it. This Token is used
+    /// in the encoding process.
     pub fn tokenize<'a>(&self, param: &ParamType, value: String) -> Result<Token, String> {
         let trimmed_value = value.trim();
         match &*param {
@@ -324,6 +365,13 @@ impl ABI {
         Err("wrong".into())
     }
 
+    /// Similar to decode, but it decodes only an array types and the encoded data
+    /// without having to reference to a JSON specification of the ABI.
+    pub fn decode_params(&self, params: &[ParamType], data: &[u8]) -> Result<Vec<Token>, String> {
+        let mut decoder = ABIDecoder::new();
+        Ok(decoder.decode(params, data).unwrap())
+    }
+
     /// Turns a JSON property into ParamType
     pub fn parse_param(&self, param: &Property) -> Result<ParamType, String> {
         if param.type_field == "struct" {
@@ -410,7 +458,7 @@ mod tests {
         ]
         "#;
 
-        let values = vec!["10"];
+        let values: Vec<String> = vec!["10".to_string()];
 
         let abi = ABI::new();
 
@@ -460,9 +508,9 @@ mod tests {
         ]
         "#;
 
-        let values = vec![
-            "d5579c46dfcc7f18207013e65b44e4cb4e2c2298f4ac457ba8f82743f31e930b",
-            "1",
+        let values: Vec<String> = vec![
+            "d5579c46dfcc7f18207013e65b44e4cb4e2c2298f4ac457ba8f82743f31e930b".to_string(),
+            "1".to_string(),
         ];
 
         let abi = ABI::new();
@@ -512,7 +560,7 @@ mod tests {
         ]
         "#;
 
-        let values = vec!["[1,2,3]"];
+        let values: Vec<String> = vec!["[1,2,3]".to_string()];
 
         let abi = ABI::new();
 
@@ -616,7 +664,7 @@ mod tests {
         ]
         "#;
 
-        let values = vec!["[[1,2],[3],[4]]"];
+        let values: Vec<String> = vec!["[[1,2],[3],[4]]".to_string()];
 
         let abi = ABI::new();
 
@@ -664,7 +712,7 @@ mod tests {
         ]
         "#;
 
-        let values = vec!["This is a full sentence"];
+        let values: Vec<String> = vec!["This is a full sentence".to_string()];
 
         let abi = ABI::new();
 
@@ -715,7 +763,7 @@ mod tests {
         ]
         "#;
 
-        let values = vec!["(42, true)"];
+        let values: Vec<String> = vec!["(42, true)".to_string()];
 
         let abi = ABI::new();
 
@@ -766,7 +814,7 @@ mod tests {
         ]
         "#;
 
-        let values = vec!["(10, (true, [1,2]))"];
+        let values: Vec<String> = vec!["(10, (true, [1,2]))".to_string()];
 
         let abi = ABI::new();
 
@@ -815,7 +863,7 @@ mod tests {
         ]
         "#;
 
-        let values = vec!["((true, [1,2]), 10)"];
+        let values: Vec<String> = vec!["((true, [1,2]), 10)".to_string()];
 
         let encoded = abi.encode(json_abi, function_name, &values).unwrap();
         println!("encoded: {:?}\n", encoded);
@@ -853,7 +901,7 @@ mod tests {
         ]
         "#;
 
-        let values = vec!["(0, 42)"];
+        let values: Vec<String> = vec!["(0, 42)".to_string()];
 
         let abi = ABI::new();
 
