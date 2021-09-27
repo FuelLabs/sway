@@ -46,6 +46,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("b256_bad_jumps", ProgramState::Return(1)),
         ("b256_ops", ProgramState::Return(100)),
         ("bool_and_or", ProgramState::Return(42)),
+        ("neq_4_test", ProgramState::Return(0)),
+        ("eq_4_test", ProgramState::Return(1)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {

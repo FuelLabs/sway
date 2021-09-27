@@ -1,0 +1,8 @@
+[project]
+author  = "Alexander Hansen"
+license = "MIT"
+name = "eq_4_test"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../stdlib" }
