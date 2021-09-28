@@ -1,0 +1,12 @@
+fn_args_layout = "Tall"
+hard_tabs = false
+match_arm_leading_pipes = "Never"
+max_width = 100
+merge_derives = true
+remove_nested_parens = true
+reorder_imports = true
+reorder_modules = true
+tab_spaces = 4
+use_field_init_shorthand = false
+use_small_heuristics = "Default"
+use_try_shorthand = false

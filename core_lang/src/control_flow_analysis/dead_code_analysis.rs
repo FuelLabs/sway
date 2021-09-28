@@ -2,6 +2,7 @@ use super::*;
 
 use crate::parse_tree::CallPath;
 use crate::semantic_analysis::ast_node::TypedStructExpressionField;
+use crate::span::Span;
 use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
     parse_tree::Visibility,
@@ -21,7 +22,6 @@ use crate::{
     },
     CompileWarning, Warning,
 };
-use pest::Span;
 use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
 
@@ -663,6 +663,27 @@ fn connect_expression<'sc>(
             } else {
                 Ok(vec![fn_entrypoint])
             }
+        }
+        LazyOperator { lhs, rhs, .. } => {
+            let lhs_expr = connect_expression(
+                &lhs.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                lhs.span.clone(),
+            )?;
+            let rhs_expr = connect_expression(
+                &rhs.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                rhs.span.clone(),
+            )?;
+            Ok([lhs_expr, rhs_expr].concat())
         }
         Literal(_) => {
             let node = graph.add_node("Literal value".into());

@@ -1,6 +1,7 @@
 #![allow(warnings)]
 
 use super::*;
+use crate::span::Span;
 use crate::{
     asm_lang::*,
     error::*,
@@ -17,9 +18,8 @@ use crate::{
         TypedExpression,
     },
 };
-use pest::Span;
+
 pub(crate) fn convert_subfield_expression_to_asm<'sc>(
-    unary_op: &Option<UnaryOp>,
     span: &Span<'sc>,
     parent: &TypedExpression<'sc>,
     field_to_access: &TypedStructField<'sc>,

@@ -1,8 +1,10 @@
+use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
+use crate::span::Span;
 use pest::iterators::Pair;
-use pest::Span;
 use std::hash::{Hash, Hasher};
+
 #[derive(Debug, Clone)]
 pub struct Ident<'sc> {
     pub primary_name: &'sc str,
@@ -29,13 +31,27 @@ impl PartialEq for Ident<'_> {
 impl Eq for Ident<'_> {}
 
 impl<'sc> Ident<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Ident> {
+    pub(crate) fn parse_from_pair(
+        pair: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Ident<'sc>> {
+        let path = if let Some(config) = config {
+            Some(config.path())
+        } else {
+            None
+        };
         let span = {
             let pair = pair.clone();
             if pair.as_rule() != Rule::ident {
-                pair.into_inner().next().unwrap().as_span()
+                Span {
+                    span: pair.into_inner().next().unwrap().as_span(),
+                    path,
+                }
             } else {
-                pair.as_span()
+                Span {
+                    span: pair.as_span(),
+                    path,
+                }
             }
         };
         let name = pair.as_str().trim();

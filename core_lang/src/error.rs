@@ -1,25 +1,12 @@
+use crate::span::Span;
 use crate::{parser::Rule, types::MaybeResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
-use pest::Span;
 use thiserror::Error;
 
 macro_rules! check {
     ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident) => {{
         let mut res = $fn_expr;
-        $warnings.append(&mut res.warnings);
-        $errors.append(&mut res.errors);
-        match res.value {
-            None => $error_recovery,
-            Some(value) => value,
-        }
-    }};
-}
-
-/// evaluates `$fn` with argument `$arg`, and pushes any warnings to the `$warnings` buffer.
-macro_rules! eval {
-    ($fn: expr, $warnings: ident, $errors: ident, $arg: expr, $error_recovery: expr) => {{
-        let mut res = $fn($arg.clone());
         $warnings.append(&mut res.warnings);
         $errors.append(&mut res.errors);
         match res.value {
@@ -139,6 +126,10 @@ impl<'sc> CompileWarning<'sc> {
         (self.span.start(), self.span.end())
     }
 
+    pub fn path(&self) -> String {
+        self.span.path()
+    }
+
     /// Returns the line and column start and end
     pub fn line_col(&self) -> (LineCol, LineCol) {
         (
@@ -176,12 +167,12 @@ pub enum Warning<'sc> {
         r#type: MaybeResolvedType<'sc>,
     },
     SimilarMethodFound {
-        lib: String,
-        module: String,
-        name: String,
+        lib: &'sc str,
+        module: &'sc str,
+        name: &'sc str,
     },
     OverridesOtherSymbol {
-        name: &'sc str,
+        name: String,
     },
     OverridingTraitImplementation,
     DeadDeclaration,
@@ -286,14 +277,14 @@ impl<'sc> Warning<'sc> {
 #[derive(Error, Debug, Clone)]
 pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariable { var_name: &'sc str, span: Span<'sc> },
+    UnknownVariable { var_name: String, span: Span<'sc> },
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariablePath { var_name: String, span: Span<'sc> },
+    UnknownVariablePath { var_name: &'sc str, span: Span<'sc> },
     #[error("Function \"{name}\" does not exist in this scope.")]
     UnknownFunction { name: &'sc str, span: Span<'sc> },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
     NotAVariable {
-        name: &'sc str,
+        name: String,
         span: Span<'sc>,
         what_it_is: &'static str,
     },
@@ -302,7 +293,7 @@ pub enum CompileError<'sc> {
          {what_it_is}."
     )]
     NotAFunction {
-        name: &'sc str,
+        name: String,
         span: Span<'sc>,
         what_it_is: &'static str,
     },
@@ -402,7 +393,7 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
     },
     #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
-    AssignmentToNonMutable(&'sc str, Span<'sc>),
+    AssignmentToNonMutable(String, Span<'sc>),
     #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
@@ -413,7 +404,7 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
         comma_separated_generic_params: String,
         fn_name: &'sc str,
-        args: &'sc str,
+        args: String,
     },
     #[error(
         "Asm opcode has multiple immediates specified, when any opcode has at most one immediate."
@@ -435,7 +426,7 @@ pub enum CompileError<'sc> {
     #[error("Function \"{name}\" is not a part of trait \"{trait_name}\"'s interface surface.")]
     FunctionNotAPartOfInterfaceSurface {
         name: &'sc str,
-        trait_name: &'sc str,
+        trait_name: String,
         span: Span<'sc>,
     },
     #[error("Functions are missing from this trait implementation: {missing_functions}")]
@@ -492,7 +483,7 @@ pub enum CompileError<'sc> {
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
         span: Span<'sc>,
-        method_name: &'sc str,
+        method_name: String,
         type_name: String,
     },
     #[error("The asterisk, if present, must be the last part of a path. E.g., `use foo::bar::*`.")]
@@ -516,7 +507,7 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { span: Span<'sc>, name: String },
+    SymbolNotFound { span: Span<'sc>, name: &'sc str },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -531,7 +522,7 @@ pub enum CompileError<'sc> {
     NotAType {
         span: Span<'sc>,
         name: String,
-        actually_is: String,
+        actually_is: &'sc str,
     },
     #[error(
         "This enum variant requires an instantiation expression. Try initializing it with \
@@ -597,7 +588,7 @@ pub enum CompileError<'sc> {
     )]
     DisallowedLw { span: Span<'sc> },
     #[error(
-        "This op expects {expected} registers as arguments, but you provided {received} registers."
+        "This op expects {expected} register(s) as arguments, but you provided {received} register(s)."
     )]
     IncorrectNumberOfAsmRegisters {
         span: Span<'sc>,
@@ -609,7 +600,7 @@ pub enum CompileError<'sc> {
     #[error("This reference is ambiguous, and could refer to either a module or an enum of the same name. Try qualifying the name with a path.")]
     AmbiguousPath { span: Span<'sc> },
     #[error("This value is not valid within a \"str\" type.")]
-    InvalidStrType { raw: &'sc str, span: Span<'sc> },
+    InvalidStrType { raw: String, span: Span<'sc> },
     #[error("Unknown type name.")]
     UnknownType { span: Span<'sc> },
     #[error("Bytecode can only support programs with up to 2^12 words worth of opcodes. Try refactoring into contract calls? This is a temporary error and will be implemented in the future.")]
@@ -714,7 +705,7 @@ pub enum TypeError<'sc> {
 }
 
 impl<'sc> TypeError<'sc> {
-    pub(crate) fn pest_span(&self) -> &Span<'sc> {
+    pub(crate) fn internal_span(&self) -> &Span<'sc> {
         use TypeError::*;
         match self {
             MismatchedType { span, .. } => span,
@@ -763,11 +754,15 @@ impl<'sc> CompileError<'sc> {
     }
 
     pub fn span(&self) -> (usize, usize) {
-        let sp = self.pest_span();
+        let sp = self.internal_span();
         (sp.start(), sp.end())
     }
 
-    pub fn pest_span(&self) -> &Span<'sc> {
+    pub fn path(&self) -> String {
+        self.internal_span().path()
+    }
+
+    pub fn internal_span(&self) -> &Span<'sc> {
         use CompileError::*;
         match self {
             UnknownVariable { span, .. } => span,
@@ -776,7 +771,7 @@ impl<'sc> CompileError<'sc> {
             NotAVariable { span, .. } => span,
             NotAFunction { span, .. } => span,
             Unimplemented(_, span) => span,
-            TypeError(err) => err.pest_span(),
+            TypeError(err) => err.internal_span(),
             ParseFailure { span, .. } => span,
             InvalidTopLevelItem(_, span) => span,
             Internal(_, span) => span,
@@ -868,8 +863,8 @@ impl<'sc> CompileError<'sc> {
     /// Returns the line and column start and end
     pub fn line_col(&self) -> (LineCol, LineCol) {
         (
-            self.pest_span().start_pos().line_col().into(),
-            self.pest_span().end_pos().line_col().into(),
+            self.internal_span().start_pos().line_col().into(),
+            self.internal_span().end_pos().line_col().into(),
         )
     }
 }

@@ -1,4 +1,5 @@
 use super::*;
+use crate::span::Span;
 use crate::{
     asm_lang::{virtual_ops::VirtualRegister, *},
     parse_tree::CallPath,
@@ -11,11 +12,11 @@ use crate::{
     },
     types::{MaybeResolvedType, ResolvedType},
 };
-use pest::Span;
 
 mod contract_call;
 mod enum_instantiation;
 mod if_exp;
+mod lazy_op;
 mod structs;
 mod subfield;
 use contract_call::convert_contract_call_to_asm;
@@ -83,7 +84,17 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                 )
             }
         }
-        TypedExpressionVariant::VariableExpression { unary_op: _, name } => {
+        TypedExpressionVariant::LazyOperator { op, lhs, rhs } => {
+            lazy_op::convert_lazy_operator_to_asm(
+                op,
+                lhs,
+                rhs,
+                return_register,
+                namespace,
+                register_sequencer,
+            )
+        }
+        TypedExpressionVariant::VariableExpression { name } => {
             let var = check!(
                 namespace.look_up_variable(name),
                 return err(warnings, errors),
@@ -124,7 +135,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     ConstantRegister::parse_register_name(name).is_none(),
                     warnings,
                     name_span.clone(),
-                    Warning::ShadowingReservedRegister { reg_name: name }
+                    Warning::ShadowingReservedRegister { reg_name: &name }
                 );
 
                 mapping_of_real_registers_to_declared_names.insert(name, register.clone());
@@ -224,6 +235,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
+                _ if exp.return_type == MaybeResolvedType::Resolved(ResolvedType::Unit) => (),
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),
@@ -237,12 +249,10 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             fields,
         } => convert_struct_expression_to_asm(struct_name, fields, namespace, register_sequencer),
         TypedExpressionVariant::StructFieldAccess {
-            unary_op,
             resolved_type_of_parent,
             prefix,
             field_to_access,
         } => convert_subfield_expression_to_asm(
-            unary_op,
             &exp.span,
             prefix,
             field_to_access,
@@ -462,26 +472,14 @@ pub(crate) fn convert_abi_fn_to_asm<'sc>(
 
     asm_buf.append(&mut body);
     // return the value from the abi function
-    asm_buf.push(Op {
-        // TODO we are just returning zero for now and not supporting return values from abi
-        // functions
-        opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
-            ConstantRegister::Zero,
-        ))),
-        owning_span: None,
-        comment: format!("{} abi fn return", decl.name.primary_name),
-    });
+    asm_buf.append(&mut check!(
+        ret_or_retd_value(&decl, return_register, register_sequencer, &mut namespace),
+        return err(warnings, errors),
+        warnings,
+        errors
+    ));
+
     parent_namespace.data_section = namespace.data_section;
-    // because we are not supporting return values right now, throw an error if the function
-    // returns anything.
-    if decl.return_type != MaybeResolvedType::Resolved(ResolvedType::Unit)
-        && decl.return_type != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
-    {
-        errors.push(CompileError::Unimplemented(
-            "ABI function return values are not yet implemented",
-            decl.return_type_span.clone(),
-        ));
-    }
 
     // the return  value is already put in its proper register via the above statement, so the buf
     // is done

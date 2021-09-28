@@ -1,9 +1,10 @@
 use super::FunctionDeclaration;
 use super::TraitFn;
+use crate::build_config::BuildConfig;
 use crate::parser::Rule;
+use crate::span::Span;
 use crate::{error::*, Ident};
 use pest::iterators::Pair;
-use pest::Span;
 
 /// An `abi` declaration, which declares an interface for a contract
 /// to implement or for a caller to use to call a contract.
@@ -19,37 +20,40 @@ pub struct AbiDeclaration<'sc> {
 }
 
 impl<'sc> AbiDeclaration<'sc> {
-    pub(crate) fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
-        let span = pair.as_span();
+    pub(crate) fn parse_from_pair(
+        pair: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
+        let span = Span {
+            span: pair.as_span(),
+            path: config.map(|c| c.path()),
+        };
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let _abi_keyword = iter.next().expect("guaranteed by grammar");
-        let name = eval!(
-            Ident::parse_from_pair,
+        let name = check!(
+            Ident::parse_from_pair(iter.next().expect("guaranteed by grammar"), config),
+            return err(warnings, errors),
             warnings,
-            errors,
-            iter.next().expect("guaranteed by grammar"),
-            return err(warnings, errors)
+            errors
         );
         let mut interface_surface = vec![];
         let mut methods = vec![];
         let trait_methods = iter.next().expect("guaranteed by grammar");
         for func in trait_methods.into_inner() {
             match func.as_rule() {
-                Rule::fn_signature => interface_surface.push(eval!(
-                    TraitFn::parse_from_pair,
+                Rule::fn_signature => interface_surface.push(check!(
+                    TraitFn::parse_from_pair(func, config),
+                    continue,
                     warnings,
-                    errors,
-                    func,
-                    continue
+                    errors
                 )),
-                Rule::fn_decl => methods.push(eval!(
-                    FunctionDeclaration::parse_from_pair,
+                Rule::fn_decl => methods.push(check!(
+                    FunctionDeclaration::parse_from_pair(func, config),
+                    continue,
                     warnings,
-                    errors,
-                    func,
-                    continue
+                    errors
                 )),
                 _ => unreachable!("guaranteed by grammar"),
             }

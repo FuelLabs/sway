@@ -1,19 +1,9 @@
-use crate::cli::BuildCommand;
+use crate::cli::{BuildCommand, FormatCommand};
 use crate::ops::forc_build;
-use crate::{
-    cli::FormatCommand,
-    utils::{
-        constants::SWAY_EXTENSION,
-        helpers::{find_manifest_dir, print_green, print_red},
-    },
-};
+use crate::utils::helpers::{find_manifest_dir, get_sway_files, println_green, println_red};
 use formatter::get_formatted_data;
 use prettydiff::{basic::DiffOp, diff_lines};
-use std::{
-    ffi::OsStr,
-    fmt, fs, io,
-    path::{Path, PathBuf},
-};
+use std::{fmt, fs, io, path::PathBuf};
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {
@@ -38,7 +28,7 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
 
     match find_manifest_dir(&curr_dir) {
         Some(path) => {
-            let files = get_sway_files(path)?;
+            let files = get_sway_files(path);
             let mut contains_edits = false;
 
             for file in files {
@@ -68,22 +58,22 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                                             DiffOp::Insert(new) => {
                                                 count_of_updates += 1;
                                                 for n in new {
-                                                    print_green(&format!("+{}", n))?;
+                                                    println_green(&format!("+{}", n))?;
                                                 }
                                             }
                                             DiffOp::Remove(old) => {
                                                 count_of_updates += 1;
                                                 for o in old {
-                                                    print_red(&format!("-{}", o))?;
+                                                    println_red(&format!("-{}", o))?;
                                                 }
                                             }
                                             DiffOp::Replace(old, new) => {
                                                 count_of_updates += 1;
                                                 for o in old {
-                                                    print_red(&format!("-{}", o))?;
+                                                    println_red(&format!("-{}", o))?;
                                                 }
                                                 for n in new {
-                                                    print_green(&format!("+{}", n))?;
+                                                    println_green(&format!("+{}", n))?;
                                                 }
                                             }
                                         }
@@ -122,37 +112,10 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
     }
 }
 
-fn get_sway_files(path: PathBuf) -> Result<Vec<PathBuf>, FormatError> {
-    let mut files = vec![];
-    let mut dir_entries = vec![path];
-
-    while let Some(entry) = dir_entries.pop() {
-        for inner_entry in fs::read_dir(entry)? {
-            if let Ok(entry) = inner_entry {
-                let path = entry.path();
-                if path.is_dir() {
-                    dir_entries.push(path);
-                } else {
-                    if is_sway_file(&path) {
-                        files.push(path)
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(files)
-}
-
 fn format_sway_file(file: &PathBuf, formatted_content: &str) -> Result<(), FormatError> {
     fs::write(file, formatted_content)?;
 
     Ok(())
-}
-
-fn is_sway_file(file: &Path) -> bool {
-    let res = file.extension();
-    Some(OsStr::new(SWAY_EXTENSION)) == res
 }
 
 pub struct FormatError {

@@ -27,11 +27,12 @@ pub(crate) fn type_check_method_application<'sc>(
                 build_config,
                 dead_code_graph
             ),
-            continue,
+            error_recovery_expr(span.clone()),
             warnings,
             errors
         ));
     }
+
     let method = check!(
         namespace.find_method_for_type(
             &args_buf[0].return_type,
@@ -51,7 +52,9 @@ pub(crate) fn type_check_method_application<'sc>(
 
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
-        if arg.return_type != param.r#type {
+        if arg.return_type != param.r#type
+            && arg.return_type != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+        {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
                 provided: arg.return_type.friendly_type_str(),

@@ -1,0 +1,5 @@
+[project]
+author  = "Alexander Hansen"
+license = "MIT"
+name = "asm_should_not_have_return"
+entry = "main.sw"

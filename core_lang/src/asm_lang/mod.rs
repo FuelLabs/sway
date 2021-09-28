@@ -5,9 +5,9 @@
 //! Only things needed for opcode serialization and generation are included here.
 #![allow(dead_code)]
 
+use crate::span::Span;
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
-use pest::Span;
 use std::{collections::HashSet, fmt};
 use virtual_ops::{
     ConstantRegister, Label, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
@@ -558,6 +558,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::RET(r1)
                 }
+                "retd" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::RETD(r1, r2)
+                }
                 "cfei" => {
                     let imm = check!(
                         single_imm_24(args, immediate, whole_op_span),
@@ -979,7 +988,7 @@ fn four_regs<'sc>(
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
                 span: whole_op_span.clone(),
-                expected: 1,
+                expected: 4,
                 received: args.len(),
             });
             return err(warnings, errors);
@@ -1086,7 +1095,7 @@ fn single_imm_24<'sc>(
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name.parse() {
+        Some(i) => match i.primary_name[1..].parse() {
             Ok(o) => (o, i.span.clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
@@ -1139,7 +1148,7 @@ fn single_reg_imm_18<'sc>(
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name.parse() {
+        Some(i) => match i.primary_name[1..].parse() {
             Ok(o) => (o, i.span.clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
@@ -1192,7 +1201,7 @@ fn two_regs_imm_12<'sc>(
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name.parse() {
+        Some(i) => match i.primary_name[1..].parse() {
             Ok(o) => (o, i.span.clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
@@ -1254,6 +1263,7 @@ impl fmt::Display for Op<'_> {
                 JI(a) => format!("ji {}", a),
                 JNEI(a, b, c) => format!("jnei {} {} {}", a, b, c),
                 RET(a) => format!("ret {}", a),
+                RETD(a, b) => format!("retd {} {}", a, b),
                 CFEI(a) => format!("cfei {}", a),
                 CFSI(a) => format!("cfsi {}", a),
                 LB(a, b, c) => format!("lb {} {} {}", a, b, c),

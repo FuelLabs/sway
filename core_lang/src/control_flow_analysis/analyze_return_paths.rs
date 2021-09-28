@@ -11,9 +11,9 @@ use crate::semantic_analysis::{
     },
     TypedAstNode, TypedAstNodeContent,
 };
+use crate::span::Span;
 use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{error::*, semantic_analysis::TypedParseTree};
-use pest::Span;
 use petgraph::prelude::NodeIndex;
 
 impl<'sc> ControlFlowGraph<'sc> {
@@ -95,7 +95,10 @@ impl<'sc> ControlFlowGraph<'sc> {
                     let span = match last_discovered_span {
                         Some(ref o) => o.clone(),
                         None => {
-                            errors.push(CompileError::Internal("Attempted to construct return path error but no source span was found.", Span::new(" ", 0, 0).unwrap()));
+                            errors.push(CompileError::Internal("Attempted to construct return path error but no source span was found.", Span {
+                                span: pest::Span::new(" ", 0, 0).unwrap(),
+                                path: None
+                            }));
                             return errors;
                         }
                     };

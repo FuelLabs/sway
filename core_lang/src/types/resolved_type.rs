@@ -1,9 +1,9 @@
 use super::IntegerBits;
 use crate::semantic_analysis::TypedExpression;
+use crate::span::Span;
 use crate::types::MaybeResolvedType;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use derivative::Derivative;
-use pest::Span;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
@@ -126,7 +126,7 @@ impl<'sc> ResolvedType<'sc> {
                 // the size of an enum is one word (for the tag) plus the maximum size
                 // of any individual variant
                 1 + variant_types
-                    .into_iter()
+                    .iter()
                     .map(|x| x.stack_size_of())
                     .max()
                     .unwrap()
@@ -143,11 +143,7 @@ impl<'sc> ResolvedType<'sc> {
     }
 
     pub fn is_numeric(&self) -> bool {
-        if let ResolvedType::UnsignedInteger(_) = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, ResolvedType::UnsignedInteger(_))
     }
 
     /// maps a type to a name that is used when constructing function selectors

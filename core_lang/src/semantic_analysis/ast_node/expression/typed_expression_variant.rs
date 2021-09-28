@@ -20,8 +20,12 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         /// there is no selector.
         selector: Option<ContractCallMetadata<'sc>>,
     },
+    LazyOperator {
+        op: LazyOp,
+        lhs: Box<TypedExpression<'sc>>,
+        rhs: Box<TypedExpression<'sc>>,
+    },
     VariableExpression {
-        unary_op: Option<UnaryOp>,
         name: Ident<'sc>,
     },
     Unit,
@@ -55,7 +59,6 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     // like a variable expression but it has multiple parts,
     // like looking up a field in a struct
     StructFieldAccess {
-        unary_op: Option<UnaryOp>,
         prefix: Box<TypedExpression<'sc>>,
         field_to_access: TypedStructField<'sc>,
         resolved_type_of_parent: MaybeResolvedType<'sc>,
@@ -106,6 +109,10 @@ impl<'sc> TypedExpressionVariant<'sc> {
             TypedExpressionVariant::FunctionApplication { name, .. } => {
                 format!("\"{}\" fn entry", name.suffix.primary_name)
             }
+            TypedExpressionVariant::LazyOperator { op, .. } => match op {
+                LazyOp::And => "&&".into(),
+                LazyOp::Or => "||".into(),
+            },
             TypedExpressionVariant::Unit => "unit".into(),
             TypedExpressionVariant::Array { .. } => "array".into(),
             TypedExpressionVariant::MatchExpression { .. } => "match exp".into(),

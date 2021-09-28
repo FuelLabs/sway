@@ -1,13 +1,13 @@
 use crate::build_config::BuildConfig;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 use crate::semantic_analysis::Namespace;
+use crate::span::Span;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 pub(crate) use impl_trait::Mode;
-use pest::Span;
 use std::path::Path;
 
 mod code_block;
@@ -100,7 +100,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
                         ImportType::Item(s) => {
-                            namespace.item_import(a.call_path, &s, None, a.is_absolute)
+                            namespace.item_import(a.call_path, &s, a.is_absolute)
                         }
                     };
                     warnings.append(&mut res.warnings);
@@ -144,7 +144,7 @@ impl<'sc> TypedAstNode<'sc> {
                                          not match up with the assigned expression's type.",
                                         type_ascription
                                             .map(|x| x.friendly_type_str())
-                                            .unwrap_or("none".into())
+                                            .unwrap_or_else(|| "none".into())
                                     ),
                                     self_type,
                                     build_config,
@@ -178,7 +178,7 @@ impl<'sc> TypedAstNode<'sc> {
                             let decl = check!(
                                 TypedFunctionDeclaration::type_check(
                                     fn_decl.clone(),
-                                    &namespace,
+                                    namespace,
                                     None,
                                     "",
                                     self_type,
@@ -209,7 +209,7 @@ impl<'sc> TypedAstNode<'sc> {
                         }) => {
                             // type check the interface surface
                             let interface_surface =
-                                type_check_interface_surface(interface_surface, &namespace);
+                                type_check_interface_surface(interface_surface, namespace);
                             let mut trait_namespace = namespace.clone();
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
@@ -311,7 +311,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 functions_buf.push(check!(
                                     TypedFunctionDeclaration::type_check(
                                         fn_decl,
-                                        &namespace,
+                                        namespace,
                                         None,
                                         "",
                                         &type_implementing_for_resolved,
@@ -393,11 +393,11 @@ impl<'sc> TypedAstNode<'sc> {
                             // so we don't support the case of calling a contract's own interface
                             // from itself. This is by design.
                             let interface_surface =
-                                type_check_interface_surface(interface_surface, &namespace);
+                                type_check_interface_surface(interface_surface, namespace);
                             let methods = check!(
                                 type_check_trait_methods(
                                     methods,
-                                    &namespace,
+                                    namespace,
                                     self_type,
                                     build_config,
                                     dead_code_graph,
@@ -492,7 +492,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let (typed_body, _block_implicit_return) = check!(
                         TypedCodeBlock::type_check(
                             body.clone(),
-                            &namespace,
+                            namespace,
                             Some(MaybeResolvedType::Resolved(ResolvedType::Unit)),
                             "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
@@ -596,7 +596,7 @@ fn import_new_file<'sc>(
         mut library_exports,
     } = check!(
         crate::compile_inner_dependency(
-            &static_file_string,
+            static_file_string,
             &dep_namespace,
             dep_config,
             dead_code_graph
@@ -639,11 +639,7 @@ fn reassignment<'sc>(
     let mut warnings = vec![];
     // ensure that the lhs is a variable expression or struct field access
     match *lhs {
-        Expression::VariableExpression {
-            unary_op: _,
-            name,
-            span,
-        } => {
+        Expression::VariableExpression { name, span } => {
             // check that the reassigned name exists
             let thing_to_reassign = match namespace.clone().get_symbol(&name) {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -657,7 +653,7 @@ fn reassignment<'sc>(
                     // early-returning, for the sake of better error reporting
                     if !is_mutable {
                         errors.push(CompileError::AssignmentToNonMutable(
-                            name.primary_name,
+                            name.primary_name.to_string(),
                             span.clone(),
                         ));
                     }
@@ -674,7 +670,7 @@ fn reassignment<'sc>(
                 }
                 None => {
                     errors.push(CompileError::UnknownVariable {
-                        var_name: name.primary_name,
+                        var_name: name.primary_name.to_string(),
                         span: name.span.clone(),
                     });
                     return err(warnings, errors);
@@ -710,7 +706,6 @@ fn reassignment<'sc>(
         }
         Expression::SubfieldExpression {
             prefix,
-            unary_op: _,
             field_to_access,
             span,
         } => {
@@ -806,7 +801,7 @@ fn reassignment<'sc>(
         }
         _ => {
             errors.push(CompileError::InvalidExpressionOnLhs { span });
-            return err(warnings, errors);
+            err(warnings, errors)
         }
     }
 }
@@ -940,7 +935,7 @@ fn type_check_trait_methods<'sc>(
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
                         fn_name: fn_name.primary_name,
-                        args: args_span.as_str(),
+                        args: args_span.as_str().to_string(),
                     });
                 }
             }

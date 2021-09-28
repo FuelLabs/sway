@@ -12,9 +12,9 @@
 use super::virtual_ops::*;
 use super::DataId;
 use crate::asm_generation::DataSection;
+use crate::span::Span;
 use either::Either;
 use fuel_asm::Opcode as VmOp;
-use pest::Span;
 use std::fmt;
 
 const COMMENT_START_COLUMN: usize = 30;
@@ -88,6 +88,7 @@ pub(crate) enum AllocatedOpcode {
     JI(VirtualImmediate24),
     JNEI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     RET(AllocatedRegister),
+    RETD(AllocatedRegister, AllocatedRegister),
     CFEI(VirtualImmediate24),
     CFSI(VirtualImmediate24),
     LB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
@@ -201,6 +202,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             JI(a)           => format!("ji   {}", a),
             JNEI(a, b, c)   => format!("jnei {} {} {}", a, b, c),
             RET(a)          => format!("ret  {}", a),
+            RETD(a, b)      => format!("retd  {} {}", a, b),
             CFEI(a)         => format!("cfei {}", a),
             CFSI(a)         => format!("cfsi {}", a),
             LB(a, b, c)     => format!("lb   {} {} {}", a, b, c),
@@ -300,6 +302,7 @@ impl<'sc> AllocatedOp<'sc> {
             JI  (a)         => VmOp::JI  (a.value),
             JNEI(a, b, c)   => VmOp::JNEI(a.to_register_id(), b.to_register_id(), c.value),
             RET (a)         => VmOp::RET (a.to_register_id()),
+            RETD(a, b)      => VmOp::RETD (a.to_register_id(), b.to_register_id()),
             CFEI(a)         => VmOp::CFEI(a.value),
             CFSI(a)         => VmOp::CFSI(a.value),
             LB  (a, b, c)   => VmOp::LB  (a.to_register_id(), b.to_register_id(), c.value),
@@ -357,7 +360,10 @@ fn realize_lw(
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
     let offset_bytes = data_section.offset_to_id(data_id) as u64;
     let offset_words = offset_bytes / 8;
-    let offset = match VirtualImmediate12::new(offset_words, Span::new(" ", 0, 0).unwrap()) {
+    let offset = match VirtualImmediate12::new(offset_words, Span {
+        span: pest::Span::new(" ", 0, 0).unwrap(),
+        path: None
+    }) {
         Ok(value) => value,
         Err(_) => panic!("Unable to offset into the data section more than 2^12 bits. Unsupported data section length.")
     };

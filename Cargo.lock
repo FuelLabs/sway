@@ -3164,6 +3164,7 @@ version = "0.1.0"
 dependencies = [
  "core_lang",
  "dashmap",
+ "forc",
  "formatter",
  "lspower",
  "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3271,6 +3272,7 @@ dependencies = [
  "fuel-tx",
  "fuel-vm",
  "rand 0.8.4",
+ "regex",
 ]
 
 [[package]]

@@ -1,8 +1,40 @@
-use super::constants::SRC_DIR;
+use super::constants::{SRC_DIR, SWAY_EXTENSION};
 use super::manifest::Manifest;
+use std::ffi::OsStr;
 use std::io::{self, Write};
-use std::{path::PathBuf, str};
+use std::path::{Path, PathBuf};
+use std::{fs, str};
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
+pub fn is_sway_file(file: &Path) -> bool {
+    let res = file.extension();
+    Some(OsStr::new(SWAY_EXTENSION)) == res
+}
+
+pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
+    let mut files = vec![];
+    let mut dir_entries = vec![path];
+
+    while let Some(next_dir) = dir_entries.pop() {
+        if let Ok(read_dir) = fs::read_dir(next_dir) {
+            for inner_entry in read_dir {
+                if let Ok(entry) = inner_entry {
+                    let path = entry.path();
+
+                    if path.is_dir() {
+                        dir_entries.push(path);
+                    } else {
+                        if is_sway_file(&path) {
+                            files.push(path)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    files
+}
 
 // Continually go up in the file tree until a manifest (Forc.toml) is found.
 pub fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
@@ -61,24 +93,28 @@ pub fn get_main_file(
     return Ok(main_file);
 }
 
-pub fn print_red(txt: &str) -> io::Result<()> {
-    print_std_out(txt, TermColor::Red)
+pub fn println_red(txt: &str) -> io::Result<()> {
+    println_std_out(txt, TermColor::Red)
 }
 
-pub fn print_green(txt: &str) -> io::Result<()> {
-    print_std_out(txt, TermColor::Green)
+pub fn println_green(txt: &str) -> io::Result<()> {
+    println_std_out(txt, TermColor::Green)
 }
 
-pub fn print_yellow_err(txt: &str) -> io::Result<()> {
-    print_std_err(txt, TermColor::Yellow)
+pub fn print_blue_err(txt: &str) -> io::Result<()> {
+    print_std_err(txt, TermColor::Blue)
 }
 
-pub fn print_red_err(txt: &str) -> io::Result<()> {
-    print_std_err(txt, TermColor::Red)
+pub fn println_yellow_err(txt: &str) -> io::Result<()> {
+    println_std_err(txt, TermColor::Yellow)
 }
 
-pub fn print_green_err(txt: &str) -> io::Result<()> {
-    print_std_err(txt, TermColor::Green)
+pub fn println_red_err(txt: &str) -> io::Result<()> {
+    println_std_err(txt, TermColor::Red)
+}
+
+pub fn println_green_err(txt: &str) -> io::Result<()> {
+    println_std_err(txt, TermColor::Green)
 }
 
 fn print_std_out(txt: &str, color: TermColor) -> io::Result<()> {
@@ -86,12 +122,30 @@ fn print_std_out(txt: &str, color: TermColor) -> io::Result<()> {
     print_with_color(txt, color, stdout)
 }
 
+fn println_std_out(txt: &str, color: TermColor) -> io::Result<()> {
+    let stdout = StandardStream::stdout(ColorChoice::Always);
+    println_with_color(txt, color, stdout)
+}
+
 fn print_std_err(txt: &str, color: TermColor) -> io::Result<()> {
     let stdout = StandardStream::stderr(ColorChoice::Always);
     print_with_color(txt, color, stdout)
 }
 
+fn println_std_err(txt: &str, color: TermColor) -> io::Result<()> {
+    let stdout = StandardStream::stderr(ColorChoice::Always);
+    println_with_color(txt, color, stdout)
+}
+
 fn print_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io::Result<()> {
+    let mut stream = stream;
+    stream.set_color(ColorSpec::new().set_fg(Some(color)))?;
+    write!(&mut stream, "{}", txt)?;
+    stream.reset()?;
+    Ok(())
+}
+
+fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io::Result<()> {
     let mut stream = stream;
     stream.set_color(ColorSpec::new().set_fg(Some(color)))?;
     writeln!(&mut stream, "{}", txt)?;
