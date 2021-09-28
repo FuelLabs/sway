@@ -25,6 +25,8 @@ pub struct Namespace<'sc> {
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
     /// namespace _is_ the root namespace.
     pub(crate) crate_namespace: Box<Option<Namespace<'sc>>>,
+
+    use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
 }
 
 impl<'sc> Namespace<'sc> {
@@ -99,53 +101,11 @@ impl<'sc> Namespace<'sc> {
             o => o.to_resolved(),
         }
     }
-    /// Given a path to a module, import everything from it and merge it into this namespace.
+    /// Given a path to a module, create synonyms to every symbol in that module.
     /// This is used when an import path contains an asterisk.
     pub(crate) fn star_import(
         &mut self,
-        idents: Vec<Ident<'sc>>,
-        is_absolute: bool,
-    ) -> CompileResult<'sc, ()> {
-        let idents_buf = idents.into_iter();
-        let mut namespace = if is_absolute {
-            if let Some(ns) = &*self.crate_namespace {
-                // this is an absolute import and this is a submodule, so we want the
-                // crate global namespace here
-                ns.clone()
-            } else {
-                // this is an absolute import and we are in the root module, so we want
-                // this namespace
-                self.clone()
-            }
-        } else {
-            // this is not an absolute import so we use this namespace
-            self.clone()
-        };
-        for ident in idents_buf {
-            match namespace.modules.get(ident.primary_name) {
-                Some(o) => namespace = o.clone(),
-                None => {
-                    return err(
-                        vec![],
-                        vec![CompileError::ModuleNotFound {
-                            span: ident.span,
-                            name: ident.primary_name.to_string(),
-                        }],
-                    )
-                }
-            };
-        }
-        self.merge_namespaces(&namespace);
-        ok((), vec![], vec![])
-    }
-
-    /// Pull a single item from a module and import it into this namespace.
-    pub(crate) fn item_import(
-        &mut self,
         path: Vec<Ident<'sc>>,
-        item: &Ident<'sc>,
-        // TODO support aliasing in grammar -- see alias
-        alias: Option<Ident<'sc>>,
         is_absolute: bool,
     ) -> CompileResult<'sc, ()> {
         let mut warnings = vec![];
@@ -155,41 +115,38 @@ impl<'sc> Namespace<'sc> {
             return err(warnings, errors),
             warnings,
             errors
-        )
-        .clone();
+        );
+        for (symbol, _) in namespace.symbols.clone() {
+            self.use_synonyms.insert(symbol, path.clone());
+        }
+        ok((), warnings, errors)
+    }
+
+    /// Pull a single item from a module and import it into this namespace.
+    pub(crate) fn item_import(
+        &mut self,
+        path: Vec<Ident<'sc>>,
+        item: &Ident<'sc>,
+        is_absolute: bool,
+    ) -> CompileResult<'sc, ()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let namespace = check!(
+            self.find_module(&path, is_absolute),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         match namespace.symbols.get(item) {
-            Some(TypedDeclaration::TraitDeclaration(tr)) => {
-                let name = match alias {
-                    Some(s) => s.clone(),
-                    None => item.clone(),
-                };
-                // import the trait itself
-                self.insert(name.clone(), TypedDeclaration::TraitDeclaration(tr.clone()));
-
-                // find implementations of this trait and import them
-                namespace
-                    .implemented_traits
-                    .iter()
-                    .filter(|((trait_name, _ty), _)| item == trait_name)
-                    .for_each(|((_trait_name, trait_type), methods)| {
-                        self.implemented_traits
-                            .insert((name.clone(), trait_type.clone()), methods.clone());
-                    });
-            }
-            Some(o) => {
-                let name = match alias {
-                    Some(s) => s.clone(),
-                    None => item.clone(),
-                };
-                self.insert(name, o.clone());
+            Some(_) => {
+                self.use_synonyms.insert(item.clone(), path);
             }
             None => {
                 errors.push(CompileError::SymbolNotFound {
                     name: item.primary_name,
                     span: item.span.clone(),
                 });
-
                 return err(warnings, errors);
             }
         };
@@ -230,7 +187,9 @@ impl<'sc> Namespace<'sc> {
     }
 
     pub(crate) fn get_symbol(&self, symbol: &Ident<'sc>) -> Option<&TypedDeclaration<'sc>> {
-        self.symbols.get(symbol)
+        let empty = vec![];
+        let path = self.use_synonyms.get(symbol).unwrap_or(&empty);
+        self.get_name_from_path(path, symbol).value
     }
 
     /// Used for calls that look like this:
@@ -239,23 +198,39 @@ impl<'sc> Namespace<'sc> {
     /// and `function` is the suffix
     pub(crate) fn get_call_path(
         &self,
-        path: &CallPath<'sc>,
+        symbol: &CallPath<'sc>,
     ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
+        let path = if symbol.prefixes.is_empty() {
+            self.use_synonyms
+                .get(&symbol.suffix)
+                .unwrap_or(&symbol.prefixes)
+        } else {
+            &symbol.prefixes
+        };
+        self.get_name_from_path(&path, &symbol.suffix)
+            .map(|decl| decl.clone())
+    }
+
+    fn get_name_from_path(
+        &self,
+        path: &[Ident<'sc>],
+        name: &Ident<'sc>,
+    ) -> CompileResult<'sc, &TypedDeclaration<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
-            self.find_module(&path.prefixes, false),
+            self.find_module(path, false),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        match module.symbols.get(&path.suffix).cloned() {
-            Some(o) => ok(o, warnings, errors),
+        match module.symbols.get(name) {
+            Some(decl) => ok(decl, warnings, errors),
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: path.suffix.primary_name,
-                    span: path.suffix.span.clone(),
+                    name: name.primary_name,
+                    span: name.span.clone(),
                 });
                 err(warnings, errors)
             }
@@ -337,8 +312,18 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let path = if trait_name.prefixes.is_empty() {
+            self.use_synonyms
+                .get(&trait_name.suffix)
+                .unwrap_or_else(|| &trait_name.prefixes)
+        } else {
+            &trait_name.prefixes
+        };
+
+        // Clone path to avoid borrowing from self.  :(
+        let path = path.clone();
         let module_to_insert_into = check!(
-            self.find_module_mut(&trait_name.prefixes),
+            self.find_module_mut(&path),
             return err(warnings, errors),
             warnings,
             errors

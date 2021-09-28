@@ -53,15 +53,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                                 _ => DEFAULT_NODE_URL,
                             };
 
-                            let client = FuelClient::new(node_url)?;
-
-                            match client.transact(&tx).await {
-                                Ok(logs) => {
-                                    println!("{:?}", logs);
-                                    Ok(())
-                                }
-                                Err(e) => Err(e.to_string().into()),
-                            }
+                            send_tx(node_url, &tx).await
                         }
                     } else {
                         let parse_type = {
@@ -85,6 +77,22 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
             }
         }
         None => Err(CliError::manifest_file_missing(path_dir)),
+    }
+}
+
+async fn send_tx(node_url: &str, tx: &Transaction) -> Result<(), CliError> {
+    let client = FuelClient::new(node_url)?;
+
+    if let Err(_) = client.health().await {
+        return Err(format!("Node at given url `{}` is unreachable, please start the node by running `fuel-core` and try again", node_url).into());
+    }
+
+    match client.transact(&tx).await {
+        Ok(logs) => {
+            println!("{:?}", logs);
+            Ok(())
+        }
+        Err(e) => Err(e.to_string().into()),
     }
 }
 
