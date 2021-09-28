@@ -21,7 +21,7 @@ impl<'sc> CodeBlock<'sc> {
     pub(crate) fn parse_from_pair(
         block: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -31,7 +31,7 @@ impl<'sc> CodeBlock<'sc> {
             path: path.clone(),
         };
         let block_inner = block.into_inner();
-        let mut unassigned_docstrings: Vec<String> = vec![];
+        let mut unassigned_docstring: String = "".to_string();
         let mut contents = Vec::new();
         for pair in block_inner {
             let content = match pair.as_rule() {
@@ -40,18 +40,11 @@ impl<'sc> CodeBlock<'sc> {
                     let decl_inner = decl.next().unwrap();
                     match decl_inner.as_rule() {
                         Rule::docstring => {
-                            let mut parts = decl_inner.clone().into_inner();
-                            let docstring = parts
-                                .next()
-                                .unwrap()
-                                .as_str()
-                                .trim()
-                                .to_string()
-                                .split_off(3)
-                                .as_str()
-                                .trim()
-                                .to_string();
-                            unassigned_docstrings.push(docstring);
+                            let parts = decl_inner.clone().into_inner();
+                            let docstring = parts.as_str().to_string().split_off(3);
+                            let docstring = docstring.as_str().trim();
+                            unassigned_docstring.push_str("/n");
+                            unassigned_docstring.push_str(docstring);
                             None
                         }
                         _ => {
@@ -60,7 +53,7 @@ impl<'sc> CodeBlock<'sc> {
                                     Declaration::parse_from_pair(
                                         pair.clone(),
                                         config,
-                                        unassigned_docstrings.clone(),
+                                        unassigned_docstring.clone(),
                                         docstrings
                                     ),
                                     continue,
@@ -72,7 +65,7 @@ impl<'sc> CodeBlock<'sc> {
                                     path: path.clone(),
                                 },
                             };
-                            unassigned_docstrings.clear();
+                            unassigned_docstring = "".to_string();
                             Some(decl_stmt)
                         }
                     }
@@ -95,7 +88,7 @@ impl<'sc> CodeBlock<'sc> {
                             path: path.clone(),
                         },
                     };
-                    unassigned_docstrings.clear();
+                    unassigned_docstring = "".to_string();
                     Some(expr_stmt)
                 }
                 Rule::return_statement => {
@@ -112,7 +105,7 @@ impl<'sc> CodeBlock<'sc> {
                             path: path.clone(),
                         },
                     };
-                    unassigned_docstrings.clear();
+                    unassigned_docstring = "".to_string();
                     Some(return_stmt)
                 }
                 Rule::expr => {
@@ -126,7 +119,7 @@ impl<'sc> CodeBlock<'sc> {
                         content: AstNodeContent::ImplicitReturnExpression(res.clone()),
                         span: res.span(),
                     };
-                    unassigned_docstrings.clear();
+                    unassigned_docstring = "".to_string();
                     Some(expr)
                 }
                 Rule::while_loop => {
@@ -143,7 +136,7 @@ impl<'sc> CodeBlock<'sc> {
                             path: path.clone(),
                         },
                     };
-                    unassigned_docstrings.clear();
+                    unassigned_docstring = "".to_string();
                     Some(while_stmt)
                 }
                 a => {

@@ -22,7 +22,7 @@ impl<'sc> AsmExpression<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let whole_block_span = Span {
@@ -198,7 +198,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
     fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Vec<Self>> {
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();

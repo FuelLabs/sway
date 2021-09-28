@@ -43,8 +43,8 @@ impl<'sc> Declaration<'sc> {
     pub(crate) fn parse_from_pair(
         decl: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        unassigned_docstrings: Vec<String>,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        unassigned_docstring: String,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -58,10 +58,10 @@ impl<'sc> Declaration<'sc> {
                     warnings,
                     errors
                 );
-                if unassigned_docstrings.len() > 0 {
+                if unassigned_docstring.len() > 0 {
                     docstrings.insert(
                         format!("fn.{}", fn_decl.name.primary_name),
-                        unassigned_docstrings,
+                        unassigned_docstring,
                     );
                 }
                 Declaration::FunctionDeclaration(fn_decl)
@@ -126,10 +126,10 @@ impl<'sc> Declaration<'sc> {
                     warnings,
                     errors
                 );
-                if unassigned_docstrings.len() > 0 {
+                if unassigned_docstring.len() > 0 {
                     docstrings.insert(
                         format!("struct.{}", struct_decl.name.primary_name),
-                        unassigned_docstrings,
+                        unassigned_docstring,
                     );
                 }
                 Declaration::StructDeclaration(struct_decl)
@@ -141,10 +141,10 @@ impl<'sc> Declaration<'sc> {
                     warnings,
                     errors
                 );
-                if unassigned_docstrings.len() > 0 {
+                if unassigned_docstring.len() > 0 {
                     docstrings.insert(
                         format!("enum.{}", enum_decl.name.primary_name),
-                        unassigned_docstrings,
+                        unassigned_docstring,
                     );
                 }
                 Declaration::EnumDeclaration(enum_decl)

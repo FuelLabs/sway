@@ -59,7 +59,7 @@ impl<'sc> EnumDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         decl_inner: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let whole_enum_span = Span {
@@ -180,7 +180,7 @@ impl<'sc> EnumVariant<'sc> {
         decl_inner: Option<Pair<'sc, Rule>>,
         config: Option<&BuildConfig>,
         enum_name: String,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Vec<Self>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -188,20 +188,16 @@ impl<'sc> EnumVariant<'sc> {
         let mut tag = 0;
         if let Some(decl_inner) = decl_inner {
             let fields = decl_inner.into_inner().collect::<Vec<_>>();
-            let mut unassigned_docstrings = vec![];
+            let mut unassigned_docstring = "".to_string();
             let mut i = 0;
             while i < fields.len() {
                 let field = &fields[i];
                 match field.as_rule() {
                     Rule::docstring => {
-                        let docstring = field
-                            .as_str()
-                            .to_string()
-                            .split_off(3)
-                            .as_str()
-                            .trim()
-                            .to_string();
-                        unassigned_docstrings.push(docstring);
+                        let docstring = field.as_str().to_string().split_off(3);
+                        let docstring = docstring.as_str().trim();
+                        unassigned_docstring.push_str("/n");
+                        unassigned_docstring.push_str(docstring);
                         i = i + 1;
                     }
                     _ => {
@@ -215,12 +211,12 @@ impl<'sc> EnumVariant<'sc> {
                             warnings,
                             errors
                         );
-                        if unassigned_docstrings.len() > 0 {
+                        if unassigned_docstring.len() > 0 {
                             docstrings.insert(
                                 format!("enum.{}.{}", enum_name, name.primary_name),
-                                unassigned_docstrings.clone(),
+                                unassigned_docstring.clone(),
                             );
-                            unassigned_docstrings.clear();
+                            unassigned_docstring.clear();
                         }
                         assert_or_warn!(
                             is_class_case(name.primary_name),
@@ -247,41 +243,6 @@ impl<'sc> EnumVariant<'sc> {
                     }
                 }
             }
-            /*
-            for i in (0..fields.len()).step_by(2) {
-                let variant_span = Span {
-                    span: fields[i].as_span(),
-                    path: config.map(|c| c.path()),
-                };
-                let name = check!(
-                    Ident::parse_from_pair(fields[i].clone(), config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                assert_or_warn!(
-                    is_class_case(name.primary_name),
-                    warnings,
-                    name.span.clone(),
-                    Warning::NonClassCaseEnumVariantName {
-                        variant_name: name.primary_name
-                    }
-                );
-                let r#type = check!(
-                    TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config),
-                    TypeInfo::Unit,
-                    warnings,
-                    errors
-                );
-                fields_buf.push(EnumVariant {
-                    name,
-                    r#type,
-                    tag,
-                    span: variant_span,
-                });
-                tag = tag + 1;
-            }
-            */
         }
         ok(fields_buf, warnings, errors)
     }

@@ -173,7 +173,7 @@ impl<'sc> Expression<'sc> {
     pub(crate) fn parse_from_pair(
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -267,7 +267,7 @@ impl<'sc> Expression<'sc> {
     pub(crate) fn parse_from_pair_inner(
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
@@ -836,7 +836,7 @@ impl<'sc> Expression<'sc> {
 fn convert_unary_to_fn_calls<'sc>(
     item: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
-    docstrings: &mut HashMap<String, Vec<String>>,
+    docstrings: &mut HashMap<String, String>,
 ) -> CompileResult<'sc, Expression<'sc>> {
     let iter = item.into_inner();
     let mut unary_stack = vec![];
@@ -886,7 +886,7 @@ fn convert_unary_to_fn_calls<'sc>(
 fn parse_call_item<'sc>(
     item: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
-    docstrings: &mut HashMap<String, Vec<String>>,
+    docstrings: &mut HashMap<String, String>,
 ) -> CompileResult<'sc, Expression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];

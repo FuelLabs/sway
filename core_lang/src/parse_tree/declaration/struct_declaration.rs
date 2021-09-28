@@ -30,7 +30,7 @@ impl<'sc> StructDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         decl: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -122,27 +122,23 @@ impl<'sc> StructField<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
         struct_name: String,
-        docstrings: &mut HashMap<String, Vec<String>>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Vec<Self>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let fields = pair.into_inner().collect::<Vec<_>>();
         let mut fields_buf = Vec::new();
-        let mut unassigned_docstrings = vec![];
+        let mut unassigned_docstring = "".to_string();
         let mut i = 0;
         while i < fields.len() {
             let field = &fields[i];
             match field.as_rule() {
                 Rule::docstring => {
-                    let docstring = field
-                        .as_str()
-                        .to_string()
-                        .split_off(3)
-                        .as_str()
-                        .trim()
-                        .to_string();
-                    unassigned_docstrings.push(docstring);
+                    let docstring = field.as_str().to_string().split_off(3);
+                    let docstring = docstring.as_str().trim();
+                    unassigned_docstring.push_str("/n");
+                    unassigned_docstring.push_str(docstring);
                     i = i + 1;
                 }
                 _ => {
@@ -156,12 +152,12 @@ impl<'sc> StructField<'sc> {
                         warnings,
                         errors
                     );
-                    if unassigned_docstrings.len() > 0 {
+                    if unassigned_docstring.len() > 0 {
                         docstrings.insert(
                             format!("struct.{}.{}", struct_name, name.primary_name),
-                            unassigned_docstrings.clone(),
+                            unassigned_docstring.clone(),
                         );
-                        unassigned_docstrings.clear();
+                        unassigned_docstring.clear();
                     }
                     assert_or_warn!(
                         is_snake_case(name.primary_name),
