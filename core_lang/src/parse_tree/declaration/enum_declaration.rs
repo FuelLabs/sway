@@ -194,7 +194,14 @@ impl<'sc> EnumVariant<'sc> {
                 let field = &fields[i];
                 match field.as_rule() {
                     Rule::docstring => {
-                        unassigned_docstrings.push(field.as_str().to_string());
+                        let docstring = field
+                            .as_str()
+                            .to_string()
+                            .split_off(3)
+                            .as_str()
+                            .trim()
+                            .to_string();
+                        unassigned_docstrings.push(docstring);
                         i = i + 1;
                     }
                     _ => {

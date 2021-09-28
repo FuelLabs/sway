@@ -41,8 +41,17 @@ impl<'sc> CodeBlock<'sc> {
                     match decl_inner.as_rule() {
                         Rule::docstring => {
                             let mut parts = decl_inner.clone().into_inner();
-                            let docstring = parts.next().unwrap().as_str().trim();
-                            unassigned_docstrings.push(docstring.to_string());
+                            let docstring = parts
+                                .next()
+                                .unwrap()
+                                .as_str()
+                                .trim()
+                                .to_string()
+                                .split_off(3)
+                                .as_str()
+                                .trim()
+                                .to_string();
+                            unassigned_docstrings.push(docstring);
                             None
                         }
                         _ => {

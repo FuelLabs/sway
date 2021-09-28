@@ -126,6 +126,7 @@ pub fn parse<'sc>(
         warnings,
         errors
     );
+    println!("{:#?}", docstrings);
     ok(res, warnings, errors)
 }
 
@@ -554,7 +555,14 @@ fn parse_root_from_pairs<'sc>(
                     let decl_inner = decl.next().unwrap();
                     match decl_inner.as_rule() {
                         Rule::docstring => {
-                            unassigned_docstrings.push(decl_inner.as_str().to_string());
+                            let docstring = decl_inner
+                                .as_str()
+                                .to_string()
+                                .split_off(3)
+                                .as_str()
+                                .trim()
+                                .to_string();
+                            unassigned_docstrings.push(docstring);
                         }
                         _ => {
                             let decl = check!(
