@@ -10,7 +10,7 @@ use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
 use std::collections::{HashMap, VecDeque};
 
 type ModuleName = String;
-type TraitName<'a> = Ident<'a>;
+type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
@@ -274,33 +274,7 @@ impl<'sc> Namespace<'sc> {
         }
         ok(namespace, warnings, errors)
     }
-    pub(crate) fn find_module_mut(
-        &mut self,
-        path: &[Ident<'sc>],
-    ) -> CompileResult<'sc, &mut Namespace<'sc>> {
-        let mut namespace = self;
-        let mut errors = vec![];
-        let warnings = vec![];
-        for ident in path {
-            match namespace.modules.get_mut(ident.primary_name) {
-                Some(o) => namespace = o,
-                None => {
-                    errors.push(CompileError::ModuleNotFound {
-                        span: path.iter().fold(path[0].span.clone(), |acc, this_one| {
-                            crate::utils::join_spans(acc, this_one.span.clone())
-                        }),
-                        name: path
-                            .iter()
-                            .map(|x| x.primary_name)
-                            .collect::<Vec<_>>()
-                            .join("::"),
-                    });
-                    return err(warnings, errors);
-                }
-            };
-        }
-        ok(namespace, warnings, errors)
-    }
+
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath<'sc>,
@@ -308,26 +282,22 @@ impl<'sc> Namespace<'sc> {
         functions_buf: Vec<TypedFunctionDeclaration<'sc>>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
-        let mut errors = vec![];
-        let path = if trait_name.prefixes.is_empty() {
+        let errors = vec![];
+        let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
                 .unwrap_or_else(|| &trait_name.prefixes)
+                .clone()
         } else {
-            &trait_name.prefixes
+            trait_name.prefixes
         };
-
-        // Clone path to avoid borrowing from self.  :(
-        let path = path.clone();
-        let module_to_insert_into = check!(
-            self.find_module_mut(&path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        if module_to_insert_into
+        let trait_name = CallPath {
+            suffix: trait_name.suffix,
+            prefixes: new_prefixes,
+        };
+        if self
             .implemented_traits
-            .get(&(trait_name.suffix.clone(), type_implementing_for.clone()))
+            .insert((trait_name.clone(), type_implementing_for), functions_buf)
             .is_some()
         {
             warnings.push(CompileWarning {
@@ -335,9 +305,6 @@ impl<'sc> Namespace<'sc> {
                 span: trait_name.span(),
             })
         }
-        module_to_insert_into
-            .implemented_traits
-            .insert((trait_name.suffix, type_implementing_for), functions_buf);
         ok((), warnings, errors)
     }
 
@@ -498,7 +465,15 @@ impl<'sc> Namespace<'sc> {
                 (module, &call_path.suffix, r#type)
             }
         };
-        let methods = namespace.get_methods_for_type(&r#type);
+
+        // This is a hack and I don't think it should be used.  We check the local namespace first,
+        // but if nothing turns up then we try the namespace where the type itself is declared.
+        let methods = self.get_methods_for_type(&r#type);
+        let methods = match methods[..] {
+            [] => namespace.get_methods_for_type(&r#type),
+            _ => methods,
+        };
+
         match methods
             .into_iter()
             .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
