@@ -343,33 +343,41 @@ impl ABI {
         abi: &str,
         fn_name: &str,
         value: &'a [u8],
-    ) -> Result<Vec<Token>, String> {
-        let parsed_abi: JsonABI = serde_json::from_str(abi).unwrap();
+    ) -> Result<Vec<Token>, Error> {
+        let parsed_abi: JsonABI = serde_json::from_str(abi)?;
 
-        for entry in parsed_abi {
-            if entry.name == fn_name {
-                let params: Vec<_> = entry
-                    .outputs
-                    .iter()
-                    .map(|param| self.parse_param(param).unwrap())
-                    .collect();
+        let entry = parsed_abi.iter().find(|e| e.name == fn_name);
 
-                let mut decoder = ABIDecoder::new();
-
-                let decoded = decoder.decode(&params, value).unwrap();
-
-                return Ok(decoded);
-            }
+        if entry.is_none() {
+            return Err(Error::InvalidName(format!(
+                "couldn't find function name: {}",
+                fn_name
+            )));
         }
 
-        Err("wrong".into())
+        let params_result: Result<Vec<_>, _> = entry
+            .unwrap()
+            .outputs
+            .iter()
+            .map(|param| self.parse_param(&param))
+            .collect();
+
+        match params_result {
+            Ok(params) => {
+                let mut decoder = ABIDecoder::new();
+
+                // TODO: improve error handling here
+                Ok(decoder.decode(&params, value).unwrap())
+            }
+            Err(e) => Err(e),
+        }
     }
 
     /// Similar to decode, but it decodes only an array types and the encoded data
     /// without having to reference to a JSON specification of the ABI.
     pub fn decode_params(&self, params: &[ParamType], data: &[u8]) -> Result<Vec<Token>, String> {
         let mut decoder = ABIDecoder::new();
-        Ok(decoder.decode(params, data).unwrap()) // TODO: Why?
+        Ok(decoder.decode(params, data).unwrap())
     }
 
     /// Turns a JSON property into ParamType
