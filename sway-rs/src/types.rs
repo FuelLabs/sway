@@ -1,4 +1,3 @@
-#![allow(dead_code)] // Temporary while it's a WIP.
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result};
 use strum_macros::{EnumString, ToString};
@@ -87,21 +86,21 @@ pub struct Property {
 }
 
 /// Converts a u8 to a right aligned array of 8 bytes.
-pub fn pad_u8(value: u8) -> Word {
+pub fn pad_u8(value: &u8) -> Word {
     let mut padded = Word::default();
-    padded[7] = value;
+    padded[7] = *value;
     padded
 }
 
 /// Converts a u16 to a right aligned array of 8 bytes.
-pub fn pad_u16(value: u16) -> Word {
+pub fn pad_u16(value: &u16) -> Word {
     let mut padded = Word::default();
     padded[6..].copy_from_slice(&value.to_be_bytes());
     padded
 }
 
 /// Converts a u32 to a right aligned array of 8 bytes.
-pub fn pad_u32(value: u32) -> Word {
+pub fn pad_u32(value: &u32) -> Word {
     let mut padded = [0u8; 8];
     padded[4..].copy_from_slice(&value.to_be_bytes());
     padded

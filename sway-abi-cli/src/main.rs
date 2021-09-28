@@ -1,5 +1,3 @@
-use anyhow::anyhow;
-
 use std::fs;
 use structopt::StructOpt;
 use sway_rs::json_abi::ABI;
@@ -79,11 +77,9 @@ where
 }
 
 fn encode_params(params: &[String]) -> anyhow::Result<String> {
-    println!("params: {:?}\n", params);
-
     let abi_coder = ABI::new();
 
-    Ok(abi_coder.encode_params(params).unwrap())
+    Ok(abi_coder.encode_params(params)?)
 }
 
 fn encode_input(path: &str, function_name: &str, values: &[String]) -> anyhow::Result<String> {
@@ -95,7 +91,7 @@ fn encode_input(path: &str, function_name: &str, values: &[String]) -> anyhow::R
 
     let abi_coder = ABI::new();
 
-    let result = abi_coder.encode(&contract, function_name, values).unwrap();
+    let result = abi_coder.encode(&contract, function_name, values)?;
 
     Ok(result)
 }
@@ -103,22 +99,20 @@ fn encode_input(path: &str, function_name: &str, values: &[String]) -> anyhow::R
 fn decode_params(types: &[String], data: &str) -> anyhow::Result<String> {
     let abi_coder = ABI::new();
 
-    let types: Vec<ParamType> = types
+    let types: Result<Vec<ParamType>, _> = types
         .iter()
         .map(|s| {
-            abi_coder
-                .parse_param(&Property {
-                    name: "".into(),
-                    type_field: s.to_owned(),
-                    components: None,
-                })
-                .unwrap()
+            abi_coder.parse_param(&Property {
+                name: "".into(),
+                type_field: s.to_owned(),
+                components: None,
+            })
         })
         .collect();
 
     let data: Vec<u8> = hex::decode(&data)?;
 
-    let decoded = abi_coder.decode_params(&types, &data).unwrap();
+    let decoded = abi_coder.decode_params(&types.unwrap(), &data)?;
 
     let mut result: String = String::new();
     for token in decoded {
@@ -134,9 +128,7 @@ fn decode_call_output(path: &str, function_name: &str, data: &str) -> anyhow::Re
 
     let abi_coder = ABI::new();
 
-    let decoded = abi_coder
-        .decode(&contract, function_name, &data.as_bytes())
-        .unwrap();
+    let decoded = abi_coder.decode(&contract, function_name, &data.as_bytes())?;
 
     let mut result: String = String::new();
     for res in decoded {

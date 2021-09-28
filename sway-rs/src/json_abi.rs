@@ -1,5 +1,3 @@
-use anyhow::anyhow;
-use core::panic;
 use hex::FromHex;
 use itertools::Itertools;
 use regex::{Captures, Regex};
@@ -14,9 +12,6 @@ use crate::{
     types::{JsonABI, ParamType, Property, Token},
 };
 use serde_json;
-
-// TODO: clean this up
-// TODO: improve error handling, error messages
 
 pub struct ABI {}
 
@@ -53,15 +48,13 @@ impl ABI {
             .zip(values.iter().map(|v| v as &str))
             .collect();
 
-        let tokens = self.parse_tokens(&params).unwrap();
+        let tokens = self.parse_tokens(&params)?;
 
-        let encoded = encoder.encode(&tokens).unwrap();
-
-        let selector = encoder.function_selector;
+        let encoded = encoder.encode(&tokens)?;
 
         let mut encoded_abi: Vec<u8> = Vec::new();
 
-        encoded_abi.extend_from_slice(&selector);
+        encoded_abi.extend_from_slice(&encoder.function_selector);
         encoded_abi.extend(encoded);
 
         return Ok(hex::encode(encoded_abi));
@@ -70,7 +63,7 @@ impl ABI {
     /// Similar to encode, but it encodes only an array of strings containing
     /// [<type_1>, <param_1>, <type_2>, <param_2>, <type_n>, <param_n>]
     /// Without having to reference to a JSON specification of the ABI.
-    pub fn encode_params(&self, params: &[String]) -> Result<String, String> {
+    pub fn encode_params(&self, params: &[String]) -> Result<String, Error> {
         let pairs: Vec<_> = params.chunks(2).collect_vec();
 
         let mut param_type_pairs: Vec<(ParamType, &str)> = vec![];
@@ -83,15 +76,15 @@ impl ABI {
                 type_field: pair[0].clone(),
                 components: None,
             };
-            let p = self.parse_param(&prop).unwrap();
+            let p = self.parse_param(&prop)?;
 
             let t: (ParamType, &str) = (p, &pair[1]);
             param_type_pairs.push(t);
         }
 
-        let tokens = self.parse_tokens(&param_type_pairs).unwrap();
+        let tokens = self.parse_tokens(&param_type_pairs)?;
 
-        let encoded = encoder.encode(&tokens).unwrap();
+        let encoded = encoder.encode(&tokens)?;
 
         Ok(hex::encode(encoded))
     }
@@ -99,7 +92,7 @@ impl ABI {
     /// Helper function to turn a list of tuples(ParamType, &str) into
     /// a vector of Tokens ready to be encoded.
     /// Essentially a wrapper on `tokenize`.
-    pub fn parse_tokens<'a>(&self, params: &'a [(ParamType, &str)]) -> Result<Vec<Token>, String> {
+    pub fn parse_tokens<'a>(&self, params: &'a [(ParamType, &str)]) -> Result<Vec<Token>, Error> {
         params
             .iter()
             .map(|&(ref param, value)| self.tokenize(param, value.to_string()))
@@ -110,24 +103,24 @@ impl ABI {
     /// Takes a ParamType and a value string and joins them as a single
     /// Token that holds the value within it. This Token is used
     /// in the encoding process.
-    pub fn tokenize<'a>(&self, param: &ParamType, value: String) -> Result<Token, String> {
+    pub fn tokenize<'a>(&self, param: &ParamType, value: String) -> Result<Token, Error> {
         let trimmed_value = value.trim();
         match &*param {
-            ParamType::U8 => Ok(Token::U8(trimmed_value.parse::<u8>().unwrap())),
-            ParamType::U16 => Ok(Token::U16(trimmed_value.parse::<u16>().unwrap())),
-            ParamType::U32 => Ok(Token::U32(trimmed_value.parse::<u32>().unwrap())),
-            ParamType::U64 => Ok(Token::U64(trimmed_value.parse::<u64>().unwrap())),
-            ParamType::Bool => Ok(Token::Bool(trimmed_value.parse::<bool>().unwrap())),
-            ParamType::Byte => Ok(Token::Byte(trimmed_value.parse::<u8>().unwrap())),
+            ParamType::U8 => Ok(Token::U8(trimmed_value.parse::<u8>()?)),
+            ParamType::U16 => Ok(Token::U16(trimmed_value.parse::<u16>()?)),
+            ParamType::U32 => Ok(Token::U32(trimmed_value.parse::<u32>()?)),
+            ParamType::U64 => Ok(Token::U64(trimmed_value.parse::<u64>()?)),
+            ParamType::Bool => Ok(Token::Bool(trimmed_value.parse::<bool>()?)),
+            ParamType::Byte => Ok(Token::Byte(trimmed_value.parse::<u8>()?)),
             ParamType::B256 => {
-                let v = Vec::from_hex(trimmed_value).expect("invalid hex string");
+                let v = Vec::from_hex(trimmed_value)?;
                 let s: [u8; 32] = v.as_slice().try_into().unwrap();
                 Ok(Token::B256(s))
             }
-            ParamType::Array(t, _) => Ok(self.tokenize_array(trimmed_value, &*t).unwrap()),
+            ParamType::Array(t, _) => Ok(self.tokenize_array(trimmed_value, &*t)?),
             ParamType::String(_) => Ok(Token::String(trimmed_value.to_string())),
             ParamType::Struct(struct_params) => {
-                Ok(self.tokenize_struct(trimmed_value, struct_params).unwrap())
+                Ok(self.tokenize_struct(trimmed_value, struct_params)?)
             }
             ParamType::Enum(s) => {
                 let discriminant = self.get_enum_discriminant_from_string(&value);
@@ -140,9 +133,15 @@ impl ABI {
         }
     }
 
-    pub fn tokenize_struct(&self, value: &str, params: &[ParamType]) -> Result<Token, String> {
+    /// Creates a struct `Token` from an array of parameter types and a string of values.
+    /// I.e. it takes a string containing values "value_1, value_2, value_3" and an array
+    /// of `ParamType` containing the type of each value, in order:
+    /// [ParamType::<Type of value_1>, ParamType::<Type of value_2>, ParamType::<Type of value_3>]
+    /// And attempts to return a `Token::Struct()` containing the inner types.
+    /// It works for nested/recursive structs.
+    pub fn tokenize_struct(&self, value: &str, params: &[ParamType]) -> Result<Token, Error> {
         if !value.starts_with('(') || !value.ends_with(')') {
-            return Err("invalid data 1".into());
+            return Err(Error::InvalidData);
         }
 
         if value.chars().count() == 2 {
@@ -165,13 +164,13 @@ impl ABI {
 
                     match nested.cmp(&0) {
                         std::cmp::Ordering::Less => {
-                            return Err("invalid data".into());
+                            return Err(Error::InvalidData);
                         }
                         std::cmp::Ordering::Equal => {
                             let sub = &value[last_item..pos];
 
                             let token = self.tokenize(
-                                params_iter.next().ok_or("invalid data 2")?,
+                                params_iter.next().ok_or(Error::InvalidData)?,
                                 sub.to_string(),
                             )?;
                             result.push(token);
@@ -191,8 +190,10 @@ impl ABI {
                         continue;
                     }
 
-                    let token = self
-                        .tokenize(params_iter.next().ok_or("invalid data 2")?, sub.to_string())?;
+                    let token = self.tokenize(
+                        params_iter.next().ok_or(Error::InvalidData)?,
+                        sub.to_string(),
+                    )?;
                     result.push(token);
                     last_item = pos + 1;
                 }
@@ -201,15 +202,21 @@ impl ABI {
         }
 
         if ignore {
-            return Err("invalid data 3".into());
+            return Err(Error::InvalidData);
         }
 
         Ok(Token::Struct(result))
     }
 
-    pub fn tokenize_array<'a>(&self, value: &'a str, param: &ParamType) -> Result<Token, String> {
+    /// Creates an enum `Token` from an array of parameter types and a string of values.
+    /// I.e. it takes a string containing values "value_1, value_2, value_3" and an array
+    /// of `ParamType` containing the type of each value, in order:
+    /// [ParamType::<Type of value_1>, ParamType::<Type of value_2>, ParamType::<Type of value_3>]
+    /// And attempts to return a `Token::Enum()` containing the inner types.
+    /// It works for nested/recursive enums.
+    pub fn tokenize_array<'a>(&self, value: &'a str, param: &ParamType) -> Result<Token, Error> {
         if !value.starts_with('[') || !value.ends_with(']') {
-            return Err("invalid data 1".into());
+            return Err(Error::InvalidData);
         }
 
         if value.chars().count() == 2 {
@@ -230,7 +237,7 @@ impl ABI {
 
                     match nested.cmp(&0) {
                         std::cmp::Ordering::Less => {
-                            return Err("invalid data 2".into());
+                            return Err(Error::InvalidData);
                         }
                         std::cmp::Ordering::Equal => {
                             // Last element of this nest level; proceed to tokenize.
@@ -279,62 +286,13 @@ impl ABI {
         }
 
         if ignore {
-            return Err("invalid data 3".into());
+            return Err(Error::InvalidData);
         }
 
         Ok(Token::Array(result))
     }
 
-    pub fn is_array(&self, ele: &str) -> bool {
-        ele.starts_with("[") && ele.ends_with("]")
-    }
-
-    pub fn get_enum_discriminant_from_string(&self, ele: &str) -> usize {
-        let mut chars = ele.chars();
-        chars.next(); // Remove "("
-        chars.next_back(); // Remove ")"
-        let v: Vec<_> = chars.as_str().split(",").collect();
-        v[0].parse().unwrap()
-    }
-
-    pub fn get_enum_value_from_string(&self, ele: &str) -> String {
-        let mut chars = ele.chars();
-        chars.next(); // Remove "("
-        chars.next_back(); // Remove ")"
-        let v: Vec<_> = chars.as_str().split(",").collect();
-        v[1].to_string()
-    }
-
-    pub fn get_array_length_from_string(&self, ele: &str) -> usize {
-        let mut chars = ele.chars();
-        chars.next();
-        chars.next_back();
-        let stripped: Vec<_> = chars.as_str().split(",").collect();
-        stripped.len()
-    }
-
-    pub fn build_fn_selector(&self, fn_name: &str, params: &[Property]) -> String {
-        let mut fn_selector = fn_name.clone().to_owned();
-        let mut args = String::new();
-        let mut types: Vec<&str> = Vec::new();
-
-        for i in 0..params.len() {
-            let mut arg = "$".to_owned();
-            arg.push_str(i.to_string().as_str());
-            if i + 1 < params.len() {
-                arg.push_str(",");
-            }
-            args.push_str(&arg);
-            types.push(&params[i].type_field);
-        }
-
-        let args = format!("({})", args);
-
-        fn_selector.push_str(&template_replace(&args, &types));
-
-        fn_selector
-    }
-
+    /// Higher-level layer of the ABI decoding module.
     /// Decodes a value of a given ABI and a target function's output.
     /// Note that the `value` has to be a byte array, meaning that
     /// the caller must properly cast the "upper" type into a `&[u8]`,
@@ -366,8 +324,7 @@ impl ABI {
             Ok(params) => {
                 let mut decoder = ABIDecoder::new();
 
-                // TODO: improve error handling here
-                Ok(decoder.decode(&params, value).unwrap())
+                Ok(decoder.decode(&params, value)?)
             }
             Err(e) => Err(e),
         }
@@ -375,9 +332,9 @@ impl ABI {
 
     /// Similar to decode, but it decodes only an array types and the encoded data
     /// without having to reference to a JSON specification of the ABI.
-    pub fn decode_params(&self, params: &[ParamType], data: &[u8]) -> Result<Vec<Token>, String> {
+    pub fn decode_params(&self, params: &[ParamType], data: &[u8]) -> Result<Vec<Token>, Error> {
         let mut decoder = ABIDecoder::new();
-        Ok(decoder.decode(params, data).unwrap())
+        Ok(decoder.decode(params, data)?)
     }
 
     /// Turns a JSON property into ParamType
@@ -439,19 +396,73 @@ impl ABI {
             _ => return Err(Error::InvalidType(param.type_field.clone())),
         }
     }
-}
 
-fn template_replace(template: &str, values: &[&str]) -> String {
-    let regex = Regex::new(r#"\$(\d+)"#).unwrap();
-    regex
-        .replace_all(template, |captures: &Captures| {
-            values.get(index(captures)).unwrap_or(&"")
-        })
-        .to_string()
-}
+    fn is_array(&self, ele: &str) -> bool {
+        ele.starts_with("[") && ele.ends_with("]")
+    }
 
-fn index(captures: &Captures) -> usize {
-    captures.get(1).unwrap().as_str().parse().unwrap()
+    fn get_enum_discriminant_from_string(&self, ele: &str) -> usize {
+        let mut chars = ele.chars();
+        chars.next(); // Remove "("
+        chars.next_back(); // Remove ")"
+        let v: Vec<_> = chars.as_str().split(",").collect();
+        v[0].parse().unwrap()
+    }
+
+    fn get_enum_value_from_string(&self, ele: &str) -> String {
+        let mut chars = ele.chars();
+        chars.next(); // Remove "("
+        chars.next_back(); // Remove ")"
+        let v: Vec<_> = chars.as_str().split(",").collect();
+        v[1].to_string()
+    }
+
+    fn get_array_length_from_string(&self, ele: &str) -> usize {
+        let mut chars = ele.chars();
+        chars.next();
+        chars.next_back();
+        let stripped: Vec<_> = chars.as_str().split(",").collect();
+        stripped.len()
+    }
+
+    /// Builds a string representation of a function selector,
+    /// i.e: <fn_name>(<type_1>, <type_2>, ..., <type_n>)
+    pub fn build_fn_selector(&self, fn_name: &str, params: &[Property]) -> String {
+        let mut fn_selector = fn_name.clone().to_owned();
+        let mut args = String::new();
+        let mut types: Vec<&str> = Vec::new();
+
+        // Start by building a template with placeholders "($0, $1, ..., $n)"
+        for i in 0..params.len() {
+            let mut arg = "$".to_owned();
+            arg.push_str(&i.to_string());
+            if i + 1 < params.len() {
+                arg.push_str(",");
+            }
+            args.push_str(&arg);
+            types.push(&params[i].type_field);
+        }
+
+        let args = format!("({})", args);
+
+        // Replace the placeholders "($0, $1, ..., $n)" with the types
+        fn_selector.push_str(&self.template_replace(&args, &types));
+
+        fn_selector
+    }
+
+    fn template_replace(&self, template: &str, values: &[&str]) -> String {
+        let regex = Regex::new(r#"\$(\d+)"#).unwrap();
+        regex
+            .replace_all(template, |captures: &Captures| {
+                values.get(self.index(captures)).unwrap_or(&"")
+            })
+            .to_string()
+    }
+
+    fn index(&self, captures: &Captures) -> usize {
+        captures.get(1).unwrap().as_str().parse().unwrap()
+    }
 }
 
 #[cfg(test)]

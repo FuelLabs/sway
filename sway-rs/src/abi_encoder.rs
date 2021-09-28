@@ -1,18 +1,8 @@
-#![allow(dead_code)] // Temporary while it's a WIP.
-
 use crate::types;
 use sha2::{Digest, Sha256};
-use thiserror::Error;
 use types::Token;
 
-#[derive(Debug, Clone, Error)]
-pub enum ABIError {
-    #[error("Failed to decode")]
-    DecodingError,
-
-    #[error("missing or wrong function selector")]
-    WrongSelector,
-}
+use crate::errors::Error;
 
 pub struct ABIEncoder {
     pub function_selector: types::Word,
@@ -31,35 +21,36 @@ impl ABIEncoder {
     /// raw bytes (as a Vec<u8>) that represent the encoded tokens.
     /// The encoding follows the ABI specs defined here:
     /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md
-    pub fn encode(&mut self, args: &[Token]) -> Result<Vec<u8>, ABIError> {
+    pub fn encode(&mut self, args: &[Token]) -> Result<Vec<u8>, Error> {
         for arg in args {
             match arg {
-                Token::U8(arg_u8) => self.encoded_args.extend(types::pad_u8(arg_u8.clone())),
-                Token::U16(arg_u16) => self.encoded_args.extend(types::pad_u16(arg_u16.clone())),
-                Token::U32(arg_u32) => self.encoded_args.extend(types::pad_u32(arg_u32.clone())),
+                Token::U8(arg_u8) => self.encoded_args.extend(types::pad_u8(arg_u8)),
+                Token::U16(arg_u16) => self.encoded_args.extend(types::pad_u16(arg_u16)),
+                Token::U32(arg_u32) => self.encoded_args.extend(types::pad_u32(arg_u32)),
                 Token::U64(arg_u64) => self.encoded_args.extend(arg_u64.to_be_bytes()),
-                Token::Byte(arg_byte) => self.encoded_args.extend(types::pad_u8(arg_byte.clone())),
-                Token::Bool(arg_bool) => self
-                    .encoded_args
-                    .extend(types::pad_u8(if arg_bool.clone() { 1 } else { 0 })),
+                Token::Byte(arg_byte) => self.encoded_args.extend(types::pad_u8(arg_byte)),
+                Token::Bool(arg_bool) => {
+                    self.encoded_args
+                        .extend(types::pad_u8(if *arg_bool { &1 } else { &0 }))
+                }
                 Token::B256(arg_bits256) => self.encoded_args.extend(arg_bits256),
                 Token::Array(arg_array) => {
                     // Recursively encode the array of Tokens
-                    self.encode(arg_array).unwrap();
+                    self.encode(arg_array)?;
                 }
                 Token::String(arg_string) => {
                     self.encoded_args.extend(types::pad_string(arg_string))
                 }
                 Token::Struct(arg_struct) => {
                     for property in arg_struct.into_iter() {
-                        self.encode(&[property.clone()]).unwrap();
+                        self.encode(&[property.to_owned()])?;
                     }
                 }
                 Token::Enum(arg_enum) => {
                     // Encode the discriminant of the enum
-                    self.encoded_args.extend(types::pad_u8(arg_enum.0));
+                    self.encoded_args.extend(types::pad_u8(&arg_enum.0));
                     // Encode the Token within the enum
-                    self.encode(&[arg_enum.1.clone()]).unwrap();
+                    self.encode(&[arg_enum.1.to_owned()])?;
                 }
             };
         }
@@ -105,7 +96,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"u32"}],
         //         "name":"entry_one",
         //         "outputs": []
@@ -141,7 +132,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"first","type":"u32"},{"name":"second","type":"u32"}],
         //         "name":"takes_two",
         //         "outputs": []
@@ -180,7 +171,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"u64"}],
         //         "name":"entry_one",
         //         "outputs": []
@@ -216,7 +207,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"bool"}],
         //         "name":"bool_check",
         //         "outputs": []
@@ -252,7 +243,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"first","type":"u32"},{"name":"second","type":"bool"}],
         //         "name":"takes_two_types",
         //         "outputs": []
@@ -291,7 +282,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"byte"}],
         //         "name":"takes_one_byte",
         //         "outputs": []
@@ -327,7 +318,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"b256"}],
         //         "name":"takes_bits256",
         //         "outputs": []
@@ -373,7 +364,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"u8[3]"}],
         //         "name":"takes_integer_array",
         //         "outputs": []
@@ -416,7 +407,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"str[12]"}],
         //         "name":"takes_string",
         //         "outputs": []
@@ -451,7 +442,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"MyStruct"}],
         //         "name":"takes_my_struct",
         //         "outputs": []
@@ -499,7 +490,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"MyEnum"}],
         //         "name":"takes_my_enum",
         //         "outputs": []
@@ -546,7 +537,7 @@ mod tests {
         // r#"
         // [
         //     {
-        //         "type":"contract",
+        //         "type":"function",
         //         "inputs": [{"name":"arg","type":"Foo"}],
         //         "name":"takes_my_nested_struct",
         //         "outputs": []

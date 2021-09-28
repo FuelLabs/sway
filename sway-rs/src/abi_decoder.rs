@@ -1,5 +1,4 @@
-#![allow(dead_code)] // Temporary while it's a WIP.
-
+use crate::errors::Error;
 use crate::types::{Bits256, ParamType, Token, Word, WORD_SIZE};
 use std::convert::TryInto;
 use std::str;
@@ -18,16 +17,12 @@ impl ABIDecoder {
         ABIDecoder {}
     }
 
-    /// Decode takes an array of `ParamType`s and the encoded data as raw bytes
+    /// Decode takes an array of `ParamType` and the encoded data as raw bytes
     /// and returns a vector of `Token`s containing the decoded values.
     /// Note that the order of the types in the `types` array needs to match the order
     /// of the expected values/types in `data`.
     /// You can find comprehensive examples in the tests for this module.
-    pub fn decode<'a>(
-        &mut self,
-        types: &[ParamType],
-        data: &'a [u8],
-    ) -> Result<Vec<Token>, String> {
+    pub fn decode<'a>(&mut self, types: &[ParamType], data: &'a [u8]) -> Result<Vec<Token>, Error> {
         let mut tokens: Vec<Token> = Vec::new();
         let mut offset = 0;
         for param in types {
@@ -44,7 +39,7 @@ impl ABIDecoder {
         param: &ParamType,
         data: &'a [u8],
         offset: usize,
-    ) -> Result<DecodeResult, String> {
+    ) -> Result<DecodeResult, Error> {
         match &*param {
             ParamType::U8 => {
                 let slice = peek_word(data, offset)?;
@@ -89,7 +84,6 @@ impl ABIDecoder {
             ParamType::Bool => {
                 // Grab last byte of the word and compare it to 0x00
                 let b = peek_word(data, offset)?.last().unwrap() != &0u8;
-                println!("b: {:?}\n", b);
 
                 let result = DecodeResult {
                     token: Token::Bool(b),
@@ -122,7 +116,7 @@ impl ABIDecoder {
             ParamType::String(length) => {
                 let encoded_str = peek(data, offset, *length)?.try_into().unwrap();
 
-                let decoded = str::from_utf8(encoded_str).unwrap();
+                let decoded = str::from_utf8(encoded_str)?;
 
                 // When computing the offset for strings
                 // we need to consider not only the length of the string
@@ -195,15 +189,15 @@ impl ABIDecoder {
     }
 }
 
-fn peek(data: &[u8], offset: usize, len: usize) -> Result<&[u8], String> {
+fn peek(data: &[u8], offset: usize, len: usize) -> Result<&[u8], Error> {
     if offset + len > data.len() {
-        Err("Invalid data".into())
+        Err(Error::InvalidData)
     } else {
         Ok(&data[offset..(offset + len)])
     }
 }
 
-fn peek_word(data: &[u8], offset: usize) -> Result<Word, String> {
+fn peek_word(data: &[u8], offset: usize) -> Result<Word, Error> {
     peek(data, offset, WORD_SIZE as usize).map(|x| {
         let mut out: Word = [0u8; 8];
         out.copy_from_slice(&x[0..8]);
