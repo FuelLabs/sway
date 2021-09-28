@@ -1,7 +1,4 @@
-use super::ast_node::Mode;
-use super::ast_node::{
-    TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
-};
+use super::ast_node::{TypedEnumDeclaration, TypedStructDeclaration, TypedStructField};
 use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
