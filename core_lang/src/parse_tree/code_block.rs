@@ -43,7 +43,7 @@ impl<'sc> CodeBlock<'sc> {
                             let parts = decl_inner.clone().into_inner();
                             let docstring = parts.as_str().to_string().split_off(3);
                             let docstring = docstring.as_str().trim();
-                            unassigned_docstring.push_str("/n");
+                            unassigned_docstring.push_str("\n");
                             unassigned_docstring.push_str(docstring);
                             None
                         }

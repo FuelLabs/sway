@@ -196,7 +196,7 @@ impl<'sc> EnumVariant<'sc> {
                     Rule::docstring => {
                         let docstring = field.as_str().to_string().split_off(3);
                         let docstring = docstring.as_str().trim();
-                        unassigned_docstring.push_str("/n");
+                        unassigned_docstring.push_str("\n");
                         unassigned_docstring.push_str(docstring);
                         i = i + 1;
                     }
