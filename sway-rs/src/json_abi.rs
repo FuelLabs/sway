@@ -15,7 +15,7 @@ use crate::{
 };
 use serde_json;
 
-// TODO: clean-up this disaster of code
+// TODO: clean this up
 // TODO: improve error handling, error messages
 
 pub struct ABI {}
@@ -369,51 +369,66 @@ impl ABI {
     /// without having to reference to a JSON specification of the ABI.
     pub fn decode_params(&self, params: &[ParamType], data: &[u8]) -> Result<Vec<Token>, String> {
         let mut decoder = ABIDecoder::new();
-        Ok(decoder.decode(params, data).unwrap())
+        Ok(decoder.decode(params, data).unwrap()) // TODO: Why?
     }
 
     /// Turns a JSON property into ParamType
-    pub fn parse_param(&self, param: &Property) -> Result<ParamType, String> {
-        if param.type_field == "struct" {
-            let mut params: Vec<ParamType> = vec![];
-            let components = param.components.as_ref().unwrap();
-            for component in components {
-                params.push(self.parse_param(&component)?);
-            }
-
-            return Ok(ParamType::Struct(params));
-        }
-        if param.type_field == "enum" {
-            let mut params: Vec<ParamType> = vec![];
-            let components = param.components.as_ref().unwrap();
-            for component in components {
-                params.push(self.parse_param(&component)?);
-            }
-
-            return Ok(ParamType::Enum(params));
-        }
-
-        match param.type_field.contains("[") && param.type_field.contains("]") {
-            // Simple case (u<M>, bool, etc.)
-            false => Ok(ParamType::from_str(&param.type_field.clone()).unwrap()),
-            // Either array (<T>[<M>]) or string (str[<M>])
-            true => {
-                let split: Vec<&str> = param.type_field.split("[").collect();
-                if split.len() != 2 {
-                    panic!("invalid data")
-                }
-
-                let param_type = ParamType::from_str(split[0]).unwrap();
-                let size: usize = split[1][..split[1].len() - 1].parse().unwrap();
-
-                if let ParamType::String(_) = param_type {
-                    // String
-                    Ok(ParamType::String(size))
-                } else {
-                    // Array
-                    Ok(ParamType::Array(Box::new(param_type), size))
+    pub fn parse_param(&self, param: &Property) -> Result<ParamType, Error> {
+        match ParamType::from_str(&param.type_field) {
+            // Simple case (primitive types, no arrays, including string)
+            Ok(param_type) => Ok(param_type),
+            Err(_) => {
+                match param.type_field.contains("[") && param.type_field.contains("]") {
+                    // Try to parse array (T[M]) or string (str[M])
+                    true => Ok(self.parse_array_param(param)?),
+                    // Try to parse enum or struct
+                    false => Ok(self.parse_custom_type_param(param)?),
                 }
             }
+        }
+    }
+
+    pub fn parse_array_param(&self, param: &Property) -> Result<ParamType, Error> {
+        // Split "T[n]" string into "T" and "[n]"
+        let split: Vec<&str> = param.type_field.split("[").collect();
+        if split.len() != 2 {
+            return Err(Error::MissingData(format!(
+                "invalid parameter type: {}",
+                param.type_field
+            )));
+        }
+
+        let param_type = ParamType::from_str(split[0]).unwrap();
+
+        // Grab size in between brackets, i.e the `n` in "[n]"
+        let size: usize = split[1][..split[1].len() - 1].parse().unwrap();
+
+        if let ParamType::String(_) = param_type {
+            Ok(ParamType::String(size))
+        } else {
+            Ok(ParamType::Array(Box::new(param_type), size))
+        }
+    }
+
+    pub fn parse_custom_type_param(&self, param: &Property) -> Result<ParamType, Error> {
+        let mut params: Vec<ParamType> = vec![];
+
+        match param.components.as_ref() {
+            Some(components) => {
+                for component in components {
+                    params.push(self.parse_param(&component)?)
+                }
+            }
+            None => {
+                return Err(Error::MissingData(
+                    "cannot parse custom type with no components".into(),
+                ))
+            }
+        }
+        match &*param.type_field {
+            "struct" => return Ok(ParamType::Struct(params)),
+            "enum" => return Ok(ParamType::Enum(params)),
+            _ => return Err(Error::InvalidType(param.type_field.clone())),
         }
     }
 }

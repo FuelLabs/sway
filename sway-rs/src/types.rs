@@ -38,7 +38,6 @@ impl<'a> Default for Token {
     }
 }
 
-// Experimental
 #[derive(Debug, Clone, EnumString, ToString)]
 #[strum(ascii_case_insensitive)]
 pub enum ParamType {
@@ -52,7 +51,11 @@ pub enum ParamType {
     Array(Box<ParamType>, usize),
     #[strum(serialize = "str")]
     String(usize),
+    // Disabling EnumString on these 2 types because
+    // they are more complex to parse
+    #[strum(disabled)]
     Struct(Vec<ParamType>),
+    #[strum(disabled)]
     Enum(Vec<ParamType>),
 }
 
