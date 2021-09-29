@@ -24,15 +24,16 @@ ref_keyword         =  {"ref "}
 deref_keyword       =  {"deref "}
 true_keyword        =  {"true"}
 false_keyword       =  {"false"}
+const_decl_keyword  =  {"const"}
 
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
 
-library      =  {"library" ~ library_name ~ ";" ~ (control_flow|declaration|use_statement|include_statement)* }
+library      =  {"library" ~ library_name ~ ";" ~ (non_var_decl|use_statement|include_statement)* }
 library_name =  {ident}
-contract     =  {"contract" ~ ";" ~ (control_flow|declaration|use_statement|include_statement)*}
-script       =  {"script" ~ ";" ~ (control_flow|declaration|use_statement|include_statement)*}
-predicate    =  {"predicate" ~ ";" ~ (control_flow|declaration|use_statement|include_statement)*}
+contract     =  {"contract" ~ ";" ~ (non_var_decl|use_statement|include_statement)*}
+script       =  {"script" ~ ";" ~ (non_var_decl|use_statement|include_statement)*}
+predicate    =  {"predicate" ~ ";" ~ (non_var_decl|use_statement|include_statement)*}
 
 // including other files
 file_path         = { ident ~ ("/" ~ ident)* }
@@ -52,7 +53,7 @@ var_name_ident           =  {ident}
 struct_field_access      =  {subfield_path}
 method_exp               =  {subfield_exp | fully_qualified_method}
 subfield_exp             =  {subfield_path ~ fn_args}
-// TODO subfield path should allow parenthesized expressions _or_ just idents  
+// TODO subfield path should allow parenthesized expressions _or_ just idents
 subfield_path            =  {(call_item ~ ".")+ ~ call_item}
 fully_qualified_method   =  {path_separator? ~ (path_ident ~ path_separator)* ~ "~" ~ type_name ~ path_separator ~ call_item ~ fn_args}
 call_item                =  {ident | "(" ~ expr ~ ")" }
@@ -62,8 +63,8 @@ path_ident               =  {ident}
 
 // abi blocks and abi casting
 abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ expr ~ ")"}
-abi_decl = {abi_keyword ~ abi_name ~ trait_methods} 
-abi_name = {ident} 
+abi_decl = {abi_keyword ~ abi_name ~ trait_methods}
+abi_name = {ident}
 
 
 if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
@@ -100,7 +101,8 @@ struct_expr_fields =  {struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name
 array_exp          =  {"[" ~ (expr ~ ("," ~ expr)*) ~ "]"}
 
 // declarations
-declaration               =  {docstring|enum_decl|var_decl|fn_decl|trait_decl|abi_decl|struct_decl|reassignment|impl_trait|impl_self}
+declaration               =  {(non_var_decl|var_decl|reassignment)}
+non_var_decl              =  {(docstring|enum_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self|const_decl)}
 var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
 fn_decl                   =  {docstring? ~ visibility ~ fn_signature ~ code_block}
@@ -109,6 +111,7 @@ var_name                  =  {ident}
 reassignment              =  {variable_reassignment | struct_field_reassignment}
 variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}
 struct_field_reassignment =  {struct_field_access ~ assign ~ expr ~ ";" }
+const_decl                =  {const_decl_keyword ~ var_name ~ type_ascription? ~ assign ~ literal_value ~ ";"}
 
 visibility =  {"pub"?}
 

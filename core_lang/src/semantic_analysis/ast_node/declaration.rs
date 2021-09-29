@@ -17,6 +17,7 @@ use sha2::{Digest, Sha256};
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
     VariableDeclaration(TypedVariableDeclaration<'sc>),
+    ConstantDeclaration(TypedConstantDeclaration<'sc>),
     FunctionDeclaration(TypedFunctionDeclaration<'sc>),
     TraitDeclaration(TypedTraitDeclaration<'sc>),
     StructDeclaration(TypedStructDeclaration<'sc>),
@@ -40,6 +41,7 @@ impl<'sc> TypedDeclaration<'sc> {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(_) => "variable",
+            ConstantDeclaration(_) => "constant",
             FunctionDeclaration(_) => "function",
             TraitDeclaration(_) => "trait",
             StructDeclaration(_) => "struct",
@@ -97,6 +99,7 @@ impl<'sc> TypedDeclaration<'sc> {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span.clone(),
+            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span.clone(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
             TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span.clone(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span.clone(),
@@ -214,6 +217,12 @@ pub struct TypedVariableDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) body: TypedExpression<'sc>, // will be codeblock variant
     pub(crate) is_mutable: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct TypedConstantDeclaration<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) value: TypedExpression<'sc>,
 }
 
 // TODO: type check generic type args and their usage
