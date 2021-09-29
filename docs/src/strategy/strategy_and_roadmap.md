@@ -4,8 +4,7 @@
 
 ### Compiler Architecture 
 The Sway compiler employs a typical compiler architecture. The following procedures are performed in the listed order:
-1. Parsing
-1. Lexing
+1. Parsing/Lexing
 1. Type checking and inference
 1. Control flow analysis and dead code analysis
 1. IR generation
@@ -39,6 +38,8 @@ The compiler is developed both as a standalone executable and as a library which
 1. Contract storage access in the standard library
 1. Source Maps
 1. Auto-generated documentation webpages (`forc doc` -- modeled on `cargo doc` from Rust)
+1. Iterators
+1. Well-featured standard library for contract development
 
 
 ### Post-MVP
@@ -47,3 +48,5 @@ The compiler is developed both as a standalone executable and as a library which
 1. Godbolt visualizer
 1. Gas profiler
 1. More optimization passes
+1. Extensive standard library features
+1. Auto-chunking of large bytecode into multiple deployments

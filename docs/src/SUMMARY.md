@@ -25,4 +25,4 @@
   - [Trait Constraints](./advanced/trait_constraints.md)
 - [Conventions](./style/index.md)
   - [Capitalization](./style/capitalization.md)
-- [Strategy and Roadman](./strategy/strategy_and_roadmap.md)
+- [Strategy and Roadmap](./strategy/strategy_and_roadmap.md)
