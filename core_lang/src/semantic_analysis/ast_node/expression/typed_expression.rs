@@ -1046,7 +1046,28 @@ impl<'sc> TypedExpression<'sc> {
             .iter()
             .map(|x| x.to_dummy_func(Mode::ImplAbiFn))
             .collect::<Vec<_>>();
-        functions_buf.append(&mut abi.methods.clone());
+        // calls of ABI methods do not result in any codegen of the ABI method block
+        // they instead just use the CALL opcode and the return type
+        let mut type_checked_fn_buf = Vec::with_capacity(abi.methods.len());
+        for method in &abi.methods {
+            type_checked_fn_buf.push(check!(
+                TypedFunctionDeclaration::type_check(
+                    method.clone(),
+                    namespace,
+                    None,
+                    "",
+                    &MaybeResolvedType::Resolved(ResolvedType::Contract),
+                    build_config,
+                    dead_code_graph,
+                    Mode::ImplAbiFn
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+
+        functions_buf.append(&mut type_checked_fn_buf);
         namespace.insert_trait_implementation(abi_name.clone(), return_type.clone(), functions_buf);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::AbiCast {

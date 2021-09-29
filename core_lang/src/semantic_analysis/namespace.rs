@@ -1,7 +1,4 @@
-use super::ast_node::Mode;
-use super::ast_node::{
-    TypedEnumDeclaration, TypedStructDeclaration, TypedStructField, TypedTraitDeclaration,
-};
+use super::ast_node::{TypedEnumDeclaration, TypedStructDeclaration, TypedStructField};
 use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
@@ -13,7 +10,7 @@ use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
 use std::collections::{HashMap, VecDeque};
 
 type ModuleName = String;
-type TraitName<'a> = Ident<'a>;
+type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
@@ -277,33 +274,7 @@ impl<'sc> Namespace<'sc> {
         }
         ok(namespace, warnings, errors)
     }
-    pub(crate) fn find_module_mut(
-        &mut self,
-        path: &[Ident<'sc>],
-    ) -> CompileResult<'sc, &mut Namespace<'sc>> {
-        let mut namespace = self;
-        let mut errors = vec![];
-        let warnings = vec![];
-        for ident in path {
-            match namespace.modules.get_mut(ident.primary_name) {
-                Some(o) => namespace = o,
-                None => {
-                    errors.push(CompileError::ModuleNotFound {
-                        span: path.iter().fold(path[0].span.clone(), |acc, this_one| {
-                            crate::utils::join_spans(acc, this_one.span.clone())
-                        }),
-                        name: path
-                            .iter()
-                            .map(|x| x.primary_name)
-                            .collect::<Vec<_>>()
-                            .join("::"),
-                    });
-                    return err(warnings, errors);
-                }
-            };
-        }
-        ok(namespace, warnings, errors)
-    }
+
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath<'sc>,
@@ -311,26 +282,22 @@ impl<'sc> Namespace<'sc> {
         functions_buf: Vec<TypedFunctionDeclaration<'sc>>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
-        let mut errors = vec![];
-        let path = if trait_name.prefixes.is_empty() {
+        let errors = vec![];
+        let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
                 .unwrap_or_else(|| &trait_name.prefixes)
+                .clone()
         } else {
-            &trait_name.prefixes
+            trait_name.prefixes
         };
-
-        // Clone path to avoid borrowing from self.  :(
-        let path = path.clone();
-        let module_to_insert_into = check!(
-            self.find_module_mut(&path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        if module_to_insert_into
+        let trait_name = CallPath {
+            suffix: trait_name.suffix,
+            prefixes: new_prefixes,
+        };
+        if self
             .implemented_traits
-            .get(&(trait_name.suffix.clone(), type_implementing_for.clone()))
+            .insert((trait_name.clone(), type_implementing_for), functions_buf)
             .is_some()
         {
             warnings.push(CompileWarning {
@@ -338,9 +305,6 @@ impl<'sc> Namespace<'sc> {
                 span: trait_name.span(),
             })
         }
-        module_to_insert_into
-            .implemented_traits
-            .insert((trait_name.suffix, type_implementing_for), functions_buf);
         ok((), warnings, errors)
     }
 
@@ -464,83 +428,6 @@ impl<'sc> Namespace<'sc> {
         methods
     }
 
-    fn find_trait_methods(
-        &self,
-        trait_name: &Ident<'sc>,
-    ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
-        let (methods, interface_surface) = match self.symbols.iter().find_map(|(_, x)| match x {
-            TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
-                name,
-                methods,
-                interface_surface,
-                ..
-            }) => {
-                if name == trait_name {
-                    Some((methods, interface_surface))
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }) {
-            Some(o) => o,
-            None => {
-                return err(
-                    vec![],
-                    vec![CompileError::TraitNotFound {
-                        name: trait_name.primary_name,
-                        span: trait_name.span.clone(),
-                    }],
-                )
-            }
-        };
-
-        ok(
-            [
-                methods.to_vec(),
-                interface_surface
-                    .iter()
-                    .map(|x| x.to_dummy_func(Mode::NonAbi))
-                    .collect(),
-            ]
-            .concat(),
-            vec![],
-            vec![],
-        )
-    }
-
-    /// Used to insert methods from trait constraints into the namespace for a given (generic) type
-    /// e.g. given `T: Clone`, insert the method `clone()` into the namespace for the type `T`.
-    /// A [crate::TypeParameter] contains a type and zero or more constraints, and this method
-    /// performs this task on potentially many type parameters.
-    pub(crate) fn insert_trait_methods(&mut self, type_params: &[crate::TypeParameter<'sc>]) {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        for crate::TypeParameter {
-            name,
-            trait_constraints,
-            ..
-        } in type_params
-        {
-            let r#type = self.resolve_type_without_self(name);
-            for trait_constraint in trait_constraints {
-                let methods_for_trait = check!(
-                    self.find_trait_methods(&trait_constraint.name),
-                    continue,
-                    warnings,
-                    errors
-                );
-                // insert the type into the namespace
-                self.implemented_traits.insert(
-                    (trait_constraint.name.clone(), r#type.clone()),
-                    methods_for_trait,
-                );
-                //implemented_traits:
-                //    HashMap<(TraitName<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
-            }
-        }
-    }
-
     /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
     /// method in the namespace. Requires `args_buf` because of some special casing for the
     /// standard library where we pull the type from the arguments buffer.
@@ -578,7 +465,15 @@ impl<'sc> Namespace<'sc> {
                 (module, &call_path.suffix, r#type)
             }
         };
-        let methods = namespace.get_methods_for_type(&r#type);
+
+        // This is a hack and I don't think it should be used.  We check the local namespace first,
+        // but if nothing turns up then we try the namespace where the type itself is declared.
+        let methods = self.get_methods_for_type(&r#type);
+        let methods = match methods[..] {
+            [] => namespace.get_methods_for_type(&r#type),
+            _ => methods,
+        };
+
         match methods
             .into_iter()
             .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
