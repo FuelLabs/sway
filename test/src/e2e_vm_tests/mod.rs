@@ -50,6 +50,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("neq_4_test", ProgramState::Return(0)),
         ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
+        ("const_decl", ProgramState::Return(100)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
