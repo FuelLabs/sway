@@ -6,8 +6,8 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1"
+fuels-rs = {path = "../fuels-rs"}
 hex = "0.4"
+itertools = "0.10"
 sha3 = "0.9"
 structopt = "0.3"
-itertools = "0.10"
-fuels-rs = {path = "../fuels-rs"}
