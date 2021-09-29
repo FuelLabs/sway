@@ -51,21 +51,12 @@ impl<'sc> Declaration<'sc> {
         let mut pair = decl.clone().into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
-            Rule::fn_decl => {
-                let fn_decl = check!(
-                    FunctionDeclaration::parse_from_pair(decl_inner, config, docstrings),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                if !unassigned_docstring.is_empty() {
-                    docstrings.insert(
-                        format!("fn.{}", fn_decl.name.primary_name),
-                        unassigned_docstring,
-                    );
-                }
-                Declaration::FunctionDeclaration(fn_decl)
-            }
+            Rule::non_var_decl => check!(
+                Self::parse_non_var_from_pair(decl_inner, config, unassigned_docstring, docstrings),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
             Rule::var_decl => {
                 let mut var_decl_parts = decl_inner.into_inner();
                 let _let_keyword = var_decl_parts.next();
@@ -113,6 +104,43 @@ impl<'sc> Declaration<'sc> {
                     type_ascription,
                 })
             }
+            Rule::reassignment => Declaration::Reassignment(check!(
+                Reassignment::parse_from_pair(decl_inner, config, docstrings),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
+            a => unreachable!("declarations don't have any other sub-types: {:?}", a),
+        };
+        ok(parsed_declaration, warnings, errors)
+    }
+
+    pub(crate) fn parse_non_var_from_pair(
+        decl: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+        unassigned_docstring: String,
+        docstrings: &mut HashMap<String, String>,
+    ) -> CompileResult<'sc, Self> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        let mut pair = decl.clone().into_inner();
+        let decl_inner = pair.next().unwrap();
+        let parsed_declaration = match decl_inner.as_rule() {
+            Rule::fn_decl => {
+                let fn_decl = check!(
+                    FunctionDeclaration::parse_from_pair(decl_inner, config, docstrings),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if !unassigned_docstring.is_empty() {
+                    docstrings.insert(
+                        format!("fn.{}", fn_decl.name.primary_name),
+                        unassigned_docstring,
+                    );
+                }
+                Declaration::FunctionDeclaration(fn_decl)
+            }
             Rule::trait_decl => Declaration::TraitDeclaration(check!(
                 TraitDeclaration::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),
@@ -149,12 +177,6 @@ impl<'sc> Declaration<'sc> {
                 }
                 Declaration::EnumDeclaration(enum_decl)
             }
-            Rule::reassignment => Declaration::Reassignment(check!(
-                Reassignment::parse_from_pair(decl_inner, config, docstrings),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
             Rule::impl_trait => Declaration::ImplTrait(check!(
                 ImplTrait::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),

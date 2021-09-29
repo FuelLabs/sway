@@ -549,7 +549,7 @@ fn parse_root_from_pairs<'sc>(
         let mut library_name = None;
         for pair in input {
             match pair.as_rule() {
-                Rule::declaration => {
+                Rule::non_var_decl => {
                     let mut decl = pair.clone().into_inner();
                     let decl_inner = decl.next().unwrap();
                     match decl_inner.as_rule() {
@@ -561,7 +561,7 @@ fn parse_root_from_pairs<'sc>(
                         }
                         _ => {
                             let decl = check!(
-                                Declaration::parse_from_pair(
+                                Declaration::parse_non_var_from_pair(
                                     pair.clone(),
                                     config,
                                     unassigned_docstring.clone(),
