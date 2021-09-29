@@ -1,6 +1,6 @@
 [package]
 authors = ["digorithm <rodrigo.araujo@fuel.sh>"]
-name = "sway-rs"
+name = "fuels-rs"
 version = "0.1.0"
 edition = "2018"
 

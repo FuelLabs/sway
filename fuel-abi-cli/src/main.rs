@@ -1,7 +1,7 @@
 use std::fs;
 use structopt::StructOpt;
-use sway_rs::json_abi::ABI;
-use sway_rs::types::{ParamType, Property};
+use fuels_rs::json_abi::ABI;
+use fuels_rs::types::{ParamType, Property};
 
 #[derive(StructOpt, Debug)]
 /// Sway/Fuel ABI coder.
