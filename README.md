@@ -31,7 +31,7 @@ cd sway
 cargo build
 ```
 
-Confirm the Sway toolchain build successfully:
+Confirm the Sway toolchain built successfully:
 
 ```console
 cargo run --bin forc -- --help
