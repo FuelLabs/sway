@@ -13,7 +13,8 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        TypedAstNode, TypedAstNodeContent, TypedFunctionDeclaration, TypedParseTree,
+        TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+        TypedParseTree,
     },
     types::{MaybeResolvedType, ResolvedType},
     BuildConfig, Ident,
@@ -626,9 +627,24 @@ pub(crate) fn compile_ast_to_asm<'sc>(
     let mut warnings = vec![];
     let mut errors = vec![];
     let asm = match ast {
-        TypedParseTree::Script { main_function, .. } => {
+        TypedParseTree::Script {
+            main_function,
+            declarations,
+            ..
+        } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
+            check!(
+                add_global_constant_decls(
+                    &mut namespace,
+                    &mut register_sequencer,
+                    &mut asm_buf,
+                    &declarations
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             // start generating from the main function
             let return_register = register_sequencer.next();
             let mut body = check!(
@@ -661,9 +677,24 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 data_section: namespace.data_section,
             }
         }
-        TypedParseTree::Predicate { main_function, .. } => {
+        TypedParseTree::Predicate {
+            main_function,
+            declarations,
+            ..
+        } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
+            check!(
+                add_global_constant_decls(
+                    &mut namespace,
+                    &mut register_sequencer,
+                    &mut asm_buf,
+                    &declarations
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             // start generating from the main function
             let mut body = check!(
                 convert_code_block_to_asm(
@@ -683,9 +714,24 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 data_section: namespace.data_section,
             }
         }
-        TypedParseTree::Contract { abi_entries, .. } => {
+        TypedParseTree::Contract {
+            abi_entries,
+            declarations,
+            ..
+        } => {
             let mut namespace: AsmNamespace = Default::default();
             let mut asm_buf = build_preamble(&mut register_sequencer).to_vec();
+            check!(
+                add_global_constant_decls(
+                    &mut namespace,
+                    &mut register_sequencer,
+                    &mut asm_buf,
+                    &declarations
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
             let (selectors_and_labels, mut contract_asm) = check!(
                 compile_contract_to_selectors(abi_entries, &mut namespace, &mut register_sequencer),
                 return err(warnings, errors),
@@ -1126,6 +1172,28 @@ fn build_contract_abi_switch<'sc>(
     });
 
     asm_buf
+}
+
+fn add_global_constant_decls<'sc>(
+    namespace: &mut AsmNamespace<'sc>,
+    register_sequencer: &mut RegisterSequencer,
+    asm_buf: &mut Vec<Op<'sc>>,
+    declarations: &[TypedDeclaration<'sc>],
+) -> CompileResult<'sc, ()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    for declaration in declarations {
+        if let TypedDeclaration::ConstantDeclaration(decl) = declaration {
+            let mut ops = check!(
+                convert_constant_decl_to_asm(&decl, namespace, register_sequencer),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            asm_buf.append(&mut ops);
+        }
+    }
+    ok((), warnings, errors)
 }
 
 /// Given a contract's abi entries, compile them to jump destinations and an opcode buffer.

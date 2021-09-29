@@ -24,6 +24,7 @@ ref_keyword         =  {"ref "}
 deref_keyword       =  {"deref "}
 true_keyword        =  {"true"}
 false_keyword       =  {"false"}
+const_decl_keyword  =  {"const"}
 
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
@@ -101,7 +102,7 @@ array_exp          =  {"[" ~ (expr ~ ("," ~ expr)*) ~ "]"}
 
 // declarations
 declaration               =  {(non_var_decl|var_decl|reassignment)}
-non_var_decl              =  {(docstring|enum_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self)}
+non_var_decl              =  {(docstring|enum_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self|const_decl)}
 var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
 fn_decl                   =  {docstring? ~ visibility ~ fn_signature ~ code_block}
@@ -110,6 +111,7 @@ var_name                  =  {ident}
 reassignment              =  {variable_reassignment | struct_field_reassignment}
 variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}
 struct_field_reassignment =  {struct_field_access ~ assign ~ expr ~ ";" }
+const_decl                =  {const_decl_keyword ~ var_name ~ type_ascription? ~ assign ~ literal_value ~ ";"}
 
 visibility =  {"pub"?}
 

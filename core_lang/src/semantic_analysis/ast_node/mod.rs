@@ -20,8 +20,9 @@ mod while_loop;
 use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{
-    TypedAbiDeclaration, TypedDeclaration, TypedEnumDeclaration, TypedEnumVariant,
-    TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration, TypedStructField,
+    TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
+    TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
+    TypedStructField,
 };
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
 pub(crate) use expression::*;
@@ -94,6 +95,32 @@ impl<'sc> TypedAstNode<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
+        // A little utility used to check an ascribed type matches its associated expression.
+        let mut type_check_ascribed_expr = |type_ascription: Option<_>, value, decl_str| {
+            let type_ascription = type_ascription
+                .map(|ty| namespace.resolve_type(&ty, self_type))
+                .or(Some(MaybeResolvedType::Partial(
+                    PartiallyResolvedType::NeedsType,
+                )));
+            TypedExpression::type_check(
+                value,
+                namespace,
+                type_ascription.clone(),
+                format!(
+                    "{} declaration's type annotation (type {}) does \
+                     not match up with the assigned expression's type.",
+                    decl_str,
+                    type_ascription
+                        .as_ref()
+                        .map(|ty| ty.friendly_type_str())
+                        .unwrap_or_else(|| "none".into())
+                ),
+                self_type,
+                build_config,
+                dead_code_graph,
+            )
+        };
+
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
@@ -128,41 +155,43 @@ impl<'sc> TypedAstNode<'sc> {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription = match type_ascription {
-                                Some(ty) => Some(namespace.resolve_type(&ty, self_type)),
-                                None => Some(MaybeResolvedType::Partial(
-                                    PartiallyResolvedType::NeedsType,
-                                )),
-                            };
+                            let result =
+                                type_check_ascribed_expr(type_ascription, body, "Variable");
                             let body = check!(
-                                TypedExpression::type_check(
-                                    body,
-                                    namespace,
-                                    type_ascription.clone(),
-                                    format!(
-                                        "Variable declaration's type annotation (type {}) does \
-                                         not match up with the assigned expression's type.",
-                                        type_ascription
-                                            .map(|x| x.friendly_type_str())
-                                            .unwrap_or_else(|| "none".into())
-                                    ),
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph
-                                ),
+                                result,
                                 error_recovery_expr(name.span.clone()),
                                 warnings,
                                 errors
                             );
-
-                            let body =
+                            let typed_var_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
                                     body,
                                     is_mutable,
                                 });
-                            namespace.insert(name, body.clone());
-                            body
+                            namespace.insert(name, typed_var_decl.clone());
+                            typed_var_decl
+                        }
+                        Declaration::ConstantDeclaration(ConstantDeclaration {
+                            name,
+                            type_ascription,
+                            value,
+                        }) => {
+                            let result =
+                                type_check_ascribed_expr(type_ascription, value, "Constant");
+                            let value = check!(
+                                result,
+                                error_recovery_expr(name.span.clone()),
+                                warnings,
+                                errors
+                            );
+                            let typed_const_decl =
+                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                                    name: name.clone(),
+                                    value,
+                                });
+                            namespace.insert(name, typed_const_decl.clone());
+                            typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
                             let span = e.span.clone();

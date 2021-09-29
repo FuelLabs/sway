@@ -1,4 +1,5 @@
 mod abi_declaration;
+mod constant_declaration;
 mod enum_declaration;
 pub mod function_declaration;
 mod impl_trait;
@@ -9,6 +10,7 @@ mod type_parameter;
 mod variable_declaration;
 
 pub(crate) use abi_declaration::*;
+pub(crate) use constant_declaration::*;
 pub(crate) use enum_declaration::*;
 pub(crate) use function_declaration::*;
 pub(crate) use impl_trait::*;
@@ -35,6 +37,7 @@ pub enum Declaration<'sc> {
     ImplTrait(ImplTrait<'sc>),
     ImplSelf(ImplSelf<'sc>),
     AbiDeclaration(AbiDeclaration<'sc>),
+    ConstantDeclaration(ConstantDeclaration<'sc>),
 }
 impl<'sc> Declaration<'sc> {
     pub(crate) fn parse_from_pair(
@@ -147,6 +150,12 @@ impl<'sc> Declaration<'sc> {
             )),
             Rule::abi_decl => Declaration::AbiDeclaration(check!(
                 AbiDeclaration::parse_from_pair(decl_inner, config, docstrings),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
+            Rule::const_decl => Declaration::ConstantDeclaration(check!(
+                ConstantDeclaration::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),
                 warnings,
                 errors
