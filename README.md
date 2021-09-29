@@ -13,7 +13,7 @@ For user documentation, see the Sway Book: <https://fuellabs.github.io/sway/late
 
 ### Dependencies
 
-Sway is built in Rust. Be begin, install the Rust toolchain following instructions at <https://www.rust-lang.org/tools/install>. Then configure your Rust toolchain to use Rust `stable`:
+Sway is built in Rust. To begin, install the Rust toolchain following instructions at <https://www.rust-lang.org/tools/install>. Then configure your Rust toolchain to use Rust `stable`:
 
 ```console
 rustup default stable
