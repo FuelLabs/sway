@@ -19,6 +19,12 @@ Sway is built in Rust. To begin, install the Rust toolchain following instructio
 rustup default stable
 ```
 
+If not already done, add the Cargo bin directory to your `PATH` by adding the following line to `~/.profile` and restarting the shell session.
+
+```console
+export PATH="${HOME}/.cargo/bin:${PATH}"
+```
+
 To ensure access to all dependent repositories, [create](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent) and [add](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) SSH keys to your GitHub account.
 
 ## Building Sway
@@ -39,4 +45,10 @@ cargo run --bin forc -- --help
 ./target/debug/forc --help
 ```
 
-To run `forc` from any directory, add `<SWAY_REPO_PATH>/target/debug/` to your `$PATH`.
+To run `forc` from any directory, install `forc` to your local Cargo bin directory:
+
+```console
+cargo install --path forc
+# Also install sway-server if using the IDE plugin
+cargo install --path sway-server
+```
