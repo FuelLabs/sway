@@ -10,17 +10,24 @@ pub struct ABIEncoder {
 }
 
 impl ABIEncoder {
-    pub fn new(sway_function: &[u8]) -> Self {
+    pub fn new() -> Self {
         Self {
-            function_selector: Self::function_selector(sway_function),
+            function_selector: [0; 8],
+            encoded_args: Vec::new(),
+        }
+    }
+
+    pub fn new_with_fn_selector(signature: &[u8]) -> Self {
+        Self {
+            function_selector: Self::encode_function_selector(signature),
             encoded_args: Vec::new(),
         }
     }
 
     /// Encode takes an array of `Token`s, encodes these tokens, and returns the
     /// raw bytes (as a Vec<u8>) that represent the encoded tokens.
-    /// The encoding follows the ABI specs defined here:
-    /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md
+    /// The encoding follows the ABI specs defined
+    /// [here](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md)
     pub fn encode(&mut self, args: &[Token]) -> Result<Vec<u8>, Error> {
         for arg in args {
             match arg {
@@ -57,7 +64,7 @@ impl ABIEncoder {
         Ok(self.encoded_args.clone().into())
     }
 
-    pub fn function_selector(signature: &[u8]) -> types::Word {
+    pub fn encode_function_selector(signature: &[u8]) -> types::Word {
         let mut hasher = Sha256::new();
         hasher.update(signature);
         let result = hasher.finalize();
@@ -78,9 +85,7 @@ mod tests {
     fn encode_function_signature() {
         let sway_fn = "entry_one(u64)";
 
-        let abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
-
-        let result = abi_encoder.function_selector;
+        let result = ABIEncoder::encode_function_selector(sway_fn.as_bytes());
 
         println!(
             "Encoded function selector for ({}): {:#0x?}",
@@ -109,14 +114,11 @@ mod tests {
 
         let args: Vec<Token> = vec![arg];
 
-        // Expected encoded ABI:
-        // "0x0000ffffffff";
-
         let expected_encoded_abi = [0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff];
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xb7, 0x9e, 0xf7, 0x43];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -146,16 +148,13 @@ mod tests {
 
         let args: Vec<Token> = vec![first, second];
 
-        // Expected encoded ABI:
-        // "0x0000ffffffff0000ffffffff";
-
         let expected_encoded_abi = [
             0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff, 0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff,
         ];
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xa7, 0x07, 0xb0, 0x8e];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -184,14 +183,11 @@ mod tests {
 
         let args: Vec<Token> = vec![arg];
 
-        // Expected encoded ABI:
-        // "0xffffffffffffffff";
-
         let expected_encoded_abi = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x0c, 0x36, 0xcb, 0x9c];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -220,14 +216,11 @@ mod tests {
 
         let args: Vec<Token> = vec![arg];
 
-        // Expected encoded ABI:
-        // "0x00000001";
-
         let expected_encoded_abi = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1];
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x66, 0x8f, 0xff, 0x58];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -257,16 +250,13 @@ mod tests {
 
         let args: Vec<Token> = vec![first, second];
 
-        // Expected encoded ABI:
-        // "0x0000ffffffff00000001";
-
         let expected_encoded_abi = [
             0x0, 0x0, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1,
         ];
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xf5, 0x40, 0x73, 0x2b];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -295,14 +285,11 @@ mod tests {
 
         let args: Vec<Token> = vec![arg];
 
-        // Expected encoded ABI:
-        // "0x0000000ff";
-
         let expected_encoded_abi = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xff];
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x2e, 0xe3, 0xce, 0x1f];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -337,9 +324,6 @@ mod tests {
 
         let args: Vec<Token> = vec![arg];
 
-        // Expected encoded ABI:
-        // "0xd5579c46dfcc7f18207013e65b44e4cb4e2c2298f4ac457ba8f82743f31e930b";
-
         let expected_encoded_abi = [
             0xd5, 0x57, 0x9c, 0x46, 0xdf, 0xcc, 0x7f, 0x18, 0x20, 0x70, 0x13, 0xe6, 0x5b, 0x44,
             0xe4, 0xcb, 0x4e, 0x2c, 0x22, 0x98, 0xf4, 0xac, 0x45, 0x7b, 0xa8, 0xf8, 0x27, 0x43,
@@ -348,7 +332,7 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x01, 0x49, 0x42, 0x96];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -391,7 +375,7 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x2c, 0x5a, 0x10, 0x2e];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -426,7 +410,7 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xd5, 0x6e, 0x76, 0x51];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -472,7 +456,7 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xa8, 0x1e, 0x8d, 0xd7];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -521,7 +505,7 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x35, 0x5c, 0xa6, 0xfa];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -573,7 +557,7 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0xea, 0x0a, 0xfd, 0x23];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 
@@ -664,7 +648,7 @@ mod tests {
 
         let expected_function_selector = [0x0, 0x0, 0x0, 0x0, 0x10, 0x93, 0xb2, 0x12];
 
-        let mut abi_encoder = ABIEncoder::new(sway_fn.as_bytes());
+        let mut abi_encoder = ABIEncoder::new_with_fn_selector(sway_fn.as_bytes());
 
         let encoded = abi_encoder.encode(&args).unwrap();
 

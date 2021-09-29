@@ -51,22 +51,22 @@ Note that for every param you want to encode, you must pass a `-v` flag followed
 
 ```json
 [
-    {
-        "type": "function",
-        "inputs": [
-            {
-                "name": "arg",
-                "type": "u32"
-            }
-        ],
-        "name": "takes_u32_returns_bool",
-        "outputs": [
-            {
-                "name": "",
-                "type": "bool"
-            }
-        ]
-    }
+  {
+    "type":"function",
+    "inputs":[
+      {
+        "name":"arg",
+        "type":"u32"
+      }
+    ],
+    "name":"takes_u32_returns_bool",
+    "outputs":[
+      {
+        "name":"",
+        "type":"bool"
+      }
+    ]
+  }
 ]
 ```
 
@@ -82,22 +82,22 @@ cargo run -- encode function examples/simple.json takes_u32_returns_bool -p 4
 
 ```json
 [
-    {
-        "type": "function",
-        "inputs": [
-            {
-                "name": "arg",
-                "type": "u16[3]"
-            }
-        ],
-        "name": "takes_array",
-        "outputs": [
-            {
-                "name": "",
-                "type": "u16[2]"
-            }
-        ]
-    }
+  {
+    "type":"function",
+    "inputs":[
+      {
+        "name":"arg",
+        "type":"u16[3]"
+      }
+    ],
+    "name":"takes_array",
+    "outputs":[
+      {
+        "name":"",
+        "type":"u16[2]"
+      }
+    ]
+  }
 ]
 ```
 
@@ -115,37 +115,39 @@ Example with nested struct:
 
 ```json
 [
-    {
-        "type": "contract",
-        "inputs": [
-            {
-                "name": "MyNestedStruct",
-                "type": "struct",
-                "components": [
-                    {
-                        "name": "x",
-                        "type": "u16"
-                    },
-                    {
-                        "name": "y",
-                        "type": "struct",
-                        "components": [
-                            {
-                                "name": "a",
-                                "type": "bool"
-                            },
-                            {
-                                "name": "b",
-                                "type": "u8[2]"
-                            }
-                        ]
-                    }
-                ]
-            }
-        ],
-        "name": "takes_nested_struct",
-        "outputs": []
-    }
+  {
+    "type":"contract",
+    "inputs":[
+      {
+        "name":"MyNestedStruct",
+        "type":"struct",
+        "components":[
+          {
+            "name":"x",
+            "type":"u16"
+          },
+          {
+            "name":"y",
+            "type":"struct",
+            "components":[
+              {
+                "name":"a",
+                "type":"bool"
+              },
+              {
+                "name":"b",
+                "type":"u8[2]"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "name":"takes_nested_struct",
+    "outputs":[
+      
+    ]
+  }
 ]
 ```
 

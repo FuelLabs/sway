@@ -13,18 +13,57 @@ use crate::{
 };
 use serde_json;
 
-pub struct ABI {}
+pub struct ABI {
+    fn_selector: Option<Vec<u8>>,
+}
 
 impl ABI {
     pub fn new() -> Self {
-        ABI {}
+        ABI { fn_selector: None }
     }
 
     /// Higher-level layer of the ABI encoding module.
-    /// Encode is essentially a wrapper on top of `abi_encoder`,
-    /// but it is responsible for parsing strings into proper `Token`s
-    /// that can be encoded by the `abi_encoder`.
-    pub fn encode(&self, abi: &str, fn_name: &str, values: &[String]) -> Result<String, Error> {
+    /// Encode is essentially a wrapper of [`crate::abi_encoder`],
+    /// but it is responsible for parsing strings into proper [`Token`]
+    /// that can be encoded by the [`crate::abi_encoder`].
+    /// Note that `encode` only encodes the parameters for an ABI call,
+    /// It won't include the function selector in it. To get the function
+    /// selector, use `encode_with_function_selector`.
+    ///
+    /// # Examples
+    /// ```
+    /// use fuels_rs::json_abi::ABI;
+    /// let json_abi = r#"
+    ///     [
+    ///         {
+    ///             "type":"contract",
+    ///             "inputs":[
+    ///                 {
+    ///                     "name":"arg",
+    ///                     "type":"u32"
+    ///                 }
+    ///             ],
+    ///             "name":"takes_u32_returns_bool",
+    ///             "outputs":[
+    ///                 {
+    ///                     "name":"",
+    ///                     "type":"bool"
+    ///                 }
+    ///             ]
+    ///         }
+    ///     ]
+    ///     "#;
+    ///
+    ///     let values: Vec<String> = vec!["10".to_string()];
+    ///
+    ///     let mut abi = ABI::new();
+    ///
+    ///     let function_name = "takes_u32_returns_bool";
+    ///     let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+    ///     let expected_encode = "000000000000000a";
+    ///     assert_eq!(encoded, expected_encode);
+    /// ```
+    pub fn encode(&mut self, abi: &str, fn_name: &str, values: &[String]) -> Result<String, Error> {
         let parsed_abi: JsonABI = serde_json::from_str(abi)?;
 
         let entry = parsed_abi.iter().find(|e| e.name == fn_name);
@@ -38,8 +77,12 @@ impl ABI {
 
         let entry = entry.unwrap();
 
-        let mut encoder =
-            ABIEncoder::new(self.build_fn_selector(fn_name, &entry.inputs).as_bytes());
+        let mut encoder = ABIEncoder::new_with_fn_selector(
+            self.build_fn_selector(fn_name, &entry.inputs).as_bytes(),
+        );
+
+        // Update the fn_selector field with the encoded selector.
+        self.fn_selector = Some(encoder.function_selector.to_vec());
 
         let params: Vec<_> = entry
             .inputs
@@ -50,17 +93,78 @@ impl ABI {
 
         let tokens = self.parse_tokens(&params)?;
 
-        let encoded = encoder.encode(&tokens)?;
-
-        let mut encoded_abi: Vec<u8> = Vec::new();
-
-        encoded_abi.extend_from_slice(&encoder.function_selector);
-        encoded_abi.extend(encoded);
-
-        return Ok(hex::encode(encoded_abi));
+        return Ok(hex::encode(encoder.encode(&tokens)?));
     }
 
-    /// Similar to encode, but it encodes only an array of strings containing
+    /// Similar to `encode`, but includes the function selector in the
+    /// final encoded string.
+    ///
+    /// # Examples
+    /// ```
+    /// use fuels_rs::json_abi::ABI;
+    /// let json_abi = r#"
+    ///     [
+    ///         {
+    ///             "type":"contract",
+    ///             "inputs":[
+    ///                 {
+    ///                     "name":"arg",
+    ///                     "type":"u32"
+    ///                 }
+    ///             ],
+    ///             "name":"takes_u32_returns_bool",
+    ///             "outputs":[
+    ///                 {
+    ///                     "name":"",
+    ///                     "type":"bool"
+    ///                 }
+    ///             ]
+    ///         }
+    ///     ]
+    ///     "#;
+    ///
+    ///     let values: Vec<String> = vec!["10".to_string()];
+    ///
+    ///     let mut abi = ABI::new();
+
+    ///     let function_name = "takes_u32_returns_bool";
+    ///
+    ///     let encoded = abi
+    ///         .encode_with_function_selector(json_abi, function_name, &values)
+    ///         .unwrap();
+    ///
+    ///     let expected_encode = "000000006355e6ee000000000000000a";
+    ///     assert_eq!(encoded, expected_encode);
+    /// ```
+    pub fn encode_with_function_selector(
+        &mut self,
+        abi: &str,
+        fn_name: &str,
+        values: &[String],
+    ) -> Result<String, Error> {
+        let encoded_params = self.encode(abi, fn_name, values)?;
+        let fn_selector = self
+            .fn_selector
+            .to_owned()
+            .expect("Function selector not encoded");
+
+        let encoded_fn_selector = hex::encode(fn_selector);
+
+        Ok(format!("{}{}", encoded_fn_selector, encoded_params))
+    }
+
+    /// Helper function to return the encoded function selector.
+    /// It must already be encoded.
+    pub fn get_encoded_function_selector(&self) -> String {
+        let fn_selector = self
+            .fn_selector
+            .to_owned()
+            .expect("Function selector not encoded");
+
+        hex::encode(fn_selector)
+    }
+
+    /// Similar to `encode`, but it encodes only an array of strings containing
     /// [<type_1>, <param_1>, <type_2>, <param_2>, <type_n>, <param_n>]
     /// Without having to reference to a JSON specification of the ABI.
     pub fn encode_params(&self, params: &[String]) -> Result<String, Error> {
@@ -68,7 +172,7 @@ impl ABI {
 
         let mut param_type_pairs: Vec<(ParamType, &str)> = vec![];
 
-        let mut encoder = ABIEncoder::new(&[0]);
+        let mut encoder = ABIEncoder::new();
 
         for pair in pairs {
             let prop = Property {
@@ -470,6 +574,52 @@ mod tests {
     use super::*;
 
     #[test]
+    fn simple_encode_and_decode_no_selector() {
+        let json_abi = r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"arg",
+                        "type":"u32"
+                    }
+                ],
+                "name":"takes_u32_returns_bool",
+                "outputs":[
+                    {
+                        "name":"",
+                        "type":"bool"
+                    }
+                ]
+            }
+        ]
+        "#;
+
+        let values: Vec<String> = vec!["10".to_string()];
+
+        let mut abi = ABI::new();
+
+        let function_name = "takes_u32_returns_bool";
+
+        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        println!("encoded: {:?}\n", encoded);
+
+        let expected_encode = "000000000000000a";
+        assert_eq!(encoded, expected_encode);
+
+        let return_value = [
+            0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // false
+        ];
+
+        let decoded_return = abi.decode(json_abi, function_name, &return_value).unwrap();
+
+        let expected_return = vec![Token::Bool(false)];
+
+        assert_eq!(decoded_return, expected_return);
+    }
+
+    #[test]
     fn simple_encode_and_decode() {
         let json_abi = r#"
         [
@@ -494,11 +644,13 @@ mod tests {
 
         let values: Vec<String> = vec!["10".to_string()];
 
-        let abi = ABI::new();
+        let mut abi = ABI::new();
 
         let function_name = "takes_u32_returns_bool";
 
-        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        let encoded = abi
+            .encode_with_function_selector(json_abi, function_name, &values)
+            .unwrap();
         println!("encoded: {:?}\n", encoded);
 
         let expected_encode = "000000006355e6ee000000000000000a";
@@ -547,11 +699,13 @@ mod tests {
             "1".to_string(),
         ];
 
-        let abi = ABI::new();
+        let mut abi = ABI::new();
 
         let function_name = "my_func";
 
-        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        let encoded = abi
+            .encode_with_function_selector(json_abi, function_name, &values)
+            .unwrap();
         println!("encoded: {:?}\n", encoded);
 
         let expected_encode = "00000000e64019abd5579c46dfcc7f18207013e65b44e4cb4e2c2298f4ac457ba8f82743f31e930b0000000000000001";
@@ -596,11 +750,13 @@ mod tests {
 
         let values: Vec<String> = vec!["[1,2,3]".to_string()];
 
-        let abi = ABI::new();
+        let mut abi = ABI::new();
 
         let function_name = "takes_array";
 
-        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        let encoded = abi
+            .encode_with_function_selector(json_abi, function_name, &values)
+            .unwrap();
         println!("encoded: {:?}\n", encoded);
 
         let expected_encode = "00000000f0b87864000000000000000100000000000000020000000000000003";
@@ -700,11 +856,13 @@ mod tests {
 
         let values: Vec<String> = vec!["[[1,2],[3],[4]]".to_string()];
 
-        let abi = ABI::new();
+        let mut abi = ABI::new();
 
         let function_name = "takes_nested_array";
 
-        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        let encoded = abi
+            .encode_with_function_selector(json_abi, function_name, &values)
+            .unwrap();
         println!("encoded: {:?}\n", encoded);
 
         let expected_encode =
@@ -748,11 +906,13 @@ mod tests {
 
         let values: Vec<String> = vec!["This is a full sentence".to_string()];
 
-        let abi = ABI::new();
+        let mut abi = ABI::new();
 
         let function_name = "takes_string";
 
-        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        let encoded = abi
+            .encode_with_function_selector(json_abi, function_name, &values)
+            .unwrap();
         println!("encoded: {:?}\n", encoded);
 
         let expected_encode = "00000000d56e76515468697320697320612066756c6c2073656e74656e636500";
@@ -799,11 +959,13 @@ mod tests {
 
         let values: Vec<String> = vec!["(42, true)".to_string()];
 
-        let abi = ABI::new();
+        let mut abi = ABI::new();
 
         let function_name = "takes_struct";
 
-        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        let encoded = abi
+            .encode_with_function_selector(json_abi, function_name, &values)
+            .unwrap();
         println!("encoded: {:?}\n", encoded);
 
         let expected_encode = "00000000f5957fce000000000000002a0000000000000001";
@@ -850,11 +1012,13 @@ mod tests {
 
         let values: Vec<String> = vec!["(10, (true, [1,2]))".to_string()];
 
-        let abi = ABI::new();
+        let mut abi = ABI::new();
 
         let function_name = "takes_nested_struct";
 
-        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        let encoded = abi
+            .encode_with_function_selector(json_abi, function_name, &values)
+            .unwrap();
         println!("encoded: {:?}\n", encoded);
 
         let expected_encode =
@@ -899,7 +1063,9 @@ mod tests {
 
         let values: Vec<String> = vec!["((true, [1,2]), 10)".to_string()];
 
-        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        let encoded = abi
+            .encode_with_function_selector(json_abi, function_name, &values)
+            .unwrap();
         println!("encoded: {:?}\n", encoded);
 
         let expected_encode =
@@ -937,11 +1103,13 @@ mod tests {
 
         let values: Vec<String> = vec!["(0, 42)".to_string()];
 
-        let abi = ABI::new();
+        let mut abi = ABI::new();
 
         let function_name = "takes_enum";
 
-        let encoded = abi.encode(json_abi, function_name, &values).unwrap();
+        let encoded = abi
+            .encode_with_function_selector(json_abi, function_name, &values)
+            .unwrap();
         println!("encoded: {:?}\n", encoded);
 
         let expected_encode = "000000009542a3c90000000000000000000000000000002a";

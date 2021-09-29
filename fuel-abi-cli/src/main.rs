@@ -1,7 +1,7 @@
-use std::fs;
-use structopt::StructOpt;
 use fuels_rs::json_abi::ABI;
 use fuels_rs::types::{ParamType, Property};
+use std::fs;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 /// Sway/Fuel ABI coder.
@@ -89,9 +89,9 @@ fn encode_input(path: &str, function_name: &str, values: &[String]) -> anyhow::R
 
     let contract = fs::read_to_string(path)?;
 
-    let abi_coder = ABI::new();
+    let mut abi_coder = ABI::new();
 
-    let result = abi_coder.encode(&contract, function_name, values)?;
+    let result = abi_coder.encode_with_function_selector(&contract, function_name, values)?;
 
     Ok(result)
 }
