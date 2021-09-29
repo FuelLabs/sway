@@ -4,6 +4,7 @@ use crate::parse_tree::CallPath;
 use crate::span::Span;
 use crate::{error::*, parser::Rule, types::TypeInfo};
 use pest::iterators::Pair;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct ImplTrait<'sc> {
@@ -34,6 +35,7 @@ impl<'sc> ImplTrait<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -95,7 +97,7 @@ impl<'sc> ImplTrait<'sc> {
 
         for pair in iter {
             fn_decls_buf.push(check!(
-                FunctionDeclaration::parse_from_pair(pair, config),
+                FunctionDeclaration::parse_from_pair(pair, config, docstrings),
                 continue,
                 warnings,
                 errors
@@ -122,6 +124,7 @@ impl<'sc> ImplSelf<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -174,7 +177,7 @@ impl<'sc> ImplSelf<'sc> {
 
         for pair in iter {
             fn_decls_buf.push(check!(
-                FunctionDeclaration::parse_from_pair(pair, config),
+                FunctionDeclaration::parse_from_pair(pair, config, docstrings),
                 continue,
                 warnings,
                 errors
