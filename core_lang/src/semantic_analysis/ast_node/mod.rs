@@ -224,9 +224,10 @@ impl<'sc> TypedAstNode<'sc> {
                                     .map(|x| x.to_dummy_func(Mode::NonAbi))
                                     .collect(),
                             );
-                            let methods = check!(
+                            // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
+                            let _methods = check!(
                                 type_check_trait_methods(
-                                    methods,
+                                    methods.clone(),
                                     &trait_namespace,
                                     self_type,
                                     build_config,
@@ -286,7 +287,12 @@ impl<'sc> TypedAstNode<'sc> {
                                 namespace.resolve_type_without_self(&type_implementing_for);
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            namespace.insert_trait_methods(&type_arguments[..]);
+                            if !type_arguments.is_empty() {
+                                errors.push(CompileError::Internal(
+                                    "Where clauses are not supported yet.",
+                                    type_arguments[0].clone().name_ident.span,
+                                ));
+                            }
                             for mut fn_decl in functions.into_iter() {
                                 let mut type_arguments = type_arguments.clone();
                                 // add generic params from impl trait into function type params
@@ -394,9 +400,11 @@ impl<'sc> TypedAstNode<'sc> {
                             // from itself. This is by design.
                             let interface_surface =
                                 type_check_interface_surface(interface_surface, namespace);
-                            let methods = check!(
+                            // type check these for errors but don't actually use them yet -- the real
+                            // ones will be type checked with proper symbols when the ABI is implemented
+                            let _methods = check!(
                                 type_check_trait_methods(
-                                    methods,
+                                    methods.clone(),
                                     namespace,
                                     self_type,
                                     build_config,

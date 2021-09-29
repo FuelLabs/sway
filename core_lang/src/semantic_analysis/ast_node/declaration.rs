@@ -156,7 +156,7 @@ pub struct TypedAbiDeclaration<'sc> {
     /// The methods a contract is required to implement in order opt in to this interface
     pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
     /// The methods provided to a contract "for free" upon opting in to this interface
-    pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
+    pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) span: Span<'sc>,
 }
 
@@ -452,7 +452,7 @@ pub struct TypedFunctionParameter<'sc> {
 pub struct TypedTraitDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
-    pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
+    pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) visibility: Visibility,
 }
