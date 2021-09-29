@@ -211,7 +211,7 @@ impl<'sc> EnumVariant<'sc> {
                             warnings,
                             errors
                         );
-                        if unassigned_docstring.len() > 0 {
+                        if !unassigned_docstring.is_empty() {
                             docstrings.insert(
                                 format!("enum.{}.{}", enum_name, name.primary_name),
                                 unassigned_docstring.clone(),

@@ -58,7 +58,7 @@ impl<'sc> Declaration<'sc> {
                     warnings,
                     errors
                 );
-                if unassigned_docstring.len() > 0 {
+                if !unassigned_docstring.is_empty() {
                     docstrings.insert(
                         format!("fn.{}", fn_decl.name.primary_name),
                         unassigned_docstring,
@@ -126,7 +126,7 @@ impl<'sc> Declaration<'sc> {
                     warnings,
                     errors
                 );
-                if unassigned_docstring.len() > 0 {
+                if !unassigned_docstring.is_empty() {
                     docstrings.insert(
                         format!("struct.{}", struct_decl.name.primary_name),
                         unassigned_docstring,
@@ -141,7 +141,7 @@ impl<'sc> Declaration<'sc> {
                     warnings,
                     errors
                 );
-                if unassigned_docstring.len() > 0 {
+                if !unassigned_docstring.is_empty() {
                     docstrings.insert(
                         format!("enum.{}", enum_decl.name.primary_name),
                         unassigned_docstring,
