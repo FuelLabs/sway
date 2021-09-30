@@ -1056,9 +1056,9 @@ fn error_recovery_function_declaration<'sc>(
         return_type_span,
         parameters: Default::default(),
         visibility,
-        return_type: return_type
-            .attempt_naive_resolution()
-            .unwrap_or(MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)),
+        return_type: todo!("use type engine to resolve"), /*return_type
+                                                          .attempt_naive_resolution()
+                                                          .unwrap_or(MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)),*/
         type_parameters: Default::default(),
     }
 }

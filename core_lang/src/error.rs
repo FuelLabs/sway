@@ -1,4 +1,5 @@
 use crate::span::Span;
+use crate::types::IntegerBits;
 use crate::{parser::Rule, types::MaybeResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
@@ -160,8 +161,8 @@ pub enum Warning<'sc> {
         name: &'sc str,
     },
     LossOfPrecision {
-        initial_type: MaybeResolvedType<'sc>,
-        cast_to: MaybeResolvedType<'sc>,
+        initial_type: IntegerBits,
+        cast_to: IntegerBits,
     },
     UnusedReturnValue {
         r#type: MaybeResolvedType<'sc>,
@@ -234,9 +235,9 @@ impl<'sc> Warning<'sc> {
                 initial_type,
                 cast_to,
             } => format!(
-                "This cast, from type {} to type {}, will lose precision.",
-                initial_type.friendly_type_str(),
-                cast_to.friendly_type_str()
+                "This cast, from integer type of width {} to integer type of width {}, will lose precision.",
+                initial_type.friendly_str(),
+                cast_to.friendly_str()
             ),
             UnusedReturnValue { r#type } => format!(
                 "This returns a value of type {}, which is not assigned to anything and is \

@@ -496,7 +496,7 @@ impl<'sc> Dependencies<'sc> {
 enum DependentSymbol<'sc> {
     Symbol(&'sc str),
     Fn(&'sc str, Option<Span<'sc>>),
-    Impl(&'sc str, &'sc str), // Trait or self, and type implementing for.
+    Impl(&'sc str, String), // Trait or self, and type implementing for.
 }
 
 // We'll use a custom Hash and PartialEq here to explicitly ignore the span in the Fn variant.
@@ -566,7 +566,7 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
     }
 }
 
-fn type_info_name<'sc>(type_info: &TypeInfo<'sc>) -> &'sc str {
+fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
         TypeInfo::Str(_) => "str",
         TypeInfo::UnsignedInteger(n) => match n {
@@ -584,7 +584,10 @@ fn type_info_name<'sc>(type_info: &TypeInfo<'sc>) -> &'sc str {
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
+        TypeInfo::Ref(x) => return format!("T{}", x),
+        TypeInfo::Unknown => "unknown",
     }
+    .to_string()
 }
 
 // -------------------------------------------------------------------------------------------------

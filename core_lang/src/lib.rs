@@ -13,6 +13,7 @@ pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
 mod span;
+pub(crate) mod type_engine;
 
 pub use crate::parse_tree::*;
 pub use crate::parser::{HllParser, Rule};
@@ -768,7 +769,6 @@ fn test_basic_prog() {
     "#,
         None,
     );
-    dbg!(&prog);
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     prog.unwrap(&mut warnings, &mut errors);
@@ -806,7 +806,6 @@ fn test_unary_ordering() {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     let prog = prog.unwrap(&mut warnings, &mut errors);
-    dbg!(&prog);
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
     if let AstNode {

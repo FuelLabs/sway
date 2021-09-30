@@ -290,7 +290,6 @@ mod test {
             }"#,
         );
         // this parse should fail since parens are wrong
-        dbg!(&parsed);
         match parsed {
             Err(e) => {
                 println!("{:#?}", e);
@@ -314,7 +313,6 @@ mod test {
             "#,
         );
         // this parse should fail since parens are wrong
-        dbg!(&parsed);
         match parsed {
             Err(e) => {
                 println!("{:#?}", e);
@@ -346,10 +344,8 @@ mod test {
                 }
             "#,
         );
-        dbg!(&parsed);
         match parsed {
             Err(e) => {
-                println!("{:#?}", e);
                 panic!()
             }
             Ok(_) => (),
@@ -372,9 +368,7 @@ mod test {
                 println!("{:#?}", e);
                 panic!()
             }
-            Ok(o) => {
-                println!("{:#?}", o);
-            }
+            Ok(o) => {}
         }
     }
 }

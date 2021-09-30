@@ -62,7 +62,7 @@ impl<'sc> Namespace<'sc> {
             },
             TypeInfo::SelfType => self_type.clone(),
 
-            o => o.to_resolved(),
+            o => todo!("put type engine in namespace and use that"),
         }
     }
     /// Used to resolve a type when there is no known self type. This is needed
@@ -95,7 +95,7 @@ impl<'sc> Namespace<'sc> {
                 }),
             },
             TypeInfo::SelfType => MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
-            o => o.to_resolved(),
+            o => todo!("put type engine in namespace and use that to resolve"),
         }
     }
     /// Given a path to a module, create synonyms to every symbol in that module.

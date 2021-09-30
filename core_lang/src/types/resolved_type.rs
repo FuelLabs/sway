@@ -33,6 +33,10 @@ pub enum ResolvedType<'sc> {
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
         address: Box<TypedExpression<'sc>>,
     },
+    Function {
+        from: Box<ResolvedType<'sc>>,
+        to: Box<ResolvedType<'sc>>,
+    },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
@@ -45,19 +49,13 @@ impl<'sc> ResolvedType<'sc> {
         match self {
             UnsignedInteger(IntegerBits::Eight) => Ok(()),
             UnsignedInteger(IntegerBits::Sixteen) => match other {
-                UnsignedInteger(IntegerBits::Eight) => Err(Warning::LossOfPrecision {
-                    initial_type: MaybeResolvedType::Resolved(self.clone()),
-                    cast_to: MaybeResolvedType::Resolved(other.clone()),
-                }),
+                UnsignedInteger(IntegerBits::Eight) => todo!("remove this code"),
                 UnsignedInteger(_) => Ok(()),
                 _ => unreachable!(),
             },
             UnsignedInteger(IntegerBits::ThirtyTwo) => match other {
                 UnsignedInteger(IntegerBits::Eight) | UnsignedInteger(IntegerBits::Sixteen) => {
-                    Err(Warning::LossOfPrecision {
-                        initial_type: MaybeResolvedType::Resolved(self.clone()),
-                        cast_to: MaybeResolvedType::Resolved(other.clone()),
-                    })
+                    todo!("remove this code")
                 }
                 UnsignedInteger(_) => Ok(()),
                 _ => unreachable!(),
@@ -65,10 +63,7 @@ impl<'sc> ResolvedType<'sc> {
             UnsignedInteger(IntegerBits::SixtyFour) => match other {
                 UnsignedInteger(IntegerBits::Eight)
                 | UnsignedInteger(IntegerBits::Sixteen)
-                | UnsignedInteger(IntegerBits::ThirtyTwo) => Err(Warning::LossOfPrecision {
-                    initial_type: MaybeResolvedType::Resolved(self.clone()),
-                    cast_to: MaybeResolvedType::Resolved(other.clone()),
-                }),
+                | UnsignedInteger(IntegerBits::ThirtyTwo) => todo!("remove this code"),
                 _ => Ok(()),
             },
             _ => unreachable!(),
@@ -105,6 +100,11 @@ impl<'sc> ResolvedType<'sc> {
             ContractCaller { abi_name, .. } => {
                 format!("{} contract caller", abi_name.suffix.primary_name)
             }
+            Function { from, to } => format!(
+                "fn({})->{}",
+                from.friendly_type_str(),
+                to.friendly_type_str()
+            ),
             ErrorRecovery => "\"unknown due to error\"".into(),
         }
     }
@@ -137,6 +137,9 @@ impl<'sc> ResolvedType<'sc> {
             // `ContractCaller` types are unsized and used only in the type system for
             // calling methods
             ResolvedType::ContractCaller { .. } => 0,
+            ResolvedType::Function { .. } => {
+                unimplemented!("Function types have not yet been implemented.")
+            }
             ResolvedType::Contract => unreachable!("contract types are never instantiated"),
             ResolvedType::ErrorRecovery => unreachable!(),
         }
