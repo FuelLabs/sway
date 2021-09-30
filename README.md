@@ -15,13 +15,13 @@ For user documentation, see the Sway Book: <https://fuellabs.github.io/sway/late
 
 Sway is built in Rust. To begin, install the Rust toolchain following instructions at <https://www.rust-lang.org/tools/install>. Then configure your Rust toolchain to use Rust `stable`:
 
-```console
+```sh
 rustup default stable
 ```
 
 If not already done, add the Cargo bin directory to your `PATH` by adding the following line to `~/.profile` and restarting the shell session.
 
-```console
+```sh
 export PATH="${HOME}/.cargo/bin:${PATH}"
 ```
 
@@ -31,7 +31,7 @@ To ensure access to all dependent repositories, [create](https://docs.github.com
 
 Clone the repository and build the Sway toolchain:
 
-```console
+```sh
 git clone git@github.com:FuelLabs/sway.git
 cd sway
 cargo build
@@ -39,7 +39,7 @@ cargo build
 
 Confirm the Sway toolchain built successfully:
 
-```console
+```sh
 cargo run --bin forc -- --help
 # or
 ./target/debug/forc --help
@@ -47,7 +47,7 @@ cargo run --bin forc -- --help
 
 To run `forc` from any directory, install `forc` to your local Cargo bin directory:
 
-```console
+```sh
 cargo install --path forc
 # Also install sway-server if using the IDE plugin
 cargo install --path sway-server
