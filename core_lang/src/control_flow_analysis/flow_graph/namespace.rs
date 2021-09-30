@@ -35,6 +35,7 @@ pub struct ControlFlowNamespace<'sc> {
     pub(crate) trait_method_namespace: HashMap<CallPath<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
     /// This is a mapping from struct name to field names and their node indexes
     pub(crate) struct_namespace: HashMap<Ident<'sc>, StructNamespaceEntry<'sc>>,
+    pub(crate) const_namespace: HashMap<Ident<'sc>, NodeIndex>,
 }
 
 impl<'sc> ControlFlowNamespace<'sc> {
@@ -47,6 +48,12 @@ impl<'sc> ControlFlowNamespace<'sc> {
         entry: FunctionNamespaceEntry<'sc>,
     ) {
         self.function_namespace.insert(ident, entry);
+    }
+    pub(crate) fn get_constant(&self, ident: &Ident<'sc>) -> Option<&NodeIndex> {
+        self.const_namespace.get(ident)
+    }
+    pub(crate) fn insert_constant(&mut self, const_name: Ident<'sc>, declaration_node: NodeIndex) {
+        self.const_namespace.insert(const_name, declaration_node);
     }
     pub(crate) fn insert_enum(
         &mut self,

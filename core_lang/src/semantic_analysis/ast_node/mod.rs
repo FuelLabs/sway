@@ -20,8 +20,9 @@ mod while_loop;
 use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{
-    TypedAbiDeclaration, TypedDeclaration, TypedEnumDeclaration, TypedEnumVariant,
-    TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration, TypedStructField,
+    TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
+    TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
+    TypedStructField,
 };
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
 pub(crate) use expression::*;
@@ -94,6 +95,32 @@ impl<'sc> TypedAstNode<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
+        // A little utility used to check an ascribed type matches its associated expression.
+        let mut type_check_ascribed_expr = |type_ascription: Option<_>, value, decl_str| {
+            let type_ascription = type_ascription
+                .map(|ty| namespace.resolve_type(&ty, self_type))
+                .or(Some(MaybeResolvedType::Partial(
+                    PartiallyResolvedType::NeedsType,
+                )));
+            TypedExpression::type_check(
+                value,
+                namespace,
+                type_ascription.clone(),
+                format!(
+                    "{} declaration's type annotation (type {}) does \
+                     not match up with the assigned expression's type.",
+                    decl_str,
+                    type_ascription
+                        .as_ref()
+                        .map(|ty| ty.friendly_type_str())
+                        .unwrap_or_else(|| "none".into())
+                ),
+                self_type,
+                build_config,
+                dead_code_graph,
+            )
+        };
+
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
@@ -128,41 +155,43 @@ impl<'sc> TypedAstNode<'sc> {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription = match type_ascription {
-                                Some(ty) => Some(namespace.resolve_type(&ty, self_type)),
-                                None => Some(MaybeResolvedType::Partial(
-                                    PartiallyResolvedType::NeedsType,
-                                )),
-                            };
+                            let result =
+                                type_check_ascribed_expr(type_ascription, body, "Variable");
                             let body = check!(
-                                TypedExpression::type_check(
-                                    body,
-                                    namespace,
-                                    type_ascription.clone(),
-                                    format!(
-                                        "Variable declaration's type annotation (type {}) does \
-                                         not match up with the assigned expression's type.",
-                                        type_ascription
-                                            .map(|x| x.friendly_type_str())
-                                            .unwrap_or_else(|| "none".into())
-                                    ),
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph
-                                ),
+                                result,
                                 error_recovery_expr(name.span.clone()),
                                 warnings,
                                 errors
                             );
-
-                            let body =
+                            let typed_var_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
                                     body,
                                     is_mutable,
                                 });
-                            namespace.insert(name, body.clone());
-                            body
+                            namespace.insert(name, typed_var_decl.clone());
+                            typed_var_decl
+                        }
+                        Declaration::ConstantDeclaration(ConstantDeclaration {
+                            name,
+                            type_ascription,
+                            value,
+                        }) => {
+                            let result =
+                                type_check_ascribed_expr(type_ascription, value, "Constant");
+                            let value = check!(
+                                result,
+                                error_recovery_expr(name.span.clone()),
+                                warnings,
+                                errors
+                            );
+                            let typed_const_decl =
+                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                                    name: name.clone(),
+                                    value,
+                                });
+                            namespace.insert(name, typed_const_decl.clone());
+                            typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
                             let span = e.span.clone();
@@ -224,9 +253,10 @@ impl<'sc> TypedAstNode<'sc> {
                                     .map(|x| x.to_dummy_func(Mode::NonAbi))
                                     .collect(),
                             );
-                            let methods = check!(
+                            // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
+                            let _methods = check!(
                                 type_check_trait_methods(
-                                    methods,
+                                    methods.clone(),
                                     &trait_namespace,
                                     self_type,
                                     build_config,
@@ -286,7 +316,12 @@ impl<'sc> TypedAstNode<'sc> {
                                 namespace.resolve_type_without_self(&type_implementing_for);
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            namespace.insert_trait_methods(&type_arguments[..]);
+                            if !type_arguments.is_empty() {
+                                errors.push(CompileError::Internal(
+                                    "Where clauses are not supported yet.",
+                                    type_arguments[0].clone().name_ident.span,
+                                ));
+                            }
                             for mut fn_decl in functions.into_iter() {
                                 let mut type_arguments = type_arguments.clone();
                                 // add generic params from impl trait into function type params
@@ -394,9 +429,11 @@ impl<'sc> TypedAstNode<'sc> {
                             // from itself. This is by design.
                             let interface_surface =
                                 type_check_interface_surface(interface_surface, namespace);
-                            let methods = check!(
+                            // type check these for errors but don't actually use them yet -- the real
+                            // ones will be type checked with proper symbols when the ABI is implemented
+                            let _methods = check!(
                                 type_check_trait_methods(
-                                    methods,
+                                    methods.clone(),
                                     namespace,
                                     self_type,
                                     build_config,

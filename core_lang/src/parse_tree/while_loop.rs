@@ -6,6 +6,7 @@ use crate::{
     CodeBlock, Expression,
 };
 use pest::iterators::Pair;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct WhileLoop<'sc> {
@@ -17,6 +18,7 @@ impl<'sc> WhileLoop<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -31,7 +33,7 @@ impl<'sc> WhileLoop<'sc> {
         };
 
         let condition = check!(
-            Expression::parse_from_pair(condition.clone(), config),
+            Expression::parse_from_pair(condition.clone(), config, docstrings),
             Expression::Unit {
                 span: Span {
                     span: condition.as_span(),
@@ -43,7 +45,7 @@ impl<'sc> WhileLoop<'sc> {
         );
 
         let body = check!(
-            CodeBlock::parse_from_pair(body, config),
+            CodeBlock::parse_from_pair(body, config, docstrings),
             CodeBlock {
                 contents: Default::default(),
                 whole_block_span,

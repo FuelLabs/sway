@@ -46,7 +46,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("b256_bad_jumps", ProgramState::Return(1)),
         ("b256_ops", ProgramState::Return(100)),
         ("bool_and_or", ProgramState::Return(42)),
+        ("doc_strings", ProgramState::Return(20)),
+        ("neq_4_test", ProgramState::Return(0)),
+        ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
+        ("const_decl", ProgramState::Return(100)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
@@ -61,6 +65,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "asm_should_not_have_return",
         "missing_fn_arguments",
         "excess_fn_arguments",
+        "top_level_vars",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {

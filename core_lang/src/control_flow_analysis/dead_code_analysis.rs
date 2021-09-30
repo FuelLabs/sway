@@ -15,8 +15,9 @@ use crate::{
 use crate::{
     semantic_analysis::{
         ast_node::{
-            TypedCodeBlock, TypedDeclaration, TypedEnumDeclaration, TypedExpression,
-            TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
+            TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
+            TypedExpression, TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration,
+            TypedWhileLoop,
         },
         TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
@@ -344,6 +345,10 @@ fn connect_declaration<'sc>(
             tree_type,
             body.clone().span,
         ),
+        ConstantDeclaration(TypedConstantDeclaration { name, .. }) => {
+            graph.namespace.insert_constant(name.clone(), entry_node);
+            Ok(leaves.to_vec())
+        }
         FunctionDeclaration(fn_decl) => {
             connect_typed_fn_decl(fn_decl, graph, entry_node, span, exit_node, tree_type)?;
             Ok(leaves.to_vec())
@@ -692,7 +697,20 @@ fn connect_expression<'sc>(
             }
             Ok(vec![node])
         }
-        VariableExpression { .. } => Ok(leaves.to_vec()),
+        VariableExpression { name, .. } => {
+            // Variables may refer to global const declarations.
+            Ok(graph
+                .namespace
+                .get_constant(name)
+                .cloned()
+                .map(|node| {
+                    for leaf in leaves {
+                        graph.add_edge(*leaf, node, "".into());
+                    }
+                    vec![node]
+                })
+                .unwrap_or_else(|| leaves.to_vec()))
+        }
         EnumInstantiation {
             enum_decl,
             variant_name,
