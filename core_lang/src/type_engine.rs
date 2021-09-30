@@ -204,14 +204,8 @@ fn numeric_cast_compat<'sc>(a: IntegerBits, b: IntegerBits) -> NumericCastCompat
     }
 }
 
-// # Example usage
-// In reality, the most common approach will be to walk your AST, assigning type
-// terms to each of your nodes with whatever information you have available. You
-// will also need to call `engine.unify(x, y)` when you know two nodes have the
-// same type, such as in the statement `x = y;`.
-
 #[test]
-fn main() {
+fn basic_numeric_unknown() {
     let mut engine = Engine::default();
 
     // numerics
@@ -223,6 +217,25 @@ fn main() {
 
     assert_eq!(
         engine.resolve(id).unwrap(),
+        ResolvedType::UnsignedInteger(IntegerBits::Eight)
+    );
+}
+#[test]
+fn chain_of_refs() {
+    let mut engine = Engine::default();
+
+    todo!("update entire chain of refs when one is known");
+    // numerics
+    let id = engine.insert(TypeInfo::Numeric);
+    let id2 = engine.insert(TypeInfo::Ref(id));
+    let id3 = engine.insert(TypeInfo::Ref(id));
+    let id4 = engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+
+    // Unify them together...
+    engine.unify(id4, id2).unwrap();
+
+    assert_eq!(
+        engine.resolve(id3).unwrap(),
         ResolvedType::UnsignedInteger(IntegerBits::Eight)
     );
 }
