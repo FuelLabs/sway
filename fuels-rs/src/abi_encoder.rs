@@ -1,11 +1,11 @@
 use crate::types;
 use sha2::{Digest, Sha256};
-use types::Token;
+use types::{ByteArray, Token};
 
 use crate::errors::Error;
 
 pub struct ABIEncoder {
-    pub function_selector: types::Word,
+    pub function_selector: ByteArray,
     pub encoded_args: Vec<u8>,
 }
 
@@ -64,12 +64,12 @@ impl ABIEncoder {
         Ok(self.encoded_args.clone().into())
     }
 
-    pub fn encode_function_selector(signature: &[u8]) -> types::Word {
+    pub fn encode_function_selector(signature: &[u8]) -> ByteArray {
         let mut hasher = Sha256::new();
         hasher.update(signature);
         let result = hasher.finalize();
 
-        let mut output = types::Word::default();
+        let mut output = types::ByteArray::default();
 
         (&mut output[4..]).copy_from_slice(&result[..4]);
 

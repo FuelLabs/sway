@@ -1315,6 +1315,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-types"
+version = "0.1.0"
+source = "git+ssh://git@github.com/FuelLabs/fuel-types.git#565ac6a25343e487faf10c13c42fb5168f92b087"
+
+[[package]]
 name = "fuel-vm"
 version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#4f9d0dccb5b67bdc0933909716c13f1cc0ea3a69"
@@ -1335,6 +1340,7 @@ dependencies = [
  "anyhow",
  "blake2",
  "bytes 1.1.0",
+ "fuel-types",
  "glob",
  "hex",
  "itertools",

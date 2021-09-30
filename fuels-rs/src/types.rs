@@ -1,9 +1,11 @@
+use fuel_types::bytes::padded_len;
+use fuel_types::Word;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result};
 use strum_macros::{EnumString, ToString};
 
-pub type Word = [u8; 8];
-pub const WORD_SIZE: isize = 8;
+pub type ByteArray = [u8; 8];
+pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
 
 pub type Bits256 = [u8; 32];
 pub type EnumSelector = (u8, Token);
@@ -86,36 +88,32 @@ pub struct Property {
 }
 
 /// Converts a u8 to a right aligned array of 8 bytes.
-pub fn pad_u8(value: &u8) -> Word {
-    let mut padded = Word::default();
+pub fn pad_u8(value: &u8) -> ByteArray {
+    let mut padded = ByteArray::default();
     padded[7] = *value;
     padded
 }
 
 /// Converts a u16 to a right aligned array of 8 bytes.
-pub fn pad_u16(value: &u16) -> Word {
-    let mut padded = Word::default();
+pub fn pad_u16(value: &u16) -> ByteArray {
+    let mut padded = ByteArray::default();
     padded[6..].copy_from_slice(&value.to_be_bytes());
     padded
 }
 
 /// Converts a u32 to a right aligned array of 8 bytes.
-pub fn pad_u32(value: &u32) -> Word {
+pub fn pad_u32(value: &u32) -> ByteArray {
     let mut padded = [0u8; 8];
     padded[4..].copy_from_slice(&value.to_be_bytes());
     padded
 }
 
 pub fn pad_string(s: &str) -> Vec<u8> {
-    // Computing the number of zero bytes we need to pad
-    // the string in order to be left-aligned to 8 bytes.
-    // Formula is: (N - L) % N
-    // Where N is word size and L is the length of the str.
-    let bytes_to_pad = (WORD_SIZE - s.len() as isize).rem_euclid(WORD_SIZE);
+    let pad = padded_len(s.as_bytes()) - s.len();
 
-    let mut res = s.as_bytes().to_owned();
+    let mut padded = s.as_bytes().to_owned();
 
-    res.extend_from_slice(&vec![0; bytes_to_pad as usize]);
+    padded.extend_from_slice(&vec![0; pad]);
 
-    res
+    padded
 }

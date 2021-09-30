@@ -1,5 +1,6 @@
 use crate::errors::Error;
-use crate::types::{Bits256, ParamType, Token, Word, WORD_SIZE};
+use crate::types::{Bits256, ByteArray, ParamType, Token, WORD_SIZE};
+use fuel_types::bytes::padded_len;
 use std::convert::TryInto;
 use std::str;
 
@@ -118,16 +119,9 @@ impl ABIDecoder {
 
                 let decoded = str::from_utf8(encoded_str)?;
 
-                // When computing the offset for strings
-                // we need to consider not only the length of the string
-                // But also how much padding it was used when encoding it.
-                // So we use the same formula as the one we use
-                // to encode the string: (N - L) % N
-                let pad_length = (WORD_SIZE - *length as isize).rem_euclid(WORD_SIZE);
-
                 let result = DecodeResult {
                     token: Token::String(decoded.to_string()),
-                    new_offset: offset + length + pad_length as usize,
+                    new_offset: offset + padded_len(encoded_str),
                 };
 
                 Ok(result)
@@ -197,9 +191,9 @@ fn peek(data: &[u8], offset: usize, len: usize) -> Result<&[u8], Error> {
     }
 }
 
-fn peek_word(data: &[u8], offset: usize) -> Result<Word, Error> {
+fn peek_word(data: &[u8], offset: usize) -> Result<ByteArray, Error> {
     peek(data, offset, WORD_SIZE as usize).map(|x| {
-        let mut out: Word = [0u8; 8];
+        let mut out: ByteArray = [0u8; 8];
         out.copy_from_slice(&x[0..8]);
         out
     })
