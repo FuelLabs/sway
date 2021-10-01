@@ -26,7 +26,7 @@ struct Data {
 
 /// This is the `FooABI` abi
 abi FooABI {
-    /// This is the `foo` method on the `FooABI` abit
+    /// This is the `foo` method on the `FooABI` abi
     fn foo();
 }
 

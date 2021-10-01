@@ -126,6 +126,7 @@ pub fn parse<'sc>(
         warnings,
         errors
     );
+    println!("{:#?}", docstrings);
     ok(res, warnings, errors)
 }
 
