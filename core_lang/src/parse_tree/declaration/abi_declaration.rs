@@ -5,6 +5,7 @@ use crate::parser::Rule;
 use crate::span::Span;
 use crate::{error::*, Ident};
 use pest::iterators::Pair;
+use std::collections::HashMap;
 
 /// An `abi` declaration, which declares an interface for a contract
 /// to implement or for a caller to use to call a contract.
@@ -23,6 +24,7 @@ impl<'sc> AbiDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let span = Span {
             span: pair.as_span(),
@@ -50,7 +52,7 @@ impl<'sc> AbiDeclaration<'sc> {
                     errors
                 )),
                 Rule::fn_decl => methods.push(check!(
-                    FunctionDeclaration::parse_from_pair(func, config),
+                    FunctionDeclaration::parse_from_pair(func, config, docstrings),
                     continue,
                     warnings,
                     errors

@@ -7,7 +7,7 @@ use crate::parse_tree::CallPath;
 use crate::semantic_analysis::{
     ast_node::{
         TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
-        TypedReassignment, TypedVariableDeclaration, TypedWhileLoop,
+        TypedReassignment, TypedWhileLoop,
     },
     TypedAstNode, TypedAstNodeContent,
 };
@@ -180,7 +180,7 @@ fn connect_declaration<'sc>(
         TraitDeclaration(_) | AbiDeclaration(_) | StructDeclaration(_) | EnumDeclaration(_) => {
             leaves.to_vec()
         }
-        VariableDeclaration(TypedVariableDeclaration { .. }) => {
+        VariableDeclaration(_) | ConstantDeclaration(_) => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());

@@ -302,6 +302,16 @@ impl<'sc> TypedExpression<'sc> {
                 expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
                 span,
             },
+            Some(TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                value, ..
+            })) => TypedExpression {
+                return_type: value.return_type.clone(),
+                is_constant: IsConstant::Yes,
+                // Although this isn't strictly a 'variable' expression we can treat it as one for
+                // this context.
+                expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
+                span,
+            },
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
                     name: name.span.as_str().to_string(),

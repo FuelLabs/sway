@@ -226,6 +226,13 @@ impl<'sc> Dependencies<'sc> {
             }) => self
                 .gather_from_option_typeinfo(type_ascription)
                 .gather_from_expr(body),
+            Declaration::ConstantDeclaration(ConstantDeclaration {
+                type_ascription,
+                value,
+                ..
+            }) => self
+                .gather_from_option_typeinfo(type_ascription)
+                .gather_from_expr(value),
             Declaration::FunctionDeclaration(fn_decl) => self.gather_from_fn_decl(fn_decl),
             Declaration::StructDeclaration(StructDeclaration {
                 fields,
@@ -534,6 +541,7 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
             decl.name.primary_name,
             Some(decl.span.clone()),
         )),
+        Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.primary_name),
         Declaration::StructDeclaration(decl) => dep_sym(decl.name.primary_name),
         Declaration::EnumDeclaration(decl) => dep_sym(decl.name.primary_name),
         Declaration::TraitDeclaration(decl) => dep_sym(decl.name.primary_name),

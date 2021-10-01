@@ -3,7 +3,7 @@ mod namespace;
 mod node_dependencies;
 mod syntax_tree;
 pub(crate) use ast_node::{TypedAstNode, TypedAstNodeContent, TypedExpression};
-pub use ast_node::{TypedDeclaration, TypedFunctionDeclaration};
+pub use ast_node::{TypedConstantDeclaration, TypedDeclaration, TypedFunctionDeclaration};
 pub use namespace::Namespace;
 pub(crate) use syntax_tree::{TreeType, TypedParseTree};
 
