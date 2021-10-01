@@ -122,7 +122,7 @@ impl<'sc> TypedAstNode<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
             )
         };
 

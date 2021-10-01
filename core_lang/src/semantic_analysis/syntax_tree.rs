@@ -141,7 +141,7 @@ impl<'sc> TypedParseTree<'sc> {
                         if value.contains(&file_path2.to_string()) {
                             errors.push(CompileError::InfiniteDependencies {
                                 file_path: file_path,
-                                span: node.span.clone()
+                                span: node.span.clone(),
                             });
                             return err(warnings, errors);
                         } else {
