@@ -7,6 +7,7 @@ use crate::types::ResolvedType;
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
 pub(crate) fn instantiate_enum<'sc>(
+    file_path: String,
     enum_decl: TypedEnumDeclaration<'sc>,
     enum_field_name: Ident<'sc>,
     args: Vec<Expression<'sc>>,
@@ -15,6 +16,7 @@ pub(crate) fn instantiate_enum<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -62,6 +64,7 @@ pub(crate) fn instantiate_enum<'sc>(
         ([single_expr], r#type) => {
             let typed_expr = check!(
                 TypedExpression::type_check(
+                    file_path,
                     single_expr.clone(),
                     namespace,
                     Some(MaybeResolvedType::Resolved(r#type.clone())),
@@ -69,6 +72,7 @@ pub(crate) fn instantiate_enum<'sc>(
                     self_type,
                     build_config,
                     dead_code_graph,
+                    dependency_graph
                 ),
                 return err(warnings, errors),
                 warnings,

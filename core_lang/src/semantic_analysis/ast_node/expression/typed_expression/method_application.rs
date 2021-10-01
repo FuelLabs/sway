@@ -5,6 +5,7 @@ use crate::types::{MaybeResolvedType, ResolvedType};
 use std::collections::VecDeque;
 
 pub(crate) fn type_check_method_application<'sc>(
+    file_path: String,
     method_name: MethodName<'sc>,
     arguments: Vec<Expression<'sc>>,
     span: Span<'sc>,
@@ -12,6 +13,7 @@ pub(crate) fn type_check_method_application<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -19,13 +21,15 @@ pub(crate) fn type_check_method_application<'sc>(
     for arg in arguments {
         args_buf.push_back(check!(
             TypedExpression::type_check(
+                file_path.clone(),
                 arg,
                 namespace,
                 None,
                 "",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             error_recovery_expr(span.clone()),
             warnings,

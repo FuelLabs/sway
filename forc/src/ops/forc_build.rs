@@ -20,6 +20,7 @@ use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
     Namespace,
 };
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
@@ -68,6 +69,8 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     .print_finalized_asm(print_finalized_asm)
     .print_intermediate_asm(print_intermediate_asm);
 
+    let mut dependency_graph = HashMap::new();
+
     let mut namespace: Namespace = Default::default();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
@@ -109,6 +112,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 &dependency_name,
                 &dependency_details,
                 &mut namespace,
+                &mut dependency_graph,
             )?;
         }
     }
@@ -116,7 +120,14 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
 
-    let main = compile(main_file, &manifest.project.name, &namespace, build_config)?;
+    let main = compile(
+        file_name.to_str().unwrap().to_string(),
+        main_file,
+        &manifest.project.name,
+        &namespace,
+        build_config,
+        &mut dependency_graph,
+    )?;
     if let Some(outfile) = binary_outfile {
         let mut file = File::create(outfile).map_err(|e| e.to_string())?;
         file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
@@ -134,6 +145,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
+    dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> Result<(), String> {
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
@@ -197,10 +209,12 @@ fn compile_dependency_lib<'source, 'manifest>(
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
     let compiled = compile_library(
+        file_name.to_str().unwrap().to_string(),
         main_file,
         &manifest_of_dep.project.name,
         &namespace.clone(),
         build_config.clone(),
+        dependency_graph,
     )?;
 
     namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
@@ -210,12 +224,20 @@ fn compile_dependency_lib<'source, 'manifest>(
 }
 
 fn compile_library<'source, 'manifest>(
+    file_path: String,
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = core_lang::compile_to_asm(&source, namespace, build_config);
+    let res = core_lang::compile_to_asm(
+        file_path,
+        &source,
+        namespace,
+        build_config,
+        dependency_graph,
+    );
     match res {
         CompilationResult::Library { exports, warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));
@@ -261,12 +283,20 @@ fn compile_library<'source, 'manifest>(
 }
 
 fn compile<'source, 'manifest>(
+    file_path: String,
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(&source, namespace, build_config);
+    let res = core_lang::compile_to_bytecode(
+        file_path,
+        &source,
+        namespace,
+        build_config,
+        dependency_graph,
+    );
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));
@@ -394,12 +424,20 @@ fn format_err(err: core_lang::CompileError) {
 }
 
 fn compile_to_asm<'source, 'manifest>(
+    file_path: String,
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> Result<FinalizedAsm<'source>, String> {
-    let res = core_lang::compile_to_asm(&source, namespace, build_config);
+    let res = core_lang::compile_to_asm(
+        file_path,
+        &source,
+        namespace,
+        build_config,
+        dependency_graph,
+    );
     match res {
         CompilationResult::Success { asm, warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));

@@ -8,7 +8,8 @@ use crate::{
     error::*,
     types::{MaybeResolvedType, ResolvedType},
 };
-use crate::{AstNode, ParseTree};
+use crate::{AstNode, AstNodeContent, ParseTree};
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TreeType {
@@ -69,11 +70,13 @@ impl<'sc> TypedParseTree<'sc> {
     }
 
     pub(crate) fn type_check(
+        file_path: String,
         parsed: ParseTree<'sc>,
         initial_namespace: Namespace<'sc>,
         tree_type: TreeType,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
         let mut new_namespace = initial_namespace.clone();
         let mut warnings = Vec::new();
@@ -86,12 +89,26 @@ impl<'sc> TypedParseTree<'sc> {
             errors
         );
 
+        check!(
+            TypedParseTree::check_for_infinite_dependencies(
+                file_path.clone(),
+                &ordered_nodes,
+                parsed.span.clone(),
+                dependency_graph,
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
+                file_path,
                 ordered_nodes,
                 &mut new_namespace,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             return err(warnings, errors),
             warnings,
@@ -108,11 +125,49 @@ impl<'sc> TypedParseTree<'sc> {
         )
     }
 
+    fn check_for_infinite_dependencies(
+        file_path: String,
+        ordered_nodes: &Vec<AstNode>,
+        span: Span<'sc>,
+        dependency_graph: &mut HashMap<String, Vec<String>>,
+    ) -> CompileResult<'sc, ()> {
+        let warnings = vec![];
+        let mut errors = vec![];
+
+        for node in ordered_nodes.iter() {
+            match &node.content {
+                AstNodeContent::IncludeStatement(include_statement) => {
+                    let file_path2 = include_statement.file_path;
+                    let orig_file_path = &(file_path.clone());
+                    if let Some(value) = dependency_graph.get_mut(&file_path) {
+                        if value.contains(&file_path2.to_string()) {
+                            errors.push(CompileError::InfiniteDependencies {
+                                file_path: file_path,
+                                span: span,
+                            });
+                            return err(warnings, errors);
+                        } else {
+                            value.push(file_path2.to_string());
+                        }
+                    } else {
+                        dependency_graph
+                            .insert(orig_file_path.clone(), vec![file_path2.to_string()]);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        ok((), warnings, errors)
+    }
+
     fn type_check_nodes(
+        file_path: String,
         nodes: Vec<AstNode<'sc>>,
         namespace: &mut Namespace<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -120,6 +175,7 @@ impl<'sc> TypedParseTree<'sc> {
             .into_iter()
             .map(|node| {
                 TypedAstNode::type_check(
+                    file_path.clone(),
                     node.clone(),
                     namespace,
                     None,
@@ -129,6 +185,7 @@ impl<'sc> TypedParseTree<'sc> {
                     &MaybeResolvedType::Resolved(ResolvedType::Contract),
                     build_config,
                     dead_code_graph,
+                    dependency_graph,
                 )
             })
             .filter_map(|res| res.ok(&mut warnings, &mut errors))

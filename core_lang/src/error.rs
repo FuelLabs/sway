@@ -682,6 +682,8 @@ pub enum CompileError<'sc> {
         call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
         span: Span<'sc>,
     },
+    #[error("File {file_path} generates an infinite depedency cycle.")]
+    InfiniteDependencies { file_path: String, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -857,6 +859,7 @@ impl<'sc> CompileError<'sc> {
             ArgumentParameterTypeMismatch { span, .. } => span,
             RecursiveCall { span, .. } => span,
             RecursiveCallChain { span, .. } => span,
+            InfiniteDependencies { span, .. } => span,
         }
     }
 

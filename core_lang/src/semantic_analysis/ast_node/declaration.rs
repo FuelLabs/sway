@@ -13,6 +13,7 @@ use crate::{
 };
 use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
@@ -489,6 +490,7 @@ pub struct TypedReassignment<'sc> {
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn type_check(
+        file_path: String,
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
         _return_type_annotation: Option<MaybeResolvedType<'sc>>,
@@ -499,6 +501,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         mode: Mode,
+        dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -540,13 +543,15 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(
+                file_path,
                 body.clone(),
                 &namespace,
                 Some(return_type.clone()),
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             (
                 TypedCodeBlock {

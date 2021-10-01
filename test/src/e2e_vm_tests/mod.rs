@@ -49,7 +49,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("neq_4_test", ProgramState::Return(0)),
         ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
-        ("infinite_dependencies", ProgramState::Return(0)), // 0 == false
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
@@ -64,6 +63,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "asm_should_not_have_return",
         "missing_fn_arguments",
         "excess_fn_arguments",
+        "infinite_dependencies"
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {

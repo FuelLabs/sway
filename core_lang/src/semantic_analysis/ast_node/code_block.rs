@@ -16,6 +16,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         self.clone()
     }
     pub(crate) fn type_check(
+        file_path: String,
         other: CodeBlock<'sc>,
         namespace: &Namespace<'sc>,
         // this is for the return or implicit return
@@ -24,6 +25,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, (Self, Option<MaybeResolvedType<'sc>>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -36,6 +38,7 @@ impl<'sc> TypedCodeBlock<'sc> {
             .iter()
             .filter_map(|node| {
                 TypedAstNode::type_check(
+                    file_path.clone(),
                     node.clone(),
                     &mut local_namespace,
                     type_annotation.clone(),
@@ -43,6 +46,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     self_type,
                     build_config,
                     dead_code_graph,
+                    dependency_graph,
                 )
                 .ok(&mut warnings, &mut errors)
             })

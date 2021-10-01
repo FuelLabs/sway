@@ -26,6 +26,7 @@ use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
+use std::collections::HashMap;
 
 pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
@@ -190,10 +191,12 @@ pub(crate) struct InnerDependencyCompileResult<'sc> {
 /// different types of compilation and stuff. After we get to a good state with the MVP,
 /// clean up the types here with the power of hindsight
 pub(crate) fn compile_inner_dependency<'sc>(
+    file_path: String,
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, InnerDependencyCompileResult<'sc>> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -225,11 +228,13 @@ pub(crate) fn compile_inner_dependency<'sc>(
             .into_iter()
             .filter_map(|(name, tree)| {
                 TypedParseTree::type_check(
+                    file_path.clone(),
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
                     &build_config.clone(),
                     dead_code_graph,
+                    dependency_graph,
                 )
                 .ok(&mut warnings, &mut errors)
                 .map(|value| (name, value))
@@ -272,9 +277,11 @@ pub(crate) fn compile_inner_dependency<'sc>(
 }
 
 pub fn compile_to_asm<'sc>(
+    file_path: String,
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -293,11 +300,13 @@ pub fn compile_to_asm<'sc>(
     let mut type_check_ast = |ast: Option<_>, tree_type| {
         ast.map(|tree| {
             TypedParseTree::type_check(
+                file_path.clone(),
                 tree,
                 initial_namespace.clone(),
                 tree_type,
                 &build_config.clone(),
                 &mut dead_code_graph,
+                dependency_graph,
             )
             .ok(&mut warnings, &mut errors)
         })
@@ -314,11 +323,13 @@ pub fn compile_to_asm<'sc>(
             .into_iter()
             .filter_map(|(name, tree)| {
                 TypedParseTree::type_check(
+                    file_path.clone(),
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
                     &build_config.clone(),
                     &mut dead_code_graph,
+                    dependency_graph,
                 )
                 .ok(&mut warnings, &mut errors)
                 .map(|value| (name, value))
@@ -445,11 +456,19 @@ pub fn compile_to_asm<'sc>(
     }
 }
 pub fn compile_to_bytecode<'sc>(
+    file_path: String,
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> BytecodeCompilationResult<'sc> {
-    match compile_to_asm(input, initial_namespace, build_config) {
+    match compile_to_asm(
+        file_path,
+        input,
+        initial_namespace,
+        build_config,
+        dependency_graph,
+    ) {
         CompilationResult::Success {
             mut asm,
             mut warnings,
