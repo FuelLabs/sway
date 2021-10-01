@@ -121,7 +121,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let main_file = get_main_file(&manifest, &manifest_dir)?;
 
     let main = compile(
-        file_name.to_str().unwrap().to_string(),
         main_file,
         &manifest.project.name,
         &namespace,
@@ -209,7 +208,6 @@ fn compile_dependency_lib<'source, 'manifest>(
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
     let compiled = compile_library(
-        file_name.to_str().unwrap().to_string(),
         main_file,
         &manifest_of_dep.project.name,
         &namespace.clone(),
@@ -224,20 +222,13 @@ fn compile_dependency_lib<'source, 'manifest>(
 }
 
 fn compile_library<'source, 'manifest>(
-    file_path: String,
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = core_lang::compile_to_asm(
-        file_path,
-        &source,
-        namespace,
-        build_config,
-        dependency_graph,
-    );
+    let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));
@@ -283,20 +274,13 @@ fn compile_library<'source, 'manifest>(
 }
 
 fn compile<'source, 'manifest>(
-    file_path: String,
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(
-        file_path,
-        &source,
-        namespace,
-        build_config,
-        dependency_graph,
-    );
+    let res = core_lang::compile_to_bytecode(&source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));
@@ -424,20 +408,13 @@ fn format_err(err: core_lang::CompileError) {
 }
 
 fn compile_to_asm<'source, 'manifest>(
-    file_path: String,
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> Result<FinalizedAsm<'source>, String> {
-    let res = core_lang::compile_to_asm(
-        file_path,
-        &source,
-        namespace,
-        build_config,
-        dependency_graph,
-    );
+    let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));

@@ -85,13 +85,12 @@ impl<'sc> TypedAstNode<'sc> {
         }
     }
     pub(crate) fn type_check(
-        file_name: String,
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
         return_type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
@@ -106,7 +105,6 @@ impl<'sc> TypedAstNode<'sc> {
                     PartiallyResolvedType::NeedsType,
                 )));
             TypedExpression::type_check(
-                file_name.clone(),
                 value,
                 namespace,
                 type_ascription.clone(),
@@ -217,7 +215,6 @@ impl<'sc> TypedAstNode<'sc> {
                         Declaration::FunctionDeclaration(fn_decl) => {
                             let decl = check!(
                                 TypedFunctionDeclaration::type_check(
-                                    file_name,
                                     fn_decl.clone(),
                                     namespace,
                                     None,
@@ -269,7 +266,6 @@ impl<'sc> TypedAstNode<'sc> {
                             // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
                             let _methods = check!(
                                 type_check_trait_methods(
-                                    file_name,
                                     methods.clone(),
                                     &trait_namespace,
                                     self_type,
@@ -295,7 +291,6 @@ impl<'sc> TypedAstNode<'sc> {
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
                             check!(
                                 reassignment(
-                                    file_name,
                                     lhs,
                                     rhs,
                                     span,
@@ -312,7 +307,6 @@ impl<'sc> TypedAstNode<'sc> {
                         }
                         Declaration::ImplTrait(impl_trait) => check!(
                             implementation_of_trait(
-                                file_name,
                                 impl_trait,
                                 namespace,
                                 build_config,
@@ -364,7 +358,6 @@ impl<'sc> TypedAstNode<'sc> {
 
                                 functions_buf.push(check!(
                                     TypedFunctionDeclaration::type_check(
-                                        file_name.clone(),
                                         fn_decl,
                                         namespace,
                                         None,
@@ -454,7 +447,6 @@ impl<'sc> TypedAstNode<'sc> {
                             // ones will be type checked with proper symbols when the ABI is implemented
                             let _methods = check!(
                                 type_check_trait_methods(
-                                    file_name,
                                     methods.clone(),
                                     namespace,
                                     self_type,
@@ -481,7 +473,6 @@ impl<'sc> TypedAstNode<'sc> {
                 AstNodeContent::Expression(a) => {
                     let inner = check!(
                         TypedExpression::type_check(
-                            file_name,
                             a.clone(),
                             namespace,
                             None,
@@ -501,7 +492,6 @@ impl<'sc> TypedAstNode<'sc> {
                     TypedAstNodeContent::ReturnStatement(TypedReturnStatement {
                         expr: check!(
                             TypedExpression::type_check(
-                                file_name,
                                 expr.clone(),
                                 namespace,
                                 return_type_annotation,
@@ -521,7 +511,6 @@ impl<'sc> TypedAstNode<'sc> {
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let typed_expr = check!(
                         TypedExpression::type_check(
-                            file_name,
                             expr.clone(),
                             namespace,
                             return_type_annotation,
@@ -543,7 +532,6 @@ impl<'sc> TypedAstNode<'sc> {
                 AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
                     let typed_condition = check!(
                         TypedExpression::type_check(
-                            file_name.clone(),
                             condition,
                             namespace,
                             Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
@@ -559,7 +547,6 @@ impl<'sc> TypedAstNode<'sc> {
                     );
                     let (typed_body, _block_implicit_return) = check!(
                         TypedCodeBlock::type_check(
-                            file_name,
                             body.clone(),
                             namespace,
                             Some(MaybeResolvedType::Resolved(ResolvedType::Unit)),
@@ -618,7 +605,7 @@ impl<'sc> TypedAstNode<'sc> {
 fn import_new_file<'sc>(
     statement: &IncludeStatement<'sc>,
     namespace: &mut Namespace<'sc>,
-    build_config: &BuildConfig,
+    build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, ()> {
@@ -629,6 +616,8 @@ fn import_new_file<'sc>(
 
     let mut canonical_path = build_config.dir_of_code.clone();
     canonical_path.push(file_path.clone());
+    build_config.file_name = file_path.clone();
+
     let res = if canonical_path.exists() {
         std::fs::read_to_string(canonical_path.clone())
     } else {
@@ -667,7 +656,6 @@ fn import_new_file<'sc>(
         mut library_exports,
     } = check!(
         crate::compile_inner_dependency(
-            file_path.clone().to_str().unwrap().to_string(),
             static_file_string,
             &dep_namespace,
             dep_config,
@@ -700,13 +688,12 @@ fn import_new_file<'sc>(
 }
 
 fn reassignment<'sc>(
-    file_path: String,
     lhs: Box<Expression<'sc>>,
     rhs: Expression<'sc>,
     span: Span<'sc>,
     namespace: &mut Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
-    build_config: &BuildConfig,
+    build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
@@ -754,7 +741,6 @@ fn reassignment<'sc>(
             // type check the reassignment
             let rhs = check!(
                 TypedExpression::type_check(
-                    file_path,
                     rhs,
                     namespace,
                     Some(thing_to_reassign.return_type.clone()),
@@ -791,7 +777,6 @@ fn reassignment<'sc>(
             let final_return_type = loop {
                 let type_checked = check!(
                     TypedExpression::type_check(
-                        file_path.clone(),
                         expr.clone(),
                         namespace,
                         None,
@@ -853,7 +838,6 @@ fn reassignment<'sc>(
             // type check the reassignment
             let rhs = check!(
                 TypedExpression::type_check(
-                    file_path,
                     rhs,
                     namespace,
                     Some(ty_of_field.clone()),
@@ -929,11 +913,10 @@ fn type_check_interface_surface<'sc>(
 }
 
 fn type_check_trait_methods<'sc>(
-    file_name: String,
     methods: Vec<FunctionDeclaration<'sc>>,
     namespace: &Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
-    build_config: &BuildConfig,
+    build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
@@ -1047,7 +1030,6 @@ fn type_check_trait_methods<'sc>(
         let return_type = function_namespace.resolve_type(&return_type, self_type);
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(
-                file_name.clone(),
                 body,
                 &function_namespace,
                 Some(return_type.clone()),

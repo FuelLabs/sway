@@ -499,7 +499,6 @@ pub struct TypedReassignment<'sc> {
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn type_check(
-        file_path: String,
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &Namespace<'sc>,
         _return_type_annotation: Option<MaybeResolvedType<'sc>>,
@@ -507,7 +506,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // If there are any `Self` types in this declaration,
         // resolve them to this type.
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         mode: Mode,
         dependency_graph: &mut HashMap<String, Vec<String>>,
@@ -552,7 +551,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(
-                file_path,
                 body.clone(),
                 &namespace,
                 Some(return_type.clone()),

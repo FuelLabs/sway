@@ -12,10 +12,9 @@ use crate::{
 use std::collections::HashMap;
 
 pub(crate) fn implementation_of_trait<'sc>(
-    file_path: String,
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
-    build_config: &BuildConfig,
+    build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
@@ -54,7 +53,6 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             let functions_buf = check!(
                 type_check_trait_implementation(
-                    file_path,
                     &tr.interface_surface,
                     &functions,
                     &tr.methods,
@@ -106,7 +104,6 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             let functions_buf = check!(
                 type_check_trait_implementation(
-                    file_path,
                     &abi.interface_surface,
                     &functions,
                     &abi.methods,
@@ -162,7 +159,6 @@ pub enum Mode {
 }
 
 fn type_check_trait_implementation<'sc>(
-    file_path: String,
     interface_surface: &[TypedTraitFn<'sc>],
     functions: &[FunctionDeclaration<'sc>],
     methods: &[FunctionDeclaration<'sc>],
@@ -170,7 +166,7 @@ fn type_check_trait_implementation<'sc>(
     type_arguments: &[TypeParameter<'sc>],
     namespace: &mut Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
-    build_config: &BuildConfig,
+    build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     block_span: &Span<'sc>,
     type_implementing_for: &MaybeResolvedType<'sc>,
@@ -194,7 +190,6 @@ fn type_check_trait_implementation<'sc>(
 
         let mut fn_decl = check!(
             TypedFunctionDeclaration::type_check(
-                file_path.clone(),
                 fn_decl.clone(),
                 namespace,
                 None,
@@ -357,7 +352,6 @@ fn type_check_trait_implementation<'sc>(
         // into it as a trait implementation for this
         let method = check!(
             TypedFunctionDeclaration::type_check(
-                file_path.clone(),
                 method.clone(),
                 &local_namespace,
                 None,

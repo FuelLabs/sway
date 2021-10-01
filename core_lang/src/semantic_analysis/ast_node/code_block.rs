@@ -16,14 +16,13 @@ impl<'sc> TypedCodeBlock<'sc> {
         self.clone()
     }
     pub(crate) fn type_check(
-        file_path: String,
         other: CodeBlock<'sc>,
         namespace: &Namespace<'sc>,
         // this is for the return or implicit return
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, (Self, Option<MaybeResolvedType<'sc>>)> {
@@ -38,7 +37,6 @@ impl<'sc> TypedCodeBlock<'sc> {
             .iter()
             .filter_map(|node| {
                 TypedAstNode::type_check(
-                    file_path.clone(),
                     node.clone(),
                     &mut local_namespace,
                     type_annotation.clone(),

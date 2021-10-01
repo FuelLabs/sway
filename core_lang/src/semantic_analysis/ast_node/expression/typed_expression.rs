@@ -29,13 +29,12 @@ pub(crate) fn error_recovery_expr<'sc>(span: Span<'sc>) -> TypedExpression<'sc> 
 
 impl<'sc> TypedExpression<'sc> {
     pub(crate) fn type_check(
-        file_path: String,
         other: Expression<'sc>,
         namespace: &mut Namespace<'sc>,
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
@@ -51,7 +50,6 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 ..
             } => Self::type_check_function_application(
-                file_path,
                 name,
                 arguments,
                 span,
@@ -62,7 +60,6 @@ impl<'sc> TypedExpression<'sc> {
                 dependency_graph,
             ),
             Expression::LazyOperator { op, lhs, rhs, span } => Self::type_check_lazy_operator(
-                file_path,
                 op,
                 *lhs,
                 *rhs,
@@ -81,7 +78,6 @@ impl<'sc> TypedExpression<'sc> {
                 return err(vec![], errors);
             }
             Expression::CodeBlock { contents, span, .. } => Self::type_check_code_block(
-                file_path,
                 contents,
                 span,
                 namespace,
@@ -100,7 +96,6 @@ impl<'sc> TypedExpression<'sc> {
                 r#else,
                 span,
             } => Self::type_check_if_expression(
-                file_path,
                 condition,
                 then,
                 r#else,
@@ -113,7 +108,6 @@ impl<'sc> TypedExpression<'sc> {
                 dependency_graph,
             ),
             Expression::AsmExpression { asm, span, .. } => Self::type_check_asm_expression(
-                file_path,
                 asm,
                 span,
                 namespace,
@@ -127,7 +121,6 @@ impl<'sc> TypedExpression<'sc> {
                 struct_name,
                 fields,
             } => Self::type_check_struct_expression(
-                file_path,
                 span,
                 struct_name,
                 fields,
@@ -142,7 +135,6 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 field_to_access,
             } => Self::type_check_subfield_expression(
-                file_path,
                 prefix,
                 span,
                 field_to_access,
@@ -157,7 +149,6 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span,
             } => type_check_method_application(
-                file_path,
                 method_name,
                 arguments,
                 span.clone(),
@@ -182,7 +173,6 @@ impl<'sc> TypedExpression<'sc> {
                 args,
                 type_arguments,
             } => Self::type_check_delineated_path(
-                file_path,
                 call_path,
                 span,
                 args,
@@ -198,7 +188,6 @@ impl<'sc> TypedExpression<'sc> {
                 address,
                 span,
             } => Self::type_check_abi_cast(
-                file_path,
                 abi_name,
                 address,
                 span,
@@ -332,13 +321,12 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_function_application(
-        file_path: String,
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -397,7 +385,6 @@ impl<'sc> TypedExpression<'sc> {
                         .zip(parameters.iter())
                         .map(|(arg, param)| {
                             (param.name.clone(), TypedExpression::type_check(
-                            file_path.clone(),
                             arg.clone(),
                             namespace,
                             Some(param.r#type.clone()),
@@ -447,14 +434,13 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_lazy_operator(
-        file_path: String,
         op: LazyOp,
         lhs: Expression<'sc>,
         rhs: Expression<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -463,7 +449,6 @@ impl<'sc> TypedExpression<'sc> {
 
         let typed_lhs = check!(
             TypedExpression::type_check(
-                file_path.clone(),
                 lhs.clone(),
                 namespace,
                 Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
@@ -480,7 +465,6 @@ impl<'sc> TypedExpression<'sc> {
 
         let typed_rhs = check!(
             TypedExpression::type_check(
-                file_path.clone(),
                 rhs.clone(),
                 namespace,
                 Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
@@ -569,14 +553,13 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_code_block(
-        file_path: String,
         contents: CodeBlock<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -584,7 +567,6 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
             TypedCodeBlock::type_check(
-                file_path,
                 contents.clone(),
                 namespace,
                 type_annotation.clone(),
@@ -631,7 +613,6 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_if_expression(
-        file_path: String,
         condition: Box<Expression<'sc>>,
         then: Box<Expression<'sc>>,
         r#else: Option<Box<Expression<'sc>>>,
@@ -639,7 +620,7 @@ impl<'sc> TypedExpression<'sc> {
         namespace: &mut Namespace<'sc>,
         type_annotation: Option<MaybeResolvedType<'sc>>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -647,7 +628,6 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = vec![];
         let condition = Box::new(check!(
             TypedExpression::type_check(
-                file_path.clone(),
                 *condition.clone(),
                 namespace,
                 Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
@@ -663,7 +643,6 @@ impl<'sc> TypedExpression<'sc> {
         ));
         let then = Box::new(check!(
             TypedExpression::type_check(
-                file_path.clone(),
                 *then.clone(),
                 namespace,
                 type_annotation.clone(),
@@ -680,7 +659,6 @@ impl<'sc> TypedExpression<'sc> {
         let r#else = if let Some(expr) = r#else {
             Some(Box::new(check!(
                 TypedExpression::type_check(
-                    file_path.clone(),
                     *expr.clone(),
                     namespace,
                     Some(then.return_type.clone()),
@@ -722,12 +700,11 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_asm_expression(
-        file_path: String,
         asm: AsmExpression<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -750,7 +727,6 @@ impl<'sc> TypedExpression<'sc> {
                         initializer: initializer.map(|initializer| {
                             check!(
                                 TypedExpression::type_check(
-                                    file_path.clone(),
                                     initializer.clone(),
                                     namespace,
                                     None,
@@ -784,13 +760,12 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_struct_expression(
-        file_path: String,
         span: Span<'sc>,
         struct_name: Ident<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -846,7 +821,6 @@ impl<'sc> TypedExpression<'sc> {
 
             let typed_field = check!(
                 TypedExpression::type_check(
-                    file_path.clone(),
                     expr_field.value,
                     namespace,
                     Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
@@ -894,13 +868,12 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_subfield_expression(
-        file_path: String,
         prefix: Box<Expression<'sc>>,
         span: Span<'sc>,
         field_to_access: Ident<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -908,7 +881,6 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = vec![];
         let parent = check!(
             TypedExpression::type_check(
-                file_path,
                 *prefix,
                 namespace,
                 None,
@@ -965,14 +937,13 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_delineated_path(
-        file_path: String,
         call_path: CallPath<'sc>,
         span: Span<'sc>,
         args: Vec<Expression<'sc>>,
         type_arguments: Vec<TypeInfo<'sc>>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -1023,7 +994,6 @@ impl<'sc> TypedExpression<'sc> {
                 },
                 (None, Some(enum_decl)) => Either::Right(check!(
                     instantiate_enum(
-                        file_path,
                         enum_decl,
                         call_path.suffix,
                         args,
@@ -1062,13 +1032,12 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_abi_cast(
-        file_path: String,
         abi_name: CallPath<'sc>,
         address: Box<Expression<'sc>>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -1079,7 +1048,6 @@ impl<'sc> TypedExpression<'sc> {
         let err_span = address.span();
         let address = check!(
             TypedExpression::type_check(
-                file_path.clone(),
                 *address,
                 namespace,
                 Some(MaybeResolvedType::Resolved(ResolvedType::B256)),
@@ -1126,7 +1094,6 @@ impl<'sc> TypedExpression<'sc> {
         for method in &abi.methods {
             type_checked_fn_buf.push(check!(
                 TypedFunctionDeclaration::type_check(
-                    file_path.clone(),
                     method.clone(),
                     namespace,
                     None,

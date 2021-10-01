@@ -70,11 +70,10 @@ impl<'sc> TypedParseTree<'sc> {
     }
 
     pub(crate) fn type_check(
-        file_path: String,
         parsed: ParseTree<'sc>,
         initial_namespace: Namespace<'sc>,
         tree_type: TreeType,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Self> {
@@ -91,7 +90,7 @@ impl<'sc> TypedParseTree<'sc> {
 
         check!(
             TypedParseTree::check_for_infinite_dependencies(
-                file_path.clone(),
+                build_config.file_name.clone().to_str().unwrap().to_string(),
                 &ordered_nodes,
                 dependency_graph,
             ),
@@ -102,7 +101,6 @@ impl<'sc> TypedParseTree<'sc> {
 
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
-                file_path,
                 ordered_nodes,
                 &mut new_namespace,
                 build_config,
@@ -160,10 +158,9 @@ impl<'sc> TypedParseTree<'sc> {
     }
 
     fn type_check_nodes(
-        file_path: String,
         nodes: Vec<AstNode<'sc>>,
         namespace: &mut Namespace<'sc>,
-        build_config: &BuildConfig,
+        build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
@@ -173,7 +170,6 @@ impl<'sc> TypedParseTree<'sc> {
             .into_iter()
             .map(|node| {
                 TypedAstNode::type_check(
-                    file_path.clone(),
                     node.clone(),
                     namespace,
                     None,

@@ -192,7 +192,6 @@ pub(crate) struct InnerDependencyCompileResult<'sc> {
 /// different types of compilation and stuff. After we get to a good state with the MVP,
 /// clean up the types here with the power of hindsight
 pub(crate) fn compile_inner_dependency<'sc>(
-    file_path: String,
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
@@ -229,11 +228,10 @@ pub(crate) fn compile_inner_dependency<'sc>(
             .into_iter()
             .filter_map(|(name, tree)| {
                 TypedParseTree::type_check(
-                    file_path.clone(),
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
-                    &build_config.clone(),
+                    &mut build_config.clone(),
                     dead_code_graph,
                     dependency_graph,
                 )
@@ -278,7 +276,6 @@ pub(crate) fn compile_inner_dependency<'sc>(
 }
 
 pub fn compile_to_asm<'sc>(
-    file_path: String,
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
@@ -301,11 +298,10 @@ pub fn compile_to_asm<'sc>(
     let mut type_check_ast = |ast: Option<_>, tree_type| {
         ast.map(|tree| {
             TypedParseTree::type_check(
-                file_path.clone(),
                 tree,
                 initial_namespace.clone(),
                 tree_type,
-                &build_config.clone(),
+                &mut build_config.clone(),
                 &mut dead_code_graph,
                 dependency_graph,
             )
@@ -324,11 +320,10 @@ pub fn compile_to_asm<'sc>(
             .into_iter()
             .filter_map(|(name, tree)| {
                 TypedParseTree::type_check(
-                    file_path.clone(),
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
-                    &build_config.clone(),
+                    &mut build_config.clone(),
                     &mut dead_code_graph,
                     dependency_graph,
                 )
@@ -457,19 +452,12 @@ pub fn compile_to_asm<'sc>(
     }
 }
 pub fn compile_to_bytecode<'sc>(
-    file_path: String,
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, Vec<String>>,
 ) -> BytecodeCompilationResult<'sc> {
-    match compile_to_asm(
-        file_path,
-        input,
-        initial_namespace,
-        build_config,
-        dependency_graph,
-    ) {
+    match compile_to_asm(input, initial_namespace, build_config, dependency_graph) {
         CompilationResult::Success {
             mut asm,
             mut warnings,
