@@ -3,7 +3,7 @@ use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::Engine;
+use crate::type_engine::{Engine, TypeId};
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
@@ -32,44 +32,41 @@ impl<'sc> Namespace<'sc> {
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
     pub(crate) fn resolve_type(
-        &self,
+        &mut self,
         ty: &TypeInfo<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-    ) -> MaybeResolvedType<'sc> {
+    ) -> TypeId {
         todo!(
             "still do the custom type to enum/struct type thing, but then\
         use type IDs for the rest of it."
         );
         let ty = ty.clone();
-        match ty {
+        let ty = match ty {
             TypeInfo::Custom { name } => match self.get_symbol(&name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,
                     ..
-                })) => MaybeResolvedType::Resolved(ResolvedType::Struct {
+                })) => TypeInfo::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
-                }),
+                },
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                     name,
                     variants,
                     ..
-                })) => MaybeResolvedType::Resolved(ResolvedType::Enum {
+                })) => TypeInfo::Enum {
                     name: name.clone(),
                     variant_types: variants.iter().map(|x| x.r#type.clone()).collect(),
-                }),
-                Some(_) => MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
-                    name: name.clone(),
-                }),
-                None => MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
-                    name: name.clone(),
-                }),
+                },
+                Some(_) => todo!(),
+                None => TypeInfo::Unknown,
             },
             TypeInfo::SelfType => self_type.clone(),
 
             o => todo!("put type engine in namespace and use that"),
-        }
+        };
+        self.type_engine.insert(ty)
     }
     /// Used to resolve a type when there is no known self type. This is needed
     /// when declaring new self types.

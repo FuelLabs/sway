@@ -5,6 +5,7 @@ use super::{
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
+use crate::type_engine::TypeId;
 use crate::{
     build_config::BuildConfig,
     error::*,
@@ -207,7 +208,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
 #[derive(Debug, Clone)]
 pub struct TypedEnumVariant<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: ResolvedType<'sc>,
+    pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span<'sc>,
 }
@@ -232,7 +233,7 @@ pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) body: TypedCodeBlock<'sc>,
     pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
     pub(crate) span: Span<'sc>,
-    pub(crate) return_type: MaybeResolvedType<'sc>,
+    pub(crate) return_type: TypeId,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
@@ -256,34 +257,35 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             self.name.span.clone()
         }
     }
-    pub(crate) fn replace_self_types(&self, self_type: &MaybeResolvedType<'sc>) -> Self {
-        TypedFunctionDeclaration {
-            name: self.name.clone(),
-            body: self.body.replace_self_types(self_type),
-            parameters: self
-                .parameters
-                .iter()
-                .map(|x| {
-                    let mut x = x.clone();
-                    x.r#type = match x.r#type {
-                        MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => {
-                            self_type.clone()
-                        }
-                        otherwise => otherwise.clone(),
-                    };
-                    x
-                })
-                .collect(),
-            span: self.span.clone(),
-            return_type: match &self.return_type {
-                MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => self_type.clone(),
-                otherwise => otherwise.clone(),
-            },
-            type_parameters: self.type_parameters.clone(),
-            return_type_span: self.return_type_span.clone(),
-            visibility: self.visibility.clone(),
-            is_contract_call: self.is_contract_call,
-        }
+    pub(crate) fn replace_self_types(&self, self_type: TypeId) -> Self {
+        todo!()
+        // TypedFunctionDeclaration {
+        //     name: self.name.clone(),
+        //     body: self.body.replace_self_types(self_type),
+        //     parameters: self
+        //         .parameters
+        //         .iter()
+        //         .map(|x| {
+        //             let mut x = x.clone();
+        //             x.r#type = match x.r#type {
+        //                 MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => {
+        //                     self_type.clone()
+        //                 }
+        //                 otherwise => otherwise.clone(),
+        //             };
+        //             x
+        //         })
+        //         .collect(),
+        //     span: self.span.clone(),
+        //     return_type: match &self.return_type {
+        //         MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => self_type.clone(),
+        //         otherwise => otherwise.clone(),
+        //     },
+        //     type_parameters: self.type_parameters.clone(),
+        //     return_type_span: self.return_type_span.clone(),
+        //     visibility: self.visibility.clone(),
+        //     is_contract_call: self.is_contract_call,
+        // }
     }
     pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<'sc, Vec<u8>> {
         let mut errors = vec![];
@@ -362,7 +364,7 @@ fn test_function_selector_behavior() {
             span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
-        return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
+        return_type: 0,
         type_parameters: vec![],
         return_type_span: Span {
             span: pest::Span::new(" ", 0, 0).unwrap(),
@@ -430,9 +432,7 @@ fn test_function_selector_behavior() {
             span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
-        return_type: MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-            IntegerBits::SixtyFour,
-        )),
+        return_type: 0,
         type_parameters: vec![],
         return_type_span: Span {
             span: pest::Span::new(" ", 0, 0).unwrap(),

@@ -6,12 +6,13 @@ use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
 
 mod method_application;
+use crate::type_engine::TypeId;
 use method_application::type_check_method_application;
 
 #[derive(Clone, Debug)]
 pub struct TypedExpression<'sc> {
     pub(crate) expression: TypedExpressionVariant<'sc>,
-    pub(crate) return_type: MaybeResolvedType<'sc>,
+    pub(crate) return_type: TypeId,
     /// whether or not this expression is constantly evaluatable (if the result is known at compile
     /// time)
     pub(crate) is_constant: IsConstant,
@@ -31,9 +32,9 @@ impl<'sc> TypedExpression<'sc> {
     pub(crate) fn type_check(
         other: Expression<'sc>,
         namespace: &mut Namespace<'sc>,
-        type_annotation: Option<MaybeResolvedType<'sc>>,
+        type_annotation: TypeId,
         help_text: impl Into<String> + Clone,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Self> {
@@ -152,7 +153,7 @@ impl<'sc> TypedExpression<'sc> {
             Expression::Unit { span } => {
                 let exp = TypedExpression {
                     expression: TypedExpressionVariant::Unit,
-                    return_type: MaybeResolvedType::Resolved(ResolvedType::Unit),
+                    return_type: todo!("unit type in engine -- maybe reserved?"),
                     is_constant: IsConstant::Yes,
                     span,
                 };
