@@ -66,6 +66,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "missing_fn_arguments",
         "excess_fn_arguments",
         "top_level_vars",
+        "dependencies_parsing_error"
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {

@@ -112,7 +112,7 @@ pub fn parse<'sc>(
                 vec![CompileError::ParseFailure {
                     span: span::Span {
                         span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
-                        path: config.map(|config| config.dir_of_code.clone()),
+                        path: config.map(|config| config.path()),
                     },
                     err: e,
                 }],
