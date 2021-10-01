@@ -29,7 +29,7 @@ pub struct FunctionDeclaration<'sc> {
     pub(crate) visibility: Visibility,
     pub body: CodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
-    pub(crate) span: Span<'sc>,
+    pub span: Span<'sc>,
     pub(crate) return_type: TypeInfo<'sc>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) return_type_span: Span<'sc>,

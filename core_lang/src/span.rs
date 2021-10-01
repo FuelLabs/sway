@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Span<'sc> {
-    pub(crate) span: pest::Span<'sc>,
+    pub span: pest::Span<'sc>,
     pub(crate) path: Option<PathBuf>,
 }
 

@@ -12,7 +12,7 @@ mod variable_declaration;
 pub(crate) use abi_declaration::*;
 pub(crate) use constant_declaration::*;
 pub(crate) use enum_declaration::*;
-pub(crate) use function_declaration::*;
+pub use function_declaration::*;
 pub(crate) use impl_trait::*;
 pub(crate) use reassignment::*;
 pub(crate) use struct_declaration::*;
