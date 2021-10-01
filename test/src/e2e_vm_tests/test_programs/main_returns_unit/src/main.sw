@@ -1,13 +1,13 @@
 script;
 
 fn ten() -> u64 {
-  10
+    10
 }
 
 fn nop() {
-  ten();
+    ten();
 }
 
 fn main() {
-  nop()
+    nop()
 }
