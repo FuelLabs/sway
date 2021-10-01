@@ -84,6 +84,20 @@ struct Engine<'sc> {
     vars: HashMap<TypeId, TypeInfo<'sc>>,
 }
 
+impl<'sc> Engine<'sc> {
+    fn insert_into_vars(&mut self, id: usize, info: TypeInfo<'sc>) {
+        // Insert a typeinfo for a specific ID
+        // if this used to refer to something, update that thing as well.
+        match self.vars.get(&id) {
+            Some(TypeInfo::Ref(ref other_id)) => {
+                self.insert_into_vars(other_id.clone(), info.clone());
+            }
+            _ => (),
+        };
+        self.vars.insert(id, info);
+    }
+}
+
 impl<'sc> TypeEngine<'sc> for Engine<'sc> {
     type TypeId = usize;
     type TypeInfo = TypeInfo<'sc>;
@@ -142,8 +156,8 @@ impl<'sc> TypeEngine<'sc> for Engine<'sc> {
                 self.vars.insert(a, b);
                 Ok(None)
             }
-            (b @ UnsignedInteger(_), Numeric) => {
-                self.vars.insert(a, b);
+            (a @ UnsignedInteger(_), Numeric) => {
+                self.vars.insert(b, a);
                 Ok(None)
             }
 
@@ -224,7 +238,6 @@ fn basic_numeric_unknown() {
 fn chain_of_refs() {
     let mut engine = Engine::default();
 
-    todo!("update entire chain of refs when one is known");
     // numerics
     let id = engine.insert(TypeInfo::Numeric);
     let id2 = engine.insert(TypeInfo::Ref(id));
@@ -233,6 +246,24 @@ fn chain_of_refs() {
 
     // Unify them together...
     engine.unify(id4, id2).unwrap();
+
+    assert_eq!(
+        engine.resolve(id3).unwrap(),
+        ResolvedType::UnsignedInteger(IntegerBits::Eight)
+    );
+}
+#[test]
+fn chain_of_refs_2() {
+    let mut engine = Engine::default();
+
+    // numerics
+    let id = engine.insert(TypeInfo::Numeric);
+    let id2 = engine.insert(TypeInfo::Ref(id));
+    let id3 = engine.insert(TypeInfo::Ref(id));
+    let id4 = engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+
+    // Unify them together...
+    engine.unify(id2, id4).unwrap();
 
     assert_eq!(
         engine.resolve(id3).unwrap(),
