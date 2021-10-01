@@ -93,7 +93,6 @@ impl<'sc> TypedParseTree<'sc> {
             TypedParseTree::check_for_infinite_dependencies(
                 file_path.clone(),
                 &ordered_nodes,
-                parsed.span.clone(),
                 dependency_graph,
             ),
             return err(warnings, errors),
@@ -127,8 +126,7 @@ impl<'sc> TypedParseTree<'sc> {
 
     fn check_for_infinite_dependencies(
         file_path: String,
-        ordered_nodes: &Vec<AstNode>,
-        span: Span<'sc>,
+        ordered_nodes: &Vec<AstNode<'sc>>,
         dependency_graph: &mut HashMap<String, Vec<String>>,
     ) -> CompileResult<'sc, ()> {
         let warnings = vec![];
@@ -143,7 +141,7 @@ impl<'sc> TypedParseTree<'sc> {
                         if value.contains(&file_path2.to_string()) {
                             errors.push(CompileError::InfiniteDependencies {
                                 file_path: file_path,
-                                span: span,
+                                span: node.span.clone()
                             });
                             return err(warnings, errors);
                         } else {
