@@ -40,22 +40,6 @@ enum Type {
 /// A identifier to uniquely refer to our type terms
 pub type TypeId = usize;
 
-// /// Information about a type term
-// #[derive(Clone, Debug)]
-// enum TypeInfo {
-//     // No information about the type of this type term
-//     Unknown,
-//     // This type term is the same as another type term
-//     Ref(TypeId),
-//     // This type term is definitely a number
-//     Num,
-//     // This type term is definitely a boolean
-//     Bool,
-//     // This type term is definitely a list
-//     List(TypeId),
-//     // This type term is definitely a function
-//     Func(TypeId, TypeId),
-// }
 /// Type information without an associated value, used for type inferencing and definition.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeInfo<'sc> {
@@ -111,8 +95,8 @@ impl<'sc> TypeInfo<'sc> {
     }
 }
 
-#[derive(Default)]
-struct Engine<'sc> {
+#[derive(Default, Clone, Debug)]
+pub(crate) struct Engine<'sc> {
     id_counter: usize, // Used to generate unique IDs
     vars: HashMap<TypeId, TypeInfo<'sc>>,
 }

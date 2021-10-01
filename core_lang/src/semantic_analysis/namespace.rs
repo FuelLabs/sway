@@ -3,6 +3,7 @@ use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
+use crate::type_engine::Engine;
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
@@ -23,6 +24,7 @@ pub struct Namespace<'sc> {
     /// namespace _is_ the root namespace.
     pub(crate) crate_namespace: Box<Option<Namespace<'sc>>>,
 
+    type_engine: Engine<'sc>,
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
 }
 
@@ -34,6 +36,10 @@ impl<'sc> Namespace<'sc> {
         ty: &TypeInfo<'sc>,
         self_type: &MaybeResolvedType<'sc>,
     ) -> MaybeResolvedType<'sc> {
+        todo!(
+            "still do the custom type to enum/struct type thing, but then\
+        use type IDs for the rest of it."
+        );
         let ty = ty.clone();
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol(&name) {
