@@ -703,6 +703,8 @@ pub enum TypeError<'sc> {
         help_text: String,
         span: Span<'sc>,
     },
+    #[error("This type is not known. Try annotating it with a type annotation.")]
+    UnknownType { span: Span<'sc> },
 }
 
 impl<'sc> TypeError<'sc> {
@@ -710,6 +712,7 @@ impl<'sc> TypeError<'sc> {
         use TypeError::*;
         match self {
             MismatchedType { span, .. } => span,
+            UnknownType { span } => span,
         }
     }
 }

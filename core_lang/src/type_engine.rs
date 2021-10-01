@@ -1,5 +1,6 @@
 use crate::error::*;
 use crate::types::{IntegerBits, ResolvedType};
+use crate::Span;
 use std::collections::HashMap;
 
 trait TypeEngine<'sc> {
@@ -15,11 +16,16 @@ trait TypeEngine<'sc> {
         &mut self,
         a: Self::TypeId,
         b: Self::TypeId,
+        span: &Span<'sc>,
     ) -> Result<Option<Warning<'sc>>, Self::Error>;
     /// Attempt to reconstruct a concrete type from the given type term ID. This
     /// may fail if we don't yet have enough information to figure out what the
     /// type is.
-    fn resolve(&self, id: Self::TypeId) -> Result<Self::ResolvedType, Self::Error>;
+    fn resolve(
+        &self,
+        id: Self::TypeId,
+        span: &Span<'sc>,
+    ) -> Result<Self::ResolvedType, Self::Error>;
 }
 
 /// A concrete type that has been fully inferred
@@ -78,24 +84,37 @@ pub enum TypeInfo<'sc> {
     ErrorRecovery,
 }
 
+impl<'sc> TypeInfo<'sc> {
+    pub(crate) fn friendly_type_str(&self) -> String {
+        use TypeInfo::*;
+        match self {
+            Unknown => "unknown".into(),
+            Str(x) => format!("str[{}]", x),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+            }
+            .into(),
+            Boolean => "bool".into(),
+            Custom { name } => format!("{}", name.primary_name),
+            Ref(id) => format!("T{}", id),
+            Unit => "()".into(),
+            SelfType => "Self".into(),
+            Byte => "byte".into(),
+            B256 => "b256".into(),
+            Numeric => "numeric".into(),
+            Contract => "contract".into(),
+            ErrorRecovery => "unknown due to error".into(),
+        }
+    }
+}
+
 #[derive(Default)]
 struct Engine<'sc> {
     id_counter: usize, // Used to generate unique IDs
     vars: HashMap<TypeId, TypeInfo<'sc>>,
-}
-
-impl<'sc> Engine<'sc> {
-    fn insert_into_vars(&mut self, id: usize, info: TypeInfo<'sc>) {
-        // Insert a typeinfo for a specific ID
-        // if this used to refer to something, update that thing as well.
-        match self.vars.get(&id) {
-            Some(TypeInfo::Ref(ref other_id)) => {
-                self.insert_into_vars(other_id.clone(), info.clone());
-            }
-            _ => (),
-        };
-        self.vars.insert(id, info);
-    }
 }
 
 impl<'sc> TypeEngine<'sc> for Engine<'sc> {
@@ -118,12 +137,13 @@ impl<'sc> TypeEngine<'sc> for Engine<'sc> {
         &mut self,
         a: Self::TypeId,
         b: Self::TypeId,
+        span: &Span<'sc>,
     ) -> Result<Option<Warning<'sc>>, Self::Error> {
         use TypeInfo::*;
         match (self.vars[&a].clone(), self.vars[&b].clone()) {
             // Follow any references
-            (Ref(a), _) => self.unify(a, b),
-            (_, Ref(b)) => self.unify(a, b),
+            (Ref(a), _) => self.unify(a, b, span),
+            (_, Ref(b)) => self.unify(a, b, span),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
@@ -146,8 +166,7 @@ impl<'sc> TypeEngine<'sc> for Engine<'sc> {
                 NumericCastCompatResult::CastableWithWarning(warn) => {
                     // cast the one on the right to the one on the left
                     self.vars.insert(a, UnsignedInteger(x));
-                    // then push warning (the todo)
-                    todo!("put together compile warning")
+                    Ok(Some(warn))
                 }
                 // do nothing if compatible
                 NumericCastCompatResult::Compatible => Ok(None),
@@ -170,15 +189,24 @@ impl<'sc> TypeEngine<'sc> for Engine<'sc> {
             // }
 
             // If no previous attempts to unify were successful, raise an error
-            (a, b) => todo!("Conflict between {:?} and {:?}", a, b),
+            (a, b) => Err(TypeError::MismatchedType {
+                expected: a.friendly_type_str(),
+                received: b.friendly_type_str(),
+                help_text: Default::default(),
+                span: span.clone(),
+            }),
         }
     }
 
-    fn resolve(&self, id: Self::TypeId) -> Result<Self::ResolvedType, Self::Error> {
+    fn resolve(
+        &self,
+        id: Self::TypeId,
+        span: &Span<'sc>,
+    ) -> Result<Self::ResolvedType, Self::Error> {
         use TypeInfo::*;
         match self.vars[&id] {
-            Unknown => todo!("Cannot infer"),
-            Ref(id) => self.resolve(id),
+            Unknown => Err(TypeError::UnknownType { span: span.clone() }),
+            Ref(id) => self.resolve(id, span),
             // defaults to u64
             Numeric => Ok(ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)),
             Boolean => Ok(ResolvedType::Boolean),
@@ -222,22 +250,29 @@ fn numeric_cast_compat<'sc>(a: IntegerBits, b: IntegerBits) -> NumericCastCompat
 fn basic_numeric_unknown() {
     let mut engine = Engine::default();
 
+    let sp = Span {
+        span: pest::Span::new(" ", 0, 0).unwrap(),
+        path: None,
+    };
     // numerics
     let id = engine.insert(TypeInfo::Numeric);
     let id2 = engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    engine.unify(id, id2).unwrap();
+    engine.unify(id, id2, &sp).unwrap();
 
     assert_eq!(
-        engine.resolve(id).unwrap(),
+        engine.resolve(id, &sp).unwrap(),
         ResolvedType::UnsignedInteger(IntegerBits::Eight)
     );
 }
 #[test]
 fn chain_of_refs() {
     let mut engine = Engine::default();
-
+    let sp = Span {
+        span: pest::Span::new(" ", 0, 0).unwrap(),
+        path: None,
+    };
     // numerics
     let id = engine.insert(TypeInfo::Numeric);
     let id2 = engine.insert(TypeInfo::Ref(id));
@@ -245,17 +280,20 @@ fn chain_of_refs() {
     let id4 = engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    engine.unify(id4, id2).unwrap();
+    engine.unify(id4, id2, &sp).unwrap();
 
     assert_eq!(
-        engine.resolve(id3).unwrap(),
+        engine.resolve(id3, &sp).unwrap(),
         ResolvedType::UnsignedInteger(IntegerBits::Eight)
     );
 }
 #[test]
 fn chain_of_refs_2() {
     let mut engine = Engine::default();
-
+    let sp = Span {
+        span: pest::Span::new(" ", 0, 0).unwrap(),
+        path: None,
+    };
     // numerics
     let id = engine.insert(TypeInfo::Numeric);
     let id2 = engine.insert(TypeInfo::Ref(id));
@@ -263,10 +301,10 @@ fn chain_of_refs_2() {
     let id4 = engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    engine.unify(id2, id4).unwrap();
+    engine.unify(id2, id4, &sp).unwrap();
 
     assert_eq!(
-        engine.resolve(id3).unwrap(),
+        engine.resolve(id3, &sp).unwrap(),
         ResolvedType::UnsignedInteger(IntegerBits::Eight)
     );
 }
