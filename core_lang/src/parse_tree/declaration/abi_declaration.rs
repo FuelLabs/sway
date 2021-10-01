@@ -57,7 +57,7 @@ impl<'sc> AbiDeclaration<'sc> {
                     warnings,
                     errors
                 )),
-                _ => unreachable!("guaranteed by grammar"),
+                x => unreachable!("guaranteed to not be here: {:?}", x),
             }
         }
         ok(

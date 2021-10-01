@@ -24,6 +24,12 @@ struct Data {
 	address: byte,
 }
 
+/// This is the `FooABI` abi
+abi FooABI {
+    /// This is the `foo` method on the `FooABI` abit
+    fn foo();
+}
+
 /// The main function that does all the things!
 fn main() -> u64 {
   let mut data = Data { 
