@@ -682,7 +682,7 @@ pub enum CompileError<'sc> {
         call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
         span: Span<'sc>,
     },
-    #[error("File {file_path} generates an infinite depedency cycle.")]
+    #[error("File {file_path} generates an infinite dependency cycle.")]
     InfiniteDependencies { file_path: String, span: Span<'sc> },
 }
 
