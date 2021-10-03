@@ -3,6 +3,7 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::types::MaybeResolvedType;
 use crate::CodeBlock;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedCodeBlock<'sc> {
@@ -24,7 +25,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, (Self, Option<MaybeResolvedType<'sc>>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

@@ -4,6 +4,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
+use std::collections::{HashMap, HashSet};
 
 mod method_application;
 use method_application::type_check_method_application;
@@ -36,7 +37,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, Self> {
         let expr_span = other.span();
         let res = match other {
@@ -328,7 +329,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -442,7 +443,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -561,7 +562,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -622,7 +623,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -706,7 +707,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -767,7 +768,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -875,7 +876,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -945,7 +946,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1039,7 +1040,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];

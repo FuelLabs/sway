@@ -9,14 +9,14 @@ use crate::{
     types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     CallPath, Ident,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
     build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -171,7 +171,7 @@ fn type_check_trait_implementation<'sc>(
     block_span: &Span<'sc>,
     type_implementing_for: &MaybeResolvedType<'sc>,
     mode: Mode,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];

@@ -9,7 +9,7 @@ use crate::{
     types::{MaybeResolvedType, ResolvedType},
 };
 use crate::{AstNode, AstNodeContent, ParseTree};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TreeType {
@@ -75,7 +75,7 @@ impl<'sc> TypedParseTree<'sc> {
         tree_type: TreeType,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, Self> {
         let mut new_namespace = initial_namespace.clone();
         let mut warnings = Vec::new();
@@ -125,7 +125,7 @@ impl<'sc> TypedParseTree<'sc> {
     fn check_for_infinite_dependencies(
         file_path: String,
         ordered_nodes: &Vec<AstNode<'sc>>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, ()> {
         let warnings = vec![];
         let mut errors = vec![];
@@ -143,11 +143,12 @@ impl<'sc> TypedParseTree<'sc> {
                             });
                             return err(warnings, errors);
                         } else {
-                            value.push(file_path2.to_string());
+                            value.insert(file_path2.to_string());
                         }
                     } else {
-                        dependency_graph
-                            .insert(orig_file_path.clone(), vec![file_path2.to_string()]);
+                        let mut set = HashSet::new();
+                        set.insert(file_path2.to_string());
+                        dependency_graph.insert(orig_file_path.clone(), set);
                     }
                 }
                 _ => {}
@@ -162,7 +163,7 @@ impl<'sc> TypedParseTree<'sc> {
         namespace: &mut Namespace<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

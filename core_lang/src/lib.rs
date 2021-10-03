@@ -26,7 +26,7 @@ use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
@@ -196,7 +196,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, InnerDependencyCompileResult<'sc>> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -279,7 +279,7 @@ pub fn compile_to_asm<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -455,7 +455,7 @@ pub fn compile_to_bytecode<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> BytecodeCompilationResult<'sc> {
     match compile_to_asm(input, initial_namespace, build_config, dependency_graph) {
         CompilationResult::Success {

@@ -12,7 +12,7 @@ pub(crate) fn type_check_method_application<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];

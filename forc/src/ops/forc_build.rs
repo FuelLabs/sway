@@ -20,7 +20,7 @@ use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
     Namespace,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
@@ -144,7 +144,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> Result<(), String> {
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
@@ -226,7 +226,7 @@ fn compile_library<'source, 'manifest>(
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> Result<LibraryExports<'source>, String> {
     let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
     match res {
@@ -278,7 +278,7 @@ fn compile<'source, 'manifest>(
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> Result<Vec<u8>, String> {
     let res = core_lang::compile_to_bytecode(&source, namespace, build_config, dependency_graph);
     match res {
@@ -412,7 +412,7 @@ fn compile_to_asm<'source, 'manifest>(
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> Result<FinalizedAsm<'source>, String> {
     let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
     match res {

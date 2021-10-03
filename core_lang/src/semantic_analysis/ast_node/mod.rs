@@ -28,7 +28,7 @@ pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVari
 pub(crate) use expression::*;
 use impl_trait::implementation_of_trait;
 pub(crate) use return_statement::TypedReturnStatement;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 pub(crate) use while_loop::TypedWhileLoop;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
@@ -92,7 +92,7 @@ impl<'sc> TypedAstNode<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &mut BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, Vec<String>>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -607,7 +607,7 @@ fn import_new_file<'sc>(
     namespace: &mut Namespace<'sc>,
     build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -695,7 +695,7 @@ fn reassignment<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -918,7 +918,7 @@ fn type_check_trait_methods<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &mut BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
-    dependency_graph: &mut HashMap<String, Vec<String>>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut warnings = vec![];
     let mut errors = vec![];
