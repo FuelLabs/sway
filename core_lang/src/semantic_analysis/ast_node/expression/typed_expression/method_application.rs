@@ -10,7 +10,7 @@ pub(crate) fn type_check_method_application<'sc>(
     span: Span<'sc>,
     namespace: &mut Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
-    build_config: &mut BuildConfig,
+    build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {

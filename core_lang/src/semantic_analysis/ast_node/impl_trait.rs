@@ -14,7 +14,7 @@ use std::collections::{HashMap, HashSet};
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
-    build_config: &mut BuildConfig,
+    build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
@@ -166,7 +166,7 @@ fn type_check_trait_implementation<'sc>(
     type_arguments: &[TypeParameter<'sc>],
     namespace: &mut Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
-    build_config: &mut BuildConfig,
+    build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     block_span: &Span<'sc>,
     type_implementing_for: &MaybeResolvedType<'sc>,

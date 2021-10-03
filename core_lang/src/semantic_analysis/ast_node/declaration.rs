@@ -506,7 +506,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // If there are any `Self` types in this declaration,
         // resolve them to this type.
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         mode: Mode,
         dependency_graph: &mut HashMap<String, HashSet<String>>,

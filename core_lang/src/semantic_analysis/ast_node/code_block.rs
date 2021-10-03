@@ -23,7 +23,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, (Self, Option<MaybeResolvedType<'sc>>)> {

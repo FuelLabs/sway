@@ -35,7 +35,7 @@ impl<'sc> TypedExpression<'sc> {
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, Self> {
@@ -327,7 +327,7 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -441,7 +441,7 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -560,7 +560,7 @@ impl<'sc> TypedExpression<'sc> {
         type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String> + Clone,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -621,7 +621,7 @@ impl<'sc> TypedExpression<'sc> {
         namespace: &mut Namespace<'sc>,
         type_annotation: Option<MaybeResolvedType<'sc>>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -705,7 +705,7 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -766,7 +766,7 @@ impl<'sc> TypedExpression<'sc> {
         fields: Vec<StructExpressionField<'sc>>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -874,7 +874,7 @@ impl<'sc> TypedExpression<'sc> {
         field_to_access: Ident<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -944,7 +944,7 @@ impl<'sc> TypedExpression<'sc> {
         type_arguments: Vec<TypeInfo<'sc>>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -1038,7 +1038,7 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {

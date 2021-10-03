@@ -231,7 +231,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
-                    &mut build_config.clone(),
+                    &build_config.clone(),
                     dead_code_graph,
                     dependency_graph,
                 )
@@ -301,7 +301,7 @@ pub fn compile_to_asm<'sc>(
                 tree,
                 initial_namespace.clone(),
                 tree_type,
-                &mut build_config.clone(),
+                &build_config.clone(),
                 &mut dead_code_graph,
                 dependency_graph,
             )
@@ -323,7 +323,7 @@ pub fn compile_to_asm<'sc>(
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
-                    &mut build_config.clone(),
+                    &build_config.clone(),
                     &mut dead_code_graph,
                     dependency_graph,
                 )

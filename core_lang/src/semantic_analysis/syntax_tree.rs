@@ -73,7 +73,7 @@ impl<'sc> TypedParseTree<'sc> {
         parsed: ParseTree<'sc>,
         initial_namespace: Namespace<'sc>,
         tree_type: TreeType,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, Self> {
@@ -161,7 +161,7 @@ impl<'sc> TypedParseTree<'sc> {
     fn type_check_nodes(
         nodes: Vec<AstNode<'sc>>,
         namespace: &mut Namespace<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {

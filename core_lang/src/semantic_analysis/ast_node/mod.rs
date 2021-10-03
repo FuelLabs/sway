@@ -90,7 +90,7 @@ impl<'sc> TypedAstNode<'sc> {
         return_type_annotation: Option<MaybeResolvedType<'sc>>,
         help_text: impl Into<String>,
         self_type: &MaybeResolvedType<'sc>,
-        build_config: &mut BuildConfig,
+        build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
@@ -605,7 +605,7 @@ impl<'sc> TypedAstNode<'sc> {
 fn import_new_file<'sc>(
     statement: &IncludeStatement<'sc>,
     namespace: &mut Namespace<'sc>,
-    build_config: &mut BuildConfig,
+    build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, ()> {
@@ -693,7 +693,7 @@ fn reassignment<'sc>(
     span: Span<'sc>,
     namespace: &mut Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
-    build_config: &mut BuildConfig,
+    build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
@@ -916,7 +916,7 @@ fn type_check_trait_methods<'sc>(
     methods: Vec<FunctionDeclaration<'sc>>,
     namespace: &Namespace<'sc>,
     self_type: &MaybeResolvedType<'sc>,
-    build_config: &mut BuildConfig,
+    build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
