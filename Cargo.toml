@@ -5,6 +5,8 @@ members = [
     "core-types",
     "forc",
     "formatter",
+    "fuel-abi-cli",
+    "fuels-rs",
     "sway-server",
     "test"
 ]

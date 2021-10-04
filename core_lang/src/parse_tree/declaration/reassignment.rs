@@ -5,6 +5,7 @@ use crate::parser::Rule;
 use crate::span::Span;
 use crate::Ident;
 use pest::iterators::Pair;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Reassignment<'sc> {
@@ -19,6 +20,7 @@ impl<'sc> Reassignment<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
+        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Reassignment<'sc>> {
         let path = config.map(|c| c.path());
         let span = Span {
@@ -33,14 +35,14 @@ impl<'sc> Reassignment<'sc> {
             Rule::variable_reassignment => {
                 let mut iter = variable_or_struct_reassignment.into_inner();
                 let name = check!(
-                    Expression::parse_from_pair_inner(iter.next().unwrap(), config),
+                    Expression::parse_from_pair_inner(iter.next().unwrap(), config, docstrings),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 let body = iter.next().unwrap();
                 let body = check!(
-                    Expression::parse_from_pair(body.clone(), config),
+                    Expression::parse_from_pair(body.clone(), config, docstrings),
                     Expression::Unit {
                         span: Span {
                             span: body.as_span(),
@@ -70,7 +72,7 @@ impl<'sc> Reassignment<'sc> {
                     path: path.clone(),
                 };
                 let body = check!(
-                    Expression::parse_from_pair(rhs, config),
+                    Expression::parse_from_pair(rhs, config, docstrings),
                     Expression::Unit { span: rhs_span },
                     warnings,
                     errors

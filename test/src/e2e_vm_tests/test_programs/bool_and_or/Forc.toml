@@ -1,7 +1,7 @@
 [project]
 author  = "Toby Hutton <toby.hutton@fuel.sh>"
 license = "MIT"
-name = "bool_and_or/"
+name = "bool_and_or"
 entry = "main.sw"
 
 [dependencies]

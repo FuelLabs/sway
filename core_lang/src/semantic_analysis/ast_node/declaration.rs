@@ -13,10 +13,12 @@ use crate::{
 };
 use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
 use sha2::{Digest, Sha256};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
     VariableDeclaration(TypedVariableDeclaration<'sc>),
+    ConstantDeclaration(TypedConstantDeclaration<'sc>),
     FunctionDeclaration(TypedFunctionDeclaration<'sc>),
     TraitDeclaration(TypedTraitDeclaration<'sc>),
     StructDeclaration(TypedStructDeclaration<'sc>),
@@ -40,6 +42,7 @@ impl<'sc> TypedDeclaration<'sc> {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(_) => "variable",
+            ConstantDeclaration(_) => "constant",
             FunctionDeclaration(_) => "function",
             TraitDeclaration(_) => "trait",
             StructDeclaration(_) => "struct",
@@ -97,6 +100,7 @@ impl<'sc> TypedDeclaration<'sc> {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span.clone(),
+            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span.clone(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
             TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span.clone(),
             StructDeclaration(TypedStructDeclaration { name, .. }) => name.span.clone(),
@@ -156,7 +160,7 @@ pub struct TypedAbiDeclaration<'sc> {
     /// The methods a contract is required to implement in order opt in to this interface
     pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
     /// The methods provided to a contract "for free" upon opting in to this interface
-    pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
+    pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) span: Span<'sc>,
 }
 
@@ -214,6 +218,12 @@ pub struct TypedVariableDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) body: TypedExpression<'sc>, // will be codeblock variant
     pub(crate) is_mutable: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct TypedConstantDeclaration<'sc> {
+    pub(crate) name: Ident<'sc>,
+    pub(crate) value: TypedExpression<'sc>,
 }
 
 // TODO: type check generic type args and their usage
@@ -452,7 +462,7 @@ pub struct TypedFunctionParameter<'sc> {
 pub struct TypedTraitDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
-    pub(crate) methods: Vec<TypedFunctionDeclaration<'sc>>,
+    pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) visibility: Visibility,
 }
@@ -499,6 +509,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         mode: Mode,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -546,7 +557,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             (
                 TypedCodeBlock {

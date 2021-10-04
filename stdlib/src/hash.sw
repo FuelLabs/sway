@@ -3,13 +3,12 @@ library hash;
 // Should this be a trait eventually? Do we want to allow people to customize what `!` does?
 // Scala says yes, Rust says perhaps...
 pub fn not(a: bool) -> bool {
-  // using direct asm for perf
-  asm(r1: a, r2) {
-    eq r2 r1 zero;
-    r2: bool
-  }
+    // using direct asm for perf
+    asm(r1: a, r2) {
+        eq r2 r1 zero;
+        r2: bool
+    }
 }
-
 
 enum HashMethod {
     Sha256: (),
@@ -59,39 +58,39 @@ pub fn hash_pair(value_a: b256, value_b: b256, method: HashMethod) -> b256 {
     // the S256 and K256 instructions but we'd need control flow within ASM blocks to allow that.
     if method.eq(HashMethod::Keccak256) {
         asm(r1: value_a, r2: value_b, r3, r4, r5, r6) {
-            move r3 sp;             // Result buffer.
+            move r3 sp; // Result buffer.
             cfei i32;
-            move r4 sp;             // Buffer for copies of value_a and value_b.
+            move r4 sp; // Buffer for copies of value_a and value_b.
             cfei i64;
 
             addi r5 zero i32;
-            mcp r4 r1 r5;           // Copy 32 bytes to buffer.
+            mcp r4 r1 r5; // Copy 32 bytes to buffer.
             addi r6 r4 i32;
-            mcp r6 r2 r5;           // Append 32 bytes to buffer.
+            mcp r6 r2 r5; // Append 32 bytes to buffer.
 
             addi r5 r5 i32;
-            k256 r3 r4 r5;          // Hash 64 bytes to the result buffer.
+            k256 r3 r4 r5; // Hash 64 bytes to the result buffer.
 
-            cfsi i64;               // Free the copies buffer.
+            cfsi i64; // Free the copies buffer.
 
             r3: b256
         }
     } else {
         asm(r1: value_a, r2: value_b, r3, r4, r5, r6) {
-            move r3 sp;             // Result buffer.
+            move r3 sp; // Result buffer.
             cfei i32;
-            move r4 sp;             // Buffer for copies of value_a and value_b.
+            move r4 sp; // Buffer for copies of value_a and value_b.
             cfei i64;
 
             addi r5 zero i32;
-            mcp r4 r1 r5;           // Copy 32 bytes to buffer.
+            mcp r4 r1 r5; // Copy 32 bytes to buffer.
             addi r6 r4 i32;
-            mcp r6 r2 r5;           // Append 32 bytes to buffer.
+            mcp r6 r2 r5; // Append 32 bytes to buffer.
 
             addi r5 r5 i32;
-            s256 r3 r4 r5;          // Hash 64 bytes to the result buffer.
+            s256 r3 r4 r5; // Hash 64 bytes to the result buffer.
 
-            cfsi i64;               // Free the copies buffer.
+            cfsi i64; // Free the copies buffer.
 
             r3: b256
         }

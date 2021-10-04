@@ -1,14 +1,16 @@
-use std::path::PathBuf;
-
 use core_lang::parse;
 use fuel_client::client::FuelClient;
 use fuel_tx::Transaction;
+use std::io::{self, Write};
+use std::path::PathBuf;
+use tokio::process::Child;
 
 use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
+use crate::utils::client::start_fuel_core;
 use crate::utils::{constants, helpers};
-use constants::{DEFAULT_NODE_URL, SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
+use constants::{SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
 use helpers::{find_manifest_dir, get_main_file, read_manifest};
 
 pub async fn run(command: RunCommand) -> Result<(), CliError> {
@@ -50,18 +52,18 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                         } else {
                             let node_url = match &manifest.network {
                                 Some(network) => &network.url,
-                                _ => DEFAULT_NODE_URL,
+                                _ => &command.node_url,
                             };
 
-                            let client = FuelClient::new(node_url)?;
+                            let child = try_send_tx(node_url, &tx).await?;
 
-                            match client.transact(&tx).await {
-                                Ok(logs) => {
-                                    println!("{:?}", logs);
-                                    Ok(())
+                            if command.kill_node {
+                                if let Some(mut child) = child {
+                                    child.kill().await.expect("Node should be killed");
                                 }
-                                Err(e) => Err(e.to_string().into()),
                             }
+
+                            Ok(())
                         }
                     } else {
                         let parse_type = {
@@ -85,6 +87,44 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
             }
         }
         None => Err(CliError::manifest_file_missing(path_dir)),
+    }
+}
+
+async fn try_send_tx(node_url: &str, tx: &Transaction) -> Result<Option<Child>, CliError> {
+    let client = FuelClient::new(node_url)?;
+
+    match client.health().await {
+        Ok(_) => {
+            send_tx(&client, tx).await?;
+            Ok(None)
+        }
+        Err(_) => {
+            print!(
+                "We noticed you don't have fuel-core running, would you like to start a node [y/n]?"
+            );
+            io::stdout().flush().unwrap();
+            let mut reply = String::new();
+            io::stdin().read_line(&mut reply)?;
+            let reply = reply.trim().to_lowercase();
+
+            if reply == "y" || reply == "yes" {
+                let child = start_fuel_core(node_url, &client).await?;
+                send_tx(&client, tx).await?;
+                Ok(Some(child))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+}
+
+async fn send_tx(client: &FuelClient, tx: &Transaction) -> Result<(), CliError> {
+    match client.transact(&tx).await {
+        Ok(logs) => {
+            println!("{:?}", logs);
+            Ok(())
+        }
+        Err(e) => Err(e.to_string().into()),
     }
 }
 

@@ -20,13 +20,15 @@ mod while_loop;
 use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{
-    TypedAbiDeclaration, TypedDeclaration, TypedEnumDeclaration, TypedEnumVariant,
-    TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration, TypedStructField,
+    TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
+    TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
+    TypedStructField,
 };
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
 pub(crate) use expression::*;
 use impl_trait::implementation_of_trait;
 pub(crate) use return_statement::TypedReturnStatement;
+use std::collections::{HashMap, HashSet};
 pub(crate) use while_loop::TypedWhileLoop;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
@@ -90,9 +92,37 @@ impl<'sc> TypedAstNode<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+
+        // A little utility used to check an ascribed type matches its associated expression.
+        let mut type_check_ascribed_expr = |type_ascription: Option<_>, value, decl_str| {
+            let type_ascription = type_ascription
+                .map(|ty| namespace.resolve_type(&ty, self_type))
+                .or(Some(MaybeResolvedType::Partial(
+                    PartiallyResolvedType::NeedsType,
+                )));
+            TypedExpression::type_check(
+                value,
+                namespace,
+                type_ascription.clone(),
+                format!(
+                    "{} declaration's type annotation (type {}) does \
+                     not match up with the assigned expression's type.",
+                    decl_str,
+                    type_ascription
+                        .as_ref()
+                        .map(|ty| ty.friendly_type_str())
+                        .unwrap_or_else(|| "none".into())
+                ),
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+            )
+        };
 
         let node = TypedAstNode {
             content: match node.content.clone() {
@@ -100,7 +130,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
                         ImportType::Item(s) => {
-                            namespace.item_import(a.call_path, &s, None, a.is_absolute)
+                            namespace.item_import(a.call_path, &s, a.is_absolute)
                         }
                     };
                     warnings.append(&mut res.warnings);
@@ -113,7 +143,13 @@ impl<'sc> TypedAstNode<'sc> {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
                     let _ = check!(
-                        import_new_file(a, namespace, build_config, dead_code_graph),
+                        import_new_file(
+                            a,
+                            namespace,
+                            build_config,
+                            dead_code_graph,
+                            dependency_graph
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -128,41 +164,43 @@ impl<'sc> TypedAstNode<'sc> {
                             body,
                             is_mutable,
                         }) => {
-                            let type_ascription = match type_ascription {
-                                Some(ty) => Some(namespace.resolve_type(&ty, self_type)),
-                                None => Some(MaybeResolvedType::Partial(
-                                    PartiallyResolvedType::NeedsType,
-                                )),
-                            };
+                            let result =
+                                type_check_ascribed_expr(type_ascription, body, "Variable");
                             let body = check!(
-                                TypedExpression::type_check(
-                                    body,
-                                    namespace,
-                                    type_ascription.clone(),
-                                    format!(
-                                        "Variable declaration's type annotation (type {}) does \
-                                         not match up with the assigned expression's type.",
-                                        type_ascription
-                                            .map(|x| x.friendly_type_str())
-                                            .unwrap_or_else(|| "none".into())
-                                    ),
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph
-                                ),
+                                result,
                                 error_recovery_expr(name.span.clone()),
                                 warnings,
                                 errors
                             );
-
-                            let body =
+                            let typed_var_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
                                     body,
                                     is_mutable,
                                 });
-                            namespace.insert(name, body.clone());
-                            body
+                            namespace.insert(name, typed_var_decl.clone());
+                            typed_var_decl
+                        }
+                        Declaration::ConstantDeclaration(ConstantDeclaration {
+                            name,
+                            type_ascription,
+                            value,
+                        }) => {
+                            let result =
+                                type_check_ascribed_expr(type_ascription, value, "Constant");
+                            let value = check!(
+                                result,
+                                error_recovery_expr(name.span.clone()),
+                                warnings,
+                                errors
+                            );
+                            let typed_const_decl =
+                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                                    name: name.clone(),
+                                    value,
+                                });
+                            namespace.insert(name, typed_const_decl.clone());
+                            typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
                             let span = e.span.clone();
@@ -185,6 +223,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     build_config,
                                     dead_code_graph,
                                     Mode::NonAbi,
+                                    dependency_graph
                                 ),
                                 error_recovery_function_declaration(fn_decl),
                                 warnings,
@@ -224,13 +263,15 @@ impl<'sc> TypedAstNode<'sc> {
                                     .map(|x| x.to_dummy_func(Mode::NonAbi))
                                     .collect(),
                             );
-                            let methods = check!(
+                            // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
+                            let _methods = check!(
                                 type_check_trait_methods(
-                                    methods,
+                                    methods.clone(),
                                     &trait_namespace,
                                     self_type,
                                     build_config,
                                     dead_code_graph,
+                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -256,7 +297,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     namespace,
                                     self_type,
                                     build_config,
-                                    dead_code_graph
+                                    dead_code_graph,
+                                    dependency_graph
                                 ),
                                 return err(warnings, errors),
                                 warnings,
@@ -268,7 +310,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 impl_trait,
                                 namespace,
                                 build_config,
-                                dead_code_graph
+                                dead_code_graph,
+                                dependency_graph
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -286,7 +329,12 @@ impl<'sc> TypedAstNode<'sc> {
                                 namespace.resolve_type_without_self(&type_implementing_for);
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
-                            namespace.insert_trait_methods(&type_arguments[..]);
+                            if !type_arguments.is_empty() {
+                                errors.push(CompileError::Internal(
+                                    "Where clauses are not supported yet.",
+                                    type_arguments[0].clone().name_ident.span,
+                                ));
+                            }
                             for mut fn_decl in functions.into_iter() {
                                 let mut type_arguments = type_arguments.clone();
                                 // add generic params from impl trait into function type params
@@ -317,7 +365,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         &type_implementing_for_resolved,
                                         build_config,
                                         dead_code_graph,
-                                        Mode::NonAbi
+                                        Mode::NonAbi,
+                                        dependency_graph
                                     ),
                                     continue,
                                     warnings,
@@ -394,13 +443,16 @@ impl<'sc> TypedAstNode<'sc> {
                             // from itself. This is by design.
                             let interface_surface =
                                 type_check_interface_surface(interface_surface, namespace);
-                            let methods = check!(
+                            // type check these for errors but don't actually use them yet -- the real
+                            // ones will be type checked with proper symbols when the ABI is implemented
+                            let _methods = check!(
                                 type_check_trait_methods(
-                                    methods,
+                                    methods.clone(),
                                     namespace,
                                     self_type,
                                     build_config,
                                     dead_code_graph,
+                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -427,7 +479,8 @@ impl<'sc> TypedAstNode<'sc> {
                             "",
                             self_type,
                             build_config,
-                            dead_code_graph
+                            dead_code_graph,
+                            dependency_graph
                         ),
                         error_recovery_expr(a.span()),
                         warnings,
@@ -446,7 +499,8 @@ impl<'sc> TypedAstNode<'sc> {
                                  annotation.",
                                 self_type,
                                 build_config,
-                                dead_code_graph
+                                dead_code_graph,
+                                dependency_graph
                             ),
                             error_recovery_expr(expr.span()),
                             warnings,
@@ -466,7 +520,8 @@ impl<'sc> TypedAstNode<'sc> {
                             ),
                             self_type,
                             build_config,
-                            dead_code_graph
+                            dead_code_graph,
+                            dependency_graph
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -483,7 +538,8 @@ impl<'sc> TypedAstNode<'sc> {
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
                             build_config,
-                            dead_code_graph
+                            dead_code_graph,
+                            dependency_graph
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -500,6 +556,7 @@ impl<'sc> TypedAstNode<'sc> {
                             self_type,
                             build_config,
                             dead_code_graph,
+                            dependency_graph
                         ),
                         (
                             TypedCodeBlock {
@@ -550,6 +607,7 @@ fn import_new_file<'sc>(
     namespace: &mut Namespace<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -557,7 +615,8 @@ fn import_new_file<'sc>(
     let file_path = file_path.with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
     let mut canonical_path = build_config.dir_of_code.clone();
-    canonical_path.push(file_path);
+    canonical_path.push(file_path.clone());
+
     let res = if canonical_path.exists() {
         std::fs::read_to_string(canonical_path.clone())
     } else {
@@ -591,6 +650,7 @@ fn import_new_file<'sc>(
         canonical_path.pop();
         canonical_path
     };
+    dep_config.file_name = file_path.clone();
     dep_config.dir_of_code = dep_path;
     let crate::InnerDependencyCompileResult {
         mut library_exports,
@@ -599,7 +659,8 @@ fn import_new_file<'sc>(
             static_file_string,
             &dep_namespace,
             dep_config,
-            dead_code_graph
+            dead_code_graph,
+            dependency_graph
         ),
         return err(warnings, errors),
         warnings,
@@ -634,6 +695,7 @@ fn reassignment<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -685,7 +747,8 @@ fn reassignment<'sc>(
                     "You can only reassign a value of the same type to a variable.",
                     self_type,
                     build_config,
-                    dead_code_graph
+                    dead_code_graph,
+                    dependency_graph
                 ),
                 error_recovery_expr(span),
                 warnings,
@@ -720,7 +783,8 @@ fn reassignment<'sc>(
                         "",
                         self_type,
                         build_config,
-                        dead_code_graph
+                        dead_code_graph,
+                        dependency_graph
                     ),
                     error_recovery_expr(expr.span()),
                     warnings,
@@ -783,7 +847,8 @@ fn reassignment<'sc>(
                     ),
                     self_type,
                     build_config,
-                    dead_code_graph
+                    dead_code_graph,
+                    dependency_graph
                 ),
                 error_recovery_expr(span),
                 warnings,
@@ -853,6 +918,7 @@ fn type_check_trait_methods<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -972,6 +1038,7 @@ fn type_check_trait_methods<'sc>(
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph
             ),
             continue,
             warnings,
