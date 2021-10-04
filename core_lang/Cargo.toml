@@ -5,7 +5,9 @@ authors = ["Alex <alex.hansen@fuel.sh>"]
 edition = "2018"
 
 [features]
+default = ["ir"]
 selector-debug = ["structopt", "hex"]
+ir = []
 
 [dependencies]
 #pest = "2.0"
@@ -23,6 +25,11 @@ structopt = { version = "0.3", default-features = false, optional = true }
 thiserror = "1.0"
 uuid-b64 = "0.1"
 lazy_static = "1.4"
+line-col = "0.2"
+source-span = "2.4"
+generational-arena = "0.2"
+peg = "0.7"
+prettydiff = "0.5"
 
 
 [[bin]]

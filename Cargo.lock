@@ -794,12 +794,17 @@ dependencies = [
  "either",
  "fuel-asm",
  "fuel-vm",
+ "generational-arena",
  "hex",
  "lazy_static 1.4.0",
+ "line-col",
+ "peg",
  "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=0ee8d107923f8979897efbd12e16a0eb99ea98b3)",
  "pest_derive",
  "petgraph",
+ "prettydiff 0.5.1",
  "sha2",
+ "source-span",
  "structopt 0.3.25",
  "thiserror",
  "uuid-b64",
@@ -1214,7 +1219,7 @@ dependencies = [
  "hex",
  "line-col",
  "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
- "prettydiff",
+ "prettydiff 0.4.0",
  "reqwest",
  "semver 1.0.4",
  "serde",
@@ -2240,6 +2245,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "peg"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07c0b841ea54f523f7aa556956fbd293bcbe06f2e67d2eb732b7278aaf1d166a"
+dependencies = [
+ "peg-macros",
+ "peg-runtime",
+]
+
+[[package]]
+name = "peg-macros"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5aa52829b8decbef693af90202711348ab001456803ba2a98eb4ec8fb70844c"
+dependencies = [
+ "peg-runtime",
+ "proc-macro2 1.0.32",
+ "quote 1.0.10",
+]
+
+[[package]]
+name = "peg-runtime"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c719dcf55f09a3a7e764c6649ab594c18a177e3599c467983cdf644bfc0a4088"
+
+[[package]]
 name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2391,6 +2423,17 @@ dependencies = [
  "ansi_term 0.9.0",
  "prettytable-rs",
  "structopt 0.2.18",
+]
+
+[[package]]
+name = "prettydiff"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb5671a83709b2755fe5b776d4915701bf36ed2cd9575035502ec12818141d71"
+dependencies = [
+ "ansi_term 0.12.1",
+ "prettytable-rs",
+ "structopt 0.3.25",
 ]
 
 [[package]]

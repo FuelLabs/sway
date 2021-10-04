@@ -9,6 +9,8 @@ mod build_config;
 pub mod constants;
 mod control_flow_analysis;
 mod ident;
+#[cfg(feature = "ir")]
+mod ir;
 pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
@@ -17,9 +19,11 @@ mod style;
 pub(crate) mod type_engine;
 
 use crate::asm_generation::checks::check_invalid_opcodes;
+#[cfg(not(feature = "ir"))]
+use crate::asm_generation::compile_ast_to_asm;
+use crate::error::*;
 pub use crate::parse_tree::*;
 pub use crate::parser::{HllParser, Rule};
-use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
@@ -379,6 +383,42 @@ pub fn compile_to_asm<'sc>(
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
+
+    #[cfg(not(feature = "ir"))]
+    let result = generate_assembly_directly_from_ast(
+        build_config,
+        warnings,
+        errors,
+        predicate_ast,
+        contract_ast,
+        script_ast,
+        library_exports,
+    );
+
+    #[cfg(feature = "ir")]
+    let result = generate_assembly_via_ir(
+        build_config,
+        warnings,
+        errors,
+        predicate_ast,
+        contract_ast,
+        script_ast,
+        library_exports,
+    );
+
+    result
+}
+
+#[cfg(not(feature = "ir"))]
+fn generate_assembly_directly_from_ast<'sc>(
+    build_config: BuildConfig,
+    mut warnings: Vec<CompileWarning<'sc>>,
+    mut errors: Vec<CompileError<'sc>>,
+    predicate_ast: Option<TypedParseTree<'sc>>,
+    contract_ast: Option<TypedParseTree<'sc>>,
+    script_ast: Option<TypedParseTree<'sc>>,
+    library_exports: LibraryExports<'sc>,
+) -> CompilationResult<'sc> {
     // for each syntax tree, generate assembly.
     let predicate_asm = (|| {
         if let Some(tree) = predicate_ast {
@@ -451,6 +491,58 @@ pub fn compile_to_asm<'sc>(
         CompilationResult::Failure { errors, warnings }
     }
 }
+
+#[cfg(feature = "ir")]
+fn generate_assembly_via_ir<'sc>(
+    build_config: BuildConfig,
+    mut warnings: Vec<CompileWarning<'sc>>,
+    mut errors: Vec<CompileError<'sc>>,
+    predicate_ast: Option<TypedParseTree<'sc>>,
+    contract_ast: Option<TypedParseTree<'sc>>,
+    script_ast: Option<TypedParseTree<'sc>>,
+    library_exports: LibraryExports<'sc>,
+) -> CompilationResult<'sc> {
+    if !library_exports.trees.is_empty() {
+        return CompilationResult::Library {
+            warnings,
+            exports: library_exports,
+        };
+    }
+
+    let typed_ast = match (predicate_ast, contract_ast, script_ast) {
+        (Some(pred), None, None) => pred,
+        (None, Some(contract), None) => contract,
+        (None, None, Some(script)) => script,
+        _otherwise => unimplemented!(
+            "Multiple contracts, libraries, scripts, or predicates in a single file are \
+                 unsupported."
+        ),
+    };
+
+    let ir = match ir::compile_ast(typed_ast) {
+        Ok(ir) => ir,
+        Err(msg) => {
+            errors.push(CompileError::InternalOwned(
+                msg,
+                crate::span::Span {
+                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                    path: None,
+                },
+            ));
+            return CompilationResult::Failure { errors, warnings };
+        }
+    };
+
+    let asm = check!(
+        crate::asm_generation::compile_ir_to_asm(&ir, &build_config),
+        return CompilationResult::Failure { errors, warnings },
+        warnings,
+        errors
+    );
+
+    CompilationResult::Success { asm, warnings }
+}
+
 pub fn compile_to_bytecode<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
