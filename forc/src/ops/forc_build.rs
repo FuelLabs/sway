@@ -56,8 +56,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         code_dir
     };
     let mut file_path = manifest_dir.clone();
-    println!("main_path: {:?}", main_path);
-    println!("file_path: {:?}", file_path);
     file_path.pop();
     let file_name = match main_path.strip_prefix(file_path.clone()) {
         Ok(o) => o,
