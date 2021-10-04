@@ -13,6 +13,7 @@ use crate::{
 };
 use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
 use sha2::{Digest, Sha256};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
@@ -508,6 +509,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         mode: Mode,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -555,7 +557,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             (
                 TypedCodeBlock {

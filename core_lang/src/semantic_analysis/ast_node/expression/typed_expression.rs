@@ -4,6 +4,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
+use std::collections::{HashMap, HashSet};
 
 mod method_application;
 use method_application::type_check_method_application;
@@ -36,6 +37,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, Self> {
         let expr_span = other.span();
         let res = match other {
@@ -56,6 +58,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             Expression::LazyOperator { op, lhs, rhs, span } => Self::type_check_lazy_operator(
                 op,
@@ -66,6 +69,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             Expression::MatchExpression { span, .. } => {
                 let errors = vec![CompileError::Unimplemented(
@@ -83,6 +87,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             // TODO if _condition_ is constant, evaluate it and compile this to an
             // expression with only one branch
@@ -101,6 +106,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             Expression::AsmExpression { asm, span, .. } => Self::type_check_asm_expression(
                 asm,
@@ -109,6 +115,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             Expression::StructExpression {
                 span,
@@ -122,6 +129,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             Expression::SubfieldExpression {
                 prefix,
@@ -135,6 +143,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             Expression::MethodApplication {
                 method_name,
@@ -148,6 +157,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             Expression::Unit { span } => {
                 let exp = TypedExpression {
@@ -172,6 +182,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             Expression::AbiCast {
                 abi_name,
@@ -185,6 +196,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             ),
             a => {
                 let mut errors = vec![];
@@ -317,6 +329,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -382,6 +395,7 @@ impl<'sc> TypedExpression<'sc> {
                             self_type,
                             build_config,
                             dead_code_graph,
+                            dependency_graph
                         )
                         .unwrap_or_else(
                             &mut warnings,
@@ -429,6 +443,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -441,7 +456,8 @@ impl<'sc> TypedExpression<'sc> {
                 "",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             error_recovery_expr(lhs.span()),
             warnings,
@@ -456,7 +472,8 @@ impl<'sc> TypedExpression<'sc> {
                 "",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             error_recovery_expr(rhs.span()),
             warnings,
@@ -545,6 +562,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -557,6 +575,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph
             ),
             (
                 TypedCodeBlock {
@@ -604,6 +623,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -615,7 +635,8 @@ impl<'sc> TypedExpression<'sc> {
                 "The condition of an if expression must be a boolean expression.",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             error_recovery_expr(condition.span()),
             warnings,
@@ -629,7 +650,8 @@ impl<'sc> TypedExpression<'sc> {
                 "",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             error_recovery_expr(then.span()),
             warnings,
@@ -644,7 +666,8 @@ impl<'sc> TypedExpression<'sc> {
                     "",
                     self_type,
                     build_config,
-                    dead_code_graph
+                    dead_code_graph,
+                    dependency_graph
                 ),
                 error_recovery_expr(expr.span()),
                 warnings,
@@ -684,6 +707,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -710,7 +734,8 @@ impl<'sc> TypedExpression<'sc> {
                                     "",
                                     self_type,
                                     build_config,
-                                    dead_code_graph
+                                    dead_code_graph,
+                                    dependency_graph
                                 ),
                                 error_recovery_expr(initializer.span()),
                                 warnings,
@@ -743,6 +768,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -803,7 +829,8 @@ impl<'sc> TypedExpression<'sc> {
                      declaration.",
                     self_type,
                     build_config,
-                    dead_code_graph
+                    dead_code_graph,
+                    dependency_graph
                 ),
                 continue,
                 warnings,
@@ -849,6 +876,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -860,7 +888,8 @@ impl<'sc> TypedExpression<'sc> {
                 "",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             return err(warnings, errors),
             warnings,
@@ -917,6 +946,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -972,7 +1002,8 @@ impl<'sc> TypedExpression<'sc> {
                         namespace,
                         self_type,
                         build_config,
-                        dead_code_graph
+                        dead_code_graph,
+                        dependency_graph
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -1009,6 +1040,7 @@ impl<'sc> TypedExpression<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1024,6 +1056,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph
             ),
             error_recovery_expr(err_span),
             warnings,
@@ -1069,7 +1102,8 @@ impl<'sc> TypedExpression<'sc> {
                     &MaybeResolvedType::Resolved(ResolvedType::Contract),
                     build_config,
                     dead_code_graph,
-                    Mode::ImplAbiFn
+                    Mode::ImplAbiFn,
+                    dependency_graph
                 ),
                 return err(warnings, errors),
                 warnings,

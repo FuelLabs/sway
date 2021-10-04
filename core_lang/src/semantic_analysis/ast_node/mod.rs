@@ -28,6 +28,7 @@ pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVari
 pub(crate) use expression::*;
 use impl_trait::implementation_of_trait;
 pub(crate) use return_statement::TypedReturnStatement;
+use std::collections::{HashMap, HashSet};
 pub(crate) use while_loop::TypedWhileLoop;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
@@ -91,6 +92,7 @@ impl<'sc> TypedAstNode<'sc> {
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -118,6 +120,7 @@ impl<'sc> TypedAstNode<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             )
         };
 
@@ -140,7 +143,13 @@ impl<'sc> TypedAstNode<'sc> {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
                     let _ = check!(
-                        import_new_file(a, namespace, build_config, dead_code_graph),
+                        import_new_file(
+                            a,
+                            namespace,
+                            build_config,
+                            dead_code_graph,
+                            dependency_graph
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -214,6 +223,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     build_config,
                                     dead_code_graph,
                                     Mode::NonAbi,
+                                    dependency_graph
                                 ),
                                 error_recovery_function_declaration(fn_decl),
                                 warnings,
@@ -261,6 +271,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
+                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -286,7 +297,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     namespace,
                                     self_type,
                                     build_config,
-                                    dead_code_graph
+                                    dead_code_graph,
+                                    dependency_graph
                                 ),
                                 return err(warnings, errors),
                                 warnings,
@@ -298,7 +310,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 impl_trait,
                                 namespace,
                                 build_config,
-                                dead_code_graph
+                                dead_code_graph,
+                                dependency_graph
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -352,7 +365,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         &type_implementing_for_resolved,
                                         build_config,
                                         dead_code_graph,
-                                        Mode::NonAbi
+                                        Mode::NonAbi,
+                                        dependency_graph
                                     ),
                                     continue,
                                     warnings,
@@ -438,6 +452,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
+                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -464,7 +479,8 @@ impl<'sc> TypedAstNode<'sc> {
                             "",
                             self_type,
                             build_config,
-                            dead_code_graph
+                            dead_code_graph,
+                            dependency_graph
                         ),
                         error_recovery_expr(a.span()),
                         warnings,
@@ -483,7 +499,8 @@ impl<'sc> TypedAstNode<'sc> {
                                  annotation.",
                                 self_type,
                                 build_config,
-                                dead_code_graph
+                                dead_code_graph,
+                                dependency_graph
                             ),
                             error_recovery_expr(expr.span()),
                             warnings,
@@ -503,7 +520,8 @@ impl<'sc> TypedAstNode<'sc> {
                             ),
                             self_type,
                             build_config,
-                            dead_code_graph
+                            dead_code_graph,
+                            dependency_graph
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -520,7 +538,8 @@ impl<'sc> TypedAstNode<'sc> {
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
                             build_config,
-                            dead_code_graph
+                            dead_code_graph,
+                            dependency_graph
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -537,6 +556,7 @@ impl<'sc> TypedAstNode<'sc> {
                             self_type,
                             build_config,
                             dead_code_graph,
+                            dependency_graph
                         ),
                         (
                             TypedCodeBlock {
@@ -587,6 +607,7 @@ fn import_new_file<'sc>(
     namespace: &mut Namespace<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -594,7 +615,8 @@ fn import_new_file<'sc>(
     let file_path = file_path.with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
     let mut canonical_path = build_config.dir_of_code.clone();
-    canonical_path.push(file_path);
+    canonical_path.push(file_path.clone());
+
     let res = if canonical_path.exists() {
         std::fs::read_to_string(canonical_path.clone())
     } else {
@@ -628,6 +650,7 @@ fn import_new_file<'sc>(
         canonical_path.pop();
         canonical_path
     };
+    dep_config.file_name = file_path.clone();
     dep_config.dir_of_code = dep_path;
     let crate::InnerDependencyCompileResult {
         mut library_exports,
@@ -636,7 +659,8 @@ fn import_new_file<'sc>(
             static_file_string,
             &dep_namespace,
             dep_config,
-            dead_code_graph
+            dead_code_graph,
+            dependency_graph
         ),
         return err(warnings, errors),
         warnings,
@@ -671,6 +695,7 @@ fn reassignment<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -722,7 +747,8 @@ fn reassignment<'sc>(
                     "You can only reassign a value of the same type to a variable.",
                     self_type,
                     build_config,
-                    dead_code_graph
+                    dead_code_graph,
+                    dependency_graph
                 ),
                 error_recovery_expr(span),
                 warnings,
@@ -757,7 +783,8 @@ fn reassignment<'sc>(
                         "",
                         self_type,
                         build_config,
-                        dead_code_graph
+                        dead_code_graph,
+                        dependency_graph
                     ),
                     error_recovery_expr(expr.span()),
                     warnings,
@@ -820,7 +847,8 @@ fn reassignment<'sc>(
                     ),
                     self_type,
                     build_config,
-                    dead_code_graph
+                    dead_code_graph,
+                    dependency_graph
                 ),
                 error_recovery_expr(span),
                 warnings,
@@ -890,6 +918,7 @@ fn type_check_trait_methods<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1009,6 +1038,7 @@ fn type_check_trait_methods<'sc>(
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph
             ),
             continue,
             warnings,
