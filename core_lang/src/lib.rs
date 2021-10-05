@@ -79,6 +79,7 @@ pub enum AstNodeContent<'sc> {
     Declaration(Declaration<'sc>),
     Expression(Expression<'sc>),
     ImplicitReturnExpression(Expression<'sc>),
+    IfExpression(Expression<'sc>),
     WhileLoop(WhileLoop<'sc>),
     IncludeStatement(IncludeStatement<'sc>),
 }

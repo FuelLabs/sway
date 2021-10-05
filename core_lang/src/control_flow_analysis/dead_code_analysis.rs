@@ -310,6 +310,31 @@ fn connect_node<'sc>(
                 exit_node,
             )
         }
+        TypedAstNodeContent::IfExpression(TypedExpression {
+            expression: expr_variant,
+            span,
+            ..
+        }) => {
+            let entry = graph.add_node(node.into());
+            // insert organizational dominator node
+            // connected to all current leaves
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry, "".into());
+            }
+
+            (
+                connect_expression(
+                    expr_variant,
+                    graph,
+                    &[entry],
+                    exit_node,
+                    "",
+                    tree_type,
+                    span.clone(),
+                )?,
+                exit_node,
+            )
+        }
         TypedAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
         TypedAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf

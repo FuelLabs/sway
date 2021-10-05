@@ -161,6 +161,13 @@ fn connect_node<'sc>(
             }
             NodeConnection::NextStep(vec![entry])
         }
+        TypedAstNodeContent::IfExpression(TypedExpression { .. }) => {
+            let entry = graph.add_node(node.into());
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry, "".into());
+            }
+            NodeConnection::NextStep(vec![entry])
+        }
         TypedAstNodeContent::SideEffect => NodeConnection::NextStep(leaves.to_vec()),
         TypedAstNodeContent::Declaration(decl) => {
             NodeConnection::NextStep(connect_declaration(node, &decl, graph, span, leaves))

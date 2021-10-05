@@ -171,7 +171,7 @@ asm_immediate            =  {"i" ~ u64_integer}
 opcode                   =  {ident}
 
 // control flow
-control_flow = _{while_loop|return_statement}
+control_flow = _{while_loop|return_statement|if_exp}
 
 // boilerplate
 WHITESPACE        = _{(" "|"\t"|"\r"|"\n")+}

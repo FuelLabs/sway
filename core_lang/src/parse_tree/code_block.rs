@@ -139,6 +139,23 @@ impl<'sc> CodeBlock<'sc> {
                     unassigned_docstring = "".to_string();
                     Some(while_stmt)
                 }
+                Rule::if_exp => {
+                    let res = check!(
+                        Expression::parse_from_pair_inner(pair.clone(), config, docstrings),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                    let if_exp = AstNode {
+                        content: AstNodeContent::IfExpression(res),
+                        span: span::Span {
+                            span: pair.as_span(),
+                            path: path.clone(),
+                        },
+                    };
+                    unassigned_docstring = "".to_string();
+                    Some(if_exp)
+                }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
                     errors.push(CompileError::UnimplementedRule(
