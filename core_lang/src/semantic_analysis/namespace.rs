@@ -29,13 +29,12 @@ pub struct Namespace<'sc> {
 }
 
 impl<'sc> Namespace<'sc> {
+    pub(crate) fn insert_type(&mut self, ty: TypeInfo<'sc>) -> TypeId {
+        self.type_engine.insert(ty)
+    }
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
-    pub(crate) fn resolve_type(
-        &mut self,
-        ty: &TypeInfo<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
-    ) -> TypeId {
+    pub(crate) fn resolve_type(&mut self, ty: TypeInfo, self_type: TypeId) -> TypeId {
         todo!(
             "still do the custom type to enum/struct type thing, but then\
         use type IDs for the rest of it."
@@ -335,7 +334,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn find_subfield_type(
         &self,
         subfield_exp: &[Ident<'sc>],
-    ) -> CompileResult<'sc, (MaybeResolvedType<'sc>, MaybeResolvedType<'sc>)> {
+    ) -> CompileResult<'sc, (TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ident_iter = subfield_exp.iter().peekable();
@@ -366,7 +365,7 @@ impl<'sc> Namespace<'sc> {
             errors
         );
         let mut type_fields =
-            self.get_struct_type_fields(&symbol, first_ident.primary_name, &first_ident.span);
+            self.get_struct_type_fields(symbol, first_ident.primary_name, &first_ident.span);
         warnings.append(&mut type_fields.warnings);
         errors.append(&mut type_fields.errors);
         let (mut fields, struct_name) = match type_fields.value {
@@ -399,6 +398,7 @@ impl<'sc> Namespace<'sc> {
                     return err(warnings, errors);
                 }
             };
+
             match r#type {
                 ResolvedType::Struct {
                     fields: ref l_fields,
@@ -406,12 +406,12 @@ impl<'sc> Namespace<'sc> {
                 } => {
                     parent_rover = symbol.clone();
                     fields = l_fields.clone();
-                    symbol = MaybeResolvedType::Resolved(r#type);
+                    symbol = r#type;
                 }
                 _ => {
                     fields = vec![];
                     parent_rover = symbol.clone();
-                    symbol = MaybeResolvedType::Resolved(r#type);
+                    symbol = r#type;
                 }
             }
         }
@@ -440,7 +440,7 @@ impl<'sc> Namespace<'sc> {
         &self,
         r#type: &MaybeResolvedType<'sc>,
         method_name: &MethodName<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         args_buf: &VecDeque<TypedExpression<'sc>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = vec![];
@@ -454,14 +454,16 @@ impl<'sc> Namespace<'sc> {
                 ref type_name,
                 ref is_absolute,
             } => {
-                let module = check!(
+                let mut module = check!(
                     self.find_module(&call_path.prefixes[..], *is_absolute),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
+                todo!("resolving this type should mutate the parent namespace I think...come back to this. The cloned \
+                namespace could lead to issues.");
                 let r#type = if let Some(type_name) = type_name {
-                    module.resolve_type(type_name, self_type)
+                    module.resolve_type(type_name.clone(), self_type)
                 } else {
                     args_buf[0].return_type.clone()
                 };
@@ -503,7 +505,7 @@ impl<'sc> Namespace<'sc> {
     /// field baz? this is the problem this function addresses
     pub(crate) fn get_struct_type_fields(
         &self,
-        ty: &MaybeResolvedType<'sc>,
+        ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, Ident<'sc>)> {

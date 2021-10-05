@@ -11,7 +11,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration<'sc> {
     pub name: Ident<'sc>,
-    pub type_ascription: Option<TypeInfo<'sc>>,
+    pub type_ascription: TypeInfo<'sc>,
     pub body: Expression<'sc>, // will be codeblock variant
     pub is_mutable: bool,
 }
@@ -38,9 +38,9 @@ impl<'sc> VariableDeclaration<'sc> {
             Rule::type_ascription => {
                 let type_asc = maybe_body.clone();
                 maybe_body = var_decl_parts.next().unwrap();
-                Some(type_asc)
+                type_asc
             }
-            _ => None,
+            _ => TypeInfo::Unknown,
         };
         let type_ascription = if let Some(ascription) = type_ascription {
             Some(check!(

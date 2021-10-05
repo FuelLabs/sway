@@ -9,7 +9,7 @@ pub(crate) fn type_check_method_application<'sc>(
     arguments: Vec<Expression<'sc>>,
     span: Span<'sc>,
     namespace: &mut Namespace<'sc>,
-    self_type: &MaybeResolvedType<'sc>,
+    self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {

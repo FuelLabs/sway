@@ -276,7 +276,7 @@ fn connect_typed_fn_decl<'sc>(
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
         exit_point: fn_exit_node,
-        return_type: fn_decl.return_type.clone(),
+        return_type: fn_decl.return_type,
     };
     graph
         .namespace

@@ -18,6 +18,7 @@ mod return_statement;
 mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
+use crate::type_engine::TypeId;
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
@@ -86,9 +87,9 @@ impl<'sc> TypedAstNode<'sc> {
     pub(crate) fn type_check(
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
-        return_type_annotation: Option<MaybeResolvedType<'sc>>,
+        return_type_annotation: TypeId,
         help_text: impl Into<String>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
@@ -96,12 +97,8 @@ impl<'sc> TypedAstNode<'sc> {
         let mut errors = Vec::new();
 
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |type_ascription: Option<_>, value, decl_str| {
-            let type_ascription = type_ascription
-                .map(|ty| namespace.resolve_type(&ty, self_type))
-                .or(Some(MaybeResolvedType::Partial(
-                    PartiallyResolvedType::NeedsType,
-                )));
+        let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
+            let type_ascription = type_ascription.resolve_type(self_type);
             TypedExpression::type_check(
                 value,
                 namespace,
@@ -385,7 +382,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 .into_iter()
                                 .map(|StructField { name, r#type, span }| TypedStructField {
                                     name,
-                                    r#type: match namespace.resolve_type(&r#type, self_type) {
+                                    r#type: match namespace.resolve_type(r#type, self_type) {
                                         MaybeResolvedType::Resolved(r) => r,
                                         MaybeResolvedType::Partial(
                                             crate::types::PartiallyResolvedType::Numeric,
@@ -845,7 +842,7 @@ fn reassignment<'sc>(
 
 fn type_check_interface_surface<'sc>(
     interface_surface: Vec<TraitFn<'sc>>,
-    namespace: &Namespace<'sc>,
+    namespace: &mut Namespace<'sc>,
 ) -> Vec<TypedTraitFn<'sc>> {
     interface_surface
         .into_iter()
@@ -868,16 +865,16 @@ fn type_check_interface_surface<'sc>(
                          }| TypedFunctionParameter {
                             name,
                             r#type: namespace.resolve_type(
-                                &r#type,
-                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                                r#type,
+                                todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),"),
                             ),
                             type_span,
                         },
                     )
                     .collect(),
                 return_type: namespace.resolve_type(
-                    &return_type,
-                    &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                    return_type,
+                    todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)"),
                 ),
             },
         )
@@ -887,7 +884,7 @@ fn type_check_interface_surface<'sc>(
 fn type_check_trait_methods<'sc>(
     methods: Vec<FunctionDeclaration<'sc>>,
     namespace: &Namespace<'sc>,
-    self_type: &MaybeResolvedType<'sc>,
+    self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
@@ -906,13 +903,13 @@ fn type_check_trait_methods<'sc>(
     } in methods
     {
         let mut function_namespace = namespace.clone();
-        parameters
-            .clone()
-            .into_iter()
-            .for_each(|FunctionParameter { name, r#type, .. }| {
+        parameters.clone().into_iter().for_each(
+            |FunctionParameter {
+                 name, ref r#type, ..
+             }| {
                 let r#type = function_namespace.resolve_type(
-                    &r#type,
-                    &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                    r#type.clone(),
+                    todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),"),
                 );
                 function_namespace.insert(
                     name.clone(),
@@ -928,7 +925,8 @@ fn type_check_trait_methods<'sc>(
                         is_mutable: false,
                     }),
                 );
-            });
+            },
+        );
         // check the generic types in the arguments, make sure they are in
         // the type scope
         let mut generic_params_buf_for_error_message = Vec::new();
@@ -988,8 +986,8 @@ fn type_check_trait_methods<'sc>(
                     TypedFunctionParameter {
                         name,
                         r#type: function_namespace.resolve_type(
-                            &r#type,
-                            &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                            r#type,
+                            todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),"),
                         ),
                         type_span,
                     }
@@ -998,7 +996,7 @@ fn type_check_trait_methods<'sc>(
             .collect::<Vec<_>>();
 
         // TODO check code block implicit return
-        let return_type = function_namespace.resolve_type(&return_type, self_type);
+        let return_type = function_namespace.resolve_type(return_type, self_type);
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(
                 body,

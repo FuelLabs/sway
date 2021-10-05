@@ -54,7 +54,7 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
-    pub(crate) fn return_type(&self) -> CompileResult<'sc, MaybeResolvedType<'sc>> {
+    pub(crate) fn return_type(&self) -> CompileResult<'sc, TypeId> {
         ok(
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -175,7 +175,7 @@ pub struct TypedStructDeclaration<'sc> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TypedStructField<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: ResolvedType<'sc>,
+    pub(crate) r#type: TypeId,
     pub(crate) span: Span<'sc>,
 }
 
@@ -405,7 +405,7 @@ fn test_function_selector_behavior() {
                         path: None,
                     },
                 },
-                r#type: MaybeResolvedType::Resolved(ResolvedType::Str(5)),
+                r#type: todo!("Type id for MaybeResolvedType::Resolved(ResolvedType::Str(5))"),
                 type_span: Span {
                     span: pest::Span::new(" ", 0, 0).unwrap(),
                     path: None,
@@ -419,9 +419,11 @@ fn test_function_selector_behavior() {
                         path: None,
                     },
                 },
-                r#type: MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
+                r#type: todo!(
+                    "type id for MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
                     IntegerBits::ThirtyTwo,
-                )),
+                ))"
+                ),
                 type_span: Span {
                     span: pest::Span::new(" ", 0, 0).unwrap(),
                     path: None,
@@ -453,7 +455,7 @@ fn test_function_selector_behavior() {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedFunctionParameter<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: MaybeResolvedType<'sc>,
+    pub(crate) r#type: TypeId,
     pub(crate) type_span: Span<'sc>,
 }
 
@@ -469,7 +471,7 @@ pub struct TypedTraitDeclaration<'sc> {
 pub struct TypedTraitFn<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
-    pub(crate) return_type: MaybeResolvedType<'sc>,
+    pub(crate) return_type: TypeId,
     pub(crate) return_type_span: Span<'sc>,
 }
 
@@ -479,7 +481,7 @@ pub struct TypedTraitFn<'sc> {
 #[derive(Clone, Debug)]
 pub struct ReassignmentLhs<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: MaybeResolvedType<'sc>,
+    pub(crate) r#type: TypeId,
 }
 
 impl<'sc> ReassignmentLhs<'sc> {
@@ -499,12 +501,12 @@ pub struct TypedReassignment<'sc> {
 impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
-        namespace: &Namespace<'sc>,
-        _return_type_annotation: Option<MaybeResolvedType<'sc>>,
+        namespace: &mut Namespace<'sc>,
+        _return_type_annotation: TypeId,
         _help_text: impl Into<String>,
         // If there are any `Self` types in this declaration,
         // resolve them to this type.
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         mode: Mode,
@@ -522,14 +524,11 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             visibility,
             ..
         } = fn_decl.clone();
-        let return_type = namespace.resolve_type(&return_type, &self_type);
+        let return_type = namespace.resolve_type(return_type, self_type);
         // insert parameters into namespace
         let mut namespace = namespace.clone();
-        for FunctionParameter {
-            name, ref r#type, ..
-        } in parameters.clone()
-        {
-            let r#type = namespace.resolve_type(r#type, &self_type);
+        for FunctionParameter { name, r#type, .. } in parameters.clone() {
+            let r#type = namespace.resolve_type(r#type, self_type);
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -579,7 +578,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                      type_span,
                  }| TypedFunctionParameter {
                     name,
-                    r#type: namespace.resolve_type(&r#type, &self_type),
+                    r#type: namespace.resolve_type(r#type, self_type),
                     type_span,
                 },
             )
@@ -746,7 +745,9 @@ impl<'sc> TypedTraitFn<'sc> {
             },
             parameters: self.parameters.clone(),
             span: self.name.span.clone(),
-            return_type: self.return_type.clone(),
+            return_type: todo!(
+                "type id for self.return_type.clone(), perhaps take the namespace into this fn"
+            ),
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],

@@ -11,7 +11,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration<'sc> {
     pub name: Ident<'sc>,
-    pub type_ascription: Option<TypeInfo<'sc>>,
+    pub type_ascription: TypeInfo<'sc>,
     pub value: Expression<'sc>,
 }
 
@@ -35,14 +35,16 @@ impl<'sc> ConstantDeclaration<'sc> {
             }
             _ => None,
         };
-        let type_ascription = type_ascription.map(|ascription| {
-            check!(
-                TypeInfo::parse_from_pair(ascription, config.clone()),
-                TypeInfo::Unit,
-                warnings,
-                errors
-            )
-        });
+        let type_ascription = type_ascription
+            .map(|ascription| {
+                check!(
+                    TypeInfo::parse_from_pair(ascription, config.clone()),
+                    TypeInfo::Unit,
+                    warnings,
+                    errors
+                )
+            })
+            .unwrap_or(TypeInfo::Unknown);
         let value = check!(
             Expression::parse_from_pair_inner(maybe_value, config.clone(), docstrings),
             return err(warnings, errors),

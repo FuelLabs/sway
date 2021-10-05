@@ -6,7 +6,7 @@ use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
 
 mod method_application;
-use crate::type_engine::TypeId;
+use crate::type_engine::{Engine, TypeId};
 use method_application::type_check_method_application;
 
 #[derive(Clone, Debug)]
@@ -22,7 +22,7 @@ pub struct TypedExpression<'sc> {
 pub(crate) fn error_recovery_expr<'sc>(span: Span<'sc>) -> TypedExpression<'sc> {
     TypedExpression {
         expression: TypedExpressionVariant::Unit,
-        return_type: MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
+        return_type: todo!("reserved error recovery type id"),
         is_constant: IsConstant::No,
         span,
     }
@@ -32,7 +32,7 @@ impl<'sc> TypedExpression<'sc> {
     pub(crate) fn type_check(
         other: Expression<'sc>,
         namespace: &mut Namespace<'sc>,
-        type_annotation: TypeId,
+        type_annotation: Option<TypeId>,
         help_text: impl Into<String> + Clone,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -40,7 +40,9 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, Self> {
         let expr_span = other.span();
         let res = match other {
-            Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
+            Expression::Literal { value: lit, span } => {
+                Self::type_check_literal(lit, span, namespace)
+            }
             Expression::VariableExpression { name, span, .. } => {
                 Self::type_check_variable_expression(name, span, namespace)
             }
@@ -79,7 +81,7 @@ impl<'sc> TypedExpression<'sc> {
                 contents,
                 span,
                 namespace,
-                type_annotation.clone(),
+                type_annotation,
                 help_text.clone(),
                 self_type,
                 build_config,
@@ -238,28 +240,23 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_literal(
         lit: Literal<'sc>,
         span: Span<'sc>,
+        namespace: &mut Namespace<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let return_type = match lit {
-            Literal::String(s) => MaybeResolvedType::Resolved(ResolvedType::Str(s.len() as u64)),
-            Literal::U8(_) => {
-                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Eight))
-            }
-            Literal::U16(_) => {
-                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::Sixteen))
-            }
-            Literal::U32(_) => {
-                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo))
-            }
-            Literal::U64(_) => {
-                MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(IntegerBits::SixtyFour))
-            }
-            Literal::Boolean(_) => MaybeResolvedType::Resolved(ResolvedType::Boolean),
-            Literal::Byte(_) => MaybeResolvedType::Resolved(ResolvedType::Byte),
-            Literal::B256(_) => MaybeResolvedType::Resolved(ResolvedType::B256),
+            Literal::String(s) => TypeInfo::Str(s.len() as u64),
+            Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
+            Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+
+            Literal::U32(_) => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+            Literal::U64(_) => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            Literal::Boolean(_) => TypeInfo::Boolean,
+            Literal::Byte(_) => TypeInfo::Byte,
+            Literal::B256(_) => TypeInfo::B256,
         };
+        let id = namespace.insert_ty(&return_type);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::Literal(lit),
-            return_type,
+            return_type: id,
             is_constant: IsConstant::Yes,
             span,
         };
@@ -315,7 +312,7 @@ impl<'sc> TypedExpression<'sc> {
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -427,18 +424,18 @@ impl<'sc> TypedExpression<'sc> {
         rhs: Expression<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-
+        let bool_type_id = namespace.insert_ty(TypeInfo::Boolean);
         let typed_lhs = check!(
             TypedExpression::type_check(
                 lhs.clone(),
                 namespace,
-                Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
+                bool_type_id,
                 "",
                 self_type,
                 build_config,
@@ -453,7 +450,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 rhs.clone(),
                 namespace,
-                Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
+                bool_type_id,
                 "",
                 self_type,
                 build_config,
@@ -471,7 +468,7 @@ impl<'sc> TypedExpression<'sc> {
                     lhs: Box::new(typed_lhs),
                     rhs: Box::new(typed_rhs),
                 },
-                return_type: MaybeResolvedType::Resolved(ResolvedType::Boolean),
+                return_type: bool_type_id,
                 is_constant: IsConstant::No, // Maybe.
                 span,
             },
@@ -541,9 +538,9 @@ impl<'sc> TypedExpression<'sc> {
         contents: CodeBlock<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
-        type_annotation: Option<MaybeResolvedType<'sc>>,
+        type_annotation: Option<TypeId>,
         help_text: impl Into<String> + Clone,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -601,8 +598,8 @@ impl<'sc> TypedExpression<'sc> {
         r#else: Option<Box<Expression<'sc>>>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
-        type_annotation: Option<MaybeResolvedType<'sc>>,
-        self_type: &MaybeResolvedType<'sc>,
+        type_annotation: Option<TypeId>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -682,7 +679,7 @@ impl<'sc> TypedExpression<'sc> {
         asm: AsmExpression<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -741,7 +738,7 @@ impl<'sc> TypedExpression<'sc> {
         struct_name: Ident<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
         namespace: &mut Namespace<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -847,7 +844,7 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         field_to_access: Ident<'sc>,
         namespace: &mut Namespace<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -915,7 +912,7 @@ impl<'sc> TypedExpression<'sc> {
         args: Vec<Expression<'sc>>,
         type_arguments: Vec<TypeInfo<'sc>>,
         namespace: &mut Namespace<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -1007,7 +1004,7 @@ impl<'sc> TypedExpression<'sc> {
         address: Box<Expression<'sc>>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {

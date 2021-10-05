@@ -1,5 +1,6 @@
 use crate::build_config::BuildConfig;
 use crate::span::Span;
+use crate::type_engine::TypeId;
 use crate::types::{MaybeResolvedType, ResolvedType, TypeInfo};
 use crate::Ident;
 use crate::Namespace;
@@ -34,7 +35,7 @@ impl<'sc> EnumDeclaration<'sc> {
     pub(crate) fn to_typed_decl(
         &self,
         namespace: &Namespace<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
     ) -> TypedEnumDeclaration<'sc> {
         let mut variants_buf = vec![];
         let mut errors = vec![];
@@ -147,28 +148,14 @@ impl<'sc> EnumDeclaration<'sc> {
 impl<'sc> EnumVariant<'sc> {
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &Namespace<'sc>,
-        self_type: &MaybeResolvedType<'sc>,
+        namespace: &mut Namespace<'sc>,
+        self_type: TypeId,
         span: Span<'sc>,
     ) -> CompileResult<'sc, TypedEnumVariant<'sc>> {
         ok(
             TypedEnumVariant {
                 name: self.name.clone(),
-                r#type: match namespace.resolve_type(&self.r#type, self_type) {
-                    MaybeResolvedType::Resolved(r) => r,
-                    MaybeResolvedType::Partial(crate::types::PartiallyResolvedType::Numeric) => {
-                        ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
-                    }
-                    MaybeResolvedType::Partial(p) => {
-                        return err(
-                            vec![],
-                            vec![CompileError::TypeMustBeKnown {
-                                ty: p.friendly_type_str(),
-                                span,
-                            }],
-                        )
-                    }
-                },
+                r#type: namespace.resolve_type(self.r#type.clone(), self_type),
                 tag: self.tag,
                 span: self.span.clone(),
             },
