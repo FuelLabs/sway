@@ -24,6 +24,13 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
+    // find manifest directory, even if in subdirectory
+    let this_dir = if let Some(ref path) = command.path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().unwrap()
+    };
+
     let BuildCommand {
         path,
         binary_outfile,
@@ -31,12 +38,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         print_intermediate_asm,
         offline_mode,
     } = command;
-    // find manifest directory, even if in subdirectory
-    let this_dir = if let Some(path) = path.clone() {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir().unwrap()
-    };
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {

@@ -1,9 +1,30 @@
-use forc::test::{forc_build, BuildCommand};
+use forc::test::{forc_build, forc_deploy, BuildCommand, DeployCommand};
 use fuel_tx::{Input, Output, Transaction};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+
+pub(crate) fn deploy_contract(file_name: &str) {
+    // build the contract
+    // deploy it
+    println!("Deploying {}", file_name);
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(forc_deploy::deploy(DeployCommand {
+            path: Some(format!(
+                "{}/src/e2e_vm_tests/test_programs/{}",
+                manifest_dir, file_name
+            )),
+            print_finalized_asm: false,
+            print_intermediate_asm: false,
+            binary_outfile: None,
+            offline_mode: false,
+        }))
+        .unwrap()
+}
 
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.

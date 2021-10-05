@@ -9,6 +9,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             .unwrap_or(true)
     };
 
+    // contracts that should be deployed for the tests to work
+    let contract_names = vec!["basic_storage"];
+
     // programs that should successfully compile and terminate
     // with some known state
     let project_names = vec![

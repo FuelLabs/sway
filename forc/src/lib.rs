@@ -5,8 +5,8 @@ mod utils;
 
 #[cfg(feature = "test")]
 pub mod test {
-    pub use crate::cli::BuildCommand;
-    pub use crate::ops::forc_build;
+    pub use crate::cli::{BuildCommand, DeployCommand};
+    pub use crate::ops::{forc_build, forc_deploy};
 }
 
 #[cfg(feature = "util")]

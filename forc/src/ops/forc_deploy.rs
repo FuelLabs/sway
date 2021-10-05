@@ -3,6 +3,7 @@ use fuel_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
 use fuel_vm::prelude::*;
 
+use std::path::PathBuf;
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
@@ -10,8 +11,17 @@ use crate::utils::{constants, helpers};
 use constants::{DEFAULT_NODE_URL, SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
 use helpers::{find_manifest_dir, get_main_file, read_manifest};
 
-pub async fn deploy(_: DeployCommand) -> Result<(), CliError> {
-    let curr_dir = std::env::current_dir()?;
+pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
+    let curr_dir = if let Some(ref path) = command.path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir()?
+    };
+
+    let DeployCommand {
+        path, print_finalized_asm, print_intermediate_asm, binary_outfile, offline_mode
+
+    } = command;
 
     match find_manifest_dir(&curr_dir) {
         Some(manifest_dir) => {
@@ -25,11 +35,11 @@ pub async fn deploy(_: DeployCommand) -> Result<(), CliError> {
                 Some(parse_tree) => {
                     if let Some(_) = &parse_tree.contract_ast {
                         let build_command = BuildCommand {
-                            path: None,
-                            print_finalized_asm: false,
-                            print_intermediate_asm: false,
-                            binary_outfile: None,
-                            offline_mode: false,
+                            path,
+                            print_finalized_asm,
+                            print_intermediate_asm,
+                            binary_outfile,
+                            offline_mode,
                         };
 
                         let compiled_contract = forc_build::build(build_command)?;
