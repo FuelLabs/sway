@@ -32,11 +32,11 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     };
 
     let BuildCommand {
-        path,
         binary_outfile,
         print_finalized_asm,
         print_intermediate_asm,
         offline_mode,
+        ..
     } = command;
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
