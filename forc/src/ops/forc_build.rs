@@ -195,13 +195,22 @@ fn compile_dependency_lib<'source, 'manifest>(
         file_name.clone().to_path_buf(),
         manifest_dir.clone(),
     );
+    let mut dep_namespace = namespace.clone();
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {
-        if deps.len() > 0 {
+        for dep in deps {
             // to do this properly, iterate over list of dependencies make sure there are no
             // circular dependencies
-            return Err("Unimplemented: dependencies that have dependencies".into());
+            //return Err("Unimplemented: dependencies that have dependencies".into());
+            compile_dependency_lib(
+                project_file_path,
+                &dep.0,
+                &dep.1,
+                // give it a cloned namespace, which we then merge with this namespace
+                &mut dep_namespace,
+                dependency_graph,
+            )?;
         }
     }
 
@@ -210,7 +219,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     let compiled = compile_library(
         main_file,
         &manifest_of_dep.project.name,
-        &namespace.clone(),
+        &dep_namespace,
         build_config.clone(),
         dependency_graph,
     )?;

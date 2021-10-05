@@ -51,6 +51,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
         ("const_decl", ProgramState::Return(100)),
+        ("basic_storage", ProgramState::Return(42)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
