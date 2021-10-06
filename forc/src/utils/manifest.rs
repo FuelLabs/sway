@@ -12,6 +12,7 @@ use super::constants::DEFAULT_NODE_URL;
 pub struct Manifest {
     pub project: Project,
     pub network: Option<Network>,
+    pub tx_inputs: Vec<fuel_tx::Input>,
     pub dependencies: Option<BTreeMap<String, Dependency>>,
 }
 

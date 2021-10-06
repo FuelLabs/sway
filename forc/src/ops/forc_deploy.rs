@@ -48,7 +48,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                         };
 
                         let compiled_contract = forc_build::build(build_command)?;
-                        let tx = create_contract_tx(compiled_contract);
+                        let tx = create_contract_tx(compiled_contract, manifest.tx_inputs);
 
                         let node_url = match &manifest.network {
                             Some(network) => &network.url,
@@ -89,7 +89,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
     }
 }
 
-fn create_contract_tx(compiled_contract: Vec<u8>) -> Transaction {
+fn create_contract_tx(compiled_contract: Vec<u8>, inputs: Vec<Input>) -> Transaction {
     let gas_price = 0;
     let gas_limit = 10000000;
     let maturity = 0;
@@ -98,7 +98,6 @@ fn create_contract_tx(compiled_contract: Vec<u8>) -> Transaction {
 
     let salt = Salt::new([0; 32]);
     let static_contracts = vec![];
-    let inputs = vec![];
 
     let contract = Contract::from(compiled_contract);
     let root = contract.root();

@@ -83,11 +83,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     }
 
     // ---- Tests that need the above contracts deployed to work
-    let project_names = &[("call_basic_storage", ProgramState::Return(42))];
+    let project_names = &["call_basic_storage"];
 
     project_names
         .into_iter()
-        .for_each(|(name, expected_output)| harness::runs_on_node(name));
+        .for_each(|name| harness::runs_on_node(name));
 
     println!("_________________________________\nTests passed.");
 }
