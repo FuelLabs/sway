@@ -59,7 +59,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
 
                         match client.transact(&tx).await {
                             Ok(logs) => {
-                                println!("{:?}", logs);
+                                println!("Logs:\n{:?}", logs);
                                 Ok(())
                             }
                             Err(e) => Err(e.to_string().into()),
@@ -103,7 +103,7 @@ fn create_contract_tx(compiled_contract: Vec<u8>) -> Transaction {
     let contract = Contract::from(compiled_contract);
     let root = contract.root();
     let id = contract.id(&salt, &root);
-
+    println!("Contract id: 0x{}", hex::encode(id));
     let outputs = vec![Output::ContractCreated { contract_id: id }];
 
     Transaction::create(
