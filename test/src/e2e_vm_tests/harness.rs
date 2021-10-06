@@ -1,4 +1,4 @@
-use forc::test::{forc_build, forc_deploy, BuildCommand, DeployCommand};
+use forc::test::{forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, RunCommand};
 use fuel_tx::{Input, Output, Transaction};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
@@ -25,6 +25,20 @@ pub(crate) fn deploy_contract(file_name: &str) {
             silent_mode: true,
         }))
         .unwrap()
+}
+
+pub(crate) fn runs_on_node(file_name: &str) {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let command = RunCommand {
+        data: None,
+        path: Some(format!(
+            "{}/src/e2e_vm_tests/test_programs/{}",
+            manifest_dir, file_name
+        )),
+        dry_run: false,
+        node_url: "127.0.0.1:4000".into(),
+        kill_node: false,
+    };
 }
 
 /// Very basic check that code does indeed run in the VM.
