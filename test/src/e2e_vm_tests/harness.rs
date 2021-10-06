@@ -27,6 +27,7 @@ pub(crate) fn deploy_contract(file_name: &str) {
         .unwrap()
 }
 
+/// Run a given project against a node. Assumes the node is running at localhost:4000.
 pub(crate) fn runs_on_node(file_name: &str) {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let command = RunCommand {
@@ -39,6 +40,10 @@ pub(crate) fn runs_on_node(file_name: &str) {
         node_url: "127.0.0.1:4000".into(),
         kill_node: false,
     };
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(forc_run::run(command))
+        .unwrap()
 }
 
 /// Very basic check that code does indeed run in the VM.
