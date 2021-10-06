@@ -21,6 +21,9 @@ pub struct Command {
     /// Meaning it will only try to use previously downloaded dependencies.
     #[structopt(long = "offline")]
     pub offline_mode: bool,
+    /// Silent mode. Don't output any warnings or errors to the command line.
+    #[structopt(long = "silent", short = "s")]
+    pub silent_mode: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

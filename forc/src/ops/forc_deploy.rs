@@ -19,7 +19,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
     };
 
     let DeployCommand {
-        path, print_finalized_asm, print_intermediate_asm, binary_outfile, offline_mode
+        path, print_finalized_asm, print_intermediate_asm, binary_outfile, offline_mode, silent_mode
 
     } = command;
 
@@ -40,6 +40,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                             print_intermediate_asm,
                             binary_outfile,
                             offline_mode,
+                            silent_mode
                         };
 
                         let compiled_contract = forc_build::build(build_command)?;
