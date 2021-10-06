@@ -17,12 +17,47 @@ pub struct Manifest {
     pub dependencies: Option<BTreeMap<String, Dependency>>,
 }
 
+impl Manifest {
+    /// Given some inputs, constructs the most basic output set that satisfies validation.
+    pub fn get_tx_inputs_and_outputs(
+        &self,
+    ) -> Result<(Vec<fuel_tx::Input>, Vec<fuel_tx::Output>), String> {
+        let inputs = self
+            .tx_input
+            .clone()
+            .unwrap_or_else(Default::default)
+            .iter()
+            .map(TxInput::to_input)
+            .collect::<Result<Vec<_>, _>>()?;
+        let outputs = inputs
+            .iter()
+            .enumerate()
+            .filter_map(construct_output_from_input)
+            .collect::<Vec<_>>();
+        Ok((inputs, outputs))
+    }
+}
+
+fn construct_output_from_input((idx, input): (usize, &fuel_tx::Input)) -> Option<fuel_tx::Output> {
+    match input {
+        fuel_tx::Input::Contract {
+            ref balance_root,
+            ref state_root,
+            ..
+        } => Some(fuel_tx::Output::Contract {
+            input_index: idx as u8, // probably safe unless a user inputs > u8::max inputs
+            balance_root: balance_root.clone(),
+            state_root: state_root.clone(),
+        }),
+        _ => None,
+    }
+}
 /// This struct exists and is converted into a [fuel_tx::Input] because of limitations
 /// of our toml library. It doesn't support directly deserializing [fuel_tx::Input].
 ///
 /// It handles everything as optional strings and parses them in order to provide better error
 /// messages.
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct TxInput {
     r#type: String,
@@ -39,9 +74,9 @@ pub struct TxInput {
     predicate_data: Option<String>,
 }
 
-fn try_parse_bytes32(raw: Option<String>, name: &str) -> Result<fuel_tx::Bytes32, String> {
+fn try_parse_bytes32(raw: &Option<String>, name: &str) -> Result<fuel_tx::Bytes32, String> {
     let mut raw = if let Some(raw) = raw {
-        raw
+        raw.to_string()
     } else {
         return Err(format!("Missing value for field {}.\nhelp: a tx-input entry in your Forc.toml manifest is missing a field named {}.", name, name));
     };
@@ -55,9 +90,9 @@ fn try_parse_bytes32(raw: Option<String>, name: &str) -> Result<fuel_tx::Bytes32
     )
     .unwrap())
 }
-fn try_parse_contract_id(raw: Option<String>) -> Result<fuel_tx::ContractId, String> {
+fn try_parse_contract_id(raw: &Option<String>) -> Result<fuel_tx::ContractId, String> {
     let mut raw = if let Some(raw) = raw {
-        raw
+        raw.to_string()
     } else {
         return Err(format!("Missing contract-id in manifest."));
     };
@@ -77,13 +112,13 @@ fn try_parse_contract_id(raw: Option<String>) -> Result<fuel_tx::ContractId, Str
     .unwrap())
 }
 impl TxInput {
-    pub fn to_input(self) -> Result<fuel_tx::Input, String> {
+    pub fn to_input(&self) -> Result<fuel_tx::Input, String> {
         match self.r#type.to_lowercase().as_ref() {
             "contract" => Ok(fuel_tx::Input::Contract {
-                utxo_id: try_parse_bytes32(self.utxo_id, "utxo-id")?,
-                balance_root: try_parse_bytes32(self.balance_root, "balance-root")?,
-                state_root: try_parse_bytes32(self.state_root, "state-root")?,
-                contract_id: try_parse_contract_id(self.contract_id)?,
+                utxo_id: try_parse_bytes32(&self.utxo_id, "utxo-id")?,
+                balance_root: try_parse_bytes32(&self.balance_root, "balance-root")?,
+                state_root: try_parse_bytes32(&self.state_root, "state-root")?,
+                contract_id: try_parse_contract_id(&self.contract_id)?,
             }),
             "coin" => Err("Coin transaction inputs are not currently supported.".into()),
             a => Err(format!(

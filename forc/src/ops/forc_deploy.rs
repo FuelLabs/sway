@@ -49,13 +49,10 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                         };
 
                         let compiled_contract = forc_build::build(build_command)?;
-                        let tx = create_contract_tx(
-                            compiled_contract,
-                            manifest
-                            .tx_input
-                            .unwrap_or_else(|| Default::default())
-                            .into_iter().map(TxInput::to_input).collect::<Result<Vec<_>, _>>()
-                            .map_err(|message| CliError { message })?);
+                        let (inputs, outputs) = manifest
+                            .get_tx_inputs_and_outputs()
+                            .map_err(|message| CliError { message })?;
+                        let tx = create_contract_tx(compiled_contract, inputs, outputs);
 
                         let node_url = match &manifest.network {
                             Some(network) => &network.url,
@@ -96,7 +93,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
     }
 }
 
-fn create_contract_tx(compiled_contract: Vec<u8>, inputs: Vec<Input>) -> Transaction {
+fn create_contract_tx(compiled_contract: Vec<u8>, inputs: Vec<Input>, outputs: Vec<Output>) -> Transaction {
     let gas_price = 0;
     let gas_limit = 10000000;
     let maturity = 0;
@@ -110,7 +107,7 @@ fn create_contract_tx(compiled_contract: Vec<u8>, inputs: Vec<Input>) -> Transac
     let root = contract.root();
     let id = contract.id(&salt, &root);
     println!("Contract id: 0x{}", hex::encode(id));
-    let outputs = vec![Output::ContractCreated { contract_id: id }];
+    let outputs = [&[Output::ContractCreated { contract_id: id }], &outputs[..]].concat();
 
     Transaction::create(
         gas_price,

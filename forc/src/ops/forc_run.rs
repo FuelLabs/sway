@@ -46,14 +46,16 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                         };
 
                         let compiled_script = forc_build::build(build_command)?;
-                        let tx = create_tx_with_script_and_data(compiled_script, script_data,
+                        let (inputs, outputs) = manifest
+                            .get_tx_inputs_and_outputs()
+                            .map_err(|message| CliError { message })?;
 
-                            manifest
-                            .tx_input
-                            .unwrap_or_else(|| Default::default())
-                            .into_iter().map(TxInput::to_input).collect::<Result<Vec<_>, _>>()
-                            .map_err(|message| CliError { message })?);
-
+                        let tx = create_tx_with_script_and_data(
+                            compiled_script,
+                            script_data,
+                            inputs,
+                            outputs,
+                        );
 
                         if command.dry_run {
                             println!("{:?}", tx);
@@ -137,11 +139,15 @@ async fn send_tx(client: &FuelClient, tx: &Transaction) -> Result<(), CliError> 
     }
 }
 
-fn create_tx_with_script_and_data(script: Vec<u8>, script_data: Vec<u8>, inputs: Vec<fuel_tx::Input>) -> Transaction {
+fn create_tx_with_script_and_data(
+    script: Vec<u8>,
+    script_data: Vec<u8>,
+    inputs: Vec<fuel_tx::Input>,
+    outputs: Vec<fuel_tx::Output>,
+) -> Transaction {
     let gas_price = 0;
     let gas_limit = 10000000;
     let maturity = 0;
-    let outputs = vec![];
     let witnesses = vec![];
 
     Transaction::script(
