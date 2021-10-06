@@ -6,6 +6,7 @@ use fuel_vm::prelude::*;
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
+use crate::utils::manifest::TxInput;
 use crate::utils::{constants, helpers};
 use constants::{DEFAULT_NODE_URL, SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
 use helpers::{find_manifest_dir, get_main_file, read_manifest};
@@ -48,7 +49,13 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                         };
 
                         let compiled_contract = forc_build::build(build_command)?;
-                        let tx = create_contract_tx(compiled_contract, manifest.tx_inputs);
+                        let tx = create_contract_tx(
+                            compiled_contract,
+                            manifest
+                            .tx_input
+                            .unwrap_or_else(|| Default::default())
+                            .into_iter().map(TxInput::to_input).collect::<Result<Vec<_>, _>>()
+                            .map_err(|message| CliError { message })?);
 
                         let node_url = match &manifest.network {
                             Some(network) => &network.url,

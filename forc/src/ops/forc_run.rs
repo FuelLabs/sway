@@ -9,6 +9,7 @@ use crate::cli::{BuildCommand, RunCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
 use crate::utils::client::start_fuel_core;
+use crate::utils::manifest::TxInput;
 use crate::utils::{constants, helpers};
 use constants::{SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
 use helpers::{find_manifest_dir, get_main_file, read_manifest};
@@ -45,7 +46,14 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                         };
 
                         let compiled_script = forc_build::build(build_command)?;
-                        let tx = create_tx_with_script_and_data(compiled_script, script_data);
+                        let tx = create_tx_with_script_and_data(compiled_script, script_data,
+
+                            manifest
+                            .tx_input
+                            .unwrap_or_else(|| Default::default())
+                            .into_iter().map(TxInput::to_input).collect::<Result<Vec<_>, _>>()
+                            .map_err(|message| CliError { message })?);
+
 
                         if command.dry_run {
                             println!("{:?}", tx);
@@ -129,11 +137,10 @@ async fn send_tx(client: &FuelClient, tx: &Transaction) -> Result<(), CliError> 
     }
 }
 
-fn create_tx_with_script_and_data(script: Vec<u8>, script_data: Vec<u8>) -> Transaction {
+fn create_tx_with_script_and_data(script: Vec<u8>, script_data: Vec<u8>, inputs: Vec<fuel_tx::Input>) -> Transaction {
     let gas_price = 0;
     let gas_limit = 10000000;
     let maturity = 0;
-    let inputs = vec![];
     let outputs = vec![];
     let witnesses = vec![];
 
