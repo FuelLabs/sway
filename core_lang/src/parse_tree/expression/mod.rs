@@ -806,9 +806,19 @@ impl<'sc> Expression<'sc> {
                     errors
                 )
             }
+            /*
+            Rule::expr => {
+                check!(
+                    Expression::parse_from_pair(expr, config, docstrings),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            */
             a => {
                 eprintln!(
-                    "Unimplemented expr: {:?} ({:?}) ({:?})",
+                    "Unimplemented rule: {:?} ({:?}) ({:?})",
                     a,
                     expr.as_str(),
                     expr.as_rule()

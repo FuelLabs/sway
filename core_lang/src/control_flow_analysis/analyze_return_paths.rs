@@ -164,7 +164,7 @@ fn connect_node<'sc>(
         TypedAstNodeContent::IfStatement(TypedIfStatement { .. }) => {
             let node = graph.add_node(node.into());
             for leaf in leaves {
-                graph.add_edge(*leaf, node, "if statemnt entry".into());
+                graph.add_edge(*leaf, node, "if statement entry".into());
             }
             NodeConnection::NextStep(vec![node])
         }

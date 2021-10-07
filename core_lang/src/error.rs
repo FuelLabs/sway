@@ -316,7 +316,7 @@ pub enum CompileError<'sc> {
          code that triggered this error."
     )]
     Internal(&'static str, Span<'sc>),
-    #[error("Unimplemented feature: {0:?}")]
+    #[error("Unimplemented rule: {0:?}")]
     UnimplementedRule(Rule, Span<'sc>),
     #[error(
         "Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 \
