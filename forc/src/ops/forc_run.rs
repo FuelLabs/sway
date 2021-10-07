@@ -66,7 +66,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                                 _ => &command.node_url,
                             };
 
-                            let child = try_send_tx(node_url, &tx).await?;
+                            let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
 
                             if command.kill_node {
                                 if let Some(mut child) = child {
@@ -101,12 +101,12 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
     }
 }
 
-async fn try_send_tx(node_url: &str, tx: &Transaction) -> Result<Option<Child>, CliError> {
+async fn try_send_tx(node_url: &str, tx: &Transaction, pretty_print: bool) -> Result<Option<Child>, CliError> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
         Ok(_) => {
-            send_tx(&client, tx).await?;
+            send_tx(&client, tx, pretty_print).await?;
             Ok(None)
         }
         Err(_) => {
@@ -120,7 +120,7 @@ async fn try_send_tx(node_url: &str, tx: &Transaction) -> Result<Option<Child>, 
 
             if reply == "y" || reply == "yes" {
                 let child = start_fuel_core(node_url, &client).await?;
-                send_tx(&client, tx).await?;
+                send_tx(&client, tx, pretty_print).await?;
                 Ok(Some(child))
             } else {
                 Ok(None)
@@ -129,10 +129,14 @@ async fn try_send_tx(node_url: &str, tx: &Transaction) -> Result<Option<Child>, 
     }
 }
 
-async fn send_tx(client: &FuelClient, tx: &Transaction) -> Result<(), CliError> {
+async fn send_tx(client: &FuelClient, tx: &Transaction, pretty_print: bool) -> Result<(), CliError> {
     match client.transact(&tx).await {
         Ok(logs) => {
-            println!("{:#?}", logs);
+            if pretty_print {
+                println!("{:#?}", logs);
+            } else {
+                println!("{:?}", logs);
+            }
             Ok(())
         }
         Err(e) => Err(e.to_string().into()),

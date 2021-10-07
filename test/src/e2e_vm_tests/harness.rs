@@ -43,6 +43,7 @@ pub(crate) fn runs_on_node(file_name: &str) {
         print_finalized_asm: false,
         print_intermediate_asm: false,
         silent_mode: false,
+        pretty_print: false,
     };
     tokio::runtime::Runtime::new()
         .unwrap()

@@ -41,6 +41,10 @@ pub struct Command {
     /// Silent mode. Don't output any warnings or errors to the command line.
     #[structopt(long = "silent", short = "s")]
     pub silent_mode: bool,
+
+    /// Pretty-print the outputs from the node.
+    #[structopt(long = "pretty-print", short = "p")]
+    pub pretty_print: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {
