@@ -32,7 +32,11 @@ fn get_hover_format(token: &Token) -> String {
             extract_visibility(&struct_details.visibility),
             &token.name
         ),
-        TokenType::Trait(_) => format!("trait {}", &token.name),
+        TokenType::Trait(trait_details) => format!(
+            "{}trait {}",
+            extract_visibility(&trait_details.visibility),
+            &token.name
+        ),
         TokenType::Enum => format!("enum {}", &token.name),
         _ => token.name.clone(),
     }
