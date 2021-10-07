@@ -9,7 +9,7 @@ use pest::iterators::Pair;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Visibility {
+pub enum Visibility {
     Public,
     Private,
 }
@@ -26,7 +26,7 @@ impl Visibility {
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration<'sc> {
     pub name: Ident<'sc>,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
     pub body: CodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub span: Span<'sc>,
