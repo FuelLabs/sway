@@ -68,6 +68,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "infinite_dependencies",
         "top_level_vars",
         "dependencies_parsing_error",
+        "mut_error_message",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
