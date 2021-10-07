@@ -4,7 +4,7 @@ use crate::{
         convert_expression_to_asm, expression::get_struct_memory_layout, AsmNamespace,
         RegisterSequencer,
     },
-    asm_lang::virtual_ops::VirtualImmediate12,
+    asm_lang::VirtualImmediate12,
     semantic_analysis::ast_node::{ReassignmentLhs, TypedReassignment, TypedStructField},
     types::{MaybeResolvedType, ResolvedType},
 };

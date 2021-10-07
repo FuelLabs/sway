@@ -1,9 +1,6 @@
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
-    asm_lang::{
-        virtual_ops::{ConstantRegister, VirtualRegister},
-        Op,
-    },
+    asm_lang::{ConstantRegister, Op, VirtualRegister},
     error::*,
     parse_tree::LazyOp,
     semantic_analysis::TypedExpression,

@@ -1,5 +1,5 @@
 use super::*;
-use crate::asm_lang::virtual_ops::{ConstantRegister, VirtualRegister};
+use crate::asm_lang::{ConstantRegister, VirtualRegister};
 use crate::semantic_analysis::ast_node::TypedWhileLoop;
 pub(super) fn convert_while_loop_to_asm<'sc>(
     r#loop: &TypedWhileLoop<'sc>,

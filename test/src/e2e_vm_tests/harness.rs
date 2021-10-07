@@ -39,6 +39,10 @@ pub(crate) fn runs_on_node(file_name: &str) {
         dry_run: false,
         node_url: "127.0.0.1:4000".into(),
         kill_node: false,
+        binary_outfile: None,
+        print_finalized_asm: false,
+        print_intermediate_asm: false,
+        silent_mode: false,
     };
     tokio::runtime::Runtime::new()
         .unwrap()

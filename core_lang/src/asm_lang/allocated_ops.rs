@@ -9,8 +9,8 @@
 //! It is unfortunate that there are copies of our opcodes in multiple places, but this ensures the
 //! best type safety. It can be macro'd someday.
 
-use super::virtual_ops::*;
 use super::DataId;
+use super::*;
 use crate::asm_generation::DataSection;
 use crate::span::Span;
 use either::Either;
@@ -24,7 +24,7 @@ const COMMENT_START_COLUMN: usize = 30;
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum AllocatedRegister {
     Allocated(u8),
-    Constant(super::virtual_ops::ConstantRegister),
+    Constant(super::ConstantRegister),
 }
 
 impl fmt::Display for AllocatedRegister {

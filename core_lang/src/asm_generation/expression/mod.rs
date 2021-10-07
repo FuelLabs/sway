@@ -1,9 +1,6 @@
 use super::*;
 use crate::span::Span;
-use crate::{
-    asm_lang::{virtual_ops::VirtualRegister, *},
-    parse_tree::CallPath,
-};
+use crate::{asm_lang::*, parse_tree::CallPath};
 use crate::{
     parse_tree::Literal,
     semantic_analysis::{

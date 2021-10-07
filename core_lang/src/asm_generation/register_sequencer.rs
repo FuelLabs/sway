@@ -1,4 +1,4 @@
-use crate::asm_lang::virtual_ops::{Label, VirtualRegister};
+use crate::asm_lang::{Label, VirtualRegister};
 /// The [RegisterSequencer] is basically an iterator over integers -- it distributes unique ids in
 /// the form of integers while ASM is being generated to ensure a monotonically increasing unique
 /// register Id for every virtual register that is used.
@@ -12,6 +12,7 @@ impl RegisterSequencer {
     pub(crate) fn new() -> Self {
         Default::default()
     }
+
     /// Choosing to not use the iterator trait, because this iterator goes on forever and thusly
     /// does not need to return an `Option<Item>`.
     pub(crate) fn next(&mut self) -> VirtualRegister {

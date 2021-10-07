@@ -1,10 +1,7 @@
 //! This module contains the logic for struct layout in memory and instantiation.
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
-    asm_lang::{
-        virtual_ops::{ConstantRegister, VirtualImmediate12, VirtualImmediate24, VirtualRegister},
-        Op,
-    },
+    asm_lang::{ConstantRegister, Op, VirtualImmediate12, VirtualImmediate24, VirtualRegister},
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
     types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
