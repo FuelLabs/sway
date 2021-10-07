@@ -93,7 +93,11 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
     }
 }
 
-fn create_contract_tx(compiled_contract: Vec<u8>, inputs: Vec<Input>, outputs: Vec<Output>) -> Transaction {
+fn create_contract_tx(
+    compiled_contract: Vec<u8>,
+    inputs: Vec<Input>,
+    outputs: Vec<Output>,
+) -> Transaction {
     let gas_price = 0;
     let gas_limit = 10000000;
     let maturity = 0;
