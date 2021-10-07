@@ -1,16 +1,10 @@
-use std::collections::HashMap;
-
+use super::token::Token;
+use super::token_type::TokenType;
+use crate::{capabilities, core::token::traverse_node};
 use core_lang::parse;
 use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
-
 use ropey::Rope;
-
-use crate::{
-    capabilities,
-    core::token::{traverse_node, DeclarationType},
-};
-
-use super::token::{ContentType, Token};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct TextDocument {
@@ -124,10 +118,7 @@ impl TextDocument {
                 for (ident, parse_tree) in value.library_exports {
                     // TODO
                     // Is library name necessary to store for the LSP?
-                    let token = Token::from_ident(
-                        ident,
-                        ContentType::Declaration(DeclarationType::Library),
-                    );
+                    let token = Token::from_ident(&ident, TokenType::Library);
                     tokens.push(token);
                     for node in parse_tree.root_nodes {
                         traverse_node(node, &mut tokens);

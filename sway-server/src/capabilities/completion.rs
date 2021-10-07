@@ -1,7 +1,4 @@
-use crate::core::{
-    session::Session,
-    token::{ContentType, DeclarationType, Token},
-};
+use crate::core::{session::Session, token::Token, token_type::TokenType};
 use lspower::lsp::{CompletionItem, CompletionItemKind, CompletionParams, CompletionResponse};
 use std::sync::Arc;
 
@@ -24,7 +21,7 @@ pub fn to_completion_items(tokens: &Vec<Token>) -> Vec<CompletionItem> {
         if token.is_initial_declaration() {
             let item = CompletionItem {
                 label: token.name.clone(),
-                kind: get_kind(&token.content_type),
+                kind: get_kind(&token.token_type),
                 ..Default::default()
             };
             completion_items.push(item);
@@ -34,18 +31,16 @@ pub fn to_completion_items(tokens: &Vec<Token>) -> Vec<CompletionItem> {
     completion_items
 }
 
-fn get_kind(content_type: &ContentType) -> Option<CompletionItemKind> {
-    if let ContentType::Declaration(dec) = content_type {
-        match dec {
-            DeclarationType::Enum => Some(CompletionItemKind::Enum),
-            DeclarationType::Function => Some(CompletionItemKind::Function),
-            DeclarationType::Library => Some(CompletionItemKind::Module),
-            DeclarationType::Struct => Some(CompletionItemKind::Struct),
-            DeclarationType::Variable => Some(CompletionItemKind::Variable),
-            DeclarationType::Trait => Some(CompletionItemKind::Interface),
-            _ => None,
+fn get_kind(token_type: &TokenType) -> Option<CompletionItemKind> {
+    match token_type {
+        TokenType::Enum => Some(CompletionItemKind::Enum),
+        TokenType::FunctionDeclaration(_) | &TokenType::FunctionApplication => {
+            Some(CompletionItemKind::Function)
         }
-    } else {
-        None
+        TokenType::Library => Some(CompletionItemKind::Module),
+        TokenType::Struct(_) => Some(CompletionItemKind::Struct),
+        TokenType::Variable => Some(CompletionItemKind::Variable),
+        TokenType::Trait => Some(CompletionItemKind::Interface),
+        _ => None,
     }
 }
