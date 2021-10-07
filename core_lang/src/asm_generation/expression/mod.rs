@@ -67,6 +67,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     // user parameter
                     &arguments[3].1,
                     register_sequencer,
+                    return_register,
                     namespace,
                     exp.span.clone(),
                 )

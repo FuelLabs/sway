@@ -132,7 +132,7 @@ async fn try_send_tx(node_url: &str, tx: &Transaction) -> Result<Option<Child>, 
 async fn send_tx(client: &FuelClient, tx: &Transaction) -> Result<(), CliError> {
     match client.transact(&tx).await {
         Ok(logs) => {
-            println!("{:?}", logs);
+            println!("{:#?}", logs);
             Ok(())
         }
         Err(e) => Err(e.to_string().into()),

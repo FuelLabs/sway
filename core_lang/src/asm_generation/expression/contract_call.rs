@@ -9,6 +9,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     coin_color: &TypedExpression<'sc>,
     user_argument: &TypedExpression<'sc>,
     register_sequencer: &mut RegisterSequencer,
+    return_register: &VirtualRegister,
     namespace: &mut AsmNamespace<'sc>,
     span: Span<'sc>,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
@@ -167,8 +168,16 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
             gas_to_forward,
         )),
         comment: "call external contract".into(),
-        owning_span: Some(span),
+        owning_span: Some(span.clone()),
     });
+
+    // now, move the return value of the contract call to the return register.
+    // TODO validate RETL matches the expected type
+    asm_buf.push(Op::register_move(
+        return_register.into(),
+        VirtualRegister::Constant(ConstantRegister::ReturnValue),
+        span.clone(),
+    ));
 
     ok(asm_buf, warnings, errors)
 }
