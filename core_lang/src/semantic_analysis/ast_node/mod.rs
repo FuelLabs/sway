@@ -617,6 +617,14 @@ fn import_new_file<'sc>(
     let mut canonical_path = build_config.dir_of_code.clone();
     canonical_path.push(file_path.clone());
 
+    let mut manifest_path = build_config.manifest_path.clone();
+    manifest_path.pop();
+    let canonical_path_clone = canonical_path.clone();
+    let file_name = match canonical_path_clone.strip_prefix(manifest_path) {
+        Ok(o) => o,
+        Err(_) => return err(warnings, errors),
+    };
+
     let res = if canonical_path.exists() {
         std::fs::read_to_string(canonical_path.clone())
     } else {
@@ -650,7 +658,7 @@ fn import_new_file<'sc>(
         canonical_path.pop();
         canonical_path
     };
-    dep_config.file_name = file_path.clone();
+    dep_config.file_name = file_name.to_path_buf();
     dep_config.dir_of_code = dep_path;
     let crate::InnerDependencyCompileResult {
         mut library_exports,
