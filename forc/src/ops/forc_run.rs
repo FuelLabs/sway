@@ -38,11 +38,11 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
 
                         let build_command = BuildCommand {
                             path: command.path,
-                            print_finalized_asm: false,
-                            print_intermediate_asm: false,
-                            binary_outfile: None,
+                            print_finalized_asm: command.print_finalized_asm,
+                            print_intermediate_asm: command.print_intermediate_asm,
+                            binary_outfile: command.binary_outfile,
                             offline_mode: false,
-                            silent_mode: false,
+                            silent_mode: command.silent_mode,
                         };
 
                         let compiled_script = forc_build::build(build_command)?;
