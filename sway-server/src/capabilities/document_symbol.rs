@@ -40,7 +40,7 @@ fn get_kind(token_type: &TokenType) -> SymbolKind {
         TokenType::Library => SymbolKind::Module,
         TokenType::Struct(_) => SymbolKind::Struct,
         TokenType::Variable => SymbolKind::Variable,
-        TokenType::Trait => SymbolKind::Interface,
+        TokenType::Trait(_) => SymbolKind::Interface,
         _ => SymbolKind::Unknown,
     }
 }

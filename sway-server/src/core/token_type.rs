@@ -1,5 +1,5 @@
 use crate::utils::function::extract_fn_signature;
-use core_lang::{FunctionDeclaration, StructDeclaration, Visibility};
+use core_lang::{FunctionDeclaration, StructDeclaration, TraitDeclaration, Visibility};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
@@ -9,7 +9,7 @@ pub enum TokenType {
     FunctionApplication,
     Reassignment,
     Enum,
-    Trait,
+    Trait(TraitDetails),
     Struct(StructDetails),
 }
 
@@ -26,6 +26,11 @@ pub fn get_struct_details(struct_dec: &StructDeclaration) -> StructDetails {
     }
 }
 
+pub fn get_trait_details(trait_dec: &TraitDeclaration) -> TraitDetails {
+    TraitDetails {
+        visibility: trait_dec.visibility,
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionDetails {
     pub signature: String,
@@ -34,5 +39,10 @@ pub struct FunctionDetails {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructDetails {
+    pub visibility: Visibility,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TraitDetails {
     pub visibility: Visibility,
 }

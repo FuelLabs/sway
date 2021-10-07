@@ -1,4 +1,4 @@
-use super::token_type::TokenType;
+use super::token_type::{get_trait_details, TokenType};
 use crate::core::token_type::{get_function_details, get_struct_details};
 use core_lang::{
     AstNode, AstNodeContent, Declaration, Expression, Ident, Span, VariableDeclaration,
@@ -106,8 +106,8 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
         }
 
         Declaration::TraitDeclaration(trait_dec) => {
-            let ident = trait_dec.name;
-            let token = Token::from_ident(&ident, TokenType::Trait);
+            let ident = &trait_dec.name;
+            let token = Token::from_ident(&ident, TokenType::Trait(get_trait_details(&trait_dec)));
             tokens.push(token);
 
             // todo
