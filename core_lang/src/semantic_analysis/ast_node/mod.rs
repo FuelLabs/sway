@@ -16,6 +16,7 @@ mod expression;
 pub mod impl_trait;
 mod return_statement;
 mod while_loop;
+mod if_statement;
 
 use super::ERROR_RECOVERY_DECLARATION;
 pub(crate) use code_block::TypedCodeBlock;
@@ -30,6 +31,7 @@ use impl_trait::implementation_of_trait;
 pub(crate) use return_statement::TypedReturnStatement;
 use std::collections::{HashMap, HashSet};
 pub(crate) use while_loop::TypedWhileLoop;
+pub(crate) use if_statement::TypedIfStatement;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
@@ -45,7 +47,7 @@ pub(crate) enum TypedAstNodeContent<'sc> {
     Declaration(TypedDeclaration<'sc>),
     Expression(TypedExpression<'sc>),
     ImplicitReturnExpression(TypedExpression<'sc>),
-    IfExpression(TypedExpression<'sc>),
+    IfStatement(TypedIfStatement<'sc>),
     WhileLoop(TypedWhileLoop<'sc>),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect,
@@ -68,7 +70,7 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
             Expression(exp) => exp.pretty_print(),
             ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
             WhileLoop(w_loop) => w_loop.pretty_print(),
-            IfExpression(exp) => exp.pretty_print(),
+            IfStatement(if_statement) => if_statement.pretty_print(),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -83,8 +85,7 @@ impl<'sc> TypedAstNode<'sc> {
             ReturnStatement(_) | Declaration(_) => MaybeResolvedType::Resolved(ResolvedType::Unit),
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
-            WhileLoop(_) | SideEffect => MaybeResolvedType::Resolved(ResolvedType::Unit),
-            IfExpression(TypedExpression { return_type, .. }) => return_type.clone()
+            IfStatement(_) | WhileLoop(_) | SideEffect => MaybeResolvedType::Resolved(ResolvedType::Unit),
         }
     }
     pub(crate) fn type_check(
@@ -575,27 +576,73 @@ impl<'sc> TypedAstNode<'sc> {
                     body: typed_body,
                 })
             },
-            AstNodeContent::IfExpression(expr) => {
-                let typed_expr = check!(
+            AstNodeContent::IfStatement(IfStatement { condition, then, r#else }) => {
+                let typed_condition = check!(
                     TypedExpression::type_check(
-                        expr.clone(),
+                        condition,
                         namespace,
-                        return_type_annotation,
-                        format!(
-                            "Implicit return must match up with block's type. {}",
-                            help_text.into()
-                        ),
+                        Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
+                        "A if statement's condition must be a boolean expression.",
                         self_type,
                         build_config,
                         dead_code_graph,
                         dependency_graph
                     ),
-                    error_recovery_expr(expr.span()),
+                    return err(warnings, errors),
                     warnings,
                     errors
                 );
-                TypedAstNodeContent::IfExpression(typed_expr)
-            }
+                let (typed_then, _block_implicit_return) = check!(
+                    TypedCodeBlock::type_check(
+                        then.clone(),
+                        namespace,
+                        Some(MaybeResolvedType::Resolved(ResolvedType::Unit)),
+                        "An if statment's body cannot implicitly return a value",
+                        self_type,
+                        build_config,
+                        dead_code_graph,
+                        dependency_graph
+                    ),
+                    (
+                        TypedCodeBlock {
+                            contents: vec![],
+                            whole_block_span: then.whole_block_span.clone(),
+                        },
+                        Some(MaybeResolvedType::Resolved(ResolvedType::Unit))
+                    ),
+                    warnings,
+                    errors
+                );
+                let (typed_else, _block_implicit_return) = if let Some(r#else) = r#else {
+                    let (typed_else, _block_implicit_return) = check!(
+                        TypedCodeBlock::type_check(
+                            r#else.clone(),
+                            namespace,
+                            Some(MaybeResolvedType::Resolved(ResolvedType::Unit)),
+                            "An if statment's body cannot implicitly return a value",
+                            self_type,
+                            build_config,
+                            dead_code_graph,
+                            dependency_graph
+                        ),
+                        (
+                            TypedCodeBlock {
+                                contents: vec![],
+                                whole_block_span: r#else.whole_block_span.clone(),
+                            },
+                            Some(MaybeResolvedType::Resolved(ResolvedType::Unit))
+                        ),
+                        warnings,
+                        errors
+                    );
+                    (Some(typed_else), _block_implicit_return)
+                } else { (None, None) };
+                TypedAstNodeContent::IfStatement(TypedIfStatement {
+                    condition: typed_condition,
+                    then: typed_then,
+                    r#else: typed_else
+                })
+            },
         };
 
         let node = TypedAstNode {

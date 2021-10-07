@@ -25,7 +25,7 @@ use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
 pub(crate) mod utils;
-pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
+pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, IfStatement};
 use std::collections::{HashMap, HashSet};
 
 pub use crate::span::Span;
@@ -79,7 +79,7 @@ pub enum AstNodeContent<'sc> {
     Declaration(Declaration<'sc>),
     Expression(Expression<'sc>),
     ImplicitReturnExpression(Expression<'sc>),
-    IfExpression(Expression<'sc>),
+    IfStatement(IfStatement<'sc>),
     WhileLoop(WhileLoop<'sc>),
     IncludeStatement(IncludeStatement<'sc>),
 }

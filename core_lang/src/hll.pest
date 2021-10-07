@@ -94,7 +94,7 @@ match_condition  =  {expr|"_"}
 
 // TODO this doesn't support pattern matching
 
-code_block =  {"{" ~ (control_flow|declaration|expr_statement)* ~ (expr)? ~ "}"}
+code_block =  {"{" ~ (declaration|expr_statement|control_flow)* ~ (expr)? ~ "}"}
 
 struct_expression  =  {struct_name ~ "{" ~ struct_expr_fields ~ "}"}
 struct_expr_fields =  {struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?}

@@ -17,7 +17,7 @@ use crate::{
         ast_node::{
             TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
             TypedExpression, TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration,
-            TypedWhileLoop,
+            TypedWhileLoop, TypedIfStatement
         },
         TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
@@ -310,30 +310,38 @@ fn connect_node<'sc>(
                 exit_node,
             )
         }
-        TypedAstNodeContent::IfExpression(TypedExpression {
-            expression: expr_variant,
-            span,
-            ..
-        }) => {
+        TypedAstNodeContent::IfStatement(TypedIfStatement { then, r#else, .. }) => {
+            // a while loop can loop back to the beginning,
+            // or it can terminate.
+            // so we connect the _end_ of the while loop _both_ to its beginning and the next node.
+            // the loop could also be entirely skipped
+
             let entry = graph.add_node(node.into());
-            // insert organizational dominator node
-            // connected to all current leaves
+            let if_exit = graph.add_node("if statement exit".to_string().into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry, "".into());
             }
+            let mut leaves = vec![entry];
+            let (l_leaves_then, _l_exit_node) =
+                depth_first_insertion_code_block(then, graph, &leaves, exit_node, tree_type)?;
+            leaves = l_leaves_then;
+            for leaf in leaves {
+                graph.add_edge(leaf, if_exit, "".into());
+            }
 
-            (
-                connect_expression(
-                    expr_variant,
-                    graph,
-                    &[entry],
-                    exit_node,
-                    "",
-                    tree_type,
-                    span.clone(),
-                )?,
-                exit_node,
-            )
+            match r#else {
+                Some(r#else) => {
+                    let mut leaves = vec![entry];
+                    let (l_leaves_else, _l_exit_node) = depth_first_insertion_code_block(r#else, graph, &leaves, exit_node, tree_type)?;
+                    leaves = l_leaves_else;
+                    for leaf in leaves {
+                        graph.add_edge(leaf, if_exit, "".into());
+                    }
+                },
+                None => {}
+            }
+
+            (vec![if_exit], exit_node)
         }
         TypedAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
         TypedAstNodeContent::Declaration(decl) => {

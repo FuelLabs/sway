@@ -7,7 +7,7 @@ use crate::parse_tree::CallPath;
 use crate::semantic_analysis::{
     ast_node::{
         TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
-        TypedReassignment, TypedWhileLoop,
+        TypedReassignment, TypedWhileLoop, TypedIfStatement
     },
     TypedAstNode, TypedAstNodeContent,
 };
@@ -161,12 +161,12 @@ fn connect_node<'sc>(
             }
             NodeConnection::NextStep(vec![entry])
         }
-        TypedAstNodeContent::IfExpression(TypedExpression { .. }) => {
-            let entry = graph.add_node(node.into());
+        TypedAstNodeContent::IfStatement(TypedIfStatement { .. }) => {
+            let node = graph.add_node(node.into());
             for leaf in leaves {
-                graph.add_edge(*leaf, entry, "".into());
+                graph.add_edge(*leaf, node, "if statemnt entry".into());
             }
-            NodeConnection::NextStep(vec![entry])
+            NodeConnection::NextStep(vec![node])
         }
         TypedAstNodeContent::SideEffect => NodeConnection::NextStep(leaves.to_vec()),
         TypedAstNodeContent::Declaration(decl) => {

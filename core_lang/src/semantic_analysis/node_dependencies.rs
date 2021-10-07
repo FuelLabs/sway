@@ -429,7 +429,7 @@ impl<'sc> Dependencies<'sc> {
             // No deps from these guys.
             AstNodeContent::UseStatement(_) => self,
             AstNodeContent::IncludeStatement(_) => self,
-            AstNodeContent::IfExpression(_) => self,
+            AstNodeContent::IfStatement(_) => self,
         }
     }
 

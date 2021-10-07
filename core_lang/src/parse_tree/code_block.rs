@@ -1,4 +1,5 @@
 use super::WhileLoop;
+use super::IfStatement;
 use crate::build_config::BuildConfig;
 use crate::parser::Rule;
 use crate::span::Span;
@@ -141,20 +142,20 @@ impl<'sc> CodeBlock<'sc> {
                 }
                 Rule::if_exp => {
                     let res = check!(
-                        Expression::parse_from_pair_inner(pair.clone(), config, docstrings),
+                        IfStatement::parse_from_pair(pair.clone(), config, docstrings),
                         continue,
                         warnings,
                         errors
                     );
-                    let if_exp = AstNode {
-                        content: AstNodeContent::IfExpression(res),
+                    let if_stmt = AstNode {
+                        content: AstNodeContent::IfStatement(res),
                         span: span::Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
                     };
                     unassigned_docstring = "".to_string();
-                    Some(if_exp)
+                    Some(if_stmt)
                 }
                 a => {
                     println!("In code block parsing: {:?} {:?}", a, pair.as_str());
