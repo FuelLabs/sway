@@ -1,5 +1,5 @@
 script;
 
 fn main() -> bool {
-     4 != 4 // should be false 
+    4 != 4 // should be false
 }

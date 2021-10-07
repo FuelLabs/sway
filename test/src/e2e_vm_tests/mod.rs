@@ -65,7 +65,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "asm_should_not_have_return",
         "missing_fn_arguments",
         "excess_fn_arguments",
+        "infinite_dependencies",
         "top_level_vars",
+        "dependencies_parsing_error",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {

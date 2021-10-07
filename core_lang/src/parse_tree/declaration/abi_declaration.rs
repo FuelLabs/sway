@@ -42,22 +42,40 @@ impl<'sc> AbiDeclaration<'sc> {
         );
         let mut interface_surface = vec![];
         let mut methods = vec![];
+        let mut unassigned_docstring = "".to_string();
         let trait_methods = iter.next().expect("guaranteed by grammar");
         for func in trait_methods.into_inner() {
             match func.as_rule() {
-                Rule::fn_signature => interface_surface.push(check!(
-                    TraitFn::parse_from_pair(func, config),
-                    continue,
-                    warnings,
-                    errors
-                )),
+                Rule::fn_signature => {
+                    let fn_sig = check!(
+                        TraitFn::parse_from_pair(func, config),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                    let fn_sig_name = fn_sig.name.primary_name.clone();
+                    interface_surface.push(fn_sig);
+                    if !unassigned_docstring.is_empty() {
+                        docstrings.insert(
+                            format!("abi.{}.{}", name.primary_name, fn_sig_name),
+                            unassigned_docstring.clone(),
+                        );
+                        unassigned_docstring.clear();
+                    }
+                }
                 Rule::fn_decl => methods.push(check!(
                     FunctionDeclaration::parse_from_pair(func, config, docstrings),
                     continue,
                     warnings,
                     errors
                 )),
-                _ => unreachable!("guaranteed by grammar"),
+                Rule::docstring => {
+                    let docstring = func.as_str().to_string().split_off(3);
+                    let docstring = docstring.as_str().trim();
+                    unassigned_docstring.push_str("\n");
+                    unassigned_docstring.push_str(docstring);
+                }
+                x => unreachable!("guaranteed to not be here: {:?}", x),
             }
         }
         ok(

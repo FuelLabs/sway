@@ -16,6 +16,15 @@ pub struct Command {
     /// Only craft transaction and print it out.
     #[structopt(long)]
     pub dry_run: bool,
+
+    /// URL of the Fuel Client Node
+    #[structopt(env = "FUEL_NODE_URL", default_value = "127.0.0.1:4000")]
+    pub node_url: String,
+
+    /// Kill Fuel Node Client after running the code.
+    /// This is only available if the node is started from `forc run`
+    #[structopt(short, long)]
+    pub kill_node: bool,
 }
 
 pub(crate) async fn exec(command: Command) -> Result<(), String> {

@@ -15,6 +15,7 @@ pub(crate) fn instantiate_enum<'sc>(
     self_type: &MaybeResolvedType<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -69,6 +70,7 @@ pub(crate) fn instantiate_enum<'sc>(
                     self_type,
                     build_config,
                     dead_code_graph,
+                    dependency_graph
                 ),
                 return err(warnings, errors),
                 warnings,
