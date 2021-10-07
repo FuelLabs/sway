@@ -73,6 +73,7 @@ impl<'sc> TypedCodeBlock<'sc> {
             } => Some(return_type.clone()),
             _ => None,
         });
+
         if let Some(ref return_type) = return_type {
             if let Some(type_annotation) = type_annotation {
                 let convertability = return_type.is_convertible(

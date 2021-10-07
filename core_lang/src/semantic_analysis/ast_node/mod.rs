@@ -84,7 +84,7 @@ impl<'sc> TypedAstNode<'sc> {
             Expression(TypedExpression { return_type, .. }) => return_type.clone(),
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
             WhileLoop(_) | SideEffect => MaybeResolvedType::Resolved(ResolvedType::Unit),
-            IfExpression(TypedExpression { return_type, .. }) => return_type.clone(),
+            IfExpression(TypedExpression { return_type, .. }) => return_type.clone()
         }
     }
     pub(crate) fn type_check(
@@ -131,7 +131,9 @@ impl<'sc> TypedAstNode<'sc> {
             AstNodeContent::UseStatement(a) => {
                 let mut res = match a.import_type {
                     ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
-                    ImportType::Item(s) => namespace.item_import(a.call_path, &s, a.is_absolute),
+                    ImportType::Item(s) => {
+                        namespace.item_import(a.call_path, &s, a.is_absolute)
+                    }
                 };
                 warnings.append(&mut res.warnings);
                 if res.value.is_none() {
@@ -164,7 +166,8 @@ impl<'sc> TypedAstNode<'sc> {
                         body,
                         is_mutable,
                     }) => {
-                        let result = type_check_ascribed_expr(type_ascription, body, "Variable");
+                        let result =
+                            type_check_ascribed_expr(type_ascription, body, "Variable");
                         let body = check!(
                             result,
                             error_recovery_expr(name.span.clone()),
@@ -185,7 +188,8 @@ impl<'sc> TypedAstNode<'sc> {
                         type_ascription,
                         value,
                     }) => {
-                        let result = type_check_ascribed_expr(type_ascription, value, "Constant");
+                        let result =
+                            type_check_ascribed_expr(type_ascription, value, "Constant");
                         let value = check!(
                             result,
                             error_recovery_expr(name.span.clone()),
@@ -570,7 +574,7 @@ impl<'sc> TypedAstNode<'sc> {
                     condition: typed_condition,
                     body: typed_body,
                 })
-            }
+            },
             AstNodeContent::IfExpression(expr) => {
                 let typed_expr = check!(
                     TypedExpression::type_check(
