@@ -393,10 +393,10 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
     },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
-    AssignmentToNonMutable{
+    AssignmentToNonMutable {
         name: &'sc str,
         decl_span: Span<'sc>,
-        usage_span: Span<'sc>
+        usage_span: Span<'sc>,
     },
     #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \

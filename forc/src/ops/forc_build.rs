@@ -377,9 +377,23 @@ fn format_err(err: core_lang::CompileError) {
     let path = err.clone().path();
 
     let formatted = match err {
-        core_lang::CompileError::AssignmentToNonMutable { decl_span, usage_span, .. } => {
-            format_err_one(&mut fmt, decl_span.clone(), Style::Note, "Variable not declared as mutable. Try adding 'mut'.".to_string(),);
-            format_err_one(&mut fmt, usage_span.clone(), Style::Error, "Assignment to immutable variable.".to_string());
+        core_lang::CompileError::AssignmentToNonMutable {
+            decl_span,
+            usage_span,
+            ..
+        } => {
+            format_err_one(
+                &mut fmt,
+                decl_span.clone(),
+                Style::Note,
+                "Variable not declared as mutable. Try adding 'mut'.".to_string(),
+            );
+            format_err_one(
+                &mut fmt,
+                usage_span.clone(),
+                Style::Error,
+                "Assignment to immutable variable.".to_string(),
+            );
 
             let span = core_lang::utils::join_spans(decl_span, usage_span);
             let input = span.input();
@@ -389,9 +403,9 @@ fn format_err(err: core_lang::CompileError) {
             for c in buffer.iter() {
                 let _ = c.unwrap(); // report eventual errors.
             }
-            
+
             fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
-        },
+        }
         err => format_err_simple(fmt, err),
     };
 
@@ -400,7 +414,12 @@ fn format_err(err: core_lang::CompileError) {
     println!("{}", formatted);
 }
 
-fn format_err_one<'sc>(fmt: &mut Formatter, span: core_lang::Span<'sc>, style: source_span::fmt::Style, friendly_string: String) {
+fn format_err_one<'sc>(
+    fmt: &mut Formatter,
+    span: core_lang::Span<'sc>,
+    style: source_span::fmt::Style,
+    friendly_string: String,
+) {
     let input = span.input();
     let (start_pos, end_pos) = (span.start(), span.end());
     let lookup = LineColLookup::new(input);
@@ -413,7 +432,10 @@ fn format_err_one<'sc>(fmt: &mut Formatter, span: core_lang::Span<'sc>, style: s
     fmt.add(err_span, Some(friendly_string.clone()), style);
 }
 
-fn format_err_simple<'sc>(mut fmt: Formatter, err: core_lang::CompileError) -> source_span::fmt::Formatted {
+fn format_err_simple<'sc>(
+    mut fmt: Formatter,
+    err: core_lang::CompileError,
+) -> source_span::fmt::Formatted {
     let input = err.internal_span().input();
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
