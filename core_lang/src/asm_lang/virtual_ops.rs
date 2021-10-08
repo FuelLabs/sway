@@ -12,7 +12,6 @@ use super::{
 };
 use crate::asm_generation::RegisterPool;
 
-
 use std::collections::{HashMap, HashSet};
 
 use std::fmt;
