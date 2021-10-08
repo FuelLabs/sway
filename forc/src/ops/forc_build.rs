@@ -382,17 +382,46 @@ fn format_err(err: core_lang::CompileError) {
             usage_span,
             ..
         } => {
-            format_err_one(
+            format_one(
                 &mut fmt,
                 decl_span.clone(),
                 Style::Note,
                 "Variable not declared as mutable. Try adding 'mut'.".to_string(),
             );
-            format_err_one(
+            format_one(
                 &mut fmt,
                 usage_span.clone(),
                 Style::Error,
                 "Assignment to immutable variable.".to_string(),
+            );
+
+            let span = core_lang::utils::join_spans(decl_span, usage_span);
+            let input = span.input();
+            let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+            let metrics = source_span::DEFAULT_METRICS;
+            let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+            for c in buffer.iter() {
+                let _ = c.unwrap(); // report eventual errors.
+            }
+
+            fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+        },
+        core_lang::CompileError::TooFewArgumentsForFunction {
+            decl_span,
+            usage_span,
+            ..
+        } => {
+            format_one(
+                &mut fmt,
+                decl_span.clone(),
+                Style::Note,
+                "Function declared here.".to_string(),
+            );
+            format_one(
+                &mut fmt,
+                usage_span.clone(),
+                Style::Error,
+                "Function recieved too few arguments.".to_string(),
             );
 
             let span = core_lang::utils::join_spans(decl_span, usage_span);
@@ -414,7 +443,7 @@ fn format_err(err: core_lang::CompileError) {
     println!("{}", formatted);
 }
 
-fn format_err_one<'sc>(
+fn format_one<'sc>(
     fmt: &mut Formatter,
     span: core_lang::Span<'sc>,
     style: source_span::fmt::Style,

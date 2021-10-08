@@ -644,7 +644,8 @@ pub enum CompileError<'sc> {
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooFewArgumentsForFunction {
-        span: Span<'sc>,
+        decl_span: Span<'sc>,
+        usage_span: Span<'sc>,
         method_name: &'sc str,
         expected: usize,
         received: usize,
@@ -853,7 +854,7 @@ impl<'sc> CompileError<'sc> {
             TraitNotFound { span, .. } => span,
             InvalidExpressionOnLhs { span, .. } => span,
             TooManyArgumentsForFunction { span, .. } => span,
-            TooFewArgumentsForFunction { span, .. } => span,
+            TooFewArgumentsForFunction { usage_span, .. } => usage_span,
             InvalidAbiType { span, .. } => span,
             InvalidNumberOfAbiParams { span, .. } => span,
             NotAnAbi { span, .. } => span,
