@@ -101,7 +101,11 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
     }
 }
 
-async fn try_send_tx(node_url: &str, tx: &Transaction, pretty_print: bool) -> Result<Option<Child>, CliError> {
+async fn try_send_tx(
+    node_url: &str,
+    tx: &Transaction,
+    pretty_print: bool,
+) -> Result<Option<Child>, CliError> {
     let client = FuelClient::new(node_url)?;
 
     match client.health().await {
@@ -129,7 +133,11 @@ async fn try_send_tx(node_url: &str, tx: &Transaction, pretty_print: bool) -> Re
     }
 }
 
-async fn send_tx(client: &FuelClient, tx: &Transaction, pretty_print: bool) -> Result<(), CliError> {
+async fn send_tx(
+    client: &FuelClient,
+    tx: &Transaction,
+    pretty_print: bool,
+) -> Result<(), CliError> {
     match client.transact(&tx).await {
         Ok(logs) => {
             if pretty_print {
