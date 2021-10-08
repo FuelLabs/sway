@@ -373,13 +373,52 @@ fn format_warning(err: &core_lang::CompileWarning) {
 }
 
 fn format_err(err: core_lang::CompileError) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let path = err.clone().path();
+
+    let formatted = match err {
+        core_lang::CompileError::AssignmentToNonMutable { decl_span, usage_span, .. } => {
+            format_err_one(&mut fmt, decl_span.clone(), Style::Note, "Variable not declared as mutable. Try adding 'mut'.".to_string(),);
+            format_err_one(&mut fmt, usage_span.clone(), Style::Error, "Assignment to immutable variable.".to_string());
+
+            let span = core_lang::utils::join_spans(decl_span, usage_span);
+            let input = span.input();
+            let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+            let metrics = source_span::DEFAULT_METRICS;
+            let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+            for c in buffer.iter() {
+                let _ = c.unwrap(); // report eventual errors.
+            }
+            
+            fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+        },
+        err => format_err_simple(fmt, err),
+    };
+
+    print_blue_err(" --> ").unwrap();
+    print!("{}", path);
+    println!("{}", formatted);
+}
+
+fn format_err_one<'sc>(fmt: &mut Formatter, span: core_lang::Span<'sc>, style: source_span::fmt::Style, friendly_string: String) {
+    let input = span.input();
+    let (start_pos, end_pos) = (span.start(), span.end());
+    let lookup = LineColLookup::new(input);
+    let (start_line, start_col) = lookup.get(start_pos);
+    let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
+
+    let err_start = Position::new(start_line - 1, start_col - 1);
+    let err_end = Position::new(end_line - 1, end_col - 1);
+    let err_span = Span::new(err_start, err_end, err_end.next_column());
+    fmt.add(err_span, Some(friendly_string.clone()), style);
+}
+
+fn format_err_simple<'sc>(mut fmt: Formatter, err: core_lang::CompileError) -> source_span::fmt::Formatted {
     let input = err.internal_span().input();
     let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
 
     let metrics = source_span::DEFAULT_METRICS;
     let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
 
     for c in buffer.iter() {
         let _ = c.unwrap(); // report eventual errors.
@@ -395,16 +434,7 @@ fn format_err(err: core_lang::CompileError) {
     let err_span = Span::new(err_start, err_end, err_end.next_column());
     fmt.add(err_span, Some(err.to_friendly_error_string()), Style::Error);
 
-    let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-    fmt.add(
-        buffer.span(),
-        Some("this is the whole program\nwhat a nice program!".to_string()),
-        Style::Error,
-    );
-
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
+    fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
 }
 
 fn compile_to_asm<'source, 'manifest>(

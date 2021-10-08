@@ -392,8 +392,12 @@ pub enum CompileError<'sc> {
         kind: &'sc str,
         span: Span<'sc>,
     },
-    #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
-    AssignmentToNonMutable(String, Span<'sc>),
+    #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
+    AssignmentToNonMutable{
+        name: &'sc str,
+        decl_span: Span<'sc>,
+        usage_span: Span<'sc>
+    },
     #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
@@ -793,7 +797,7 @@ impl<'sc> CompileError<'sc> {
             NoScriptMainFunction(span) => span,
             MultipleScriptMainFunctions(span) => span,
             ReassignmentToNonVariable { span, .. } => span,
-            AssignmentToNonMutable(_, span) => span,
+            AssignmentToNonMutable { decl_span, .. } => decl_span,
             TypeParameterNotInTypeScope { span, .. } => span,
             MultipleImmediates(span) => span,
             MismatchedTypeInTrait { span, .. } => span,
