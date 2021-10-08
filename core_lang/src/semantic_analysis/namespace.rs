@@ -3,7 +3,7 @@ use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{Engine, TypeId};
+use crate::type_engine::{Engine, TypeEngine, TypeId};
 use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
@@ -17,7 +17,7 @@ type TraitName<'a> = CallPath<'a>;
 pub struct Namespace<'sc> {
     pub(crate) symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
     pub(crate) implemented_traits:
-        HashMap<(TraitName<'sc>, MaybeResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
+        HashMap<(TraitName<'sc>, ResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     pub(crate) modules: HashMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
@@ -29,43 +29,50 @@ pub struct Namespace<'sc> {
 }
 
 impl<'sc> Namespace<'sc> {
+    pub(crate) fn look_up_type_id(&self, id: TypeId) -> ResolvedType<'sc> {
+        self.type_engine
+            .resolve(id)
+            .expect("Internal error: type ID did not exist in type engine")
+    }
     pub(crate) fn insert_type(&mut self, ty: TypeInfo<'sc>) -> TypeId {
         self.type_engine.insert(ty)
     }
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
-    pub(crate) fn resolve_type(&mut self, ty: TypeInfo, self_type: TypeId) -> TypeId {
+    pub(crate) fn resolve_type(&mut self, ty: TypeInfo<'sc>, self_type: TypeId) -> TypeId {
         todo!(
             "still do the custom type to enum/struct type thing, but then\
         use type IDs for the rest of it."
         );
         let ty = ty.clone();
-        let ty = match ty {
+        match ty {
             TypeInfo::Custom { name } => match self.get_symbol(&name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,
                     ..
-                })) => TypeInfo::Struct {
+                })) => self.insert_type(TypeInfo::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
-                },
+                }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                     name,
                     variants,
                     ..
-                })) => TypeInfo::Enum {
+                })) => self.insert_type(TypeInfo::Enum {
                     name: name.clone(),
-                    variant_types: variants.iter().map(|x| x.r#type.clone()).collect(),
-                },
+                    variant_types: variants
+                        .iter()
+                        .map(|x| self.look_up_type_id(x.r#type))
+                        .collect(),
+                }),
                 Some(_) => todo!(),
-                None => TypeInfo::Unknown,
+                None => self.insert_type(TypeInfo::Unknown),
             },
-            TypeInfo::SelfType => self_type.clone(),
+            TypeInfo::SelfType => self_type,
 
             o => todo!("put type engine in namespace and use that"),
-        };
-        self.type_engine.insert(ty)
+        }
     }
     /// Used to resolve a type when there is no known self type. This is needed
     /// when declaring new self types.
@@ -87,7 +94,10 @@ impl<'sc> Namespace<'sc> {
                     ..
                 })) => MaybeResolvedType::Resolved(ResolvedType::Enum {
                     name: name.clone(),
-                    variant_types: variants.iter().map(|x| x.r#type.clone()).collect(),
+                    variant_types: variants
+                        .iter()
+                        .map(|x| self.look_up_type_id(x.r#type))
+                        .collect(),
                 }),
                 Some(_) => MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
                     name: name.clone(),
@@ -280,7 +290,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath<'sc>,
-        type_implementing_for: MaybeResolvedType<'sc>,
+        type_implementing_for: ResolvedType<'sc>,
         functions_buf: Vec<TypedFunctionDeclaration<'sc>>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
@@ -332,7 +342,7 @@ impl<'sc> Namespace<'sc> {
     /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
-        &self,
+        &mut self,
         subfield_exp: &[Ident<'sc>],
     ) -> CompileResult<'sc, (TypeId, TypeId)> {
         let mut warnings = vec![];
@@ -351,7 +361,7 @@ impl<'sc> Namespace<'sc> {
         };
         if ident_iter.peek().is_none() {
             let ty = check!(
-                symbol.return_type(),
+                symbol.return_type(self),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -359,7 +369,7 @@ impl<'sc> Namespace<'sc> {
             return ok((ty.clone(), ty), warnings, errors);
         }
         let mut symbol = check!(
-            symbol.return_type(),
+            symbol.return_type(self),
             return err(warnings, errors),
             warnings,
             errors
@@ -399,7 +409,7 @@ impl<'sc> Namespace<'sc> {
                 }
             };
 
-            match r#type {
+            match self.look_up_type_id(r#type) {
                 ResolvedType::Struct {
                     fields: ref l_fields,
                     ..
@@ -420,11 +430,12 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn get_methods_for_type(
         &self,
-        r#type: &MaybeResolvedType<'sc>,
+        r#type: TypeId,
     ) -> Vec<TypedFunctionDeclaration<'sc>> {
         let mut methods = vec![];
+        let r#type = self.look_up_type_id(r#type);
         for ((_trait_name, type_info), l_methods) in &self.implemented_traits {
-            if type_info == r#type {
+            if *type_info == r#type {
                 methods.append(&mut l_methods.clone());
             }
         }
@@ -438,7 +449,7 @@ impl<'sc> Namespace<'sc> {
     /// This function will generate a missing method error if the method is not found.
     pub(crate) fn find_method_for_type(
         &self,
-        r#type: &MaybeResolvedType<'sc>,
+        r#type: TypeId,
         method_name: &MethodName<'sc>,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression<'sc>>,
@@ -447,7 +458,7 @@ impl<'sc> Namespace<'sc> {
         let mut errors = vec![];
         let (namespace, method_name, r#type) = match method_name {
             // something like a.b(c)
-            MethodName::FromModule { ref method_name } => (self, method_name, r#type.clone()),
+            MethodName::FromModule { ref method_name } => (self, method_name, r#type),
             // something like blah::blah::~Type::foo()
             MethodName::FromType {
                 ref call_path,
@@ -473,9 +484,9 @@ impl<'sc> Namespace<'sc> {
 
         // This is a hack and I don't think it should be used.  We check the local namespace first,
         // but if nothing turns up then we try the namespace where the type itself is declared.
-        let methods = self.get_methods_for_type(&r#type);
+        let methods = self.get_methods_for_type(r#type);
         let methods = match methods[..] {
-            [] => namespace.get_methods_for_type(&r#type),
+            [] => namespace.get_methods_for_type(r#type),
             _ => methods,
         };
 
@@ -485,12 +496,14 @@ impl<'sc> Namespace<'sc> {
         {
             Some(o) => ok(o, warnings, errors),
             None => {
-                if args_buf.get(0).map(|x| &x.return_type)
-                    != Some(&MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery))
+                if args_buf.get(0).map(|x| self.look_up_type_id(x.return_type))
+                    != Some(ResolvedType::ErrorRecovery)
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.primary_name.to_string(),
-                        type_name: args_buf[0].return_type.friendly_type_str(),
+                        type_name: self
+                            .look_up_type_id(args_buf[0].return_type)
+                            .friendly_type_str(),
                         span: method_name.span.clone(),
                     });
                 }
@@ -509,20 +522,21 @@ impl<'sc> Namespace<'sc> {
         debug_string: impl Into<String>,
         debug_span: &Span<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, Ident<'sc>)> {
+        let ty = self.look_up_type_id(ty);
         match ty {
-            MaybeResolvedType::Resolved(ResolvedType::Struct { name, fields }) => {
+            ResolvedType::Struct { name, fields } => {
                 ok((fields.to_vec(), name.clone()), vec![], vec![])
             }
+            // If we hit `ErrorRecovery` then the source of that type should have populated
+            // the error buffer elsewhere
+            ResolvedType::ErrorRecovery => err(vec![], vec![]),
             a => err(
                 vec![],
-                match a {
-                    MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery) => vec![],
-                    _ => vec![CompileError::NotAStruct {
-                        name: debug_string.into(),
-                        span: debug_span.clone(),
-                        actually: a.friendly_type_str(),
-                    }],
-                },
+                vec![CompileError::NotAStruct {
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.friendly_type_str(),
+                }],
             ),
         }
     }

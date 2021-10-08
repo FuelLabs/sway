@@ -128,15 +128,15 @@ impl<'sc> ResolvedType<'sc> {
                 // of any individual variant
                 1 + variant_types
                     .iter()
-                    .map(|x| x.stack_size_of())
+                    .map(|x| x.stack_size_of(namespace))
                     .max()
                     .unwrap()
             }
             ResolvedType::Struct { fields, .. } => fields.iter().fold(0, |acc, x| {
                 acc + namespace
-                    .resolve_type(x.r#type)
+                    .resolve_type(x.r#type, &x.name.span)
                     .expect("should be unreachable?")
-                    .stack_size_of()
+                    .stack_size_of(namespace)
             }),
             // `ContractCaller` types are unsized and used only in the type system for
             // calling methods
@@ -181,7 +181,10 @@ impl<'sc> ResolvedType<'sc> {
                     let names = fields
                         .iter()
                         .map(|TypedStructField { r#type, .. }| {
-                            r#type.to_selector_name(error_msg_span)
+                            namespace
+                                .resolve_type(r#type, error_msg_span)
+                                .expect("unreachable?")
+                                .to_selector_name(error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];

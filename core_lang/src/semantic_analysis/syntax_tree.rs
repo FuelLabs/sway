@@ -122,11 +122,11 @@ impl<'sc> TypedParseTree<'sc> {
                 TypedAstNode::type_check(
                     node.clone(),
                     namespace,
-                    None,
+                    namespace.insert_type(TypeInfo::Unknown),
                     "",
                     // TODO only allow impl traits on contract trees, do something else
                     // for other tree types
-                    &MaybeResolvedType::Resolved(ResolvedType::Contract),
+                    namespace.insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                 )
@@ -190,8 +190,8 @@ impl<'sc> TypedParseTree<'sc> {
                     ));
                 }
                 let main_func = &mains[0];
-                match main_func.return_type {
-                    MaybeResolvedType::Resolved(ResolvedType::Boolean) => (),
+                match namespace.look_up_type_id(main_func.return_type) {
+                    ResolvedType::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
                     )),

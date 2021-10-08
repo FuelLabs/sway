@@ -1,6 +1,7 @@
 use crate::error::*;
 use crate::types::{IntegerBits, ResolvedType};
 use crate::Span;
+use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use std::collections::HashMap;
 
 pub trait TypeEngine<'sc> {
@@ -46,6 +47,14 @@ pub enum TypeInfo<'sc> {
     Unknown,
     Str(u64),
     UnsignedInteger(IntegerBits),
+    Enum {
+        name: Ident<'sc>,
+        variant_types: Vec<ResolvedType<'sc>>,
+    },
+    Struct {
+        name: Ident<'sc>,
+        fields: Vec<TypedStructField<'sc>>,
+    },
     Boolean,
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.
@@ -163,6 +172,8 @@ impl<'sc> TypeEngine<'sc> for Engine<'sc> {
                 self.vars.insert(b, a);
                 Ok(None)
             }
+            (Enum { .. }, _) | (_, Enum { .. }) => todo!("enum ty"),
+            (Struct { .. }, _) | (_, Struct { .. }) => todo!("struct ty"),
 
             // When unifying complex types, we must check their sub-types. This
             // can be trivially implemented for tuples, sum types, etc.

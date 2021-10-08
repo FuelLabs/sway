@@ -224,14 +224,14 @@ impl<'sc> Dependencies<'sc> {
                 body,
                 ..
             }) => self
-                .gather_from_option_typeinfo(type_ascription)
+                .gather_from_typeinfo(type_ascription)
                 .gather_from_expr(body),
             Declaration::ConstantDeclaration(ConstantDeclaration {
                 type_ascription,
                 value,
                 ..
             }) => self
-                .gather_from_option_typeinfo(type_ascription)
+                .gather_from_typeinfo(type_ascription)
                 .gather_from_expr(value),
             Declaration::FunctionDeclaration(fn_decl) => self.gather_from_fn_decl(fn_decl),
             Declaration::StructDeclaration(StructDeclaration {
