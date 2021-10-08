@@ -78,14 +78,15 @@ pub fn run(filter_regex: Option<regex::Regex>) {
 
     // ---- Contract Deployments
     // contracts that should be deployed for the following tests to work
-    let contract_names = vec!["basic_storage"];
+    let contract_names = vec!["basic_storage", "increment_contract"];
 
     for name in contract_names {
         harness::deploy_contract(name)
     }
 
     // ---- Tests that need the above contracts deployed to work
-    let project_names = &["call_basic_storage"];
+    // TODO validate that call output is correct
+    let project_names = &["call_basic_storage", "call_increment_contract"];
 
     project_names
         .into_iter()
