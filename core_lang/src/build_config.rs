@@ -5,6 +5,7 @@ use std::path::PathBuf;
 pub struct BuildConfig {
     pub(crate) file_name: PathBuf,
     pub(crate) dir_of_code: PathBuf,
+    pub(crate) manifest_path: PathBuf,
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
 }
@@ -21,6 +22,7 @@ impl BuildConfig {
         Self {
             file_name: file_name,
             dir_of_code: path,
+            manifest_path: canonicalized_manifest_path,
             print_intermediate_asm: false,
             print_finalized_asm: false,
         }

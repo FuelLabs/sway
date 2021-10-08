@@ -139,7 +139,6 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     }
                 };
             }
-
             let ptr = check!(
                 namespace.look_up_variable(&top_level_decl),
                 return err(warnings, errors),

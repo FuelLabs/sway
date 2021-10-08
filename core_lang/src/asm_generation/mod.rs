@@ -361,7 +361,7 @@ fn label_is_used<'sc>(buf: &[Op<'sc>], label: &Label) -> bool {
     })
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct DataSection<'sc> {
     /// the data to be put in the data section of the asm
     pub value_pairs: Vec<Data<'sc>>,
@@ -568,7 +568,7 @@ impl<'sc> fmt::Display for InstructionSet<'sc> {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub(crate) struct AsmNamespace<'sc> {
     data_section: DataSection<'sc>,
     variables: HashMap<Ident<'sc>, VirtualRegister>,

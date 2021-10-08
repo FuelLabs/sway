@@ -149,6 +149,7 @@ pub(crate) fn get_struct_memory_layout<'sc>(
 pub(crate) fn convert_struct_expression_to_asm<'sc>(
     struct_name: &Ident<'sc>,
     fields: &[TypedStructExpressionField<'sc>],
+    struct_beginning_pointer: &VirtualRegister,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
@@ -189,7 +190,6 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     )));
 
     // step 1
-    let struct_beginning_pointer = register_sequencer.next();
     asm_buf.push(Op::unowned_register_move(
         struct_beginning_pointer.clone(),
         VirtualRegister::Constant(ConstantRegister::StackPointer),

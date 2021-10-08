@@ -36,8 +36,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         (
             "retd_struct",
             ProgramState::ReturnData(Bytes32::from([
-                2, 23, 32, 21, 62, 98, 71, 190, 175, 43, 135, 133, 106, 105, 116, 64, 126, 40, 204,
-                235, 151, 159, 245, 170, 112, 203, 40, 158, 9, 238, 188, 213,
+                139, 216, 67, 1, 172, 74, 189, 183, 82, 11, 99, 241, 23, 111, 195, 89, 208, 127,
+                16, 95, 247, 254, 168, 151, 227, 225, 199, 179, 50, 80, 63, 175,
             ])),
         ),
         ("op_precedence", ProgramState::Return(0)),
@@ -45,6 +45,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("op_precedence", ProgramState::Return(0)), // 1 == false
         ("b256_bad_jumps", ProgramState::Return(1)),
         ("b256_ops", ProgramState::Return(100)),
+        ("struct_field_access", ProgramState::Return(43)),
         ("bool_and_or", ProgramState::Return(42)),
         ("doc_strings", ProgramState::Return(20)),
         ("neq_4_test", ProgramState::Return(0)),
@@ -67,6 +68,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "excess_fn_arguments",
         "infinite_dependencies",
         "top_level_vars",
+        "dependencies_parsing_error",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {

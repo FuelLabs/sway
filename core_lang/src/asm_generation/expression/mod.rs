@@ -245,7 +245,13 @@ pub(crate) fn convert_expression_to_asm<'sc>(
         TypedExpressionVariant::StructExpression {
             struct_name,
             fields,
-        } => convert_struct_expression_to_asm(struct_name, fields, namespace, register_sequencer),
+        } => convert_struct_expression_to_asm(
+            struct_name,
+            fields,
+            return_register,
+            namespace,
+            register_sequencer,
+        ),
         TypedExpressionVariant::StructFieldAccess {
             resolved_type_of_parent,
             prefix,
