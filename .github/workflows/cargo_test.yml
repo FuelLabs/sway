@@ -63,7 +63,7 @@ jobs:
     - name: Build test suite
       uses: actions-rs/cargo@v1
       with:
-        command: test  
+        command: test
         args: --bin test
 
     - name: Run test suite
