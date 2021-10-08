@@ -171,17 +171,17 @@ fn test_print_tx_inputs() {
         contract_id: Some(
             "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd".into(),
         ),
-        utxo_id: "blah".into(),
+        utxo_id: Some("blah".into()),
         ..Default::default()
     };
     let input2 = TxInput {
         contract_id: Some(
             "0xe7777777777bfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd".into(),
         ),
-        utxo_id: "blah".into(),
+        utxo_id: Some("blah".into()),
         ..Default::default()
     };
 
-    default_manifest.tx_inputs = Some(vec![input1, input2]);
+    default_manifest.tx_input = Some(vec![input1, input2]);
     println!("{}", toml::to_string(&default_manifest).unwrap());
 }

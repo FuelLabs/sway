@@ -1,4 +1,4 @@
-use super::*;
+
 use std::fmt;
 
 /// Represents virtual registers that have yet to be allocated.

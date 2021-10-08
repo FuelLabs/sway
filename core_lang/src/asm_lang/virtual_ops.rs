@@ -11,10 +11,10 @@ use super::{
     DataId, RealizedOp,
 };
 use crate::asm_generation::RegisterPool;
-use crate::error::*;
-use crate::span::Span;
+
+
 use std::collections::{HashMap, HashSet};
-use std::convert::TryInto;
+
 use std::fmt;
 
 /// This enum is unfortunately a redundancy of the [fuel_asm::Opcode] enum. This variant, however,

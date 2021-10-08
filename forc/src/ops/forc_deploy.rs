@@ -6,7 +6,7 @@ use fuel_vm::prelude::*;
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
-use crate::utils::manifest::TxInput;
+
 use crate::utils::{constants, helpers};
 use constants::{DEFAULT_NODE_URL, SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
 use helpers::{find_manifest_dir, get_main_file, read_manifest};

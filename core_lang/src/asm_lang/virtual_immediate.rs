@@ -1,12 +1,8 @@
-use super::{
-    allocated_ops::{AllocatedOpcode, AllocatedRegister},
-    virtual_register::*,
-    DataId, RealizedOp,
-};
-use crate::asm_generation::RegisterPool;
+
+
 use crate::error::*;
 use crate::span::Span;
-use std::collections::{HashMap, HashSet};
+
 use std::convert::TryInto;
 use std::fmt;
 
