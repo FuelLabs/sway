@@ -31,7 +31,18 @@ pub struct Namespace<'sc> {
 impl<'sc> Namespace<'sc> {
     pub(crate) fn look_up_type_id(&self, id: TypeId) -> ResolvedType<'sc> {
         self.type_engine
-            .resolve(id)
+            .resolve(
+                id,
+                &Span {
+                    span: pest::Span::new(
+                        "because we \"expect\" here, we don't need this error span.",
+                        0,
+                        0,
+                    )
+                    .unwrap(),
+                    path: Default::default(),
+                },
+            )
             .expect("Internal error: type ID did not exist in type engine")
     }
     pub(crate) fn insert_type(&mut self, ty: TypeInfo<'sc>) -> TypeId {

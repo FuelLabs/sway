@@ -161,11 +161,11 @@ fn type_check_trait_implementation<'sc>(
     trait_name: &Ident<'sc>,
     type_arguments: &[TypeParameter<'sc>],
     namespace: &mut Namespace<'sc>,
-    self_type: &MaybeResolvedType<'sc>,
+    self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     block_span: &Span<'sc>,
-    type_implementing_for: &MaybeResolvedType<'sc>,
+    type_implementing_for: TypeInfo<'sc>,
     mode: Mode,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
@@ -264,27 +264,27 @@ fn type_check_trait_implementation<'sc>(
                                 }
                             } else {
                                 let fn_decl_param_type = check!(
-                                    fn_decl_param
-                                        .r#type
-                                        .force_resolution(self_type, &fn_decl_param.type_span),
+                                    fn_decl_param.r#type,
                                     return Some(errors),
                                     warnings,
                                     errors
                                 );
                                 let trait_param_type = check!(
-                                    trait_param
-                                        .r#type
-                                        .force_resolution(self_type, &fn_decl_param.type_span),
+                                    trait_param.r#type,
                                     return Some(errors),
                                     warnings,
                                     errors
                                 );
 
-                                if fn_decl_param_type != trait_param_type {
+                                let real_fn_decl_param_type =
+                                    namespace.look_up_type_id(fn_decl_param_type);
+                                let real_trait_param_type =
+                                    namespace.look_up_type_id(trait_param_type);
+                                if real_fn_decl_param_type != real_trait_param_type {
                                     errors.push(CompileError::MismatchedTypeInTrait {
                                         span: trait_param.type_span.clone(),
-                                        given: trait_param.r#type.friendly_type_str(),
-                                        expected: fn_decl_param.r#type.friendly_type_str(),
+                                        given: real_trait_param_type.friendly_type_str(),
+                                        expected: real_fn_decl_param_type.friendly_type_str(),
                                     });
                                 }
                             }
@@ -297,17 +297,13 @@ fn type_check_trait_implementation<'sc>(
                     {
                         errors.append(&mut maybe_err);
                     }
-                    let return_type = check!(
-                        return_type.force_resolution(self_type, return_type_span),
-                        ResolvedType::ErrorRecovery,
-                        warnings,
-                        errors
-                    );
-                    if fn_decl.return_type != MaybeResolvedType::Resolved(return_type.clone()) {
+                    let real_ret_type = namespace.look_up_type_id(*return_type);
+                    let real_fn_decl_ty = namespace.look_up_type_id(fn_decl.return_type);
+                    if real_fn_decl_ty != real_ret_type {
                         errors.push(CompileError::MismatchedTypeInTrait {
                             span: fn_decl.return_type_span.clone(),
-                            expected: return_type.friendly_type_str(),
-                            given: fn_decl.return_type.friendly_type_str(),
+                            expected: real_ret_type.friendly_type_str(),
+                            given: real_fn_decl_ty.friendly_type_str(),
                         });
                     }
                     if errors.is_empty() {
@@ -347,8 +343,8 @@ fn type_check_trait_implementation<'sc>(
         let method = check!(
             TypedFunctionDeclaration::type_check(
                 method.clone(),
-                &local_namespace,
-                None,
+                &mut local_namespace,
+                namespace.insert_type(TypeInfo::Unknown),
                 "",
                 self_type,
                 build_config,
@@ -359,7 +355,8 @@ fn type_check_trait_implementation<'sc>(
             warnings,
             errors
         );
-        let fn_decl = method.replace_self_types(type_implementing_for);
+        let self_type_id = namespace.insert_type(type_implementing_for);
+        let fn_decl = method.replace_self_types(self_type_id);
         functions_buf.push(fn_decl);
     }
 
