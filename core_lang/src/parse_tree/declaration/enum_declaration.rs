@@ -34,7 +34,7 @@ impl<'sc> EnumDeclaration<'sc> {
     /// something.
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &Namespace<'sc>,
+        namespace: &mut Namespace<'sc>,
         self_type: TypeId,
     ) -> TypedEnumDeclaration<'sc> {
         let mut variants_buf = vec![];

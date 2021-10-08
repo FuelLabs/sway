@@ -79,21 +79,17 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             let mut iter = reassignment.lhs.iter();
             let (mut fields, top_level_decl) = match iter
                 .next()
-                .map(
-                    |ReassignmentLhs { r#type, name }| -> Result<_, CompileError<'sc>> {
-                        match r#type {
-                            MaybeResolvedType::Resolved(ResolvedType::Struct {
-                                ref fields,
-                                ..
-                            }) => Ok((fields.clone(), name)),
-                            ref a => Err(CompileError::NotAStruct {
-                                name: name.primary_name.to_string(),
-                                span: name.span.clone(),
-                                actually: a.friendly_type_str(),
-                            }),
-                        }
-                    },
-                )
+                .map(|ReassignmentLhs { r#type, name }| -> Result<_, _> {
+                    match namespace.resolve_type(*r#type, &name.span) {
+                        Ok(ResolvedType::Struct { ref fields, .. }) => Ok((fields.clone(), name)),
+                        Ok(ref a) => Err(CompileError::NotAStruct {
+                            name: name.primary_name.to_string(),
+                            span: name.span.clone(),
+                            actually: a.friendly_type_str(),
+                        }),
+                        Err(a) => Err(CompileError::TypeError(a)),
+                    }
+                })
                 .expect("Empty structs not allowed yet")
             {
                 Ok(o) => o,
@@ -106,10 +102,24 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // delve into this potentially nested field access and figure out the location of this
             // subfield
             for ReassignmentLhs { r#type, name } in iter {
+                let r#type = match namespace.resolve_type(r#type.clone(), &name.span) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        errors.push(CompileError::TypeError(e));
+                        ResolvedType::ErrorRecovery
+                    }
+                };
                 let fields_for_layout = fields
                     .iter()
                     .map(|TypedStructField { name, r#type, .. }| {
-                        (MaybeResolvedType::Resolved(r#type.clone()), name)
+                        let r#type = match namespace.resolve_type(r#type.clone(), &name.span) {
+                            Ok(o) => o,
+                            Err(e) => {
+                                errors.push(CompileError::TypeError(e));
+                                ResolvedType::ErrorRecovery
+                            }
+                        };
+                        (MaybeResolvedType::Resolved(r#type), name)
                     })
                     .collect::<Vec<_>>();
                 let field_layout = check!(
@@ -126,9 +136,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 );
                 offset_in_words += offset_of_this_field;
                 fields = match r#type {
-                    MaybeResolvedType::Resolved(ResolvedType::Struct { ref fields, .. }) => {
-                        fields.clone()
-                    }
+                    ResolvedType::Struct { ref fields, .. } => fields.clone(),
                     ref a => {
                         errors.push(CompileError::NotAStruct {
                             name: name.primary_name.to_string(),

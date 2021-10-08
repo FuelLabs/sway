@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt};
 
+use crate::type_engine::TypeEngine;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
     asm_lang::{
@@ -17,7 +18,7 @@ use crate::{
         TypedParseTree,
     },
     types::{MaybeResolvedType, ResolvedType},
-    BuildConfig, Ident,
+    BuildConfig, Ident, TypeInfo,
 };
 use either::Either;
 
@@ -33,6 +34,7 @@ pub(crate) use expression::*;
 pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
 
+use crate::type_engine::{Engine, TypeId};
 use while_loop::convert_while_loop_to_asm;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
@@ -191,7 +193,11 @@ impl<'sc> AbstractInstructionSet<'sc> {
 
     /// Runs two passes -- one to get the instruction offsets of the labels
     /// and one to replace the labels in the organizational ops
-    fn realize_labels(self, data_section: &DataSection) -> RealizedAbstractInstructionSet<'sc> {
+    fn realize_labels(
+        self,
+        data_section: &DataSection,
+        namespace: &AsmNamespace,
+    ) -> RealizedAbstractInstructionSet<'sc> {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
         for op in &self.ops {
@@ -204,7 +210,7 @@ impl<'sc> AbstractInstructionSet<'sc> {
                     let type_of_data = data_section.type_of_data(data_id).expect(
                         "Internal miscalculation in data section -- data id did not match up to any actual data",
                     );
-                    counter += if type_of_data.stack_size_of() > 1 {
+                    counter += if type_of_data.stack_size_of(namespace) > 1 {
                         2
                     } else {
                         1
@@ -575,6 +581,7 @@ impl<'sc> fmt::Display for InstructionSet<'sc> {
 pub(crate) struct AsmNamespace<'sc> {
     data_section: DataSection<'sc>,
     variables: HashMap<Ident<'sc>, VirtualRegister>,
+    type_engine: Engine<'sc>,
 }
 
 /// An address which refers to a value in the data section of the asm.
@@ -588,6 +595,13 @@ impl fmt::Display for DataId {
 }
 
 impl<'sc> AsmNamespace<'sc> {
+    pub(crate) fn resolve_type(
+        &self,
+        type_id: TypeId,
+        error_span: &crate::Span<'sc>,
+    ) -> Result<ResolvedType<'sc>, TypeError> {
+        self.type_engine.resolve(type_id, error_span)
+    }
     pub(crate) fn insert_variable(
         &mut self,
         var_name: Ident<'sc>,
@@ -626,7 +640,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
     let mut register_sequencer = RegisterSequencer::new();
     let mut warnings = vec![];
     let mut errors = vec![];
-    let asm = match ast {
+    let (asm, asm_namespace) = match ast {
         TypedParseTree::Script {
             main_function,
             declarations,
@@ -672,10 +686,13 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 errors
             ));
 
-            HllAsmSet::ScriptMain {
-                program_section: AbstractInstructionSet { ops: asm_buf },
-                data_section: namespace.data_section,
-            }
+            (
+                HllAsmSet::ScriptMain {
+                    program_section: AbstractInstructionSet { ops: asm_buf },
+                    data_section: namespace.data_section.clone(),
+                },
+                namespace,
+            )
         }
         TypedParseTree::Predicate {
             main_function,
@@ -709,10 +726,13 @@ pub(crate) fn compile_ast_to_asm<'sc>(
             );
             asm_buf.append(&mut body);
 
-            HllAsmSet::PredicateMain {
-                program_section: AbstractInstructionSet { ops: asm_buf },
-                data_section: namespace.data_section,
-            }
+            (
+                HllAsmSet::PredicateMain {
+                    program_section: AbstractInstructionSet { ops: asm_buf },
+                    data_section: namespace.data_section,
+                },
+                namespace.clone(),
+            )
         }
         TypedParseTree::Contract {
             abi_entries,
@@ -745,12 +765,15 @@ pub(crate) fn compile_ast_to_asm<'sc>(
             ));
             asm_buf.append(&mut contract_asm);
 
-            HllAsmSet::ContractAbi {
-                program_section: AbstractInstructionSet { ops: asm_buf },
-                data_section: namespace.data_section,
-            }
+            (
+                HllAsmSet::ContractAbi {
+                    program_section: AbstractInstructionSet { ops: asm_buf },
+                    data_section: namespace.data_section.clone(),
+                },
+                namespace,
+            )
         }
-        TypedParseTree::Library { .. } => HllAsmSet::Library,
+        TypedParseTree::Library { .. } => (HllAsmSet::Library, Default::default()),
     };
 
     if build_config.print_intermediate_asm {
@@ -759,7 +782,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
 
     let finalized_asm = asm
         .remove_unnecessary_jumps()
-        .allocate_registers()
+        .allocate_registers(&asm_namespace)
         .optimize();
 
     if build_config.print_finalized_asm {
@@ -799,7 +822,7 @@ impl<'sc> HllAsmSet<'sc> {
 }
 
 impl<'sc> JumpOptimizedAsmSet<'sc> {
-    fn allocate_registers(self) -> RegisterAllocatedAsmSet<'sc> {
+    fn allocate_registers(self, namespace: &AsmNamespace) -> RegisterAllocatedAsmSet<'sc> {
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
             JumpOptimizedAsmSet::ScriptMain {
@@ -807,7 +830,7 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section)
+                    .realize_labels(&data_section, namespace)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::ScriptMain {
                     data_section,
@@ -819,7 +842,7 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section)
+                    .realize_labels(&data_section, namespace)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::PredicateMain {
                     data_section,
@@ -831,7 +854,7 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 data_section,
             } => RegisterAllocatedAsmSet::ContractAbi {
                 program_section: program_section
-                    .realize_labels(&data_section)
+                    .realize_labels(&data_section, namespace)
                     .allocate_registers(),
                 data_section,
             },
@@ -1322,7 +1345,9 @@ fn ret_or_retd_value<'sc>(
     let mut errors = vec![];
     let mut warnings = vec![];
     let mut asm_buf = vec![];
-    let main_func_ret_ty = check!(
+    let main_func_ret_ty: ResolvedType = todo!(
+        "
+     check!(
         func.return_type.force_resolution(
             &MaybeResolvedType::Resolved(ResolvedType::Unit),
             &func.return_type_span
@@ -1330,6 +1355,7 @@ fn ret_or_retd_value<'sc>(
         return err(warnings, errors),
         warnings,
         errors
+    );"
     );
 
     if main_func_ret_ty == ResolvedType::Unit {
@@ -1349,7 +1375,7 @@ fn ret_or_retd_value<'sc>(
         );
     }
 
-    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of() * 8;
+    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of(namespace) * 8;
     if size_of_main_func_return_bytes <= 8 {
         asm_buf.push(Op {
             owning_span: None,

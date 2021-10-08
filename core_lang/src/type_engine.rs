@@ -3,7 +3,7 @@ use crate::types::{IntegerBits, ResolvedType};
 use crate::Span;
 use std::collections::HashMap;
 
-trait TypeEngine<'sc> {
+pub trait TypeEngine<'sc> {
     type TypeId;
     type TypeInfo;
     type ResolvedType;

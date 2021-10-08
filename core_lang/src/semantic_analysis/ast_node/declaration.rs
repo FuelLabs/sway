@@ -2,6 +2,7 @@ use super::impl_trait::Mode;
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
+use crate::asm_generation::AsmNamespace;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
@@ -54,7 +55,7 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
-    pub(crate) fn return_type(&self) -> CompileResult<'sc, TypeId> {
+    pub(crate) fn return_type(&self, namespace: &mut Namespace<'sc>) -> CompileResult<'sc, TypeId> {
         ok(
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -73,7 +74,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     name,
                     fields,
                     ..
-                }) => MaybeResolvedType::Resolved(ResolvedType::Struct {
+                }) => namespace.insert_type(TypeInfo::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
                 }),
@@ -197,11 +198,11 @@ impl<'sc> TypedEnumDeclaration<'sc> {
         ok(self.clone(), vec![], vec![])
     }
     /// Returns the [ResolvedType] corresponding to this enum's type.
-    pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
-        ResolvedType::Enum {
+    pub(crate) fn as_type(&self, namespace: &mut Namespace<'sc>) -> TypeId {
+        namespace.insert_type(TypeInfo::Enum {
             name: self.name.clone(),
             variant_types: self.variants.iter().map(|x| x.r#type.clone()).collect(),
-        }
+        })
     }
 }
 
@@ -319,7 +320,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         ok(buf, warnings, errors)
     }
 
-    pub fn to_selector_name(&self) -> CompileResult<'sc, String> {
+    pub fn to_selector_name(&self, namespace: &AsmNamespace<'sc>) -> CompileResult<'sc, String> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let named_params = self
@@ -328,7 +329,12 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .map(
                 |TypedFunctionParameter {
                      r#type, type_span, ..
-                 }| r#type.to_selector_name(type_span),
+                 }| {
+                    namespace
+                        .resolve_type(*r#type, type_span)
+                        .expect("unreachable I think?")
+                        .to_selector_name(type_span)
+                },
             )
             .filter_map(|name| name.ok(&mut warnings, &mut errors))
             .collect::<Vec<String>>();
@@ -550,7 +556,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,
-                Some(return_type.clone()),
+                return_type.clone(),
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
@@ -585,8 +591,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .collect::<Vec<_>>();
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
-            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { ref name }) =
-                param.r#type
+            if let Ok(MaybeResolvedType::Partial(PartiallyResolvedType::Generic { ref name })) =
+                namespace.resolve_type(*param.r#type, self_type)
             {
                 generic_params_buf_for_error_message.push(name.primary_name);
             }

@@ -1,4 +1,5 @@
 use super::IntegerBits;
+use crate::asm_generation::AsmNamespace;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
 use crate::types::MaybeResolvedType;
@@ -111,7 +112,7 @@ impl<'sc> ResolvedType<'sc> {
 
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     /// This is _in words_!
-    pub(crate) fn stack_size_of(&self) -> u64 {
+    pub(crate) fn stack_size_of(&self, namespace: &AsmNamespace<'sc>) -> u64 {
         match self {
             // Each char is a byte, so the size is the num of characters / 8
             // rounded up to the nearest word
@@ -131,9 +132,12 @@ impl<'sc> ResolvedType<'sc> {
                     .max()
                     .unwrap()
             }
-            ResolvedType::Struct { fields, .. } => fields
-                .iter()
-                .fold(0, |acc, x| acc + x.r#type.stack_size_of()),
+            ResolvedType::Struct { fields, .. } => fields.iter().fold(0, |acc, x| {
+                acc + namespace
+                    .resolve_type(x.r#type)
+                    .expect("should be unreachable?")
+                    .stack_size_of()
+            }),
             // `ContractCaller` types are unsized and used only in the type system for
             // calling methods
             ResolvedType::ContractCaller { .. } => 0,
