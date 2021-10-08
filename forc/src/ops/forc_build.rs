@@ -7,11 +7,6 @@ use crate::{
         println_yellow_err, read_manifest,
     },
 };
-use line_col::LineColLookup;
-use source_span::{
-    fmt::{Color, Formatter, Style},
-    Position, Span,
-};
 use std::fs::File;
 use std::io::Write;
 
@@ -20,6 +15,7 @@ use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
     Namespace,
 };
+use source_span::fmt::{Color, Formatter};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
@@ -254,7 +250,7 @@ fn compile_library<'source, 'manifest>(
 
             warnings.iter().for_each(|warning| format_warning(warning));
 
-            errors.into_iter().for_each(|error| format_err(error));
+            errors.into_iter().for_each(|error| format_err(&error));
 
             println_red_err(&format!(
                 "Aborting due to {} {}.",
@@ -271,6 +267,22 @@ fn compile_library<'source, 'manifest>(
             ))
         }
     }
+}
+
+fn format_err(err: &core_lang::CompileError) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = err.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", err.path());
+    println!("{}", formatted);
+}
+
+fn format_warning(warning: &core_lang::CompileWarning) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = warning.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", warning.path());
+    println!("{}", formatted);
 }
 
 fn compile<'source, 'manifest>(
@@ -299,7 +311,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(bytes)
+            return Ok(bytes);
         }
         BytecodeCompilationResult::Library { warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));
@@ -318,14 +330,14 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(vec![])
+            return Ok(vec![]);
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
             warnings.iter().for_each(|warning| format_warning(warning));
 
-            errors.into_iter().for_each(|error| format_err(error));
+            errors.into_iter().for_each(|error| format_err(&error));
 
             println_red_err(&format!(
                 "Aborting due to {} {}.",
@@ -333,159 +345,9 @@ fn compile<'source, 'manifest>(
                 if e_len > 1 { "errors" } else { "error" }
             ))
             .unwrap();
-            Err(format!("Failed to compile {}", proj_name))
+            return Err(format!("Failed to compile {}", proj_name));
         }
     }
-}
-
-fn format_warning(err: &core_lang::CompileWarning) {
-    let input = err.span.input();
-    let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-
-    let metrics = source_span::DEFAULT_METRICS;
-    let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-
-    for c in buffer.iter() {
-        let _ = c.unwrap(); // report eventual errors.
-    }
-
-    let (start_pos, end_pos) = err.span();
-    let lookup = LineColLookup::new(input);
-    let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(end_pos - 1);
-
-    let err_start = Position::new(start_line - 1, start_col - 1);
-    let err_end = Position::new(end_line - 1, end_col - 1);
-    let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(
-        err_span,
-        Some(err.to_friendly_warning_string()),
-        Style::Warning,
-    );
-
-    let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
-}
-
-fn format_err(err: core_lang::CompileError) {
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-    let path = err.clone().path();
-
-    let formatted = match err {
-        core_lang::CompileError::AssignmentToNonMutable {
-            decl_span,
-            usage_span,
-            ..
-        } => {
-            format_one(
-                &mut fmt,
-                decl_span.clone(),
-                Style::Note,
-                "Variable not declared as mutable. Try adding 'mut'.".to_string(),
-            );
-            format_one(
-                &mut fmt,
-                usage_span.clone(),
-                Style::Error,
-                "Assignment to immutable variable.".to_string(),
-            );
-
-            let span = core_lang::utils::join_spans(decl_span, usage_span);
-            let input = span.input();
-            let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-            let metrics = source_span::DEFAULT_METRICS;
-            let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-            for c in buffer.iter() {
-                let _ = c.unwrap(); // report eventual errors.
-            }
-
-            fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
-        },
-        core_lang::CompileError::TooFewArgumentsForFunction {
-            decl_span,
-            usage_span,
-            ..
-        } => {
-            format_one(
-                &mut fmt,
-                decl_span.clone(),
-                Style::Note,
-                "Function declared here.".to_string(),
-            );
-            format_one(
-                &mut fmt,
-                usage_span.clone(),
-                Style::Error,
-                "Function recieved too few arguments.".to_string(),
-            );
-
-            let span = core_lang::utils::join_spans(decl_span, usage_span);
-            let input = span.input();
-            let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-            let metrics = source_span::DEFAULT_METRICS;
-            let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-            for c in buffer.iter() {
-                let _ = c.unwrap(); // report eventual errors.
-            }
-
-            fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
-        }
-        err => format_err_simple(fmt, err),
-    };
-
-    print_blue_err(" --> ").unwrap();
-    print!("{}", path);
-    println!("{}", formatted);
-}
-
-fn format_one<'sc>(
-    fmt: &mut Formatter,
-    span: core_lang::Span<'sc>,
-    style: source_span::fmt::Style,
-    friendly_string: String,
-) {
-    let input = span.input();
-    let (start_pos, end_pos) = (span.start(), span.end());
-    let lookup = LineColLookup::new(input);
-    let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
-
-    let err_start = Position::new(start_line - 1, start_col - 1);
-    let err_end = Position::new(end_line - 1, end_col - 1);
-    let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(err_span, Some(friendly_string.clone()), style);
-}
-
-fn format_err_simple<'sc>(
-    mut fmt: Formatter,
-    err: core_lang::CompileError,
-) -> source_span::fmt::Formatted {
-    let input = err.internal_span().input();
-    let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-
-    let metrics = source_span::DEFAULT_METRICS;
-    let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-    for c in buffer.iter() {
-        let _ = c.unwrap(); // report eventual errors.
-    }
-
-    let (start_pos, end_pos) = err.span();
-    let lookup = LineColLookup::new(input);
-    let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
-
-    let err_start = Position::new(start_line - 1, start_col - 1);
-    let err_end = Position::new(end_line - 1, end_col - 1);
-    let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(err_span, Some(err.to_friendly_error_string()), Style::Error);
-
-    fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
 }
 
 fn compile_to_asm<'source, 'manifest>(
@@ -540,7 +402,7 @@ fn compile_to_asm<'source, 'manifest>(
 
             warnings.iter().for_each(|warning| format_warning(warning));
 
-            errors.into_iter().for_each(|error| format_err(error));
+            errors.into_iter().for_each(|error| format_err(&error));
 
             println_red_err(&format!(
                 "Aborting due to {} {}.",

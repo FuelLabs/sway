@@ -2,6 +2,11 @@ use crate::span::Span;
 use crate::{parser::Rule, types::MaybeResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
+use line_col::LineColLookup;
+use source_span::{
+    fmt::{Formatter, Style},
+    Position,
+};
 use thiserror::Error;
 
 macro_rules! check {
@@ -136,6 +141,34 @@ impl<'sc> CompileWarning<'sc> {
             self.span.start_pos().line_col().into(),
             self.span.end_pos().line_col().into(),
         )
+    }
+
+    pub fn format(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
+        let input = self.span.input();
+        let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+
+        let metrics = source_span::DEFAULT_METRICS;
+        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+
+        for c in buffer.iter() {
+            let _ = c.unwrap(); // report eventual errors.
+        }
+
+        let (start_pos, end_pos) = self.span();
+        let lookup = LineColLookup::new(input);
+        let (start_line, start_col) = lookup.get(start_pos);
+        let (end_line, end_col) = lookup.get(end_pos - 1);
+
+        let err_start = Position::new(start_line - 1, start_col - 1);
+        let err_end = Position::new(end_line - 1, end_col - 1);
+        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
+        fmt.add(
+            err_span,
+            Some(self.to_friendly_warning_string()),
+            Style::Warning,
+        );
+
+        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
     }
 }
 
@@ -874,5 +907,116 @@ impl<'sc> CompileError<'sc> {
             self.internal_span().start_pos().line_col().into(),
             self.internal_span().end_pos().line_col().into(),
         )
+    }
+
+    pub fn format(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
+        match self {
+            CompileError::AssignmentToNonMutable {
+                decl_span,
+                usage_span,
+                ..
+            } => {
+                self.format_one(
+                    fmt,
+                    decl_span.clone(),
+                    Style::Note,
+                    "Variable not declared as mutable. Try adding 'mut'.".to_string(),
+                );
+                self.format_one(
+                    fmt,
+                    usage_span.clone(),
+                    Style::Error,
+                    "Assignment to immutable variable.".to_string(),
+                );
+
+                let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
+                let input = span.input();
+                let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+                let metrics = source_span::DEFAULT_METRICS;
+                let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+                for c in buffer.iter() {
+                    let _ = c.unwrap(); // report eventual errors.
+                }
+
+                fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+            }
+            CompileError::TooFewArgumentsForFunction {
+                decl_span,
+                usage_span,
+                ..
+            } => {
+                self.format_one(
+                    fmt,
+                    decl_span.clone(),
+                    Style::Note,
+                    "Function declared here.".to_string(),
+                );
+                self.format_one(
+                    fmt,
+                    usage_span.clone(),
+                    Style::Error,
+                    "Function recieved too few arguments.".to_string(),
+                );
+
+                let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
+                let input = span.input();
+                let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+                let metrics = source_span::DEFAULT_METRICS;
+                let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+                for c in buffer.iter() {
+                    let _ = c.unwrap(); // report eventual errors.
+                }
+
+                fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+            }
+            _ => self.format_err_simple(fmt),
+        }
+    }
+
+    fn format_one(
+        &self,
+        fmt: &mut Formatter,
+        span: Span<'sc>,
+        style: source_span::fmt::Style,
+        friendly_string: String,
+    ) {
+        let input = span.input();
+        let (start_pos, end_pos) = (span.start(), span.end());
+        let lookup = LineColLookup::new(input);
+        let (start_line, start_col) = lookup.get(start_pos);
+        let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
+
+        let err_start = Position::new(start_line - 1, start_col - 1);
+        let err_end = Position::new(end_line - 1, end_col - 1);
+        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
+        fmt.add(err_span, Some(friendly_string.clone()), style);
+    }
+
+    fn format_err_simple(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
+        let input = self.internal_span().input();
+        let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+
+        let metrics = source_span::DEFAULT_METRICS;
+        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+
+        for c in buffer.iter() {
+            let _ = c.unwrap(); // report eventual errors.
+        }
+
+        let (start_pos, end_pos) = self.span();
+        let lookup = LineColLookup::new(input);
+        let (start_line, start_col) = lookup.get(start_pos);
+        let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
+
+        let err_start = Position::new(start_line - 1, start_col - 1);
+        let err_end = Position::new(end_line - 1, end_col - 1);
+        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
+        fmt.add(
+            err_span,
+            Some(self.to_friendly_error_string()),
+            Style::Error,
+        );
+
+        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
     }
 }
