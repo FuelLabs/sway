@@ -733,10 +733,12 @@ fn reassignment<'sc>(
                     body.clone()
                 }
                 Some(o) => {
+                    let method = namespace.get_symbol(&name).unwrap();
                     errors.push(CompileError::ReassignmentToNonVariable {
                         name: name.primary_name,
                         kind: o.friendly_name(),
-                        span,
+                        decl_span: method.span(),
+                        usage_span: span,
                     });
                     return err(warnings, errors);
                 }

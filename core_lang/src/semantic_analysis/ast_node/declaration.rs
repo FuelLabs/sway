@@ -54,6 +54,7 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
+    
     pub(crate) fn return_type(&self) -> CompileResult<'sc, MaybeResolvedType<'sc>> {
         ok(
             match self {

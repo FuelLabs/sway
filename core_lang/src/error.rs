@@ -423,7 +423,8 @@ pub enum CompileError<'sc> {
     ReassignmentToNonVariable {
         name: &'sc str,
         kind: &'sc str,
-        span: Span<'sc>,
+        decl_span: Span<'sc>,
+        usage_span: Span<'sc>,
     },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable {
@@ -831,8 +832,8 @@ impl<'sc> CompileError<'sc> {
             PredicateMainDoesNotReturnBool(span) => span,
             NoScriptMainFunction(span) => span,
             MultipleScriptMainFunctions(span) => span,
-            ReassignmentToNonVariable { span, .. } => span,
-            AssignmentToNonMutable { decl_span, .. } => decl_span,
+            ReassignmentToNonVariable { usage_span, .. } => usage_span,
+            AssignmentToNonMutable { usage_span, .. } => usage_span,
             TypeParameterNotInTypeScope { span, .. } => span,
             MultipleImmediates(span) => span,
             MismatchedTypeInTrait { span, .. } => span,
@@ -916,123 +917,63 @@ impl<'sc> CompileError<'sc> {
                 name,
                 decl_span,
                 usage_span,
-            } => {
-                self.format_one(
-                    fmt,
-                    decl_span.clone(),
-                    Style::Note,
-                    format!(
-                        "Variable {} not declared as mutable. Try adding 'mut'.",
-                        name
-                    ),
-                );
-                self.format_one(
-                    fmt,
-                    usage_span.clone(),
-                    Style::Error,
-                    format!("Assignment to immutable variable {}.", name),
-                );
-
-                let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
-                let input = span.input();
-                let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-                let metrics = source_span::DEFAULT_METRICS;
-                let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-                for c in buffer.iter() {
-                    let _ = c.unwrap(); // report eventual errors.
-                }
-
-                fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
-            }
+            } => self.format_one_hint_one_err(
+                fmt,
+                decl_span,
+                format!(
+                    "Variable {} not declared as mutable. Try adding 'mut'.",
+                    name
+                ),
+                usage_span,
+                format!("Assignment to immutable variable {}.", name),
+            ),
             CompileError::TooFewArgumentsForFunction {
                 decl_span,
                 usage_span,
                 method_name,
                 expected,
                 received,
-            } => {
-                self.format_one(
-                    fmt,
-                    decl_span.clone(),
-                    Style::Note,
-                    format!("Function {} declared here.", method_name),
-                );
-                self.format_one(
-                    fmt,
-                    usage_span.clone(),
-                    Style::Error,
-                    format!(
-                        "Function {} expected {} arguments and recieved {}.",
-                        method_name, expected, received
-                    ),
-                );
-
-                let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
-                let input = span.input();
-                let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-                let metrics = source_span::DEFAULT_METRICS;
-                let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-                for c in buffer.iter() {
-                    let _ = c.unwrap(); // report eventual errors.
-                }
-
-                fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
-            }
+            } => self.format_one_hint_one_err(
+                fmt,
+                decl_span,
+                format!("Function {} declared here.", method_name),
+                usage_span,
+                format!(
+                    "Function {} expected {} arguments and recieved {}.",
+                    method_name, expected, received
+                ),
+            ),
             CompileError::TooManyArgumentsForFunction {
                 decl_span,
                 usage_span,
                 method_name,
                 expected,
                 received,
-            } => {
-                self.format_one(
-                    fmt,
-                    decl_span.clone(),
-                    Style::Note,
-                    format!("Function {} declared here.", method_name),
-                );
-                self.format_one(
-                    fmt,
-                    usage_span.clone(),
-                    Style::Error,
-                    format!(
-                        "Function {} expected {} arguments and recieved {}.",
-                        method_name, expected, received
-                    ),
-                );
-
-                let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
-                let input = span.input();
-                let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-                let metrics = source_span::DEFAULT_METRICS;
-                let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-                for c in buffer.iter() {
-                    let _ = c.unwrap(); // report eventual errors.
-                }
-
-                fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
-            }
+            } => self.format_one_hint_one_err(
+                fmt,
+                decl_span,
+                format!("Function {} declared here.", method_name),
+                usage_span,
+                format!(
+                    "Function {} expected {} arguments and recieved {}.",
+                    method_name, expected, received
+                ),
+            ),
+            CompileError::ReassignmentToNonVariable {
+                name,
+                kind,
+                decl_span,
+                usage_span,
+            } => self.format_one_hint_one_err(
+                fmt,
+                decl_span,
+                format!("Symbol {} declared here.", name),
+                usage_span,
+                format!("Attempted to reassign to a symbol that is not a variable. Symbol {} is not a mutable \
+                variable, it is a {}.", name, kind)
+            ),
             _ => self.format_err_simple(fmt),
         }
-    }
-
-    fn format_one(
-        &self,
-        fmt: &mut Formatter,
-        span: Span<'sc>,
-        style: source_span::fmt::Style,
-        friendly_string: String,
-    ) {
-        let input = span.input();
-        let (start_pos, end_pos) = (span.start(), span.end());
-        let lookup = LineColLookup::new(input);
-        let (start_line, start_col) = lookup.get(start_pos);
-        let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
-
-        let err_start = Position::new(start_line - 1, start_col - 1);
-        let err_end = Position::new(end_line - 1, end_col - 1);
-        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
-        fmt.add(err_span, Some(friendly_string.clone()), style);
     }
 
     fn format_err_simple(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
@@ -1061,5 +1002,47 @@ impl<'sc> CompileError<'sc> {
         );
 
         fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+    }
+
+    fn format_one_hint_one_err(
+        &self,
+        fmt: &mut Formatter,
+        hint_span: &Span<'sc>,
+        hint_message: String,
+        err_span: &Span<'sc>,
+        err_message: String,
+    ) -> source_span::fmt::Formatted {
+        self.format_one(fmt, hint_span.clone(), Style::Note, hint_message);
+        self.format_one(fmt, err_span.clone(), Style::Error, err_message);
+
+        let span = crate::utils::join_spans(hint_span.clone(), err_span.clone());
+        let input = span.input();
+        let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+        let metrics = source_span::DEFAULT_METRICS;
+        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+        for c in buffer.iter() {
+            let _ = c.unwrap(); // report eventual errors.
+        }
+
+        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+    }
+
+    fn format_one(
+        &self,
+        fmt: &mut Formatter,
+        span: Span<'sc>,
+        style: source_span::fmt::Style,
+        friendly_string: String,
+    ) {
+        let input = span.input();
+        let (start_pos, end_pos) = (span.start(), span.end());
+        let lookup = LineColLookup::new(input);
+        let (start_line, start_col) = lookup.get(start_pos);
+        let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
+
+        let err_start = Position::new(start_line - 1, start_col - 1);
+        let err_end = Position::new(end_line - 1, end_col - 1);
+        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
+        fmt.add(err_span, Some(friendly_string.clone()), style);
     }
 }
