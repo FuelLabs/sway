@@ -357,7 +357,8 @@ impl<'sc> TypedExpression<'sc> {
                         |acc, arg| crate::utils::join_spans(acc, arg.span()),
                     );
                     errors.push(CompileError::TooManyArgumentsForFunction {
-                        span: arguments_span,
+                        decl_span: span.clone(),
+                        usage_span: arguments_span,
                         method_name: name.suffix.primary_name,
                         expected: parameters.len(),
                         received: arguments.len(),

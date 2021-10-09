@@ -668,7 +668,8 @@ pub enum CompileError<'sc> {
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooManyArgumentsForFunction {
-        span: Span<'sc>,
+        decl_span: Span<'sc>,
+        usage_span: Span<'sc>,
         method_name: &'sc str,
         expected: usize,
         received: usize,
@@ -886,7 +887,7 @@ impl<'sc> CompileError<'sc> {
             UnnecessaryEnumInstantiator { span, .. } => span,
             TraitNotFound { span, .. } => span,
             InvalidExpressionOnLhs { span, .. } => span,
-            TooManyArgumentsForFunction { span, .. } => span,
+            TooManyArgumentsForFunction { usage_span, .. } => usage_span,
             TooFewArgumentsForFunction { usage_span, .. } => usage_span,
             InvalidAbiType { span, .. } => span,
             InvalidNumberOfAbiParams { span, .. } => span,
@@ -944,6 +945,37 @@ impl<'sc> CompileError<'sc> {
                 fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
             }
             CompileError::TooFewArgumentsForFunction {
+                decl_span,
+                usage_span,
+                method_name,
+                expected,
+                received,
+            } => {
+                self.format_one(
+                    fmt,
+                    decl_span.clone(),
+                    Style::Note,
+                    format!("Function {} declared here.", method_name),
+                );
+                self.format_one(
+                    fmt,
+                    usage_span.clone(),
+                    Style::Error,
+                    format!("Function {} expected {} arguments and recieved {}.", method_name, expected, received),
+                );
+
+                let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
+                let input = span.input();
+                let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+                let metrics = source_span::DEFAULT_METRICS;
+                let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+                for c in buffer.iter() {
+                    let _ = c.unwrap(); // report eventual errors.
+                }
+
+                fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+            }
+            CompileError::TooManyArgumentsForFunction {
                 decl_span,
                 usage_span,
                 method_name,
