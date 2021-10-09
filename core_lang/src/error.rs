@@ -912,21 +912,24 @@ impl<'sc> CompileError<'sc> {
     pub fn format(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
         match self {
             CompileError::AssignmentToNonMutable {
+                name,
                 decl_span,
                 usage_span,
-                ..
             } => {
                 self.format_one(
                     fmt,
                     decl_span.clone(),
                     Style::Note,
-                    "Variable not declared as mutable. Try adding 'mut'.".to_string(),
+                    format!(
+                        "Variable {} not declared as mutable. Try adding 'mut'.",
+                        name
+                    ),
                 );
                 self.format_one(
                     fmt,
                     usage_span.clone(),
                     Style::Error,
-                    "Assignment to immutable variable.".to_string(),
+                    format!("Assignment to immutable variable {}.", name),
                 );
 
                 let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
@@ -943,19 +946,21 @@ impl<'sc> CompileError<'sc> {
             CompileError::TooFewArgumentsForFunction {
                 decl_span,
                 usage_span,
-                ..
+                method_name,
+                expected,
+                received,
             } => {
                 self.format_one(
                     fmt,
                     decl_span.clone(),
                     Style::Note,
-                    "Function declared here.".to_string(),
+                    format!("Function {} declared here.", method_name),
                 );
                 self.format_one(
                     fmt,
                     usage_span.clone(),
                     Style::Error,
-                    "Function recieved too few arguments.".to_string(),
+                    format!("Function {} expected {} arguments and recieved {}.", method_name, expected, received),
                 );
 
                 let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
