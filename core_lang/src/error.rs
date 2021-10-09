@@ -961,7 +961,10 @@ impl<'sc> CompileError<'sc> {
                     fmt,
                     usage_span.clone(),
                     Style::Error,
-                    format!("Function {} expected {} arguments and recieved {}.", method_name, expected, received),
+                    format!(
+                        "Function {} expected {} arguments and recieved {}.",
+                        method_name, expected, received
+                    ),
                 );
 
                 let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
@@ -992,7 +995,10 @@ impl<'sc> CompileError<'sc> {
                     fmt,
                     usage_span.clone(),
                     Style::Error,
-                    format!("Function {} expected {} arguments and recieved {}.", method_name, expected, received),
+                    format!(
+                        "Function {} expected {} arguments and recieved {}.",
+                        method_name, expected, received
+                    ),
                 );
 
                 let span = crate::utils::join_spans(decl_span.clone(), usage_span.clone());
