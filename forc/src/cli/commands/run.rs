@@ -43,7 +43,7 @@ pub struct Command {
     pub silent_mode: bool,
 
     /// Pretty-print the outputs from the node.
-    #[structopt(long = "pretty-print", short = "p")]
+    #[structopt(long = "pretty-print", short = "r")]
     pub pretty_print: bool,
 }
 
