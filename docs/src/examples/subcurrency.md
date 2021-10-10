@@ -43,19 +43,19 @@ struct ParamsSend {
 
 /// ABI definition for a subcurrency.
 abi Token {
-    // Mint new tokens and sent to an address.
+    // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
     fn mint(gas: u64, coins: u64, color: b256, args: ParamsMint);
 
-    // Sends an amount of existing token.
+    // Sends an amount of an existing token.
     // Can be called from any address.
     fn send(gas: u64, coins: u64, color: b256, args: ParamsSend);
 }
 
 // Note: ABI methods for now must explicitly have as parameters:
-//  gas
-//  coins
-//  color
+//  gas to forward: u64
+//  coins to forward: u64,
+//  color of coins: b256
 
 ////////////////////////////////////////
 // Constants
