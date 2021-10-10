@@ -99,7 +99,9 @@ impl fmt::Display for ConstantRegister {
             ReturnValue => "$rv",
             ReturnLength => "$rl",
             Flags => "$flag",
-            DataSectionStart => "$ds",
+            // two `$` signs denotes this is a compiler-reserved register and not a
+            // VM-reserved register
+            DataSectionStart => "$$ds",
         };
         write!(f, "{}", text)
     }

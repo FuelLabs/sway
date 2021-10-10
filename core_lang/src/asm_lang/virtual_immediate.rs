@@ -12,7 +12,7 @@ pub struct VirtualImmediate06 {
 
 impl VirtualImmediate06 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
-        if raw > 0b111_111 {
+        if raw > crate::asm_generation::compiler_constants::SIX_BITS {
             return Err(CompileError::Immediate06TooLarge {
                 val: raw,
                 span: err_msg_span,
@@ -38,7 +38,7 @@ pub struct VirtualImmediate12 {
 
 impl VirtualImmediate12 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
-        if raw > 0b111_111_111_111 {
+        if raw > crate::asm_generation::compiler_constants::TWELVE_BITS {
             return Err(CompileError::Immediate12TooLarge {
                 val: raw,
                 span: err_msg_span,
