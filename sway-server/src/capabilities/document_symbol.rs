@@ -39,7 +39,7 @@ fn get_kind(token_type: &TokenType) -> SymbolKind {
         TokenType::FunctionDeclaration(_) | &TokenType::FunctionApplication => SymbolKind::Function,
         TokenType::Library => SymbolKind::Module,
         TokenType::Struct(_) => SymbolKind::Struct,
-        TokenType::Variable => SymbolKind::Variable,
+        TokenType::Variable(_) => SymbolKind::Variable,
         TokenType::Trait(_) => SymbolKind::Interface,
         _ => SymbolKind::Unknown,
     }

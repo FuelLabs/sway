@@ -39,7 +39,7 @@ fn get_kind(token_type: &TokenType) -> Option<CompletionItemKind> {
         }
         TokenType::Library => Some(CompletionItemKind::Module),
         TokenType::Struct(_) => Some(CompletionItemKind::Struct),
-        TokenType::Variable => Some(CompletionItemKind::Variable),
+        TokenType::Variable(_) => Some(CompletionItemKind::Variable),
         TokenType::Trait(_) => Some(CompletionItemKind::Interface),
         _ => None,
     }

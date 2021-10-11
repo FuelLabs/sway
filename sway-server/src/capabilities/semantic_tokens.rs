@@ -83,7 +83,7 @@ fn get_type(token_type: &TokenType) -> u32 {
     match token_type {
         TokenType::FunctionDeclaration(_) | &TokenType::FunctionApplication => FUNCTION,
         TokenType::Library => LIBRARY,
-        TokenType::Variable => VARIABLE,
+        TokenType::Variable(_) => VARIABLE,
         TokenType::Enum => ENUM,
         TokenType::Struct(_) => STRUCT,
         TokenType::Trait(_) => TRAIT,

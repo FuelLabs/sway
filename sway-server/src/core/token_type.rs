@@ -4,7 +4,7 @@ use core_lang::{FunctionDeclaration, StructDeclaration, TraitDeclaration, Visibi
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     Library,
-    Variable,
+    Variable(VariableDetails),
     FunctionDeclaration(FunctionDetails),
     FunctionApplication,
     Reassignment,
@@ -37,6 +37,16 @@ pub struct FunctionDetails {
     pub visibility: Visibility,
 }
 
+impl FunctionDetails {
+    pub fn get_return_type_from_signature(&self) -> Option<String> {
+        if let Some(return_type) = self.signature.split("->").skip(1).next() {
+            Some(return_type.trim().split(" ").take(1).collect())
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructDetails {
     pub visibility: Visibility,
@@ -45,4 +55,17 @@ pub struct StructDetails {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitDetails {
     pub visibility: Visibility,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VariableDetails {
+    pub is_mutable: bool,
+    pub var_body: VarBody,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VarBody {
+    FunctionCall(String),
+    Type(String),
+    Other,
 }
