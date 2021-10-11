@@ -1,9 +1,6 @@
 use super::*;
 use crate::span::Span;
-use crate::{
-    asm_lang::{virtual_ops::VirtualRegister, *},
-    parse_tree::CallPath,
-};
+use crate::{asm_lang::*, parse_tree::CallPath};
 use crate::{
     parse_tree::Literal,
     semantic_analysis::{
@@ -70,6 +67,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     // user parameter
                     &arguments[3].1,
                     register_sequencer,
+                    return_register,
                     namespace,
                     exp.span.clone(),
                 )

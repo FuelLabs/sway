@@ -52,6 +52,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
         ("const_decl", ProgramState::Return(100)),
+        ("const_decl_in_library", ProgramState::Return(1)), // true
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
@@ -77,6 +78,22 @@ pub fn run(filter_regex: Option<regex::Regex>) {
             crate::e2e_vm_tests::harness::does_not_compile(name)
         }
     });
+
+    // ---- Contract Deployments
+    // contracts that should be deployed for the following tests to work
+    let contract_names = vec!["basic_storage", "increment_contract"];
+
+    for name in contract_names {
+        harness::deploy_contract(name)
+    }
+
+    // ---- Tests that need the above contracts deployed to work
+    // TODO validate that call output is correct
+    let project_names = &["call_basic_storage", "call_increment_contract"];
+
+    project_names
+        .into_iter()
+        .for_each(|name| harness::runs_on_node(name));
 
     println!("_________________________________\nTests passed.");
 }

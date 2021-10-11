@@ -5,17 +5,18 @@
 //! Only things needed for opcode serialization and generation are included here.
 #![allow(dead_code)]
 
+pub(crate) mod allocated_ops;
+pub(crate) mod virtual_immediate;
+pub(crate) mod virtual_ops;
+pub(crate) mod virtual_register;
+pub(crate) use virtual_immediate::*;
+pub(crate) use virtual_ops::*;
+pub(crate) use virtual_register::*;
+
 use crate::span::Span;
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
 use std::{collections::HashSet, fmt};
-use virtual_ops::{
-    ConstantRegister, Label, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
-    VirtualRegister,
-};
-
-pub(crate) mod allocated_ops;
-pub(crate) mod virtual_ops;
 
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
@@ -1021,6 +1022,8 @@ fn four_regs<'sc>(
                 "bal" => Balance,
                 "is" => InstructionStart,
                 "flag" => Flags,
+                "rl" => ReturnLength,
+                "rv" => ReturnValue,
                 "ds" => DataSectionStart,
                 _ => return None,
             })

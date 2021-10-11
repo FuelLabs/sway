@@ -1,0 +1,9 @@
+[project]
+author  = "Alexander Hansen"
+license = "MIT"
+name = "increment_contract"
+entry = "main.sw"
+
+[dependencies]
+increment_abi = { path = "../increment_abi" }
+std = { path = "../../../../../stdlib" }

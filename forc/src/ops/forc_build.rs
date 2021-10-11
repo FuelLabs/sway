@@ -20,19 +20,21 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
+    // find manifest directory, even if in subdirectory
+    let this_dir = if let Some(ref path) = command.path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().map_err(|e| format!("{:?}", e))?
+    };
+
     let BuildCommand {
-        path,
         binary_outfile,
         print_finalized_asm,
         print_intermediate_asm,
         offline_mode,
+        silent_mode,
+        ..
     } = command;
-    // find manifest directory, even if in subdirectory
-    let this_dir = if let Some(path) = path.clone() {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir().unwrap()
-    };
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -109,6 +111,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 &dependency_details,
                 &mut namespace,
                 &mut dependency_graph,
+                silent_mode,
             )?;
         }
     }
@@ -122,6 +125,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         &namespace,
         build_config,
         &mut dependency_graph,
+        silent_mode,
     )?;
     if let Some(outfile) = binary_outfile {
         let mut file = File::create(outfile).map_err(|e| e.to_string())?;
@@ -141,6 +145,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    silent_mode: bool,
 ) -> Result<(), String> {
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
@@ -191,13 +196,23 @@ fn compile_dependency_lib<'source, 'manifest>(
         file_name.clone().to_path_buf(),
         manifest_dir.clone(),
     );
+    let mut dep_namespace = namespace.clone();
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {
-        if deps.len() > 0 {
+        for dep in deps {
             // to do this properly, iterate over list of dependencies make sure there are no
             // circular dependencies
-            return Err("Unimplemented: dependencies that have dependencies".into());
+            //return Err("Unimplemented: dependencies that have dependencies".into());
+            compile_dependency_lib(
+                project_file_path,
+                &dep.0,
+                &dep.1,
+                // give it a cloned namespace, which we then merge with this namespace
+                &mut dep_namespace,
+                dependency_graph,
+                silent_mode,
+            )?;
         }
     }
 
@@ -206,9 +221,10 @@ fn compile_dependency_lib<'source, 'manifest>(
     let compiled = compile_library(
         main_file,
         &manifest_of_dep.project.name,
-        &namespace.clone(),
+        &dep_namespace,
         build_config.clone(),
         dependency_graph,
+        silent_mode,
     )?;
 
     namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
@@ -223,11 +239,14 @@ fn compile_library<'source, 'manifest>(
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    silent_mode: bool,
 ) -> Result<LibraryExports<'source>, String> {
     let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+            }
 
             if warnings.is_empty() {
                 let _ = println_green_err(&format!("Compiled library {:?}.", proj_name));
@@ -248,9 +267,10 @@ fn compile_library<'source, 'manifest>(
         CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
-            warnings.iter().for_each(|warning| format_warning(warning));
-
-            errors.into_iter().for_each(|error| format_err(&error));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+                errors.into_iter().for_each(|error| format_err(&error));
+            }
 
             println_red_err(&format!(
                 "Aborting due to {} {}.",
@@ -291,11 +311,14 @@ fn compile<'source, 'manifest>(
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
     let res = core_lang::compile_to_bytecode(&source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+            }
 
             if warnings.is_empty() {
                 let _ = println_green_err(&format!("Compiled script {:?}.", proj_name));
@@ -314,7 +337,9 @@ fn compile<'source, 'manifest>(
             return Ok(bytes);
         }
         BytecodeCompilationResult::Library { warnings } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+            }
 
             if warnings.is_empty() {
                 let _ = println_green_err(&format!("Compiled library {:?}.", proj_name));
@@ -335,9 +360,10 @@ fn compile<'source, 'manifest>(
         BytecodeCompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
-            warnings.iter().for_each(|warning| format_warning(warning));
-
-            errors.into_iter().for_each(|error| format_err(&error));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+                errors.into_iter().for_each(|error| format_err(&error));
+            }
 
             println_red_err(&format!(
                 "Aborting due to {} {}.",

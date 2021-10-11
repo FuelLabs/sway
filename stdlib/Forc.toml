@@ -1,7 +1,8 @@
 [project]
-author  = "Alex Hansen,,,"
+author  = "Alex Hansen"
 license = "MIT"
 name = "stdlib"
+entry = "lib.sw"
 
 
 [dependencies]

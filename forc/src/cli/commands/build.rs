@@ -16,11 +16,13 @@ pub struct Command {
     /// If set, outputs a binary file representing the script bytes.
     #[structopt(short = "o")]
     pub binary_outfile: Option<String>,
-
     /// Offline mode, prevents Forc from using the network when managing dependencies.
     /// Meaning it will only try to use previously downloaded dependencies.
     #[structopt(long = "offline")]
     pub offline_mode: bool,
+    /// Silent mode. Don't output any warnings or errors to the command line.
+    #[structopt(long = "silent", short = "s")]
+    pub silent_mode: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<(), String> {
