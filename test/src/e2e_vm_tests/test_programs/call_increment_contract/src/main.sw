@@ -1,10 +1,8 @@
 script;
 use increment_abi::Incrementor;
-// using the below constant throws an error, see https://github.com/FuelLabs/sway/issues/297
-// use std::constants::ETH_COLOR;
-const ETH_COLOR = 0x0000000000000000000000000000000000000000000000000000000000000000;
+use std::constants::ETH_COLOR;
 fn main() {
-  let abi = abi(Incrementor, 0x2748b9ae7ea005e7cbf3e65e3bb03850cbb0bfdf8e8b3261f74be7ce01eff516);   
+  let abi = abi(Incrementor, 0xf804f1578bad017ad47b5d38e3930a041b680fab20a887e52ec077666247d3a5);   
   abi.initialize(10000, 0, ETH_COLOR, 0); // comment this line out to just increment without initializing
   abi.increment(10000, 0, ETH_COLOR, 5);
   let result = abi.increment(10000, 0, ETH_COLOR, 5);

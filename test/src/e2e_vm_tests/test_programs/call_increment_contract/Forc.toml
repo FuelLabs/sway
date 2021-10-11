@@ -10,7 +10,7 @@ increment_abi = { path = "../increment_abi" }
 
 [[tx-input]]
 type = "Contract"
-contract-id = "0x2748b9ae7ea005e7cbf3e65e3bb03850cbb0bfdf8e8b3261f74be7ce01eff516"
+contract-id = "0xf804f1578bad017ad47b5d38e3930a041b680fab20a887e52ec077666247d3a5"
 utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
 balance-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
 state-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
