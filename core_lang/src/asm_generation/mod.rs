@@ -4,11 +4,8 @@ use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedRegister},
-        virtual_ops::{
-            ConstantRegister, Label, VirtualImmediate12, VirtualImmediate24, VirtualOp,
-            VirtualRegister,
-        },
-        Op, OrganizationalOp, RealizedOp,
+        virtual_register::*,
+        Label, Op, OrganizationalOp, RealizedOp, VirtualImmediate12, VirtualImmediate24, VirtualOp,
     },
     error::*,
     parse_tree::Literal,

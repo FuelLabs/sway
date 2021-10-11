@@ -21,7 +21,7 @@ pub async fn check(path: Option<String>, target_dependency: Option<String>) -> R
     let this_dir = if let Some(path) = path {
         PathBuf::from(path)
     } else {
-        std::env::current_dir().unwrap()
+        std::env::current_dir()?
     };
 
     let manifest_dir = match find_manifest_dir(&this_dir) {

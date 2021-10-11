@@ -2,11 +2,8 @@ use crate::asm_generation::{
     compiler_constants::*, convert_expression_to_asm, AsmNamespace, RegisterSequencer,
 };
 use crate::asm_lang::{
-    virtual_ops::{
-        ConstantRegister, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
-        VirtualRegister,
-    },
-    Op,
+    ConstantRegister, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+    VirtualRegister,
 };
 use crate::{
     error::*,

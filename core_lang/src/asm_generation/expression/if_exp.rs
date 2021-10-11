@@ -1,8 +1,5 @@
 use crate::asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer};
-use crate::asm_lang::{
-    virtual_ops::{ConstantRegister, VirtualRegister},
-    Op,
-};
+use crate::asm_lang::{ConstantRegister, Op, VirtualRegister};
 use crate::error::*;
 
 use crate::semantic_analysis::TypedExpression;

@@ -12,6 +12,7 @@ pub fn format(command: FormatCommand) -> Result<(), FormatError> {
         print_intermediate_asm: false,
         binary_outfile: None,
         offline_mode: false,
+        silent_mode: false,
     };
 
     match forc_build::build(build_command) {

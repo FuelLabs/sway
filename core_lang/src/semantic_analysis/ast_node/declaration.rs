@@ -712,7 +712,10 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 }
             } else {
                 errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                    span: parameters[0].type_span.clone(),
+                    span: parameters
+                        .get(0)
+                        .map(|x| x.type_span.clone())
+                        .unwrap_or(fn_decl.name.span.clone()),
                 });
             }
         }
