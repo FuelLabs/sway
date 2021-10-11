@@ -8,6 +8,7 @@
   - [A Forc Project](./getting-started/forc_project.md)
 - [Examples](./examples/index.md)
   - [Hello, World!](./examples/hello_world.md)
+  - [Subcurrency](./examples/subcurrency.md)
   - [FizzBuzz](./examples/fizzbuzz.md)
   - [Wallet Smart Contract](./examples/wallet_smart_contract.md)
 - [Basics](./basics/index.md)
