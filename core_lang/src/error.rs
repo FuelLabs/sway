@@ -978,7 +978,7 @@ impl<'sc> CompileError<'sc> {
 
     fn format_err_simple(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
         let input = self.internal_span().input();
-        let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+        let chars = input.chars().map(Result::<_, String>::Ok);
 
         let metrics = source_span::DEFAULT_METRICS;
         let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
@@ -1017,7 +1017,7 @@ impl<'sc> CompileError<'sc> {
 
         let span = crate::utils::join_spans(hint_span.clone(), err_span.clone());
         let input = span.input();
-        let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+        let chars = input.chars().map(Result::<_, String>::Ok);
         let metrics = source_span::DEFAULT_METRICS;
         let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
         for c in buffer.iter() {
