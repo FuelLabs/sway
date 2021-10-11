@@ -18,7 +18,7 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
     let path_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
     } else {
-        std::env::current_dir().unwrap()
+        std::env::current_dir().map_err(|e| format!("{:?}", e))?
     };
 
     match find_manifest_dir(&path_dir) {

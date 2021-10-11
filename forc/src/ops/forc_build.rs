@@ -28,7 +28,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let this_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
     } else {
-        std::env::current_dir().unwrap()
+        std::env::current_dir().map_err(|e| format!("{:?}", e))?
     };
 
     let BuildCommand {
