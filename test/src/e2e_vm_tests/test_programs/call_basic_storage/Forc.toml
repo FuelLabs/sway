@@ -12,7 +12,7 @@ path = "../basic_storage_abi"
 
 [[tx-input]]
 type = "Contract"
-contract-id = "0xed08bd80d3ef64d32717e8e16e7d3b40fc426d617fbd7494af1ef357a2022909"
+contract-id = "0xa77a026d17532fb95162258a7fb63ad8aee96c4177e81bac6a08561cc49fc11c"
 utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
 balance-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
 state-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
