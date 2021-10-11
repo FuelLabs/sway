@@ -1,5 +1,8 @@
-use super::token_type::{get_trait_details, TokenType};
-use crate::core::token_type::{get_function_details, get_struct_details};
+use super::token_type::{get_trait_details, TokenType, VariableDetails};
+use crate::{
+    core::token_type::{get_function_details, get_struct_details},
+    utils::common::extract_var_body,
+};
 use core_lang::{
     AstNode, AstNodeContent, Declaration, Expression, Ident, Span, VariableDeclaration,
 };
@@ -15,8 +18,8 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(span: Span, name: String, token_type: TokenType) -> Self {
-        let range = get_range_from_span(&span);
+    pub fn new(span: &Span, name: String, token_type: TokenType) -> Self {
+        let range = get_range_from_span(span);
 
         Self {
             range,
@@ -32,25 +35,43 @@ impl Token {
         character >= range.start.character && character <= range.end.character
     }
 
+    pub fn is_same_type(&self, other_token: &Token) -> bool {
+        if other_token.token_type == self.token_type {
+            true
+        } else {
+            match (&other_token.token_type, &self.token_type) {
+                (TokenType::FunctionApplication, TokenType::FunctionDeclaration(_)) => true,
+                (TokenType::FunctionDeclaration(_), TokenType::FunctionApplication) => true,
+                _ => false,
+            }
+        }
+    }
+
     pub fn get_line_start(&self) -> u32 {
         self.line_start
     }
 
-    pub fn from_variable(variable: &VariableDeclaration) -> Self {
-        let ident = &variable.name;
-        let span = ident.span.clone();
+    pub fn from_variable(var_dec: &VariableDeclaration) -> Self {
+        let ident = &var_dec.name;
         let name = ident.primary_name;
-        // todo
-        // we could add type of variable as well? from type_ascription: TypeInfo field
-        Token::new(span, name.into(), TokenType::Variable)
+        let var_body = extract_var_body(&var_dec);
+
+        Token::new(
+            &ident.span,
+            name.into(),
+            TokenType::Variable(VariableDetails {
+                is_mutable: var_dec.is_mutable,
+                var_body,
+            }),
+        )
     }
 
     pub fn from_ident(ident: &Ident, token_type: TokenType) -> Self {
-        Token::new(ident.span.clone(), ident.primary_name.into(), token_type)
+        Token::new(&ident.span, ident.primary_name.into(), token_type)
     }
 
     pub fn from_span(span: Span, token_type: TokenType) -> Self {
-        Token::new(span.clone(), span.as_str().into(), token_type)
+        Token::new(&span, span.as_str().into(), token_type)
     }
 
     pub fn is_initial_declaration(&self) -> bool {
