@@ -68,7 +68,5 @@ jobs:
 
     - name: Run test suite
       run: |
-        ls
-        echo "___"
         ./fuel-core/target/debug/fuel-core & ./target/debug/test
 
