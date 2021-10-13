@@ -8,7 +8,7 @@ use rand::{Rng, SeedableRng};
 pub(crate) fn deploy_contract(file_name: &str) {
     // build the contract
     // deploy it
-    println!("Deploying {}", file_name);
+    println!(" Deploying {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
     tokio::runtime::Runtime::new()
@@ -137,7 +137,7 @@ pub(crate) fn does_not_compile(file_name: &str) {
 /// Returns `true` if a file compiled without any errors or warnings,
 /// and `false` if it did not.
 pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
-    println!("Compiling {}", file_name);
+    println!(" Compiling {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     forc_build::build(BuildCommand {
         path: Some(format!(
