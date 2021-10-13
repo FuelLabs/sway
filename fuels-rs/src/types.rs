@@ -63,7 +63,7 @@ pub struct Property {
 
 /// Expands a [`ParamType`] into a TokenStream.
 /// Used to expand functions when generating type-safe bindings of a JSON ABI.
-pub fn expand_type(kind: &ParamType) -> Result<TokenStream> {
+pub fn expand_type(kind: &ParamType) -> Result<TokenStream, Error> {
     match kind {
         ParamType::U8 | ParamType::Byte => Ok(quote! { u8 }),
         ParamType::U16 => Ok(quote! { u16 }),
@@ -78,7 +78,7 @@ pub fn expand_type(kind: &ParamType) -> Result<TokenStream> {
         }
         ParamType::Struct(members) => {
             if members.is_empty() {
-                return Err(anyhow!("Struct must have at least 1 member"));
+                return Err(Error::InvalidData);
             }
             let members = members
                 .iter()
@@ -88,7 +88,7 @@ pub fn expand_type(kind: &ParamType) -> Result<TokenStream> {
         }
         ParamType::Enum(members) => {
             if members.is_empty() {
-                return Err(anyhow!("Enum must have at least 1 member"));
+                return Err(Error::InvalidData);
             }
             let members = members
                 .iter()
