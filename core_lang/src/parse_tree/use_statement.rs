@@ -89,7 +89,7 @@ impl<'sc> UseStatement<'sc> {
                 call_path: import_path_buf,
                 import_type,
                 is_absolute,
-                alias
+                alias,
             },
             Vec::new(),
             Vec::new(),
