@@ -53,6 +53,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("local_impl_for_ord", ProgramState::Return(1)), // true
         ("const_decl", ProgramState::Return(100)),
         ("const_decl_in_library", ProgramState::Return(1)), // true
+        ("reference_self_impls", ProgramState::Return(1)), // true
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {

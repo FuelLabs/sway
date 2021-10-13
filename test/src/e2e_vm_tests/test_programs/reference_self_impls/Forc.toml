@@ -1,0 +1,8 @@
+[project]
+author  = "Emily Herbert <emily.herbert@fuel.sh>"
+license = "MIT"
+name = "reference_self_impls"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../stdlib" }
