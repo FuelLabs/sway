@@ -1,6 +1,7 @@
+use crate::tokens::Token;
 use crate::types;
 use sha2::{Digest, Sha256};
-use types::{ByteArray, Token};
+use types::ByteArray;
 
 use crate::errors::Error;
 

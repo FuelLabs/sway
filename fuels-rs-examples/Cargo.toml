@@ -1,16 +1,19 @@
 [package]
 authors = ["digorithm <rodrigo.araujo@fuel.sh>"]
-name = "fuels-rs"
+name = "fuels-rs-examples"
 version = "0.1.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 
 [dependencies]
 anyhow = "1"
 blake2 = "0.9"
 bytes = { version = "1.0.1", features = ["serde"] }
 fuel-types = {git = "ssh://git@github.com/FuelLabs/fuel-types.git"}
+fuels-rs = {path = "../fuels-rs"}
+fuels-abigen = {path = "../fuels-abigen"}
 glob = { version = "0.3.0", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 Inflector = "0.11"
