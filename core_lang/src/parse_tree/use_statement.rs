@@ -18,6 +18,7 @@ pub struct UseStatement<'sc> {
     // If `is_absolute` is true, then this use statement is an absolute path from
     // the project root namespace. If not, then it is relative to the current namespace.
     pub(crate) is_absolute: bool,
+    pub(crate) alias: Option<Ident<'sc>>,
 }
 
 impl<'sc> UseStatement<'sc> {
@@ -32,9 +33,9 @@ impl<'sc> UseStatement<'sc> {
         let mut stmt = stmt.into_inner();
         let _use_keyword = stmt.next();
         let import_path = if is_absolute {
-            stmt.skip(1).next().expect("Guaranteed by grammar")
+            stmt.clone().skip(1).next().expect("Guaranteed by grammar")
         } else {
-            stmt.next().expect("Guaranteed by grammar")
+            stmt.clone().next().expect("Guaranteed by grammar")
         };
         let mut import_path_buf = vec![];
         let mut import_path_vec = import_path.into_inner().collect::<Vec<_>>();
@@ -59,8 +60,7 @@ impl<'sc> UseStatement<'sc> {
                     },
                 });
                 continue;
-            }
-            if item.as_rule() == Rule::ident {
+            } else if item.as_rule() == Rule::ident {
                 import_path_buf.push(check!(
                     Ident::parse_from_pair(item, config),
                     return err(warnings, errors),
@@ -69,11 +69,27 @@ impl<'sc> UseStatement<'sc> {
                 ));
             }
         }
+
+        let mut alias = None;
+        for item in stmt {
+            if item.as_rule() == Rule::alias {
+                let item = item.into_inner().skip(1).next().unwrap();
+                let alias_parsed = check!(
+                    Ident::parse_from_pair(item, config),
+                    continue,
+                    warnings,
+                    errors
+                );
+                alias = Some(alias_parsed);
+            }
+        }
+
         ok(
             UseStatement {
                 call_path: import_path_buf,
                 import_type,
                 is_absolute,
+                alias
             },
             Vec::new(),
             Vec::new(),

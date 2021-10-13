@@ -22,8 +22,8 @@ pub struct Namespace<'sc> {
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
     /// namespace _is_ the root namespace.
     pub(crate) crate_namespace: Box<Option<Namespace<'sc>>>,
-
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
+    use_aliases: HashMap<String, Ident<'sc>>,
 }
 
 impl<'sc> Namespace<'sc> {
@@ -125,6 +125,7 @@ impl<'sc> Namespace<'sc> {
         path: Vec<Ident<'sc>>,
         item: &Ident<'sc>,
         is_absolute: bool,
+        alias: Option<Ident<'sc>>
     ) -> CompileResult<'sc, ()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -137,7 +138,15 @@ impl<'sc> Namespace<'sc> {
 
         match namespace.symbols.get(item) {
             Some(_) => {
-                self.use_synonyms.insert(item.clone(), path);
+                match alias {
+                    Some(alias) => {
+                        self.use_synonyms.insert(alias.clone(), path);
+                        self.use_aliases.insert(alias.primary_name.to_string(), item.clone());
+                    },
+                    None => {
+                        self.use_synonyms.insert(item.clone(), path);
+                    }
+                }
             }
             None => {
                 errors.push(CompileError::SymbolNotFound {
@@ -186,7 +195,8 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn get_symbol(&self, symbol: &Ident<'sc>) -> Option<&TypedDeclaration<'sc>> {
         let empty = vec![];
         let path = self.use_synonyms.get(symbol).unwrap_or(&empty);
-        self.get_name_from_path(path, symbol).value
+        let true_symbol = self.use_aliases.get(&symbol.primary_name.to_string()).unwrap_or(symbol);
+        self.get_name_from_path(path, true_symbol).value
     }
 
     /// Used for calls that look like this:

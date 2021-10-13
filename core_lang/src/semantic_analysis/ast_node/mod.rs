@@ -130,7 +130,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
                         ImportType::Item(s) => {
-                            namespace.item_import(a.call_path, &s, a.is_absolute)
+                            namespace.item_import(a.call_path, &s, a.is_absolute, a.alias)
                         }
                     };
                     warnings.append(&mut res.warnings);
