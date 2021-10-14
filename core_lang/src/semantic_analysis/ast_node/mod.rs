@@ -984,44 +984,6 @@ fn type_check_self_fns<'sc>(
             },
         )
         .collect()
-
-    /*
-    interface_surface
-        .into_iter()
-        .map(
-            |TraitFn {
-                 name,
-                 parameters,
-                 return_type,
-                 return_type_span,
-             }| TypedTraitFn {
-                name,
-                return_type_span,
-                parameters: parameters
-                    .into_iter()
-                    .map(
-                        |FunctionParameter {
-                             name,
-                             r#type,
-                             type_span,
-                         }| TypedFunctionParameter {
-                            name,
-                            r#type: namespace.resolve_type(
-                                &r#type,
-                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
-                            ),
-                            type_span,
-                        },
-                    )
-                    .collect(),
-                return_type: namespace.resolve_type(
-                    &return_type,
-                    &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
-                ),
-            },
-        )
-        .collect::<Vec<_>>()
-    */
 }
 
 fn type_check_trait_methods<'sc>(
