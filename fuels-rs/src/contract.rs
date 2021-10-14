@@ -2,19 +2,10 @@ use crate::abi_encoder::ABIEncoder;
 use crate::errors::Error;
 use serde::{Deserialize, Serialize};
 
-use crate::json_abi::{parse_param, ABI};
-
-use crate::abigen::Abigen;
-use crate::bindings::ContractBindings;
 use crate::tokens::{Detokenize, Tokenize};
-use crate::types::{expand_type, ByteArray, Function, JsonABI, ParamType, Property, Selector};
-use inflector::Inflector;
-use proc_macro2::{Ident, Literal, Span, TokenStream};
-use quote::quote;
-use std::collections::BTreeMap;
+use crate::types::{Function, Selector};
+
 use std::marker::PhantomData;
-use std::{collections::HashMap, fs::File, io::Write, path::Path};
-use syn::{Ident as SynIdent, Path as SynPath};
 
 // TODO: Continue from here
 // - [] Refactor all namings now that we have the workflow laid out;
@@ -84,39 +75,5 @@ impl ContractCall {
             function: None,
             datatype: PhantomData,
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // TODO: move a lot of the tests from ethers (e.g methods.rs file) here
-
-    #[test]
-    fn generates_bindings() {
-        let contract = r#"
-        [
-            {
-                "type":"contract",
-                "inputs":[
-                    {
-                        "name":"arg",
-                        "type":"u32"
-                    }
-                ],
-                "name":"takes_u32_returns_bool",
-                "outputs":[
-                    {
-                        "name":"",
-                        "type":"bool"
-                    }
-                ]
-            }
-        ]
-        "#;
-
-        let bindings = Abigen::new("test", contract).unwrap().generate().unwrap();
-        bindings.write(std::io::stdout()).unwrap();
     }
 }
