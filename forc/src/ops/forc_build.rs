@@ -7,11 +7,6 @@ use crate::{
         println_yellow_err, read_manifest,
     },
 };
-use line_col::LineColLookup;
-use source_span::{
-    fmt::{Color, Formatter, Style},
-    Position, Span,
-};
 use std::fs::File;
 use std::io::Write;
 
@@ -20,6 +15,7 @@ use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
     Namespace,
 };
+use source_span::fmt::{Color, Formatter};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
@@ -273,8 +269,7 @@ fn compile_library<'source, 'manifest>(
 
             if !silent_mode {
                 warnings.iter().for_each(|warning| format_warning(warning));
-
-                errors.into_iter().for_each(|error| format_err(error));
+                errors.into_iter().for_each(|error| format_err(&error));
             }
 
             println_red_err(&format!(
@@ -292,6 +287,22 @@ fn compile_library<'source, 'manifest>(
             ))
         }
     }
+}
+
+fn format_err(err: &core_lang::CompileError) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = err.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", err.path());
+    println!("{}", formatted);
+}
+
+fn format_warning(warning: &core_lang::CompileWarning) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = warning.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", warning.path());
+    println!("{}", formatted);
 }
 
 fn compile<'source, 'manifest>(
@@ -323,7 +334,7 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(bytes)
+            return Ok(bytes);
         }
         BytecodeCompilationResult::Library { warnings } => {
             if !silent_mode {
@@ -344,15 +355,14 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(vec![])
+            return Ok(vec![]);
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
             if !silent_mode {
                 warnings.iter().for_each(|warning| format_warning(warning));
-
-                errors.into_iter().for_each(|error| format_err(error));
+                errors.into_iter().for_each(|error| format_err(&error));
             }
 
             println_red_err(&format!(
@@ -361,78 +371,9 @@ fn compile<'source, 'manifest>(
                 if e_len > 1 { "errors" } else { "error" }
             ))
             .unwrap();
-            Err(format!("Failed to compile {}", proj_name))
+            return Err(format!("Failed to compile {}", proj_name));
         }
     }
-}
-
-fn format_warning(err: &core_lang::CompileWarning) {
-    let input = err.span.input();
-    let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-
-    let metrics = source_span::DEFAULT_METRICS;
-    let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-
-    for c in buffer.iter() {
-        let _ = c.unwrap(); // report eventual errors.
-    }
-
-    let (start_pos, end_pos) = err.span();
-    let lookup = LineColLookup::new(input);
-    let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(end_pos - 1);
-
-    let err_start = Position::new(start_line - 1, start_col - 1);
-    let err_end = Position::new(end_line - 1, end_col - 1);
-    let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(
-        err_span,
-        Some(err.to_friendly_warning_string()),
-        Style::Warning,
-    );
-
-    let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
-}
-
-fn format_err(err: core_lang::CompileError) {
-    let input = err.internal_span().input();
-    let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-
-    let metrics = source_span::DEFAULT_METRICS;
-    let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-
-    for c in buffer.iter() {
-        let _ = c.unwrap(); // report eventual errors.
-    }
-
-    let (start_pos, end_pos) = err.span();
-    let lookup = LineColLookup::new(input);
-    let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
-
-    let err_start = Position::new(start_line - 1, start_col - 1);
-    let err_end = Position::new(end_line - 1, end_col - 1);
-    let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(err_span, Some(err.to_friendly_error_string()), Style::Error);
-
-    let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-    fmt.add(
-        buffer.span(),
-        Some("this is the whole program\nwhat a nice program!".to_string()),
-        Style::Error,
-    );
-
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
 }
 
 fn compile_to_asm<'source, 'manifest>(
@@ -487,7 +428,7 @@ fn compile_to_asm<'source, 'manifest>(
 
             warnings.iter().for_each(|warning| format_warning(warning));
 
-            errors.into_iter().for_each(|error| format_err(error));
+            errors.into_iter().for_each(|error| format_err(&error));
 
             println_red_err(&format!(
                 "  Aborting due to {} {}.",

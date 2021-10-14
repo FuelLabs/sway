@@ -24,7 +24,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
-pub(crate) mod utils;
+pub mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 use std::collections::{HashMap, HashSet};
 
