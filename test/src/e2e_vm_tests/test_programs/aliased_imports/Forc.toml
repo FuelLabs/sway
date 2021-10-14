@@ -1,0 +1,11 @@
+[project]
+author  = "Emily Herbert <emily.herbert@fuel.sh>"
+license = "MIT"
+name = "aliased_imports"
+entry = "main.sw"
+
+
+[dependencies]
+std = { path = "../../../../../stdlib" }
+
+

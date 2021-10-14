@@ -4,6 +4,7 @@ fn_decl_keyword     =  {"fn"}
 trait_decl_keyword  =  {"trait"}
 return_keyword      =  {"return"}
 use_keyword         =  {"use"}
+as_keyword          =  {"as"}
 enum_keyword        = @{"enum"}
 struct_keyword      = @{"struct"}
 impl_keyword        =  {"impl"}
@@ -38,7 +39,7 @@ predicate    =  {"predicate" ~ ";" ~ (non_var_decl|use_statement|include_stateme
 // including other files
 file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
-alias             = { "as" ~ ident }
+alias             = { as_keyword ~ ident }
 // expressions
 expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|struct_field_access|delineated_path|var_exp|array_exp|parenthesized_expression|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
@@ -153,8 +154,8 @@ impl_trait    =  {impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~
 // imports
 
 use_statement           =  {relative_use_statement | absolute_use_statement}
-relative_use_statement  =  {use_keyword ~ import_path ~ ";"}
-absolute_use_statement  =  {use_keyword ~ path_separator ~ import_path ~ ";"}
+relative_use_statement  =  {use_keyword ~ import_path ~ alias? ~ ";"}
+absolute_use_statement  =  {use_keyword ~ path_separator ~ import_path ~ alias? ~ ";"}
 import_path             =  {ident ~ (path_separator ~ (ident|star))*}
 star                    =  {"*"}
 
@@ -186,5 +187,5 @@ char              = @{
 }
 unit              =  {"(" ~ ")"}
 ident             = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")* }
-reserved_words    = @{(true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
+reserved_words    = @{(as_keyword|true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
 

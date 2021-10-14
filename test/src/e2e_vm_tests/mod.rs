@@ -54,6 +54,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("const_decl", ProgramState::Return(100)),
         ("const_decl_in_library", ProgramState::Return(1)), // true
         ("reference_self_impls", ProgramState::Return(1)),  // true
+        ("aliased_imports", ProgramState::Return(42)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
@@ -71,6 +72,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "infinite_dependencies",
         "top_level_vars",
         "dependencies_parsing_error",
+        "mut_error_message",
+        "reassignment_to_non_variable_message",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
