@@ -298,7 +298,7 @@ impl<'sc> Namespace<'sc> {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
                 .get(&trait_name.suffix)
-                .unwrap_or_else(|| &trait_name.prefixes)
+                .unwrap_or(&trait_name.prefixes)
                 .clone()
         } else {
             trait_name.prefixes
