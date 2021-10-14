@@ -136,7 +136,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
     }
 
-    println!("Bytecode size is {} bytes.", main.len());
+    println!("  Bytecode size is {} bytes.", main.len());
 
     Ok(main)
 }
@@ -253,10 +253,10 @@ fn compile_library<'source, 'manifest>(
             }
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled library {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled library {:?} with {} {}.",
+                    "  Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -278,7 +278,7 @@ fn compile_library<'source, 'manifest>(
             }
 
             println_red_err(&format!(
-                "Aborting due to {} {}.",
+                "  Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
             ))
@@ -310,10 +310,10 @@ fn compile<'source, 'manifest>(
             }
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled script {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled script {:?} with {} {}.",
+                    "  Compiled script {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -331,10 +331,10 @@ fn compile<'source, 'manifest>(
             }
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled library {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled library {:?} with {} {}.",
+                    "  Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -356,7 +356,7 @@ fn compile<'source, 'manifest>(
             }
 
             println_red_err(&format!(
-                "Aborting due to {} {}.",
+                "  Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
             ))
@@ -448,10 +448,10 @@ fn compile_to_asm<'source, 'manifest>(
             warnings.iter().for_each(|warning| format_warning(warning));
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled script {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled script {:?} with {} {}.",
+                    "  Compiled script {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -467,10 +467,10 @@ fn compile_to_asm<'source, 'manifest>(
             warnings.iter().for_each(|warning| format_warning(warning));
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled library {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled library {:?} with {} {}.",
+                    "  Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -490,7 +490,7 @@ fn compile_to_asm<'source, 'manifest>(
             errors.into_iter().for_each(|error| format_err(error));
 
             println_red_err(&format!(
-                "Aborting due to {} {}.",
+                "  Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
             ))
