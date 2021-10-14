@@ -335,6 +335,23 @@ impl<'sc> TypedAstNode<'sc> {
                                     type_arguments[0].clone().name_ident.span,
                                 ));
                             }
+                            let trait_name = CallPath {
+                                prefixes: vec![],
+                                suffix: Ident {
+                                    primary_name: "r#Self",
+                                    span: block_span.clone(),
+                                },
+                            };
+                            // insert placeholder functions to allow methods to use those functions
+                            let self_fns = type_check_self_fns(&functions, namespace);
+                            namespace.insert_trait_implementation(
+                                trait_name.clone(),
+                                type_implementing_for_resolved.clone(),
+                                self_fns
+                                    .iter()
+                                    .map(|x| x.to_dummy_func(Mode::NonAbi))
+                                    .collect(),
+                            );
                             for mut fn_decl in functions.into_iter() {
                                 let mut type_arguments = type_arguments.clone();
                                 // add generic params from impl trait into function type params
@@ -373,13 +390,6 @@ impl<'sc> TypedAstNode<'sc> {
                                     errors
                                 ));
                             }
-                            let trait_name = CallPath {
-                                prefixes: vec![],
-                                suffix: Ident {
-                                    primary_name: "r#Self",
-                                    span: block_span.clone(),
-                                },
-                            };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),
                                 type_implementing_for_resolved.clone(),
@@ -918,6 +928,96 @@ fn type_check_interface_surface<'sc>(
             },
         )
         .collect::<Vec<_>>()
+}
+
+fn type_check_self_fns<'sc>(
+    functions: &Vec<FunctionDeclaration<'sc>>,
+    namespace: &Namespace<'sc>,
+) -> Vec<TypedFunctionDeclaration<'sc>> {
+    functions
+        .into_iter()
+        .map(
+            |FunctionDeclaration {
+                 name,
+                 visibility,
+                 body,
+                 parameters,
+                 span,
+                 type_parameters,
+                 return_type_span,
+                 ..
+             }| {
+                TypedFunctionDeclaration {
+                    name: name.clone(),
+                    body: TypedCodeBlock {
+                        contents: vec![],
+                        whole_block_span: body.whole_block_span.clone(),
+                    },
+                    parameters: parameters
+                        .into_iter()
+                        .map(
+                            |FunctionParameter {
+                                 name,
+                                 r#type,
+                                 type_span,
+                             }| TypedFunctionParameter {
+                                name: name.clone(),
+                                r#type: namespace.resolve_type(
+                                    &r#type,
+                                    &MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType),
+                                ),
+                                type_span: type_span.clone(),
+                            },
+                        )
+                        .collect(),
+                    span: span.clone(),
+                    return_type: MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType),
+                    type_parameters: type_parameters.clone(),
+                    return_type_span: return_type_span.clone(),
+                    visibility: visibility.clone(),
+                    is_contract_call: false,
+                }
+            },
+        )
+        .collect()
+
+    /*
+    interface_surface
+        .into_iter()
+        .map(
+            |TraitFn {
+                 name,
+                 parameters,
+                 return_type,
+                 return_type_span,
+             }| TypedTraitFn {
+                name,
+                return_type_span,
+                parameters: parameters
+                    .into_iter()
+                    .map(
+                        |FunctionParameter {
+                             name,
+                             r#type,
+                             type_span,
+                         }| TypedFunctionParameter {
+                            name,
+                            r#type: namespace.resolve_type(
+                                &r#type,
+                                &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                            ),
+                            type_span,
+                        },
+                    )
+                    .collect(),
+                return_type: namespace.resolve_type(
+                    &return_type,
+                    &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                ),
+            },
+        )
+        .collect::<Vec<_>>()
+    */
 }
 
 fn type_check_trait_methods<'sc>(

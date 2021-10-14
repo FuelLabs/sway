@@ -56,6 +56,7 @@ pub(crate) fn type_check_method_application<'sc>(
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         if arg.return_type != param.r#type
             && arg.return_type != MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+            && param.r#type != MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType)
         {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
