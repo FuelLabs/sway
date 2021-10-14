@@ -1,5 +1,4 @@
 use fuels_abigen::abigen;
-use fuels_rs::contract::Contract;
 
 fn main() {
     let contract = r#"
@@ -34,5 +33,10 @@ fn main() {
     // Currently this prints `000000006355e6ee000000000000002a`
     // The encoded contract call. Soon it'll be able to perform the
     // actual call.
-    contract_instance.takes_u32_returns_bool(42 as u32);
+    let _function = contract_instance.takes_u32_returns_bool(42 as u32);
+
+    // Then you'll be able to use `.call()` to actually call the contract with the
+    // specified function:
+    // function.call().unwrap();
+    // Or you might want to just `contract_instance.takes_u32_returns_bool(42 as u32).call()?`
 }

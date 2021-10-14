@@ -1,5 +1,7 @@
 pub mod abi_decoder;
 pub mod abi_encoder;
+pub mod abigen;
+pub mod bindings;
 pub mod contract;
 pub mod errors;
 pub mod json_abi;

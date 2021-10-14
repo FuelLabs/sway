@@ -1,5 +1,4 @@
-use fuels_rs::contract::Abigen;
-use fuels_rs::contract::Contract;
+use fuels_rs::abigen::Abigen;
 use fuels_rs::types::ParamType;
 use proc_macro::TokenStream;
 use syn::parse::Error;
@@ -32,7 +31,7 @@ pub fn abigen(input: TokenStream) -> TokenStream {
     ]
     "#;
 
-    let c = Contract::new("test", contract).unwrap();
+    let c = Abigen::new("test", contract).unwrap();
 
     c.expand().unwrap().into()
 }

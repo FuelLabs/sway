@@ -1,6 +1,6 @@
 use crate::errors::Error;
 use crate::tokens::Token;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use fuel_types::bytes::padded_len;
 use fuel_types::Word;
 use proc_macro2::TokenStream;
@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{EnumString, ToString};
 
 pub type ByteArray = [u8; 8];
+pub type Selector = ByteArray;
 pub type Bits256 = [u8; 32];
 pub type EnumSelector = (u8, Token);
 pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
