@@ -164,7 +164,7 @@ impl<'sc> StructField<'sc> {
                         warnings,
                         span.clone(),
                         Warning::NonSnakeCaseStructFieldName {
-                            field_name: name.primary_name.clone()
+                            field_name: name.primary_name
                         }
                     );
                     let r#type = check!(

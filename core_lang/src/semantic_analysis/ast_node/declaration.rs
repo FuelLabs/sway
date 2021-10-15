@@ -247,7 +247,7 @@ pub struct TypedFunctionDeclaration<'sc> {
 impl<'sc> TypedFunctionDeclaration<'sc> {
     /// If there are parameters, join their spans. Otherwise, use the fn name span.
     pub(crate) fn parameters_span(&self) -> Span<'sc> {
-        if self.parameters.len() >= 1 {
+        if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span.clone(),
                 |acc, TypedFunctionParameter { type_span, .. }| {
@@ -283,7 +283,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             },
             type_parameters: self.type_parameters.clone(),
             return_type_span: self.return_type_span.clone(),
-            visibility: self.visibility.clone(),
+            visibility: self.visibility,
             is_contract_call: self.is_contract_call,
         }
     }
