@@ -3,7 +3,7 @@ use std::str::Chars;
 
 use core_lang::{extract_keyword, Rule};
 
-use super::code_builder_helpers::{is_comment, is_multiline_comment};
+use super::code_builder_helpers::{is_comment, is_multiline_comment, is_newline_incoming};
 use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN};
 
 /// formats custom Enums and Structs
@@ -34,7 +34,7 @@ pub fn format_custom_types(text: &str) -> String {
                     }
                 }
             } else {
-                if current_char != '\n' && current_char != ',' {
+                if current_char != ',' {
                     result.push(current_char);
                 }
 
@@ -126,7 +126,9 @@ fn get_struct_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> S
 
     if let Some((next_index, _)) = iter.peek() {
         let leftover = &line[*next_index..];
-        if !is_comment(leftover) && !is_multiline_comment(leftover) {
+        if is_newline_incoming(leftover) {
+            result.push_str(NEW_LINE_PATTERN);
+        } else if !is_comment(leftover) && !is_multiline_comment(leftover) {
             result.push_str(NEW_LINE_PATTERN);
         }
     }
