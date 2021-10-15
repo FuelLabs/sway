@@ -28,5 +28,5 @@ impl X {
 }
 
 fn main() -> bool {
-    X::Y == X::Y
+    (X::Y).gte(X::Y)
 }
