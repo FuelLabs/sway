@@ -7,6 +7,7 @@ use source_span::{
     fmt::{Formatter, Style},
     Position,
 };
+use std::fmt;
 use thiserror::Error;
 
 macro_rules! check {
@@ -223,83 +224,99 @@ pub enum Warning<'sc> {
     },
 }
 
-impl<'sc> Warning<'sc> {
-    fn to_string(&self) -> String {
+impl<'sc> fmt::Display for Warning<'sc> {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Warning::*;
         match self {
-            NonClassCaseStructName { struct_name } => format!(
+            NonClassCaseStructName { struct_name } => {
+                write!(f,
                 "Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \
                  \"{}\".",
                 struct_name,
                 to_class_case(struct_name)
-            ),
-            NonClassCaseTraitName { name } => format!(
+            )
+            }
+            NonClassCaseTraitName { name } => {
+                write!(f,
                 "Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \
                  \"{}\".",
                 name,
                 to_class_case(name)
-            ),
-            NonClassCaseEnumName { enum_name } => format!(
+            )
+            }
+            NonClassCaseEnumName { enum_name } => write!(
+                f,
                 "Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase \
                  name, like \"{}\".",
                 enum_name,
                 to_class_case(enum_name)
             ),
-            NonSnakeCaseStructFieldName { field_name } => format!(
+            NonSnakeCaseStructFieldName { field_name } => write!(
+                f,
                 "Struct field name \"{}\" is not idiomatic. Struct field names should have a \
                  snake_case name, like \"{}\".",
                 field_name,
                 to_snake_case(field_name)
             ),
-            NonClassCaseEnumVariantName { variant_name } => format!(
+            NonClassCaseEnumVariantName { variant_name } => write!(
+                f,
                 "Enum variant name \"{}\" is not idiomatic. Enum variant names should be \
                  ClassCase, like \"{}\".",
                 variant_name,
                 to_class_case(variant_name)
             ),
-            NonSnakeCaseFunctionName { name } => format!(
+            NonSnakeCaseFunctionName { name } => {
+                write!(f,
                 "Function name \"{}\" is not idiomatic. Function names should be snake_case, like \
                  \"{}\".",
                 name,
                 to_snake_case(name)
-            ),
+            )
+            }
             LossOfPrecision {
                 initial_type,
                 cast_to,
-            } => format!(
+            } => write!(
+                f,
                 "This cast, from type {} to type {}, will lose precision.",
                 initial_type.friendly_type_str(),
                 cast_to.friendly_type_str()
             ),
-            UnusedReturnValue { r#type } => format!(
+            UnusedReturnValue { r#type } => write!(
+                f,
                 "This returns a value of type {}, which is not assigned to anything and is \
                  ignored.",
                 r#type.friendly_type_str()
             ),
-            SimilarMethodFound { lib, module, name } => format!(
+            SimilarMethodFound { lib, module, name } => write!(
+                f,
                 "A method with the same name was found for type {} in dependency \"{}::{}\". \
                  Traits must be in scope in order to access their methods. ",
                 name, lib, module
             ),
-            OverridesOtherSymbol { name } => format!(
+            OverridesOtherSymbol { name } => write!(
+                f,
                 "This import would override another symbol with the same name \"{}\" in this \
                  namespace.",
                 name
             ),
-            OverridingTraitImplementation => format!(
+            OverridingTraitImplementation => write!(
+                f,
                 "This trait implementation overrides another one that was previously defined."
             ),
-            DeadDeclaration => "This declaration is never used.".into(),
-            DeadStructDeclaration => "This struct is never instantiated.".into(),
-            DeadFunctionDeclaration => "This function is never called.".into(),
-            UnreachableCode => "This code is unreachable.".into(),
+            DeadDeclaration => write!(f, "This declaration is never used."),
+            DeadStructDeclaration => write!(f, "This struct is never instantiated."),
+            DeadFunctionDeclaration => write!(f, "This function is never called."),
+            UnreachableCode => write!(f, "This code is unreachable."),
             DeadEnumVariant { variant_name } => {
-                format!("Enum variant {} is never constructed.", variant_name)
+                write!(f, "Enum variant {} is never constructed.", variant_name)
             }
-            DeadTrait => "This trait is never implemented.".into(),
-            DeadMethod => "This method is never called.".into(),
-            StructFieldNeverRead => "This struct field is never accessed.".into(),
-            ShadowingReservedRegister { reg_name } => format!(
+            DeadTrait => write!(f, "This trait is never implemented."),
+            DeadMethod => write!(f, "This method is never called."),
+            StructFieldNeverRead => write!(f, "This struct field is never accessed."),
+            ShadowingReservedRegister { reg_name } => write!(
+                f,
                 "This register declaration shadows the reserved register, \"{}\".",
                 reg_name
             ),
@@ -1043,6 +1060,6 @@ impl<'sc> CompileError<'sc> {
         let err_start = Position::new(start_line - 1, start_col - 1);
         let err_end = Position::new(end_line - 1, end_col - 1);
         let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
-        fmt.add(err_span, Some(friendly_string.clone()), style);
+        fmt.add(err_span, Some(friendly_string), style);
     }
 }

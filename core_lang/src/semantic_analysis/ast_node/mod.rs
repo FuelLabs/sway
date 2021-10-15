@@ -576,24 +576,22 @@ impl<'sc> TypedAstNode<'sc> {
             },
             span: node.span.clone(),
         };
-        match node {
-            TypedAstNode {
-                content: TypedAstNodeContent::Expression(TypedExpression { .. }),
-                ..
-            } => {
-                let warning = Warning::UnusedReturnValue {
-                    r#type: node.type_info(),
-                };
-                assert_or_warn!(
-                    node.type_info() == MaybeResolvedType::Resolved(ResolvedType::Unit)
-                        || node.type_info()
-                            == MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
-                    warnings,
-                    node.span.clone(),
-                    warning
-                );
-            }
-            _ => (),
+
+        if let TypedAstNode {
+            content: TypedAstNodeContent::Expression(TypedExpression { .. }),
+            ..
+        } = node
+        {
+            let warning = Warning::UnusedReturnValue {
+                r#type: node.type_info(),
+            };
+            assert_or_warn!(
+                node.type_info() == MaybeResolvedType::Resolved(ResolvedType::Unit)
+                    || node.type_info() == MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
+                warnings,
+                node.span.clone(),
+                warning
+            );
         }
 
         ok(node, warnings, errors)
@@ -615,7 +613,7 @@ fn import_new_file<'sc>(
     let file_path = file_path.with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
     let mut canonical_path = build_config.dir_of_code.clone();
-    canonical_path.push(file_path.clone());
+    canonical_path.push(file_path);
 
     let mut manifest_path = build_config.manifest_path.clone();
     manifest_path.pop();

@@ -20,7 +20,7 @@ impl BuildConfig {
         let mut path = canonicalized_manifest_path.clone();
         path.push("src");
         Self {
-            file_name: file_name,
+            file_name,
             dir_of_code: path,
             manifest_path: canonicalized_manifest_path,
             print_intermediate_asm: false,

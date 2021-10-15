@@ -1,4 +1,3 @@
-use pest;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -44,6 +43,6 @@ impl<'sc> Span<'sc> {
         self.path
             .clone()
             .map(|p| p.into_os_string().into_string().unwrap())
-            .unwrap_or("".to_string())
+            .unwrap_or_else(|| "".to_string())
     }
 }

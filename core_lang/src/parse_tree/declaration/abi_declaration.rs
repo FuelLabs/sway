@@ -53,7 +53,7 @@ impl<'sc> AbiDeclaration<'sc> {
                         warnings,
                         errors
                     );
-                    let fn_sig_name = fn_sig.name.primary_name.clone();
+                    let fn_sig_name = fn_sig.name.primary_name;
                     interface_surface.push(fn_sig);
                     if !unassigned_docstring.is_empty() {
                         docstrings.insert(
@@ -72,7 +72,7 @@ impl<'sc> AbiDeclaration<'sc> {
                 Rule::docstring => {
                     let docstring = func.as_str().to_string().split_off(3);
                     let docstring = docstring.as_str().trim();
-                    unassigned_docstring.push_str("\n");
+                    unassigned_docstring.push('\n');
                     unassigned_docstring.push_str(docstring);
                 }
                 x => unreachable!("guaranteed to not be here: {:?}", x),
