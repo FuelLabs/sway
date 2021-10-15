@@ -2,7 +2,7 @@ use crate::abi_encoder::ABIEncoder;
 use crate::errors::Error;
 use serde::{Deserialize, Serialize};
 
-use crate::tokens::{Detokenize, Tokenize};
+use crate::tokens::{Detokenize, Token, Tokenize};
 use crate::types::{Function, Selector};
 
 use std::marker::PhantomData;
@@ -12,6 +12,37 @@ use std::marker::PhantomData;
 // - [] Keep the call stuff `unimplemented()` for now, focus on abigen-related stuff
 // - [] Make sure everything related to code generation is working for all fuel types
 // - [] Make `abigen!` work properly, right now it's hardcoded
+
+pub struct Contract {}
+
+impl Contract {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    // The idea here is that this will just build the request
+    pub fn method_hash<D: Detokenize>(
+        signature: Selector,
+        args: &[Token],
+    ) -> Result<ContractCall<D>, Error> {
+        let mut encoder = ABIEncoder::new();
+
+        let encoded_params = hex::encode(encoder.encode(args).unwrap());
+        let encoded_selector = hex::encode(signature);
+
+        println!("encoded: {}{}\n", encoded_selector, encoded_params);
+        // TODO: In the near future, the actual contract call will happen somewhere here.
+        // Right now we're just generating the type-safe bindings with this `method_hash`
+        // injected in these bindings.
+
+        let tx = TransactionRequest { data: None };
+        Ok(ContractCall {
+            tx,
+            function: None,
+            datatype: PhantomData,
+        })
+    }
+}
 
 /// Parameters for sending a transaction
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
@@ -25,7 +56,7 @@ pub struct TransactionRequest {
 #[derive(Debug, Clone)]
 #[must_use = "contract calls do nothing unless you `send` or `call` them"]
 /// Helper for managing a transaction before submitting it to a node
-pub struct Call<D> {
+pub struct ContractCall<D> {
     /// The raw transaction object
     pub tx: TransactionRequest, // Maybe not necessary?
     /// The ABI of the function being called
@@ -36,44 +67,11 @@ pub struct Call<D> {
     pub datatype: PhantomData<D>,
 }
 
-impl<D> Call<D>
+impl<D> ContractCall<D>
 where
     D: Detokenize,
 {
     pub fn call(&self) -> Result<D, Error> {
         unimplemented!()
-    }
-}
-
-// TODO: rethink naming
-pub struct ContractCall {}
-
-impl ContractCall {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    // TODO: rethink naming
-    // The idea here is that this will just build the request
-    pub fn method_hash<T: Tokenize, D: Detokenize>(
-        signature: Selector,
-        args: T,
-    ) -> Result<Call<D>, Error> {
-        let mut encoder = ABIEncoder::new();
-
-        let encoded_params = hex::encode(encoder.encode(&args.into_tokens()).unwrap());
-        let encoded_selector = hex::encode(signature);
-
-        println!("encoded: {}{}\n", encoded_selector, encoded_params);
-        // TODO: In the near future, the actual contract call will happen somewhere here.
-        // Right now we're just generating the type-safe bindings with this `method_hash`
-        // injected in these bindings.
-
-        let tx = TransactionRequest { data: None };
-        Ok(Call {
-            tx,
-            function: None,
-            datatype: PhantomData,
-        })
     }
 }

@@ -1,10 +1,9 @@
+use std::collections::HashMap;
+
 use crate::abi_encoder::ABIEncoder;
-use crate::errors::Error;
-
-use crate::json_abi::{parse_param, ABI};
-
 use crate::bindings::ContractBindings;
-
+use crate::errors::Error;
+use crate::json_abi::{parse_param, ABI};
 use crate::types::{expand_type, Function, JsonABI, ParamType, Property, Selector};
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
@@ -21,12 +20,11 @@ pub struct Abigen {
     /// Contains all the solidity structs extracted from the JSON ABI.
     // internal_structs: InternalStructs, unclear if needed
 
-    /// Was the ABI in human readable format?
-    //human_readable: bool,
-
     /// The contract name as an identifier.
-    contract_name: Ident, // TODO: option for now
+    contract_name: Ident,
 
+    custom_structs: HashMap<String, Property>,
+    //custom_enums: Option<HashMap<String, Property>>,
     /// Format the code using a locally installed copy of `rustfmt`.
     rustfmt: bool,
 }
@@ -41,11 +39,29 @@ impl Abigen {
     pub fn new(contract_name: &str, abi_source: &str) -> Result<Self, Error> {
         let parsed_abi: JsonABI = serde_json::from_str(abi_source)?;
         Ok(Self {
+            custom_structs: Abigen::get_custom_structs(&parsed_abi),
             contract_name: ident(contract_name),
             abi: parsed_abi,
             abi_parser: ABI::new(),
             rustfmt: true,
         })
+    }
+
+    fn get_custom_structs(abi: &JsonABI) -> HashMap<String, Property> {
+        let mut structs = HashMap::new();
+        for function in abi {
+            for prop in &function.inputs {
+                if prop.type_field.eq_ignore_ascii_case("struct") {
+                    if !structs.contains_key(&prop.name) {
+                        structs.insert(prop.name.clone(), prop.clone());
+                    }
+                }
+            }
+        }
+
+        println!("structs: {:?}\n", structs);
+
+        structs
     }
 
     /// Generates the contract bindings.
@@ -55,6 +71,101 @@ impl Abigen {
 
         Ok(ContractBindings { tokens, rustfmt })
     }
+
+    pub fn expand(&self) -> Result<TokenStream, Error> {
+        let name = &self.contract_name;
+        let name_mod = ident(&format!(
+            "{}_mod",
+            self.contract_name.to_string().to_lowercase()
+        ));
+
+        // TODO: create structs used in the ABI
+        // 5. Declare the structs parsed from the human readable abi
+
+        let contract_functions = self.functions()?; // This is the part we care the most for now
+
+        Ok(quote! {
+            pub use #name_mod::*;
+
+            #[allow(clippy::too_many_arguments)]
+            mod #name_mod {
+                #![allow(clippy::enum_variant_names)]
+                #![allow(dead_code)]
+                #![allow(unused_imports)]
+
+                use fuels_rs::contract::{Contract, ContractCall};
+                use fuels_rs::tokens::Tokenizable;
+
+                pub struct #name;
+
+                impl #name {
+                    pub fn new() -> Self {
+                        Self{}
+                    }
+
+                    #contract_functions
+                }
+            }
+        })
+    }
+
+    /// Expand all structs parsed from the internal types of the JSON ABI
+    // fn expand_internal_struct(
+    //     &self,
+    //     name: &str,
+    //     sol_struct: &SolStruct,
+    //     tuple: ParamType,
+    // ) -> Result<TokenStream> {
+    //     let mut fields = Vec::with_capacity(sol_struct.fields().len());
+    //     for field in sol_struct.fields() {
+    //         let field_name = util::ident(&field.name().to_snake_case());
+    //         match field.r#type() {
+    //             FieldType::Elementary(ty) => {
+    //                 let ty = types::expand(ty)?;
+    //                 fields.push(quote! { pub #field_name: #ty });
+    //             }
+    //             FieldType::Struct(struct_ty) => {
+    //                 let ty = expand_struct_type(struct_ty);
+    //                 fields.push(quote! { pub #field_name: #ty });
+    //             }
+    //             FieldType::Mapping(_) => {
+    //                 return Err(anyhow::anyhow!(
+    //                     "Mapping types in struct `{}` are not supported {:?}",
+    //                     name,
+    //                     field
+    //                 ));
+    //             }
+    //         }
+    //     }
+
+    //     let sig = if let ParamType::Tuple(ref tokens) = tuple {
+    //         tokens
+    //             .iter()
+    //             .map(|kind| kind.to_string())
+    //             .collect::<Vec<_>>()
+    //             .join(",")
+    //     } else {
+    //         "".to_string()
+    //     };
+
+    //     let abi_signature = format!("{}({})", name, sig,);
+
+    //     let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
+
+    //     let name = util::ident(name);
+
+    //     // use the same derives as for events
+    //     let derives = &self.event_derives;
+    //     let derives = quote! {#(#derives),*};
+
+    //     Ok(quote! {
+    //         #abi_signature_doc
+    //         #[derive(Clone, Debug, Default, Eq, PartialEq, ethers::contract::EthAbiType, #derives)]
+    //         pub struct #name {
+    //             #( #fields ),*
+    //         }
+    //     })
+    // }
 
     pub fn functions(&self) -> Result<TokenStream, Error> {
         // The goal here is to turn the parsed abi into TokenStream
@@ -68,6 +179,7 @@ impl Abigen {
         Ok(quote! { #( #tokenized_functions )* })
     }
 
+    // TODO: struct inputs don't work _at all_.
     fn expand_function(
         &self,
         function: &Function,
@@ -84,7 +196,7 @@ impl Abigen {
 
         let tokenized_output = Abigen::expand_fn_outputs(&function.outputs)?;
 
-        let result = quote! { Call<#tokenized_output> };
+        let result = quote! { ContractCall<#tokenized_output> };
 
         let (input, arg) = self.expand_inputs_call_arg_with_structs(function)?;
 
@@ -97,7 +209,7 @@ impl Abigen {
         Ok(quote! {
             #doc
             pub fn #name(&self #input) -> #result {
-                ContractCall::method_hash(#tokenized_signature, #arg).expect("method not found (this should never happen)")
+                Contract::method_hash(#tokenized_signature, #arg).expect("method not found (this should never happen)")
             }
         })
     }
@@ -140,8 +252,6 @@ impl Abigen {
             let name = Abigen::expand_input_name(i, &param.name);
 
             let ty = self.expand_input_param(fun, &param.name, &parse_param(param)?)?;
-            println!("name: {:?}\n", name);
-            println!("ty: {:?}\n", ty);
             args.push(quote! { #name: #ty });
             let call_arg = match parse_param(param)? {
                 // this is awkward edge case where the function inputs are a single struct
@@ -150,8 +260,7 @@ impl Abigen {
                 // and since `((#name))` is not a rust tuple it doesn't get wrapped into another tuple that will be peeled off by `flatten_tokens`
                 ParamType::Struct(_) if fun.inputs.len() == 1 => {
                     // make sure the tuple gets converted to `Token::Tuple`
-                    // quote! {(#name,)}
-                    unimplemented!()
+                    quote! {(#name,)}
                 }
                 _ => name,
             };
@@ -160,9 +269,15 @@ impl Abigen {
         let args = quote! { #( , #args )* };
         let call_args = match call_args.len() {
             0 => quote! { () },
-            1 => quote! { #( #call_args )* },
-            _ => quote! { ( #(#call_args, )* ) },
+            //1 => quote! { #( #call_args.into_token() )* },
+            _ => quote! { &[ #(#call_args.into_token(), )* ] },
         };
+
+        // Can we turn call_args into Tokens?
+        //
+
+        println!("args: {:?}\n", args);
+        println!("call_args: {:?}\n", call_args);
 
         Ok((args, call_args))
     }
@@ -196,8 +311,10 @@ impl Abigen {
             }
 
             ParamType::Struct(_) => {
+                let rust_struct_name = self.custom_structs.get(param).unwrap();
+                let ident = ident(&rust_struct_name.name);
+                Ok(quote! { #ident })
                 // TODO: structs
-                unimplemented!()
                 // let ty = if let Some(rust_struct_name) = self
                 //     .internal_structs
                 //     .get_function_input_struct_type(&fun.name, param)
@@ -211,44 +328,6 @@ impl Abigen {
             }
             _ => expand_type(kind),
         }
-    }
-
-    // This is where the magic happens
-    pub fn expand(&self) -> Result<TokenStream, Error> {
-        let name = &self.contract_name;
-        let name_mod = ident(&format!(
-            "{}_mod",
-            self.contract_name.to_string().to_lowercase()
-        ));
-
-        let contract_functions = self.functions()?; // This is the part we care the most for now
-
-        Ok(quote! {
-            pub use #name_mod::*;
-
-            #[allow(clippy::too_many_arguments)]
-            mod #name_mod {
-                #![allow(clippy::enum_variant_names)]
-                #![allow(dead_code)]
-                #![allow(unused_imports)]
-
-                // #imports
-                use fuels_rs::contract::{ContractCall, Call};
-                // #struct_decl
-
-                pub struct #name;
-
-                impl #name {
-                    pub fn new() -> Self {
-                        Self{}
-                    }
-
-                    #contract_functions
-                }
-            }
-        })
-
-        // unimplemented!()
     }
 
     // Expands an identifier string into a token and appending `_` if the
@@ -265,7 +344,6 @@ mod tests {
     use super::*;
 
     // TODO: move a lot of the tests from ethers (e.g methods.rs file) here
-
     #[test]
     fn generates_bindings() {
         let contract = r#"
@@ -290,6 +368,69 @@ mod tests {
         "#;
 
         let bindings = Abigen::new("test", contract).unwrap().generate().unwrap();
+        bindings.write(std::io::stdout()).unwrap();
+    }
+
+    #[test]
+    fn generates_bindings_two_args() {
+        let contract = r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"arg",
+                        "type":"u32"
+                    },
+                    {
+                        "name":"second_arg",
+                        "type":"u16"
+                    }
+                ],
+                "name":"takes_ints_returns_bool",
+                "outputs":[
+                    {
+                        "name":"",
+                        "type":"bool"
+                    }
+                ]
+            }
+        ]
+        "#;
+
+        let bindings = Abigen::new("test", contract).unwrap().generate().unwrap();
+        bindings.write(std::io::stdout()).unwrap();
+    }
+
+    #[test]
+    fn custom_types() {
+        let contract = r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"MyStruct",
+                        "type":"struct",
+                        "components": [
+                            {
+                                "name": "foo",
+                                "type": "u8"
+                            },
+                            {
+                                "name": "bar",
+                                "type": "bool"
+                            }
+                        ]
+                    }
+                ],
+                "name":"takes_struct",
+                "outputs":[]
+            }
+        ]
+        "#;
+
+        let bindings = Abigen::new("custom", contract).unwrap().generate().unwrap();
         bindings.write(std::io::stdout()).unwrap();
     }
 }

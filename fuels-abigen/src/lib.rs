@@ -18,9 +18,13 @@ pub fn abigen(input: TokenStream) -> TokenStream {
                 {
                     "name":"arg",
                     "type":"u32"
+                },
+                {
+                    "name":"second_arg",
+                    "type":"u16"
                 }
             ],
-            "name":"takes_u32_returns_bool",
+            "name":"takes_ints_returns_bool",
             "outputs":[
                 {
                     "name":"",

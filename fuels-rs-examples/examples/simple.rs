@@ -9,9 +9,13 @@ fn main() {
                     {
                         "name":"arg",
                         "type":"u32"
+                    },
+                    {
+                        "name":"second_arg",
+                        "type":"u16"
                     }
                 ],
-                "name":"takes_u32_returns_bool",
+                "name":"takes_ints_returns_bool",
                 "outputs":[
                     {
                         "name":"",
@@ -33,7 +37,7 @@ fn main() {
     // Currently this prints `000000006355e6ee000000000000002a`
     // The encoded contract call. Soon it'll be able to perform the
     // actual call.
-    let _function = contract_instance.takes_u32_returns_bool(42 as u32);
+    let _function = contract_instance.takes_ints_returns_bool(42 as u32, 10 as u16);
 
     // Then you'll be able to use `.call()` to actually call the contract with the
     // specified function:

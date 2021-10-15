@@ -41,6 +41,15 @@ impl Tokenizable for Token {
     }
 }
 
+// impl Tokenizable for &[Token] {
+//     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
+//         Ok(token)
+//     }
+//     fn into_token(self) -> Token {
+//         self
+//     }
+// }
+
 impl Tokenizable for bool {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
@@ -72,7 +81,10 @@ impl Tokenizable for u16 {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::U16(data) => Ok(data),
-            other => Err(InvalidOutputType(format!("Expected `u8`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!(
+                "Expected `u16`, got {:?}",
+                other
+            ))),
         }
     }
     fn into_token(self) -> Token {
@@ -84,7 +96,10 @@ impl Tokenizable for u32 {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::U32(data) => Ok(data),
-            other => Err(InvalidOutputType(format!("Expected `u8`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!(
+                "Expected `u32`, got {:?}",
+                other
+            ))),
         }
     }
     fn into_token(self) -> Token {
@@ -96,7 +111,10 @@ impl Tokenizable for u64 {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::U64(data) => Ok(data),
-            other => Err(InvalidOutputType(format!("Expected `u8`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!(
+                "Expected `u64`, got {:?}",
+                other
+            ))),
         }
     }
     fn into_token(self) -> Token {
