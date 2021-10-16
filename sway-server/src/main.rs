@@ -3,6 +3,7 @@ use lspower::{LspService, Server};
 mod capabilities;
 mod core;
 mod server;
+mod utils;
 use server::Backend;
 
 #[tokio::main]

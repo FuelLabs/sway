@@ -1,0 +1,27 @@
+use core_lang::{VariableDeclaration, Visibility};
+
+use crate::core::token_type::VarBody;
+use core_lang::Expression;
+
+pub(crate) fn extract_visibility(visibility: &Visibility) -> String {
+    match visibility {
+        Visibility::Private => "".into(),
+        Visibility::Public => "pub ".into(),
+    }
+}
+
+pub(crate) fn extract_var_body(var_dec: &VariableDeclaration) -> VarBody {
+    match &var_dec.body {
+        Expression::FunctionApplication {
+            name,
+            arguments: _,
+            span: _,
+        } => VarBody::FunctionCall(name.suffix.primary_name.into()),
+        Expression::StructExpression {
+            struct_name,
+            fields: _,
+            span: _,
+        } => VarBody::Type(struct_name.primary_name.into()),
+        _ => VarBody::Other,
+    }
+}

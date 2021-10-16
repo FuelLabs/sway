@@ -1,16 +1,16 @@
+use super::document::{DocumentError, TextDocument};
+use crate::capabilities::{self, formatting::get_format_text_edits};
 use dashmap::DashMap;
 use lspower::lsp::{
-    CompletionItem, Diagnostic, FormattingOptions, GotoDefinitionResponse, Hover, Position, Range,
+    CompletionItem, Diagnostic, FormattingOptions, GotoDefinitionResponse, Position, Range,
     SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
-use crate::capabilities::{self, formatting::get_format_text_edits};
-
-use super::document::{DocumentError, TextDocument};
+pub type Documents = DashMap<String, TextDocument>;
 
 #[derive(Debug)]
 pub struct Session {
-    documents: DashMap<String, TextDocument>,
+    pub documents: Documents,
 }
 
 impl Session {
@@ -77,16 +77,6 @@ impl Session {
                     .collect();
 
                 return Some(result);
-            }
-        }
-
-        None
-    }
-
-    pub fn get_token_hover_content(&self, url: &Url, position: Position) -> Option<Hover> {
-        if let Some(document) = self.documents.get(url.path()) {
-            if let Some(token) = document.get_token_at_position(position) {
-                return Some(capabilities::hover::to_hover_content(token));
             }
         }
 
