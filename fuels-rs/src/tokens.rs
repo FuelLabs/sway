@@ -41,15 +41,6 @@ impl Tokenizable for Token {
     }
 }
 
-// impl Tokenizable for &[Token] {
-//     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
-//         Ok(token)
-//     }
-//     fn into_token(self) -> Token {
-//         self
-//     }
-// }
-
 impl Tokenizable for bool {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
@@ -62,6 +53,29 @@ impl Tokenizable for bool {
     }
     fn into_token(self) -> Token {
         Token::Bool(self)
+    }
+}
+
+impl<T: Tokenizable> Tokenizable for Vec<T> {
+    fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
+        match token {
+            Token::Array(data) => {
+                let mut v: Vec<T> = Vec::new();
+                for tok in data {
+                    v.push(T::from_token(tok.clone()).unwrap());
+                }
+                return Ok(v);
+            }
+            other => Err(InvalidOutputType(format!("Expected `T`, got {:?}", other))),
+        }
+    }
+    fn into_token(self) -> Token {
+        let mut v: Vec<Token> = Vec::new();
+        for t in self {
+            let tok = T::into_token(t);
+            v.push(tok);
+        }
+        Token::Array(v)
     }
 }
 
@@ -123,28 +137,28 @@ impl Tokenizable for u64 {
 }
 
 /// Tokens conversion trait
-pub trait Tokenize {
-    /// Convert to list of tokens
-    fn into_tokens(self) -> Vec<Token>;
-}
+// pub trait Tokenize {
+//     /// Convert to list of tokens
+//     fn into_tokens(self) -> Vec<Token>;
+// }
 
-impl<'a> Tokenize for &'a [Token] {
-    fn into_tokens(self) -> Vec<Token> {
-        flatten_tokens(self.to_vec())
-    }
-}
+// impl<'a> Tokenize for &'a [Token] {
+//     fn into_tokens(self) -> Vec<Token> {
+//         flatten_tokens(self.to_vec())
+//     }
+// }
 
-impl<T: Tokenizable> Tokenize for T {
-    fn into_tokens(self) -> Vec<Token> {
-        flatten_tokens(vec![self.into_token()])
-    }
-}
+// impl<T: Tokenizable> Tokenize for T {
+//     fn into_tokens(self) -> Vec<Token> {
+//         flatten_tokens(vec![self.into_token()])
+//     }
+// }
 
-impl Tokenize for () {
-    fn into_tokens(self) -> Vec<Token> {
-        vec![]
-    }
-}
+// impl Tokenize for () {
+//     fn into_tokens(self) -> Vec<Token> {
+//         vec![]
+//     }
+// }
 
 /// Output type possible to deserialize from Contract ABI
 pub trait Detokenize {

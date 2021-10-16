@@ -4,6 +4,7 @@ use crate::abi_encoder::ABIEncoder;
 use crate::bindings::ContractBindings;
 use crate::errors::Error;
 use crate::json_abi::{parse_param, ABI};
+use crate::source::Source;
 use crate::types::{expand_type, Function, JsonABI, ParamType, Property, Selector};
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
@@ -36,12 +37,14 @@ pub fn ident(name: &str) -> Ident {
 
 impl Abigen {
     /// Creates a new contract with the given ABI JSON source.
-    pub fn new(contract_name: &str, abi_source: &str) -> Result<Self, Error> {
-        let parsed_abi: JsonABI = serde_json::from_str(abi_source)?;
+    pub fn new<S: AsRef<str>>(contract_name: &str, abi_source: S) -> Result<Self, Error> {
+        let source = Source::parse(abi_source).unwrap();
+        println!("source: {:?}\n", source);
+        let parsed_abi: JsonABI = serde_json::from_str(&source.get().unwrap())?;
         Ok(Self {
             custom_structs: Abigen::get_custom_structs(&parsed_abi),
-            contract_name: ident(contract_name),
             abi: parsed_abi,
+            contract_name: ident(contract_name),
             abi_parser: ABI::new(),
             rustfmt: true,
         })
@@ -303,7 +306,7 @@ impl Abigen {
         kind: &ParamType,
     ) -> Result<TokenStream, Error> {
         match kind {
-            ParamType::Array(ty, _) => {
+            ParamType::Array(ty, size) => {
                 let ty = self.expand_input_param(fun, param, ty)?;
                 Ok(quote! {
                     ::std::vec::Vec<#ty>
@@ -368,6 +371,18 @@ mod tests {
         "#;
 
         let bindings = Abigen::new("test", contract).unwrap().generate().unwrap();
+        bindings.write(std::io::stdout()).unwrap();
+    }
+
+    #[test]
+    fn generates_bindings_from_contract_file() {
+        let bindings = Abigen::new(
+            "test",
+            "../fuels-rs-examples/examples/takes_ints_returns_bool.json",
+        )
+        .unwrap()
+        .generate()
+        .unwrap();
         bindings.write(std::io::stdout()).unwrap();
     }
 

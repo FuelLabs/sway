@@ -8,7 +8,6 @@ members = [
     "fuel-abi-cli",
     "fuels-rs",
     "fuels-abigen",
-    "fuels-rs-examples",
     "sway-server",
     "test"
 ]

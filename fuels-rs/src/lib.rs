@@ -6,5 +6,6 @@ pub mod contract;
 pub mod errors;
 pub mod json_abi;
 pub mod rustfmt;
+pub mod source;
 pub mod tokens;
 pub mod types;

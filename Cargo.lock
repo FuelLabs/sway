@@ -1380,32 +1380,7 @@ dependencies = [
  "strum_macros",
  "syn 1.0.75",
  "thiserror",
-]
-
-[[package]]
-name = "fuels-rs-examples"
-version = "0.1.0"
-dependencies = [
- "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "anyhow",
- "blake2",
- "bytes 1.1.0",
- "fuel-types",
- "fuels-abigen",
- "fuels-rs",
- "glob",
- "hex",
- "itertools",
- "proc-macro2 1.0.28",
- "quote 1.0.9",
- "regex",
- "serde",
- "serde_json",
- "sha2",
- "strum",
- "strum_macros",
- "syn 1.0.75",
- "thiserror",
+ "url",
 ]
 
 [[package]]

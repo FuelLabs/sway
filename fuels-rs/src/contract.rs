@@ -2,16 +2,16 @@ use crate::abi_encoder::ABIEncoder;
 use crate::errors::Error;
 use serde::{Deserialize, Serialize};
 
-use crate::tokens::{Detokenize, Token, Tokenize};
+use crate::tokens::{Detokenize, Token};
 use crate::types::{Function, Selector};
 
 use std::marker::PhantomData;
 
-// TODO: Continue from here
+// TODO:
+// - [x] Make `abigen!` work properly, right now it's hardcoded
+// - [] Make sure everything related to code generation is working for all fuel types
 // - [] Refactor all namings now that we have the workflow laid out;
 // - [] Keep the call stuff `unimplemented()` for now, focus on abigen-related stuff
-// - [] Make sure everything related to code generation is working for all fuel types
-// - [] Make `abigen!` work properly, right now it's hardcoded
 
 pub struct Contract {}
 
