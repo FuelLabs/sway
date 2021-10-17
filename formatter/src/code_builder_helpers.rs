@@ -65,7 +65,7 @@ pub fn handle_string_case(code_line: &mut CodeLine, current_char: char) {
 }
 
 pub fn handle_whitespace_case(code_line: &mut CodeLine, iter: &mut Peekable<Enumerate<Chars>>) {
-    clean_inline_whitespace(iter);
+    clean_all_whitespace(iter);
 
     if let Some((_, next_char)) = iter.peek() {
         let next_char = *next_char;
@@ -159,10 +159,10 @@ pub fn handle_ampersand_case(code_line: &mut CodeLine, iter: &mut Peekable<Enume
     }
 }
 
-/// cleans only incoming inline whitespace, excluding newlines
-pub fn clean_inline_whitespace(iter: &mut Peekable<Enumerate<Chars>>) {
+/// cleans whitespace, including newlines
+pub fn clean_all_whitespace(iter: &mut Peekable<Enumerate<Chars>>) {
     while let Some((_, next_char)) = iter.peek() {
-        if *next_char == ' ' {
+        if next_char.is_whitespace() {
             iter.next();
         } else {
             break;
