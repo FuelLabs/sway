@@ -366,6 +366,22 @@ struct C {
     /// b docstring
     b: byte,
 }
+
+struct A {
+    a: u64,
+    b: u64,
+}
+
+fn get_gas() -> A {
+    A {
+        a: asm() {
+            ggas
+        },
+        b: asm() {
+            cgas
+        },
+    }
+}
 "#;
 
         let result = get_formatted_data(correct_sway_code, 4);
@@ -449,6 +465,22 @@ struct C {
 a: A,
 /// b docstring
 b: byte,
+}
+
+struct A {
+a: u64,
+b: u64,
+}
+
+fn get_gas() -> A {
+A {
+a: asm() {
+ggas
+},
+b: asm() {
+cgas
+}
+}
 }
 "#;
 
