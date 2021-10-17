@@ -9,7 +9,7 @@ use crate::code_builder_helpers::{
 
 use super::{
     code_builder_helpers::{
-        clean_inline_whitespace, handle_ampersand_case, handle_assignment_case, handle_colon_case,
+        clean_all_whitespace, handle_ampersand_case, handle_assignment_case, handle_colon_case,
         handle_dash_case, handle_multiline_comment_case, handle_pipe_case, handle_string_case,
         handle_whitespace_case, is_comment, is_multiline_comment,
     },
@@ -271,12 +271,17 @@ impl CodeBuilder {
         }
 
         self.outdent();
-        clean_inline_whitespace(&mut iter);
+        clean_all_whitespace(&mut iter);
 
         match iter.peek() {
             // check is there a ';' and add it after '}'
             Some((_, ';')) => {
                 self.complete_and_add_line(CodeLine::new("};".into()));
+                iter.next();
+                self.move_rest_to_new_line(line, iter);
+            }
+            Some((_, ',')) => {
+                self.complete_and_add_line(CodeLine::new("},".into()));
                 iter.next();
                 self.move_rest_to_new_line(line, iter);
             }
