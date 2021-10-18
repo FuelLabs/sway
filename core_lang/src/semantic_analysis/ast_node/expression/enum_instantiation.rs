@@ -44,10 +44,10 @@ pub(crate) fn instantiate_enum<'sc>(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], enum_field_type) {
+    match (&args[..], namespace.look_up_type_id(enum_field_type)) {
         ([], ResolvedType::Unit) => ok(
             TypedExpression {
-                return_type: MaybeResolvedType::Resolved(enum_decl.as_type()),
+                return_type: enum_decl.as_type(namespace),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
@@ -65,7 +65,7 @@ pub(crate) fn instantiate_enum<'sc>(
                 TypedExpression::type_check(
                     single_expr.clone(),
                     namespace,
-                    Some(MaybeResolvedType::Resolved(r#type.clone())),
+                    Some(enum_field_type),
                     "Enum instantiator must match its declared variant type.",
                     self_type,
                     build_config,
@@ -81,7 +81,7 @@ pub(crate) fn instantiate_enum<'sc>(
 
             ok(
                 TypedExpression {
-                    return_type: MaybeResolvedType::Resolved(enum_decl.as_type()),
+                    return_type: enum_decl.as_type(namespace),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),

@@ -24,7 +24,7 @@ pub struct Namespace<'sc> {
     /// namespace _is_ the root namespace.
     pub(crate) crate_namespace: Box<Option<Namespace<'sc>>>,
 
-    type_engine: Engine<'sc>,
+    pub(crate) type_engine: Engine<'sc>,
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
 }
 

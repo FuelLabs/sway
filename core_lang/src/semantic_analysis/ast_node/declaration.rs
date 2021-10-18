@@ -193,7 +193,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
     /// the place to resolve those typed.
     pub(crate) fn resolve_generic_types(
         &self,
-        _type_arguments: Vec<MaybeResolvedType<'sc>>,
+        _type_arguments: Vec<TypeId>,
     ) -> CompileResult<'sc, Self> {
         ok(self.clone(), vec![], vec![])
     }
