@@ -2,6 +2,7 @@ use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
+use crate::type_engine::TypeEngine;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
 
@@ -209,11 +210,23 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = res.errors;
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
-            let convertability = typed_expression.return_type.is_convertible(
+            let convertability = match namespace.type_engine.unify_with_self(
+                typed_expression.return_type,
+                type_annotation,
+                self_type,
+                &expr_span,
+            ) {
+                Ok(mut warnings) => {
+                    todo!("Append warnings to warnings, use the annotation type id")
+                }
+                Err(e) => todo!(
+                    " use the below to make an err
                 &type_annotation,
                 expr_span.clone(),
                 help_text,
-            );
+                "
+                ),
+            };
             match convertability {
                 Ok(warning) => {
                     if let Some(warning) = warning {
@@ -228,10 +241,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
             }
             // The annotation will result in a cast, so set the return type accordingly.
-            match type_annotation {
-                MaybeResolvedType::Partial(PartiallyResolvedType::NeedsType) => {}
-                ty => typed_expression.return_type = ty,
-            };
+            typed_expression.return_type = ty;
         }
 
         ok(typed_expression, warnings, errors)
@@ -253,7 +263,7 @@ impl<'sc> TypedExpression<'sc> {
             Literal::Byte(_) => TypeInfo::Byte,
             Literal::B256(_) => TypeInfo::B256,
         };
-        let id = namespace.insert_ty(&return_type);
+        let id = namespace.insert_type(return_type);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::Literal(lit),
             return_type: id,
@@ -430,12 +440,12 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let bool_type_id = namespace.insert_ty(TypeInfo::Boolean);
+        let bool_type_id = namespace.insert_type(TypeInfo::Boolean);
         let typed_lhs = check!(
             TypedExpression::type_check(
                 lhs.clone(),
                 namespace,
-                bool_type_id,
+                Some(bool_type_id),
                 "",
                 self_type,
                 build_config,
@@ -450,7 +460,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 rhs.clone(),
                 namespace,
-                bool_type_id,
+                Some(bool_type_id),
                 "",
                 self_type,
                 build_config,
@@ -550,7 +560,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedCodeBlock::type_check(
                 contents.clone(),
                 namespace,
-                type_annotation.clone(),
+                type_annotation.unwrap_or_else(|| namespace.insert_type(TypeInfo::Unknown)),
                 help_text.clone(),
                 self_type,
                 build_config,
@@ -561,23 +571,23 @@ impl<'sc> TypedExpression<'sc> {
                     contents: vec![],
                     whole_block_span: span.clone()
                 },
-                Some(MaybeResolvedType::Resolved(ResolvedType::Unit))
+                namespace.insert_type(TypeInfo::Unit)
             ),
             warnings,
             errors
         );
-        let block_return_type = match block_return_type {
-            Some(ty) => ty,
-            None => match type_annotation {
-                Some(ref ty) if ty != &MaybeResolvedType::Resolved(ResolvedType::Unit) => {
+        let block_return_type: TypeId = match namespace.look_up_type_id(block_return_type) {
+            ResolvedType::Unit => match type_annotation {
+                Some(ref ty) if namespace.look_up_type_id(*ty) != ResolvedType::Unit => {
                     errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
                         span: span.clone(),
-                        ty: ty.friendly_type_str(),
+                        ty: namespace.look_up_type_id(*ty).friendly_type_str(),
                     });
-                    MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)
+                    namespace.insert_type(TypeInfo::ErrorRecovery)
                 }
-                _ => MaybeResolvedType::Resolved(ResolvedType::Unit),
+                _ => namespace.insert_type(TypeInfo::Unit),
             },
+            otherwise => block_return_type,
         };
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
@@ -609,7 +619,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 *condition.clone(),
                 namespace,
-                Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
+                Some(namespace.insert_type(TypeInfo::Boolean)),
                 "The condition of an if expression must be a boolean expression.",
                 self_type,
                 build_config,
@@ -657,7 +667,7 @@ impl<'sc> TypedExpression<'sc> {
             if r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: annotation.friendly_type_str(),
+                    r#type: namespace.look_up_type_id(*annotation).friendly_type_str(),
                 });
             }
         }
@@ -685,7 +695,7 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let return_type = namespace.resolve_type(&asm.return_type, self_type);
+        let return_type = namespace.resolve_type_with_self(asm.return_type, self_type);
         // type check the initializers
         let typed_registers = asm
             .registers
@@ -768,35 +778,33 @@ impl<'sc> TypedExpression<'sc> {
 
         // match up the names with their type annotations from the declaration
         for def_field in definition.fields.iter() {
-            let expr_field: crate::parse_tree::StructExpressionField = match fields
-                .iter()
-                .find(|x| x.name == def_field.name)
-            {
-                Some(val) => val.clone(),
-                None => {
-                    errors.push(CompileError::StructMissingField {
-                        field_name: def_field.name.primary_name,
-                        struct_name: definition.name.primary_name,
-                        span: span.clone(),
-                    });
-                    typed_fields_buf.push(TypedStructExpressionField {
-                        name: def_field.name.clone(),
-                        value: TypedExpression {
-                            expression: TypedExpressionVariant::Unit,
-                            return_type: MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
-                            is_constant: IsConstant::No,
+            let expr_field: crate::parse_tree::StructExpressionField =
+                match fields.iter().find(|x| x.name == def_field.name) {
+                    Some(val) => val.clone(),
+                    None => {
+                        errors.push(CompileError::StructMissingField {
+                            field_name: def_field.name.primary_name,
+                            struct_name: definition.name.primary_name,
                             span: span.clone(),
-                        },
-                    });
-                    continue;
-                }
-            };
+                        });
+                        typed_fields_buf.push(TypedStructExpressionField {
+                            name: def_field.name.clone(),
+                            value: TypedExpression {
+                                expression: TypedExpressionVariant::Unit,
+                                return_type: namespace.insert_type(TypeInfo::ErrorRecovery),
+                                is_constant: IsConstant::No,
+                                span: span.clone(),
+                            },
+                        });
+                        continue;
+                    }
+                };
 
             let typed_field = check!(
                 TypedExpression::type_check(
                     expr_field.value,
                     namespace,
-                    Some(MaybeResolvedType::Resolved(def_field.r#type.clone())),
+                    Some(def_field.r#type),
                     "Struct field's type must match up with the type specified in its \
                      declaration.",
                     self_type,
@@ -824,15 +832,16 @@ impl<'sc> TypedExpression<'sc> {
                 });
             }
         }
+        let struct_type_id = namespace.insert_type(TypeInfo::Struct {
+            name: definition.name.clone(),
+            fields: definition.fields.clone(),
+        });
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
                 struct_name: definition.name.clone(),
                 fields: typed_fields_buf,
             },
-            return_type: MaybeResolvedType::Resolved(ResolvedType::Struct {
-                name: definition.name.clone(),
-                fields: definition.fields.clone(),
-            }),
+            return_type: struct_type_id,
             is_constant: IsConstant::No,
             span,
         };
@@ -866,7 +875,7 @@ impl<'sc> TypedExpression<'sc> {
         );
         let (fields, struct_name) = check!(
             namespace.get_struct_type_fields(
-                &parent.return_type,
+                parent.return_type,
                 parent.span.as_str(),
                 &parent.span
             ),
@@ -899,7 +908,7 @@ impl<'sc> TypedExpression<'sc> {
                 prefix: Box::new(parent),
                 field_to_access: field.clone(),
             },
-            return_type: MaybeResolvedType::Resolved(field.r#type.clone()),
+            return_type: field.r#type,
             is_constant: IsConstant::No,
             span,
         };
@@ -941,7 +950,7 @@ impl<'sc> TypedExpression<'sc> {
 
         let type_arguments = type_arguments
             .iter()
-            .map(|x| namespace.resolve_type(x, self_type))
+            .map(|x| namespace.resolve_type_with_self(x.clone(), self_type))
             .collect();
         // now we can see if this thing is a symbol (typed declaration) or reference to an
         // enum instantiation
@@ -1017,7 +1026,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 *address,
                 namespace,
-                Some(MaybeResolvedType::Resolved(ResolvedType::B256)),
+                Some(namespace.insert_type(TypeInfo::B256)),
                 "An address that is being ABI cast must be of type b256",
                 self_type,
                 build_config,
@@ -1045,7 +1054,7 @@ impl<'sc> TypedExpression<'sc> {
                 return err(warnings, errors);
             }
         };
-        let return_type = MaybeResolvedType::Resolved(ResolvedType::ContractCaller {
+        let return_type = namespace.insert_type(TypeInfo::ContractCaller {
             abi_name: abi_name.clone(),
             address: Box::new(address.clone()),
         });
@@ -1062,9 +1071,9 @@ impl<'sc> TypedExpression<'sc> {
                 TypedFunctionDeclaration::type_check(
                     method.clone(),
                     namespace,
-                    None,
+                    namespace.insert_type(TypeInfo::Unknown),
                     "",
-                    &MaybeResolvedType::Resolved(ResolvedType::Contract),
+                    namespace.insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                     Mode::ImplAbiFn
@@ -1076,7 +1085,11 @@ impl<'sc> TypedExpression<'sc> {
         }
 
         functions_buf.append(&mut type_checked_fn_buf);
-        namespace.insert_trait_implementation(abi_name.clone(), return_type.clone(), functions_buf);
+        namespace.insert_trait_implementation(
+            abi_name.clone(),
+            namespace.look_up_type_id(return_type.clone()),
+            functions_buf,
+        );
         let exp = TypedExpression {
             expression: TypedExpressionVariant::AbiCast {
                 abi_name,
@@ -1091,11 +1104,11 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    pub(crate) fn pretty_print(&self) -> String {
+    pub(crate) fn pretty_print(&self, type_engine: &Engine) -> String {
         format!(
             "{} ({})",
-            self.expression.pretty_print(),
-            self.return_type.friendly_type_str()
+            self.expression.pretty_print(type_engine),
+            engine.look_up_type_id(self.return_type).friendly_type_str()
         )
     }
 }

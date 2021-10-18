@@ -167,7 +167,7 @@ impl<'sc> TypedParseTree<'sc> {
                 // itself.
                 TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
                     methods,
-                    type_implementing_for: MaybeResolvedType::Resolved(ResolvedType::Contract),
+                    type_implementing_for: TypeInfo::Contract,
                     ..
                 }) => abi_entries.append(&mut methods.clone()),
                 // XXX we're excluding the above ABI methods, is that OK?

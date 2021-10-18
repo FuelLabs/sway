@@ -61,7 +61,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     StructFieldAccess {
         prefix: Box<TypedExpression<'sc>>,
         field_to_access: TypedStructField<'sc>,
-        resolved_type_of_parent: MaybeResolvedType<'sc>,
+        resolved_type_of_parent: TypeId,
     },
     EnumInstantiation {
         /// for printing
@@ -87,7 +87,7 @@ pub(crate) struct TypedAsmRegisterDeclaration<'sc> {
 }
 
 impl<'sc> TypedExpressionVariant<'sc> {
-    pub(crate) fn pretty_print(&self) -> String {
+    pub(crate) fn pretty_print(&self, type_engine: &crate::type_engine::Engine<'sc>) -> String {
         match self {
             TypedExpressionVariant::Literal(lit) => format!(
                 "literal {}",
@@ -133,7 +133,9 @@ impl<'sc> TypedExpressionVariant<'sc> {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    resolved_type_of_parent.friendly_type_str(),
+                    engine
+                        .look_up_type_id(resolved_type_of_parent)
+                        .friendly_type_str(),
                     field_to_access.name.primary_name
                 )
             }

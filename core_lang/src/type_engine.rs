@@ -19,6 +19,14 @@ pub trait TypeEngine<'sc> {
         b: Self::TypeId,
         span: &Span<'sc>,
     ) -> Result<Option<Warning<'sc>>, Self::Error>;
+    /// Like `unify`, but also takes a self type in case either type is Self.
+    fn unify_with_self(
+        &mut self,
+        a: Self::TypeId,
+        b: Self::TypeId,
+        self_type: Self::TypeId,
+        span: &Span<'sc>,
+    ) -> Result<Option<Warning<'sc>>, Self::Error>;
     /// Attempt to reconstruct a concrete type from the given type term ID. This
     /// may fail if we don't yet have enough information to figure out what the
     /// type is.
@@ -27,6 +35,9 @@ pub trait TypeEngine<'sc> {
         id: Self::TypeId,
         span: &Span<'sc>,
     ) -> Result<Self::ResolvedType, Self::Error>;
+
+    /// Looks up a type id and asserts that it is known. Panics if it is not
+    fn look_up_type_id(&self, id: Self::TypeId) -> ResolvedType<'sc>;
 }
 
 /// A concrete type that has been fully inferred
@@ -65,7 +76,14 @@ pub enum TypeInfo<'sc> {
     },
     /// For the type inference engine to use when a type references another type
     Ref(TypeId),
+
     Unit,
+    /// Represents a type which contains methods to issue a contract call.
+    /// The specific contract is identified via the `Ident` within.
+    ContractCaller {
+        abi_name: CallPath<'sc>,
+        address: Box<TypedExpression<'sc>>,
+    },
     SelfType,
     Byte,
     B256,
@@ -124,6 +142,26 @@ impl<'sc> TypeEngine<'sc> for Engine<'sc> {
         id
     }
 
+    fn unify_with_self(
+        &mut self,
+        a: Self::TypeId,
+        b: Self::TypeId,
+        self_type: Self::TypeId,
+        span: &Span<'sc>,
+    ) -> Result<Option<Warning<'sc>>, Self::Error> {
+        let a = if self.vars[&a] == TypeInfo::SelfType {
+            self_type
+        } else {
+            a
+        };
+        let b = if self.vars[&b] == TypeInfo::SelfType {
+            self_type
+        } else {
+            b
+        };
+
+        self.unify(a, b, span)
+    }
     /// Make the types of two type terms equivalent (or produce an error if
     /// there is a conflict between them)
     fn unify(
@@ -213,6 +251,21 @@ impl<'sc> TypeEngine<'sc> for Engine<'sc> {
             UnsignedInteger(x) => Ok(ResolvedType::UnsignedInteger(x)),
             ref a => todo!("{:?}", a),
         }
+    }
+    pub(crate) fn look_up_type_id(&self, id: TypeId) -> ResolvedType<'sc> {
+        self.resolve(
+            id,
+            &Span {
+                span: pest::Span::new(
+                    "because we \"expect\" here, we don't need this error span.",
+                    0,
+                    0,
+                )
+                .unwrap(),
+                path: Default::default(),
+            },
+        )
+        .expect("Internal error: type ID did not exist in type engine")
     }
 }
 

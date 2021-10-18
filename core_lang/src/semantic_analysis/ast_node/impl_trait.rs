@@ -33,8 +33,7 @@ pub(crate) fn implementation_of_trait<'sc>(
             type_arguments[0].clone().name_ident.span,
         ));
     }
-    let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
-    let self_type = type_implementing_for.clone();
+    let type_implementing_for_id = namespace.insert_type(type_implementing_for);
     match namespace
         .get_call_path(&trait_name)
         .ok(&mut warnings, &mut errors)
@@ -73,7 +72,7 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                self_type,
+                namespace.look_up_type_id(self_type),
                 functions_buf.clone(),
             );
             ok(
@@ -92,7 +91,7 @@ pub(crate) fn implementation_of_trait<'sc>(
             // there are no type arguments here because we don't support generic types
             // in contract ABIs yet (or ever?) due to the complexity of communicating
             // the ABI layout in the descriptor file.
-            if type_implementing_for != MaybeResolvedType::Resolved(ResolvedType::Contract) {
+            if type_implementing_for != TypeInfo::Contract {
                 errors.push(CompileError::ImplAbiForNonContract {
                     span: type_implementing_for_span.clone(),
                     ty: type_implementing_for.friendly_type_str(),
@@ -124,7 +123,7 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                self_type,
+                namespace.look_up_type_id(self_type),
                 functions_buf.clone(),
             );
             ok(
@@ -187,7 +186,7 @@ fn type_check_trait_implementation<'sc>(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
                 namespace,
-                None,
+                namespace.insert_type(TypeInfo::Unknown),
                 "",
                 self_type,
                 build_config,
@@ -248,45 +247,18 @@ fn type_check_trait_implementation<'sc>(
                             let mut errors = vec![];
                             // TODO use trait constraints as part of the type here to
                             // implement trait constraint solver */
-                            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
-                                ..
-                            }) = fn_decl_param.r#type
-                            {
-                                match trait_param.r#type {
-                                    MaybeResolvedType::Partial(
-                                        PartiallyResolvedType::Generic { .. },
-                                    ) => (),
-                                    _ => errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: trait_param.type_span.clone(),
-                                        given: trait_param.r#type.friendly_type_str(),
-                                        expected: fn_decl_param.r#type.friendly_type_str(),
-                                    }),
-                                }
-                            } else {
-                                let fn_decl_param_type = check!(
-                                    fn_decl_param.r#type,
-                                    return Some(errors),
-                                    warnings,
-                                    errors
-                                );
-                                let trait_param_type = check!(
-                                    trait_param.r#type,
-                                    return Some(errors),
-                                    warnings,
-                                    errors
-                                );
+                            let fn_decl_param_type = fn_decl_param.r#type;
+                            let trait_param_type = trait_param.r#type;
 
-                                let real_fn_decl_param_type =
-                                    namespace.look_up_type_id(fn_decl_param_type);
-                                let real_trait_param_type =
-                                    namespace.look_up_type_id(trait_param_type);
-                                if real_fn_decl_param_type != real_trait_param_type {
-                                    errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: trait_param.type_span.clone(),
-                                        given: real_trait_param_type.friendly_type_str(),
-                                        expected: real_fn_decl_param_type.friendly_type_str(),
-                                    });
-                                }
+                            let real_fn_decl_param_type =
+                                namespace.look_up_type_id(fn_decl_param_type);
+                            let real_trait_param_type = namespace.look_up_type_id(trait_param_type);
+                            if real_fn_decl_param_type != real_trait_param_type {
+                                errors.push(CompileError::MismatchedTypeInTrait {
+                                    span: trait_param.type_span.clone(),
+                                    given: real_trait_param_type.friendly_type_str(),
+                                    expected: real_fn_decl_param_type.friendly_type_str(),
+                                });
                             }
                             if errors.is_empty() {
                                 None

@@ -29,7 +29,7 @@ pub enum TypedDeclaration<'sc> {
         trait_name: CallPath<'sc>,
         span: Span<'sc>,
         methods: Vec<TypedFunctionDeclaration<'sc>>,
-        type_implementing_for: MaybeResolvedType<'sc>,
+        type_implementing_for: TypeInfo<'sc>,
     },
     AbiDeclaration(TypedAbiDeclaration<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates a namespace

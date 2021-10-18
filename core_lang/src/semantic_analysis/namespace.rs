@@ -30,30 +30,24 @@ pub struct Namespace<'sc> {
 
 impl<'sc> Namespace<'sc> {
     pub(crate) fn look_up_type_id(&self, id: TypeId) -> ResolvedType<'sc> {
-        self.type_engine
-            .resolve(
-                id,
-                &Span {
-                    span: pest::Span::new(
-                        "because we \"expect\" here, we don't need this error span.",
-                        0,
-                        0,
-                    )
-                    .unwrap(),
-                    path: Default::default(),
-                },
-            )
-            .expect("Internal error: type ID did not exist in type engine")
+        self.type_engine.look_up_type_id(id)
     }
     pub(crate) fn insert_type(&mut self, ty: TypeInfo<'sc>) -> TypeId {
         self.type_engine.insert(ty)
     }
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
-    pub(crate) fn resolve_type(&mut self, ty: TypeInfo<'sc>, self_type: TypeId) -> TypeId {
+    ///
+    ///
+    /// If a self type is given and anything on this ref chain refers to self, update the chain.
+    pub(crate) fn resolve_type_with_self(
+        &mut self,
+        ty: TypeInfo<'sc>,
+        self_type: TypeId,
+    ) -> TypeId {
         todo!(
             "still do the custom type to enum/struct type thing, but then\
-        use type IDs for the rest of it."
+        use type IDs for the rest of it. do the self thing too."
         );
         let ty = ty.clone();
         match ty {
@@ -85,9 +79,12 @@ impl<'sc> Namespace<'sc> {
             o => todo!("put type engine in namespace and use that"),
         }
     }
+
     /// Used to resolve a type when there is no known self type. This is needed
     /// when declaring new self types.
-    pub(crate) fn resolve_type_without_self(&self, ty: &TypeInfo<'sc>) -> MaybeResolvedType<'sc> {
+    pub(crate) fn resolve_type_without_self(&self, ty: &TypeInfo<'sc>) -> TypeInfo<'sc> {
+        todo!("return typeinfo here")
+        /*
         let ty = ty.clone();
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol(&name) {
@@ -120,6 +117,7 @@ impl<'sc> Namespace<'sc> {
             TypeInfo::SelfType => MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
             o => todo!("put type engine in namespace and use that to resolve"),
         }
+            */
     }
     /// Given a path to a module, create synonyms to every symbol in that module.
     /// This is used when an import path contains an asterisk.
@@ -485,7 +483,7 @@ impl<'sc> Namespace<'sc> {
                 todo!("resolving this type should mutate the parent namespace I think...come back to this. The cloned \
                 namespace could lead to issues.");
                 let r#type = if let Some(type_name) = type_name {
-                    module.resolve_type(type_name.clone(), self_type)
+                    module.resolve_type_with_self(type_name.clone(), self_type)
                 } else {
                     args_buf[0].return_type.clone()
                 };

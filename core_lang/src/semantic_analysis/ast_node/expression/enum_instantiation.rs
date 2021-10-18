@@ -2,6 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
 use crate::semantic_analysis::ast_node::*;
+use crate::type_engine::TypeId;
 use crate::types::ResolvedType;
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
@@ -10,9 +11,9 @@ pub(crate) fn instantiate_enum<'sc>(
     enum_decl: TypedEnumDeclaration<'sc>,
     enum_field_name: Ident<'sc>,
     args: Vec<Expression<'sc>>,
-    type_arguments: Vec<MaybeResolvedType<'sc>>,
+    type_arguments: Vec<TypeId>,
     namespace: &mut Namespace<'sc>,
-    self_type: &MaybeResolvedType<'sc>,
+    self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
