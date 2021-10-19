@@ -210,25 +210,12 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = res.errors;
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
-            let convertability: Result<_, TypeError<'sc>> =
-                match namespace.type_engine.unify_with_self(
-                    typed_expression.return_type,
-                    type_annotation,
-                    self_type,
-                    &expr_span,
-                ) {
-                    Ok(mut warnings) => {
-                        todo!("Append warnings to warnings, use the annotation type id")
-                    }
-                    Err(e) => todo!(
-                        " use the below to make an err
-                &type_annotation,
-                expr_span.clone(),
-                help_text,
-                "
-                    ),
-                };
-            match convertability {
+            match namespace.type_engine.unify_with_self(
+                typed_expression.return_type,
+                type_annotation,
+                self_type,
+                &expr_span,
+            ) {
                 Ok(warning) => {
                     if let Some(warning) = warning {
                         warnings.push(CompileWarning {
@@ -237,10 +224,10 @@ impl<'sc> TypedExpression<'sc> {
                         });
                     }
                 }
-                Err(err) => {
-                    errors.push(CompileError::TypeError(err));
+                Err(e) => {
+                    errors.push(CompileError::TypeError(e));
                 }
-            }
+            };
             // The annotation will result in a cast, so set the return type accordingly.
             typed_expression.return_type = ty;
         }

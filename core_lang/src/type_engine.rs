@@ -60,7 +60,7 @@ pub enum TypeInfo<'sc> {
     UnsignedInteger(IntegerBits),
     Enum {
         name: Ident<'sc>,
-        variant_types: Vec<ResolvedType<'sc>>,
+        variant_types: Vec<TypeId>,
     },
     Struct {
         name: Ident<'sc>,

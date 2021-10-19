@@ -66,10 +66,7 @@ impl<'sc> Namespace<'sc> {
                     ..
                 })) => self.insert_type(TypeInfo::Enum {
                     name: name.clone(),
-                    variant_types: variants
-                        .iter()
-                        .map(|x| self.look_up_type_id(x.r#type))
-                        .collect(),
+                    variant_types: variants.iter().map(|x| x.r#type).collect(),
                 }),
                 Some(_) => todo!(),
                 None => self.insert_type(TypeInfo::Unknown),

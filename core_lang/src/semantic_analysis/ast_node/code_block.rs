@@ -1,6 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
+use crate::type_engine::TypeEngine;
 use crate::types::MaybeResolvedType;
 use crate::CodeBlock;
 
@@ -70,6 +71,29 @@ impl<'sc> TypedCodeBlock<'sc> {
             } => Some(*return_type),
             _ => None,
         });
+
+        if let Some(return_type) = return_type {
+            match namespace.type_engine.unify_with_self(
+                return_type,
+                type_annotation,
+                self_type,
+                &implicit_return_span.unwrap_or(other.whole_block_span.clone()),
+            ) {
+                Ok(warning) => {
+                    if let Some(warning) = warning {
+                        warnings.push(CompileWarning {
+                            warning_content: warning,
+                            span: implicit_return_span.unwrap_or(other.whole_block_span.clone()),
+                        });
+                    }
+                }
+                Err(e) => {
+                    errors.push(CompileError::TypeError(e));
+                }
+            };
+            // The annotation will result in a cast, so set the return type accordingly.
+        }
+        /*
         if let Some(ref return_type) = return_type {
             let convertibility = return_type.is_convertible(
                 &type_annotation,
@@ -90,6 +114,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 }
             }
         }
+        */
 
         ok(
             (
@@ -97,7 +122,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     contents: evaluated_contents,
                     whole_block_span: other.whole_block_span,
                 },
-                return_type.unwrap_or(namespace.insert_ty(TypeInfo::Unit)),
+                return_type.unwrap_or(namespace.insert_type(TypeInfo::Unit)),
             ),
             warnings,
             errors,

@@ -6,7 +6,7 @@ use crate::asm_generation::AsmNamespace;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::type_engine::TypeId;
+use crate::type_engine::{TypeEngine, TypeId};
 use crate::{
     build_config::BuildConfig,
     error::*,
@@ -293,7 +293,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
         let data = check!(
-            self.to_selector_name(),
+            self.to_selector_name(namespace),
             return err(warnings, errors),
             warnings,
             errors
@@ -530,11 +530,11 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             visibility,
             ..
         } = fn_decl.clone();
-        let return_type = namespace.resolve_type(return_type, self_type);
+        let return_type = namespace.resolve_type_with_self(return_type, self_type);
         // insert parameters into namespace
         let mut namespace = namespace.clone();
         for FunctionParameter { name, r#type, .. } in parameters.clone() {
-            let r#type = namespace.resolve_type(r#type, self_type);
+            let r#type = namespace.resolve_type_with_self(r#type, self_type);
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -567,14 +567,12 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     contents: vec![],
                     whole_block_span: body.whole_block_span.clone()
                 },
-                Some(MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery))
+                namespace.insert_type(TypeInfo::ErrorRecovery)
             ),
             warnings,
             errors
         );
 
-        // check the generic types in the arguments, make sure they are in the type
-        // scope
         let parameters = parameters
             .into_iter()
             .map(
@@ -584,59 +582,11 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                      type_span,
                  }| TypedFunctionParameter {
                     name,
-                    r#type: namespace.resolve_type(r#type, self_type),
+                    r#type: namespace.resolve_type_with_self(r#type, self_type),
                     type_span,
                 },
             )
             .collect::<Vec<_>>();
-        let mut generic_params_buf_for_error_message = Vec::new();
-        for param in parameters.iter() {
-            if let Ok(MaybeResolvedType::Partial(PartiallyResolvedType::Generic { ref name })) =
-                namespace.resolve_type(*param.r#type, self_type)
-            {
-                generic_params_buf_for_error_message.push(name.primary_name);
-            }
-        }
-        let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-        for TypedFunctionParameter {
-            ref r#type,
-            type_span,
-            ..
-        } in parameters.iter()
-        {
-            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic { name, .. }) = r#type
-            {
-                let args_span = parameters.iter().fold(
-                    parameters[0].name.span.clone(),
-                    |acc, TypedFunctionParameter { type_span, .. }| {
-                        crate::utils::join_spans(acc, type_span.clone())
-                    },
-                );
-                if type_parameters
-                    .iter()
-                    .find(
-                        |TypeParameter {
-                             name: this_name, ..
-                         }| {
-                            if let TypeInfo::Custom { name: this_name } = this_name {
-                                this_name.primary_name == name.primary_name
-                            } else {
-                                false
-                            }
-                        },
-                    )
-                    .is_none()
-                {
-                    errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: name.primary_name,
-                        span: type_span.clone(),
-                        comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: fn_decl.name.primary_name,
-                        args: args_span.as_str().to_string(),
-                    });
-                }
-            }
-        }
         // handle the return statement(s)
         let return_statements: Vec<(&TypedExpression, &Span<'sc>)> = body
             .contents
@@ -657,23 +607,23 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             })
             .collect();
         for (stmt, span) in return_statements {
-            let convertability = stmt.return_type.is_convertible(
-                &return_type,
-                span.clone(),
-                "Function body's return type does not match up with its return type annotation.",
-            );
-            match convertability {
+            match namespace.type_engine.unify_with_self(
+                stmt.return_type,
+                return_type,
+                self_type,
+                span,
+            ) {
                 Ok(warning) => {
                     if let Some(warning) = warning {
                         warnings.push(CompileWarning {
                             warning_content: warning,
-                            span: span.clone(),
+                            span: expr_span,
                         });
                     }
                 }
-                Err(err) => {
-                    errors.push(err.into());
-                }
+                Err(e) => {
+                    errors.push(CompileError::TypeError(e));
+                } //    "Function body's return type does not match up with its return type annotation.",
             }
         }
 
@@ -689,25 +639,21 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         //  it is a temporary workaround
         if mode == Mode::ImplAbiFn {
             if parameters.len() == 4 {
-                if parameters[0].r#type
-                    != MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                        IntegerBits::SixtyFour,
-                    ))
+                if namespace.look_up_type_id(parameters[0].r#type)
+                    != ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[0].type_span.clone(),
                     });
                 }
-                if parameters[1].r#type
-                    != MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                        IntegerBits::SixtyFour,
-                    ))
+                if namespace.look_up_type_id(parameters[1].r#type)
+                    != ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[1].type_span.clone(),
                     });
                 }
-                if parameters[2].r#type != MaybeResolvedType::Resolved(ResolvedType::B256) {
+                if namespace.look_up_type_id(parameters[2].r#type) != ResolvedType::B256 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[2].type_span.clone(),
                     });
