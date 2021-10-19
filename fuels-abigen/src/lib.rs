@@ -2,14 +2,13 @@ use fuels_rs::abigen::Abigen;
 use fuels_rs::types::ParamType;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::quote;
+
 use std::ops::Deref;
 use syn::parse::{Parse, ParseStream, Result as ParseResult};
 use syn::spanned::Spanned as _;
 use syn::{braced, parenthesized, Ident, LitStr, Path, Token};
 use syn::{
-    parse::Error, parse_macro_input, AttrStyle, Data, DeriveInput, Expr, Field, Fields,
-    GenericArgument, Lit, Meta, NestedMeta, PathArguments, Type,
+    parse::Error, parse_macro_input,
 };
 
 #[proc_macro]
@@ -74,7 +73,7 @@ pub(crate) struct ContractArgs {
 
 impl ContractArgs {
     fn into_builder(self) -> Result<Abigen, Error> {
-        let mut builder = Abigen::new(&self.name, &self.abi).unwrap();
+        let builder = Abigen::new(&self.name, &self.abi).unwrap();
 
         // for parameter in self.parameters.into_iter() {
         //     builder = match parameter {
