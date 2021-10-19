@@ -1,8 +1,6 @@
 use fuels_abigen::abigen;
 use sha2::{Digest, Sha256};
 
-// TODO: Find some asserts to put here
-
 #[test]
 fn compile_bindings_from_contract_file() {
     // Generates the bindings from an ABI definition in a JSON file
@@ -21,12 +19,19 @@ fn compile_bindings_from_contract_file() {
     // Currently this prints `0000000003b568d4000000000000002a000000000000000a`
     // The encoded contract call. Soon it'll be able to perform the
     // actual call.
-    let _function = contract_instance.takes_ints_returns_bool(42 as u32, 10 as u16);
+    let contract_call = contract_instance.takes_ints_returns_bool(42 as u32, 10 as u16);
 
     // Then you'll be able to use `.call()` to actually call the contract with the
     // specified function:
     // function.call().unwrap();
     // Or you might want to just `contract_instance.takes_u32_returns_bool(42 as u32).call()?`
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!("0000000003b568d4000000000000002a000000000000000a", encoded);
 }
 
 #[test]
@@ -63,7 +68,14 @@ fn compile_bindings_from_inline_contract() {
 
     let contract_instance = SimpleContract::new();
 
-    let _function = contract_instance.takes_ints_returns_bool(42 as u32, 10 as u16);
+    let contract_call = contract_instance.takes_ints_returns_bool(42 as u32, 10 as u16);
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!("0000000003b568d4000000000000002a000000000000000a", encoded);
 }
 
 #[test]
@@ -96,7 +108,14 @@ fn compile_bindings_single_param() {
 
     let contract_instance = SimpleContract::new();
 
-    let _function = contract_instance.takes_ints_returns_bool(42 as u32);
+    let contract_call = contract_instance.takes_ints_returns_bool(42 as u32);
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!("000000009593586c000000000000002a", encoded);
 }
 
 #[test]
@@ -127,7 +146,17 @@ fn compile_bindings_array_input() {
     let contract_instance = SimpleContract::new();
 
     let input: Vec<u16> = vec![1, 2, 3, 4];
-    let _function = contract_instance.takes_array(input);
+    let contract_call = contract_instance.takes_array(input);
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!(
+        "00000000f0b878640000000000000001000000000000000200000000000000030000000000000004",
+        encoded
+    );
 }
 
 #[test]
@@ -158,7 +187,17 @@ fn compile_bindings_bool_array_input() {
     let contract_instance = SimpleContract::new();
 
     let input: Vec<bool> = vec![true, false, true];
-    let _function = contract_instance.takes_array(input);
+    let contract_call = contract_instance.takes_array(input);
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!(
+        "00000000f8fe942c000000000000000100000000000000000000000000000001",
+        encoded
+    );
 }
 
 #[test]
@@ -188,7 +227,14 @@ fn compile_bindings_byte_input() {
 
     let contract_instance = SimpleContract::new();
 
-    let _function = contract_instance.takes_byte(10 as u8);
+    let contract_call = contract_instance.takes_byte(10 as u8);
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!("00000000a4bd3861000000000000000a", encoded);
 }
 
 #[test]
@@ -218,7 +264,17 @@ fn compile_bindings_string_input() {
 
     let contract_instance = SimpleContract::new();
 
-    let _function = contract_instance.takes_string("This is a full sentence".into());
+    let contract_call = contract_instance.takes_string("This is a full sentence".into());
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!(
+        "00000000d56e76515468697320697320612066756c6c2073656e74656e636500",
+        encoded
+    );
 }
 
 #[test]
@@ -253,7 +309,17 @@ fn compile_bindings_b256_input() {
 
     let arg = hasher.finalize();
 
-    let _function = contract_instance.takes_b256(arg.into());
+    let contract_call = contract_instance.takes_b256(arg.into());
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!(
+        "0000000054992852d5579c46dfcc7f18207013e65b44e4cb4e2c2298f4ac457ba8f82743f31e930b",
+        encoded
+    );
 }
 
 #[test]
@@ -298,7 +364,14 @@ fn compile_bindings_struct_input() {
 
     let contract_instance = SimpleContract::new();
 
-    let _function = contract_instance.takes_struct(input);
+    let contract_call = contract_instance.takes_struct(input);
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!("00000000f5957fce000000000000000a0000000000000001", encoded);
 }
 
 #[test]
@@ -349,7 +422,59 @@ fn compile_bindings_nested_struct_input() {
 
     let contract_instance = SimpleContract::new();
 
-    let _function = contract_instance.takes_nested_struct(input);
+    let contract_call = contract_instance.takes_nested_struct(input);
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!("00000000e8a04d9c000000000000000a0000000000000001", encoded);
 }
 
-// TODO: continue from here, test structs with arrays and arrays of structs
+#[test]
+fn compile_bindings_enum_input() {
+    // Generates the bindings from the an ABI definition inline.
+    // The generated bindings can be accessed through `SimpleContract`.
+    abigen!(
+        SimpleContract,
+        r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"MyEnum",
+                        "type":"enum",
+                        "components": [
+                            {
+                                "name": "x",
+                                "type": "u32"
+                            },
+                            {
+                                "name": "y",
+                                "type": "bool"
+                            }
+                        ]
+                    }
+                ],
+                "name":"takes_enum",
+                "outputs":[]
+            }
+        ]
+        "#
+    );
+
+    let variant = MyEnum::X(42);
+
+    let contract_instance = SimpleContract::new();
+
+    let contract_call = contract_instance.takes_enum(variant);
+
+    let encoded = format!(
+        "{}{}",
+        contract_call.encoded_selector, contract_call.encoded_params
+    );
+
+    assert_eq!("000000009542a3c90000000000000000000000000000002a", encoded);
+}

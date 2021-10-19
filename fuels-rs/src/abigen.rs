@@ -13,7 +13,7 @@ use quote::quote;
 use syn::token::Struct;
 use syn::Ident as SynIdent;
 
-// TODO: this needs a MAJOR clean-up. We might need to break it down into smaller files.
+// TODO: continue from here, this needs a MAJOR clean-up. We might need to break it down into smaller files.
 
 pub struct Abigen {
     /// The parsed ABI.
@@ -29,7 +29,9 @@ pub struct Abigen {
     contract_name: Ident,
 
     custom_structs: HashMap<String, Property>,
-    //custom_enums: Option<HashMap<String, Property>>,
+
+    custom_enums: HashMap<String, Property>,
+
     /// Format the code using a locally installed copy of `rustfmt`.
     rustfmt: bool,
 }
@@ -47,6 +49,7 @@ impl Abigen {
 
         Ok(Self {
             custom_structs: Abigen::get_custom_structs(&parsed_abi),
+            custom_enums: Abigen::get_custom_enums(&parsed_abi),
             abi: parsed_abi,
             contract_name: ident(contract_name),
             abi_parser: ABI::new(),
@@ -66,7 +69,7 @@ impl Abigen {
                     }
 
                     for inner_component in prop.components.as_ref().unwrap() {
-                        inner_structs.extend(Abigen::get_custom(inner_component));
+                        inner_structs.extend(Abigen::get_inner_structs(inner_component));
                     }
                 }
             }
@@ -82,14 +85,56 @@ impl Abigen {
         structs
     }
 
-    fn get_custom(prop: &Property) -> Vec<Property> {
+    // TODO: improve this function
+    fn get_inner_structs(prop: &Property) -> Vec<Property> {
         let mut props = Vec::new();
-        println!("prop: {:?}\n", prop);
         if prop.type_field.eq_ignore_ascii_case("struct") {
             props.push(prop.clone());
 
             for inner_prop in prop.components.as_ref().unwrap() {
-                let inner = Abigen::get_custom(inner_prop);
+                let inner = Abigen::get_inner_structs(inner_prop);
+                props.extend(inner);
+            }
+        }
+
+        props
+    }
+
+    fn get_custom_enums(abi: &JsonABI) -> HashMap<String, Property> {
+        let mut enums = HashMap::new();
+        let mut inner_enums: Vec<Property> = Vec::new();
+        for function in abi {
+            for prop in &function.inputs {
+                if prop.type_field.eq_ignore_ascii_case("enum") {
+                    if !enums.contains_key(&prop.name) {
+                        enums.insert(prop.name.clone().to_class_case(), prop.clone());
+                    }
+
+                    for inner_component in prop.components.as_ref().unwrap() {
+                        inner_enums.extend(Abigen::get_inner_enums(inner_component));
+                    }
+                }
+            }
+        }
+
+        for inner_enum in inner_enums {
+            if !enums.contains_key(&inner_enum.name) {
+                let struct_name = inner_enum.name.to_class_case();
+                enums.insert(struct_name, inner_enum);
+            }
+        }
+
+        enums
+    }
+
+    // TODO: improve this function
+    fn get_inner_enums(prop: &Property) -> Vec<Property> {
+        let mut props = Vec::new();
+        if prop.type_field.eq_ignore_ascii_case("enum") {
+            props.push(prop.clone());
+
+            for inner_prop in prop.components.as_ref().unwrap() {
+                let inner = Abigen::get_inner_enums(inner_prop);
                 props.extend(inner);
             }
         }
@@ -118,6 +163,7 @@ impl Abigen {
         let contract_functions = self.functions()?; // This is the part we care the most for now
 
         let abi_structs = self.abi_structs()?;
+        let abi_enums = self.abi_enums()?;
 
         Ok(quote! {
             pub use #name_mod::*;
@@ -130,6 +176,7 @@ impl Abigen {
 
                 use fuels_rs::contract::{Contract, ContractCall};
                 use fuels_rs::tokens::{Tokenizable, Token};
+                use fuels_rs::types::EnumSelector;
 
                 pub struct #name;
 
@@ -142,6 +189,7 @@ impl Abigen {
                 }
 
                 #abi_structs
+                #abi_enums
             }
         })
     }
@@ -154,6 +202,72 @@ impl Abigen {
         }
 
         Ok(structs)
+    }
+
+    fn abi_enums(&self) -> Result<TokenStream, Error> {
+        let mut enums = TokenStream::new();
+
+        for (name, prop) in &self.custom_enums {
+            enums.extend(self.expand_internal_enum(name, prop)?);
+        }
+
+        Ok(enums)
+    }
+
+    fn expand_internal_enum(&self, name: &str, prop: &Property) -> Result<TokenStream, Error> {
+        let components = prop.components.as_ref().unwrap();
+        let mut fields = Vec::with_capacity(components.len());
+
+        // TODO: find better naming
+        let mut enum_selector_builder = Vec::new();
+
+        let name = ident(name);
+
+        for (discriminant, component) in components.iter().enumerate() {
+            let component_name = ident(&component.name.to_class_case());
+            let field_name = ident(&component.name.to_class_case());
+
+            let param_type = json_abi::parse_param(&component)?;
+            match param_type {
+                // Case where an enum takes another enum
+                ParamType::Enum(_params) => {
+                    // TODO: Support nested enums
+                    unimplemented!()
+                }
+                // Elementary type
+                _ => {
+                    let ty = expand_type(&param_type)?;
+                    let param_type_string = ident(&param_type.to_string());
+                    fields.push(quote! { #field_name(#ty)});
+
+                    enum_selector_builder.push(quote! {
+                        #name::#field_name(value) => (#discriminant as u8, Token::#param_type_string(value))
+                    })
+                }
+            }
+        }
+
+        Ok(quote! {
+            #[derive(Clone, Debug, Eq, PartialEq)]
+            pub enum #name {
+                #( #fields ),*
+            }
+
+            impl #name {
+                pub fn into_token(self) -> Token {
+
+                    let (dis, tok) = match self {
+                        #( #enum_selector_builder, )*
+                    };
+
+                    let selector = (dis, tok);
+                    Token::Enum(Box::new(selector))
+                }
+            }
+
+
+
+        })
     }
 
     fn expand_internal_struct(&self, name: &str, prop: &Property) -> Result<TokenStream, Error> {
@@ -169,7 +283,8 @@ impl Abigen {
 
             let param_type = json_abi::parse_param(&component)?;
             match param_type {
-                ParamType::Struct(params) | ParamType::Enum(params) => {
+                // Case where a struct takes another struct
+                ParamType::Struct(_params) => {
                     fields.push(quote! {pub #field_name: #component_name});
                     inner_tokens_vector.push(quote! { tokens.push(self.#field_name.into_token()) });
                 }
@@ -183,13 +298,6 @@ impl Abigen {
                 }
             }
         }
-
-        println!(
-            "pushes.to_string(): {:?}\n",
-            inner_tokens_vector[0].to_string()
-        );
-
-        println!("fields: {:?}\n", fields);
 
         let name = ident(name);
 
@@ -213,82 +321,6 @@ impl Abigen {
         })
     }
 
-    // /// Expands to the rust struct type
-    // fn expand_struct_type(&self, struct_ty: &ParamType) -> TokenStream {
-    //     match struct_ty {
-    //         ParamType::Struct(ty) => {
-    //             let ty = util::ident(ty.name());
-    //             quote! {#ty}
-    //         }
-    //         StructFieldType::Array(ty) => {
-    //             let ty = expand_struct_type(&*ty);
-    //             quote! {::std::vec::Vec<#ty>}
-    //         }
-    //         StructFieldType::FixedArray(ty, size) => {
-    //             let ty = expand_struct_type(&*ty);
-    //             quote! { [#ty; #size]}
-    //         }
-    //     }
-    // }
-
-    // Expand all structs parsed from the internal types of the JSON ABI
-    // fn expand_internal_struct(
-    //     &self,
-    //     name: &str,
-    //     sol_struct: &SolStruct,
-    //     tuple: ParamType,
-    // ) -> Result<TokenStream> {
-    //     let mut fields = Vec::with_capacity(sol_struct.fields().len());
-    //     for field in sol_struct.fields() {
-    //         let field_name = util::ident(&field.name().to_snake_case());
-    //         match field.r#type() {
-    //             FieldType::Elementary(ty) => {
-    //                 let ty = types::expand(ty)?;
-    //                 fields.push(quote! { pub #field_name: #ty });
-    //             }
-    //             FieldType::Struct(struct_ty) => {
-    //                 let ty = expand_struct_type(struct_ty);
-    //                 fields.push(quote! { pub #field_name: #ty });
-    //             }
-    //             FieldType::Mapping(_) => {
-    //                 return Err(anyhow::anyhow!(
-    //                     "Mapping types in struct `{}` are not supported {:?}",
-    //                     name,
-    //                     field
-    //                 ));
-    //             }
-    //         }
-    //     }
-
-    //     let sig = if let ParamType::Tuple(ref tokens) = tuple {
-    //         tokens
-    //             .iter()
-    //             .map(|kind| kind.to_string())
-    //             .collect::<Vec<_>>()
-    //             .join(",")
-    //     } else {
-    //         "".to_string()
-    //     };
-
-    //     let abi_signature = format!("{}({})", name, sig,);
-
-    //     let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
-
-    //     let name = util::ident(name);
-
-    //     // use the same derives as for events
-    //     let derives = &self.event_derives;
-    //     let derives = quote! {#(#derives),*};
-
-    //     Ok(quote! {
-    //         #abi_signature_doc
-    //         #[derive(Clone, Debug, Default, Eq, PartialEq, ethers::contract::EthAbiType, #derives)]
-    //         pub struct #name {
-    //             #( #fields ),*
-    //         }
-    //     })
-    // }
-
     pub fn functions(&self) -> Result<TokenStream, Error> {
         // The goal here is to turn the parsed abi into TokenStream
         let mut tokenized_functions = Vec::new();
@@ -301,7 +333,6 @@ impl Abigen {
         Ok(quote! { #( #tokenized_functions )* })
     }
 
-    // TODO: struct inputs don't work _at all_.
     fn expand_function(
         &self,
         function: &Function,
@@ -350,6 +381,7 @@ impl Abigen {
     }
 
     fn expand_fn_outputs(outputs: &[Property]) -> Result<TokenStream, Error> {
+        // TODO: future, support struct outputs
         match outputs.len() {
             0 => Ok(quote! { () }),
             1 => expand_type(&parse_param(&outputs[0])?),
@@ -395,12 +427,6 @@ impl Abigen {
             _ => quote! { &[ #(#call_args.into_token(), )* ] },
         };
 
-        // Can we turn call_args into Tokens?
-        //
-
-        println!("args: {:?}\n", args);
-        println!("call_args: {:?}\n", call_args);
-
         Ok((args, call_args))
     }
 
@@ -431,22 +457,15 @@ impl Abigen {
                     ::std::vec::Vec<#ty>
                 })
             }
-
+            ParamType::Enum(v) => {
+                let rust_enum_name = self.custom_enums.get(param).unwrap();
+                let ident = ident(&rust_enum_name.name);
+                Ok(quote! { #ident })
+            }
             ParamType::Struct(_) => {
                 let rust_struct_name = self.custom_structs.get(param).unwrap();
                 let ident = ident(&rust_struct_name.name);
                 Ok(quote! { #ident })
-                // TODO: structs
-                // let ty = if let Some(rust_struct_name) = self
-                //     .internal_structs
-                //     .get_function_input_struct_type(&fun.name, param)
-                // {
-                //     let ident = util::ident(rust_struct_name);
-                //     quote! {#ident}
-                // } else {
-                //     types::expand(kind)?
-                // };
-                // Ok(ty)
             }
             _ => expand_type(kind),
         }
@@ -537,7 +556,7 @@ mod tests {
     }
 
     #[test]
-    fn custom_type() {
+    fn custom_struct() {
         let contract = r#"
         [
             {
@@ -563,8 +582,6 @@ mod tests {
             }
         ]
         "#;
-
-        // TODO: Continue from here, make this work
 
         let contract = Abigen::new("custom", contract).unwrap();
 
@@ -659,6 +676,45 @@ mod tests {
         for name in expected_custom_struct_names {
             assert_eq!(true, contract.custom_structs.contains_key(name));
         }
+
+        let bindings = contract.generate().unwrap();
+        bindings.write(std::io::stdout()).unwrap();
+    }
+
+    #[test]
+    fn custom_enum() {
+        let contract = r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"MyEnum",
+                        "type":"enum",
+                        "components": [
+                            {
+                                "name": "x",
+                                "type": "u32"
+                            },
+                            {
+                                "name": "y",
+                                "type": "bool"
+                            }
+                        ]
+                    }
+                ],
+                "name":"takes_enum",
+                "outputs":[]
+            }
+        ]
+        "#;
+
+        let contract = Abigen::new("custom", contract).unwrap();
+
+        assert_eq!(1, contract.custom_enums.len());
+        assert_eq!(0, contract.custom_structs.len());
+
+        assert_eq!(true, contract.custom_enums.contains_key("MyEnum"));
 
         let bindings = contract.generate().unwrap();
         bindings.write(std::io::stdout()).unwrap();

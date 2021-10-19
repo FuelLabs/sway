@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 
 // TODO:
 // - [x] Make `abigen!` work properly, right now it's hardcoded
-// - [] Make sure everything related to code generation is working for all fuel types
+// - [x] Make sure everything related to code generation is working for all fuel types
 // - [] Refactor all namings now that we have the workflow laid out;
 // - [] Keep the call stuff `unimplemented()` for now, focus on abigen-related stuff
 
@@ -37,6 +37,8 @@ impl Contract {
 
         let tx = TransactionRequest { data: None };
         Ok(ContractCall {
+            encoded_params,
+            encoded_selector,
             tx,
             function: None,
             datatype: PhantomData,
@@ -65,6 +67,9 @@ pub struct ContractCall<D> {
     // pub block: Option<BlockId>,
     // pub(crate) client: Arc<M>,
     pub datatype: PhantomData<D>,
+
+    pub encoded_params: String,
+    pub encoded_selector: String,
 }
 
 impl<D> ContractCall<D>
