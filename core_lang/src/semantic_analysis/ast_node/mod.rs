@@ -98,7 +98,7 @@ impl<'sc> TypedAstNode<'sc> {
 
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
-            let type_ascription = type_ascription.resolve_type(self_type);
+            let type_ascription = type_ascription.resolve_type_without_self(self_type);
             TypedExpression::type_check(
                 value,
                 namespace,
@@ -382,19 +382,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 .into_iter()
                                 .map(|StructField { name, r#type, span }| TypedStructField {
                                     name,
-                                    r#type: match namespace.resolve_type(r#type, self_type) {
-                                        MaybeResolvedType::Resolved(r) => r,
-                                        MaybeResolvedType::Partial(
-                                            crate::types::PartiallyResolvedType::Numeric,
-                                        ) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-                                        MaybeResolvedType::Partial(p) => {
-                                            errors.push(CompileError::TypeMustBeKnown {
-                                                ty: p.friendly_type_str(),
-                                                span: span.clone(),
-                                            });
-                                            ResolvedType::ErrorRecovery
-                                        }
-                                    },
+                                    r#type: namespace.resolve_type_with_self(r#type, self_type),
                                     span,
                                 })
                                 .collect::<Vec<_>>();
@@ -475,7 +463,7 @@ impl<'sc> TypedAstNode<'sc> {
                             TypedExpression::type_check(
                                 expr.clone(),
                                 namespace,
-                                return_type_annotation,
+                                Some(return_type_annotation),
                                 "Returned value must match up with the function return type \
                                  annotation.",
                                 self_type,
@@ -493,7 +481,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             expr.clone(),
                             namespace,
-                            return_type_annotation,
+                            Some(return_type_annotation),
                             format!(
                                 "Implicit return must match up with block's type. {}",
                                 help_text.into()
@@ -513,7 +501,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             condition,
                             namespace,
-                            Some(MaybeResolvedType::Resolved(ResolvedType::Boolean)),
+                            Some(namespace.insert_type(TypeInfo::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
                             build_config,
@@ -527,7 +515,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedCodeBlock::type_check(
                             body.clone(),
                             namespace,
-                            Some(MaybeResolvedType::Resolved(ResolvedType::Unit)),
+                            namespace.insert_type(TypeInfo::Unit),
                             "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
@@ -540,7 +528,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 contents: vec![],
                                 whole_block_span: body.whole_block_span.clone(),
                             },
-                            Some(MaybeResolvedType::Resolved(ResolvedType::Unit))
+                            namespace.insert_type(TypeInfo::Unit)
                         ),
                         warnings,
                         errors
@@ -665,7 +653,7 @@ fn reassignment<'sc>(
     rhs: Expression<'sc>,
     span: Span<'sc>,
     namespace: &mut Namespace<'sc>,
-    self_type: &MaybeResolvedType<'sc>,
+    self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
@@ -813,7 +801,7 @@ fn reassignment<'sc>(
                     Some(ty_of_field.clone()),
                     format!(
                         "This struct field has type \"{}\"",
-                        ty_of_field.friendly_type_str()
+                        namespace.look_up_type_id(ty_of_field).friendly_type_str()
                     ),
                     self_type,
                     build_config,
@@ -864,7 +852,7 @@ fn type_check_interface_surface<'sc>(
                              type_span,
                          }| TypedFunctionParameter {
                             name,
-                            r#type: namespace.resolve_type(
+                            r#type: namespace.resolve_type_with_self(
                                 r#type,
                                 todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),"),
                             ),
@@ -872,7 +860,7 @@ fn type_check_interface_surface<'sc>(
                         },
                     )
                     .collect(),
-                return_type: namespace.resolve_type(
+                return_type: namespace.resolve_type_with_self(
                     return_type,
                     todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)"),
                 ),
@@ -907,7 +895,7 @@ fn type_check_trait_methods<'sc>(
             |FunctionParameter {
                  name, ref r#type, ..
              }| {
-                let r#type = function_namespace.resolve_type(
+                let r#type = function_namespace.resolve_type_with_self(
                     r#type.clone(),
                     todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),"),
                 );
@@ -985,7 +973,7 @@ fn type_check_trait_methods<'sc>(
                  }| {
                     TypedFunctionParameter {
                         name,
-                        r#type: function_namespace.resolve_type(
+                        r#type: function_namespace.resolve_type_with_self(
                             r#type,
                             todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),"),
                         ),
@@ -996,12 +984,12 @@ fn type_check_trait_methods<'sc>(
             .collect::<Vec<_>>();
 
         // TODO check code block implicit return
-        let return_type = function_namespace.resolve_type(return_type, self_type);
+        let return_type = function_namespace.resolve_type_with_self(return_type, self_type);
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(
                 body,
                 &function_namespace,
-                Some(return_type.clone()),
+                return_type,
                 "Trait method body's return type does not match up with \
                                          its return type annotation.",
                 self_type,
