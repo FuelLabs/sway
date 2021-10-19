@@ -1,4 +1,5 @@
 use fuels_abigen::abigen;
+use sha2::{Digest, Sha256};
 
 // TODO: Find some asserts to put here
 
@@ -160,5 +161,195 @@ fn compile_bindings_bool_array_input() {
     let _function = contract_instance.takes_array(input);
 }
 
-// TODO: continue from here. Test Byte, B256, String, then the ones I know are failing
-// for sure: Struct and Enum
+#[test]
+fn compile_bindings_byte_input() {
+    // Generates the bindings from the an ABI definition inline.
+    // The generated bindings can be accessed through `SimpleContract`.
+    abigen!(
+        SimpleContract,
+        r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"arg",
+                        "type":"byte"
+                    }
+                ],
+                "name":"takes_byte",
+                "outputs":[
+                    
+                ]
+            }
+        ]
+        "#
+    );
+
+    let contract_instance = SimpleContract::new();
+
+    let _function = contract_instance.takes_byte(10 as u8);
+}
+
+#[test]
+fn compile_bindings_string_input() {
+    // Generates the bindings from the an ABI definition inline.
+    // The generated bindings can be accessed through `SimpleContract`.
+    abigen!(
+        SimpleContract,
+        r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"arg",
+                        "type":"str[23]"
+                    }
+                ],
+                "name":"takes_string",
+                "outputs":[
+                    
+                ]
+            }
+        ]
+        "#
+    );
+
+    let contract_instance = SimpleContract::new();
+
+    let _function = contract_instance.takes_string("This is a full sentence".into());
+}
+
+#[test]
+fn compile_bindings_b256_input() {
+    // Generates the bindings from the an ABI definition inline.
+    // The generated bindings can be accessed through `SimpleContract`.
+    abigen!(
+        SimpleContract,
+        r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"arg",
+                        "type":"b256"
+                    }
+                ],
+                "name":"takes_b256",
+                "outputs":[
+                    
+                ]
+            }
+        ]
+        "#
+    );
+
+    let contract_instance = SimpleContract::new();
+
+    let mut hasher = Sha256::new();
+    hasher.update("test string".as_bytes());
+
+    let arg = hasher.finalize();
+
+    let _function = contract_instance.takes_b256(arg.into());
+}
+
+#[test]
+fn compile_bindings_struct_input() {
+    // Generates the bindings from the an ABI definition inline.
+    // The generated bindings can be accessed through `SimpleContract`.
+    abigen!(
+        SimpleContract,
+        r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"MyStruct",
+                        "type":"struct",
+                        "components": [
+                            {
+                                "name": "foo",
+                                "type": "u8"
+                            },
+                            {
+                                "name": "bar",
+                                "type": "bool"
+                            }
+                        ]
+                    }
+                ],
+                "name":"takes_struct",
+                "outputs":[]
+            }
+        ]
+        "#
+    );
+
+    // Because of the abigen! macro, `MyStruct` is now in scope
+    // and can be used!
+    let input = MyStruct {
+        foo: 10 as u8,
+        bar: true,
+    };
+
+    let contract_instance = SimpleContract::new();
+
+    let _function = contract_instance.takes_struct(input);
+}
+
+#[test]
+fn compile_bindings_nested_struct_input() {
+    // Generates the bindings from the an ABI definition inline.
+    // The generated bindings can be accessed through `SimpleContract`.
+    abigen!(
+        SimpleContract,
+        r#"
+        [
+            {
+                "type":"contract",
+                "inputs":[
+                    {
+                        "name":"MyNestedStruct",
+                        "type":"struct",
+                        "components": [
+                            {
+                                "name": "x",
+                                "type": "u16"
+                            },
+                            {
+                                "name": "inner_struct",
+                                "type": "struct",
+                                "components": [
+                                    {
+                                        "name":"a",
+                                        "type": "bool"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "name":"takes_nested_struct",
+                "outputs":[]
+            }
+        ]
+        "#
+    );
+
+    let inner_struct = InnerStruct { a: true };
+
+    let input = MyNestedStruct {
+        x: 10 as u16,
+        inner_struct,
+    };
+
+    let contract_instance = SimpleContract::new();
+
+    let _function = contract_instance.takes_nested_struct(input);
+}
+
+// TODO: continue from here, test structs with arrays and arrays of structs

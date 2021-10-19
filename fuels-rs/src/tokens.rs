@@ -56,6 +56,36 @@ impl Tokenizable for bool {
     }
 }
 
+impl Tokenizable for String {
+    fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
+        match token {
+            Token::String(data) => Ok(data),
+            other => Err(InvalidOutputType(format!(
+                "Expected `String`, got {:?}",
+                other
+            ))),
+        }
+    }
+    fn into_token(self) -> Token {
+        Token::String(self)
+    }
+}
+
+impl Tokenizable for Bits256 {
+    fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
+        match token {
+            Token::B256(data) => Ok(data),
+            other => Err(InvalidOutputType(format!(
+                "Expected `String`, got {:?}",
+                other
+            ))),
+        }
+    }
+    fn into_token(self) -> Token {
+        Token::B256(self)
+    }
+}
+
 impl<T: Tokenizable> Tokenizable for Vec<T> {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
