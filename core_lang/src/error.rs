@@ -165,7 +165,7 @@ pub enum Warning<'sc> {
         cast_to: IntegerBits,
     },
     UnusedReturnValue {
-        r#type: MaybeResolvedType<'sc>,
+        r#type: TypeInfo<'sc>,
     },
     SimilarMethodFound {
         lib: &'sc str,

@@ -38,19 +38,19 @@ impl<'sc> VariableDeclaration<'sc> {
             Rule::type_ascription => {
                 let type_asc = maybe_body.clone();
                 maybe_body = var_decl_parts.next().unwrap();
-                type_asc
+                Some(type_asc)
             }
-            _ => TypeInfo::Unknown,
+            _ => None
         };
         let type_ascription = if let Some(ascription) = type_ascription {
-            Some(check!(
+            check!(
                 TypeInfo::parse_from_pair(ascription, config.clone()),
                 TypeInfo::Unit,
                 warnings,
                 errors
-            ))
+            )
         } else {
-            None
+            TypeInfo::Unknown,
         };
         let body = check!(
             Expression::parse_from_pair(maybe_body, config.clone(), docstrings),

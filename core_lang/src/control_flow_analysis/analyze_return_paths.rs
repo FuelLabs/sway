@@ -67,7 +67,7 @@ impl<'sc> ControlFlowGraph<'sc> {
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &'sc str,
-        return_ty: &MaybeResolvedType<'sc>,
+        return_ty: &TypeInfo<'sc>,
     ) -> Vec<CompileError<'sc>> {
         let mut rovers = vec![entry_point];
         let mut errors = vec![];
@@ -276,7 +276,7 @@ fn connect_typed_fn_decl<'sc>(
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
         exit_point: fn_exit_node,
-        return_type: fn_decl.return_type,
+        return_type: todo!("run type engine here to look up this id fn_decl.return_type,"),
     };
     graph
         .namespace

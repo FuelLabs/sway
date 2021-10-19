@@ -59,7 +59,10 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     let fields_for_layout = fields
         .iter()
         .map(|TypedStructField { name, r#type, .. }| {
-            (MaybeResolvedType::Resolved(r#type.clone()), name)
+            (
+                todo!("use type engine to look up type here r#type.clone()"),
+                name,
+            )
         })
         .collect::<Vec<_>>();
     let descriptor = check!(

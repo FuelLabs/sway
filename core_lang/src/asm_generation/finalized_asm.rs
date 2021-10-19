@@ -77,7 +77,7 @@ fn to_bytecode<'sc>(
                     if data_section
                         .type_of_data(&data_label)
                         .expect("data label references non existent data -- internal error")
-                        .stack_size_of()
+                        .stack_size_of(todo!("insert type engine here"))
                         > 1 =>
                 {
                     acc + 8

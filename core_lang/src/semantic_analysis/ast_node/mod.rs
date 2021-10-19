@@ -61,12 +61,12 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
         use TypedAstNodeContent::*;
         let text = match &self.content {
             ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr.pretty_print())
+                format!("return {}", expr.pretty_print(namespace))
             }
             Declaration(ref typed_decl) => typed_decl.pretty_print(),
-            Expression(exp) => exp.pretty_print(),
-            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
-            WhileLoop(w_loop) => w_loop.pretty_print(),
+            Expression(exp) => exp.pretty_print(namespace),
+            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print(namespace)),
+            WhileLoop(w_loop) => w_loop.pretty_print(namespace),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -74,14 +74,18 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
 }
 
 impl<'sc> TypedAstNode<'sc> {
-    fn type_info(&self) -> MaybeResolvedType<'sc> {
+    fn type_info(&self, namespace: &Namespace<'sc>) -> TypeInfo<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            ReturnStatement(_) | Declaration(_) => MaybeResolvedType::Resolved(ResolvedType::Unit),
-            Expression(TypedExpression { return_type, .. }) => return_type.clone(),
-            ImplicitReturnExpression(TypedExpression { return_type, .. }) => return_type.clone(),
-            WhileLoop(_) | SideEffect => MaybeResolvedType::Resolved(ResolvedType::Unit),
+            ReturnStatement(_) | Declaration(_) => TypeInfo::Unit,
+            Expression(TypedExpression { return_type, .. }) => {
+                todo!("namespace.look_up_type_id(return_type) -- this will work when look_up_type_id returns TypeInfo")
+            }
+            ImplicitReturnExpression(TypedExpression { return_type, .. }) => {
+                todo!("namespace.look_up_type_id(return_type) -- this will work when look_up_type_id returns TypeInfo")
+            }
+            WhileLoop(_) | SideEffect => TypeInfo::Unit,
         }
     }
     pub(crate) fn type_check(
@@ -98,19 +102,15 @@ impl<'sc> TypedAstNode<'sc> {
 
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
-            let type_ascription = type_ascription.resolve_type_without_self(self_type);
             TypedExpression::type_check(
                 value,
                 namespace,
-                type_ascription.clone(),
+                Some(namespace.insert_type(type_ascription)),
                 format!(
                     "{} declaration's type annotation (type {}) does \
                      not match up with the assigned expression's type.",
                     decl_str,
-                    type_ascription
-                        .as_ref()
-                        .map(|ty| ty.friendly_type_str())
-                        .unwrap_or_else(|| "none".into())
+                    type_ascription.friendly_type_str()
                 ),
                 self_type,
                 build_config,
@@ -205,7 +205,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 TypedFunctionDeclaration::type_check(
                                     fn_decl.clone(),
                                     namespace,
-                                    None,
+                                    namespace.insert_type(TypeInfo::Unknown),
                                     "",
                                     self_type,
                                     build_config,
@@ -244,7 +244,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     prefixes: vec![],
                                     suffix: name.clone(),
                                 },
-                                MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
+                                todo!("Self type"),
                                 interface_surface
                                     .iter()
                                     .map(|x| x.to_dummy_func(Mode::NonAbi))
@@ -339,14 +339,16 @@ impl<'sc> TypedAstNode<'sc> {
                                 if fn_decl.return_type == TypeInfo::SelfType {
                                     fn_decl.return_type = type_implementing_for.clone();
                                 }
+                                let implementing_for_type_id =
+                                    namespace.insert_type(type_implementing_for_resolved);
 
                                 functions_buf.push(check!(
                                     TypedFunctionDeclaration::type_check(
                                         fn_decl,
                                         namespace,
-                                        None,
+                                        namespace.insert_type(TypeInfo::Unknown),
                                         "",
-                                        &type_implementing_for_resolved,
+                                        implementing_for_type_id,
                                         build_config,
                                         dead_code_graph,
                                         Mode::NonAbi
@@ -365,7 +367,7 @@ impl<'sc> TypedAstNode<'sc> {
                             };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),
-                                type_implementing_for_resolved.clone(),
+                                namespace.look_up_type_id(implementing_for_type_id),
                                 functions_buf.clone(),
                             );
                             TypedDeclaration::ImplTrait {
@@ -547,12 +549,11 @@ impl<'sc> TypedAstNode<'sc> {
                 ..
             } => {
                 let warning = Warning::UnusedReturnValue {
-                    r#type: node.type_info(),
+                    r#type: node.type_info(namespace),
                 };
                 assert_or_warn!(
-                    node.type_info() == MaybeResolvedType::Resolved(ResolvedType::Unit)
-                        || node.type_info()
-                            == MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
+                    node.type_info(namespace) == TypeInfo::Unit
+                        || node.type_info(namespace) == TypeInfo::ErrorRecovery,
                     warnings,
                     node.span.clone(),
                     warning

@@ -571,7 +571,7 @@ fn connect_typed_fn_decl<'sc>(
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
         exit_point: fn_exit_node,
-        return_type: fn_decl.return_type.clone(),
+        return_type: todo!("Run type engine into dead code analysis to look up type ids fn_decl.return_type.clone(),"),
     };
 
     graph
@@ -824,6 +824,7 @@ fn connect_expression<'sc>(
             resolved_type_of_parent,
             ..
         } => {
+            let resolved_type_of_parent = namespace.look_up_type_id(resolved_type_of_parent);
             assert!(matches!(
                 resolved_type_of_parent,
                 MaybeResolvedType::Resolved(ResolvedType::Struct { .. })

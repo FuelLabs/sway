@@ -155,7 +155,7 @@ impl<'sc> EnumVariant<'sc> {
         ok(
             TypedEnumVariant {
                 name: self.name.clone(),
-                r#type: namespace.resolve_type(self.r#type.clone(), self_type),
+                r#type: namespace.resolve_type_with_self(self.r#type.clone(), self_type),
                 tag: self.tag,
                 span: self.span.clone(),
             },

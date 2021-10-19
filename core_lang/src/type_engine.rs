@@ -95,6 +95,12 @@ pub enum TypeInfo<'sc> {
     ErrorRecovery,
 }
 
+impl<'_> Default for TypeInfo<'_> {
+    fn default() -> Self {
+        TypeInfo::Unknown
+    }
+}
+
 impl<'sc> TypeInfo<'sc> {
     pub(crate) fn friendly_type_str(&self) -> String {
         use TypeInfo::*;
