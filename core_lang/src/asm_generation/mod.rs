@@ -191,7 +191,6 @@ impl<'sc> AbstractInstructionSet<'sc> {
     fn realize_labels(
         self,
         data_section: &DataSection<'sc>,
-        _namespace: &AsmNamespace,
     ) -> RealizedAbstractInstructionSet<'sc> {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
@@ -624,7 +623,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
     let mut register_sequencer = RegisterSequencer::new();
     let mut warnings = vec![];
     let mut errors = vec![];
-    let (asm, asm_namespace) = match ast {
+    let (asm, _asm_namespace) = match ast {
         TypedParseTree::Script {
             main_function,
             namespace: ast_namespace,
@@ -772,7 +771,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
 
     let finalized_asm = asm
         .remove_unnecessary_jumps()
-        .allocate_registers(&asm_namespace)
+        .allocate_registers()
         .optimize();
 
     if build_config.print_finalized_asm {
@@ -819,7 +818,7 @@ impl<'sc> HllAsmSet<'sc> {
 }
 
 impl<'sc> JumpOptimizedAsmSet<'sc> {
-    fn allocate_registers(self, namespace: &AsmNamespace) -> RegisterAllocatedAsmSet<'sc> {
+    fn allocate_registers(self) -> RegisterAllocatedAsmSet<'sc> {
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
             JumpOptimizedAsmSet::ScriptMain {
@@ -827,7 +826,7 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section, namespace)
+                    .realize_labels(&data_section)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::ScriptMain {
                     data_section,
@@ -839,7 +838,7 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section, namespace)
+                    .realize_labels(&data_section)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::PredicateMain {
                     data_section,
@@ -851,7 +850,7 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 data_section,
             } => RegisterAllocatedAsmSet::ContractAbi {
                 program_section: program_section
-                    .realize_labels(&data_section, namespace)
+                    .realize_labels(&data_section)
                     .allocate_registers(),
                 data_section,
             },
@@ -1399,18 +1398,36 @@ fn ret_or_retd_value<'sc>(
     register_sequencer: &mut RegisterSequencer,
     namespace: &mut AsmNamespace<'sc>,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
-    let mut errors = vec![];
-    let warnings = vec![];
-    let mut asm_buf = vec![];
-    let main_func_ret_ty: TypeInfo = match resolve_type(func.return_type, &func.return_type_span) {
+    let return_type: TypeInfo = match resolve_type(func.return_type, &func.return_type_span) {
         Ok(o) => o,
         Err(e) => {
-            errors.push(e.into());
-            return err(warnings, errors);
+            return err(vec![], vec![e.into()]);
         }
     };
+    ret_or_retd_value_impl(
+        &func.name.primary_name,
+        return_type,
+        &func.return_type_span,
+        return_register,
+        |ret_size_bytes| {
+            let rb_register = register_sequencer.next();
+            let size_lit = Literal::U64(ret_size_bytes);
+            (rb_register, namespace.insert_data_value(&size_lit))
+        },
+    )
+}
 
-    if main_func_ret_ty == TypeInfo::Unit {
+fn ret_or_retd_value_impl<'sc, NsInserter: FnOnce(u64) -> (VirtualRegister, DataId)>(
+    func_name: &str,
+    return_type: TypeInfo,
+    return_type_span: &crate::span::Span<'sc>,
+    return_register: VirtualRegister,
+    namespace_inserter: NsInserter,
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    let errors = vec![];
+    let warnings = vec![];
+    let mut asm_buf = vec![];
+    if return_type == TypeInfo::Unit {
         // unit returns should always be zero, although because they can be
         // omitted from functions, the register is sometimes uninitialized.
         // Manually return zero in this case.
@@ -1419,8 +1436,8 @@ fn ret_or_retd_value<'sc>(
                 opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
                     ConstantRegister::Zero,
                 ))),
-                owning_span: Some(func.return_type_span.clone()),
-                comment: format!("fn {} returns unit", func.name.primary_name),
+                owning_span: Some(return_type_span.clone()),
+                comment: format!("fn {} returns unit", func_name),
             }],
             warnings,
             errors,
@@ -1431,24 +1448,23 @@ fn ret_or_retd_value<'sc>(
         path: None,
     };
 
-    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of(&span).expect(
+    let size_of_main_func_return_bytes = return_type.stack_size_of(&span).expect(
         "TODO(static span): Internal error: Static spans will allow for a proper error here.",
     ) * 8;
     if size_of_main_func_return_bytes <= 8 {
         asm_buf.push(Op {
             owning_span: None,
             opcode: Either::Left(VirtualOp::RET(return_register)),
-            comment: format!("{} fn return value", func.name.primary_name),
+            comment: format!("{} fn return value", func_name),
         });
     } else {
         // if the type is larger than one word, then we use RETD to return data
         // RB is the size_in_bytes
-        let rb_register = register_sequencer.next();
-        let size_bytes = namespace.insert_data_value(&Literal::U64(size_of_main_func_return_bytes));
+        let (rb_register, size_bytes) = namespace_inserter(size_of_main_func_return_bytes);
         // `return_register` is $rA
         asm_buf.push(Op {
             opcode: Either::Left(VirtualOp::LWDataId(rb_register.clone(), size_bytes)),
-            owning_span: Some(func.return_type_span.clone()),
+            owning_span: Some(return_type_span.clone()),
             comment: "loading rB for RETD".into(),
         });
 
@@ -1456,8 +1472,1356 @@ fn ret_or_retd_value<'sc>(
         asm_buf.push(Op {
             owning_span: None,
             opcode: Either::Left(VirtualOp::RETD(return_register, rb_register)),
-            comment: format!("{} fn return value", func.name.primary_name),
+            comment: format!("{} fn return value", func_name),
         });
     }
     ok(asm_buf, warnings, errors)
 }
+
+// =================================================================================================
+// Newer IR code gen.
+//
+// NOTE:  This is converting IR to Vec<Op> first, and then to finalized VM bytecode much like the
+// original code above.  This is to keep things simple, and to reuse the current tools like
+// DataSection.
+//
+// But this is not ideal and needs to be refactored:
+// - AsmNamespace is tied to data structures from other stages like Ident and Literal.
+
+#[cfg(feature = "ir")]
+use crate::ir::*;
+
+#[cfg(feature = "ir")]
+pub(crate) fn compile_ir_to_asm<'ir>(
+    ir: &'ir Context,
+    build_config: &BuildConfig,
+) -> CompileResult<'ir, FinalizedAsm<'ir>> {
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    let mut reg_seqr = RegisterSequencer::new();
+    let mut bytecode = build_preamble(&mut reg_seqr).to_vec();
+
+    // Eventually when we get this 'correct' with no hacks we'll want to compile all the modules
+    // separately and then use a linker to connect them.  This way we could also keep binary caches
+    // of libraries and link against them, rather than recompile everything each time.
+    assert!(ir.module_iter().count() == 1);
+    let module = ir.module_iter().next().unwrap();
+    let (data_section, mut ops) = confirm!(
+        compile_module_to_asm(reg_seqr, ir, module),
+        warnings,
+        errors
+    );
+    bytecode.append(&mut ops);
+
+    let asm = HllAsmSet::ScriptMain {
+        program_section: AbstractInstructionSet { ops: bytecode },
+        data_section,
+    };
+
+    if build_config.print_intermediate_asm {
+        println!("{}", asm);
+    }
+
+    let finalized_asm = asm
+        .remove_unnecessary_jumps()
+        .allocate_registers()
+        .optimize();
+
+    if build_config.print_finalized_asm {
+        println!("{}", finalized_asm);
+    }
+
+    ok(finalized_asm, warnings, errors)
+}
+
+#[cfg(feature = "ir")]
+fn compile_module_to_asm<'ir>(
+    reg_seqr: RegisterSequencer,
+    context: &'ir Context,
+    module: Module,
+) -> CompileResult<'ir, (DataSection<'ir>, Vec<Op<'ir>>)> {
+    // We can't to function calls yet, so we expect there to be only one function to compile.
+    // (Alternatively, for now, we could only compile `main()`, ignore others.)
+    assert!(
+        module.function_iter(context).count() == 1,
+        "Cannot compile multiple functions yet!"
+    );
+    let function = module.function_iter(context).next().unwrap();
+    compile_function_to_asm(reg_seqr, context, function)
+}
+
+#[cfg(feature = "ir")]
+fn compile_function_to_asm<'ir>(
+    reg_seqr: RegisterSequencer,
+    context: &'ir Context,
+    function: Function,
+) -> CompileResult<'ir, (DataSection<'ir>, Vec<Op<'ir>>)> {
+    // Add locals to the data section.
+    let mut builder = AsmBuilder::new(DataSection::default(), reg_seqr, context);
+    builder.add_locals(function);
+
+    // Compile instructions.
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+    for block in function.block_iter(&context) {
+        builder.add_label(block);
+        for instr_val in block.instruction_iter(&context) {
+            confirm!(
+                builder.compile_instruction(&block, &instr_val),
+                warnings,
+                errors
+            );
+        }
+    }
+    builder.finalize()
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[cfg(feature = "ir")]
+struct AsmBuilder<'ir> {
+    // Data section is used by the rest of code gen to layout const memory.
+    data_section: DataSection<'ir>,
+
+    // Register sequencer dishes out new registers and labels.
+    reg_seqr: RegisterSequencer,
+
+    // Label map is from IR block to label name.
+    label_map: HashMap<Block, Label>,
+
+    // Reg map, const map and var map are all tracking IR values to VM values.  Var map has an
+    // optional (None) register until its first assignment.
+    reg_map: HashMap<Value, VirtualRegister>,
+    ptr_map: HashMap<Pointer, Storage>,
+
+    // The layouts of each aggregate; their whole size in bytes and field offsets in words.
+    aggregate_layouts: HashMap<Aggregate, (u64, Vec<u64>)>,
+
+    // IR context we're compiling.
+    context: &'ir Context,
+
+    // Final resulting VM bytecode ops.
+    bytecode: Vec<Op<'ir>>,
+}
+
+// NOTE: For stack storage we need to be aware:
+// - sizes are in bytes; CFEI reserves in bytes.
+// - offsets are in 64-bit words; LW/SW reads/writes to word offsets. XXX Wrap in a WordOffset struct.
+
+#[cfg(feature = "ir")]
+pub(super) enum Storage {
+    Data(DataId),              // Const storage in the data section.
+    Register(VirtualRegister), // Storage in a register.
+    Stack(u64), // Storage in the runtime stack starting at an absolute word offset.  Essentially a global.
+}
+
+#[cfg(feature = "ir")]
+impl<'ir> AsmBuilder<'ir> {
+    fn new(
+        data_section: DataSection<'ir>,
+        reg_seqr: RegisterSequencer,
+        context: &'ir Context,
+    ) -> Self {
+        AsmBuilder {
+            data_section,
+            reg_seqr,
+            label_map: HashMap::new(),
+            reg_map: HashMap::new(),
+            ptr_map: HashMap::new(),
+            aggregate_layouts: HashMap::new(),
+            context,
+            bytecode: Vec::new(),
+        }
+    }
+
+    fn add_locals(&mut self, function: Function) {
+        // If they're immutable and have a constant initialiser then they go in the data section.
+        // Otherwise they go in runtime allocated space, either a register or on the stack.
+        let mut stack_base = 0_u64;
+        for (_, ptr) in function.locals_iter(&self.context) {
+            let ptr_content = &self.context.pointers[ptr.0];
+            if !ptr_content.is_mutable && ptr_content.initializer.is_some() {
+                let constant = ptr_content.initializer.as_ref().unwrap();
+                let lit = ir_constant_to_ast_literal(&constant.value);
+                let data_id = self.data_section.insert_data_value(&lit);
+                self.ptr_map.insert(*ptr, Storage::Data(data_id));
+            } else {
+                match ptr_content.ty {
+                    Type::Unit | Type::Bool | Type::Uint(_) => {
+                        let reg = self.reg_seqr.next();
+                        self.ptr_map.insert(*ptr, Storage::Register(reg));
+                    }
+                    Type::B256 => unimplemented!("allocate storage for b256s"),
+                    Type::String(_) => unimplemented!("allocate storage for strings"),
+                    Type::Struct(aggregate) => {
+                        // Store this aggregate at the current stack base.
+                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
+
+                        // Reserve space by incrementing the base.
+                        stack_base += self.aggregate_size(&aggregate);
+                    }
+                    Type::Enum(aggregate) => {
+                        // Store this aggregate and a 64bit tag at the current stack base.
+                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
+
+                        // Reserve space by incrementing the base.
+                        stack_base += 8 + self.aggregate_max_field_size(&aggregate);
+                    }
+                };
+            }
+        }
+
+        // Reserve space on the stack for ALL our locals which require it.
+        //
+        // NOTE:  For now, until we implement call frames, this code assumes there is only one
+        // function ('main') and so we can lump all the stack storage at $SSP.  Any dynamic
+        // allocation will happen beyond that, but from $SSP to $SSP+stack_base all the known stack
+        // storage data lives and can be referenced relative to $SSP directly.
+        if stack_base > 0 {
+            self.bytecode.push(Op::unowned_stack_allocate_memory(
+                VirtualImmediate24::new(
+                    stack_base,
+                    crate::span::Span {
+                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                        path: None,
+                    },
+                )
+                .unwrap(),
+            ));
+        }
+    }
+
+    fn add_label(&mut self, block: Block) {
+        if &block.get_label(&self.context) != "entry" {
+            let label = self.block_to_label(&block);
+            self.bytecode.push(Op::jump_label(
+                label,
+                crate::span::Span {
+                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                    path: None,
+                },
+            ))
+        }
+    }
+
+    fn finalize(self) -> CompileResult<'ir, (DataSection<'ir>, Vec<Op<'ir>>)> {
+        ok((self.data_section, self.bytecode), Vec::new(), Vec::new())
+    }
+
+    fn compile_instruction(&mut self, block: &Block, instr_val: &Value) -> CompileResult<'ir, ()> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        if let ValueContent::Instruction(instruction) = &self.context.values[instr_val.0] {
+            match instruction {
+                Instruction::AsmBlock(asm, args) => {
+                    confirm!(
+                        self.compile_asm_block(instr_val, asm, args),
+                        warnings,
+                        errors
+                    )
+                }
+                Instruction::Branch(to_block) => self.compile_branch(block, to_block),
+                Instruction::Call(..) => {
+                    errors.push(CompileError::Internal(
+                        "Calls are not yet supported.",
+                        crate::span::Span {
+                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            path: None,
+                        },
+                    ));
+                    return err(warnings, errors);
+                }
+                Instruction::ConditionalBranch {
+                    cond_value,
+                    true_block: _,
+                    false_block,
+                } => self.compile_conditional_branch(cond_value, false_block),
+                Instruction::ExtractValue {
+                    aggregate,
+                    ty,
+                    indices,
+                } => self.compile_extract_value(instr_val, aggregate, ty, indices),
+                Instruction::GetPointer(ptr) => self.compile_get_pointer(instr_val, ptr),
+                Instruction::InsertValue {
+                    aggregate,
+                    ty,
+                    value,
+                    indices,
+                } => self.compile_insert_value(instr_val, aggregate, ty, value, indices),
+                Instruction::Load(ptr) => self.compile_load(instr_val, ptr),
+                Instruction::Phi(_) => {
+                    // No-op.
+                    ()
+                }
+                Instruction::Ret(ret_val, ty) => {
+                    confirm!(self.compile_ret(ret_val, ty), warnings, errors)
+                }
+                Instruction::Store { ptr, stored_val } => self.compile_store(ptr, stored_val),
+            }
+        } else {
+            errors.push(CompileError::Internal(
+                "Value not an instruction.",
+                crate::span::Span {
+                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                    path: None,
+                },
+            ));
+        }
+        ok((), warnings, errors)
+    }
+
+    // OK, I began by trying to translate the IR ASM block data structures back into AST data
+    // structures which I could feed to the code in asm_generation/expression/mod.rs where it
+    // compiles the inline ASM.  But it's more work to do that than to just re-implement that
+    // algorithm with the IR data here.
+
+    fn compile_asm_block(
+        &mut self,
+        instr_val: &Value,
+        asm: &AsmBlock,
+        asm_args: &[AsmArg],
+    ) -> CompileResult<'ir, ()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut inline_reg_map = HashMap::new();
+        let mut inline_ops = Vec::new();
+        for AsmArg { name, initializer } in asm_args {
+            assert_or_warn!(
+                ConstantRegister::parse_register_name(name).is_none(),
+                warnings,
+                crate::span::Span {
+                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                    path: None,
+                },
+                Warning::ShadowingReservedRegister {
+                    reg_name: name.into()
+                }
+            );
+            let arg_reg = initializer
+                .map(|init_val| self.reg_map.get(&init_val).cloned())
+                .flatten()
+                .unwrap_or_else(|| self.reg_seqr.next());
+            inline_reg_map.insert(name, arg_reg);
+        }
+
+        let realize_register = |reg_name: &String| {
+            inline_reg_map.get(reg_name).cloned().or_else(|| {
+                ConstantRegister::parse_register_name(reg_name)
+                    .map(|reg| VirtualRegister::Constant(reg))
+            })
+        };
+
+        // For each opcode in the asm expression, attempt to parse it into an opcode and
+        // replace references to the above registers with the newly allocated ones.
+        let asm_block = &self.context.asm_blocks[asm.0];
+        for op in &asm_block.body {
+            let replaced_registers = op
+                .args
+                .iter()
+                .map(|reg_name| -> Result<_, CompileError> {
+                    realize_register(reg_name).ok_or_else(|| CompileError::UnknownRegister {
+                        span: crate::span::Span {
+                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            path: None,
+                        },
+                        initialized_registers: inline_reg_map
+                            .iter()
+                            .map(|(name, _)| (*name).clone())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                    })
+                })
+                .filter_map(|res| match res {
+                    Err(e) => {
+                        errors.push(e);
+                        None
+                    }
+                    Ok(o) => Some(o),
+                })
+                .collect::<Vec<VirtualRegister>>();
+
+            // Parse the actual op and registers.
+            let opcode = check!(
+                Op::parse_opcode(
+                    &Ident {
+                        primary_name: &op.name,
+                        span: crate::span::Span {
+                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            path: None,
+                        },
+                    },
+                    replaced_registers.as_slice(),
+                    &op.immediate.as_ref().map(|imm_str| Ident {
+                        primary_name: imm_str,
+                        span: crate::span::Span {
+                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            path: None,
+                        },
+                    },),
+                    crate::span::Span {
+                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                        path: None,
+                    },
+                ),
+                continue,
+                warnings,
+                errors
+            );
+
+            inline_ops.push(Op {
+                opcode: either::Either::Left(opcode),
+                comment: String::new(),
+                owning_span: None,
+            });
+        }
+
+        // Now, load the designated asm return register into the desired return register
+        match &asm_block.return_name {
+            Some(ret_reg_name) => {
+                // Lookup and replace the return register.
+                let ret_reg = match realize_register(&ret_reg_name) {
+                    Some(reg) => reg,
+                    None => {
+                        errors.push(CompileError::UnknownRegister {
+                            span: crate::span::Span {
+                                span: pest::Span::new(" ", 0, 0).unwrap(),
+                                path: None,
+                            },
+                            initialized_registers: inline_reg_map
+                                .iter()
+                                .map(|(name, _)| name.to_string())
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
+                let instr_reg = self.reg_seqr.next();
+                inline_ops.push(Op::unowned_register_move_comment(
+                    instr_reg.clone(),
+                    ret_reg.clone(),
+                    "return value from inline asm",
+                ));
+                self.reg_map.insert(*instr_val, instr_reg);
+            }
+            _ => {
+                errors.push(CompileError::InvalidAssemblyMismatchedReturn {
+                    span: crate::span::Span {
+                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                        path: None,
+                    },
+                });
+            }
+        }
+
+        self.bytecode.append(&mut inline_ops);
+
+        ok((), warnings, errors)
+    }
+
+    fn compile_branch(&mut self, from_block: &Block, to_block: &Block) {
+        if let Some(local_val) = to_block.get_phi_val_coming_from(&self.context, from_block) {
+            let local_reg = self.value_to_register(&local_val);
+            let phi_reg = self.value_to_register(&to_block.get_phi(&self.context));
+            self.bytecode.push(Op::register_move(
+                phi_reg,
+                local_reg,
+                crate::span::Span {
+                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                    path: None,
+                },
+            ));
+        }
+        let label = self.block_to_label(to_block);
+        self.bytecode.push(Op::jump_to_label(label));
+    }
+
+    fn compile_conditional_branch(&mut self, cond_value: &Value, false_block: &Block) {
+        let cond_reg = self.value_to_register(cond_value);
+        let label = self.block_to_label(false_block);
+        self.bytecode.push(Op::jump_if_not_equal(
+            cond_reg,
+            VirtualRegister::Constant(ConstantRegister::One),
+            label,
+        ));
+    }
+
+    fn compile_extract_value(
+        &mut self,
+        instr_val: &Value,
+        aggregate: &Value,
+        ty: &Aggregate,
+        indices: &[u64],
+    ) {
+        // Base register should pointer to some stack allocated memory.
+        let base_reg = self.value_to_register(aggregate);
+        let extract_offset = self.aggregate_idcs_to_word_offs(ty, indices);
+
+        let instr_reg = self.reg_seqr.next();
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::LW(
+                instr_reg.clone(),
+                base_reg,
+                VirtualImmediate12::new(
+                    extract_offset,
+                    crate::span::Span {
+                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                        path: None,
+                    },
+                )
+                .unwrap(),
+            )),
+            comment: format!(
+                "Load from aggregate ??? field {} to stack",
+                indices
+                    .iter()
+                    .map(|idx| format!("{}", idx))
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+            owning_span: None,
+        });
+        self.reg_map.insert(*instr_val, instr_reg);
+    }
+
+    fn compile_get_pointer(&mut self, instr_val: &Value, ptr: &Pointer) {
+        // `get_ptr` is like a `load` except the value isn't dereferenced.
+        match self.ptr_map.get(ptr) {
+            None => unimplemented!("BUG? Uninitialised pointer."),
+            Some(storage) => match storage {
+                Storage::Data(_data_id) => {
+                    // Not sure if we'll ever need this.
+                    unimplemented!("TODO get_ptr() into the data section.");
+                }
+                Storage::Register(var_reg) => {
+                    self.reg_map.insert(*instr_val, var_reg.clone());
+                }
+                Storage::Stack(word_offs) => {
+                    // Copy stack start and increment it to the offset.
+                    let ssp_copy_reg = self.reg_seqr.next();
+                    self.bytecode.push(Op::register_move(
+                        ssp_copy_reg.clone(),
+                        VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                        crate::span::Span {
+                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            path: None,
+                        },
+                    ));
+                    let instr_reg = self.reg_seqr.next();
+                    self.bytecode.push(Op {
+                        opcode: either::Either::Left(VirtualOp::ADDI(
+                            instr_reg.clone(),
+                            ssp_copy_reg,
+                            VirtualImmediate12::new(
+                                *word_offs * 8,
+                                crate::span::Span {
+                                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                                    path: None,
+                                },
+                            )
+                            .unwrap(),
+                        )),
+                        comment: "get ptr offset into global stack space".into(),
+                        owning_span: None,
+                    });
+                    self.reg_map.insert(*instr_val, instr_reg);
+                }
+            },
+        }
+    }
+
+    fn compile_insert_value(
+        &mut self,
+        instr_val: &Value,
+        aggregate: &Value,
+        ty: &Aggregate,
+        value: &Value,
+        indices: &[u64],
+    ) {
+        // Base register should point to some stack allocated memory.
+        let base_reg = self.value_to_register(aggregate);
+
+        let insert_reg = self.value_to_register(&value);
+        let insert_offs = self.aggregate_idcs_to_word_offs(ty, indices);
+
+        self.bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::SW(
+                base_reg.clone(),
+                insert_reg,
+                VirtualImmediate12::new(
+                    insert_offs,
+                    crate::span::Span {
+                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                        path: None,
+                    },
+                )
+                .unwrap(),
+            )),
+            comment: format!(
+                "Store to aggregate ??? field {} to stack",
+                indices
+                    .iter()
+                    .map(|idx| format!("{}", idx))
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+            owning_span: None,
+        });
+
+        // We set the 'instruction' register to the base register, so that cascading inserts will
+        // work.
+        self.reg_map.insert(*instr_val, base_reg);
+    }
+
+    fn compile_load(&mut self, instr_val: &Value, ptr: &Pointer) {
+        let instr_reg = self.reg_seqr.next();
+        match self.ptr_map.get(ptr) {
+            None => unimplemented!("BUG? Uninitialised pointer."),
+            Some(storage) => match storage {
+                Storage::Data(data_id) => {
+                    self.bytecode.push(Op::unowned_load_data_comment(
+                        instr_reg.clone(),
+                        data_id.clone(),
+                        "load constant",
+                    ));
+                }
+                Storage::Register(var_reg) => {
+                    self.bytecode.push(Op::register_move(
+                        instr_reg.clone(),
+                        var_reg.clone(),
+                        crate::span::Span {
+                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            path: None,
+                        },
+                    ));
+                }
+                Storage::Stack(word_offs) => {
+                    self.bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            instr_reg.clone(),
+                            VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                            VirtualImmediate12::new(
+                                *word_offs,
+                                crate::span::Span {
+                                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                                    path: None,
+                                },
+                            )
+                            .unwrap(),
+                        )),
+                        comment: "Load from stack".into(),
+                        owning_span: None,
+                    });
+                }
+            },
+        }
+        self.reg_map.insert(*instr_val, instr_reg);
+    }
+
+    fn compile_ret(&mut self, ret_val: &Value, ty: &Type) -> CompileResult<'ir, ()> {
+        let ret_reg = self.value_to_register(ret_val);
+        ret_or_retd_value_impl(
+            "main",
+            ir_type_to_ast_type(ty),
+            &crate::span::Span {
+                span: pest::Span::new("placeholder", 0, 10).unwrap(),
+                path: None,
+            },
+            ret_reg,
+            |ret_size_bytes| {
+                let rb_register = self.reg_seqr.next();
+                let size_lit = Literal::U64(ret_size_bytes);
+                (rb_register, self.data_section.insert_data_value(&size_lit))
+            },
+        )
+        .map(|mut ret_bytecode| self.bytecode.append(&mut ret_bytecode))
+    }
+
+    fn compile_store(&mut self, ptr: &Pointer, stored_val: &Value) {
+        let stored_reg = self.value_to_register(stored_val);
+        match self.ptr_map.get(ptr) {
+            None => unreachable!("Bug! Trying to store to an unknown pointer."),
+            Some(storage) => match storage {
+                Storage::Data(_) => unreachable!("BUG! Trying to store to the data section."),
+                Storage::Register(reg) => {
+                    self.bytecode.push(Op::register_move(
+                        reg.clone(),
+                        stored_reg,
+                        crate::span::Span {
+                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            path: None,
+                        },
+                    ));
+                }
+                Storage::Stack(word_offs) => {
+                    let word_offs = *word_offs;
+                    let store_size_in_words =
+                        self.ir_type_size_in_words(ptr.get_type(self.context));
+                    if store_size_in_words == 1 {
+                        // A single word can be stored with SW.
+                        self.bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::SW(
+                                VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                                stored_reg,
+                                VirtualImmediate12::new(
+                                    word_offs,
+                                    crate::span::Span {
+                                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                                        path: None,
+                                    },
+                                )
+                                .unwrap(),
+                            )),
+                            comment: "store to stack".into(),
+                            owning_span: None,
+                        });
+                    } else {
+                        // Bigger than 1 word needs a MCPI.  XXX Or MCP if it's huge.
+                        let dest_reg = self.reg_seqr.next();
+                        self.bytecode.push(Op {
+                            opcode: either::Either::Left(VirtualOp::ADDI(
+                                dest_reg.clone(),
+                                VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                                VirtualImmediate12::new(
+                                    word_offs * 8,
+                                    crate::span::Span {
+                                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                                        path: None,
+                                    },
+                                )
+                                .unwrap(),
+                            )),
+                            comment: "get ptr offset into global stack space".into(),
+                            owning_span: None,
+                        });
+
+                        self.bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::MCPI(
+                                dest_reg,
+                                stored_reg,
+                                VirtualImmediate12::new(
+                                    store_size_in_words * 8,
+                                    crate::span::Span {
+                                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                                        path: None,
+                                    },
+                                )
+                                .unwrap(),
+                            )),
+                            comment: "store large value to stack".into(),
+                            owning_span: None,
+                        });
+                    }
+                }
+            },
+        };
+    }
+
+    fn value_to_register(&mut self, value: &Value) -> VirtualRegister {
+        match self.reg_map.get(value) {
+            Some(reg) => reg.clone(),
+            None => {
+                match &self.context.values[value.0] {
+                    // Handle constants.
+                    ValueContent::Constant(constant) => {
+                        match &constant.value {
+                            ConstantValue::Struct(_) => {
+                                // A constant struct.  We still allocate space for it on the stack, but
+                                // create the field initialisers recursively.
+
+                                // Save the stack pointer.
+                                let start_reg = self.reg_seqr.next();
+                                self.bytecode.push(Op::register_move(
+                                    start_reg.clone(),
+                                    VirtualRegister::Constant(ConstantRegister::StackPointer),
+                                    crate::span::Span {
+                                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                                        path: None,
+                                    },
+                                ));
+
+                                // Get the total size and reserve it.
+                                let total_size = self.constant_size_in_bytes(constant);
+                                self.bytecode.push(Op::unowned_stack_allocate_memory(
+                                    VirtualImmediate24::new(
+                                        total_size,
+                                        crate::span::Span {
+                                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                                            path: None,
+                                        },
+                                    )
+                                    .unwrap(),
+                                ));
+
+                                // Fill in the fields.
+                                self.initialise_aggregate_fields(constant, &start_reg, 0);
+
+                                // Return the start ptr.
+                                start_reg
+                            }
+
+                            _otherwise => {
+                                // Get the constant into the namespace.
+                                let lit = ir_constant_to_ast_literal(&constant.value);
+                                let data_id = self.data_section.insert_data_value(&lit);
+
+                                // Allocate a register for it, and a load instruction.
+                                let reg = self.reg_seqr.next();
+                                self.bytecode.push(Op {
+                                    opcode: either::Either::Left(VirtualOp::LWDataId(
+                                        reg.clone(),
+                                        data_id,
+                                    )),
+                                    comment: "literal instantiation".into(),
+                                    owning_span: None, //Some(span),
+                                });
+
+                                // Insert the value into the map.
+                                self.reg_map.insert(*value, reg.clone());
+
+                                // Return register.
+                                reg
+                            }
+                        }
+                    }
+
+                    _otherwise => {
+                        // Just make a new register for this value.
+                        let reg = self.reg_seqr.next();
+                        self.reg_map.insert(*value, reg.clone());
+                        reg
+                    }
+                }
+            }
+        }
+    }
+
+    fn constant_size_in_bytes(&self, constant: &Constant) -> u64 {
+        match &constant.value {
+            ConstantValue::Undef => 0, // XXX It REALLY doesn't make sense to ask for the size of undef.
+            ConstantValue::Unit => 8, // XXX It doesn't really make sense to have Unit as a field type.
+            ConstantValue::Bool(_) => 8,
+            ConstantValue::Uint(_) => 8,
+            ConstantValue::B256(_) => 32,
+            ConstantValue::String(s) => s.len() as u64, // String::len() returns the byte size, not char count.
+            ConstantValue::Struct(fields) => fields
+                .iter()
+                .fold(0, |acc, field| acc + self.constant_size_in_bytes(field)),
+        }
+    }
+
+    fn initialise_aggregate_fields(
+        &mut self,
+        constant: &Constant,
+        start_reg: &VirtualRegister,
+        offs_in_words: u64,
+    ) -> u64 {
+        match &constant.value {
+            ConstantValue::Undef
+            | ConstantValue::Unit
+            | ConstantValue::Bool(_)
+            | ConstantValue::Uint(_)
+            | ConstantValue::B256(_)
+            | ConstantValue::String(_) => {
+                // Get the constant into the namespace.
+                let lit = ir_constant_to_ast_literal(&constant.value);
+                let data_id = self.data_section.insert_data_value(&lit);
+
+                // Load the initialiser value.
+                let init_reg = self.reg_seqr.next();
+                self.bytecode.push(Op {
+                    opcode: either::Either::Left(VirtualOp::LWDataId(init_reg.clone(), data_id)),
+                    comment: "literal instantiation".into(),
+                    owning_span: None,
+                });
+
+                // Write the initialiser to the field.
+                self.bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SW(
+                        start_reg.clone(),
+                        init_reg,
+                        VirtualImmediate12::new(
+                            offs_in_words,
+                            crate::span::Span {
+                                span: pest::Span::new(" ", 0, 0).unwrap(),
+                                path: None,
+                            },
+                        )
+                        .unwrap(),
+                    )),
+                    comment: format!(
+                        "initialise to aggregate ??? at offset {} to stack",
+                        offs_in_words
+                    ),
+                    owning_span: None,
+                });
+
+                // Return the field size in words.
+                match &constant.value {
+                    ConstantValue::B256(_) => 4,
+                    ConstantValue::String(s) => (s.len() as u64 + 7) / 8,
+                    _otherwise => 1,
+                }
+            }
+
+            ConstantValue::Struct(fields) => {
+                let mut cur_offs = offs_in_words;
+                for field in fields {
+                    let field_size = self.initialise_aggregate_fields(field, start_reg, cur_offs);
+                    cur_offs += field_size;
+                }
+                cur_offs
+            }
+        }
+    }
+
+    fn block_to_label(&mut self, block: &Block) -> Label {
+        match self.label_map.get(block) {
+            Some(label) => label.clone(),
+            None => {
+                let label = self.reg_seqr.get_label();
+                self.label_map.insert(*block, label.clone());
+                label
+            }
+        }
+    }
+
+    // Aggregate size in bytes.
+    fn aggregate_size(&mut self, aggregate: &Aggregate) -> u64 {
+        self.analyze_aggregate(aggregate);
+        self.aggregate_layouts.get(aggregate).unwrap().0
+    }
+
+    // Size of largest aggregate field in bytes.
+    fn aggregate_max_field_size(&mut self, aggregate: &Aggregate) -> u64 {
+        self.analyze_aggregate(aggregate);
+        self.aggregate_layouts
+            .get(aggregate)
+            .unwrap()
+            .1
+            .iter()
+            .max()
+            .copied()
+            .unwrap_or(0)
+    }
+
+    // Aggregate field offset in words.
+    fn aggregate_idcs_to_word_offs(&mut self, aggregate: &Aggregate, idcs: &[u64]) -> u64 {
+        self.analyze_aggregate(aggregate);
+
+        idcs.iter()
+            .fold((0, Type::Struct(*aggregate)), |(offs, ty), idx| match ty {
+                Type::Struct(aggregate) => {
+                    let agg_content = &self.context.aggregates[aggregate.0];
+                    let sub_offs = self.aggregate_layouts.get(&aggregate).unwrap().1[*idx as usize];
+                    let sub_type = agg_content.field_types[*idx as usize];
+                    (offs + sub_offs, sub_type)
+                }
+                _otherwise => panic!("Attempt to access field in non-aggregate."),
+            })
+            .0
+    }
+
+    fn analyze_aggregate(&mut self, aggregate: &Aggregate) {
+        if self.aggregate_layouts.contains_key(aggregate) {
+            return;
+        }
+
+        let agg_content = &self.context.aggregates[aggregate.0];
+        let (total_in_words, offsets) = agg_content.field_types.iter().fold(
+            (0, Vec::new()),
+            |(cur_offset, mut offsets), ty| {
+                let field_size_in_words = self.ir_type_size_in_words(ty);
+                offsets.push(cur_offset);
+                (cur_offset + field_size_in_words, offsets)
+            },
+        );
+        self.aggregate_layouts
+            .insert(*aggregate, (total_in_words * 8, offsets));
+    }
+
+    fn ir_type_size_in_words(&mut self, ty: &Type) -> u64 {
+        (self.ir_type_size_in_bytes(ty) + 7) / 8
+    }
+
+    fn ir_type_size_in_bytes(&mut self, ty: &Type) -> u64 {
+        match ty {
+            Type::Unit | Type::Bool | Type::Uint(_) => 8,
+            Type::B256 => 32,
+            Type::String(n) => *n,
+            Type::Struct(aggregate) => {
+                self.analyze_aggregate(aggregate);
+                self.aggregate_size(aggregate)
+            }
+            Type::Enum(aggregate) => {
+                // Add 1 word (8 bytes) for the tag.
+                self.analyze_aggregate(aggregate);
+                8 + self.aggregate_max_field_size(aggregate)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "ir")]
+fn ir_type_to_ast_type(irtype: &Type) -> TypeInfo {
+    match irtype {
+        Type::Unit => TypeInfo::Unit,
+        Type::Bool => TypeInfo::Boolean,
+        Type::Uint(n) => TypeInfo::UnsignedInteger(match n {
+            8 => crate::type_engine::IntegerBits::Eight,
+            16 => crate::type_engine::IntegerBits::Sixteen,
+            32 => crate::type_engine::IntegerBits::ThirtyTwo,
+            64 => crate::type_engine::IntegerBits::SixtyFour,
+            _ => unreachable!("Invalid sized uint."),
+        }),
+        Type::B256 => TypeInfo::B256,
+        Type::String(n) => TypeInfo::Str(*n),
+        Type::Struct(_) => unimplemented!("No, we're not returning structs."),
+        Type::Enum(_) => unimplemented!("No, we're not returning enums."),
+    }
+}
+
+#[cfg(feature = "ir")]
+fn ir_constant_to_ast_literal<'sc>(constant: &ConstantValue) -> Literal<'sc> {
+    match constant {
+        ConstantValue::Undef => unreachable!("Cannot convert 'undef' to a literal."),
+        ConstantValue::Unit => Literal::U64(0), // No unit.
+        ConstantValue::Bool(b) => Literal::Boolean(*b),
+        ConstantValue::Uint(n) => Literal::U64(*n),
+        ConstantValue::B256(bs) => Literal::B256(bs.clone()),
+        ConstantValue::String(_) => {
+            unimplemented!("We can't recreate a Literal::Str without using 'sc.  So painful.")
+        }
+        ConstantValue::Struct(_) => unimplemented!(),
+    }
+}
+
+//fn ir_type_to_ast_literal<'sc>(ty: &Type) -> Literal<'sc> {
+//    match ty {
+//        Type::Unit => Literal::U64(0), // No unit.
+//        Type::Bool => Literal::Boolean(false),
+//        Type::Uint(nbits) => match nbits {
+//            8 => Literal::U8(0),
+//            16 => Literal::U16(0),
+//            32 => Literal::U32(0),
+//            64 => Literal::U64(0),
+//            _ => unreachable!("Invalid number of bits in integer type."),
+//        },
+//        Type::B256 => Literal::B256([0; 32]),
+//    }
+//}
+
+// -------------------------------------------------------------------------------------------------
+
+#[cfg(all(test, feature = "ir"))]
+mod tests {
+    use super::*;
+
+    fn simple_test(input: &str, expected: &str) {
+        let ir = parse(input).expect("parsed ir");
+        let asm_result = compile_ir_to_asm(
+            &ir,
+            &BuildConfig {
+                file_name: std::sync::Arc::new("".into()),
+                dir_of_code: std::sync::Arc::new("".into()),
+                manifest_path: std::sync::Arc::new("".into()),
+                print_intermediate_asm: false,
+                print_finalized_asm: false,
+            },
+        );
+
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        let asm = asm_result.unwrap(&mut warnings, &mut errors);
+        assert!(warnings.is_empty() && errors.is_empty());
+
+        let asm_script = format!("{}", asm);
+        if asm_script != expected {
+            println!("{}", prettydiff::diff_lines(expected, &asm_script));
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn impl_ret_int() {
+        let input = r#"script script {
+    fn main() -> u64 {
+        entry:
+        v0 = const u64 42
+        ret u64 v0
+    }
+}
+"#;
+
+        let expected = r#".program:
+ji   i4
+noop
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+lw   $ds $is 1
+add  $$ds $$ds $is
+lw   $r0 data_0               ; literal instantiation
+ret  $r0                      ; main fn return value
+noop                          ; word-alignment of data section
+.data:
+data_0 .u64 0x2a
+"#;
+
+        simple_test(input, expected);
+    }
+
+    #[test]
+    fn if_expr() {
+        let input = r#"script script {
+    fn main() -> u64 {
+        entry:
+        v0 = const bool false
+        cbr v0, block0, block1
+
+        block0:
+        v1 = const u64 1000000
+        br block2
+
+        block1:
+        v2 = const u64 42
+        br block2
+
+        block2:
+        v3 = phi(block0: v1, block1: v2)
+        ret u64 v3
+    }
+}
+"#;
+        let expected = r#".program:
+ji   i4
+noop
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+lw   $ds $is 1
+add  $$ds $$ds $is
+lw   $r0 data_0               ; literal instantiation
+jnei $r0 $one i11
+lw   $r0 data_1               ; literal instantiation
+move $r1 $r0
+ji   i13
+lw   $r0 data_2               ; literal instantiation
+move $r1 $r0
+ret  $r1                      ; main fn return value
+noop                          ; word-alignment of data section
+.data:
+data_0 .bool 0x00
+data_1 .u64 0xf4240
+data_2 .u64 0x2a
+"#;
+
+        simple_test(input, expected);
+    }
+
+    #[test]
+    fn let_reassign_while_loop() {
+        let input = r#"script script {
+    fn main() -> bool {
+        local ptr bool a
+
+        entry:
+        v0 = const bool true
+        store v0, ptr bool a
+        br while
+
+        while:
+        v1 = load ptr bool a
+        cbr v1, while_body, end_while
+
+        while_body:
+        v2 = load ptr bool a
+        cbr v2, block0, block1
+
+        block0:
+        v3 = phi(while_body: v2)
+        v4 = const bool false
+        br block1
+
+        block1:
+        v5 = phi(while_body: v2, block0: v4)
+        store v5, ptr bool a
+        br while
+
+        end_while:
+        v6 = load ptr bool a
+        ret bool v6
+    }
+}
+"#;
+        // THIS IS EQIVALENT TO THE ORIGINAL.  Except for a couple of redundant MOVEs.  This is
+        // because we're just putting locals into registers rather than mutable storage
+        // (Load/Store) and the IR doesn't optimise for redundancies yet.
+        let expected = r#".program:
+ji   i4
+noop
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+lw   $ds $is 1
+add  $$ds $$ds $is
+lw   $r0 data_0               ; literal instantiation
+move $r1 $r0
+move $r0 $r1
+jnei $r0 $one i16
+move $r0 $r1
+jnei $r0 $one i14
+lw   $r0 data_1               ; literal instantiation
+move $r2 $r0
+move $r1 $r2
+ji   i8
+move $r0 $r1
+ret  $r0                      ; main fn return value
+noop                          ; word-alignment of data section
+.data:
+data_0 .bool 0x01
+data_1 .bool 0x00
+"#;
+        simple_test(input, expected);
+    }
+
+    #[test]
+    fn tiny_asm_block() {
+        let input = r#"script script {
+    fn main() -> u64 {
+        entry:
+        v0 = asm(r1) -> r1 {
+            bhei   r1
+        }
+        ret u64 v0
+    }
+}
+"#;
+
+        let expected = r#".program:
+ji   i4
+noop
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+lw   $ds $is 1
+add  $$ds $$ds $is
+bhei $r0
+move $r1 $r0                  ; return value from inline asm
+ret  $r1                      ; main fn return value
+.data:
+"#;
+        simple_test(input, expected);
+    }
+
+    #[test]
+    fn simple_struct() {
+        let input = r#"script script {
+    fn main() -> u64 {
+        local ptr { u64, u64 } record
+
+        entry:
+        v0 = const { u64 0, u64 0 }
+        v1 = const u64 40
+        v2 = insert_value v0, { u64, u64 }, v1, 0
+        v3 = const u64 2
+        v4 = insert_value v2, { u64, u64 }, v3, 1
+        store v4, ptr { u64, u64 } record
+        v5 = get_ptr ptr { u64, u64 } record
+        v6 = extract_value v5, { u64, u64 }, 0
+        ret u64 v6
+    }
+}
+"#;
+
+        let expected = r#".program:
+ji   i4
+noop
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+lw   $ds $is 1
+add  $$ds $$ds $is
+cfei i16
+move $r0 $sp
+cfei i16
+lw   $r1 data_0               ; literal instantiation
+sw   $r0 $r1 i0               ; initialise to aggregate ??? at offset 0 to stack
+lw   $r1 data_0               ; literal instantiation
+sw   $r0 $r1 i1               ; initialise to aggregate ??? at offset 1 to stack
+lw   $r1 data_1               ; literal instantiation
+sw   $r0 $r1 i0               ; Store to aggregate ??? field 0 to stack
+lw   $r1 data_2               ; literal instantiation
+sw   $r0 $r1 i1               ; Store to aggregate ??? field 1 to stack
+addi $r1 $ssp i0              ; get ptr offset into global stack space
+mcpi $r1 $r0 i16              ; store large value to stack
+move $r0 $ssp
+addi $r1 $r0 i0               ; get ptr offset into global stack space
+lw   $r0 $r1 i0               ; Load from aggregate ??? field 0 to stack
+ret  $r0                      ; main fn return value
+.data:
+data_0 .u64 0x00
+data_1 .u64 0x28
+data_2 .u64 0x02
+"#;
+        simple_test(input, expected);
+    }
+
+    #[test]
+    fn mutable_struct() {
+        let input = r#"script script {
+    fn main() -> u64 {
+        local mut ptr { u64, u64 } record
+
+        entry:
+        v0 = const { u64 0, u64 0 }
+        v1 = const u64 40
+        v2 = insert_value v0, { u64, u64 }, v1, 0
+        v3 = const u64 2
+        v4 = insert_value v2, { u64, u64 }, v3, 1
+        store v4, mut ptr { u64, u64 } record
+        v5 = get_ptr mut ptr { u64, u64 } record
+        v6 = const u64 50
+        v7 = insert_value v5, { u64, u64 }, v6, 0
+        v8 = get_ptr mut ptr { u64, u64 } record
+        v9 = extract_value v8, { u64, u64 }, 1
+        ret u64 v9
+    }
+}
+"#;
+
+        let expected = r#".program:
+ji   i4
+noop
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+lw   $ds $is 1
+add  $$ds $$ds $is
+cfei i16
+move $r0 $sp
+cfei i16
+lw   $r1 data_0               ; literal instantiation
+sw   $r0 $r1 i0               ; initialise to aggregate ??? at offset 0 to stack
+lw   $r1 data_0               ; literal instantiation
+sw   $r0 $r1 i1               ; initialise to aggregate ??? at offset 1 to stack
+lw   $r1 data_1               ; literal instantiation
+sw   $r0 $r1 i0               ; Store to aggregate ??? field 0 to stack
+lw   $r1 data_2               ; literal instantiation
+sw   $r0 $r1 i1               ; Store to aggregate ??? field 1 to stack
+addi $r1 $ssp i0              ; get ptr offset into global stack space
+mcpi $r1 $r0 i16              ; store large value to stack
+move $r0 $ssp
+addi $r1 $r0 i0               ; get ptr offset into global stack space
+lw   $r0 data_3               ; literal instantiation
+sw   $r1 $r0 i0               ; Store to aggregate ??? field 0 to stack
+move $r0 $ssp
+addi $r1 $r0 i0               ; get ptr offset into global stack space
+lw   $r0 $r1 i1               ; Load from aggregate ??? field 1 to stack
+ret  $r0                      ; main fn return value
+.data:
+data_0 .u64 0x00
+data_1 .u64 0x28
+data_2 .u64 0x02
+data_3 .u64 0x32
+"#;
+        simple_test(input, expected);
+    }
+}
+
+// =================================================================================================
