@@ -166,30 +166,6 @@ impl Tokenizable for u64 {
     }
 }
 
-/// Tokens conversion trait
-// pub trait Tokenize {
-//     /// Convert to list of tokens
-//     fn into_tokens(self) -> Vec<Token>;
-// }
-
-// impl<'a> Tokenize for &'a [Token] {
-//     fn into_tokens(self) -> Vec<Token> {
-//         flatten_tokens(self.to_vec())
-//     }
-// }
-
-// impl<T: Tokenizable> Tokenize for T {
-//     fn into_tokens(self) -> Vec<Token> {
-//         flatten_tokens(vec![self.into_token()])
-//     }
-// }
-
-// impl Tokenize for () {
-//     fn into_tokens(self) -> Vec<Token> {
-//         vec![]
-//     }
-// }
-
 /// Output type possible to deserialize from Contract ABI
 pub trait Detokenize {
     /// Creates a new instance from parsed ABI tokens.
@@ -216,22 +192,6 @@ impl<T: Tokenizable> Detokenize for T {
         };
 
         Self::from_token(token)
-    }
-}
-
-/// Helper for flattening non-nested tokens into their inner
-/// types, e.g. (A, B, C ) would get tokenized to Tuple([A, B, C])
-/// when in fact we need [A, B, C].
-fn flatten_tokens(mut tokens: Vec<Token>) -> Vec<Token> {
-    if tokens.len() == 1 {
-        // flatten the tokens if required
-        // and there is no nesting
-        match tokens.remove(0) {
-            Token::Struct(inner) => inner,
-            other => vec![other],
-        }
-    } else {
-        tokens
     }
 }
 

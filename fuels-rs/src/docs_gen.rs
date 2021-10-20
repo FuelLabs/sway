@@ -1,4 +1,4 @@
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 
 /// Functions used by the Abigen to expand functions defined in an ABI spec.

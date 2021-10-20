@@ -1,4 +1,4 @@
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Ident, Span};
 use syn::Ident as SynIdent;
 
 /// Expands a identifier string into an token.

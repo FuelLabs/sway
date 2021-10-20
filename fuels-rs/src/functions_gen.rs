@@ -1,15 +1,12 @@
 use crate::abi_encoder::ABIEncoder;
-use crate::bindings::ContractBindings;
-use crate::custom_types_gen::{expand_internal_enum, expand_internal_struct};
 use crate::docs_gen::expand_doc;
 use crate::errors::Error;
-use crate::json_abi::{self, parse_param, ABI};
-use crate::source::Source;
-use crate::types::{expand_type, Function, JsonABI, ParamType, Property, Selector};
+use crate::json_abi::{parse_param, ABI};
+use crate::types::{expand_type, Function, ParamType, Property, Selector};
 use crate::utils::{ident, safe_ident};
 use inflector::Inflector;
 
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 use std::collections::HashMap;
 
@@ -162,7 +159,7 @@ fn expand_input_param(
                 ::std::vec::Vec<#ty>
             })
         }
-        ParamType::Enum(v) => {
+        ParamType::Enum(_) => {
             let ident = ident(&rust_enum_name.unwrap().name);
             Ok(quote! { #ident })
         }

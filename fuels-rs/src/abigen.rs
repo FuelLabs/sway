@@ -1,20 +1,16 @@
 use std::collections::HashMap;
 
-use crate::abi_encoder::ABIEncoder;
 use crate::bindings::ContractBindings;
 use crate::custom_types_gen::{expand_internal_enum, expand_internal_struct};
 use crate::errors::Error;
 use crate::functions_gen::expand_function;
-use crate::json_abi::{self, parse_param, ABI};
+use crate::json_abi::ABI;
 use crate::source::Source;
-use crate::types::{expand_type, Function, JsonABI, ParamType, Property, Selector};
+use crate::types::{JsonABI, Property};
 use crate::utils::ident;
 use inflector::Inflector;
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-
-use syn::token::Struct;
-use syn::Ident as SynIdent;
 
 // TODO: Create a abigen-level README explaining how to use it
 

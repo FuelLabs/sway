@@ -3,7 +3,7 @@ use crate::json_abi::parse_param;
 use crate::types::{expand_type, ParamType, Property};
 use crate::utils::ident;
 use inflector::Inflector;
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 
 // TODO: Right now we have an "end-to-end" test suite for the Abigen!
