@@ -15,14 +15,14 @@ glob = { version = "0.3.0", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 Inflector = "0.11"
 itertools = "0.10.1"
+proc-macro2 = "1.0"
+quote = "1.0"
 regex = "1.5.4"
 serde = { version = "1.0.124", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.64", default-features = true }
 sha2 = "0.9.5"
 strum = "0.21"
-syn = "1.0.12"
-quote = "1.0"
-url = "2.1"
 strum_macros = "0.21"
+syn = "1.0.12"
 thiserror = { version = "1.0.26", default-features = false }
-proc-macro2 = "1.0"
+url = "2.1"

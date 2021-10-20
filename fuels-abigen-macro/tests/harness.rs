@@ -1,4 +1,4 @@
-use fuels_abigen::abigen;
+use fuels_abigen_macro::abigen;
 use sha2::{Digest, Sha256};
 
 #[test]
@@ -7,7 +7,7 @@ fn compile_bindings_from_contract_file() {
     // The generated bindings can be accessed through `SimpleContract`.
     abigen!(
         SimpleContract,
-        "fuels-abigen/tests/takes_ints_returns_bool.json"
+        "fuels-abigen-macro/tests/takes_ints_returns_bool.json"
     );
 
     // `SimpleContract` is the name of the contract

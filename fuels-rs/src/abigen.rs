@@ -12,6 +12,7 @@ use inflector::Inflector;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
+// TODO: Maybe move abigen-related stuff to an inner crate?
 // TODO: Create a abigen-level README explaining how to use it
 
 pub struct Abigen {
