@@ -1,4 +1,5 @@
 use crate::span::Span;
+use crate::type_engine::TypeInfo;
 use crate::types::IntegerBits;
 use crate::{parser::Rule, types::MaybeResolvedType};
 use inflector::cases::classcase::to_class_case;

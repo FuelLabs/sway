@@ -198,6 +198,7 @@ impl<'sc> AbstractInstructionSet<'sc> {
         data_section: &DataSection,
         namespace: &AsmNamespace,
     ) -> RealizedAbstractInstructionSet<'sc> {
+        let engine: crate::type_engine::Engine = todo!("type engine");
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
         for op in &self.ops {
@@ -210,7 +211,7 @@ impl<'sc> AbstractInstructionSet<'sc> {
                     let type_of_data = data_section.type_of_data(data_id).expect(
                         "Internal miscalculation in data section -- data id did not match up to any actual data",
                     );
-                    counter += if type_of_data.stack_size_of(namespace) > 1 {
+                    counter += if type_of_data.stack_size_of(&engine) > 1 {
                         2
                     } else {
                         1
@@ -581,7 +582,6 @@ impl<'sc> fmt::Display for InstructionSet<'sc> {
 pub(crate) struct AsmNamespace<'sc> {
     data_section: DataSection<'sc>,
     variables: HashMap<Ident<'sc>, VirtualRegister>,
-    type_engine: Engine<'sc>,
 }
 
 /// An address which refers to a value in the data section of the asm.
@@ -595,13 +595,6 @@ impl fmt::Display for DataId {
 }
 
 impl<'sc> AsmNamespace<'sc> {
-    pub(crate) fn resolve_type(
-        &self,
-        type_id: TypeId,
-        error_span: &crate::Span<'sc>,
-    ) -> Result<ResolvedType<'sc>, TypeError> {
-        self.type_engine.resolve(type_id, error_span)
-    }
     pub(crate) fn insert_variable(
         &mut self,
         var_name: Ident<'sc>,
@@ -1375,7 +1368,8 @@ fn ret_or_retd_value<'sc>(
         );
     }
 
-    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of(namespace) * 8;
+    let size_of_main_func_return_bytes =
+        main_func_ret_ty.stack_size_of(todo!("global type engine")) * 8;
     if size_of_main_func_return_bytes <= 8 {
         asm_buf.push(Op {
             owning_span: None,

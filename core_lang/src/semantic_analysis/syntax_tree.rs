@@ -6,6 +6,7 @@ use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{
     error::*,
+    type_engine::{TypeId, TypeInfo},
     types::{MaybeResolvedType, ResolvedType},
 };
 use crate::{AstNode, ParseTree};

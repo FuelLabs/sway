@@ -6,6 +6,7 @@ use crate::{
     },
     asm_lang::virtual_ops::VirtualImmediate12,
     semantic_analysis::ast_node::{ReassignmentLhs, TypedReassignment, TypedStructField},
+    type_engine::TypeEngine,
     types::{MaybeResolvedType, ResolvedType},
 };
 
@@ -17,6 +18,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
     // 0. evaluate the RHS of the reassignment
     // 1. Find the register that the previous var was stored in
     // 2. move the return register of the RHS into the register in the namespace
+    let type_engine: crate::type_engine::Engine = todo!("put this in the fn args");
 
     let mut buf = vec![];
     let mut warnings = vec![];
@@ -80,7 +82,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             let (mut fields, top_level_decl) = match iter
                 .next()
                 .map(|ReassignmentLhs { r#type, name }| -> Result<_, _> {
-                    match namespace.resolve_type(*r#type, &name.span) {
+                    match type_engine.resolve(*r#type, &name.span) {
                         Ok(ResolvedType::Struct { ref fields, .. }) => Ok((fields.clone(), name)),
                         Ok(ref a) => Err(CompileError::NotAStruct {
                             name: name.primary_name.to_string(),
@@ -102,7 +104,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // delve into this potentially nested field access and figure out the location of this
             // subfield
             for ReassignmentLhs { r#type, name } in iter {
-                let r#type = match namespace.resolve_type(r#type.clone(), &name.span) {
+                let r#type = match type_engine.resolve(r#type.clone(), &name.span) {
                     Ok(o) => o,
                     Err(e) => {
                         errors.push(CompileError::TypeError(e));
@@ -111,19 +113,10 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 };
                 let fields_for_layout = fields
                     .iter()
-                    .map(|TypedStructField { name, r#type, .. }| {
-                        let r#type = match namespace.resolve_type(r#type.clone(), &name.span) {
-                            Ok(o) => o,
-                            Err(e) => {
-                                errors.push(CompileError::TypeError(e));
-                                ResolvedType::ErrorRecovery
-                            }
-                        };
-                        (MaybeResolvedType::Resolved(r#type), name)
-                    })
+                    .map(|TypedStructField { name, r#type, .. }| (*r#type, name))
                     .collect::<Vec<_>>();
                 let field_layout = check!(
-                    get_struct_memory_layout(&fields_for_layout[..]),
+                    get_struct_memory_layout(&fields_for_layout[..], &type_engine),
                     return err(warnings, errors),
                     warnings,
                     errors

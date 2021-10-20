@@ -61,12 +61,12 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
         use TypedAstNodeContent::*;
         let text = match &self.content {
             ReturnStatement(TypedReturnStatement { ref expr }) => {
-                format!("return {}", expr.pretty_print(namespace))
+                format!("return {}", expr.pretty_print())
             }
             Declaration(ref typed_decl) => typed_decl.pretty_print(),
-            Expression(exp) => exp.pretty_print(namespace),
-            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print(namespace)),
-            WhileLoop(w_loop) => w_loop.pretty_print(namespace),
+            Expression(exp) => exp.pretty_print(),
+            ImplicitReturnExpression(exp) => format!("return {}", exp.pretty_print()),
+            WhileLoop(w_loop) => w_loop.pretty_print(),
             SideEffect => "".into(),
         };
         f.write_str(&text)
@@ -101,7 +101,7 @@ impl<'sc> TypedAstNode<'sc> {
         let mut errors = Vec::new();
 
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
+        let mut type_check_ascribed_expr = |type_ascription: TypeInfo<'sc>, value, decl_str| {
             TypedExpression::type_check(
                 value,
                 namespace,
@@ -311,6 +311,8 @@ impl<'sc> TypedAstNode<'sc> {
                         }) => {
                             let type_implementing_for_resolved =
                                 namespace.resolve_type_without_self(&type_implementing_for);
+                            let implementing_for_type_id =
+                                namespace.insert_type(type_implementing_for_resolved);
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             if !type_arguments.is_empty() {
@@ -339,8 +341,6 @@ impl<'sc> TypedAstNode<'sc> {
                                 if fn_decl.return_type == TypeInfo::SelfType {
                                     fn_decl.return_type = type_implementing_for.clone();
                                 }
-                                let implementing_for_type_id =
-                                    namespace.insert_type(type_implementing_for_resolved);
 
                                 functions_buf.push(check!(
                                     TypedFunctionDeclaration::type_check(

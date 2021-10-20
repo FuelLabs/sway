@@ -43,6 +43,15 @@ pub enum ResolvedType<'sc> {
 }
 
 impl<'sc> ResolvedType<'sc> {
+    pub(crate) fn is_copy_type(&self) -> bool {
+        match self {
+            ResolvedType::UnsignedInteger(_)
+            | ResolvedType::Boolean
+            | ResolvedType::Unit
+            | ResolvedType::Byte => true,
+            _ => false,
+        }
+    }
     pub fn numeric_cast_compat(&self, other: &ResolvedType<'sc>) -> Result<(), Warning<'sc>> {
         assert_eq!(self.is_numeric(), other.is_numeric());
         use ResolvedType::*;
@@ -112,7 +121,7 @@ impl<'sc> ResolvedType<'sc> {
 
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     /// This is _in words_!
-    pub(crate) fn stack_size_of(&self, namespace: &AsmNamespace<'sc>) -> u64 {
+    pub(crate) fn stack_size_of(&self, engine: &crate::type_engine::Engine<'sc>) -> u64 {
         match self {
             // Each char is a byte, so the size is the num of characters / 8
             // rounded up to the nearest word
@@ -128,15 +137,17 @@ impl<'sc> ResolvedType<'sc> {
                 // of any individual variant
                 1 + variant_types
                     .iter()
-                    .map(|x| x.stack_size_of(namespace))
+                    .map(|x| x.stack_size_of(engine))
                     .max()
                     .unwrap()
             }
             ResolvedType::Struct { fields, .. } => fields.iter().fold(0, |acc, x| {
-                acc + namespace
+                acc + todo!(
+                    r#"engine
                     .resolve_type(x.r#type, &x.name.span)
                     .expect("should be unreachable?")
-                    .stack_size_of(namespace)
+                    .stack_size_of(engine)"#
+                ) as u64
             }),
             // `ContractCaller` types are unsized and used only in the type system for
             // calling methods
@@ -181,10 +192,12 @@ impl<'sc> ResolvedType<'sc> {
                     let names = fields
                         .iter()
                         .map(|TypedStructField { r#type, .. }| {
-                            namespace
+                            todo!(
+                                r#"namespace
                                 .resolve_type(r#type, error_msg_span)
                                 .expect("unreachable?")
-                                .to_selector_name(error_msg_span)
+                                .to_selector_name(error_msg_span)"#
+                            )
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];

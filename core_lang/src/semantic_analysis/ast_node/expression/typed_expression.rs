@@ -228,8 +228,7 @@ impl<'sc> TypedExpression<'sc> {
                     errors.push(CompileError::TypeError(e));
                 }
             };
-            // The annotation will result in a cast, so set the return type accordingly.
-            typed_expression.return_type = ty;
+            // The annotation may result in a cast, which is handled in the type engine.
         }
 
         ok(typed_expression, warnings, errors)
@@ -1092,11 +1091,11 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    pub(crate) fn pretty_print(&self, type_engine: &Engine) -> String {
+    pub(crate) fn pretty_print(&self) -> String {
         format!(
             "{} ({})",
-            self.expression.pretty_print(type_engine),
-            engine.look_up_type_id(self.return_type).friendly_type_str()
+            self.expression.pretty_print(todo!("global engine")),
+            todo!("lazy static type engine") //engine.look_up_type_id(self.return_type).friendly_type_str()
         )
     }
 }

@@ -40,7 +40,7 @@ impl<'sc> VariableDeclaration<'sc> {
                 maybe_body = var_decl_parts.next().unwrap();
                 Some(type_asc)
             }
-            _ => None
+            _ => None,
         };
         let type_ascription = if let Some(ascription) = type_ascription {
             check!(
@@ -50,7 +50,7 @@ impl<'sc> VariableDeclaration<'sc> {
                 errors
             )
         } else {
-            TypeInfo::Unknown,
+            TypeInfo::Unknown
         };
         let body = check!(
             Expression::parse_from_pair(maybe_body, config.clone(), docstrings),

@@ -5,7 +5,9 @@ use crate::span::Span;
 use crate::{
     asm_lang::*,
     error::*,
+    ident::Ident,
     parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, UnaryOp},
+    type_engine::{TypeEngine, TypeId},
     types::{MaybeResolvedType, ResolvedType},
 };
 use crate::{
@@ -23,11 +25,12 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     span: &Span<'sc>,
     parent: &TypedExpression<'sc>,
     field_to_access: &TypedStructField<'sc>,
-    resolved_type_of_parent: &MaybeResolvedType<'sc>,
+    resolved_type_of_parent: TypeId,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
     return_register: &VirtualRegister,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    let engine: crate::type_engine::Engine = todo!();
     // step 0. find the type and register of the prefix
     // step 1. get the memory layout of the struct
     // step 2. calculate the offset to the spot we are accessing
@@ -50,23 +53,18 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     // now the pointer to the struct is in the prefix_reg, and we can access the subfield off
     // of that address
     // step 1
-    let fields = match resolved_type_of_parent {
-        MaybeResolvedType::Resolved(ResolvedType::Struct { fields, .. }) => fields,
+    let fields = match engine.look_up_type_id(resolved_type_of_parent) {
+        ResolvedType::Struct { fields, .. } => fields,
         _ => {
             unreachable!("Accessing a field on a non-struct should be caught during type checking.")
         }
     };
-    let fields_for_layout = fields
+    let fields_for_layout: Vec<(TypeId, &Ident<'_>)> = fields
         .iter()
-        .map(|TypedStructField { name, r#type, .. }| {
-            (
-                todo!("use type engine to look up type here r#type.clone()"),
-                name,
-            )
-        })
+        .map(|TypedStructField { name, r#type, .. }| (*r#type, name))
         .collect::<Vec<_>>();
     let descriptor = check!(
-        get_struct_memory_layout(&fields_for_layout[..]),
+        get_struct_memory_layout(&fields_for_layout[..], &engine),
         return err(warnings, errors),
         warnings,
         errors
@@ -80,11 +78,11 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         errors
     );
 
-    let type_of_this_field = fields_for_layout
+    let (type_of_this_field, span_for_this_field) = fields_for_layout
         .into_iter()
         .find_map(|(ty, name)| {
             if *name == field_to_access.name {
-                Some(ty)
+                Some((ty, name.span.clone()))
             } else {
                 None
             }
@@ -96,7 +94,15 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     // step 3
     // if this is a copy type (primitives that fit in a word), copy it into the register.
     // Otherwise, load the pointer to the field into the register
-    asm_buf.push(if type_of_this_field.is_copy_type() {
+    let resolved_type_of_this_field = match engine.resolve(type_of_this_field, &span_for_this_field)
+    {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    };
+    asm_buf.push(if resolved_type_of_this_field.is_copy_type() {
         let offset_in_words = match VirtualImmediate12::new(offset_in_words, span.clone()) {
             Ok(o) => o,
             Err(e) => {
@@ -113,7 +119,9 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
             )),
             comment: format!(
                 "Loading copy type: {}",
-                type_of_this_field.friendly_type_str()
+                engine
+                    .look_up_type_id(type_of_this_field)
+                    .friendly_type_str()
             ),
             owning_span: Some(span.clone()),
         }

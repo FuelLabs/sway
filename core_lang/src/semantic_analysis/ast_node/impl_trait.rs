@@ -2,10 +2,12 @@ use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::span::Span;
+use crate::type_engine::TypeInfo;
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     error::*,
+    type_engine::{TypeEngine, TypeId},
     types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
     CallPath, Ident,
 };
@@ -27,13 +29,14 @@ pub(crate) fn implementation_of_trait<'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
+    let engine: crate::type_engine::Engine = todo!("global engine");
+    let type_implementing_for_id = namespace.insert_type(type_implementing_for);
     if !type_arguments.is_empty() {
         errors.push(CompileError::Internal(
             "Where clauses are not supported yet.",
             type_arguments[0].clone().name_ident.span,
         ));
     }
-    let type_implementing_for_id = namespace.insert_type(type_implementing_for);
     match namespace
         .get_call_path(&trait_name)
         .ok(&mut warnings, &mut errors)
@@ -56,11 +59,12 @@ pub(crate) fn implementation_of_trait<'sc>(
                     &tr.name,
                     &tr.type_parameters,
                     namespace,
-                    &self_type,
+                    type_implementing_for_id,
                     build_config,
                     dead_code_graph,
                     &block_span,
-                    &type_implementing_for,
+                    type_implementing_for_id,
+                    &type_implementing_for_span,
                     Mode::NonAbi,
                 ),
                 return err(warnings, errors),
@@ -72,7 +76,13 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                namespace.look_up_type_id(self_type),
+                match engine.resolve(type_implementing_for_id, &type_implementing_for_span) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        errors.push(e.into());
+                        return err(warnings, errors);
+                    }
+                },
                 functions_buf.clone(),
             );
             ok(
@@ -107,11 +117,12 @@ pub(crate) fn implementation_of_trait<'sc>(
                     // ABIs don't have type parameters
                     &[],
                     namespace,
-                    &self_type,
+                    type_implementing_for_id,
                     build_config,
                     dead_code_graph,
                     &block_span,
-                    &type_implementing_for,
+                    type_implementing_for_id,
+                    &type_implementing_for_span,
                     Mode::ImplAbiFn
                 ),
                 return err(warnings, errors),
@@ -123,7 +134,7 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                namespace.look_up_type_id(self_type),
+                namespace.look_up_type_id(type_implementing_for_id),
                 functions_buf.clone(),
             );
             ok(
@@ -164,9 +175,11 @@ fn type_check_trait_implementation<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     block_span: &Span<'sc>,
-    type_implementing_for: TypeInfo<'sc>,
+    type_implementing_for: TypeId,
+    type_implementing_for_span: &Span<'sc>,
     mode: Mode,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
+    let engine: crate::type_engine::Engine = todo!("global engine");
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -303,7 +316,13 @@ fn type_check_trait_implementation<'sc>(
             prefixes: vec![],
             suffix: trait_name.clone(),
         },
-        type_implementing_for.clone(),
+        match engine.resolve(type_implementing_for, &type_implementing_for_span) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e.into());
+                return err(warnings, errors);
+            }
+        },
         functions_buf.clone(),
     );
     for method in methods {
@@ -327,7 +346,7 @@ fn type_check_trait_implementation<'sc>(
             warnings,
             errors
         );
-        let self_type_id = namespace.insert_type(type_implementing_for);
+        let self_type_id = type_implementing_for;
         let fn_decl = method.replace_self_types(self_type_id);
         functions_buf.push(fn_decl);
     }

@@ -824,13 +824,13 @@ fn connect_expression<'sc>(
             resolved_type_of_parent,
             ..
         } => {
-            let resolved_type_of_parent = namespace.look_up_type_id(resolved_type_of_parent);
+            let resolved_type_of_parent = todo!("engine.look_up_type_id(resolved_type_of_parent);");
             assert!(matches!(
                 resolved_type_of_parent,
-                MaybeResolvedType::Resolved(ResolvedType::Struct { .. })
+                ResolvedType::Struct { .. }
             ));
             let resolved_type_of_parent = match resolved_type_of_parent {
-                MaybeResolvedType::Resolved(ResolvedType::Struct { name, .. }) => name.clone(),
+                ResolvedType::Struct { name, .. } => name.clone(),
                 _ => panic!("Called subfield on a non-struct"),
             };
             let field_name = &field_to_access.name;

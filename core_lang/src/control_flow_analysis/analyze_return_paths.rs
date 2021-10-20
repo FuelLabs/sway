@@ -12,6 +12,7 @@ use crate::semantic_analysis::{
     TypedAstNode, TypedAstNodeContent,
 };
 use crate::span::Span;
+use crate::type_engine::TypeInfo;
 use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{error::*, semantic_analysis::TypedParseTree};
 use petgraph::prelude::NodeIndex;
@@ -67,7 +68,7 @@ impl<'sc> ControlFlowGraph<'sc> {
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &'sc str,
-        return_ty: &TypeInfo<'sc>,
+        return_ty: &crate::type_engine::TypeInfo<'sc>,
     ) -> Vec<CompileError<'sc>> {
         let mut rovers = vec![entry_point];
         let mut errors = vec![];
@@ -89,9 +90,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                     .graph
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
                     .collect::<Vec<_>>();
-                if neighbors.is_empty()
-                    && *return_ty != MaybeResolvedType::Resolved(ResolvedType::Unit)
-                {
+                if neighbors.is_empty() && *return_ty != TypeInfo::Unit {
                     let span = match last_discovered_span {
                         Some(ref o) => o.clone(),
                         None => {

@@ -133,9 +133,11 @@ impl<'sc> TypedExpressionVariant<'sc> {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    engine
+                    todo!(
+                        "engine
                         .look_up_type_id(resolved_type_of_parent)
-                        .friendly_type_str(),
+                        .friendly_type_str(),"
+                    ),
                     field_to_access.name.primary_name
                 )
             }

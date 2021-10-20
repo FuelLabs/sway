@@ -33,6 +33,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    let type_engine: crate::type_engine::Engine = todo!("global type engine");
     let mut warnings = vec![];
     let mut errors = vec![];
     match &exp.expression {
@@ -235,7 +236,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
-                _ if exp.return_type == MaybeResolvedType::Resolved(ResolvedType::Unit) => (),
+                _ if type_engine.look_up_type_id(exp.return_type) == ResolvedType::Unit => (),
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),
@@ -256,7 +257,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             &exp.span,
             prefix,
             field_to_access,
-            resolved_type_of_parent,
+            *resolved_type_of_parent,
             namespace,
             register_sequencer,
             return_register,

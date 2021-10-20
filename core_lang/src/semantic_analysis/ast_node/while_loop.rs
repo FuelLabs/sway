@@ -7,7 +7,7 @@ pub(crate) struct TypedWhileLoop<'sc> {
 }
 
 impl<'sc> TypedWhileLoop<'sc> {
-    pub(crate) fn pretty_print(&self, engine: &Engine<'sc>) -> String {
-        format!("while loop on {}", self.condition.pretty_print(engine))
+    pub(crate) fn pretty_print(&self) -> String {
+        format!("while loop on {}", self.condition.pretty_print())
     }
 }

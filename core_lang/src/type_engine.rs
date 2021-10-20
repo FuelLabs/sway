@@ -1,7 +1,9 @@
 use crate::error::*;
+use crate::semantic_analysis::TypedExpression;
 use crate::types::{IntegerBits, ResolvedType};
 use crate::Span;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use derivative::Derivative;
 use std::collections::HashMap;
 
 pub trait TypeEngine<'sc> {
@@ -53,7 +55,8 @@ enum Type {
 pub type TypeId = usize;
 
 /// Type information without an associated value, used for type inferencing and definition.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Derivative)]
+#[derivative(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum TypeInfo<'sc> {
     Unknown,
     Str(u64),
@@ -82,6 +85,7 @@ pub enum TypeInfo<'sc> {
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
         abi_name: CallPath<'sc>,
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
         address: Box<TypedExpression<'sc>>,
     },
     SelfType,
@@ -95,7 +99,7 @@ pub enum TypeInfo<'sc> {
     ErrorRecovery,
 }
 
-impl<'_> Default for TypeInfo<'_> {
+impl Default for TypeInfo<'_> {
     fn default() -> Self {
         TypeInfo::Unknown
     }
@@ -258,7 +262,7 @@ impl<'sc> TypeEngine<'sc> for Engine<'sc> {
             ref a => todo!("{:?}", a),
         }
     }
-    pub(crate) fn look_up_type_id(&self, id: TypeId) -> ResolvedType<'sc> {
+    fn look_up_type_id(&self, id: TypeId) -> ResolvedType<'sc> {
         self.resolve(
             id,
             &Span {

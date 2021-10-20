@@ -293,7 +293,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
         let data = check!(
-            self.to_selector_name(namespace),
+            self.to_selector_name(todo!("global engine")),
             return err(warnings, errors),
             warnings,
             errors
@@ -321,6 +321,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     }
 
     pub fn to_selector_name(&self, namespace: &AsmNamespace<'sc>) -> CompileResult<'sc, String> {
+        let engine: crate::type_engine::Engine = todo!("global engine");
         let mut errors = vec![];
         let mut warnings = vec![];
         let named_params = self
@@ -330,8 +331,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 |TypedFunctionParameter {
                      r#type, type_span, ..
                  }| {
-                    namespace
-                        .resolve_type(*r#type, type_span)
+                    engine
+                        .resolve(*r#type, type_span)
                         .expect("unreachable I think?")
                         .to_selector_name(type_span)
                 },
@@ -617,7 +618,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     if let Some(warning) = warning {
                         warnings.push(CompileWarning {
                             warning_content: warning,
-                            span: expr_span,
+                            span: span.clone(),
                         });
                     }
                 }
