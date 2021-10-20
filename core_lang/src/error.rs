@@ -17,6 +17,13 @@ macro_rules! check {
     }};
 }
 
+#[cfg(feature = "ir")]
+macro_rules! confirm {
+    ($fn_expr: expr, $warnings: ident, $errors: ident) => {{
+        check!($fn_expr, return err($warnings, $errors), $warnings, $errors)
+    }};
+}
+
 macro_rules! assert_or_warn {
     ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr) => {
         if !$bool_expr {
@@ -107,6 +114,13 @@ impl<'sc, T> CompileResult<'sc, T> {
                     errors: [self.errors, res.errors].concat(),
                 }
             }
+        }
+    }
+
+    pub fn and_then<U, F: FnOnce(T) -> CompileResult<'sc, U>>(self, f: F) -> CompileResult<'sc, U> {
+        match self.value {
+            None => err(self.warnings, self.errors),
+            Some(value) => f(value),
         }
     }
 
@@ -221,7 +235,7 @@ pub enum Warning<'sc> {
     DeadMethod,
     StructFieldNeverRead,
     ShadowingReservedRegister {
-        reg_name: &'sc str,
+        reg_name: String,
     },
 }
 
