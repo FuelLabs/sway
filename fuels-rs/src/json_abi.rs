@@ -15,7 +15,6 @@ use crate::{
 
 use serde_json;
 
-// TODO: Should this be renamed to ABIParser?
 pub struct ABIParser {
     fn_selector: Option<Vec<u8>>,
 }
