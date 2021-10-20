@@ -1,7 +1,7 @@
 use crate::abi_encoder::ABIEncoder;
 use crate::code_gen::docs_gen::expand_doc;
 use crate::errors::Error;
-use crate::json_abi::{parse_param, ABI};
+use crate::json_abi::{parse_param, ABIParser};
 use crate::types::{expand_type, Function, ParamType, Property, Selector};
 use crate::utils::{ident, safe_ident};
 use inflector::Inflector;
@@ -10,11 +10,11 @@ use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 use std::collections::HashMap;
 
+/// Functions used by the Abigen to expand functions defined in an ABI spec.
+
 // TODO: Right now we have an "end-to-end" test suite for the Abigen!
 // under `fuels-abigen/tests/harness.rs`. But it would be nice to have
 // tests at the level of this component.
-
-/// Functions used by the Abigen to expand functions defined in an ABI spec.
 
 /// Transforms a function defined in [`Function`] into a [`TokenStream`]
 /// that represents that same function signature as a Rust-native function
@@ -24,7 +24,7 @@ use std::collections::HashMap;
 /// and the function parameters that will be used in the actual contract call.
 pub fn expand_function(
     function: &Function,
-    abi_parser: &ABI,
+    abi_parser: &ABIParser,
     custom_enums: &HashMap<String, Property>,
     custom_structs: &HashMap<String, Property>,
 ) -> Result<TokenStream, Error> {

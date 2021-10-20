@@ -4,7 +4,7 @@ use crate::code_gen::bindings::ContractBindings;
 use crate::code_gen::custom_types_gen::{expand_internal_enum, expand_internal_struct};
 use crate::code_gen::functions_gen::expand_function;
 use crate::errors::Error;
-use crate::json_abi::ABI;
+use crate::json_abi::ABIParser;
 use crate::source::Source;
 use crate::types::{JsonABI, Property};
 use crate::utils::ident;
@@ -13,18 +13,12 @@ use inflector::Inflector;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
-// TODO: Maybe move abigen-related stuff to an inner crate?
-// TODO: Create a abigen-level README explaining how to use it
-
 pub struct Abigen {
     /// The parsed ABI.
     abi: JsonABI,
 
     /// The parser used to transform the JSON format into `JsonABI`
-    abi_parser: ABI,
-
-    /// Contains all the solidity structs extracted from the JSON ABI.
-    // internal_structs: InternalStructs, unclear if needed
+    abi_parser: ABIParser,
 
     /// The contract name as an identifier.
     contract_name: Ident,
@@ -53,7 +47,7 @@ impl Abigen {
             custom_enums: Abigen::get_custom_types(&parsed_abi, &CustomType::Enum),
             abi: parsed_abi,
             contract_name: ident(contract_name),
-            abi_parser: ABI::new(),
+            abi_parser: ABIParser::new(),
             rustfmt: true,
         })
     }
@@ -211,7 +205,6 @@ impl Abigen {
 mod tests {
     use super::*;
 
-    // TODO: move a lot of the tests from ethers (e.g methods.rs file) here
     #[test]
     fn generates_bindings() {
         let contract = r#"
@@ -373,8 +366,6 @@ mod tests {
             }
         ]
         "#;
-
-        // TODO: Continue from here, make this work
 
         let contract = Abigen::new("custom", contract).unwrap();
 

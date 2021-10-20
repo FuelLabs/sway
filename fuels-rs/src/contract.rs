@@ -7,11 +7,8 @@ use crate::types::{Function, Selector};
 
 use std::marker::PhantomData;
 
-// TODO:
-// - [x] Make `abigen!` work properly, right now it's hardcoded
-// - [x] Make sure everything related to code generation is working for all fuel types
-// - [] Refactor all namings now that we have the workflow laid out;
-// - [] Keep the call stuff `unimplemented()` for now, focus on abigen-related stuff
+// Note: This file is a WIP scaffold for a future implementation of the actual
+// contract calling infrastructure.
 
 pub struct Contract {}
 
@@ -30,7 +27,10 @@ impl Contract {
         let encoded_params = hex::encode(encoder.encode(args).unwrap());
         let encoded_selector = hex::encode(signature);
 
+        // Temporarily printing the encoded selector+params to stdout for
+        // debugging purposes.
         println!("encoded: {}{}\n", encoded_selector, encoded_params);
+
         // TODO: In the near future, the actual contract call will happen somewhere here.
         // Right now we're just generating the type-safe bindings with this `method_hash`
         // injected in these bindings.

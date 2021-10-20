@@ -6,11 +6,11 @@ use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
 
+/// Functions used by the Abigen to expand custom types defined in an ABI spec.
+
 // TODO: Right now we have an "end-to-end" test suite for the Abigen!
 // under `fuels-abigen/tests/harness.rs`. But it would be nice to have
 // tests at the level of this component.
-
-/// Functions used by the Abigen to expand custom types defined in an ABI spec.
 
 /// Transforms a custom type defined in [`Property`] into a [`TokenStream`]
 /// that represents that same type as a Rust-native struct.

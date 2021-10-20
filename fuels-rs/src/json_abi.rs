@@ -16,13 +16,13 @@ use crate::{
 use serde_json;
 
 // TODO: Should this be renamed to ABIParser?
-pub struct ABI {
+pub struct ABIParser {
     fn_selector: Option<Vec<u8>>,
 }
 
-impl ABI {
+impl ABIParser {
     pub fn new() -> Self {
-        ABI { fn_selector: None }
+        ABIParser { fn_selector: None }
     }
 
     /// Higher-level layer of the ABI encoding module.
@@ -35,7 +35,7 @@ impl ABI {
     ///
     /// # Examples
     /// ```
-    /// use fuels_rs::json_abi::ABI;
+    /// use fuels_rs::json_ABIParser::ABI;
     /// let json_abi = r#"
     ///     [
     ///         {
@@ -59,7 +59,7 @@ impl ABI {
     ///
     ///     let values: Vec<String> = vec!["10".to_string()];
     ///
-    ///     let mut abi = ABI::new();
+    ///     let mut abi = ABIParser::new();
     ///
     ///     let function_name = "takes_u32_returns_bool";
     ///     let encoded = abi.encode(json_abi, function_name, &values).unwrap();
@@ -104,7 +104,7 @@ impl ABI {
     ///
     /// # Examples
     /// ```
-    /// use fuels_rs::json_abi::ABI;
+    /// use fuels_rs::json_ABIParser::ABI;
     /// let json_abi = r#"
     ///     [
     ///         {
@@ -128,7 +128,7 @@ impl ABI {
     ///
     ///     let values: Vec<String> = vec!["10".to_string()];
     ///
-    ///     let mut abi = ABI::new();
+    ///     let mut abi = ABIParser::new();
 
     ///     let function_name = "takes_u32_returns_bool";
     ///
@@ -601,7 +601,7 @@ mod tests {
 
         let values: Vec<String> = vec!["10".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_u32_returns_bool";
 
@@ -647,7 +647,7 @@ mod tests {
 
         let values: Vec<String> = vec!["10".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_u32_returns_bool";
 
@@ -702,7 +702,7 @@ mod tests {
             "1".to_string(),
         ];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "my_func";
 
@@ -753,7 +753,7 @@ mod tests {
 
         let values: Vec<String> = vec!["[1,2,3]".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_array";
 
@@ -779,7 +779,7 @@ mod tests {
 
     #[test]
     fn tokenize_array() {
-        let abi = ABI::new();
+        let abi = ABIParser::new();
 
         let value = "[[1,2],[3],4]";
         let param = ParamType::U16;
@@ -859,7 +859,7 @@ mod tests {
 
         let values: Vec<String> = vec!["[[1,2],[3],[4]]".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_nested_array";
 
@@ -909,7 +909,7 @@ mod tests {
 
         let values: Vec<String> = vec!["This is a full sentence".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_string";
 
@@ -962,7 +962,7 @@ mod tests {
 
         let values: Vec<String> = vec!["(42, true)".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_struct";
 
@@ -1015,7 +1015,7 @@ mod tests {
 
         let values: Vec<String> = vec!["(10, (true, [1,2]))".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_nested_struct";
 
@@ -1106,7 +1106,7 @@ mod tests {
 
         let values: Vec<String> = vec!["(0, 42)".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_enum";
 
