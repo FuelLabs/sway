@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
-use crate::bindings::ContractBindings;
-use crate::custom_types_gen::{expand_internal_enum, expand_internal_struct};
+use crate::code_gen::bindings::ContractBindings;
+use crate::code_gen::custom_types_gen::{expand_internal_enum, expand_internal_struct};
+use crate::code_gen::functions_gen::expand_function;
 use crate::errors::Error;
-use crate::functions_gen::expand_function;
 use crate::json_abi::ABI;
 use crate::source::Source;
 use crate::types::{JsonABI, Property};
 use crate::utils::ident;
+
 use inflector::Inflector;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;

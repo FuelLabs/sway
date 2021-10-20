@@ -1,5 +1,5 @@
 use crate::abi_encoder::ABIEncoder;
-use crate::docs_gen::expand_doc;
+use crate::code_gen::docs_gen::expand_doc;
 use crate::errors::Error;
 use crate::json_abi::{parse_param, ABI};
 use crate::types::{expand_type, Function, ParamType, Property, Selector};

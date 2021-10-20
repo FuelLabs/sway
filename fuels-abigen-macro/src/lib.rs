@@ -1,10 +1,13 @@
-use fuels_rs::abigen::Abigen;
+use fuels_rs::code_gen::abigen::Abigen;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 
 use std::ops::Deref;
 use syn::parse::{Parse, ParseStream, Result as ParseResult};
 use syn::{parse_macro_input, Ident, LitStr, Token};
+
+/// Abigen proc macro definition and helper functions/types.
+/// TODO: write readme in this package
 
 #[proc_macro]
 pub fn abigen(input: TokenStream) -> TokenStream {
