@@ -34,7 +34,7 @@ impl ABIParser {
     ///
     /// # Examples
     /// ```
-    /// use fuels_rs::json_ABIParser::ABI;
+    /// use fuels_rs::json_abi::ABIParser;
     /// let json_abi = r#"
     ///     [
     ///         {
@@ -103,7 +103,7 @@ impl ABIParser {
     ///
     /// # Examples
     /// ```
-    /// use fuels_rs::json_ABIParser::ABI;
+    /// use fuels_rs::json_abi::ABIParser;
     /// let json_abi = r#"
     ///     [
     ///         {
