@@ -1,3 +1,8 @@
+use super::token_type::{get_trait_details, TokenType, VariableDetails};
+use crate::{
+    core::token_type::{get_function_details, get_struct_details},
+    utils::common::extract_var_body,
+};
 use core_lang::{
     AstNode, AstNodeContent, Declaration, Expression, Ident, Span, VariableDeclaration,
 };
@@ -6,20 +11,20 @@ use lspower::lsp::{Position, Range};
 #[derive(Debug, Clone)]
 pub struct Token {
     pub range: Range,
-    pub content_type: ContentType,
+    pub token_type: TokenType,
     pub name: String,
     pub line_start: u32,
     pub length: u32,
 }
 
 impl Token {
-    pub fn new(span: Span, name: String, content_type: ContentType) -> Self {
-        let range = get_range_from_span(&span);
+    pub fn new(span: &Span, name: String, token_type: TokenType) -> Self {
+        let range = get_range_from_span(span);
 
         Self {
             range,
             name,
-            content_type,
+            token_type,
             line_start: range.start.line,
             length: range.end.character - range.start.character + 1,
         }
@@ -30,40 +35,50 @@ impl Token {
         character >= range.start.character && character <= range.end.character
     }
 
+    pub fn is_same_type(&self, other_token: &Token) -> bool {
+        if other_token.token_type == self.token_type {
+            true
+        } else {
+            match (&other_token.token_type, &self.token_type) {
+                (TokenType::FunctionApplication, TokenType::FunctionDeclaration(_)) => true,
+                (TokenType::FunctionDeclaration(_), TokenType::FunctionApplication) => true,
+                _ => false,
+            }
+        }
+    }
+
     pub fn get_line_start(&self) -> u32 {
         self.line_start
     }
 
-    pub fn from_variable(variable: &VariableDeclaration) -> Self {
-        let ident = &variable.name;
-        let span = ident.span.clone();
+    pub fn from_variable(var_dec: &VariableDeclaration) -> Self {
+        let ident = &var_dec.name;
         let name = ident.primary_name;
-        // todo
-        // we could add type of variable as well? from type_ascription: TypeInfo field
+        let var_body = extract_var_body(&var_dec);
+
         Token::new(
-            span,
+            &ident.span,
             name.into(),
-            ContentType::Declaration(DeclarationType::Variable),
+            TokenType::Variable(VariableDetails {
+                is_mutable: var_dec.is_mutable,
+                var_body,
+            }),
         )
     }
 
-    pub fn from_ident(ident: Ident, content_type: ContentType) -> Self {
-        Token::new(ident.span.clone(), ident.primary_name.into(), content_type)
+    pub fn from_ident(ident: &Ident, token_type: TokenType) -> Self {
+        Token::new(&ident.span, ident.primary_name.into(), token_type)
     }
 
-    pub fn from_span(span: Span, content_type: ContentType) -> Self {
-        Token::new(span.clone(), span.as_str().into(), content_type)
+    pub fn from_span(span: Span, token_type: TokenType) -> Self {
+        Token::new(&span, span.as_str().into(), token_type)
     }
 
     pub fn is_initial_declaration(&self) -> bool {
-        if let ContentType::Declaration(ref dec) = self.content_type {
-            if &DeclarationType::Reassignment == dec {
-                return false;
-            }
-            return true;
+        match self.token_type {
+            TokenType::Reassignment | TokenType::FunctionApplication => false,
+            _ => true,
         }
-
-        false
     }
 }
 
@@ -83,25 +98,25 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
             tokens.push(Token::from_variable(&variable));
             handle_expression(variable.body, tokens);
         }
-        Declaration::FunctionDeclaration(func) => {
-            let ident = func.name;
-            let token =
-                Token::from_ident(ident, ContentType::Declaration(DeclarationType::Function));
+        Declaration::FunctionDeclaration(func_dec) => {
+            let ident = &func_dec.name;
+            let token = Token::from_ident(
+                ident,
+                TokenType::FunctionDeclaration(get_function_details(&func_dec)),
+            );
             tokens.push(token);
 
-            for node in func.body.contents {
+            for node in func_dec.body.contents {
                 traverse_node(node, tokens);
             }
         }
         Declaration::Reassignment(reassignment) => {
-            let content_type = ContentType::Declaration(DeclarationType::Reassignment);
+            let token_type = TokenType::Reassignment;
             let token = match *reassignment.lhs {
                 // a reassignment's lhs can _only_ be a variable expression or
                 // struct field a subfield expression
-                Expression::SubfieldExpression { span, .. } => Token::from_span(span, content_type),
-                Expression::VariableExpression { name, .. } => {
-                    Token::from_ident(name, content_type)
-                }
+                Expression::SubfieldExpression { span, .. } => Token::from_span(span, token_type),
+                Expression::VariableExpression { name, .. } => Token::from_ident(&name, token_type),
                 _ => {
                     unreachable!("any other reassignment lhs is invalid and cannot be constructed.")
                 }
@@ -112,21 +127,22 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
         }
 
         Declaration::TraitDeclaration(trait_dec) => {
-            let ident = trait_dec.name;
-            let token = Token::from_ident(ident, ContentType::Declaration(DeclarationType::Trait));
+            let ident = &trait_dec.name;
+            let token = Token::from_ident(&ident, TokenType::Trait(get_trait_details(&trait_dec)));
             tokens.push(token);
 
             // todo
             // traverse methods: Vec<FunctionDeclaration<'sc>> field as well ?
         }
         Declaration::StructDeclaration(struct_dec) => {
-            let ident = struct_dec.name;
-            let token = Token::from_ident(ident, ContentType::Declaration(DeclarationType::Struct));
+            let ident = &struct_dec.name;
+            let token =
+                Token::from_ident(&ident, TokenType::Struct(get_struct_details(&struct_dec)));
             tokens.push(token);
         }
         Declaration::EnumDeclaration(enum_dec) => {
             let ident = enum_dec.name;
-            let token = Token::from_ident(ident, ContentType::Declaration(DeclarationType::Enum));
+            let token = Token::from_ident(&ident, TokenType::Enum);
             tokens.push(token);
         }
         _ => {}
@@ -135,10 +151,7 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
 
 fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
     match exp {
-        Expression::CodeBlock {
-            span: _span,
-            contents,
-        } => {
+        Expression::CodeBlock { span: _, contents } => {
             let nodes = contents.contents;
 
             for node in nodes {
@@ -151,10 +164,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
             arguments: _arguments,
         } => {
             let ident = name.suffix;
-            let token = Token::from_ident(
-                ident,
-                ContentType::Expression(ExpressionType::FunctionApplication),
-            );
+            let token = Token::from_ident(&ident, TokenType::FunctionApplication);
             tokens.push(token);
 
             // TODO
@@ -180,26 +190,4 @@ fn get_range_from_span(span: &Span) -> Range {
         start: Position::new(start_line, start_character),
         end: Position::new(end_line, end_character),
     }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum DeclarationType {
-    Library,
-    Variable,
-    Function,
-    Reassignment,
-    Enum,
-    Trait,
-    Struct,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum ExpressionType {
-    FunctionApplication,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ContentType {
-    Declaration(DeclarationType),
-    Expression(ExpressionType),
 }

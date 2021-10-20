@@ -100,20 +100,20 @@ pub(crate) fn instantiate_enum<'sc>(
             errors.push(CompileError::MissingEnumInstantiator {
                 span: enum_field_name.span.clone(),
             });
-            return err(warnings, errors);
+            err(warnings, errors)
         }
         (_too_many_expressions, ResolvedType::Unit) => {
             errors.push(CompileError::UnnecessaryEnumInstantiator {
                 span: enum_field_name.span.clone(),
             });
-            return err(warnings, errors);
+            err(warnings, errors)
         }
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_field_name.span.clone(),
                 ty: ty.friendly_type_str(),
             });
-            return err(warnings, errors);
+            err(warnings, errors)
         }
     }
 }

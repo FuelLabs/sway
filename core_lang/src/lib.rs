@@ -24,7 +24,7 @@ use pest::iterators::Pair;
 use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
-pub(crate) mod utils;
+pub mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 use std::collections::{HashMap, HashSet};
 
@@ -112,7 +112,7 @@ pub fn parse<'sc>(
                 vec![CompileError::ParseFailure {
                     span: span::Span {
                         span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
-                        path: config.map(|config| config.dir_of_code.clone()),
+                        path: config.map(|config| config.path()),
                     },
                     err: e,
                 }],
@@ -562,7 +562,7 @@ fn parse_root_from_pairs<'sc>(
                         Rule::docstring => {
                             let docstring = decl_inner.as_str().to_string().split_off(3);
                             let docstring = docstring.as_str().trim();
-                            unassigned_docstring.push_str("\n");
+                            unassigned_docstring.push('\n');
                             unassigned_docstring.push_str(docstring);
                         }
                         _ => {

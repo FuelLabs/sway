@@ -10,7 +10,7 @@ use tar::Archive;
 
 // A collection of remote dependency related functions
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Dependency {
     /// In the simple format, only a version is specified, eg.
@@ -22,7 +22,7 @@ pub enum Dependency {
     Detailed(DependencyDetails),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,

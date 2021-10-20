@@ -474,7 +474,7 @@ impl ABIParser {
     /// Builds a string representation of a function selector,
     /// i.e: <fn_name>(<type_1>, <type_2>, ..., <type_n>)
     pub fn build_fn_selector(&self, fn_name: &str, params: &[Property]) -> String {
-        let mut fn_selector = fn_name.clone().to_owned();
+        let mut fn_selector = fn_name.to_owned().clone();
         let mut args = String::new();
         let mut types: Vec<&str> = Vec::new();
 

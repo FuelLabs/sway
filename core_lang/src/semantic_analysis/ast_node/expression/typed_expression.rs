@@ -4,6 +4,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 mod method_application;
@@ -324,7 +325,7 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_function_application(
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
-        span: Span<'sc>,
+        app_span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: &MaybeResolvedType<'sc>,
         build_config: &BuildConfig,
@@ -345,36 +346,43 @@ impl<'sc> TypedExpression<'sc> {
                     parameters,
                     return_type,
                     body,
+                    span,
                     ..
                 } = decl.clone();
-                if arguments.len() > parameters.len() {
-                    let arguments_span = arguments.iter().fold(
-                        arguments
-                            .get(0)
-                            .map(|x| x.span())
-                            .unwrap_or_else(|| name.span()),
-                        |acc, arg| crate::utils::join_spans(acc, arg.span()),
-                    );
-                    errors.push(CompileError::TooManyArgumentsForFunction {
-                        span: arguments_span,
-                        method_name: name.suffix.primary_name,
-                        expected: parameters.len(),
-                        received: arguments.len(),
-                    });
-                } else if arguments.len() < parameters.len() {
-                    let arguments_span = arguments.iter().fold(
-                        arguments
-                            .get(0)
-                            .map(|x| x.span())
-                            .unwrap_or_else(|| name.span()),
-                        |acc, arg| crate::utils::join_spans(acc, arg.span()),
-                    );
-                    errors.push(CompileError::TooFewArgumentsForFunction {
-                        span: arguments_span,
-                        method_name: name.suffix.primary_name,
-                        expected: parameters.len(),
-                        received: arguments.len(),
-                    });
+                match arguments.len().cmp(&parameters.len()) {
+                    Ordering::Greater => {
+                        let arguments_span = arguments.iter().fold(
+                            arguments
+                                .get(0)
+                                .map(|x| x.span())
+                                .unwrap_or_else(|| name.span()),
+                            |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                        );
+                        errors.push(CompileError::TooManyArgumentsForFunction {
+                            decl_span: span.clone(),
+                            usage_span: arguments_span,
+                            method_name: name.suffix.primary_name,
+                            expected: parameters.len(),
+                            received: arguments.len(),
+                        });
+                    }
+                    Ordering::Less => {
+                        let arguments_span = arguments.iter().fold(
+                            arguments
+                                .get(0)
+                                .map(|x| x.span())
+                                .unwrap_or_else(|| name.span()),
+                            |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                        );
+                        errors.push(CompileError::TooFewArgumentsForFunction {
+                            decl_span: span.clone(),
+                            usage_span: arguments_span,
+                            method_name: name.suffix.primary_name,
+                            expected: parameters.len(),
+                            received: arguments.len(),
+                        });
+                    }
+                    Ordering::Equal => {}
                 }
                 // type check arguments in function application vs arguments in function
                 // declaration. Use parameter type annotations as annotations for the
@@ -419,7 +427,7 @@ impl<'sc> TypedExpression<'sc> {
                         function_body: body.clone(),
                         selector: None, // regular functions cannot be in a contract call; only methods
                     },
-                    span,
+                    span: app_span,
                 }
             }
             a => {
@@ -571,7 +579,7 @@ impl<'sc> TypedExpression<'sc> {
                 contents.clone(),
                 namespace,
                 type_annotation.clone(),
-                help_text.clone(),
+                help_text,
                 self_type,
                 build_config,
                 dead_code_graph,

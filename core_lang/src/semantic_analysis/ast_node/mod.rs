@@ -130,7 +130,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
                         ImportType::Item(s) => {
-                            namespace.item_import(a.call_path, &s, a.is_absolute)
+                            namespace.item_import(a.call_path, &s, a.is_absolute, a.alias)
                         }
                     };
                     warnings.append(&mut res.warnings);
@@ -576,24 +576,22 @@ impl<'sc> TypedAstNode<'sc> {
             },
             span: node.span.clone(),
         };
-        match node {
-            TypedAstNode {
-                content: TypedAstNodeContent::Expression(TypedExpression { .. }),
-                ..
-            } => {
-                let warning = Warning::UnusedReturnValue {
-                    r#type: node.type_info(),
-                };
-                assert_or_warn!(
-                    node.type_info() == MaybeResolvedType::Resolved(ResolvedType::Unit)
-                        || node.type_info()
-                            == MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
-                    warnings,
-                    node.span.clone(),
-                    warning
-                );
-            }
-            _ => (),
+
+        if let TypedAstNode {
+            content: TypedAstNodeContent::Expression(TypedExpression { .. }),
+            ..
+        } = node
+        {
+            let warning = Warning::UnusedReturnValue {
+                r#type: node.type_info(),
+            };
+            assert_or_warn!(
+                node.type_info() == MaybeResolvedType::Resolved(ResolvedType::Unit)
+                    || node.type_info() == MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery),
+                warnings,
+                node.span.clone(),
+                warning
+            );
         }
 
         ok(node, warnings, errors)
@@ -615,7 +613,15 @@ fn import_new_file<'sc>(
     let file_path = file_path.with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
     let mut canonical_path = build_config.dir_of_code.clone();
-    canonical_path.push(file_path.clone());
+    canonical_path.push(file_path);
+
+    let mut manifest_path = build_config.manifest_path.clone();
+    manifest_path.pop();
+    let canonical_path_clone = canonical_path.clone();
+    let file_name = match canonical_path_clone.strip_prefix(manifest_path) {
+        Ok(o) => o,
+        Err(_) => return err(warnings, errors),
+    };
 
     let res = if canonical_path.exists() {
         std::fs::read_to_string(canonical_path.clone())
@@ -650,7 +656,7 @@ fn import_new_file<'sc>(
         canonical_path.pop();
         canonical_path
     };
-    dep_config.file_name = file_path.clone();
+    dep_config.file_name = file_name.to_path_buf();
     dep_config.dir_of_code = dep_path;
     let crate::InnerDependencyCompileResult {
         mut library_exports,
@@ -702,31 +708,35 @@ fn reassignment<'sc>(
     // ensure that the lhs is a variable expression or struct field access
     match *lhs {
         Expression::VariableExpression { name, span } => {
+            let name_in_use = name.clone();
             // check that the reassigned name exists
             let thing_to_reassign = match namespace.clone().get_symbol(&name) {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body,
                     is_mutable,
-                    ..
+                    name,
                 })) => {
                     // allow the type checking to continue unhindered even though
                     // this is an error
                     // basically pretending that this isn't an error by not
                     // early-returning, for the sake of better error reporting
                     if !is_mutable {
-                        errors.push(CompileError::AssignmentToNonMutable(
-                            name.primary_name.to_string(),
-                            span.clone(),
-                        ));
+                        errors.push(CompileError::AssignmentToNonMutable {
+                            name: name_in_use.primary_name,
+                            decl_span: name.span.clone(),
+                            usage_span: span.clone(),
+                        });
                     }
 
                     body.clone()
                 }
                 Some(o) => {
+                    let method = namespace.get_symbol(&name).unwrap();
                     errors.push(CompileError::ReassignmentToNonVariable {
                         name: name.primary_name,
                         kind: o.friendly_name(),
-                        span,
+                        decl_span: method.span(),
+                        usage_span: span,
                     });
                     return err(warnings, errors);
                 }

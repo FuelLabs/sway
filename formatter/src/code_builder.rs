@@ -9,9 +9,9 @@ use crate::code_builder_helpers::{
 
 use super::{
     code_builder_helpers::{
-        clean_all_incoming_whitespace, handle_ampersand_case, handle_assignment_case,
-        handle_colon_case, handle_dash_case, handle_multiline_comment_case, handle_pipe_case,
-        handle_string_case, handle_whitespace_case, is_comment, is_multiline_comment,
+        clean_all_whitespace, handle_ampersand_case, handle_assignment_case, handle_colon_case,
+        handle_dash_case, handle_multiline_comment_case, handle_pipe_case, handle_string_case,
+        handle_whitespace_case, is_comment, is_multiline_comment,
     },
     code_line::{CodeLine, CodeType},
 };
@@ -263,13 +263,25 @@ impl CodeBuilder {
             self.complete_and_add_line(code_line);
         }
 
+        // clean empty space before '}'
+        if let Some(last_line) = self.edits.last() {
+            if last_line.text.is_empty() {
+                self.edits.pop();
+            }
+        }
+
         self.outdent();
-        clean_all_incoming_whitespace(&mut iter);
+        clean_all_whitespace(&mut iter);
 
         match iter.peek() {
             // check is there a ';' and add it after '}'
             Some((_, ';')) => {
                 self.complete_and_add_line(CodeLine::new("};".into()));
+                iter.next();
+                self.move_rest_to_new_line(line, iter);
+            }
+            Some((_, ',')) => {
+                self.complete_and_add_line(CodeLine::new("},".into()));
                 iter.next();
                 self.move_rest_to_new_line(line, iter);
             }
@@ -332,16 +344,16 @@ impl CodeBuilder {
 
         if code_line.is_empty() {
             // don't add more than one new empty line!
-            if self
+            if !self
                 .edits
                 .last()
                 .unwrap_or(&CodeLine::empty_line())
                 .is_empty()
             {
-                return;
-            } else {
-                // push empty line
-                self.edits.push(CodeLine::empty_line());
+                // only add empty line if previous last char wasn't '{'
+                if self.edits.last().unwrap().text.chars().last() != Some('{') {
+                    self.edits.push(CodeLine::empty_line());
+                }
             }
         } else {
             if code_line.was_previously_stored {

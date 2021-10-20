@@ -5,6 +5,7 @@ use std::{fmt, io};
 use super::constants::MANIFEST_FILE_NAME;
 use core_lang::CompileError;
 
+#[derive(Debug)]
 pub struct CliError {
     pub message: String,
 }

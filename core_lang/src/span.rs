@@ -1,9 +1,8 @@
-use pest;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Span<'sc> {
-    pub(crate) span: pest::Span<'sc>,
+    pub span: pest::Span<'sc>,
     pub(crate) path: Option<PathBuf>,
 }
 
@@ -44,6 +43,6 @@ impl<'sc> Span<'sc> {
         self.path
             .clone()
             .map(|p| p.into_os_string().into_string().unwrap())
-            .unwrap_or("".to_string())
+            .unwrap_or_else(|| "".to_string())
     }
 }

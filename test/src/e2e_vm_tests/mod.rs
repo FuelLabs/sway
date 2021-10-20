@@ -36,8 +36,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         (
             "retd_struct",
             ProgramState::ReturnData(Bytes32::from([
-                2, 23, 32, 21, 62, 98, 71, 190, 175, 43, 135, 133, 106, 105, 116, 64, 126, 40, 204,
-                235, 151, 159, 245, 170, 112, 203, 40, 158, 9, 238, 188, 213,
+                139, 216, 67, 1, 172, 74, 189, 183, 82, 11, 99, 241, 23, 111, 195, 89, 208, 127,
+                16, 95, 247, 254, 168, 151, 227, 225, 199, 179, 50, 80, 63, 175,
             ])),
         ),
         ("op_precedence", ProgramState::Return(0)),
@@ -45,12 +45,15 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("op_precedence", ProgramState::Return(0)), // 1 == false
         ("b256_bad_jumps", ProgramState::Return(1)),
         ("b256_ops", ProgramState::Return(100)),
+        ("struct_field_access", ProgramState::Return(43)),
         ("bool_and_or", ProgramState::Return(42)),
         ("doc_strings", ProgramState::Return(20)),
         ("neq_4_test", ProgramState::Return(0)),
         ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
         ("const_decl", ProgramState::Return(100)),
+        ("const_decl_in_library", ProgramState::Return(1)), // true
+        ("aliased_imports", ProgramState::Return(42)),
     ];
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
@@ -67,12 +70,31 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "excess_fn_arguments",
         "infinite_dependencies",
         "top_level_vars",
+        "dependencies_parsing_error",
+        "mut_error_message",
+        "reassignment_to_non_variable_message",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
             crate::e2e_vm_tests::harness::does_not_compile(name)
         }
     });
+
+    // ---- Contract Deployments
+    // contracts that should be deployed for the following tests to work
+    let contract_names = vec!["basic_storage", "increment_contract"];
+
+    for name in contract_names {
+        harness::deploy_contract(name)
+    }
+
+    // ---- Tests that need the above contracts deployed to work
+    // TODO validate that call output is correct
+    let project_names = &["call_basic_storage", "call_increment_contract"];
+
+    project_names
+        .into_iter()
+        .for_each(|name| harness::runs_on_node(name));
 
     println!("_________________________________\nTests passed.");
 }

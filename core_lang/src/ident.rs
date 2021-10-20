@@ -35,11 +35,7 @@ impl<'sc> Ident<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Ident<'sc>> {
-        let path = if let Some(config) = config {
-            Some(config.path())
-        } else {
-            None
-        };
+        let path = config.map(|config| config.path());
         let span = {
             let pair = pair.clone();
             if pair.as_rule() != Rule::ident {

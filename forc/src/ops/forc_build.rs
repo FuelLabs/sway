@@ -7,11 +7,6 @@ use crate::{
         println_yellow_err, read_manifest,
     },
 };
-use line_col::LineColLookup;
-use source_span::{
-    fmt::{Color, Formatter, Style},
-    Position, Span,
-};
 use std::fs::File;
 use std::io::Write;
 
@@ -20,23 +15,26 @@ use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
     Namespace,
 };
+use source_span::fmt::{Color, Formatter};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
+    // find manifest directory, even if in subdirectory
+    let this_dir = if let Some(ref path) = command.path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().map_err(|e| format!("{:?}", e))?
+    };
+
     let BuildCommand {
-        path,
         binary_outfile,
         print_finalized_asm,
         print_intermediate_asm,
         offline_mode,
+        silent_mode,
+        ..
     } = command;
-    // find manifest directory, even if in subdirectory
-    let this_dir = if let Some(path) = path.clone() {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir().unwrap()
-    };
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -113,6 +111,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 &dependency_details,
                 &mut namespace,
                 &mut dependency_graph,
+                silent_mode,
             )?;
         }
     }
@@ -126,13 +125,14 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         &namespace,
         build_config,
         &mut dependency_graph,
+        silent_mode,
     )?;
     if let Some(outfile) = binary_outfile {
         let mut file = File::create(outfile).map_err(|e| e.to_string())?;
         file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
     }
 
-    println!("Bytecode size is {} bytes.", main.len());
+    println!("  Bytecode size is {} bytes.", main.len());
 
     Ok(main)
 }
@@ -145,6 +145,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    silent_mode: bool,
 ) -> Result<(), String> {
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
@@ -195,13 +196,23 @@ fn compile_dependency_lib<'source, 'manifest>(
         file_name.clone().to_path_buf(),
         manifest_dir.clone(),
     );
+    let mut dep_namespace = namespace.clone();
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {
-        if deps.len() > 0 {
+        for dep in deps {
             // to do this properly, iterate over list of dependencies make sure there are no
             // circular dependencies
-            return Err("Unimplemented: dependencies that have dependencies".into());
+            //return Err("Unimplemented: dependencies that have dependencies".into());
+            compile_dependency_lib(
+                project_file_path,
+                &dep.0,
+                &dep.1,
+                // give it a cloned namespace, which we then merge with this namespace
+                &mut dep_namespace,
+                dependency_graph,
+                silent_mode,
+            )?;
         }
     }
 
@@ -210,9 +221,10 @@ fn compile_dependency_lib<'source, 'manifest>(
     let compiled = compile_library(
         main_file,
         &manifest_of_dep.project.name,
-        &namespace.clone(),
+        &dep_namespace,
         build_config.clone(),
         dependency_graph,
+        silent_mode,
     )?;
 
     namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
@@ -227,17 +239,20 @@ fn compile_library<'source, 'manifest>(
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    silent_mode: bool,
 ) -> Result<LibraryExports<'source>, String> {
     let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+            }
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled library {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled library {:?} with {} {}.",
+                    "  Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -252,12 +267,13 @@ fn compile_library<'source, 'manifest>(
         CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
-            warnings.iter().for_each(|warning| format_warning(warning));
-
-            errors.into_iter().for_each(|error| format_err(error));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+                errors.into_iter().for_each(|error| format_err(&error));
+            }
 
             println_red_err(&format!(
-                "Aborting due to {} {}.",
+                "  Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
             ))
@@ -273,23 +289,42 @@ fn compile_library<'source, 'manifest>(
     }
 }
 
+fn format_err(err: &core_lang::CompileError) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = err.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", err.path());
+    println!("{}", formatted);
+}
+
+fn format_warning(warning: &core_lang::CompileWarning) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = warning.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", warning.path());
+    println!("{}", formatted);
+}
+
 fn compile<'source, 'manifest>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
     let res = core_lang::compile_to_bytecode(&source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+            }
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled script {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled script {:?} with {} {}.",
+                    "  Compiled script {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -299,16 +334,18 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(bytes)
+            return Ok(bytes);
         }
         BytecodeCompilationResult::Library { warnings } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+            }
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled library {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled library {:?} with {} {}.",
+                    "  Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -318,93 +355,25 @@ fn compile<'source, 'manifest>(
                     }
                 ));
             }
-            Ok(vec![])
+            return Ok(vec![]);
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();
 
-            warnings.iter().for_each(|warning| format_warning(warning));
-
-            errors.into_iter().for_each(|error| format_err(error));
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+                errors.into_iter().for_each(|error| format_err(&error));
+            }
 
             println_red_err(&format!(
-                "Aborting due to {} {}.",
+                "  Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
             ))
             .unwrap();
-            Err(format!("Failed to compile {}", proj_name))
+            return Err(format!("Failed to compile {}", proj_name));
         }
     }
-}
-
-fn format_warning(err: &core_lang::CompileWarning) {
-    let input = err.span.input();
-    let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-
-    let metrics = source_span::DEFAULT_METRICS;
-    let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-
-    for c in buffer.iter() {
-        let _ = c.unwrap(); // report eventual errors.
-    }
-
-    let (start_pos, end_pos) = err.span();
-    let lookup = LineColLookup::new(input);
-    let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(end_pos - 1);
-
-    let err_start = Position::new(start_line - 1, start_col - 1);
-    let err_end = Position::new(end_line - 1, end_col - 1);
-    let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(
-        err_span,
-        Some(err.to_friendly_warning_string()),
-        Style::Warning,
-    );
-
-    let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
-}
-
-fn format_err(err: core_lang::CompileError) {
-    let input = err.internal_span().input();
-    let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-
-    let metrics = source_span::DEFAULT_METRICS;
-    let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-
-    for c in buffer.iter() {
-        let _ = c.unwrap(); // report eventual errors.
-    }
-
-    let (start_pos, end_pos) = err.span();
-    let lookup = LineColLookup::new(input);
-    let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
-
-    let err_start = Position::new(start_line - 1, start_col - 1);
-    let err_end = Position::new(end_line - 1, end_col - 1);
-    let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(err_span, Some(err.to_friendly_error_string()), Style::Error);
-
-    let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-    fmt.add(
-        buffer.span(),
-        Some("this is the whole program\nwhat a nice program!".to_string()),
-        Style::Error,
-    );
-
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
 }
 
 fn compile_to_asm<'source, 'manifest>(
@@ -420,10 +389,10 @@ fn compile_to_asm<'source, 'manifest>(
             warnings.iter().for_each(|warning| format_warning(warning));
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled script {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled script {:?} with {} {}.",
+                    "  Compiled script {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -439,10 +408,10 @@ fn compile_to_asm<'source, 'manifest>(
             warnings.iter().for_each(|warning| format_warning(warning));
 
             if warnings.is_empty() {
-                let _ = println_green_err(&format!("Compiled library {:?}.", proj_name));
+                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
             } else {
                 let _ = println_yellow_err(&format!(
-                    "Compiled library {:?} with {} {}.",
+                    "  Compiled library {:?} with {} {}.",
                     proj_name,
                     warnings.len(),
                     if warnings.len() > 1 {
@@ -459,10 +428,10 @@ fn compile_to_asm<'source, 'manifest>(
 
             warnings.iter().for_each(|warning| format_warning(warning));
 
-            errors.into_iter().for_each(|error| format_err(error));
+            errors.into_iter().for_each(|error| format_err(&error));
 
             println_red_err(&format!(
-                "Aborting due to {} {}.",
+                "  Aborting due to {} {}.",
                 e_len,
                 if e_len > 1 { "errors" } else { "error" }
             ))

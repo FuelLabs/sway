@@ -22,6 +22,8 @@ jobs:
             ${{ secrets.PRIVATE_KEY_FUEL_TX }}
             ${{ secrets.PRIVATE_KEY_FUEL_VM }}
             ${{ secrets.PRIVATE_KEY_FUEL_CORE }}
+            ${{ secrets.PRIVATE_KEY_FUEL_STORAGE }}
+            ${{ secrets.PRIVATE_KEY_FUEL_TYPES }}
 
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
@@ -53,8 +55,17 @@ jobs:
           command: test
           args: --verbose
 
-      - name: Run compile test suite
+      - name: Clone and build fuel-core
+        run: |
+          git clone git@github.com:FuelLabs/fuel-core
+          (cd fuel-core && cargo build -p fuel-core)
+
+      - name: Build test suite
         uses: actions-rs/cargo@v1
         with:
-          command: run
+          command: test
           args: --bin test
+
+      - name: Run test suite
+        run: |
+          ./fuel-core/target/debug/fuel-core & ./target/debug/test

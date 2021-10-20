@@ -3,7 +3,8 @@ use std::str::Chars;
 
 use core_lang::{extract_keyword, Rule};
 
-use super::code_builder_helpers::{is_comment, is_multiline_comment};
+use super::code_builder_helpers::{is_comment, is_multiline_comment, is_newline_incoming};
+use crate::code_builder_helpers::clean_all_whitespace;
 use crate::constants::{ALREADY_FORMATTED_LINE_PATTERN, NEW_LINE_PATTERN};
 
 /// formats custom Enums and Structs
@@ -34,10 +35,7 @@ pub fn format_custom_types(text: &str) -> String {
                     }
                 }
             } else {
-                if current_char != '\n' && current_char != ',' {
-                    result.push(current_char);
-                }
-
+                result.push(current_char);
                 match current_char {
                     '/' => match iter.peek() {
                         Some((_, '/')) => {
@@ -52,6 +50,14 @@ pub fn format_custom_types(text: &str) -> String {
                         }
                         _ => {}
                     },
+                    '}' => {
+                        clean_all_whitespace(&mut iter);
+                        if let Some((_, next_char)) = iter.peek() {
+                            if *next_char != ',' {
+                                result.push(',');
+                            }
+                        }
+                    }
                     ':' => {
                         let struct_field_type = get_struct_field_type(text, &mut iter);
                         result.push_str(&struct_field_type);
@@ -97,8 +103,9 @@ fn get_struct_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> S
 
     loop {
         match iter.peek() {
-            Some((_, c)) => {
+            Some((next_index, c)) => {
                 let next_char = *c;
+                let next_index = *next_index;
 
                 match next_char {
                     ',' => {
@@ -106,9 +113,24 @@ fn get_struct_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> S
                         result.push(',');
                         break;
                     }
-                    '\n' | '}' | '/' => {
+                    '{' => {
+                        iter.next();
+                        result.push('{');
+                        return result;
+                    }
+                    '}' => {
                         result.push(',');
                         break;
+                    }
+                    '/' => {
+                        let leftover = &line[next_index..next_index + 2];
+                        if leftover == "//" || leftover == "/*" {
+                            result.push(',');
+                            break;
+                        } else {
+                            iter.next();
+                            result.push('/');
+                        }
                     }
                     _ => {
                         iter.next();
@@ -126,7 +148,9 @@ fn get_struct_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> S
 
     if let Some((next_index, _)) = iter.peek() {
         let leftover = &line[*next_index..];
-        if !is_comment(leftover) && !is_multiline_comment(leftover) {
+        if is_newline_incoming(leftover) {
+            result.push_str(NEW_LINE_PATTERN);
+        } else if !is_comment(leftover) && !is_multiline_comment(leftover) {
             result.push_str(NEW_LINE_PATTERN);
         }
     }

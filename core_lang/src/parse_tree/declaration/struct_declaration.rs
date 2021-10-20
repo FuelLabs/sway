@@ -16,7 +16,7 @@ pub struct StructDeclaration<'sc> {
     pub name: Ident<'sc>,
     pub(crate) fields: Vec<StructField<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
-    pub(crate) visibility: Visibility,
+    pub visibility: Visibility,
 }
 
 #[derive(Debug, Clone)]
@@ -164,7 +164,7 @@ impl<'sc> StructField<'sc> {
                         warnings,
                         span.clone(),
                         Warning::NonSnakeCaseStructFieldName {
-                            field_name: name.primary_name.clone()
+                            field_name: name.primary_name
                         }
                     );
                     let r#type = check!(
