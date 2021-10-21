@@ -6,7 +6,7 @@ use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{
     error::*,
-    type_engine::{TypeId, TypeInfo},
+    type_engine::{TypeEngine, TypeId, TypeInfo},
     types::{MaybeResolvedType, ResolvedType},
 };
 use crate::{AstNode, ParseTree};
@@ -115,6 +115,7 @@ impl<'sc> TypedParseTree<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
+        let mut engine: crate::type_engine::Engine = todo!("global engine");
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let typed_nodes = nodes
@@ -123,11 +124,11 @@ impl<'sc> TypedParseTree<'sc> {
                 TypedAstNode::type_check(
                     node.clone(),
                     namespace,
-                    namespace.insert_type(TypeInfo::Unknown),
+                    engine.insert(TypeInfo::Unknown),
                     "",
                     // TODO only allow impl traits on contract trees, do something else
                     // for other tree types
-                    namespace.insert_type(TypeInfo::Contract),
+                    engine.insert(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                 )
