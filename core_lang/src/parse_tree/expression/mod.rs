@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parse_tree::{CallPath, Literal};
 use crate::Span;
-use crate::{parser::Rule, types::TypeInfo};
+use crate::{parser::Rule, type_engine::TypeInfo};
 use crate::{CodeBlock, Ident};
 use either::Either;
 use pest;

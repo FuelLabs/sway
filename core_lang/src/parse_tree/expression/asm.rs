@@ -7,7 +7,7 @@ use pest::iterators::Pair;
 use std::collections::HashMap;
 
 use super::Expression;
-use crate::types::IntegerBits;
+use crate::type_engine::IntegerBits;
 
 #[derive(Debug, Clone)]
 pub struct AsmExpression<'sc> {

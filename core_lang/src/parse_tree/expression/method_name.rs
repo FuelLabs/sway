@@ -1,5 +1,5 @@
 use crate::parse_tree::CallPath;
-use crate::types::TypeInfo;
+use crate::type_engine::TypeInfo;
 use crate::Ident;
 
 #[derive(Debug, Clone)]

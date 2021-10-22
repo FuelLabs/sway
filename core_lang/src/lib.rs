@@ -33,7 +33,7 @@ pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-pub use types::TypeInfo;
+pub use type_engine::TypeInfo;
 
 // todo rename to language name
 #[derive(Debug)]

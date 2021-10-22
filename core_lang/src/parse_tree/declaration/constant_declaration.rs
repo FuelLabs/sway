@@ -1,5 +1,5 @@
 use crate::parse_tree::Expression;
-use crate::{types::TypeInfo, Ident};
+use crate::{type_engine::TypeInfo, Ident};
 
 use crate::build_config::BuildConfig;
 use crate::error::{err, ok, CompileResult};

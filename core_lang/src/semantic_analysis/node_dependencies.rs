@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    error::*, parse_tree::*, span::Span, types::IntegerBits, AstNode, AstNodeContent, CodeBlock,
-    Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
+    error::*, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode, AstNodeContent,
+    CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
 };
 
 // -------------------------------------------------------------------------------------------------

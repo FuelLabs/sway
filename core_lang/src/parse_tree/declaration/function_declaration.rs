@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parse_tree::declaration::TypeParameter;
 use crate::span::Span;
-use crate::types::TypeInfo;
+use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;

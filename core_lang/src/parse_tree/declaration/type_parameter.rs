@@ -1,6 +1,6 @@
 use crate::build_config::BuildConfig;
 use crate::span::Span;
-use crate::{error::*, types::TypeInfo, Ident};
+use crate::{error::*, type_engine::TypeInfo, Ident};
 use crate::{CompileError, Rule};
 use pest::iterators::Pair;
 

@@ -1,14 +1,14 @@
 use crate::build_config::BuildConfig;
+use crate::parser::Rule;
 use crate::span::Span;
-use crate::type_engine::TypeId;
-use crate::types::{ResolvedType, TypeInfo};
+use crate::type_engine::{IntegerBits, TypeId, TypeInfo};
+use crate::types::ResolvedType;
 use crate::Ident;
 use crate::Namespace;
 use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
 use crate::{
     parse_tree::declaration::TypeParameter, semantic_analysis::ast_node::TypedEnumVariant,
 };
-use crate::{parser::Rule, types::IntegerBits};
 use inflector::cases::classcase::is_class_case;
 use pest::iterators::Pair;
 use std::collections::HashMap;

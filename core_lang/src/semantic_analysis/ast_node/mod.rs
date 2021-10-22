@@ -1,10 +1,10 @@
 use crate::build_config::BuildConfig;
+use crate::error::*;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::types::{ResolvedType, TypeInfo};
+use crate::types::ResolvedType;
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
-use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 pub(crate) use impl_trait::Mode;
@@ -18,7 +18,7 @@ mod return_statement;
 mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
-use crate::type_engine::{FriendlyTypeString, TypeEngine, TypeId};
+use crate::type_engine::{FriendlyTypeString, IntegerBits, TypeEngine, TypeId, TypeInfo};
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,

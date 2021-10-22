@@ -3,17 +3,12 @@ use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
 use crate::asm_generation::AsmNamespace;
+use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::type_engine::{TypeEngine, TypeId};
-use crate::{
-    build_config::BuildConfig,
-    error::*,
-    types::{IntegerBits, ResolvedType},
-    Ident,
-};
-use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
+use crate::type_engine::{IntegerBits, TypeEngine, TypeId, TypeInfo};
+use crate::{build_config::BuildConfig, error::*, types::ResolvedType, Ident};
 use sha2::{Digest, Sha256};
 
 #[derive(Clone, Debug)]

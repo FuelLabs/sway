@@ -3,7 +3,7 @@ use crate::build_config::BuildConfig;
 use crate::parse_tree::TypeParameter;
 use crate::parser::Rule;
 use crate::span::Span;
-use crate::types::TypeInfo;
+use crate::type_engine::TypeInfo;
 use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;

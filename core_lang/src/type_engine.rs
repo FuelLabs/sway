@@ -1,11 +1,16 @@
-use crate::error::*;
+use crate::build_config::BuildConfig;
 use crate::semantic_analysis::TypedExpression;
-use crate::types::{IntegerBits, ResolvedType};
+use crate::types::ResolvedType;
 use crate::Span;
-use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident, Rule};
 use derivative::Derivative;
 use std::collections::HashMap;
 use std::iter::FromIterator;
+
+use pest::iterators::Pair;
+
+mod integer_bits;
+pub use integer_bits::IntegerBits;
 
 pub trait TypeEngine<'sc> {
     type TypeId;

@@ -2,7 +2,7 @@ use super::{FunctionDeclaration, TypeParameter};
 use crate::build_config::BuildConfig;
 use crate::parse_tree::CallPath;
 use crate::span::Span;
-use crate::{error::*, parser::Rule, types::TypeInfo};
+use crate::{error::*, parser::Rule, type_engine::TypeInfo};
 use pest::iterators::Pair;
 use std::collections::HashMap;
 
