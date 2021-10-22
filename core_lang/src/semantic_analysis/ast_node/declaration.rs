@@ -10,7 +10,7 @@ use crate::type_engine::{TypeEngine, TypeId};
 use crate::{
     build_config::BuildConfig,
     error::*,
-    types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    types::{IntegerBits, ResolvedType},
     Ident,
 };
 use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};

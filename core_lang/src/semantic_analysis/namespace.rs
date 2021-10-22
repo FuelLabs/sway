@@ -4,7 +4,7 @@ use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
 use crate::type_engine::{Engine, TypeEngine, TypeId};
-use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType};
+use crate::types::ResolvedType;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};

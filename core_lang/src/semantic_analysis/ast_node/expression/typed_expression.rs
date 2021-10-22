@@ -3,7 +3,7 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::type_engine::TypeEngine;
-use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
+use crate::types::{IntegerBits, ResolvedType};
 use either::Either;
 
 mod method_application;

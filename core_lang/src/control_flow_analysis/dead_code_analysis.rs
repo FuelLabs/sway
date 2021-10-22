@@ -3,7 +3,7 @@ use super::*;
 use crate::parse_tree::CallPath;
 use crate::semantic_analysis::ast_node::TypedStructExpressionField;
 use crate::span::Span;
-use crate::types::{MaybeResolvedType, ResolvedType};
+use crate::types::ResolvedType;
 use crate::{
     parse_tree::Visibility,
     semantic_analysis::ast_node::{

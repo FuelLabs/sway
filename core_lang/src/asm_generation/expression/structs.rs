@@ -8,7 +8,7 @@ use crate::{
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
     type_engine::{TypeEngine, TypeId},
-    types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    types::{IntegerBits, ResolvedType},
     CompileResult, Ident,
 };
 

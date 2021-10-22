@@ -1,9 +1,8 @@
-use super::{MaybeResolvedType, ResolvedType};
+use super::ResolvedType;
 use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::span::Span;
 pub use crate::type_engine::TypeInfo;
-use crate::types::PartiallyResolvedType;
 use crate::{Ident, Rule};
 use pest::iterators::Pair;
 use std::iter::FromIterator;

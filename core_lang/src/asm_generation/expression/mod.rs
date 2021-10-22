@@ -10,7 +10,7 @@ use crate::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },
-    types::{MaybeResolvedType, ResolvedType},
+    types::ResolvedType,
 };
 
 mod contract_call;

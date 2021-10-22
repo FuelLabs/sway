@@ -1,7 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::types::{MaybeResolvedType, ResolvedType};
+use crate::types::ResolvedType;
 use std::collections::VecDeque;
 
 pub(crate) fn type_check_method_application<'sc>(

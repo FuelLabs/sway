@@ -1,7 +1,7 @@
 use crate::build_config::BuildConfig;
 use crate::span::Span;
 use crate::type_engine::TypeId;
-use crate::types::{MaybeResolvedType, ResolvedType, TypeInfo};
+use crate::types::{ResolvedType, TypeInfo};
 use crate::Ident;
 use crate::Namespace;
 use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};

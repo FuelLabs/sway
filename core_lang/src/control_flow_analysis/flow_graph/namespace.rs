@@ -1,6 +1,6 @@
 use super::{EntryPoint, ExitPoint};
 use crate::parse_tree::CallPath;
-use crate::{types::MaybeResolvedType, Ident};
+use crate::Ident;
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
 

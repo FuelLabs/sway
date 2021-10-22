@@ -8,7 +8,7 @@ use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::*,
     type_engine::{TypeEngine, TypeId},
-    types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    types::ResolvedType,
     CallPath, Ident,
 };
 

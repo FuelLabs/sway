@@ -8,7 +8,7 @@ use crate::{
     ident::Ident,
     parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, UnaryOp},
     type_engine::{TypeEngine, TypeId},
-    types::{MaybeResolvedType, ResolvedType},
+    types::ResolvedType,
 };
 use crate::{
     parse_tree::Literal,

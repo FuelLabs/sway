@@ -7,7 +7,7 @@ use crate::{
     asm_lang::virtual_ops::VirtualImmediate12,
     semantic_analysis::ast_node::{ReassignmentLhs, TypedReassignment, TypedStructField},
     type_engine::TypeEngine,
-    types::{MaybeResolvedType, ResolvedType},
+    types::ResolvedType,
 };
 
 pub(crate) fn convert_reassignment_to_asm<'sc>(

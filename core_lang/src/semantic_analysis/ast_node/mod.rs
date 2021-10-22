@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType, TypeInfo};
+use crate::types::{ResolvedType, TypeInfo};
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};

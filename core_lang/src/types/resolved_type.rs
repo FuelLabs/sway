@@ -2,7 +2,6 @@ use super::IntegerBits;
 use crate::asm_generation::AsmNamespace;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::types::MaybeResolvedType;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use derivative::Derivative;
 

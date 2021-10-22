@@ -13,7 +13,7 @@ use crate::semantic_analysis::{
 };
 use crate::span::Span;
 use crate::type_engine::TypeInfo;
-use crate::types::{MaybeResolvedType, ResolvedType};
+use crate::types::ResolvedType;
 use crate::{error::*, semantic_analysis::TypedParseTree};
 use petgraph::prelude::NodeIndex;
 

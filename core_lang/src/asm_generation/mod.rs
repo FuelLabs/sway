@@ -17,7 +17,7 @@ use crate::{
         TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
         TypedParseTree,
     },
-    types::{MaybeResolvedType, ResolvedType},
+    types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
 };
 use either::Either;

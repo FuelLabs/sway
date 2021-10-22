@@ -1,7 +1,7 @@
+use crate::parser::Rule;
 use crate::span::Span;
 use crate::type_engine::TypeInfo;
 use crate::types::IntegerBits;
-use crate::{parser::Rule, types::MaybeResolvedType};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
 use thiserror::Error;

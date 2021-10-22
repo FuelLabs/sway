@@ -7,7 +7,7 @@ use crate::span::Span;
 use crate::{
     error::*,
     type_engine::{TypeEngine, TypeId, TypeInfo},
-    types::{MaybeResolvedType, ResolvedType},
+    types::ResolvedType,
 };
 use crate::{AstNode, ParseTree};
 
