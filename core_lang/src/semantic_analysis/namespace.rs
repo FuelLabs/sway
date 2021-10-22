@@ -367,7 +367,7 @@ impl<'sc> Namespace<'sc> {
         };
         if ident_iter.peek().is_none() {
             let ty = check!(
-                symbol.return_type(self),
+                symbol.return_type(),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -375,7 +375,7 @@ impl<'sc> Namespace<'sc> {
             return ok((ty.clone(), ty), warnings, errors);
         }
         let mut symbol = check!(
-            symbol.return_type(self),
+            symbol.return_type(),
             return err(warnings, errors),
             warnings,
             errors

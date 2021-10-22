@@ -28,6 +28,7 @@ impl<'sc> TypedCodeBlock<'sc> {
     ) -> CompileResult<'sc, (Self, TypeId)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+        let mut engine: crate::type_engine::Engine = todo!("global type engine");
 
         // Mutable clone, because the interior of a code block must not change the surrounding
         // namespace.
@@ -122,7 +123,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     contents: evaluated_contents,
                     whole_block_span: other.whole_block_span,
                 },
-                return_type.unwrap_or(namespace.insert_type(TypeInfo::Unit)),
+                return_type.unwrap_or_else(|| engine.insert(TypeInfo::Unit)),
             ),
             warnings,
             errors,

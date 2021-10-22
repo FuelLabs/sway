@@ -55,7 +55,8 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
-    pub(crate) fn return_type(&self, namespace: &mut Namespace<'sc>) -> CompileResult<'sc, TypeId> {
+    pub(crate) fn return_type(&self) -> CompileResult<'sc, TypeId> {
+        let engine: crate::type_engine::Engine = todo!("global engine");
         ok(
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -74,7 +75,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     name,
                     fields,
                     ..
-                }) => namespace.insert_type(TypeInfo::Struct {
+                }) => engine.insert(TypeInfo::Struct {
                     name: name.clone(),
                     fields: fields.clone(),
                 }),
@@ -293,7 +294,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
         let data = check!(
-            self.to_selector_name(todo!("global engine")),
+            self.to_selector_name(),
             return err(warnings, errors),
             warnings,
             errors
@@ -320,7 +321,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         ok(buf, warnings, errors)
     }
 
-    pub fn to_selector_name(&self, namespace: &AsmNamespace<'sc>) -> CompileResult<'sc, String> {
+    pub fn to_selector_name(&self) -> CompileResult<'sc, String> {
         let engine: crate::type_engine::Engine = todo!("global engine");
         let mut errors = vec![];
         let mut warnings = vec![];

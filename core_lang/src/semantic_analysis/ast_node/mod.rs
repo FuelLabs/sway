@@ -18,7 +18,7 @@ mod return_statement;
 mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
-use crate::type_engine::TypeId;
+use crate::type_engine::{FriendlyTypeString, TypeEngine, TypeId};
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
@@ -99,18 +99,20 @@ impl<'sc> TypedAstNode<'sc> {
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+        let mut engine: crate::type_engine::Engine = todo!("global engine");
 
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr = |type_ascription: TypeInfo<'sc>, value, decl_str| {
+            let type_id = engine.insert(type_ascription);
             TypedExpression::type_check(
                 value,
                 namespace,
-                Some(namespace.insert_type(type_ascription)),
+                Some(type_id),
                 format!(
                     "{} declaration's type annotation (type {}) does \
                      not match up with the assigned expression's type.",
                     decl_str,
-                    type_ascription.friendly_type_str()
+                    type_id.friendly_type_str()
                 ),
                 self_type,
                 build_config,
@@ -503,7 +505,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             condition,
                             namespace,
-                            Some(namespace.insert_type(TypeInfo::Boolean)),
+                            Some(engine.insert(TypeInfo::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
                             build_config,
@@ -517,7 +519,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedCodeBlock::type_check(
                             body.clone(),
                             namespace,
-                            namespace.insert_type(TypeInfo::Unit),
+                            engine.insert(TypeInfo::Unit),
                             "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
@@ -530,7 +532,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 contents: vec![],
                                 whole_block_span: body.whole_block_span.clone(),
                             },
-                            namespace.insert_type(TypeInfo::Unit)
+                            engine.insert(TypeInfo::Unit)
                         ),
                         warnings,
                         errors

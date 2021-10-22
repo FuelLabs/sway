@@ -566,6 +566,8 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
     }
 }
 
+/// This is intentionally different from [[TypeInfo::friendly_type_str]] because it
+/// is used for keys and values in the tree.
 fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
         TypeInfo::Str(_) => "str",
@@ -586,6 +588,9 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::ErrorRecovery => "err_recov",
         TypeInfo::Ref(x) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
+        TypeInfo::ContractCaller { .. } => "contract caller",
+        TypeInfo::Struct { .. } => "struct",
+        TypeInfo::Enum { .. } => "enum",
     }
     .to_string()
 }

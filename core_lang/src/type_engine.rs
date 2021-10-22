@@ -54,6 +54,16 @@ enum Type {
 /// A identifier to uniquely refer to our type terms
 pub type TypeId = usize;
 
+pub(crate) trait FriendlyTypeString {
+    fn friendly_type_str(&self) -> String;
+}
+
+impl FriendlyTypeString for TypeId {
+    fn friendly_type_str(&self) -> String {
+        todo!("global engine")
+    }
+}
+
 /// Type information without an associated value, used for type inferencing and definition.
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
@@ -128,6 +138,11 @@ impl<'sc> TypeInfo<'sc> {
             Numeric => "numeric".into(),
             Contract => "contract".into(),
             ErrorRecovery => "unknown due to error".into(),
+            Enum { name, .. } => format!("enum {}", name.primary_name),
+            Struct { name, .. } => format!("struct {}", name.primary_name),
+            ContractCaller { abi_name, .. } => {
+                format!("contract caller {}", abi_name.suffix.primary_name)
+            }
         }
     }
 }

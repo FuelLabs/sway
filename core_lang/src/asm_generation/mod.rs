@@ -722,9 +722,9 @@ pub(crate) fn compile_ast_to_asm<'sc>(
             (
                 HllAsmSet::PredicateMain {
                     program_section: AbstractInstructionSet { ops: asm_buf },
-                    data_section: namespace.data_section,
+                    data_section: namespace.data_section.clone(),
                 },
-                namespace.clone(),
+                namespace,
             )
         }
         TypedParseTree::Contract {
