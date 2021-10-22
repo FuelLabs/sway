@@ -5,6 +5,7 @@ use crate::Span;
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use derivative::Derivative;
 use std::collections::HashMap;
+use std::iter::FromIterator;
 
 pub trait TypeEngine<'sc> {
     type TypeId;
@@ -116,6 +117,64 @@ impl Default for TypeInfo<'_> {
 }
 
 impl<'sc> TypeInfo<'sc> {
+    pub(crate) fn parse_from_pair(
+        input: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
+        let mut r#type = input.into_inner();
+        Self::parse_from_pair_inner(r#type.next().unwrap(), config)
+    }
+
+    pub(crate) fn parse_from_pair_inner(
+        input: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let input = if let Some(input) = input.clone().into_inner().next() {
+            input
+        } else {
+            input
+        };
+        ok(
+            match input.as_str().trim() {
+                "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
+                "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+                "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                "bool" => TypeInfo::Boolean,
+                "unit" => TypeInfo::Unit,
+                "byte" => TypeInfo::Byte,
+                "b256" => TypeInfo::B256,
+                "Self" | "self" => TypeInfo::SelfType,
+                "Contract" => TypeInfo::Contract,
+                "()" => TypeInfo::Unit,
+                a if a.contains("str[") => check!(
+                    parse_str_type(
+                        a,
+                        Span {
+                            span: input.as_span(),
+                            path: config.map(|config| config.dir_of_code.clone())
+                        }
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ),
+                _other => TypeInfo::Custom {
+                    name: check!(
+                        Ident::parse_from_pair(input, config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
+                },
+            },
+            warnings,
+            errors,
+        )
+    }
+
     pub(crate) fn friendly_type_str(&self) -> String {
         use TypeInfo::*;
         match self {
@@ -380,4 +439,124 @@ fn chain_of_refs_2() {
         engine.resolve(id3, &sp).unwrap(),
         ResolvedType::UnsignedInteger(IntegerBits::Eight)
     );
+}
+
+fn parse_str_type<'sc>(raw: &'sc str, span: Span<'sc>) -> CompileResult<'sc, TypeInfo<'sc>> {
+    if raw.starts_with("str[") {
+        let mut rest = raw.split_at("str[".len()).1.chars().collect::<Vec<_>>();
+        if let Some(']') = rest.pop() {
+            if let Ok(num) = String::from_iter(rest).parse() {
+                return ok(TypeInfo::Str(num), vec![], vec![]);
+            }
+        }
+        return err(
+            vec![],
+            vec![CompileError::InvalidStrType {
+                raw: raw.to_string(),
+                span,
+            }],
+        );
+    }
+    err(vec![], vec![CompileError::UnknownType { span }])
+}
+
+#[test]
+fn test_str_parse() {
+    match parse_str_type(
+        "str[20]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
+        Some(value) if value == TypeInfo::Str(20) => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type(
+        "str[]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
+        None => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type(
+        "str[ab]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
+        None => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type(
+        "str [ab]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
+        None => (),
+        _ => panic!("failed test"),
+    }
+
+    match parse_str_type(
+        "not even a str[ type",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
+        None => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type(
+        "",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
+        None => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type(
+        "20",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
+        None => (),
+        _ => panic!("failed test"),
+    }
+    match parse_str_type(
+        "[20]",
+        Span {
+            span: pest::Span::new("", 0, 0).unwrap(),
+            path: None,
+        },
+    )
+    .value
+    {
+        None => (),
+        _ => panic!("failed test"),
+    }
 }
