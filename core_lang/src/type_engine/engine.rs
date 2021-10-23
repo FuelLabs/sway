@@ -39,6 +39,12 @@ pub(crate) struct Engine<'sc> {
     vars: HashMap<TypeId, TypeInfo<'sc>>,
 }
 
+impl <'sc> Engine <'sc> {
+    pub(crate) fn get_id(&self, id: &TypeId) -> Option<&TypeInfo> {
+        self.vars.get(id)
+    }
+}
+
 impl<'sc> TypeEngine<'sc> for Engine<'sc> {
     type TypeId = usize;
     type TypeInfo = TypeInfo<'sc>;

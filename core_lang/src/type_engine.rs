@@ -69,7 +69,7 @@ pub(crate) trait FriendlyTypeString {
 
 impl FriendlyTypeString for TypeId {
     fn friendly_type_str(&self) -> String {
-        todo!("global engine")
+        crate::type_engine::TYPE_ENGINE.get_id(self).map(|x| x.friendly_type_str()).unwrap_or_else(|| format!("T{}", self))
     }
 }
 
