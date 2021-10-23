@@ -4,10 +4,35 @@ use crate::{
     semantic_analysis::TypedExpression, types::ResolvedType, CallPath, Ident, Rule, Span,
 };
 use derivative::Derivative;
+use lazy_static::lazy_static;
+use pest::iterators::Pair;
 use std::collections::HashMap;
 use std::iter::FromIterator;
 
-use pest::iterators::Pair;
+lazy_static! {
+    pub(crate) static ref TYPE_ENGINE: Engine<'static> = Default::default();
+}
+
+// Workaround until we use an arena for spans
+// The below is just so we can have a static type engine. Ideally, we will
+// switch to a span that uses an arena to keep track of source code.
+trait Staticify {
+    fn staticify(&self) -> Self;
+}
+
+impl<'a> Staticify for crate::Span<'a> {
+    fn staticify(&self) -> crate::Span<'static> {
+        Span {
+            path: self.path.clone(),
+            span: pest::Span::new_unchecked(
+                Box::leak(self.input().to_string().into_boxed_str()),
+                self.start(),
+                self.end(),
+            ),
+        }
+    }
+}
+
 #[derive(Default, Clone, Debug)]
 pub(crate) struct Engine<'sc> {
     id_counter: usize, // Used to generate unique IDs

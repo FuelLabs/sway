@@ -346,7 +346,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::types::IntegerBits;
+    use crate::type_engine::IntegerBits;
     let decl = TypedFunctionDeclaration {
         name: Ident {
             primary_name: "foo",

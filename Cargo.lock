@@ -761,7 +761,8 @@ dependencies = [
  "fuel-asm",
  "fuel-vm",
  "hex",
- "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
+ "lazy_static 1.4.0",
+ "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=0ee8d107923f8979897efbd12e16a0eb99ea98b3)",
  "pest_derive",
  "petgraph",
  "sha2",
@@ -2141,6 +2142,14 @@ name = "pest"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10f4872ae94d7b90ae48754df22fd42ad52ce740b8f370b03da4835417403e53"
+dependencies = [
+ "ucd-trie",
+]
+
+[[package]]
+name = "pest"
+version = "2.1.3"
+source = "git+https://github.com/sezna/pest.git?rev=0ee8d107923f8979897efbd12e16a0eb99ea98b3#0ee8d107923f8979897efbd12e16a0eb99ea98b3"
 dependencies = [
  "ucd-trie",
 ]
