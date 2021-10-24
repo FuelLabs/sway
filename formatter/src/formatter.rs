@@ -71,7 +71,6 @@ fn main() {
         
         */
         123;
-
     };
 
     add(1, 2);
@@ -309,6 +308,7 @@ struct Rgb {
 
 struct Structure {
     age: u32,
+
     name: string,
 }
 
@@ -359,6 +359,29 @@ struct Example {
     age: u32,
     name: string,
 }
+
+struct C {
+    /// a docstring
+    a: A,
+    /// b docstring
+    b: byte,
+}
+
+struct A {
+    a: u64,
+    b: u64,
+}
+
+fn get_gas() -> A {
+    A {
+        a: asm() {
+            ggas
+        },
+        b: asm() {
+            cgas
+        },
+    }
+}
 "#;
 
         let result = get_formatted_data(correct_sway_code, 4);
@@ -390,7 +413,7 @@ struct Rgb {
 }
 
 struct Structure {
-    
+
     age: u32,
 
     name: string,
@@ -436,6 +459,29 @@ pub fn read_example() -> Example {
 }
 
 struct Example {age: u32,    name: string}
+
+struct C {
+/// a docstring
+a: A,
+/// b docstring
+b: byte,
+}
+
+struct A {
+a: u64,
+b: u64,
+}
+
+fn get_gas() -> A {
+A {
+a: asm() {
+ggas
+},
+b: asm() {
+cgas
+}
+}
+}
 "#;
 
         let result = get_formatted_data(sway_code, 4);
@@ -450,7 +496,6 @@ struct Example {age: u32,    name: string}
 
 pub fn main() {
     let k = Story::Pain;
-
 }
 
 enum Story {
@@ -508,14 +553,10 @@ pub fn tell_a_story() -> Story {
 
 fn main() {
     if 1 >= 0 {
-
     } else if 4 <= 0 {
-
     } else if 5 == 0 {
     } else if 4 != 4 {
-
     } else {
-
     }
 }
 
