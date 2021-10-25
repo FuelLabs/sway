@@ -84,29 +84,28 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         }
     });
 
-    // ---- Contract Deployments
-    // contracts that should be deployed for the following tests to work
-    let contract_names = vec![
-        "basic_storage",
-        "increment_contract",
-        "auth_testing_contract",
+    // ---- Tests paired with contracts upon which they depend which must be pre-deployed.
+    // TODO validate that call output is correct
+    let contract_and_project_names = &[
+        ("basic_storage", "call_basic_storage"),
+        ("increment_contract", "call_increment_contract"),
+        ("auth_testing_contract", "caller_auth_test"),
     ];
 
-    for name in contract_names {
+    // Filter them first.
+    let (contracts, projects): (Vec<_>, Vec<_>) = contract_and_project_names
+        .into_iter()
+        .filter(|names| filter(names.1))
+        .cloned()
+        .unzip();
+
+    // Deploy and then test.
+    for name in contracts {
         harness::deploy_contract(name)
     }
-
-    // ---- Tests that need the above contracts deployed to work
-    // TODO validate that call output is correct
-    let project_names = &[
-        "call_basic_storage",
-        "call_increment_contract",
-        "caller_auth_test",
-    ];
-
-    project_names
-        .into_iter()
-        .for_each(|name| harness::runs_on_node(name));
+    for name in projects {
+        harness::runs_on_node(name);
+    }
 
     println!("_________________________________\nTests passed.");
 }
