@@ -8,20 +8,17 @@ use lazy_static::lazy_static;
 use pest::iterators::Pair;
 use std::collections::HashMap;
 use std::iter::FromIterator;
+use std::sync::Mutex;
 
 lazy_static! {
-    pub(crate) static ref TYPE_ENGINE: Engine<'static> = Default::default();
+    pub(crate) static ref TYPE_ENGINE: Mutex<Engine<'static>> = Default::default();
 }
 
 // Workaround until we use an arena for spans
 // The below is just so we can have a static type engine. Ideally, we will
 // switch to a span that uses an arena to keep track of source code.
-trait Staticify {
-    fn staticify(&self) -> Self;
-}
-
-impl<'a> Staticify for crate::Span<'a> {
-    fn staticify(&self) -> crate::Span<'static> {
+impl crate::Span<'_> {
+    pub(crate) fn staticify(&self) -> crate::Span<'static> {
         Span {
             path: self.path.clone(),
             span: pest::Span::new_unchecked(
@@ -33,13 +30,28 @@ impl<'a> Staticify for crate::Span<'a> {
     }
 }
 
+impl crate::Ident<'_> {
+    pub(crate) fn staticify(&self) -> crate::Ident<'static> {
+        Ident {
+            span: Span {
+                path: self.span.path.clone(),
+                span: pest::Span::new_unchecked(
+                    Box::leak(self.span.input().to_string().into_boxed_str()),
+                    self.span.start(),
+                    self.span.end(),
+                ),
+            },
+            primary_name: Box::leak(self.primary_name.to_string().into_boxed_str()),
+        }
+    }
+}
 #[derive(Default, Clone, Debug)]
 pub(crate) struct Engine<'sc> {
     id_counter: usize, // Used to generate unique IDs
     vars: HashMap<TypeId, TypeInfo<'sc>>,
 }
 
-impl <'sc> Engine <'sc> {
+impl Engine<'_> {
     pub(crate) fn get_id(&self, id: &TypeId) -> Option<&TypeInfo> {
         self.vars.get(id)
     }

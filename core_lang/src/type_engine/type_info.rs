@@ -1,4 +1,3 @@
-
 use super::*;
 use crate::{
     build_config::BuildConfig, error::*, semantic_analysis::ast_node::TypedStructField,
@@ -149,5 +148,3 @@ impl<'sc> TypeInfo<'sc> {
         }
     }
 }
-
-

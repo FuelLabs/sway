@@ -1,7 +1,6 @@
-use crate::asm_generation::AsmNamespace;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::IntegerBits;
+use crate::type_engine::{IntegerBits, TypeEngine, TYPE_ENGINE};
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use derivative::Derivative;
 
@@ -41,6 +40,12 @@ pub enum ResolvedType<'sc> {
     ErrorRecovery,
 }
 
+impl Default for ResolvedType<'_> {
+    fn default() -> Self {
+        ResolvedType::Unit
+    }
+}
+
 impl<'sc> ResolvedType<'sc> {
     pub(crate) fn is_copy_type(&self) -> bool {
         match self {
@@ -49,33 +54,6 @@ impl<'sc> ResolvedType<'sc> {
             | ResolvedType::Unit
             | ResolvedType::Byte => true,
             _ => false,
-        }
-    }
-    pub fn numeric_cast_compat(&self, other: &ResolvedType<'sc>) -> Result<(), Warning<'sc>> {
-        assert_eq!(self.is_numeric(), other.is_numeric());
-        use ResolvedType::*;
-        // if this is a downcast, warn for loss of precision. if upcast, then no warning.
-        match self {
-            UnsignedInteger(IntegerBits::Eight) => Ok(()),
-            UnsignedInteger(IntegerBits::Sixteen) => match other {
-                UnsignedInteger(IntegerBits::Eight) => todo!("remove this code"),
-                UnsignedInteger(_) => Ok(()),
-                _ => unreachable!(),
-            },
-            UnsignedInteger(IntegerBits::ThirtyTwo) => match other {
-                UnsignedInteger(IntegerBits::Eight) | UnsignedInteger(IntegerBits::Sixteen) => {
-                    todo!("remove this code")
-                }
-                UnsignedInteger(_) => Ok(()),
-                _ => unreachable!(),
-            },
-            UnsignedInteger(IntegerBits::SixtyFour) => match other {
-                UnsignedInteger(IntegerBits::Eight)
-                | UnsignedInteger(IntegerBits::Sixteen)
-                | UnsignedInteger(IntegerBits::ThirtyTwo) => todo!("remove this code"),
-                _ => Ok(()),
-            },
-            _ => unreachable!(),
         }
     }
     pub(crate) fn friendly_type_str(&self) -> String {
@@ -120,7 +98,7 @@ impl<'sc> ResolvedType<'sc> {
 
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     /// This is _in words_!
-    pub(crate) fn stack_size_of(&self, engine: &crate::type_engine::Engine<'sc>) -> u64 {
+    pub(crate) fn stack_size_of(&self) -> u64 {
         match self {
             // Each char is a byte, so the size is the num of characters / 8
             // rounded up to the nearest word
@@ -136,17 +114,17 @@ impl<'sc> ResolvedType<'sc> {
                 // of any individual variant
                 1 + variant_types
                     .iter()
-                    .map(|x| x.stack_size_of(engine))
+                    .map(|x| x.stack_size_of())
                     .max()
                     .unwrap()
             }
             ResolvedType::Struct { fields, .. } => fields.iter().fold(0, |acc, x| {
-                acc + todo!(
-                    r#"engine
-                    .resolve_type(x.r#type, &x.name.span)
+                acc + TYPE_ENGINE
+                    .lock()
+                    .unwrap()
+                    .resolve(x.r#type, &x.name.span)
                     .expect("should be unreachable?")
-                    .stack_size_of(engine)"#
-                ) as u64
+                    .stack_size_of()
             }),
             // `ContractCaller` types are unsized and used only in the type system for
             // calling methods
@@ -191,12 +169,12 @@ impl<'sc> ResolvedType<'sc> {
                     let names = fields
                         .iter()
                         .map(|TypedStructField { r#type, .. }| {
-                            todo!(
-                                r#"namespace
-                                .resolve_type(r#type, error_msg_span)
+                            TYPE_ENGINE
+                                .lock()
+                                .unwrap()
+                                .resolve(*r#type, error_msg_span)
                                 .expect("unreachable?")
-                                .to_selector_name(error_msg_span)"#
-                            )
+                                .to_selector_name(error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];

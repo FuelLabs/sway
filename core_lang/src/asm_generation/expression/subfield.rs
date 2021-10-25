@@ -7,7 +7,7 @@ use crate::{
     error::*,
     ident::Ident,
     parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, UnaryOp},
-    type_engine::{TypeEngine, TypeId},
+    type_engine::{TypeEngine, TypeId, TYPE_ENGINE},
     types::ResolvedType,
 };
 use crate::{
@@ -30,7 +30,6 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     register_sequencer: &mut RegisterSequencer,
     return_register: &VirtualRegister,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
-    let engine: crate::type_engine::Engine = todo!();
     // step 0. find the type and register of the prefix
     // step 1. get the memory layout of the struct
     // step 2. calculate the offset to the spot we are accessing
@@ -53,7 +52,11 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     // now the pointer to the struct is in the prefix_reg, and we can access the subfield off
     // of that address
     // step 1
-    let fields = match engine.look_up_type_id(resolved_type_of_parent) {
+    let fields = match TYPE_ENGINE
+        .lock()
+        .unwrap()
+        .look_up_type_id(resolved_type_of_parent)
+    {
         ResolvedType::Struct { fields, .. } => fields,
         _ => {
             unreachable!("Accessing a field on a non-struct should be caught during type checking.")
@@ -64,7 +67,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         .map(|TypedStructField { name, r#type, .. }| (*r#type, name))
         .collect::<Vec<_>>();
     let descriptor = check!(
-        get_struct_memory_layout(&fields_for_layout[..], &engine),
+        get_struct_memory_layout(&fields_for_layout[..]),
         return err(warnings, errors),
         warnings,
         errors
@@ -94,7 +97,10 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     // step 3
     // if this is a copy type (primitives that fit in a word), copy it into the register.
     // Otherwise, load the pointer to the field into the register
-    let resolved_type_of_this_field = match engine.resolve(type_of_this_field, &span_for_this_field)
+    let resolved_type_of_this_field = match TYPE_ENGINE
+        .lock()
+        .unwrap()
+        .resolve(type_of_this_field, &span_for_this_field)
     {
         Ok(o) => o,
         Err(e) => {
@@ -119,7 +125,9 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
             )),
             comment: format!(
                 "Loading copy type: {}",
-                engine
+                TYPE_ENGINE
+                    .lock()
+                    .unwrap()
                     .look_up_type_id(type_of_this_field)
                     .friendly_type_str()
             ),

@@ -2,12 +2,11 @@ use super::impl_trait::Mode;
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
-use crate::asm_generation::AsmNamespace;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::type_engine::{IntegerBits, TypeEngine, TypeId, TypeInfo};
+use crate::type_engine::{IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE};
 use crate::{build_config::BuildConfig, error::*, types::ResolvedType, Ident};
 use sha2::{Digest, Sha256};
 
@@ -193,15 +192,17 @@ impl<'sc> TypedEnumDeclaration<'sc> {
     ) -> CompileResult<'sc, Self> {
         ok(self.clone(), vec![], vec![])
     }
+}
+
+impl TypedEnumDeclaration<'_> {
     /// Returns the [ResolvedType] corresponding to this enum's type.
-    pub(crate) fn as_type(&self, namespace: &mut Namespace<'sc>) -> TypeId {
-        namespace.insert_type(TypeInfo::Enum {
-            name: self.name.clone(),
+    pub(crate) fn as_type(&self) -> TypeId {
+        TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Enum {
+            name: self.clone().name.staticify(),
             variant_types: self.variants.iter().map(|x| x.r#type.clone()).collect(),
         })
     }
 }
-
 #[derive(Debug, Clone)]
 pub struct TypedEnumVariant<'sc> {
     pub(crate) name: Ident<'sc>,

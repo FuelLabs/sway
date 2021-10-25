@@ -11,7 +11,7 @@ use std::collections::HashMap;
 pub(crate) struct FunctionNamespaceEntry<'sc> {
     pub(crate) entry_point: EntryPoint,
     pub(crate) exit_point: ExitPoint,
-    pub(crate) return_type: crate::type_engine::TypeInfo<'sc>,
+    pub(crate) return_type: crate::types::ResolvedType<'sc>,
 }
 
 #[derive(Default, Clone)]

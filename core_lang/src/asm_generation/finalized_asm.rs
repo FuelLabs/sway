@@ -2,6 +2,7 @@ use super::{DataSection, InstructionSet};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
 use crate::span::Span;
+use crate::type_engine::TYPE_ENGINE;
 use either::Either;
 use std::io::Read;
 
@@ -77,7 +78,7 @@ fn to_bytecode<'sc>(
                     if data_section
                         .type_of_data(&data_label)
                         .expect("data label references non existent data -- internal error")
-                        .stack_size_of(todo!("insert type engine here"))
+                        .stack_size_of()
                         > 1 =>
                 {
                     acc + 8

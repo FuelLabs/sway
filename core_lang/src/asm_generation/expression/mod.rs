@@ -2,14 +2,12 @@ use super::*;
 use crate::span::Span;
 use crate::{
     asm_lang::{virtual_ops::VirtualRegister, *},
-    parse_tree::CallPath,
-};
-use crate::{
-    parse_tree::Literal,
+    parse_tree::{CallPath, Literal},
     semantic_analysis::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },
+    type_engine::TYPE_ENGINE,
     types::ResolvedType,
 };
 
@@ -33,7 +31,6 @@ pub(crate) fn convert_expression_to_asm<'sc>(
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
-    let type_engine: crate::type_engine::Engine = todo!("global type engine");
     let mut warnings = vec![];
     let mut errors = vec![];
     match &exp.expression {
@@ -236,7 +233,11 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
-                _ if type_engine.look_up_type_id(exp.return_type) == ResolvedType::Unit => (),
+                _ if TYPE_ENGINE.lock().unwrap().look_up_type_id(exp.return_type)
+                    == ResolvedType::Unit =>
+                {
+                    ()
+                }
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),

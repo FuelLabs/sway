@@ -7,7 +7,7 @@ use crate::{
     },
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
-    type_engine::{IntegerBits, TypeEngine, TypeId},
+    type_engine::{IntegerBits, TypeEngine, TypeId, TYPE_ENGINE},
     types::ResolvedType,
     CompileResult, Ident,
 };
@@ -115,14 +115,13 @@ fn test_struct_memory_layout() {
 
 pub(crate) fn get_struct_memory_layout<'sc>(
     fields_with_names: &[(TypeId, &Ident<'sc>)],
-    type_engine: &crate::type_engine::Engine<'sc>,
 ) -> CompileResult<'sc, StructMemoryLayoutDescriptor<'sc>> {
     let mut fields_with_sizes = vec![];
     let warnings = vec![];
     let mut errors = vec![];
     for (field, name) in fields_with_names {
-        let ty = type_engine.look_up_type_id(*field);
-        let stack_size = ty.stack_size_of(type_engine);
+        let ty = TYPE_ENGINE.lock().unwrap().look_up_type_id(*field);
+        let stack_size = ty.stack_size_of();
 
         fields_with_sizes.push(StructFieldMemoryLayoutDescriptor {
             name_of_field: (*name).clone(),
@@ -168,7 +167,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         .map(|TypedStructExpressionField { name, value }| (value.return_type.clone(), name))
         .collect::<Vec<_>>();
     let descriptor = check!(
-        get_struct_memory_layout(&fields_for_layout[..], todo!()),
+        get_struct_memory_layout(&fields_for_layout[..]),
         return err(warnings, errors),
         warnings,
         errors
@@ -217,23 +216,17 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     for TypedStructExpressionField { name, value } in fields {
         // evaluate the expression
         let return_register = register_sequencer.next();
-        let value_stack_size: u64 = todo!(); /*match todo!("type engine here.look_up_type_id(value.return_type)") {
-                                                 MaybeResolvedType::Partial(PartiallyResolvedType::Numeric) => {
-                                                     ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
-                                                         .stack_size_of(todo!("type engine here"))
-                                                 }
-                                                 MaybeResolvedType::Resolved(ref r) => {
-                                                     r.stack_size_of(todo!("use type engine here to find type"))
-                                                 }
-                                                 MaybeResolvedType::Partial(ref p) => {
-                                                     errors.push(CompileError::TypeMustBeKnown {
-                                                         span: value.span.clone(),
-                                                         ty: p.friendly_type_str(),
-                                                     });
-                                                     continue;
-                                                 }
-                                             };
-                                                                             */
+        let value_stack_size: u64 = match TYPE_ENGINE
+            .lock()
+            .unwrap()
+            .resolve(value.return_type, &name.span)
+        {
+            Ok(o) => o.stack_size_of(),
+            Err(e) => {
+                errors.push(e.into());
+                return err(warnings, errors);
+            }
+        };
         let mut field_instantiation = check!(
             convert_expression_to_asm(value, namespace, &return_register, register_sequencer),
             vec![],

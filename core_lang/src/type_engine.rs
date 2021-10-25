@@ -1,12 +1,6 @@
-use crate::{
-    build_config::BuildConfig, error::*, semantic_analysis::ast_node::TypedStructField,
-    semantic_analysis::TypedExpression, types::ResolvedType, CallPath, Ident, Rule, Span,
-};
-use derivative::Derivative;
-use std::collections::HashMap;
-use std::iter::FromIterator;
+use crate::{error::*, types::ResolvedType, Span};
 
-use pest::iterators::Pair;
+use std::iter::FromIterator;
 
 mod engine;
 mod integer_bits;
@@ -69,7 +63,12 @@ pub(crate) trait FriendlyTypeString {
 
 impl FriendlyTypeString for TypeId {
     fn friendly_type_str(&self) -> String {
-        crate::type_engine::TYPE_ENGINE.get_id(self).map(|x| x.friendly_type_str()).unwrap_or_else(|| format!("T{}", self))
+        TYPE_ENGINE
+            .lock()
+            .unwrap()
+            .get_id(self)
+            .map(|x| x.friendly_type_str())
+            .unwrap_or_else(|| format!("T{}", self))
     }
 }
 

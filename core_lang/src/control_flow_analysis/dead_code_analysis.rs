@@ -1,27 +1,21 @@
 use super::*;
 
-use crate::parse_tree::CallPath;
-use crate::semantic_analysis::ast_node::TypedStructExpressionField;
-use crate::span::Span;
-use crate::types::ResolvedType;
 use crate::{
-    parse_tree::Visibility,
-    semantic_analysis::ast_node::{
-        TypedAbiDeclaration, TypedExpressionVariant, TypedReturnStatement, TypedStructDeclaration,
-        TypedTraitDeclaration,
-    },
-    CompileError, Ident, TreeType,
-};
-use crate::{
+    parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
-            TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
-            TypedExpression, TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration,
-            TypedWhileLoop,
+            TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
+            TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
+            TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
+            TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
+            TypedVariableDeclaration, TypedWhileLoop,
         },
         TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
-    CompileWarning, Warning,
+    span::Span,
+    type_engine::{TypeEngine, TypeInfo, TYPE_ENGINE},
+    types::ResolvedType,
+    CompileError, CompileWarning, Ident, TreeType, Warning,
 };
 use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
@@ -552,7 +546,7 @@ fn connect_typed_fn_decl<'sc>(
     fn_decl: &TypedFunctionDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
-    _span: Span<'sc>,
+    span: Span<'sc>,
     exit_node: Option<NodeIndex>,
     tree_type: TreeType,
 ) -> Result<(), CompileError<'sc>> {
@@ -568,10 +562,18 @@ fn connect_typed_fn_decl<'sc>(
         graph.add_edge(fn_exit_node, exit_node, "".into());
     }
 
+    // not sure how correct it is to default to Unit here...
+    // I think types should all be resolved by now.
+    let ty = TYPE_ENGINE
+        .lock()
+        .unwrap()
+        .resolve(fn_decl.return_type, &span)
+        .unwrap_or(ResolvedType::Unit);
+
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
         exit_point: fn_exit_node,
-        return_type: todo!("Run type engine into dead code analysis to look up type ids fn_decl.return_type.clone(),"),
+        return_type: ty,
     };
 
     graph
@@ -824,7 +826,14 @@ fn connect_expression<'sc>(
             resolved_type_of_parent,
             ..
         } => {
-            let resolved_type_of_parent = todo!("engine.look_up_type_id(resolved_type_of_parent);");
+            let ty = TYPE_ENGINE
+                .lock()
+                .unwrap()
+                .resolve(*resolved_type_of_parent, &field_to_access.span)
+                .unwrap_or(ResolvedType::Unit);
+
+            let resolved_type_of_parent = ty;
+
             assert!(matches!(
                 resolved_type_of_parent,
                 ResolvedType::Struct { .. }

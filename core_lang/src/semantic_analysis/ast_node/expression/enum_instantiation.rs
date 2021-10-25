@@ -47,7 +47,7 @@ pub(crate) fn instantiate_enum<'sc>(
     match (&args[..], namespace.look_up_type_id(enum_field_type)) {
         ([], ResolvedType::Unit) => ok(
             TypedExpression {
-                return_type: enum_decl.as_type(namespace),
+                return_type: enum_decl.as_type(),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
@@ -81,7 +81,7 @@ pub(crate) fn instantiate_enum<'sc>(
 
             ok(
                 TypedExpression {
-                    return_type: enum_decl.as_type(namespace),
+                    return_type: enum_decl.as_type(),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),

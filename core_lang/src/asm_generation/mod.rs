@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use crate::type_engine::TypeEngine;
+use crate::type_engine::{TypeEngine, TYPE_ENGINE};
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
     asm_lang::{
@@ -198,7 +198,6 @@ impl<'sc> AbstractInstructionSet<'sc> {
         data_section: &DataSection,
         namespace: &AsmNamespace,
     ) -> RealizedAbstractInstructionSet<'sc> {
-        let engine: crate::type_engine::Engine = todo!("type engine");
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
         for op in &self.ops {
@@ -211,7 +210,7 @@ impl<'sc> AbstractInstructionSet<'sc> {
                     let type_of_data = data_section.type_of_data(data_id).expect(
                         "Internal miscalculation in data section -- data id did not match up to any actual data",
                     );
-                    counter += if type_of_data.stack_size_of(&engine) > 1 {
+                    counter += if type_of_data.stack_size_of() > 1 {
                         2
                     } else {
                         1
@@ -1338,18 +1337,17 @@ fn ret_or_retd_value<'sc>(
     let mut errors = vec![];
     let mut warnings = vec![];
     let mut asm_buf = vec![];
-    let main_func_ret_ty: ResolvedType = todo!(
-        "
-     check!(
-        func.return_type.force_resolution(
-            &MaybeResolvedType::Resolved(ResolvedType::Unit),
-            &func.return_type_span
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );"
-    );
+    let main_func_ret_ty: ResolvedType = match TYPE_ENGINE
+        .lock()
+        .unwrap()
+        .resolve(func.return_type, &func.return_type_span)
+    {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    };
 
     if main_func_ret_ty == ResolvedType::Unit {
         // unit returns should always be zero, although because they can be
@@ -1368,8 +1366,7 @@ fn ret_or_retd_value<'sc>(
         );
     }
 
-    let size_of_main_func_return_bytes =
-        main_func_ret_ty.stack_size_of(todo!("global type engine")) * 8;
+    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of() * 8;
     if size_of_main_func_return_bytes <= 8 {
         asm_buf.push(Op {
             owning_span: None,

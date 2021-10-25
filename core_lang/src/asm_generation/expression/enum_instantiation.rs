@@ -11,6 +11,7 @@ use crate::asm_lang::{
 use crate::{
     error::*,
     semantic_analysis::{ast_node::TypedEnumDeclaration, TypedExpression},
+    type_engine::{TypeEngine, TYPE_ENGINE},
     CompileResult, Ident, Literal,
 };
 
@@ -45,7 +46,18 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
         VirtualRegister::Constant(ConstantRegister::StackPointer),
         "load $sp for enum pointer",
     ));
-    let size_of_enum: u64 = todo!("engine stack size + 1"); // 1 /* tag */ + decl.as_type().stack_size_of();
+    let ty = match TYPE_ENGINE
+        .lock()
+        .unwrap()
+        .resolve(decl.as_type(), &decl.span)
+    {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    };
+    let size_of_enum: u64 = 1 /* tag */ + ty.stack_size_of();
     if size_of_enum > EIGHTEEN_BITS {
         errors.push(CompileError::Unimplemented(
             "Stack variables which exceed 2^18 words in size are not supported yet.",
