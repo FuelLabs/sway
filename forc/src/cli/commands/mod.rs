@@ -6,3 +6,4 @@ pub mod parse_bytecode;
 pub mod run;
 pub mod test;
 pub mod update;
+pub mod abi_spec;
