@@ -1227,7 +1227,7 @@ fn two_regs_imm_12<'sc>(
 }
 
 impl fmt::Display for Op<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use OrganizationalOp::*;
         use VirtualOp::*;
         let op_str = match &self.opcode {
@@ -1329,7 +1329,7 @@ impl fmt::Display for Op<'_> {
             op_and_comment.push_str(&format!("; {}", self.comment))
         }
 
-        write!(f, "{}", op_and_comment)
+        write!(fmtr, "{}", op_and_comment)
     }
 }
 
@@ -1349,10 +1349,10 @@ pub(crate) enum OrganizationalOp {
     DataSectionOffsetPlaceholder,
 }
 impl fmt::Display for OrganizationalOp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use OrganizationalOp::*;
         write!(
-            f,
+            fmtr,
             "{}",
             match self {
                 Label(lab) => format!("{}", lab),
