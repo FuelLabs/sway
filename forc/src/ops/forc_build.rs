@@ -12,8 +12,7 @@ use std::io::Write;
 
 use anyhow::Result;
 use core_lang::{
-    BuildConfig, BytecodeCompilationResult, CompilationResult, LibraryExports,
-    Namespace,
+    BuildConfig, BytecodeCompilationResult, CompilationResult, LibraryExports, Namespace,
 };
 use source_span::fmt::{Color, Formatter};
 use std::collections::{HashMap, HashSet};
