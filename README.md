@@ -48,7 +48,7 @@ cargo run --bin forc -- --help
 To run `forc` from any directory, install `forc` to your local Cargo bin directory:
 
 ```sh
-cargo install --path forc
+cargo install --locked --path forc
 # Also install sway-server if using the IDE plugin
-cargo install --path sway-server
+cargo install --locked --path sway-server
 ```
