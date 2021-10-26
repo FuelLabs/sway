@@ -13,6 +13,7 @@ pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
 mod span;
+pub mod abi_spec;
 
 pub use crate::parse_tree::*;
 pub use crate::parser::{HllParser, Rule};
