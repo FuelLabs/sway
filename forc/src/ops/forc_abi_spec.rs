@@ -37,7 +37,6 @@ pub fn generate_abi_spec(command: AbiSpecCommand) -> Result<Vec<u8>, String> {
         }
     };
     let mut manifest = read_manifest(&manifest_dir)?;
-    let main_path = get_main_path(&manifest, &manifest_dir);
 
     let mut dependency_graph = HashMap::new();
 

@@ -80,6 +80,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         }
     });
 
+    let abi_spec_names = vec![("contract_abi_impl", Ok(vec![]))];
+    abi_spec_names.into_iter().for_each(|(name, res)| {
+        if filter(name) {
+            assert_eq!(crate::e2e_vm_tests::harness::generate_abi_spec(name), res);
+        }
+    });
+
     // ---- Contract Deployments
     // contracts that should be deployed for the following tests to work
     let contract_names = vec!["basic_storage", "increment_contract"];
@@ -92,9 +99,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     // TODO validate that call output is correct
     let project_names = &["call_basic_storage", "call_increment_contract"];
 
-    project_names
-        .into_iter()
-        .for_each(|name| harness::runs_on_node(name));
+    project_names.into_iter().for_each(|name| {
+        if filter(name) {
+            harness::runs_on_node(name)
+        }
+    });
 
     println!("_________________________________\nTests passed.");
 }

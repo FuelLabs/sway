@@ -1,4 +1,7 @@
-use forc::test::{forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, RunCommand};
+use forc::test::{
+    forc_abi_spec, forc_build, forc_deploy, forc_run, AbiSpecCommand, BuildCommand, DeployCommand,
+    RunCommand,
+};
 use fuel_tx::{Input, Output, Transaction};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
@@ -147,6 +150,20 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
         print_finalized_asm: false,
         print_intermediate_asm: false,
         binary_outfile: None,
+        offline_mode: false,
+        silent_mode: false,
+    })
+}
+
+pub(crate) fn generate_abi_spec(file_name: &str) -> Result<Vec<u8>, String> {
+    println!("  ABI spec {}", file_name);
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    forc_abi_spec::generate_abi_spec(AbiSpecCommand {
+        path: Some(format!(
+            "{}/src/e2e_vm_tests/test_programs/{}",
+            manifest_dir, file_name
+        )),
+        json_outfile: None,
         offline_mode: false,
         silent_mode: false,
     })
