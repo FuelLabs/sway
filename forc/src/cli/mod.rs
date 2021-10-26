@@ -1,8 +1,9 @@
 use structopt::StructOpt;
 
 mod commands;
-use self::commands::{build, deploy, format, init, parse_bytecode, run, test, update, abi_spec};
+use self::commands::{abi_spec, build, deploy, format, init, parse_bytecode, run, test, update};
 
+pub use abi_spec::Command as AbiSpecCommand;
 pub use build::Command as BuildCommand;
 pub use deploy::Command as DeployCommand;
 pub use format::Command as FormatCommand;
@@ -11,7 +12,6 @@ use parse_bytecode::Command as ParseBytecodeCommand;
 pub use run::Command as RunCommand;
 use test::Command as TestCommand;
 pub use update::Command as UpdateCommand;
-pub use abi_spec::Command as AbiSpecCommand;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "forc", about = "Fuel Orchestrator")]

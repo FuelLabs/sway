@@ -3,8 +3,8 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_main_file, print_blue_err, println_green_err, println_red_err,
-        println_yellow_err, read_manifest,
+        find_manifest_dir, get_file_name, get_main_file, get_main_path, print_blue_err,
+        println_green_err, println_red_err, println_yellow_err, read_manifest,
     },
 };
 use std::fs::File;
@@ -20,21 +20,23 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
-    // find manifest directory, even if in subdirectory
-    let this_dir = if let Some(ref path) = command.path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir().map_err(|e| format!("{:?}", e))?
-    };
-
     let BuildCommand {
         binary_outfile,
         print_finalized_asm,
         print_intermediate_asm,
         offline_mode,
         silent_mode,
+        path,
         ..
     } = command;
+
+    // find manifest directory, even if in subdirectory
+    let this_dir = if let Some(ref path) = path {
+        PathBuf::from(path)
+    } else {
+        std::env::current_dir().map_err(|e| format!("{:?}", e))?
+    };
+
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -44,67 +46,20 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
             ))
         }
     };
-
     let mut manifest = read_manifest(&manifest_dir)?;
-
-    let main_path = {
-        let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
-        code_dir.push(&manifest.project.entry);
-        code_dir
-    };
-    let mut file_path = manifest_dir.clone();
-    file_path.pop();
-    let file_name = match main_path.strip_prefix(file_path.clone()) {
-        Ok(o) => o,
-        Err(err) => return Err(err.to_string()),
-    };
-
-    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.clone().to_path_buf(),
-        manifest_dir.clone(),
-    )
-    .print_finalized_asm(print_finalized_asm)
-    .print_intermediate_asm(print_intermediate_asm);
+    let main_path = get_main_path(&manifest, &manifest_dir);
+    let file_name = get_file_name(&manifest_dir, &main_path)?;
 
     let mut dependency_graph = HashMap::new();
 
     let mut namespace: Namespace = Default::default();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
-            // Check if dependency is a git-based dependency.
-            let dep = match dependency_details {
-                Dependency::Simple(..) => {
-                    return Err(
-                        "Not yet implemented: Simple version-spec dependencies require a registry."
-                            .into(),
-                    );
-                }
-                Dependency::Detailed(dep_details) => dep_details,
-            };
-
-            // Download a non-local dependency if the `git` property is set in this dependency.
-            if let Some(git) = &dep.git {
-                let downloaded_dep_path = match dependency::download_github_dep(
-                    dependency_name,
-                    git,
-                    &dep.branch,
-                    &dep.version,
-                    offline_mode.into(),
-                ) {
-                    Ok(path) => path,
-                    Err(e) => {
-                        return Err(format!(
-                            "Couldn't download dependency ({:?}): {:?}",
-                            dependency_name, e
-                        ))
-                    }
-                };
-
-                // Mutate this dependency's path to hold the newly downloaded dependency's path.
-                dep.path = Some(downloaded_dep_path);
-            }
-
+            dependency::resolve_dependency(
+                dependency_name.clone(),
+                dependency_details,
+                offline_mode,
+            )?;
             compile_dependency_lib(
                 &this_dir,
                 &dependency_name,
@@ -119,6 +74,13 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
 
+    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+        file_name.clone().to_path_buf(),
+        manifest_dir.clone(),
+    )
+    .print_finalized_asm(print_finalized_asm)
+    .print_intermediate_asm(print_intermediate_asm);
+
     let main = compile(
         main_file,
         &manifest.project.name,
@@ -127,6 +89,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         &mut dependency_graph,
         silent_mode,
     )?;
+
     if let Some(outfile) = binary_outfile {
         let mut file = File::create(outfile).map_err(|e| e.to_string())?;
         file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
@@ -178,24 +141,9 @@ fn compile_dependency_lib<'source, 'manifest>(
     };
 
     let manifest_of_dep = read_manifest(&manifest_dir)?;
+    let main_path = get_main_path(&manifest_of_dep, &manifest_dir);
+    let file_name = get_file_name(&manifest_dir, &main_path)?;
 
-    let main_path = {
-        let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
-        code_dir.push(&manifest_of_dep.project.entry);
-        code_dir
-    };
-    let mut file_path = manifest_dir.clone();
-    file_path.pop();
-    let file_name = match main_path.strip_prefix(file_path.clone()) {
-        Ok(o) => o,
-        Err(err) => return Err(err.to_string()),
-    };
-
-    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.clone().to_path_buf(),
-        manifest_dir.clone(),
-    );
     let mut dep_namespace = namespace.clone();
 
     // The part below here is just a massive shortcut to get the standard library working
@@ -217,6 +165,11 @@ fn compile_dependency_lib<'source, 'manifest>(
     }
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
+
+    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+        file_name.clone().to_path_buf(),
+        manifest_dir.clone(),
+    );
 
     let compiled = compile_library(
         main_file,

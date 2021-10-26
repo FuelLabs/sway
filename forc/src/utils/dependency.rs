@@ -411,3 +411,43 @@ pub async fn get_github_repo_releases(dependency_url: &str) -> Result<Vec<String
 
     Ok(semver_releases)
 }
+
+pub fn resolve_dependency(
+    dependency_name: String,
+    dependency_details: &mut Dependency,
+    offline_mode: bool,
+) -> Result<(), String> {
+    // Check if dependency is a git-based dependency.
+    let dep = match dependency_details {
+        Dependency::Simple(..) => {
+            return Err(
+                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
+            );
+        }
+        Dependency::Detailed(dep_details) => dep_details,
+    };
+
+    // Download a non-local dependency if the `git` property is set in this dependency.
+    if let Some(git) = &dep.git {
+        let downloaded_dep_path = match download_github_dep(
+            &dependency_name,
+            git,
+            &dep.branch,
+            &dep.version,
+            offline_mode.into(),
+        ) {
+            Ok(path) => path,
+            Err(e) => {
+                return Err(format!(
+                    "Couldn't download dependency ({:?}): {:?}",
+                    dependency_name, e
+                ))
+            }
+        };
+
+        // Mutate this dependency's path to hold the newly downloaded dependency's path.
+        dep.path = Some(downloaded_dep_path);
+    }
+
+    Ok(())
+}

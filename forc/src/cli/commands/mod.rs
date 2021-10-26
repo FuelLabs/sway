@@ -1,3 +1,4 @@
+pub mod abi_spec;
 pub mod build;
 pub mod deploy;
 pub mod format;
@@ -6,4 +7,3 @@ pub mod parse_bytecode;
 pub mod run;
 pub mod test;
 pub mod update;
-pub mod abi_spec;

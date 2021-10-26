@@ -93,6 +93,25 @@ pub fn get_main_file(
     return Ok(main_file);
 }
 
+pub fn get_main_path<'sc>(manifest: &Manifest, manifest_dir: &PathBuf) -> PathBuf {
+    let mut code_dir = manifest_dir.clone();
+    code_dir.push(crate::utils::constants::SRC_DIR);
+    code_dir.push(&manifest.project.entry);
+    code_dir
+}
+
+pub fn get_file_name<'sc>(
+    manifest_dir: &PathBuf,
+    main_path: &'sc PathBuf,
+) -> Result<&'sc Path, String> {
+    let mut file_path = manifest_dir.clone();
+    file_path.pop();
+    match main_path.strip_prefix(file_path.clone()) {
+        Ok(o) => Ok(o.clone()),
+        Err(err) => Err(err.to_string()),
+    }
+}
+
 pub fn println_red(txt: &str) -> io::Result<()> {
     println_std_out(txt, TermColor::Red)
 }
