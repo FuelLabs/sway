@@ -1,6 +1,6 @@
 [
     {
-        "type": "contract",
+        "type": "function",
         "inputs": [
             {
                 "name": "arg",

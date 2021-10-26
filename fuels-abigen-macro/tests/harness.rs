@@ -43,7 +43,7 @@ fn compile_bindings_from_inline_contract() {
         r#"
         [
             {
-                "type": "contract",
+                "type": "function",
                 "inputs": [
                     {
                         "name": "arg",
@@ -87,7 +87,7 @@ fn compile_bindings_single_param() {
         r#"
         [
             {
-                "type": "contract",
+                "type": "function",
                 "inputs": [
                     {
                         "name": "arg",

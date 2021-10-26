@@ -53,4 +53,4 @@ fn compile_bindings_from_inline_contract() {
 }
 ```
 
-This example and many more can be found under `tests/harness.rs`.
+This example and many more can be found under `tests/harness.rs`. To run the whole test suite run `cargo test` inside `fuels-abi-gen-macro/`.
