@@ -194,8 +194,8 @@ pub enum Warning<'sc> {
         name: &'sc str,
     },
     LossOfPrecision {
-        initial_type: MaybeResolvedType<'sc>,
-        cast_to: MaybeResolvedType<'sc>,
+        initial_type: Box<MaybeResolvedType<'sc>>,
+        cast_to: Box<MaybeResolvedType<'sc>>,
     },
     UnusedReturnValue {
         r#type: MaybeResolvedType<'sc>,

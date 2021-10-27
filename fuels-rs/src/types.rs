@@ -1,45 +1,20 @@
+use crate::errors::Error;
+use crate::tokens::Token;
+use anyhow::Result;
 use fuel_types::bytes::padded_len;
 use fuel_types::Word;
+use proc_macro2::TokenStream;
+use quote::quote;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter, Result};
 use strum_macros::{EnumString, ToString};
 
 pub type ByteArray = [u8; 8];
-pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
-
+pub type Selector = ByteArray;
 pub type Bits256 = [u8; 32];
 pub type EnumSelector = (u8, Token);
+pub const WORD_SIZE: usize = core::mem::size_of::<Word>();
 
-// Sway types
-#[derive(Debug, Clone, PartialEq, EnumString)]
-#[strum(ascii_case_insensitive)]
-pub enum Token {
-    U8(u8),
-    U16(u16),
-    U32(u32),
-    U64(u64),
-    Bool(bool),
-    Byte(u8),
-    B256(Bits256),
-    Array(Vec<Token>),
-    String(String),
-    Struct(Vec<Token>),
-    Enum(Box<EnumSelector>),
-}
-
-impl Display for Token {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl<'a> Default for Token {
-    fn default() -> Self {
-        Token::U8(0)
-    }
-}
-
-#[derive(Debug, Clone, EnumString, ToString)]
+#[derive(Debug, Clone, EnumString, ToString, PartialEq, Eq)]
 #[strum(ascii_case_insensitive)]
 pub enum ParamType {
     U8,
@@ -66,11 +41,11 @@ impl Default for ParamType {
     }
 }
 
-pub type JsonABI = Vec<Entry>;
+pub type JsonABI = Vec<Function>;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Entry {
+pub struct Function {
     #[serde(rename = "type")]
     pub type_field: String,
     pub inputs: Vec<Property>,
@@ -85,6 +60,44 @@ pub struct Property {
     #[serde(rename = "type")]
     pub type_field: String,
     pub components: Option<Vec<Property>>, // Used for custom types
+}
+
+/// Expands a [`ParamType`] into a TokenStream.
+/// Used to expand functions when generating type-safe bindings of a JSON ABI.
+pub fn expand_type(kind: &ParamType) -> Result<TokenStream, Error> {
+    match kind {
+        ParamType::U8 | ParamType::Byte => Ok(quote! { u8 }),
+        ParamType::U16 => Ok(quote! { u16 }),
+        ParamType::U32 => Ok(quote! { u32 }),
+        ParamType::U64 => Ok(quote! { u64 }),
+        ParamType::Bool => Ok(quote! { bool }),
+        ParamType::B256 => Ok(quote! { [u8; 32] }),
+        ParamType::String(_) => Ok(quote! { String }),
+        ParamType::Array(t, size) => {
+            let inner = expand_type(t)?;
+            Ok(quote! { [#inner; #size] })
+        }
+        ParamType::Struct(members) => {
+            if members.is_empty() {
+                return Err(Error::InvalidData);
+            }
+            let members = members
+                .iter()
+                .map(|member| expand_type(member))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(quote! { (#(#members,)*) })
+        }
+        ParamType::Enum(members) => {
+            if members.is_empty() {
+                return Err(Error::InvalidData);
+            }
+            let members = members
+                .iter()
+                .map(|member| expand_type(member))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(quote! { (#(#members,)*) })
+        }
+    }
 }
 
 /// Converts a u8 to a right aligned array of 8 bytes.

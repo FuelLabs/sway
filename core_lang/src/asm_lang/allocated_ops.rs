@@ -28,11 +28,11 @@ pub enum AllocatedRegister {
 }
 
 impl fmt::Display for AllocatedRegister {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AllocatedRegister::Allocated(name) => write!(f, "$r{}", name),
+            AllocatedRegister::Allocated(name) => write!(fmtr, "$r{}", name),
             AllocatedRegister::Constant(name) => {
-                write!(f, "{}", name)
+                write!(fmtr, "{}", name)
             }
         }
     }
@@ -150,6 +150,7 @@ pub(crate) enum AllocatedOpcode {
     S256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     NOOP,
     FLAG(AllocatedRegister),
+    GM(AllocatedRegister, VirtualImmediate18),
     Undefined,
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
@@ -164,7 +165,7 @@ pub(crate) struct AllocatedOp<'sc> {
 }
 
 impl<'sc> fmt::Display for AllocatedOp<'sc> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use AllocatedOpcode::*;
         #[rustfmt::skip]
         let string = match &self.opcode {
@@ -239,6 +240,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             S256(a, b, c)   => format!("s256 {} {} {}", a, b, c),
             NOOP            => "noop".to_string(),
             FLAG(a)         => format!("flag {}", a),
+            GM(a, b)         => format!("gm {} {}", a, b),
             Undefined       => format!("undefined op"),
             DataSectionOffsetPlaceholder => "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]".into(),
             DataSectionRegisterLoadPlaceholder => "lw   $ds $is 1".into()
@@ -253,7 +255,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             op_and_comment.push_str(&format!("; {}", self.comment))
         }
 
-        write!(f, "{}", op_and_comment)
+        write!(fmtr, "{}", op_and_comment)
     }
 }
 
@@ -339,6 +341,7 @@ impl<'sc> AllocatedOp<'sc> {
             S256(a, b, c)   => VmOp::S256(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             NOOP            => VmOp::NOOP,
             FLAG(a)         => VmOp::FLAG(a.to_register_id()),
+            GM(a, b)         => VmOp::GM(a.to_register_id(), b.value),
             Undefined       => VmOp::Undefined,
             DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes()),
             DataSectionRegisterLoadPlaceholder => VmOp::LW(crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as fuel_asm::RegisterId, ConstantRegister::InstructionStart.to_register_id(), 1),

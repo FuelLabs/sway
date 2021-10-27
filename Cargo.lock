@@ -1256,8 +1256,9 @@ dependencies = [
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#a30a54d47aa903135c63f350feb322e04fe40b5d"
+source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#27bb2a056d8762dc1579817bcf4784295c707f54"
 dependencies = [
+ "fuel-types",
  "serde",
 ]
 
@@ -1320,6 +1321,9 @@ dependencies = [
 name = "fuel-types"
 version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-types.git#565ac6a25343e487faf10c13c42fb5168f92b087"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "fuel-vm"
@@ -1336,9 +1340,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuels-abigen-macro"
+version = "0.1.0"
+dependencies = [
+ "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "anyhow",
+ "blake2",
+ "bytes 1.1.0",
+ "fuel-types",
+ "fuels-rs",
+ "glob",
+ "hex",
+ "itertools",
+ "proc-macro2 1.0.28",
+ "quote 1.0.9",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "strum",
+ "strum_macros",
+ "syn 1.0.75",
+ "thiserror",
+]
+
+[[package]]
 name = "fuels-rs"
 version = "0.1.0"
 dependencies = [
+ "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "anyhow",
  "blake2",
  "bytes 1.1.0",
@@ -1346,13 +1376,17 @@ dependencies = [
  "glob",
  "hex",
  "itertools",
+ "proc-macro2 1.0.28",
+ "quote 1.0.9",
  "regex",
  "serde",
  "serde_json",
  "sha2",
  "strum",
  "strum_macros",
+ "syn 1.0.75",
  "thiserror",
+ "url",
 ]
 
 [[package]]
