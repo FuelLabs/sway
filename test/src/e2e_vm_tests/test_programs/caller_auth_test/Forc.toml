@@ -1,0 +1,8 @@
+[project]
+author  = "alex"
+license = "MIT"
+name = "caller_auth_test"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../stdlib" }
