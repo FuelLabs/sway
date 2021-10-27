@@ -1,5 +1,6 @@
 use super::constants::{SRC_DIR, SWAY_EXTENSION};
 use super::manifest::Manifest;
+use source_span::fmt::{Color, Formatter};
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -170,4 +171,20 @@ fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io
     writeln!(&mut stream, "{}", txt)?;
     stream.reset()?;
     Ok(())
+}
+
+pub fn format_err(err: &core_lang::CompileError) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = err.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", err.path());
+    println!("{}", formatted);
+}
+
+pub fn format_warning(warning: &core_lang::CompileWarning) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = warning.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", warning.path());
+    println!("{}", formatted);
 }

@@ -2,7 +2,10 @@ use crate::utils::dependency::{Dependency, DependencyDetails};
 use crate::{
     cli::AbiSpecCommand,
     utils::dependency,
-    utils::helpers::{find_manifest_dir, get_main_file, read_manifest},
+    utils::helpers::{
+        find_manifest_dir, format_err, format_warning, get_main_file, println_red_err,
+        read_manifest,
+    },
 };
 
 use core_lang::Namespace;
@@ -129,7 +132,6 @@ fn generate_abi_spec_lib<'source, 'manifest>(
     }
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
-
     let compiled = generate_abi_spec_library(
         main_file,
         &manifest_of_dep.project.name,
@@ -137,8 +139,10 @@ fn generate_abi_spec_lib<'source, 'manifest>(
         dependency_graph,
         silent_mode,
     )?;
-
-    namespace.insert_dependency_module(dependency_name.to_string(), /*compiled.namespace*/ todo!());
+    namespace.insert_dependency_module(
+        dependency_name.to_string(),
+        /*compiled.namespace*/ todo!(),
+    );
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     //Ok(())
@@ -163,7 +167,24 @@ fn generate_abi_spec_library<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::abi_spec::generate_abi_spec();
+    let res = core_lang::generate_abi_spec(source);
+    match res {
+        core_lang::ABIJSONResult::Failure { errors, warnings } => {
+            let e_len = errors.len();
 
-    unimplemented!()
+            if !silent_mode {
+                warnings.iter().for_each(|warning| format_warning(warning));
+                errors.into_iter().for_each(|error| format_err(&error));
+            }
+
+            println_red_err(&format!(
+                "  Aborting due to {} {}.",
+                e_len,
+                if e_len > 1 { "errors" } else { "error" }
+            ))
+            .unwrap();
+            Err(format!("Failed to compile {}", proj_name))
+        }
+        _ => unimplemented!(),
+    }
 }

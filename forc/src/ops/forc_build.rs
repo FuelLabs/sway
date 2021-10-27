@@ -3,8 +3,8 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_file_name, get_main_file, get_main_path, print_blue_err,
-        println_green_err, println_red_err, println_yellow_err, read_manifest,
+        find_manifest_dir, format_err, format_warning, get_file_name, get_main_file, get_main_path,
+        print_blue_err, println_green_err, println_red_err, println_yellow_err, read_manifest,
     },
 };
 use std::fs::File;
@@ -15,7 +15,6 @@ use core_lang::{
     BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
     Namespace,
 };
-use source_span::fmt::{Color, Formatter};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
@@ -240,22 +239,6 @@ fn compile_library<'source, 'manifest>(
             ))
         }
     }
-}
-
-fn format_err(err: &core_lang::CompileError) {
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-    let formatted = err.format(&mut fmt);
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
-}
-
-fn format_warning(warning: &core_lang::CompileWarning) {
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-    let formatted = warning.format(&mut fmt);
-    print_blue_err(" --> ").unwrap();
-    print!("{}", warning.path());
-    println!("{}", formatted);
 }
 
 fn compile<'source, 'manifest>(

@@ -776,6 +776,7 @@ dependencies = [
  "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
  "pest_derive",
  "petgraph",
+ "serde_json",
  "sha2",
  "source-span",
  "structopt 0.3.22",
