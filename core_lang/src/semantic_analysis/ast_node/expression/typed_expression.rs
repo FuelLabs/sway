@@ -2,7 +2,7 @@ use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
-use crate::type_engine::{IntegerBits, TypeEngine};
+use crate::type_engine::{IntegerBits, TypeEngine, TYPE_ENGINE};
 use crate::types::ResolvedType;
 use either::Either;
 
@@ -39,7 +39,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Self> {
-        let engine: crate::type_engine::Engine = todo!("global engine");
         let expr_span = other.span();
         let res = match other {
             Expression::Literal { value: lit, span } => {
@@ -211,7 +210,7 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = res.errors;
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
-            match engine.unify_with_self(
+            match TYPE_ENGINE.lock().unwrap().unify_with_self(
                 typed_expression.return_type,
                 type_annotation,
                 self_type,
@@ -251,8 +250,7 @@ impl<'sc> TypedExpression<'sc> {
             Literal::Byte(_) => TypeInfo::Byte,
             Literal::B256(_) => TypeInfo::B256,
         };
-        let engine: crate::type_engine::Engine = todo!("global engine");
-        let id = engine.insert(return_type);
+        let id = TYPE_ENGINE.lock().unwrap().insert(return_type);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::Literal(lit),
             return_type: id,
@@ -427,10 +425,9 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
-        let engine: crate::type_engine::Engine = todo!("engine");
         let mut warnings = vec![];
         let mut errors = vec![];
-        let bool_type_id = engine.insert(TypeInfo::Boolean);
+        let bool_type_id = TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Boolean);
         let typed_lhs = check!(
             TypedExpression::type_check(
                 lhs.clone(),
@@ -546,12 +543,12 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let mut engine: crate::type_engine::Engine = todo!("global engine");
         let (typed_block, block_return_type) = check!(
             TypedCodeBlock::type_check(
                 contents.clone(),
                 namespace,
-                type_annotation.unwrap_or_else(|| engine.insert(TypeInfo::Unknown)),
+                type_annotation
+                    .unwrap_or_else(|| TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown)),
                 help_text.clone(),
                 self_type,
                 build_config,
@@ -562,7 +559,7 @@ impl<'sc> TypedExpression<'sc> {
                     contents: vec![],
                     whole_block_span: span.clone()
                 },
-                engine.insert(TypeInfo::Unit)
+                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit)
             ),
             warnings,
             errors
@@ -574,9 +571,9 @@ impl<'sc> TypedExpression<'sc> {
                         span: span.clone(),
                         ty: namespace.look_up_type_id(*ty).friendly_type_str(),
                     });
-                    engine.insert(TypeInfo::ErrorRecovery)
+                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::ErrorRecovery)
                 }
-                _ => engine.insert(TypeInfo::Unit),
+                _ => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit),
             },
             otherwise => block_return_type,
         };
@@ -605,13 +602,12 @@ impl<'sc> TypedExpression<'sc> {
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
-        let engine: crate::type_engine::Engine = todo!("global engine");
         let mut errors = vec![];
         let condition = Box::new(check!(
             TypedExpression::type_check(
                 *condition.clone(),
                 namespace,
-                Some(engine.insert(TypeInfo::Boolean)),
+                Some(TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Boolean)),
                 "The condition of an if expression must be a boolean expression.",
                 self_type,
                 build_config,
@@ -768,7 +764,6 @@ impl<'sc> TypedExpression<'sc> {
             }
         };
 
-        let engine: crate::type_engine::Engine = todo!("global engine");
         // match up the names with their type annotations from the declaration
         for def_field in definition.fields.iter() {
             let expr_field: crate::parse_tree::StructExpressionField =
@@ -784,7 +779,10 @@ impl<'sc> TypedExpression<'sc> {
                             name: def_field.name.clone(),
                             value: TypedExpression {
                                 expression: TypedExpressionVariant::Unit,
-                                return_type: engine.insert(TypeInfo::ErrorRecovery),
+                                return_type: TYPE_ENGINE
+                                    .lock()
+                                    .unwrap()
+                                    .insert(TypeInfo::ErrorRecovery),
                                 is_constant: IsConstant::No,
                                 span: span.clone(),
                             },
@@ -825,10 +823,13 @@ impl<'sc> TypedExpression<'sc> {
                 });
             }
         }
-        let engine: crate::type_engine::Engine = todo!("global engine");
-        let struct_type_id = engine.insert(TypeInfo::Struct {
-            name: definition.name.clone(),
-            fields: definition.fields.clone(),
+        let struct_type_id = TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Struct {
+            name: definition.name.primary_name.to_string(),
+            fields: definition
+                .fields
+                .iter()
+                .map(|TypedStructField { r#type, .. }| *r#type)
+                .collect(),
         });
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
@@ -913,7 +914,7 @@ impl<'sc> TypedExpression<'sc> {
         call_path: CallPath<'sc>,
         span: Span<'sc>,
         args: Vec<Expression<'sc>>,
-        type_arguments: Vec<TypeInfo<'sc>>,
+        type_arguments: Vec<TypeInfo>,
         namespace: &mut Namespace<'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -942,7 +943,6 @@ impl<'sc> TypedExpression<'sc> {
             namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
         };
 
-        let engine: crate::type_engine::Engine = todo!("global engine");
         // now we can see if this thing is a symbol (typed declaration) or reference to an
         // enum instantiation
         let this_thing: Either<TypedDeclaration, TypedExpression> =
@@ -955,7 +955,7 @@ impl<'sc> TypedExpression<'sc> {
                     Some(decl) => Either::Left(decl),
                     None => {
                         errors.push(CompileError::SymbolNotFound {
-                            name: call_path.suffix.primary_name,
+                            name: call_path.suffix.primary_name.to_string(),
                             span: call_path.suffix.span.clone(),
                         });
                         return err(warnings, errors);
@@ -979,7 +979,7 @@ impl<'sc> TypedExpression<'sc> {
                 (None, None) => {
                     errors.push(CompileError::SymbolNotFound {
                         span,
-                        name: call_path.suffix.primary_name,
+                        name: call_path.suffix.primary_name.to_string(),
                     });
                     return err(warnings, errors);
                 }
@@ -1013,12 +1013,11 @@ impl<'sc> TypedExpression<'sc> {
         // TODO use stdlib's Address type instead of b256
         // type check the address and make sure it is
         let err_span = address.span();
-        let engine: crate::type_engine::Engine = todo!("global engine");
         let address = check!(
             TypedExpression::type_check(
                 *address,
                 namespace,
-                Some(engine.insert(TypeInfo::B256)),
+                Some(TYPE_ENGINE.lock().unwrap().insert(TypeInfo::B256)),
                 "An address that is being ABI cast must be of type b256",
                 self_type,
                 build_config,
@@ -1046,10 +1045,12 @@ impl<'sc> TypedExpression<'sc> {
                 return err(warnings, errors);
             }
         };
-        let return_type = engine.insert(TypeInfo::ContractCaller {
-            abi_name: abi_name.clone(),
-            address: Box::new(address.clone()),
-        });
+        let return_type = TYPE_ENGINE
+            .lock()
+            .unwrap()
+            .insert(TypeInfo::ContractCaller {
+                abi_name: abi_name.to_owned_call_path(),
+            });
         let mut functions_buf = abi
             .interface_surface
             .iter()
@@ -1063,9 +1064,9 @@ impl<'sc> TypedExpression<'sc> {
                 TypedFunctionDeclaration::type_check(
                     method.clone(),
                     namespace,
-                    engine.insert(TypeInfo::Unknown),
+                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
                     "",
-                    engine.insert(TypeInfo::Contract),
+                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                     Mode::ImplAbiFn
@@ -1099,8 +1100,12 @@ impl<'sc> TypedExpression<'sc> {
     pub(crate) fn pretty_print(&self) -> String {
         format!(
             "{} ({})",
-            self.expression.pretty_print(todo!("global engine")),
-            todo!("lazy static type engine") //engine.look_up_type_id(self.return_type).friendly_type_str()
+            self.expression.pretty_print(),
+            TYPE_ENGINE
+                .lock()
+                .unwrap()
+                .look_up_type_id(self.return_type)
+                .friendly_type_str()
         )
     }
 }

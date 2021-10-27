@@ -11,7 +11,7 @@ use std::iter::FromIterator;
 use std::sync::Mutex;
 
 lazy_static! {
-    pub(crate) static ref TYPE_ENGINE: Mutex<Engine<'static>> = Default::default();
+    pub(crate) static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
 }
 
 // Workaround until we use an arena for spans
@@ -46,24 +46,24 @@ impl crate::Ident<'_> {
     }
 }
 #[derive(Default, Clone, Debug)]
-pub(crate) struct Engine<'sc> {
+pub(crate) struct Engine {
     id_counter: usize, // Used to generate unique IDs
-    vars: HashMap<TypeId, TypeInfo<'sc>>,
+    vars: HashMap<TypeId, TypeInfo>,
 }
 
-impl Engine<'_> {
+impl Engine {
     pub(crate) fn get_id(&self, id: &TypeId) -> Option<&TypeInfo> {
         self.vars.get(id)
     }
 }
 
-impl<'sc> TypeEngine<'sc> for Engine<'sc> {
+impl<'sc> TypeEngine<'sc> for Engine {
     type TypeId = usize;
-    type TypeInfo = TypeInfo<'sc>;
+    type TypeInfo = TypeInfo;
     type ResolvedType = ResolvedType<'sc>;
     type Error = TypeError<'sc>;
     /// Create a new type term with whatever we have about its type
-    fn insert(&mut self, info: TypeInfo<'sc>) -> TypeId {
+    fn insert(&mut self, info: TypeInfo) -> TypeId {
         // Generate a new ID for our type term
         self.id_counter += 1;
         let id = self.id_counter;

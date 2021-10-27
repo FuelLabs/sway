@@ -23,7 +23,7 @@ pub enum TypedDeclaration<'sc> {
         trait_name: CallPath<'sc>,
         span: Span<'sc>,
         methods: Vec<TypedFunctionDeclaration<'sc>>,
-        type_implementing_for: TypeInfo<'sc>,
+        type_implementing_for: TypeInfo,
     },
     AbiDeclaration(TypedAbiDeclaration<'sc>),
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
@@ -50,7 +50,6 @@ impl<'sc> TypedDeclaration<'sc> {
         }
     }
     pub(crate) fn return_type(&self) -> CompileResult<'sc, TypeId> {
-        let engine: crate::type_engine::Engine = todo!("global engine");
         ok(
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -69,9 +68,12 @@ impl<'sc> TypedDeclaration<'sc> {
                     name,
                     fields,
                     ..
-                }) => engine.insert(TypeInfo::Struct {
-                    name: name.clone(),
-                    fields: fields.clone(),
+                }) => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Struct {
+                    name: name.primary_name.to_string(),
+                    fields: fields
+                        .iter()
+                        .map(|TypedStructField { r#type, .. }| *r#type)
+                        .collect(),
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
                     rhs.return_type.clone()
@@ -198,7 +200,7 @@ impl TypedEnumDeclaration<'_> {
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
         TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Enum {
-            name: self.clone().name.staticify(),
+            name: self.name.primary_name.to_string(),
             variant_types: self.variants.iter().map(|x| x.r#type.clone()).collect(),
         })
     }
@@ -605,7 +607,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             })
             .collect();
         for (stmt, span) in return_statements {
-            match namespace.type_engine.unify_with_self(
+            match TYPE_ENGINE.lock().unwrap().unify_with_self(
                 stmt.return_type,
                 return_type,
                 self_type,

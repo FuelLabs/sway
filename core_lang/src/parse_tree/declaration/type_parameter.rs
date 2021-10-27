@@ -6,7 +6,7 @@ use pest::iterators::Pair;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TypeParameter<'sc> {
-    pub(crate) name: TypeInfo<'sc>,
+    pub(crate) name: TypeInfo,
     pub(crate) name_ident: Ident<'sc>,
     pub(crate) trait_constraints: Vec<TraitConstraint<'sc>>,
 }

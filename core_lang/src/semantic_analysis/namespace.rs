@@ -3,7 +3,7 @@ use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{Engine, TypeEngine, TypeId};
+use crate::type_engine::{Engine, TypeEngine, TypeId, TYPE_ENGINE};
 use crate::types::ResolvedType;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
@@ -24,48 +24,46 @@ pub struct Namespace<'sc> {
     /// namespace _is_ the root namespace.
     pub(crate) crate_namespace: Box<Option<Namespace<'sc>>>,
 
-    pub(crate) type_engine: Engine<'sc>,
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
 }
 
 impl<'sc> Namespace<'sc> {
     pub(crate) fn look_up_type_id(&self, id: TypeId) -> ResolvedType<'sc> {
-        self.type_engine.look_up_type_id(id)
+        TYPE_ENGINE.lock().unwrap().look_up_type_id(id)
     }
-    pub(crate) fn insert_type(&mut self, ty: TypeInfo<'sc>) -> TypeId {
-        self.type_engine.insert(ty)
+    pub(crate) fn insert_type(&mut self, ty: TypeInfo) -> TypeId {
+        TYPE_ENGINE.lock().unwrap().insert(ty)
     }
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
     ///
     ///
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
-    pub(crate) fn resolve_type_with_self(
-        &mut self,
-        ty: TypeInfo<'sc>,
-        self_type: TypeId,
-    ) -> TypeId {
+    pub(crate) fn resolve_type_with_self(&mut self, ty: TypeInfo, self_type: TypeId) -> TypeId {
         todo!(
             "still do the custom type to enum/struct type thing, but then\
         use type IDs for the rest of it. do the self thing too."
         );
         let ty = ty.clone();
         match ty {
-            TypeInfo::Custom { name } => match self.get_symbol(&name) {
+            TypeInfo::Custom { name } => match self.get_symbol_by_str(&name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,
                     ..
                 })) => self.insert_type(TypeInfo::Struct {
-                    name: name.clone(),
-                    fields: fields.clone(),
+                    name: name.primary_name.to_string(),
+                    fields: fields
+                        .iter()
+                        .map(|TypedStructField { r#type, .. }| *r#type)
+                        .collect(),
                 }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                     name,
                     variants,
                     ..
                 })) => self.insert_type(TypeInfo::Enum {
-                    name: name.clone(),
+                    name: name.primary_name.to_string(),
                     variant_types: variants.iter().map(|x| x.r#type).collect(),
                 }),
                 Some(_) => todo!(),
@@ -79,7 +77,7 @@ impl<'sc> Namespace<'sc> {
 
     /// Used to resolve a type when there is no known self type. This is needed
     /// when declaring new self types.
-    pub(crate) fn resolve_type_without_self(&self, ty: &TypeInfo<'sc>) -> TypeInfo<'sc> {
+    pub(crate) fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeInfo {
         todo!("return typeinfo here")
         /*
         let ty = ty.clone();
@@ -159,7 +157,7 @@ impl<'sc> Namespace<'sc> {
             }
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: item.primary_name,
+                    name: item.primary_name.to_string(),
                     span: item.span.clone(),
                 });
                 return err(warnings, errors);
@@ -199,6 +197,23 @@ impl<'sc> Namespace<'sc> {
         }
         self.symbols.insert(name.clone(), item.clone());
         ok((), warnings, vec![])
+    }
+
+    // TODO remove this and switch to spans when we have arena spans
+    pub(crate) fn get_symbol_by_str(&self, symbol: &str) -> Option<&TypedDeclaration<'sc>> {
+        let empty = vec![];
+        let path = self
+            .use_synonyms
+            .iter()
+            .find_map(|(name, value)| {
+                if name.primary_name == symbol {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(&empty);
+        self.get_name_from_path_str(path, symbol).value
     }
 
     pub(crate) fn get_symbol(&self, symbol: &Ident<'sc>) -> Option<&TypedDeclaration<'sc>> {
@@ -244,8 +259,47 @@ impl<'sc> Namespace<'sc> {
             Some(decl) => ok(decl, warnings, errors),
             None => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: name.primary_name,
+                    name: name.primary_name.to_string(),
                     span: name.span.clone(),
+                });
+                err(warnings, errors)
+            }
+        }
+    }
+
+    // TODO remove this when typeinfo uses spans
+    fn get_name_from_path_str(
+        &self,
+        path: &[Ident<'sc>],
+        name: &str,
+    ) -> CompileResult<'sc, &TypedDeclaration<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let module = check!(
+            self.find_module(path, false),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        match module.get_symbol_by_str(name) {
+            Some(decl) => ok(decl, warnings, errors),
+            None => {
+                let span = match path.get(0) {
+                    Some(ident) => ident.span.clone(),
+                    None => {
+                        errors.push(CompileError::Internal("Unable to construct span. This is a temporary error and will be fixed in a future release. )", Span { span: pest::Span::new(" ", 0, 0).unwrap(),
+                                path: None
+                            }));
+                        Span {
+                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            path: None,
+                        }
+                    }
+                };
+                errors.push(CompileError::SymbolNotFound {
+                    name: name.to_string(),
+                    span,
                 });
                 err(warnings, errors)
             }

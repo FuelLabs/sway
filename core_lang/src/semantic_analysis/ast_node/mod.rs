@@ -74,7 +74,7 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
 }
 
 impl<'sc> TypedAstNode<'sc> {
-    fn type_info(&self, namespace: &Namespace<'sc>) -> TypeInfo<'sc> {
+    fn type_info(&self, namespace: &Namespace<'sc>) -> TypeInfo {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
@@ -102,7 +102,7 @@ impl<'sc> TypedAstNode<'sc> {
         let mut engine: crate::type_engine::Engine = todo!("global engine");
 
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |type_ascription: TypeInfo<'sc>, value, decl_str| {
+        let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
             let type_id = engine.insert(type_ascription);
             TypedExpression::type_check(
                 value,
@@ -923,7 +923,7 @@ fn type_check_trait_methods<'sc>(
         let mut generic_params_buf_for_error_message = Vec::new();
         for param in parameters.iter() {
             if let TypeInfo::Custom { ref name } = param.r#type {
-                generic_params_buf_for_error_message.push(name.primary_name);
+                generic_params_buf_for_error_message.push(name.to_string());
             }
         }
         let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
@@ -948,7 +948,7 @@ fn type_check_trait_methods<'sc>(
                              name: this_name, ..
                          }| {
                             if let TypeInfo::Custom { name: this_name } = this_name {
-                                this_name.primary_name == name.primary_name
+                                this_name == name
                             } else {
                                 false
                             }
@@ -957,7 +957,7 @@ fn type_check_trait_methods<'sc>(
                     .is_none()
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: name.primary_name,
+                        name: name.to_string(),
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
                         fn_name: fn_name.primary_name,

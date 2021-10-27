@@ -165,7 +165,7 @@ pub enum Warning<'sc> {
         cast_to: IntegerBits,
     },
     UnusedReturnValue {
-        r#type: TypeInfo<'sc>,
+        r#type: TypeInfo,
     },
     SimilarMethodFound {
         lib: &'sc str,
@@ -401,7 +401,7 @@ pub enum CompileError<'sc> {
          {fn_name}<{comma_separated_generic_params}>({args}) -> ... `"
     )]
     TypeParameterNotInTypeScope {
-        name: &'sc str,
+        name: String,
         span: Span<'sc>,
         comma_separated_generic_params: String,
         fn_name: &'sc str,
@@ -508,7 +508,7 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { span: Span<'sc>, name: &'sc str },
+    SymbolNotFound { span: Span<'sc>, name: String },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""

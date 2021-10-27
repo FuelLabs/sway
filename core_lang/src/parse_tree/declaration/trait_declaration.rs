@@ -123,7 +123,7 @@ impl<'sc> TraitDeclaration<'sc> {
 pub(crate) struct TraitFn<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type: TypeInfo,
     pub(crate) return_type_span: Span<'sc>,
 }
 

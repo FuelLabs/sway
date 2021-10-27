@@ -1,7 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::type_engine::TypeEngine;
+use crate::type_engine::{TypeEngine, TYPE_ENGINE};
 use crate::CodeBlock;
 
 #[derive(Clone, Debug)]
@@ -69,7 +69,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         });
 
         if let Some(return_type) = return_type {
-            match namespace.type_engine.unify_with_self(
+            match TYPE_ENGINE.lock().unwrap().unify_with_self(
                 return_type,
                 type_annotation,
                 self_type,

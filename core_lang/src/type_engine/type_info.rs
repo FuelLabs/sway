@@ -1,7 +1,8 @@
 use super::*;
 use crate::{
-    build_config::BuildConfig, error::*, semantic_analysis::ast_node::TypedStructField,
-    semantic_analysis::TypedExpression, types::ResolvedType, CallPath, Ident, Rule, Span,
+    build_config::BuildConfig, error::*, parse_tree::OwnedCallPath,
+    semantic_analysis::ast_node::TypedStructField, semantic_analysis::TypedExpression,
+    types::ResolvedType, CallPath, Ident, Rule, Span,
 };
 use derivative::Derivative;
 use std::collections::HashMap;
@@ -9,28 +10,22 @@ use std::iter::FromIterator;
 
 use pest::iterators::Pair;
 /// Type information without an associated value, used for type inferencing and definition.
+// TODO use idents instead of Strings when we have arena spans
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum TypeInfo<'sc> {
+pub enum TypeInfo {
     Unknown,
     Str(u64),
     UnsignedInteger(IntegerBits),
     Enum {
-        name: Ident<'sc>,
+        name: String,
         variant_types: Vec<TypeId>,
     },
     Struct {
-        name: Ident<'sc>,
-        fields: Vec<TypedStructField<'sc>>,
+        name: String,
+        fields: Vec<TypeId>,
     },
     Boolean,
-    /// A custom type could be a struct or similar if the name is in scope,
-    /// or just a generic parameter if it is not.
-    /// At parse time, there is no sense of scope, so this determination is not made
-    /// until the semantic analysis stage.
-    Custom {
-        name: crate::Ident<'sc>,
-    },
     /// For the type inference engine to use when a type references another type
     Ref(TypeId),
 
@@ -38,9 +33,16 @@ pub enum TypeInfo<'sc> {
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
-        abi_name: CallPath<'sc>,
-        #[derivative(PartialEq = "ignore", Hash = "ignore")]
-        address: Box<TypedExpression<'sc>>,
+        abi_name: OwnedCallPath,
+        //        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        //        address: Box<TypedExpression<'sc>>,
+    },
+    /// A custom type could be a struct or similar if the name is in scope,
+    /// or just a generic parameter if it is not.
+    /// At parse time, there is no sense of scope, so this determination is not made
+    /// until the semantic analysis stage.
+    Custom {
+        name: String,
     },
     SelfType,
     Byte,
@@ -53,14 +55,14 @@ pub enum TypeInfo<'sc> {
     ErrorRecovery,
 }
 
-impl Default for TypeInfo<'_> {
+impl Default for TypeInfo {
     fn default() -> Self {
         TypeInfo::Unknown
     }
 }
 
-impl<'sc> TypeInfo<'sc> {
-    pub(crate) fn parse_from_pair(
+impl TypeInfo {
+    pub(crate) fn parse_from_pair<'sc>(
         input: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
@@ -68,7 +70,7 @@ impl<'sc> TypeInfo<'sc> {
         Self::parse_from_pair_inner(r#type.next().unwrap(), config)
     }
 
-    pub(crate) fn parse_from_pair_inner(
+    pub(crate) fn parse_from_pair_inner<'sc>(
         input: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
@@ -105,12 +107,7 @@ impl<'sc> TypeInfo<'sc> {
                     errors
                 ),
                 _other => TypeInfo::Custom {
-                    name: check!(
-                        Ident::parse_from_pair(input, config),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ),
+                    name: input.as_str().trim().to_string(),
                 },
             },
             warnings,
@@ -131,7 +128,7 @@ impl<'sc> TypeInfo<'sc> {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name } => format!("{}", name.primary_name),
+            Custom { name } => format!("{}", name),
             Ref(id) => format!("T{}", id),
             Unit => "()".into(),
             SelfType => "Self".into(),
@@ -140,10 +137,10 @@ impl<'sc> TypeInfo<'sc> {
             Numeric => "numeric".into(),
             Contract => "contract".into(),
             ErrorRecovery => "unknown due to error".into(),
-            Enum { name, .. } => format!("enum {}", name.primary_name),
-            Struct { name, .. } => format!("struct {}", name.primary_name),
+            Enum { name, .. } => format!("enum {}", name),
+            Struct { name, .. } => format!("struct {}", name),
             ContractCaller { abi_name, .. } => {
-                format!("contract caller {}", abi_name.suffix.primary_name)
+                format!("contract caller {}", abi_name.suffix)
             }
         }
     }

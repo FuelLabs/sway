@@ -115,7 +115,7 @@ pub enum Expression<'sc> {
         call_path: CallPath<'sc>,
         args: Vec<Expression<'sc>>,
         span: Span<'sc>,
-        type_arguments: Vec<TypeInfo<'sc>>,
+        type_arguments: Vec<TypeInfo>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {

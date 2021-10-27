@@ -11,7 +11,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration<'sc> {
     pub name: Ident<'sc>,
-    pub type_ascription: TypeInfo<'sc>,
+    pub type_ascription: TypeInfo,
     pub value: Expression<'sc>,
 }
 

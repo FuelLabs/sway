@@ -8,7 +8,7 @@ pub enum MethodName<'sc> {
     FromType {
         call_path: CallPath<'sc>,
         // if this is `None`, then use the first argument to determine the type
-        type_name: Option<TypeInfo<'sc>>,
+        type_name: Option<TypeInfo>,
         is_absolute: bool,
     },
     /// Represents a method lookup that does not contain any types in the path

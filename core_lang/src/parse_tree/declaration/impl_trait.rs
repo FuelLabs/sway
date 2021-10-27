@@ -9,7 +9,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct ImplTrait<'sc> {
     pub(crate) trait_name: CallPath<'sc>,
-    pub(crate) type_implementing_for: TypeInfo<'sc>,
+    pub(crate) type_implementing_for: TypeInfo,
     pub(crate) type_implementing_for_span: Span<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
     pub functions: Vec<FunctionDeclaration<'sc>>,
@@ -22,7 +22,7 @@ pub struct ImplTrait<'sc> {
 /// like `impl MyType { fn foo { .. } }`
 #[derive(Debug, Clone)]
 pub struct ImplSelf<'sc> {
-    pub(crate) type_implementing_for: TypeInfo<'sc>,
+    pub(crate) type_implementing_for: TypeInfo,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
     pub functions: Vec<FunctionDeclaration<'sc>>,
     // the span of the whole impl trait and block
