@@ -564,12 +564,22 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         );
-        let block_return_type: TypeId = match namespace.look_up_type_id(block_return_type) {
+        let block_return_type: TypeId = match TYPE_ENGINE
+            .lock()
+            .unwrap()
+            .look_up_type_id(block_return_type)
+        {
             ResolvedType::Unit => match type_annotation {
-                Some(ref ty) if namespace.look_up_type_id(*ty) != ResolvedType::Unit => {
+                Some(ref ty)
+                    if TYPE_ENGINE.lock().unwrap().look_up_type_id(*ty) != ResolvedType::Unit =>
+                {
                     errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
                         span: span.clone(),
-                        ty: namespace.look_up_type_id(*ty).friendly_type_str(),
+                        ty: TYPE_ENGINE
+                            .lock()
+                            .unwrap()
+                            .look_up_type_id(*ty)
+                            .friendly_type_str(),
                     });
                     TYPE_ENGINE.lock().unwrap().insert(TypeInfo::ErrorRecovery)
                 }
@@ -655,7 +665,11 @@ impl<'sc> TypedExpression<'sc> {
             if r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: namespace.look_up_type_id(*annotation).friendly_type_str(),
+                    r#type: TYPE_ENGINE
+                        .lock()
+                        .unwrap()
+                        .look_up_type_id(*annotation)
+                        .friendly_type_str(),
                 });
             }
         }
@@ -1080,7 +1094,10 @@ impl<'sc> TypedExpression<'sc> {
         functions_buf.append(&mut type_checked_fn_buf);
         namespace.insert_trait_implementation(
             abi_name.clone(),
-            namespace.look_up_type_id(return_type.clone()),
+            TYPE_ENGINE
+                .lock()
+                .unwrap()
+                .look_up_type_id(return_type.clone()),
             functions_buf,
         );
         let exp = TypedExpression {

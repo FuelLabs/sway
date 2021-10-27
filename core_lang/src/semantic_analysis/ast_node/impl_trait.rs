@@ -140,7 +140,10 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                namespace.look_up_type_id(type_implementing_for_id),
+                TYPE_ENGINE
+                    .lock()
+                    .unwrap()
+                    .look_up_type_id(type_implementing_for_id),
                 functions_buf.clone(),
             );
             ok(
@@ -268,9 +271,14 @@ fn type_check_trait_implementation<'sc>(
                             let fn_decl_param_type = fn_decl_param.r#type;
                             let trait_param_type = trait_param.r#type;
 
-                            let real_fn_decl_param_type =
-                                namespace.look_up_type_id(fn_decl_param_type);
-                            let real_trait_param_type = namespace.look_up_type_id(trait_param_type);
+                            let real_fn_decl_param_type = TYPE_ENGINE
+                                .lock()
+                                .unwrap()
+                                .look_up_type_id(fn_decl_param_type);
+                            let real_trait_param_type = TYPE_ENGINE
+                                .lock()
+                                .unwrap()
+                                .look_up_type_id(trait_param_type);
                             if real_fn_decl_param_type != real_trait_param_type {
                                 errors.push(CompileError::MismatchedTypeInTrait {
                                     span: trait_param.type_span.clone(),
@@ -287,8 +295,11 @@ fn type_check_trait_implementation<'sc>(
                     {
                         errors.append(&mut maybe_err);
                     }
-                    let real_ret_type = namespace.look_up_type_id(*return_type);
-                    let real_fn_decl_ty = namespace.look_up_type_id(fn_decl.return_type);
+                    let real_ret_type = TYPE_ENGINE.lock().unwrap().look_up_type_id(*return_type);
+                    let real_fn_decl_ty = TYPE_ENGINE
+                        .lock()
+                        .unwrap()
+                        .look_up_type_id(fn_decl.return_type);
                     if real_fn_decl_ty != real_ret_type {
                         errors.push(CompileError::MismatchedTypeInTrait {
                             span: fn_decl.return_type_span.clone(),

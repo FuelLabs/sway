@@ -376,7 +376,10 @@ impl<'sc> TypedAstNode<'sc> {
                             };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),
-                                namespace.look_up_type_id(implementing_for_type_id),
+                                TYPE_ENGINE
+                                    .lock()
+                                    .unwrap()
+                                    .look_up_type_id(implementing_for_type_id),
                                 functions_buf.clone(),
                             );
                             TypedDeclaration::ImplTrait {
@@ -811,7 +814,11 @@ fn reassignment<'sc>(
                     Some(ty_of_field.clone()),
                     format!(
                         "This struct field has type \"{}\"",
-                        namespace.look_up_type_id(ty_of_field).friendly_type_str()
+                        TYPE_ENGINE
+                            .lock()
+                            .unwrap()
+                            .look_up_type_id(ty_of_field)
+                            .friendly_type_str()
                     ),
                     self_type,
                     build_config,

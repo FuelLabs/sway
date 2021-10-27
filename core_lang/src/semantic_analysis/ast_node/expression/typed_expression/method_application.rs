@@ -48,8 +48,8 @@ pub(crate) fn type_check_method_application<'sc>(
 
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
-        let arg_ret_type = namespace.look_up_type_id(arg.return_type);
-        let param_type = namespace.look_up_type_id(param.r#type);
+        let arg_ret_type = TYPE_ENGINE.lock().unwrap().look_up_type_id(arg.return_type);
+        let param_type = TYPE_ENGINE.lock().unwrap().look_up_type_id(param.r#type);
         if arg_ret_type != param_type && arg_ret_type != ResolvedType::ErrorRecovery {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
@@ -96,7 +96,7 @@ pub(crate) fn type_check_method_application<'sc>(
                     function_body: method.body.clone(),
                     selector: if method.is_contract_call {
                         let contract_address = match contract_caller
-                            .map(|x| namespace.look_up_type_id(x.return_type))
+                            .map(|x| TYPE_ENGINE.lock().unwrap().look_up_type_id(x.return_type))
                         {
                             Some(ResolvedType::ContractCaller { address, .. }) => address,
                             _ => {
@@ -155,7 +155,7 @@ pub(crate) fn type_check_method_application<'sc>(
                     function_body: method.body.clone(),
                     selector: if method.is_contract_call {
                         let contract_address = match contract_caller
-                            .map(|x| namespace.look_up_type_id(x.return_type))
+                            .map(|x| TYPE_ENGINE.lock().unwrap().look_up_type_id(x.return_type))
                         {
                             Some(ResolvedType::ContractCaller { address, .. }) => address,
                             _ => {

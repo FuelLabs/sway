@@ -28,12 +28,6 @@ pub struct Namespace<'sc> {
 }
 
 impl<'sc> Namespace<'sc> {
-    pub(crate) fn look_up_type_id(&self, id: TypeId) -> ResolvedType<'sc> {
-        TYPE_ENGINE.lock().unwrap().look_up_type_id(id)
-    }
-    pub(crate) fn insert_type(&mut self, ty: TypeInfo) -> TypeId {
-        TYPE_ENGINE.lock().unwrap().insert(ty)
-    }
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
     ///
@@ -51,7 +45,7 @@ impl<'sc> Namespace<'sc> {
                     name,
                     fields,
                     ..
-                })) => self.insert_type(TypeInfo::Struct {
+                })) => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Struct {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
@@ -62,12 +56,12 @@ impl<'sc> Namespace<'sc> {
                     name,
                     variants,
                     ..
-                })) => self.insert_type(TypeInfo::Enum {
+                })) => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Enum {
                     name: name.primary_name.to_string(),
                     variant_types: variants.iter().map(|x| x.r#type).collect(),
                 }),
                 Some(_) => todo!(),
-                None => self.insert_type(TypeInfo::Unknown),
+                None => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
             },
             TypeInfo::SelfType => self_type,
 
@@ -469,7 +463,7 @@ impl<'sc> Namespace<'sc> {
                 }
             };
 
-            match self.look_up_type_id(r#type) {
+            match TYPE_ENGINE.lock().unwrap().look_up_type_id(r#type) {
                 ResolvedType::Struct {
                     fields: ref l_fields,
                     ..
@@ -493,7 +487,7 @@ impl<'sc> Namespace<'sc> {
         r#type: TypeId,
     ) -> Vec<TypedFunctionDeclaration<'sc>> {
         let mut methods = vec![];
-        let r#type = self.look_up_type_id(r#type);
+        let r#type = TYPE_ENGINE.lock().unwrap().look_up_type_id(r#type);
         for ((_trait_name, type_info), l_methods) in &self.implemented_traits {
             if *type_info == r#type {
                 methods.append(&mut l_methods.clone());
@@ -556,12 +550,16 @@ impl<'sc> Namespace<'sc> {
         {
             Some(o) => ok(o, warnings, errors),
             None => {
-                if args_buf.get(0).map(|x| self.look_up_type_id(x.return_type))
+                if args_buf
+                    .get(0)
+                    .map(|x| TYPE_ENGINE.lock().unwrap().look_up_type_id(x.return_type))
                     != Some(ResolvedType::ErrorRecovery)
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.primary_name.to_string(),
-                        type_name: self
+                        type_name: TYPE_ENGINE
+                            .lock()
+                            .unwrap()
                             .look_up_type_id(args_buf[0].return_type)
                             .friendly_type_str(),
                         span: method_name.span.clone(),
@@ -582,7 +580,7 @@ impl<'sc> Namespace<'sc> {
         debug_string: impl Into<String>,
         debug_span: &Span<'sc>,
     ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, Ident<'sc>)> {
-        let ty = self.look_up_type_id(ty);
+        let ty = TYPE_ENGINE.lock().unwrap().look_up_type_id(ty);
         match ty {
             ResolvedType::Struct { name, fields } => {
                 ok((fields.to_vec(), name.clone()), vec![], vec![])

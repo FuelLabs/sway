@@ -6,7 +6,7 @@ use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{
     error::*,
-    type_engine::{TypeEngine, TypeId, TypeInfo},
+    type_engine::{TypeEngine, TypeId, TypeInfo, TYPE_ENGINE},
     types::ResolvedType,
 };
 use crate::{AstNode, ParseTree};
@@ -115,7 +115,6 @@ impl<'sc> TypedParseTree<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
-        let mut engine: crate::type_engine::Engine = todo!("global engine");
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let typed_nodes = nodes
@@ -124,11 +123,11 @@ impl<'sc> TypedParseTree<'sc> {
                 TypedAstNode::type_check(
                     node.clone(),
                     namespace,
-                    engine.insert(TypeInfo::Unknown),
+                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
                     "",
                     // TODO only allow impl traits on contract trees, do something else
                     // for other tree types
-                    engine.insert(TypeInfo::Contract),
+                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                 )
@@ -192,7 +191,11 @@ impl<'sc> TypedParseTree<'sc> {
                     ));
                 }
                 let main_func = &mains[0];
-                match namespace.look_up_type_id(main_func.return_type) {
+                match TYPE_ENGINE
+                    .lock()
+                    .unwrap()
+                    .look_up_type_id(main_func.return_type)
+                {
                     ResolvedType::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),

@@ -44,7 +44,10 @@ pub(crate) fn instantiate_enum<'sc>(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], namespace.look_up_type_id(enum_field_type)) {
+    match (
+        &args[..],
+        TYPE_ENGINE.lock().unwrap().look_up_type_id(enum_field_type),
+    ) {
         ([], ResolvedType::Unit) => ok(
             TypedExpression {
                 return_type: enum_decl.as_type(),

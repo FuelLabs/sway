@@ -567,7 +567,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     contents: vec![],
                     whole_block_span: body.whole_block_span.clone()
                 },
-                namespace.insert_type(TypeInfo::ErrorRecovery)
+                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::ErrorRecovery)
             ),
             warnings,
             errors
@@ -639,21 +639,32 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         //  it is a temporary workaround
         if mode == Mode::ImplAbiFn {
             if parameters.len() == 4 {
-                if namespace.look_up_type_id(parameters[0].r#type)
+                if TYPE_ENGINE
+                    .lock()
+                    .unwrap()
+                    .look_up_type_id(parameters[0].r#type)
                     != ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[0].type_span.clone(),
                     });
                 }
-                if namespace.look_up_type_id(parameters[1].r#type)
+                if TYPE_ENGINE
+                    .lock()
+                    .unwrap()
+                    .look_up_type_id(parameters[1].r#type)
                     != ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[1].type_span.clone(),
                     });
                 }
-                if namespace.look_up_type_id(parameters[2].r#type) != ResolvedType::B256 {
+                if TYPE_ENGINE
+                    .lock()
+                    .unwrap()
+                    .look_up_type_id(parameters[2].r#type)
+                    != ResolvedType::B256
+                {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[2].type_span.clone(),
                     });
