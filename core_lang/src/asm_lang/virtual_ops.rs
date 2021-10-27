@@ -124,6 +124,7 @@ pub(crate) enum VirtualOp {
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
     NOOP,
     FLAG(VirtualRegister),
+    GM(VirtualRegister, VirtualImmediate18),
     Undefined,
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
