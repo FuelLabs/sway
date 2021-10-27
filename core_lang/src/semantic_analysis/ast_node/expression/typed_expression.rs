@@ -23,7 +23,7 @@ pub struct TypedExpression<'sc> {
 pub(crate) fn error_recovery_expr<'sc>(span: Span<'sc>) -> TypedExpression<'sc> {
     TypedExpression {
         expression: TypedExpressionVariant::Unit,
-        return_type: todo!("reserved error recovery type id"),
+        return_type: TYPE_ENGINE.lock().unwrap().insert(TypeInfo::ErrorRecovery),
         is_constant: IsConstant::No,
         span,
     }
@@ -156,7 +156,7 @@ impl<'sc> TypedExpression<'sc> {
             Expression::Unit { span } => {
                 let exp = TypedExpression {
                     expression: TypedExpressionVariant::Unit,
-                    return_type: todo!("unit type in engine -- maybe reserved?"),
+                    return_type: TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit),
                     is_constant: IsConstant::Yes,
                     span,
                 };

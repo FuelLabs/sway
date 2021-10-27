@@ -2,7 +2,7 @@ use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::span::Span;
-use crate::type_engine::TypeInfo;
+use crate::type_engine::{TypeInfo, TYPE_ENGINE};
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
@@ -29,8 +29,10 @@ pub(crate) fn implementation_of_trait<'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
-    let engine: crate::type_engine::Engine = todo!("global engine");
-    let type_implementing_for_id = namespace.insert_type(type_implementing_for);
+    let type_implementing_for_id = TYPE_ENGINE
+        .lock()
+        .unwrap()
+        .insert(type_implementing_for.clone());
     if !type_arguments.is_empty() {
         errors.push(CompileError::Internal(
             "Where clauses are not supported yet.",
@@ -76,7 +78,11 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                match engine.resolve(type_implementing_for_id, &type_implementing_for_span) {
+                match TYPE_ENGINE
+                    .lock()
+                    .unwrap()
+                    .resolve(type_implementing_for_id, &type_implementing_for_span)
+                {
                     Ok(o) => o,
                     Err(e) => {
                         errors.push(e.into());
@@ -179,7 +185,6 @@ fn type_check_trait_implementation<'sc>(
     type_implementing_for_span: &Span<'sc>,
     mode: Mode,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
-    let engine: crate::type_engine::Engine = todo!("global engine");
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -199,7 +204,7 @@ fn type_check_trait_implementation<'sc>(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
                 namespace,
-                namespace.insert_type(TypeInfo::Unknown),
+                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
                 "",
                 self_type,
                 build_config,
@@ -316,7 +321,11 @@ fn type_check_trait_implementation<'sc>(
             prefixes: vec![],
             suffix: trait_name.clone(),
         },
-        match engine.resolve(type_implementing_for, &type_implementing_for_span) {
+        match TYPE_ENGINE
+            .lock()
+            .unwrap()
+            .resolve(type_implementing_for, &type_implementing_for_span)
+        {
             Ok(o) => o,
             Err(e) => {
                 errors.push(e.into());
@@ -335,7 +344,7 @@ fn type_check_trait_implementation<'sc>(
             TypedFunctionDeclaration::type_check(
                 method.clone(),
                 &mut local_namespace,
-                namespace.insert_type(TypeInfo::Unknown),
+                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
                 "",
                 self_type,
                 build_config,

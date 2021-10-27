@@ -1,6 +1,6 @@
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{IntegerBits, TypeEngine, TYPE_ENGINE};
+use crate::type_engine::{IntegerBits, TypeEngine, TypeInfo, TYPE_ENGINE};
 use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use derivative::Derivative;
 
@@ -38,6 +38,42 @@ pub enum ResolvedType<'sc> {
     },
     // used for recovering from errors in the ast
     ErrorRecovery,
+}
+
+impl ResolvedType<'_> {
+    pub(crate) fn to_type_info(&self) -> TypeInfo {
+        use ResolvedType::*;
+        match self {
+            Str(len) => TypeInfo::Str(*len),
+            UnsignedInteger(bits) => TypeInfo::UnsignedInteger(*bits),
+            Boolean => TypeInfo::Boolean,
+            Unit => TypeInfo::Unit,
+            Byte => TypeInfo::Byte,
+            B256 => TypeInfo::B256,
+            Struct { name, fields } => TypeInfo::Struct {
+                name: name.primary_name.to_string(),
+                fields: fields
+                    .iter()
+                    .map(|TypedStructField { r#type, .. }| *r#type)
+                    .collect(),
+            },
+            Enum {
+                name,
+                variant_types,
+            } => todo!(),
+            /// Represents the contract's type as a whole. Used for implementing
+            /// traits on the contract itself, to enforce a specific type of ABI.
+            Contract => TypeInfo::Contract,
+            /// Represents a type which contains methods to issue a contract call.
+            /// The specific contract is identified via the `Ident` within.
+            ContractCaller { abi_name, .. } => TypeInfo::ContractCaller {
+                abi_name: abi_name.to_owned_call_path(),
+            },
+            Function { from, to } => todo!("TypeInfo for functions"),
+            // used for recovering from errors in the ast
+            ErrorRecovery => TypeInfo::ErrorRecovery,
+        }
+    }
 }
 
 impl Default for ResolvedType<'_> {

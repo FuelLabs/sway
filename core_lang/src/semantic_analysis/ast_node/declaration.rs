@@ -320,7 +320,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     }
 
     pub fn to_selector_name(&self) -> CompileResult<'sc, String> {
-        let engine: crate::type_engine::Engine = todo!("global engine");
         let mut errors = vec![];
         let mut warnings = vec![];
         let named_params = self
@@ -330,7 +329,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 |TypedFunctionParameter {
                      r#type, type_span, ..
                  }| {
-                    engine
+                    TYPE_ENGINE
+                        .lock()
+                        .unwrap()
                         .resolve(*r#type, type_span)
                         .expect("unreachable I think?")
                         .to_selector_name(type_span)
@@ -411,7 +412,7 @@ fn test_function_selector_behavior() {
                         path: None,
                     },
                 },
-                r#type: todo!("Type id for MaybeResolvedType::Resolved(ResolvedType::Str(5))"),
+                r#type: TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Str(5)),
                 type_span: Span {
                     span: pest::Span::new(" ", 0, 0).unwrap(),
                     path: None,
@@ -425,11 +426,10 @@ fn test_function_selector_behavior() {
                         path: None,
                     },
                 },
-                r#type: todo!(
-                    "type id for MaybeResolvedType::Resolved(ResolvedType::UnsignedInteger(
-                    IntegerBits::ThirtyTwo,
-                ))"
-                ),
+                r#type: TYPE_ENGINE
+                    .lock()
+                    .unwrap()
+                    .insert(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span {
                     span: pest::Span::new(" ", 0, 0).unwrap(),
                     path: None,
@@ -697,9 +697,7 @@ impl<'sc> TypedTraitFn<'sc> {
             },
             parameters: self.parameters.clone(),
             span: self.name.span.clone(),
-            return_type: todo!(
-                "type id for self.return_type.clone(), perhaps take the namespace into this fn"
-            ),
+            return_type: self.return_type,
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,
             type_parameters: vec![],

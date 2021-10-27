@@ -18,7 +18,9 @@ mod return_statement;
 mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
-use crate::type_engine::{FriendlyTypeString, IntegerBits, TypeEngine, TypeId, TypeInfo};
+use crate::type_engine::{
+    FriendlyTypeString, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE,
+};
 pub(crate) use code_block::TypedCodeBlock;
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
@@ -79,12 +81,16 @@ impl<'sc> TypedAstNode<'sc> {
         use TypedAstNodeContent::*;
         match &self.content {
             ReturnStatement(_) | Declaration(_) => TypeInfo::Unit,
-            Expression(TypedExpression { return_type, .. }) => {
-                todo!("namespace.look_up_type_id(return_type) -- this will work when look_up_type_id returns TypeInfo")
-            }
-            ImplicitReturnExpression(TypedExpression { return_type, .. }) => {
-                todo!("namespace.look_up_type_id(return_type) -- this will work when look_up_type_id returns TypeInfo")
-            }
+            Expression(TypedExpression { return_type, .. }) => TYPE_ENGINE
+                .lock()
+                .unwrap()
+                .look_up_type_id(*return_type)
+                .to_type_info(),
+            ImplicitReturnExpression(TypedExpression { return_type, .. }) => TYPE_ENGINE
+                .lock()
+                .unwrap()
+                .look_up_type_id(*return_type)
+                .to_type_info(),
             WhileLoop(_) | SideEffect => TypeInfo::Unit,
         }
     }
@@ -99,11 +105,10 @@ impl<'sc> TypedAstNode<'sc> {
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut engine: crate::type_engine::Engine = todo!("global engine");
 
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
-            let type_id = engine.insert(type_ascription);
+            let type_id = TYPE_ENGINE.lock().unwrap().insert(type_ascription);
             TypedExpression::type_check(
                 value,
                 namespace,
@@ -207,7 +212,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 TypedFunctionDeclaration::type_check(
                                     fn_decl.clone(),
                                     namespace,
-                                    namespace.insert_type(TypeInfo::Unknown),
+                                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
                                     "",
                                     self_type,
                                     build_config,
@@ -246,7 +251,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     prefixes: vec![],
                                     suffix: name.clone(),
                                 },
-                                todo!("Self type"),
+                                todo!("TypeInfo::SelfType"),
                                 interface_surface
                                     .iter()
                                     .map(|x| x.to_dummy_func(Mode::NonAbi))
@@ -313,8 +318,10 @@ impl<'sc> TypedAstNode<'sc> {
                         }) => {
                             let type_implementing_for_resolved =
                                 namespace.resolve_type_without_self(&type_implementing_for);
-                            let implementing_for_type_id =
-                                namespace.insert_type(type_implementing_for_resolved);
+                            let implementing_for_type_id = TYPE_ENGINE
+                                .lock()
+                                .unwrap()
+                                .insert(type_implementing_for_resolved.clone());
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             if !type_arguments.is_empty() {
@@ -348,7 +355,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     TypedFunctionDeclaration::type_check(
                                         fn_decl,
                                         namespace,
-                                        namespace.insert_type(TypeInfo::Unknown),
+                                        TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
                                         "",
                                         implementing_for_type_id,
                                         build_config,
@@ -505,7 +512,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             condition,
                             namespace,
-                            Some(engine.insert(TypeInfo::Boolean)),
+                            Some(TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
                             build_config,
@@ -519,7 +526,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedCodeBlock::type_check(
                             body.clone(),
                             namespace,
-                            engine.insert(TypeInfo::Unit),
+                            TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit),
                             "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
@@ -532,7 +539,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 contents: vec![],
                                 whole_block_span: body.whole_block_span.clone(),
                             },
-                            engine.insert(TypeInfo::Unit)
+                            TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit)
                         ),
                         warnings,
                         errors
@@ -857,7 +864,7 @@ fn type_check_interface_surface<'sc>(
                             name,
                             r#type: namespace.resolve_type_with_self(
                                 r#type,
-                                todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),"),
+                                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::SelfType),
                             ),
                             type_span,
                         },
@@ -865,7 +872,7 @@ fn type_check_interface_surface<'sc>(
                     .collect(),
                 return_type: namespace.resolve_type_with_self(
                     return_type,
-                    todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType)"),
+                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::SelfType),
                 ),
             },
         )
@@ -900,7 +907,7 @@ fn type_check_trait_methods<'sc>(
              }| {
                 let r#type = function_namespace.resolve_type_with_self(
                     r#type.clone(),
-                    todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),"),
+                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::SelfType),
                 );
                 function_namespace.insert(
                     name.clone(),
@@ -978,7 +985,7 @@ fn type_check_trait_methods<'sc>(
                         name,
                         r#type: function_namespace.resolve_type_with_self(
                             r#type,
-                            todo!("this was &MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),"),
+                            TYPE_ENGINE.lock().unwrap().insert(TypeInfo::SelfType),
                         ),
                         type_span,
                     }
@@ -1045,9 +1052,7 @@ fn error_recovery_function_declaration<'sc>(
         return_type_span,
         parameters: Default::default(),
         visibility,
-        return_type: todo!("use type engine to resolve"), /*return_type
-                                                          .attempt_naive_resolution()
-                                                          .unwrap_or(MaybeResolvedType::Resolved(ResolvedType::ErrorRecovery)),*/
+        return_type: TYPE_ENGINE.lock().unwrap().insert(return_type),
         type_parameters: Default::default(),
     }
 }
