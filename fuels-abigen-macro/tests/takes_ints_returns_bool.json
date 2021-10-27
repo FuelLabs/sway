@@ -1,0 +1,22 @@
+[
+    {
+        "type": "function",
+        "inputs": [
+            {
+                "name": "arg",
+                "type": "u32"
+            },
+            {
+                "name": "second_arg",
+                "type": "u16"
+            }
+        ],
+        "name": "takes_ints_returns_bool",
+        "outputs": [
+            {
+                "name": "",
+                "type": "bool"
+            }
+        ]
+    }
+]

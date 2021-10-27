@@ -1,5 +1,6 @@
 use crate::errors::Error;
-use crate::types::{Bits256, ByteArray, ParamType, Token, WORD_SIZE};
+use crate::tokens::Token;
+use crate::types::{Bits256, ByteArray, ParamType, WORD_SIZE};
 use fuel_types::bytes::padded_len;
 use std::convert::TryInto;
 use std::str;
