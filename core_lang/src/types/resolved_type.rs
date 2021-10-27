@@ -47,7 +47,7 @@ impl<'sc> ResolvedType<'sc> {
             UnsignedInteger(IntegerBits::Sixteen) => match other {
                 UnsignedInteger(IntegerBits::Eight) => Err(Warning::LossOfPrecision {
                     initial_type: Box::new(MaybeResolvedType::Resolved(self.clone())),
-                    cast_to: MaybeResolvedType::Resolved(other.clone()),
+                    cast_to: Box::new(MaybeResolvedType::Resolved(other.clone())),
                 }),
                 UnsignedInteger(_) => Ok(()),
                 _ => unreachable!(),
@@ -56,7 +56,7 @@ impl<'sc> ResolvedType<'sc> {
                 UnsignedInteger(IntegerBits::Eight) | UnsignedInteger(IntegerBits::Sixteen) => {
                     Err(Warning::LossOfPrecision {
                         initial_type: Box::new(MaybeResolvedType::Resolved(self.clone())),
-                        cast_to: MaybeResolvedType::Resolved(other.clone()),
+                        cast_to: Box::new(MaybeResolvedType::Resolved(other.clone())),
                     })
                 }
                 UnsignedInteger(_) => Ok(()),
@@ -67,7 +67,7 @@ impl<'sc> ResolvedType<'sc> {
                 | UnsignedInteger(IntegerBits::Sixteen)
                 | UnsignedInteger(IntegerBits::ThirtyTwo) => Err(Warning::LossOfPrecision {
                     initial_type: Box::new(MaybeResolvedType::Resolved(self.clone())),
-                    cast_to: MaybeResolvedType::Resolved(other.clone()),
+                    cast_to: Box::new(MaybeResolvedType::Resolved(other.clone())),
                 }),
                 _ => Ok(()),
             },
