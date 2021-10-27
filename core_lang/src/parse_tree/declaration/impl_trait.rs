@@ -82,7 +82,7 @@ impl<'sc> ImplTrait<'sc> {
         let type_arguments_span = match type_params_pair {
             Some(ref x) => Span {
                 span: x.as_span(),
-                path: path.clone(),
+                path,
             },
             None => trait_name.span(),
         };
