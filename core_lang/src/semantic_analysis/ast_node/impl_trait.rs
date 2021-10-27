@@ -207,7 +207,7 @@ fn type_check_trait_implementation<'sc>(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
                 namespace,
-                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
+                crate::type_engine::insert_type(TypeInfo::Unknown),
                 "",
                 self_type,
                 build_config,
@@ -355,7 +355,7 @@ fn type_check_trait_implementation<'sc>(
             TypedFunctionDeclaration::type_check(
                 method.clone(),
                 &mut local_namespace,
-                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
+                crate::type_engine::insert_type(TypeInfo::Unknown),
                 "",
                 self_type,
                 build_config,

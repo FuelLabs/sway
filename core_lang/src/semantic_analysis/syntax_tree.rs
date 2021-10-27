@@ -123,11 +123,11 @@ impl<'sc> TypedParseTree<'sc> {
                 TypedAstNode::type_check(
                     node.clone(),
                     namespace,
-                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
+                    crate::type_engine::insert_type(TypeInfo::Unknown),
                     "",
                     // TODO only allow impl traits on contract trees, do something else
                     // for other tree types
-                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Contract),
+                    crate::type_engine::insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                 )

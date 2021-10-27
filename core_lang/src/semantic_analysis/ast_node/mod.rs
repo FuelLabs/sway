@@ -108,7 +108,7 @@ impl<'sc> TypedAstNode<'sc> {
 
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
-            let type_id = TYPE_ENGINE.lock().unwrap().insert(type_ascription);
+            let type_id = crate::type_engine::insert_type(type_ascription);
             TypedExpression::type_check(
                 value,
                 namespace,
@@ -212,7 +212,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 TypedFunctionDeclaration::type_check(
                                     fn_decl.clone(),
                                     namespace,
-                                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
+                                    crate::type_engine::insert_type(TypeInfo::Unknown),
                                     "",
                                     self_type,
                                     build_config,
@@ -355,7 +355,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     TypedFunctionDeclaration::type_check(
                                         fn_decl,
                                         namespace,
-                                        TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
+                                        crate::type_engine::insert_type(TypeInfo::Unknown),
                                         "",
                                         implementing_for_type_id,
                                         build_config,
@@ -515,7 +515,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             condition,
                             namespace,
-                            Some(TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Boolean)),
+                            Some(crate::type_engine::insert_type(TypeInfo::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
                             build_config,
@@ -529,7 +529,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedCodeBlock::type_check(
                             body.clone(),
                             namespace,
-                            TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit),
+                            crate::type_engine::insert_type(TypeInfo::Unit),
                             "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
@@ -542,7 +542,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 contents: vec![],
                                 whole_block_span: body.whole_block_span.clone(),
                             },
-                            TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit)
+                            crate::type_engine::insert_type(TypeInfo::Unit)
                         ),
                         warnings,
                         errors
@@ -871,7 +871,7 @@ fn type_check_interface_surface<'sc>(
                             name,
                             r#type: namespace.resolve_type_with_self(
                                 r#type,
-                                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::SelfType),
+                                crate::type_engine::insert_type(TypeInfo::SelfType),
                             ),
                             type_span,
                         },
@@ -879,7 +879,7 @@ fn type_check_interface_surface<'sc>(
                     .collect(),
                 return_type: namespace.resolve_type_with_self(
                     return_type,
-                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::SelfType),
+                    crate::type_engine::insert_type(TypeInfo::SelfType),
                 ),
             },
         )
@@ -914,7 +914,7 @@ fn type_check_trait_methods<'sc>(
              }| {
                 let r#type = function_namespace.resolve_type_with_self(
                     r#type.clone(),
-                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::SelfType),
+                    crate::type_engine::insert_type(TypeInfo::SelfType),
                 );
                 function_namespace.insert(
                     name.clone(),
@@ -992,7 +992,7 @@ fn type_check_trait_methods<'sc>(
                         name,
                         r#type: function_namespace.resolve_type_with_self(
                             r#type,
-                            TYPE_ENGINE.lock().unwrap().insert(TypeInfo::SelfType),
+                            crate::type_engine::insert_type(TypeInfo::SelfType),
                         ),
                         type_span,
                     }
@@ -1059,7 +1059,7 @@ fn error_recovery_function_declaration<'sc>(
         return_type_span,
         parameters: Default::default(),
         visibility,
-        return_type: TYPE_ENGINE.lock().unwrap().insert(return_type),
+        return_type: crate::type_engine::insert_type(return_type),
         type_parameters: Default::default(),
     }
 }

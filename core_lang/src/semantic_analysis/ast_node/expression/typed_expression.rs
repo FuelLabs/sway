@@ -23,7 +23,7 @@ pub struct TypedExpression<'sc> {
 pub(crate) fn error_recovery_expr<'sc>(span: Span<'sc>) -> TypedExpression<'sc> {
     TypedExpression {
         expression: TypedExpressionVariant::Unit,
-        return_type: TYPE_ENGINE.lock().unwrap().insert(TypeInfo::ErrorRecovery),
+        return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
         is_constant: IsConstant::No,
         span,
     }
@@ -156,7 +156,7 @@ impl<'sc> TypedExpression<'sc> {
             Expression::Unit { span } => {
                 let exp = TypedExpression {
                     expression: TypedExpressionVariant::Unit,
-                    return_type: TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit),
+                    return_type: crate::type_engine::insert_type(TypeInfo::Unit),
                     is_constant: IsConstant::Yes,
                     span,
                 };
@@ -250,7 +250,7 @@ impl<'sc> TypedExpression<'sc> {
             Literal::Byte(_) => TypeInfo::Byte,
             Literal::B256(_) => TypeInfo::B256,
         };
-        let id = TYPE_ENGINE.lock().unwrap().insert(return_type);
+        let id = crate::type_engine::insert_type(return_type);
         let exp = TypedExpression {
             expression: TypedExpressionVariant::Literal(lit),
             return_type: id,
@@ -427,7 +427,7 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let bool_type_id = TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Boolean);
+        let bool_type_id = crate::type_engine::insert_type(TypeInfo::Boolean);
         let typed_lhs = check!(
             TypedExpression::type_check(
                 lhs.clone(),
@@ -548,7 +548,7 @@ impl<'sc> TypedExpression<'sc> {
                 contents.clone(),
                 namespace,
                 type_annotation
-                    .unwrap_or_else(|| TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown)),
+                    .unwrap_or_else(|| crate::type_engine::insert_type(TypeInfo::Unknown)),
                 help_text.clone(),
                 self_type,
                 build_config,
@@ -559,7 +559,7 @@ impl<'sc> TypedExpression<'sc> {
                     contents: vec![],
                     whole_block_span: span.clone()
                 },
-                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit)
+                crate::type_engine::insert_type(TypeInfo::Unit)
             ),
             warnings,
             errors
@@ -581,9 +581,9 @@ impl<'sc> TypedExpression<'sc> {
                             .look_up_type_id(*ty)
                             .friendly_type_str(),
                     });
-                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::ErrorRecovery)
+                    crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
                 }
-                _ => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit),
+                _ => crate::type_engine::insert_type(TypeInfo::Unit),
             },
             otherwise => block_return_type,
         };
@@ -617,7 +617,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 *condition.clone(),
                 namespace,
-                Some(TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Boolean)),
+                Some(crate::type_engine::insert_type(TypeInfo::Boolean)),
                 "The condition of an if expression must be a boolean expression.",
                 self_type,
                 build_config,
@@ -837,7 +837,7 @@ impl<'sc> TypedExpression<'sc> {
                 });
             }
         }
-        let struct_type_id = TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Struct {
+        let struct_type_id = crate::type_engine::insert_type(TypeInfo::Struct {
             name: definition.name.primary_name.to_string(),
             fields: definition
                 .fields
@@ -1031,7 +1031,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 *address,
                 namespace,
-                Some(TYPE_ENGINE.lock().unwrap().insert(TypeInfo::B256)),
+                Some(crate::type_engine::insert_type(TypeInfo::B256)),
                 "An address that is being ABI cast must be of type b256",
                 self_type,
                 build_config,
@@ -1078,9 +1078,9 @@ impl<'sc> TypedExpression<'sc> {
                 TypedFunctionDeclaration::type_check(
                     method.clone(),
                     namespace,
-                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
+                    crate::type_engine::insert_type(TypeInfo::Unknown),
                     "",
-                    TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Contract),
+                    crate::type_engine::insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                     Mode::ImplAbiFn

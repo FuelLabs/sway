@@ -45,7 +45,7 @@ impl<'sc> Namespace<'sc> {
                     name,
                     fields,
                     ..
-                })) => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Struct {
+                })) => crate::type_engine::insert_type(TypeInfo::Struct {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
@@ -56,12 +56,12 @@ impl<'sc> Namespace<'sc> {
                     name,
                     variants,
                     ..
-                })) => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Enum {
+                })) => crate::type_engine::insert_type(TypeInfo::Enum {
                     name: name.primary_name.to_string(),
                     variant_types: variants.iter().map(|x| x.r#type).collect(),
                 }),
                 Some(_) => todo!(),
-                None => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unknown),
+                None => crate::type_engine::insert_type(TypeInfo::Unknown),
             },
             TypeInfo::SelfType => self_type,
 

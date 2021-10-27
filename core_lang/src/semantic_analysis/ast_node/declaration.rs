@@ -68,7 +68,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     name,
                     fields,
                     ..
-                }) => TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Struct {
+                }) => crate::type_engine::insert_type(TypeInfo::Struct {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
@@ -199,7 +199,7 @@ impl<'sc> TypedEnumDeclaration<'sc> {
 impl TypedEnumDeclaration<'_> {
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
-        TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Enum {
+        crate::type_engine::insert_type(TypeInfo::Enum {
             name: self.name.primary_name.to_string(),
             variant_types: self.variants.iter().map(|x| x.r#type.clone()).collect(),
         })
@@ -412,7 +412,7 @@ fn test_function_selector_behavior() {
                         path: None,
                     },
                 },
-                r#type: TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Str(5)),
+                r#type: crate::type_engine::insert_type(TypeInfo::Str(5)),
                 type_span: Span {
                     span: pest::Span::new(" ", 0, 0).unwrap(),
                     path: None,
@@ -567,7 +567,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     contents: vec![],
                     whole_block_span: body.whole_block_span.clone()
                 },
-                TYPE_ENGINE.lock().unwrap().insert(TypeInfo::ErrorRecovery)
+                crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
             ),
             warnings,
             errors

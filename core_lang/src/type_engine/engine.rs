@@ -14,6 +14,13 @@ lazy_static! {
     pub(crate) static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
 }
 
+pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
+    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let id = lock.insert(ty);
+    drop(lock);
+    id
+}
+
 // Workaround until we use an arena for spans
 // The below is just so we can have a static type engine. Ideally, we will
 // switch to a span that uses an arena to keep track of source code.

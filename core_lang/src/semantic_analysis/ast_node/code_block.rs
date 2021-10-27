@@ -119,7 +119,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     contents: evaluated_contents,
                     whole_block_span: other.whole_block_span,
                 },
-                return_type.unwrap_or_else(|| TYPE_ENGINE.lock().unwrap().insert(TypeInfo::Unit)),
+                return_type.unwrap_or_else(|| crate::type_engine::insert_type(TypeInfo::Unit)),
             ),
             warnings,
             errors,
