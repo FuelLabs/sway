@@ -9,17 +9,19 @@ use crate::{
     abi_decoder::ABIDecoder,
     abi_encoder::ABIEncoder,
     errors::Error,
-    types::{JsonABI, ParamType, Property, Token},
+    tokens::Token,
+    types::{JsonABI, ParamType, Property},
 };
+
 use serde_json;
 
-pub struct ABI {
+pub struct ABIParser {
     fn_selector: Option<Vec<u8>>,
 }
 
-impl ABI {
+impl ABIParser {
     pub fn new() -> Self {
-        ABI { fn_selector: None }
+        ABIParser { fn_selector: None }
     }
 
     /// Higher-level layer of the ABI encoding module.
@@ -32,7 +34,7 @@ impl ABI {
     ///
     /// # Examples
     /// ```
-    /// use fuels_rs::json_abi::ABI;
+    /// use fuels_rs::json_abi::ABIParser;
     /// let json_abi = r#"
     ///     [
     ///         {
@@ -56,7 +58,7 @@ impl ABI {
     ///
     ///     let values: Vec<String> = vec!["10".to_string()];
     ///
-    ///     let mut abi = ABI::new();
+    ///     let mut abi = ABIParser::new();
     ///
     ///     let function_name = "takes_u32_returns_bool";
     ///     let encoded = abi.encode(json_abi, function_name, &values).unwrap();
@@ -87,7 +89,7 @@ impl ABI {
         let params: Vec<_> = entry
             .inputs
             .iter()
-            .map(|param| self.parse_param(param).unwrap())
+            .map(|param| parse_param(param).unwrap())
             .zip(values.iter().map(|v| v as &str))
             .collect();
 
@@ -101,7 +103,7 @@ impl ABI {
     ///
     /// # Examples
     /// ```
-    /// use fuels_rs::json_abi::ABI;
+    /// use fuels_rs::json_abi::ABIParser;
     /// let json_abi = r#"
     ///     [
     ///         {
@@ -125,7 +127,7 @@ impl ABI {
     ///
     ///     let values: Vec<String> = vec!["10".to_string()];
     ///
-    ///     let mut abi = ABI::new();
+    ///     let mut abi = ABIParser::new();
 
     ///     let function_name = "takes_u32_returns_bool";
     ///
@@ -180,7 +182,7 @@ impl ABI {
                 type_field: pair[0].clone(),
                 components: None,
             };
-            let p = self.parse_param(&prop)?;
+            let p = parse_param(&prop)?;
 
             let t: (ParamType, &str) = (p, &pair[1]);
             param_type_pairs.push(t);
@@ -421,7 +423,7 @@ impl ABI {
             .unwrap()
             .outputs
             .iter()
-            .map(|param| self.parse_param(&param))
+            .map(|param| parse_param(&param))
             .collect();
 
         match params_result {
@@ -439,66 +441,6 @@ impl ABI {
     pub fn decode_params(&self, params: &[ParamType], data: &[u8]) -> Result<Vec<Token>, Error> {
         let mut decoder = ABIDecoder::new();
         Ok(decoder.decode(params, data)?)
-    }
-
-    /// Turns a JSON property into ParamType
-    pub fn parse_param(&self, param: &Property) -> Result<ParamType, Error> {
-        match ParamType::from_str(&param.type_field) {
-            // Simple case (primitive types, no arrays, including string)
-            Ok(param_type) => Ok(param_type),
-            Err(_) => {
-                match param.type_field.contains("[") && param.type_field.contains("]") {
-                    // Try to parse array (T[M]) or string (str[M])
-                    true => Ok(self.parse_array_param(param)?),
-                    // Try to parse enum or struct
-                    false => Ok(self.parse_custom_type_param(param)?),
-                }
-            }
-        }
-    }
-
-    pub fn parse_array_param(&self, param: &Property) -> Result<ParamType, Error> {
-        // Split "T[n]" string into "T" and "[n]"
-        let split: Vec<&str> = param.type_field.split("[").collect();
-        if split.len() != 2 {
-            return Err(Error::MissingData(format!(
-                "invalid parameter type: {}",
-                param.type_field
-            )));
-        }
-
-        let param_type = ParamType::from_str(split[0]).unwrap();
-
-        // Grab size in between brackets, i.e the `n` in "[n]"
-        let size: usize = split[1][..split[1].len() - 1].parse().unwrap();
-
-        if let ParamType::String(_) = param_type {
-            Ok(ParamType::String(size))
-        } else {
-            Ok(ParamType::Array(Box::new(param_type), size))
-        }
-    }
-
-    pub fn parse_custom_type_param(&self, param: &Property) -> Result<ParamType, Error> {
-        let mut params: Vec<ParamType> = vec![];
-
-        match param.components.as_ref() {
-            Some(components) => {
-                for component in components {
-                    params.push(self.parse_param(&component)?)
-                }
-            }
-            None => {
-                return Err(Error::MissingData(
-                    "cannot parse custom type with no components".into(),
-                ))
-            }
-        }
-        match &*param.type_field {
-            "struct" => return Ok(ParamType::Struct(params)),
-            "enum" => return Ok(ParamType::Enum(params)),
-            _ => return Err(Error::InvalidType(param.type_field.clone())),
-        }
     }
 
     fn is_array(&self, ele: &str) -> bool {
@@ -569,6 +511,66 @@ impl ABI {
     }
 }
 
+/// Turns a JSON property into ParamType
+pub fn parse_param(param: &Property) -> Result<ParamType, Error> {
+    match ParamType::from_str(&param.type_field) {
+        // Simple case (primitive types, no arrays, including string)
+        Ok(param_type) => Ok(param_type),
+        Err(_) => {
+            match param.type_field.contains("[") && param.type_field.contains("]") {
+                // Try to parse array (T[M]) or string (str[M])
+                true => Ok(parse_array_param(param)?),
+                // Try to parse enum or struct
+                false => Ok(parse_custom_type_param(param)?),
+            }
+        }
+    }
+}
+
+pub fn parse_array_param(param: &Property) -> Result<ParamType, Error> {
+    // Split "T[n]" string into "T" and "[n]"
+    let split: Vec<&str> = param.type_field.split("[").collect();
+    if split.len() != 2 {
+        return Err(Error::MissingData(format!(
+            "invalid parameter type: {}",
+            param.type_field
+        )));
+    }
+
+    let param_type = ParamType::from_str(split[0]).unwrap();
+
+    // Grab size in between brackets, i.e the `n` in "[n]"
+    let size: usize = split[1][..split[1].len() - 1].parse().unwrap();
+
+    if let ParamType::String(_) = param_type {
+        Ok(ParamType::String(size))
+    } else {
+        Ok(ParamType::Array(Box::new(param_type), size))
+    }
+}
+
+pub fn parse_custom_type_param(param: &Property) -> Result<ParamType, Error> {
+    let mut params: Vec<ParamType> = vec![];
+
+    match param.components.as_ref() {
+        Some(components) => {
+            for component in components {
+                params.push(parse_param(&component)?)
+            }
+        }
+        None => {
+            return Err(Error::MissingData(
+                "cannot parse custom type with no components".into(),
+            ))
+        }
+    }
+    match &*param.type_field {
+        "struct" => return Ok(ParamType::Struct(params)),
+        "enum" => return Ok(ParamType::Enum(params)),
+        _ => return Err(Error::InvalidType(param.type_field.clone())),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -598,7 +600,7 @@ mod tests {
 
         let values: Vec<String> = vec!["10".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_u32_returns_bool";
 
@@ -644,7 +646,7 @@ mod tests {
 
         let values: Vec<String> = vec!["10".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_u32_returns_bool";
 
@@ -699,7 +701,7 @@ mod tests {
             "1".to_string(),
         ];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "my_func";
 
@@ -750,7 +752,7 @@ mod tests {
 
         let values: Vec<String> = vec!["[1,2,3]".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_array";
 
@@ -776,7 +778,7 @@ mod tests {
 
     #[test]
     fn tokenize_array() {
-        let abi = ABI::new();
+        let abi = ABIParser::new();
 
         let value = "[[1,2],[3],4]";
         let param = ParamType::U16;
@@ -856,7 +858,7 @@ mod tests {
 
         let values: Vec<String> = vec!["[[1,2],[3],[4]]".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_nested_array";
 
@@ -906,7 +908,7 @@ mod tests {
 
         let values: Vec<String> = vec!["This is a full sentence".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_string";
 
@@ -959,7 +961,7 @@ mod tests {
 
         let values: Vec<String> = vec!["(42, true)".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_struct";
 
@@ -1012,7 +1014,7 @@ mod tests {
 
         let values: Vec<String> = vec!["(10, (true, [1,2]))".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_nested_struct";
 
@@ -1103,7 +1105,7 @@ mod tests {
 
         let values: Vec<String> = vec!["(0, 42)".to_string()];
 
-        let mut abi = ABI::new();
+        let mut abi = ABIParser::new();
 
         let function_name = "takes_enum";
 

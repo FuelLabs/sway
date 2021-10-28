@@ -12,8 +12,7 @@ use std::io::Write;
 
 use anyhow::Result;
 use core_lang::{
-    BuildConfig, BytecodeCompilationResult, CompilationResult, FinalizedAsm, LibraryExports,
-    Namespace,
+    BuildConfig, BytecodeCompilationResult, CompilationResult, LibraryExports, Namespace,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -308,71 +307,6 @@ fn compile<'source, 'manifest>(
             ))
             .unwrap();
             return Err(format!("Failed to compile {}", proj_name));
-        }
-    }
-}
-
-fn compile_to_asm<'source, 'manifest>(
-    source: &'source str,
-    proj_name: &str,
-    namespace: &Namespace<'source>,
-    build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> Result<FinalizedAsm<'source>, String> {
-    let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
-    match res {
-        CompilationResult::Success { asm, warnings } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled script {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
-            Ok(asm)
-        }
-        CompilationResult::Library { warnings, .. } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled library {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
-            Ok(FinalizedAsm::Library)
-        }
-        CompilationResult::Failure { errors, warnings } => {
-            let e_len = errors.len();
-
-            warnings.iter().for_each(|warning| format_warning(warning));
-
-            errors.into_iter().for_each(|error| format_err(&error));
-
-            println_red_err(&format!(
-                "  Aborting due to {} {}.",
-                e_len,
-                if e_len > 1 { "errors" } else { "error" }
-            ))
-            .unwrap();
-            Err(format!("Failed to compile {}", proj_name))
         }
     }
 }

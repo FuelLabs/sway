@@ -86,7 +86,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                                 ref fields,
                                 ..
                             }) => Ok((fields.clone(), name)),
-                            ref a => Err(CompileError::NotAStruct {
+                            a => Err(CompileError::NotAStruct {
                                 name: name.primary_name.to_string(),
                                 span: name.span.clone(),
                                 actually: a.friendly_type_str(),
@@ -129,7 +129,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     MaybeResolvedType::Resolved(ResolvedType::Struct { ref fields, .. }) => {
                         fields.clone()
                     }
-                    ref a => {
+                    a => {
                         errors.push(CompileError::NotAStruct {
                             name: name.primary_name.to_string(),
                             span: name.span.clone(),
