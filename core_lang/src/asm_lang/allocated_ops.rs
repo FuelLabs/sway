@@ -28,11 +28,11 @@ pub enum AllocatedRegister {
 }
 
 impl fmt::Display for AllocatedRegister {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AllocatedRegister::Allocated(name) => write!(f, "$r{}", name),
+            AllocatedRegister::Allocated(name) => write!(fmtr, "$r{}", name),
             AllocatedRegister::Constant(name) => {
-                write!(f, "{}", name)
+                write!(fmtr, "{}", name)
             }
         }
     }
@@ -164,7 +164,7 @@ pub(crate) struct AllocatedOp<'sc> {
 }
 
 impl<'sc> fmt::Display for AllocatedOp<'sc> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use AllocatedOpcode::*;
         #[rustfmt::skip]
         let string = match &self.opcode {
@@ -253,7 +253,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             op_and_comment.push_str(&format!("; {}", self.comment))
         }
 
-        write!(f, "{}", op_and_comment)
+        write!(fmtr, "{}", op_and_comment)
     }
 }
 
