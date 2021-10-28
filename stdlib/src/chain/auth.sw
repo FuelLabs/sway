@@ -7,12 +7,17 @@ enum Caller {
   None: (),
 }
 
-pub fn caller() -> Caller {
-  // if parent is external
-  if not(asm(r1) {
+/// Returns `true` if the caller is external.
+pub fn caller_is_external() -> bool {
+  asm(r1) {
     gm r1 i1;
     r1: bool
-  }) {
+  }
+}
+
+pub fn caller() -> Caller {
+  // if parent is not external
+  if not(caller_is_external()) {
     // get the caller
     Caller::Some(asm(r1) {
       gm r1 i2;
