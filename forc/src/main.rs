@@ -1,4 +1,5 @@
 #![allow(warnings)]
+mod abi_spec;
 mod cli;
 mod ops;
 mod utils;

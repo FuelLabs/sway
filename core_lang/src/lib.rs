@@ -3,7 +3,6 @@ extern crate pest_derive;
 #[macro_use]
 pub mod error;
 
-pub mod abi_spec;
 mod asm_generation;
 mod asm_lang;
 mod build_config;
@@ -34,8 +33,6 @@ pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 pub use types::TypeInfo;
-
-use serde_json::Value;
 
 // todo rename to language name
 #[derive(Debug)]
@@ -152,17 +149,6 @@ pub enum BytecodeCompilationResult<'sc> {
         warnings: Vec<CompileWarning<'sc>>,
     },
     Library {
-        warnings: Vec<CompileWarning<'sc>>,
-    },
-    Failure {
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
-    },
-}
-
-pub enum ABIJSONResult<'sc> {
-    Success {
-        value: Value,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -499,28 +485,6 @@ pub fn compile_to_bytecode<'sc>(
             exports: _exports,
         } => BytecodeCompilationResult::Library { warnings },
     }
-}
-
-pub fn generate_abi_spec<'sc>(input: &'sc str) -> ABIJSONResult<'sc> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-    let parse_tree = check!(
-        parse(input, None),
-        return ABIJSONResult::Failure { errors, warnings },
-        warnings,
-        errors
-    );
-
-    let mut generate_json = |ast: Option<_>| {
-        ast.map(|tree| crate::abi_spec::generate_abi_spec(tree).ok(&mut warnings, &mut errors))
-            .flatten()
-    };
-
-    let contract_ast = generate_json(parse_tree.contract_ast);
-    let predicate_ast = generate_json(parse_tree.predicate_ast);
-    let script_ast = generate_json(parse_tree.script_ast);
-
-    unimplemented!()
 }
 
 fn perform_control_flow_analysis<'sc>(
