@@ -35,6 +35,10 @@ jobs:
       - name: Install rustfmt
         run: rustup component add rustfmt
 
+      - name: Set git config
+        run: |
+          git config --global core.bigfilethreshold 100m
+
       - name: Check formatting
         uses: actions-rs/cargo@v1
         with:
