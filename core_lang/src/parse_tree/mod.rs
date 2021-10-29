@@ -12,7 +12,7 @@ pub use call_path::*;
 pub use code_block::*;
 pub use declaration::*;
 pub use expression::*;
-pub(crate) use include_statement::IncludeStatement;
+pub use include_statement::IncludeStatement;
 pub use literal::Literal;
 pub use return_statement::*;
 pub use use_statement::{ImportType, UseStatement};

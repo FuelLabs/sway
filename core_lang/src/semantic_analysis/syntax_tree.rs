@@ -12,7 +12,7 @@ use crate::{AstNode, AstNodeContent, ParseTree};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TreeType {
+pub enum TreeType {
     Predicate,
     Script,
     Contract,
@@ -20,7 +20,7 @@ pub(crate) enum TreeType {
 }
 
 #[derive(Debug)]
-pub(crate) enum TypedParseTree<'sc> {
+pub enum TypedParseTree<'sc> {
     Script {
         main_function: TypedFunctionDeclaration<'sc>,
         namespace: Namespace<'sc>,

@@ -25,11 +25,11 @@ pub use declaration::{
     TypedStructField,
 };
 pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
-pub(crate) use expression::*;
+pub use expression::*;
 use impl_trait::implementation_of_trait;
-pub(crate) use return_statement::TypedReturnStatement;
+pub use return_statement::TypedReturnStatement;
 use std::collections::{HashMap, HashSet};
-pub(crate) use while_loop::TypedWhileLoop;
+pub use while_loop::TypedWhileLoop;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
 /// time)
@@ -40,7 +40,7 @@ pub(crate) enum IsConstant {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum TypedAstNodeContent<'sc> {
+pub enum TypedAstNodeContent<'sc> {
     ReturnStatement(TypedReturnStatement<'sc>),
     Declaration(TypedDeclaration<'sc>),
     Expression(TypedExpression<'sc>),
@@ -52,7 +52,7 @@ pub(crate) enum TypedAstNodeContent<'sc> {
 
 #[derive(Clone)]
 pub struct TypedAstNode<'sc> {
-    pub(crate) content: TypedAstNodeContent<'sc>,
+    pub content: TypedAstNodeContent<'sc>,
     pub(crate) span: Span<'sc>,
 }
 

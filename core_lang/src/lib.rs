@@ -157,6 +157,21 @@ pub enum BytecodeCompilationResult<'sc> {
     },
 }
 
+pub enum TypedCompilationResult<'sc> {
+    Success {
+        ast: TypedParseTree<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Library {
+        exports: LibraryExports<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Failure {
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+    },
+}
+
 pub fn extract_keyword(line: &str, rule: Rule) -> Option<&str> {
     if let Ok(pair) = HllParser::parse(rule, line) {
         Some(pair.as_str().trim())
@@ -281,11 +296,41 @@ pub fn compile_to_asm<'sc>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompilationResult<'sc> {
+    let res = compile_to_typed_ast(input, initial_namespace, &build_config, dependency_graph);
+    match res {
+        TypedCompilationResult::Failure { warnings, errors } => {
+            CompilationResult::Failure { warnings, errors }
+        }
+        TypedCompilationResult::Library { exports, warnings } => {
+            CompilationResult::Library { exports, warnings }
+        }
+        TypedCompilationResult::Success { ast, mut warnings } => {
+            let mut errors = vec![];
+            let asm_output = check!(
+                compile_ast_to_asm(ast, &build_config),
+                return CompilationResult::Failure { warnings, errors },
+                warnings,
+                errors
+            );
+            CompilationResult::Success {
+                asm: asm_output,
+                warnings,
+            }
+        }
+    }
+}
+
+pub fn compile_to_typed_ast<'sc>(
+    input: &'sc str,
+    initial_namespace: &Namespace<'sc>,
+    build_config: &BuildConfig,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
+) -> TypedCompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
-        parse(input, Some(&build_config)),
-        return CompilationResult::Failure { errors, warnings },
+        parse(input, Some(build_config)),
+        return TypedCompilationResult::Failure { errors, warnings },
         warnings,
         errors
     );
@@ -301,7 +346,7 @@ pub fn compile_to_asm<'sc>(
                 tree,
                 initial_namespace.clone(),
                 tree_type,
-                &build_config.clone(),
+                build_config,
                 &mut dead_code_graph,
                 dependency_graph,
             )
@@ -323,7 +368,7 @@ pub fn compile_to_asm<'sc>(
                     tree,
                     initial_namespace.clone(),
                     TreeType::Library,
-                    &build_config.clone(),
+                    build_config,
                     &mut dead_code_graph,
                     dependency_graph,
                 )
@@ -349,7 +394,7 @@ pub fn compile_to_asm<'sc>(
     // It is necessary that the syntax tree is well-formed for control flow analysis
     // to be correct.
     if !errors.is_empty() {
-        return CompilationResult::Failure { errors, warnings };
+        return TypedCompilationResult::Failure { errors, warnings };
     }
 
     // perform control flow analysis on each branch
@@ -379,78 +424,36 @@ pub fn compile_to_asm<'sc>(
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
-    // for each syntax tree, generate assembly.
-    let predicate_asm = (|| {
-        if let Some(tree) = predicate_ast {
-            Some(check!(
-                compile_ast_to_asm(tree, &build_config),
-                return None,
-                warnings,
-                errors
-            ))
-        } else {
-            None
-        }
-    })();
 
-    let contract_asm = (|| {
-        if let Some(tree) = contract_ast {
-            Some(check!(
-                compile_ast_to_asm(tree, &build_config),
-                return None,
-                warnings,
-                errors
-            ))
-        } else {
-            None
+    // TODO move this check earlier and don't compile all of them if there is only one
+    match (predicate_ast, contract_ast, script_ast, library_exports) {
+        (Some(pred), None, None, o) if o.trees.is_empty() => TypedCompilationResult::Success {
+            ast: pred,
+            warnings,
+        },
+        (None, Some(contract), None, o) if o.trees.is_empty() => TypedCompilationResult::Success {
+            ast: contract,
+            warnings,
+        },
+        (None, None, Some(script), o) if o.trees.is_empty() => TypedCompilationResult::Success {
+            ast: script,
+            warnings,
+        },
+        (None, None, None, o) if !o.trees.is_empty() => TypedCompilationResult::Library {
+            warnings,
+            exports: o,
+        },
+        (None, None, None, o) if o.trees.is_empty() => {
+            todo!("do we want empty files to be valid programs?")
         }
-    })();
-
-    let script_asm = (|| {
-        if let Some(tree) = script_ast {
-            Some(check!(
-                compile_ast_to_asm(tree, &build_config),
-                return None,
-                warnings,
-                errors
-            ))
-        } else {
-            None
-        }
-    })();
-
-    if errors.is_empty() {
-        // TODO move this check earlier and don't compile all of them if there is only one
-        match (predicate_asm, contract_asm, script_asm, library_exports) {
-            (Some(pred), None, None, o) if o.trees.is_empty() => CompilationResult::Success {
-                asm: pred,
-                warnings,
-            },
-            (None, Some(contract), None, o) if o.trees.is_empty() => CompilationResult::Success {
-                asm: contract,
-                warnings,
-            },
-            (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::Success {
-                asm: script,
-                warnings,
-            },
-            (None, None, None, o) if !o.trees.is_empty() => CompilationResult::Library {
-                warnings,
-                exports: o,
-            },
-            (None, None, None, o) if o.trees.is_empty() => {
-                todo!("do we want empty files to be valid programs?")
-            }
-            // Default to compiling an empty library if there is no code or invalid state
-            _ => unimplemented!(
-                "Multiple contracts, libraries, scripts, or predicates in a single file are \
-                 unsupported."
-            ),
-        }
-    } else {
-        CompilationResult::Failure { errors, warnings }
+        // Default to compiling an empty library if there is no code or invalid state
+        _ => unimplemented!(
+            "Multiple contracts, libraries, scripts, or predicates in a single file are \
+                unsupported."
+        ),
     }
 }
+
 pub fn compile_to_bytecode<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
