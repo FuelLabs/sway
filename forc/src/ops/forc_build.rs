@@ -1,12 +1,13 @@
 use crate::utils::dependency::{Dependency, DependencyDetails};
+use crate::utils::errors::{aborting_due_to, compiled_with_warnings};
 use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, format_err, format_warning, get_file_name, get_main_file, get_main_path,
-        print_blue_err, println_green_err, println_red_err, println_yellow_err, read_manifest,
+        find_manifest_dir, get_file_name, get_main_file, get_main_path, read_manifest,
     },
 };
+
 use std::fs::File;
 use std::io::Write;
 
@@ -195,40 +196,11 @@ fn compile_library<'source, 'manifest>(
     let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
-            if !silent_mode {
-                warnings.iter().for_each(|warning| format_warning(warning));
-            }
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled library {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
+            compiled_with_warnings(silent_mode, proj_name.to_string(), warnings);
             Ok(exports)
         }
         CompilationResult::Failure { errors, warnings } => {
-            let e_len = errors.len();
-
-            if !silent_mode {
-                warnings.iter().for_each(|warning| format_warning(warning));
-                errors.into_iter().for_each(|error| format_err(&error));
-            }
-
-            println_red_err(&format!(
-                "  Aborting due to {} {}.",
-                e_len,
-                if e_len > 1 { "errors" } else { "error" }
-            ))
-            .unwrap();
+            aborting_due_to(silent_mode, warnings, errors);
             Err(format!("Failed to compile {}", proj_name))
         }
         _ => {
@@ -251,61 +223,15 @@ fn compile<'source, 'manifest>(
     let res = core_lang::compile_to_bytecode(&source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
-            if !silent_mode {
-                warnings.iter().for_each(|warning| format_warning(warning));
-            }
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled script {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
+            compiled_with_warnings(silent_mode, proj_name.to_string(), warnings);
             return Ok(bytes);
         }
         BytecodeCompilationResult::Library { warnings } => {
-            if !silent_mode {
-                warnings.iter().for_each(|warning| format_warning(warning));
-            }
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled library {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
+            compiled_with_warnings(silent_mode, proj_name.to_string(), warnings);
             return Ok(vec![]);
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
-            let e_len = errors.len();
-
-            if !silent_mode {
-                warnings.iter().for_each(|warning| format_warning(warning));
-                errors.into_iter().for_each(|error| format_err(&error));
-            }
-
-            println_red_err(&format!(
-                "  Aborting due to {} {}.",
-                e_len,
-                if e_len > 1 { "errors" } else { "error" }
-            ))
-            .unwrap();
+            aborting_due_to(silent_mode, warnings, errors);
             return Err(format!("Failed to compile {}", proj_name));
         }
     }

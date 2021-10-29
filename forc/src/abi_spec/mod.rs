@@ -5,8 +5,11 @@ use core_lang::semantic_analysis::ast_node::{
     TypedExpression, TypedReturnStatement, TypedWhileLoop,
 };
 use core_lang::semantic_analysis::TypedParseTree;
+use core_lang::CompileResult;
 
-pub fn generate_abi_spec<'sc>(tree: TypedParseTree<'sc>) {
+use serde_json::Value;
+
+pub fn generate_abi_spec<'sc>(tree: TypedParseTree<'sc>) -> CompileResult<'sc, Value> {
     let all_nodes = match tree {
         TypedParseTree::Contract { all_nodes, .. } => all_nodes,
         TypedParseTree::Library { all_nodes, .. } => all_nodes,
@@ -17,6 +20,8 @@ pub fn generate_abi_spec<'sc>(tree: TypedParseTree<'sc>) {
     for node in all_nodes {
         generate_abi_spec_node(node);
     }
+
+    unimplemented!()
 }
 
 fn generate_abi_spec_node<'sc>(node: TypedAstNode<'sc>) {

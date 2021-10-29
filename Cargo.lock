@@ -1192,6 +1192,7 @@ dependencies = [
  "reqwest",
  "semver 1.0.4",
  "serde",
+ "serde_json",
  "source-span",
  "structopt 0.3.22",
  "tar",
