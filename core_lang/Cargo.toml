@@ -24,6 +24,7 @@ thiserror = "1.0"
 uuid-b64 = "0.1"
 line-col = "0.2"
 source-span = "2.4"
+fuels-rs = {path = "../fuels-rs"}
 
 [[bin]]
 name = "selector-debug"
