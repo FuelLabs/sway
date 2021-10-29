@@ -49,16 +49,16 @@ jobs:
         env:
           RUSTFLAGS: "-D warnings"
 
+      - name: Clone and build fuel-core
+        run: |
+          git clone git@github.com:FuelLabs/fuel-core
+          (cd fuel-core && cargo build -p fuel-core && ./fuel-core/target/debug/fuel-core)
+
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --verbose
-
-      - name: Clone and build fuel-core
-        run: |
-          git clone git@github.com:FuelLabs/fuel-core
-          (cd fuel-core && cargo build -p fuel-core)
 
       - name: Build test suite
         uses: actions-rs/cargo@v1
@@ -68,4 +68,4 @@ jobs:
 
       - name: Run test suite
         run: |
-          ./fuel-core/target/debug/fuel-core & ./target/debug/test
+          ./target/debug/test
