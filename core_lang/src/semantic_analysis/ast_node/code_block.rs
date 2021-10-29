@@ -1,3 +1,5 @@
+use fuels_rs::types::JsonABI;
+
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
@@ -26,6 +28,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        json_abi: &JsonABI,
     ) -> CompileResult<'sc, (Self, Option<MaybeResolvedType<'sc>>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -46,6 +49,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     build_config,
                     dead_code_graph,
                     dependency_graph,
+                    json_abi,
                 )
                 .ok(&mut warnings, &mut errors)
             })

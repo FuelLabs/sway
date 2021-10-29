@@ -234,6 +234,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
                     &build_config.clone(),
                     dead_code_graph,
                     dependency_graph,
+                    &vec![],
                 )
                 .ok(&mut warnings, &mut errors)
                 .map(|value| (name, value))
@@ -295,6 +296,8 @@ pub fn compile_to_asm<'sc>(
         namespace: Default::default(),
     };
 
+    let mut json_abi = vec![];
+
     let mut type_check_ast = |ast: Option<_>, tree_type| {
         ast.map(|tree| {
             TypedParseTree::type_check(
@@ -304,6 +307,7 @@ pub fn compile_to_asm<'sc>(
                 &build_config.clone(),
                 &mut dead_code_graph,
                 dependency_graph,
+                &mut json_abi,
             )
             .ok(&mut warnings, &mut errors)
         })
@@ -326,6 +330,7 @@ pub fn compile_to_asm<'sc>(
                     &build_config.clone(),
                     &mut dead_code_graph,
                     dependency_graph,
+                    &mut json_abi,
                 )
                 .ok(&mut warnings, &mut errors)
                 .map(|value| (name, value))

@@ -4,6 +4,8 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::types::{MaybeResolvedType, ResolvedType};
 use std::collections::VecDeque;
 
+use fuels_rs::types::JsonABI;
+
 pub(crate) fn type_check_method_application<'sc>(
     method_name: MethodName<'sc>,
     arguments: Vec<Expression<'sc>>,
@@ -13,6 +15,7 @@ pub(crate) fn type_check_method_application<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    json_abi: &JsonABI,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -27,7 +30,8 @@ pub(crate) fn type_check_method_application<'sc>(
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
+                json_abi
             ),
             error_recovery_expr(span.clone()),
             warnings,

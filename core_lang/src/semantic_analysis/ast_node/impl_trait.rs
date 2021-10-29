@@ -1,3 +1,5 @@
+use fuels_rs::types::JsonABI;
+
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
@@ -17,6 +19,7 @@ pub(crate) fn implementation_of_trait<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    json_abi: &JsonABI,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -65,7 +68,8 @@ pub(crate) fn implementation_of_trait<'sc>(
                     &block_span,
                     &type_implementing_for,
                     Mode::NonAbi,
-                    dependency_graph
+                    dependency_graph,
+                    json_abi
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -117,7 +121,8 @@ pub(crate) fn implementation_of_trait<'sc>(
                     &block_span,
                     &type_implementing_for,
                     Mode::ImplAbiFn,
-                    dependency_graph
+                    dependency_graph,
+                    json_abi
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -172,6 +177,7 @@ fn type_check_trait_implementation<'sc>(
     type_implementing_for: &MaybeResolvedType<'sc>,
     mode: Mode,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    json_abi: &JsonABI,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
@@ -198,7 +204,8 @@ fn type_check_trait_implementation<'sc>(
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph
+                dependency_graph,
+                json_abi
             ),
             continue,
             warnings,
@@ -360,7 +367,8 @@ fn type_check_trait_implementation<'sc>(
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph
+                dependency_graph,
+                json_abi
             ),
             continue,
             warnings,

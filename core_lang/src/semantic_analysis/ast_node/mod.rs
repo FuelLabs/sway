@@ -7,6 +7,7 @@ use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{error::*, types::IntegerBits};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
+use fuels_rs::types::JsonABI;
 pub(crate) use impl_trait::Mode;
 use std::path::Path;
 
@@ -93,6 +94,7 @@ impl<'sc> TypedAstNode<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        json_abi: &JsonABI,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -121,6 +123,7 @@ impl<'sc> TypedAstNode<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                json_abi,
             )
         };
 
@@ -223,7 +226,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     build_config,
                                     dead_code_graph,
                                     Mode::NonAbi,
-                                    dependency_graph
+                                    dependency_graph,
+                                    json_abi
                                 ),
                                 error_recovery_function_declaration(fn_decl),
                                 warnings,
@@ -271,7 +275,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph
+                                    dependency_graph,
+                                    json_abi
                                 ),
                                 vec![],
                                 warnings,
@@ -298,7 +303,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph
+                                    dependency_graph,
+                                    json_abi
                                 ),
                                 return err(warnings, errors),
                                 warnings,
@@ -311,7 +317,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 namespace,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph
+                                dependency_graph,
+                                json_abi
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -366,7 +373,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         build_config,
                                         dead_code_graph,
                                         Mode::NonAbi,
-                                        dependency_graph
+                                        dependency_graph,
+                                        json_abi
                                     ),
                                     continue,
                                     warnings,
@@ -452,7 +460,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph
+                                    dependency_graph,
+                                    json_abi
                                 ),
                                 vec![],
                                 warnings,
@@ -480,7 +489,8 @@ impl<'sc> TypedAstNode<'sc> {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph
+                            dependency_graph,
+                            json_abi
                         ),
                         error_recovery_expr(a.span()),
                         warnings,
@@ -500,7 +510,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 self_type,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph
+                                dependency_graph,
+                                json_abi
                             ),
                             error_recovery_expr(expr.span()),
                             warnings,
@@ -521,7 +532,8 @@ impl<'sc> TypedAstNode<'sc> {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph
+                            dependency_graph,
+                            json_abi
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -539,7 +551,8 @@ impl<'sc> TypedAstNode<'sc> {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph
+                            dependency_graph,
+                            json_abi
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -556,7 +569,8 @@ impl<'sc> TypedAstNode<'sc> {
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph
+                            dependency_graph,
+                            json_abi
                         ),
                         (
                             TypedCodeBlock {
@@ -702,6 +716,7 @@ fn reassignment<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    json_abi: &JsonABI,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -758,7 +773,8 @@ fn reassignment<'sc>(
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
+                    dependency_graph,
+                    json_abi
                 ),
                 error_recovery_expr(span),
                 warnings,
@@ -794,7 +810,8 @@ fn reassignment<'sc>(
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph
+                        dependency_graph,
+                        json_abi
                     ),
                     error_recovery_expr(expr.span()),
                     warnings,
@@ -858,7 +875,8 @@ fn reassignment<'sc>(
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
+                    dependency_graph,
+                    json_abi
                 ),
                 error_recovery_expr(span),
                 warnings,
@@ -929,6 +947,7 @@ fn type_check_trait_methods<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    json_abi: &JsonABI,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1048,7 +1067,8 @@ fn type_check_trait_methods<'sc>(
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
+                json_abi
             ),
             continue,
             warnings,

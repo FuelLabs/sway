@@ -12,6 +12,7 @@ use crate::{
     Ident,
 };
 use crate::{control_flow_analysis::ControlFlowGraph, types::TypeInfo};
+use fuels_rs::types::JsonABI;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -511,6 +512,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         mode: Mode,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        json_abi: &JsonABI,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -559,7 +561,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
+                json_abi
             ),
             (
                 TypedCodeBlock {
