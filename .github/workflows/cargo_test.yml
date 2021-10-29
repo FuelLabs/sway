@@ -52,7 +52,7 @@ jobs:
       - name: Clone and build fuel-core
         run: |
           git clone git@github.com:FuelLabs/fuel-core
-          (cd fuel-core && cargo build -p fuel-core && ./fuel-core/target/debug/fuel-core &)
+          (cd fuel-core && cargo build -p fuel-core && cp target/debug/fuel-core /usr/bin)
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -68,4 +68,4 @@ jobs:
 
       - name: Run test suite
         run: |
-          ./target/debug/test
+          ./fuel-core/target/debug/fuel-core & ./target/debug/test

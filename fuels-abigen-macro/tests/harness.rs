@@ -527,7 +527,7 @@ async fn example_workflow() {
 
     let contract_instance = MyContract::new(contract_id);
 
-    let contract_call = contract_instance.takes_int(42 as u32);
+    let _contract_call = contract_instance.takes_int(42 as u32);
 
     // Sends the actual transaction: builds TX and sends encoded params
     // contract_call.send().await?;
