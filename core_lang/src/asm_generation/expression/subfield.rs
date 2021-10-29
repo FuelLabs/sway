@@ -8,14 +8,13 @@ use crate::{
     ident::Ident,
     parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, UnaryOp},
     type_engine::{TypeEngine, TypeId, TYPE_ENGINE},
-    types::ResolvedType,
 };
 use crate::{
     parse_tree::Literal,
     semantic_analysis::{
         ast_node::{
-            TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant,
-            TypedStructExpressionField, TypedStructField,
+            OwnedTypedStructField, TypedAsmRegisterDeclaration, TypedCodeBlock,
+            TypedExpressionVariant, TypedStructExpressionField, TypedStructField,
         },
         TypedExpression,
     },
@@ -57,14 +56,15 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         .unwrap()
         .look_up_type_id(resolved_type_of_parent)
     {
-        ResolvedType::Struct { fields, .. } => fields,
+        TypeInfo::Struct { fields, .. } => fields,
         _ => {
             unreachable!("Accessing a field on a non-struct should be caught during type checking.")
         }
     };
-    let fields_for_layout: Vec<(TypeId, &Ident<'_>)> = fields
+    // TODO(static span): str should be ident below
+    let fields_for_layout: Vec<(TypeId, &str)> = fields
         .iter()
-        .map(|TypedStructField { name, r#type, .. }| (*r#type, name))
+        .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, name.as_str()))
         .collect::<Vec<_>>();
     let descriptor = check!(
         get_struct_memory_layout(&fields_for_layout[..]),
@@ -81,11 +81,12 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         errors
     );
 
-    let (type_of_this_field, span_for_this_field) = fields_for_layout
+    // TODO(static span): name_for_this_field should be span_for_this_field
+    let (type_of_this_field, name_for_this_field) = fields_for_layout
         .into_iter()
         .find_map(|(ty, name)| {
-            if *name == field_to_access.name {
-                Some((ty, name.span.clone()))
+            if name == field_to_access.name.primary_name {
+                Some((ty, name))
             } else {
                 None
             }
@@ -94,14 +95,14 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
             "Accessing a subfield that is not no the struct would be caught during type checking",
         );
 
+    let span = crate::Span {
+        span: pest::Span::new("TODO(static span): use span_for_this_field", 0, 0).unwrap(),
+        path: None,
+    };
     // step 3
     // if this is a copy type (primitives that fit in a word), copy it into the register.
     // Otherwise, load the pointer to the field into the register
-    let resolved_type_of_this_field = match TYPE_ENGINE
-        .lock()
-        .unwrap()
-        .resolve(type_of_this_field, &span_for_this_field)
-    {
+    let resolved_type_of_this_field = match resolve_type(type_of_this_field, &span) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e.into());

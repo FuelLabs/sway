@@ -196,7 +196,7 @@ impl<'sc> TypedParseTree<'sc> {
                     .unwrap()
                     .look_up_type_id(main_func.return_type)
                 {
-                    ResolvedType::Boolean => (),
+                    TypeInfo::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
                     )),

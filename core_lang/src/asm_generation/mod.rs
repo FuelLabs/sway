@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use crate::type_engine::{TypeEngine, TYPE_ENGINE};
+use crate::type_engine::{resolve_type, TypeEngine, TYPE_ENGINE};
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
     asm_lang::{
@@ -195,7 +195,7 @@ impl<'sc> AbstractInstructionSet<'sc> {
     /// and one to replace the labels in the organizational ops
     fn realize_labels(
         self,
-        data_section: &DataSection,
+        data_section: &DataSection<'sc>,
         namespace: &AsmNamespace,
     ) -> RealizedAbstractInstructionSet<'sc> {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
@@ -1337,11 +1337,7 @@ fn ret_or_retd_value<'sc>(
     let mut errors = vec![];
     let mut warnings = vec![];
     let mut asm_buf = vec![];
-    let main_func_ret_ty: ResolvedType = match TYPE_ENGINE
-        .lock()
-        .unwrap()
-        .resolve(func.return_type, &func.return_type_span)
-    {
+    let main_func_ret_ty: TypeInfo = match resolve_type(func.return_type, &func.return_type_span) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e.into());
@@ -1349,7 +1345,7 @@ fn ret_or_retd_value<'sc>(
         }
     };
 
-    if main_func_ret_ty == ResolvedType::Unit {
+    if main_func_ret_ty == TypeInfo::Unit {
         // unit returns should always be zero, although because they can be
         // omitted from functions, the register is sometimes uninitialized.
         // Manually return zero in this case.
@@ -1365,8 +1361,14 @@ fn ret_or_retd_value<'sc>(
             errors,
         );
     }
+    let span = crate::Span {
+        span: pest::Span::new("TODO(static span)", 0, 0).unwrap(),
+        path: None,
+    };
 
-    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of() * 8;
+    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of(&span).expect(
+        "TODO(static span): Internal error: Static spans will allow for a proper error here.",
+    ) * 8;
     if size_of_main_func_return_bytes <= 8 {
         asm_buf.push(Op {
             owning_span: None,

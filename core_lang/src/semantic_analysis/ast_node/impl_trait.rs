@@ -2,7 +2,7 @@ use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::span::Span;
-use crate::type_engine::{TypeInfo, TYPE_ENGINE};
+use crate::type_engine::{resolve_type, TypeInfo, TYPE_ENGINE};
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
@@ -78,11 +78,7 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                match TYPE_ENGINE
-                    .lock()
-                    .unwrap()
-                    .resolve(type_implementing_for_id, &type_implementing_for_span)
-                {
+                match resolve_type(type_implementing_for_id, &type_implementing_for_span) {
                     Ok(o) => o,
                     Err(e) => {
                         errors.push(e.into());
@@ -332,11 +328,7 @@ fn type_check_trait_implementation<'sc>(
             prefixes: vec![],
             suffix: trait_name.clone(),
         },
-        match TYPE_ENGINE
-            .lock()
-            .unwrap()
-            .resolve(type_implementing_for, &type_implementing_for_span)
-        {
+        match resolve_type(type_implementing_for, &type_implementing_for_span) {
             Ok(o) => o,
             Err(e) => {
                 errors.push(e.into());

@@ -35,14 +35,11 @@ pub trait TypeEngine<'sc> {
     /// Attempt to reconstruct a concrete type from the given type term ID. This
     /// may fail if we don't yet have enough information to figure out what the
     /// type is.
-    fn resolve(
-        &self,
-        id: Self::TypeId,
-        span: &Span<'sc>,
-    ) -> Result<Self::ResolvedType, Self::Error>;
+    fn resolve(&self, id: Self::TypeId) -> Result<Self::TypeInfo, Self::Error>;
 
-    /// Looks up a type id and asserts that it is known. Panics if it is not
-    fn look_up_type_id(&self, id: Self::TypeId) -> ResolvedType<'sc>;
+    /// Looks up a type id. Panics if the given ID doesn't exist in the type
+    /// engine.
+    fn look_up_type_id(&self, id: Self::TypeId) -> TypeInfo;
 }
 
 /// A concrete type that has been fully inferred

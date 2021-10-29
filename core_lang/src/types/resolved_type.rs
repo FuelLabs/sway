@@ -1,7 +1,11 @@
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{IntegerBits, TypeEngine, TypeInfo, TYPE_ENGINE};
-use crate::{error::*, semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
+use crate::type_engine::{resolve_type, IntegerBits, TypeEngine, TypeInfo, TYPE_ENGINE};
+use crate::{
+    error::*,
+    semantic_analysis::ast_node::{OwnedTypedStructField, TypedStructField},
+    CallPath, Ident,
+};
 use derivative::Derivative;
 
 #[derive(Derivative)]
@@ -54,8 +58,8 @@ impl ResolvedType<'_> {
                 name: name.primary_name.to_string(),
                 fields: fields
                     .iter()
-                    .map(|TypedStructField { r#type, .. }| *r#type)
-                    .collect(),
+                    .map(TypedStructField::into_owned_typed_struct_field)
+                    .collect::<Vec<OwnedTypedStructField>>(),
             },
             Enum {
                 name,
@@ -66,8 +70,9 @@ impl ResolvedType<'_> {
             Contract => TypeInfo::Contract,
             /// Represents a type which contains methods to issue a contract call.
             /// The specific contract is identified via the `Ident` within.
-            ContractCaller { abi_name, .. } => TypeInfo::ContractCaller {
+            ContractCaller { abi_name, address } => TypeInfo::ContractCaller {
                 abi_name: abi_name.to_owned_call_path(),
+                address: (*address).span.as_str().to_string(),
             },
             Function { from, to } => todo!("TypeInfo for functions"),
             // used for recovering from errors in the ast
@@ -135,6 +140,11 @@ impl<'sc> ResolvedType<'sc> {
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     /// This is _in words_!
     pub(crate) fn stack_size_of(&self) -> u64 {
+        let span = crate::Span {
+            span: pest::Span::new("TODO(static span)", 0, 0).unwrap(),
+            path: None,
+        };
+
         match self {
             // Each char is a byte, so the size is the num of characters / 8
             // rounded up to the nearest word
@@ -155,12 +165,10 @@ impl<'sc> ResolvedType<'sc> {
                     .unwrap()
             }
             ResolvedType::Struct { fields, .. } => fields.iter().fold(0, |acc, x| {
-                acc + TYPE_ENGINE
-                    .lock()
-                    .unwrap()
-                    .resolve(x.r#type, &x.name.span)
-                    .expect("should be unreachable?")
-                    .stack_size_of()
+                acc + (resolve_type(x.r#type, &x.span)
+                    .expect("TODO(static spans)")
+                    .stack_size_of(&span)
+                    .expect("TODO(static spans)"))
             }),
             // `ContractCaller` types are unsized and used only in the type system for
             // calling methods
@@ -205,12 +213,8 @@ impl<'sc> ResolvedType<'sc> {
                     let names = fields
                         .iter()
                         .map(|TypedStructField { r#type, .. }| {
-                            TYPE_ENGINE
-                                .lock()
-                                .unwrap()
-                                .resolve(*r#type, error_msg_span)
-                                .expect("unreachable?")
-                                .to_selector_name(error_msg_span)
+                            CompileResult::from(resolve_type(*r#type, error_msg_span))
+                                .flat_map(|x| x.to_selector_name(error_msg_span))
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];

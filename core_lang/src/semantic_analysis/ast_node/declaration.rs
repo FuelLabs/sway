@@ -6,7 +6,9 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::type_engine::{IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE};
+use crate::type_engine::{
+    look_up_type_id, resolve_type, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE,
+};
 use crate::{build_config::BuildConfig, error::*, types::ResolvedType, Ident};
 use sha2::{Digest, Sha256};
 
@@ -72,7 +74,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
-                        .map(|TypedStructField { r#type, .. }| *r#type)
+                        .map(TypedStructField::into_owned_typed_struct_field)
                         .collect(),
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
@@ -177,6 +179,35 @@ pub struct TypedStructField<'sc> {
     pub(crate) span: Span<'sc>,
 }
 
+// TODO(Static span) -- remove this type and use TypedStructField
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct OwnedTypedStructField {
+    pub(crate) name: String,
+    pub(crate) r#type: TypeId,
+}
+
+impl OwnedTypedStructField {
+    pub(crate) fn into_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
+        TypedStructField {
+            name: Ident {
+                span: span.clone(),
+                primary_name: Box::leak(span.clone().as_str().to_string().into_boxed_str()),
+            },
+            r#type: self.r#type,
+            span: span.clone(),
+        }
+    }
+}
+
+impl TypedStructField<'_> {
+    pub(crate) fn into_owned_typed_struct_field(&self) -> OwnedTypedStructField {
+        OwnedTypedStructField {
+            name: self.name.primary_name.to_string(),
+            r#type: self.r#type,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TypedEnumDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
@@ -201,7 +232,11 @@ impl TypedEnumDeclaration<'_> {
     pub(crate) fn as_type(&self) -> TypeId {
         crate::type_engine::insert_type(TypeInfo::Enum {
             name: self.name.primary_name.to_string(),
-            variant_types: self.variants.iter().map(|x| x.r#type.clone()).collect(),
+            variant_types: self
+                .variants
+                .iter()
+                .map(TypedEnumVariant::into_owned_typed_enum_variant)
+                .collect(),
         })
     }
 }
@@ -211,6 +246,24 @@ pub struct TypedEnumVariant<'sc> {
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
     pub(crate) span: Span<'sc>,
+}
+
+impl TypedEnumVariant<'_> {
+    pub(crate) fn into_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
+        OwnedTypedEnumVariant {
+            name: self.name.primary_name.to_string(),
+            r#type: self.r#type,
+            tag: self.tag,
+        }
+    }
+}
+
+// TODO(Static span) -- remove this type and use TypedEnumVariant
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct OwnedTypedEnumVariant {
+    pub(crate) name: String,
+    pub(crate) r#type: TypeId,
+    pub(crate) tag: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -257,35 +310,32 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             self.name.span.clone()
         }
     }
-    pub(crate) fn replace_self_types(&self, self_type: TypeId) -> Self {
-        todo!()
-        // TypedFunctionDeclaration {
-        //     name: self.name.clone(),
-        //     body: self.body.replace_self_types(self_type),
-        //     parameters: self
-        //         .parameters
-        //         .iter()
-        //         .map(|x| {
-        //             let mut x = x.clone();
-        //             x.r#type = match x.r#type {
-        //                 MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => {
-        //                     self_type.clone()
-        //                 }
-        //                 otherwise => otherwise.clone(),
-        //             };
-        //             x
-        //         })
-        //         .collect(),
-        //     span: self.span.clone(),
-        //     return_type: match &self.return_type {
-        //         MaybeResolvedType::Partial(PartiallyResolvedType::SelfType) => self_type.clone(),
-        //         otherwise => otherwise.clone(),
-        //     },
-        //     type_parameters: self.type_parameters.clone(),
-        //     return_type_span: self.return_type_span.clone(),
-        //     visibility: self.visibility.clone(),
-        //     is_contract_call: self.is_contract_call,
-        // }
+    pub(crate) fn replace_self_types(self, self_type: TypeId) -> Self {
+        TypedFunctionDeclaration {
+            name: self.name,
+            body: self.body,
+            parameters: self
+                .parameters
+                .iter()
+                .map(|x| {
+                    let mut x = x.clone();
+                    x.r#type = match look_up_type_id(x.r#type) {
+                        TypeInfo::SelfType => self_type.clone(),
+                        otherwise => x.r#type,
+                    };
+                    x
+                })
+                .collect(),
+            span: self.span.clone(),
+            return_type: match look_up_type_id(self.return_type) {
+                TypeInfo::SelfType => self_type.clone(),
+                otherwise => self.return_type,
+            },
+            type_parameters: self.type_parameters.clone(),
+            return_type_span: self.return_type_span.clone(),
+            visibility: self.visibility.clone(),
+            is_contract_call: self.is_contract_call,
+        }
     }
     pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<'sc, Vec<u8>> {
         let mut errors = vec![];
@@ -329,10 +379,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 |TypedFunctionParameter {
                      r#type, type_span, ..
                  }| {
-                    TYPE_ENGINE
-                        .lock()
-                        .unwrap()
-                        .resolve(*r#type, type_span)
+                    resolve_type(*r#type, type_span)
                         .expect("unreachable I think?")
                         .to_selector_name(type_span)
                 },
@@ -643,7 +690,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     .lock()
                     .unwrap()
                     .look_up_type_id(parameters[0].r#type)
-                    != ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
+                    != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[0].type_span.clone(),
@@ -653,7 +700,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     .lock()
                     .unwrap()
                     .look_up_type_id(parameters[1].r#type)
-                    != ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)
+                    != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[1].type_span.clone(),
@@ -663,7 +710,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     .lock()
                     .unwrap()
                     .look_up_type_id(parameters[2].r#type)
-                    != ResolvedType::B256
+                    != TypeInfo::B256
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[2].type_span.clone(),

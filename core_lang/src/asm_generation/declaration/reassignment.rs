@@ -5,8 +5,10 @@ use crate::{
         RegisterSequencer,
     },
     asm_lang::virtual_ops::VirtualImmediate12,
-    semantic_analysis::ast_node::{ReassignmentLhs, TypedReassignment, TypedStructField},
-    type_engine::{TypeEngine, TYPE_ENGINE},
+    semantic_analysis::ast_node::{
+        OwnedTypedStructField, ReassignmentLhs, TypedReassignment, TypedStructField,
+    },
+    type_engine::{resolve_type, TypeEngine, TypeInfo, TYPE_ENGINE},
     types::ResolvedType,
 };
 
@@ -81,8 +83,8 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             let (mut fields, top_level_decl) = match iter
                 .next()
                 .map(|ReassignmentLhs { r#type, name }| -> Result<_, _> {
-                    match TYPE_ENGINE.lock().unwrap().resolve(*r#type, &name.span) {
-                        Ok(ResolvedType::Struct { ref fields, .. }) => Ok((fields.clone(), name)),
+                    match resolve_type(*r#type, &name.span) {
+                        Ok(TypeInfo::Struct { ref fields, .. }) => Ok((fields.clone(), name)),
                         Ok(ref a) => Err(CompileError::NotAStruct {
                             name: name.primary_name.to_string(),
                             span: name.span.clone(),
@@ -103,20 +105,17 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // delve into this potentially nested field access and figure out the location of this
             // subfield
             for ReassignmentLhs { r#type, name } in iter {
-                let r#type = match TYPE_ENGINE
-                    .lock()
-                    .unwrap()
-                    .resolve(r#type.clone(), &name.span)
-                {
+                let r#type = match resolve_type(r#type.clone(), &name.span) {
                     Ok(o) => o,
                     Err(e) => {
                         errors.push(CompileError::TypeError(e));
-                        ResolvedType::ErrorRecovery
+                        TypeInfo::ErrorRecovery
                     }
                 };
+                // TODO(static span) use spans instead of strings below
                 let fields_for_layout = fields
                     .iter()
-                    .map(|TypedStructField { name, r#type, .. }| (*r#type, name))
+                    .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, name.as_str()))
                     .collect::<Vec<_>>();
                 let field_layout = check!(
                     get_struct_memory_layout(&fields_for_layout[..]),
@@ -132,7 +131,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 );
                 offset_in_words += offset_of_this_field;
                 fields = match r#type {
-                    ResolvedType::Struct { ref fields, .. } => fields.clone(),
+                    TypeInfo::Struct { ref fields, .. } => fields.clone(),
                     ref a => {
                         errors.push(CompileError::NotAStruct {
                             name: name.primary_name.to_string(),

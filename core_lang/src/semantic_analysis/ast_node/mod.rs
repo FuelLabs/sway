@@ -19,15 +19,18 @@ mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
 use crate::type_engine::{
-    FriendlyTypeString, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE,
+    look_up_type_id, FriendlyTypeString, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE,
 };
 pub(crate) use code_block::TypedCodeBlock;
+pub(crate) use declaration::{
+    OwnedTypedEnumVariant, OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration,
+    TypedVariableDeclaration,
+};
 pub use declaration::{
     TypedAbiDeclaration, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
     TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
     TypedStructField,
 };
-pub(crate) use declaration::{TypedReassignment, TypedTraitDeclaration, TypedVariableDeclaration};
 pub(crate) use expression::*;
 use impl_trait::implementation_of_trait;
 pub(crate) use return_statement::TypedReturnStatement;
@@ -81,16 +84,12 @@ impl<'sc> TypedAstNode<'sc> {
         use TypedAstNodeContent::*;
         match &self.content {
             ReturnStatement(_) | Declaration(_) => TypeInfo::Unit,
-            Expression(TypedExpression { return_type, .. }) => TYPE_ENGINE
-                .lock()
-                .unwrap()
-                .look_up_type_id(*return_type)
-                .to_type_info(),
-            ImplicitReturnExpression(TypedExpression { return_type, .. }) => TYPE_ENGINE
-                .lock()
-                .unwrap()
-                .look_up_type_id(*return_type)
-                .to_type_info(),
+            Expression(TypedExpression { return_type, .. }) => {
+                TYPE_ENGINE.lock().unwrap().look_up_type_id(*return_type)
+            }
+            ImplicitReturnExpression(TypedExpression { return_type, .. }) => {
+                TYPE_ENGINE.lock().unwrap().look_up_type_id(*return_type)
+            }
             WhileLoop(_) | SideEffect => TypeInfo::Unit,
         }
     }
@@ -105,7 +104,6 @@ impl<'sc> TypedAstNode<'sc> {
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
             let type_id = crate::type_engine::insert_type(type_ascription);
@@ -251,7 +249,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     prefixes: vec![],
                                     suffix: name.clone(),
                                 },
-                                todo!("TypeInfo::SelfType"),
+                                TypeInfo::SelfType,
                                 interface_surface
                                     .iter()
                                     .map(|x| x.to_dummy_func(Mode::NonAbi))
@@ -316,12 +314,8 @@ impl<'sc> TypedAstNode<'sc> {
                             block_span,
                             ..
                         }) => {
-                            let type_implementing_for_resolved =
+                            let implementing_for_type_id =
                                 namespace.resolve_type_without_self(&type_implementing_for);
-                            let implementing_for_type_id = TYPE_ENGINE
-                                .lock()
-                                .unwrap()
-                                .insert(type_implementing_for_resolved.clone());
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             if !type_arguments.is_empty() {
@@ -386,7 +380,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 trait_name,
                                 span: block_span,
                                 methods: functions_buf,
-                                type_implementing_for: type_implementing_for_resolved,
+                                type_implementing_for,
                             }
                         }
                         Declaration::StructDeclaration(decl) => {

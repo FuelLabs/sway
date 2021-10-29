@@ -61,6 +61,23 @@ pub struct CompileResult<'sc, T> {
     pub errors: Vec<CompileError<'sc>>,
 }
 
+impl<'sc, T> From<Result<T, TypeError<'sc>>> for CompileResult<'sc, T> {
+    fn from(o: Result<T, TypeError<'sc>>) -> Self {
+        match o {
+            Ok(o) => CompileResult {
+                value: Some(o),
+                warnings: vec![],
+                errors: vec![],
+            },
+            Err(e) => CompileResult {
+                value: None,
+                warnings: vec![],
+                errors: vec![e.into()],
+            },
+        }
+    }
+}
+
 impl<'sc, T> CompileResult<'sc, T> {
     pub fn ok(
         mut self,
@@ -76,6 +93,20 @@ impl<'sc, T> CompileResult<'sc, T> {
         match self.value {
             None => err(self.warnings, self.errors),
             Some(value) => ok(f(value), self.warnings, self.errors),
+        }
+    }
+
+    pub fn flat_map<U, F: FnOnce(T) -> CompileResult<'sc, U>>(self, f: F) -> CompileResult<'sc, U> {
+        match self.value {
+            None => err(self.warnings, self.errors),
+            Some(value) => {
+                let res = f(value);
+                CompileResult {
+                    value: res.value,
+                    warnings: [self.warnings, res.warnings].concat(),
+                    errors: [self.errors, res.errors].concat(),
+                }
+            }
         }
     }
 
@@ -504,7 +535,7 @@ pub enum CompileError<'sc> {
     FieldNotFound {
         field_name: &'sc str,
         available_fields: String,
-        struct_name: &'sc str,
+        struct_name: String,
         span: Span<'sc>,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
@@ -683,6 +714,10 @@ pub enum CompileError<'sc> {
         call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
         span: Span<'sc>,
     },
+    #[error(
+        "The size of this type is not known. Try putting it on the heap or changing the type."
+    )]
+    TypeWithUnknownSize { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -861,6 +896,7 @@ impl<'sc> CompileError<'sc> {
             ArgumentParameterTypeMismatch { span, .. } => span,
             RecursiveCall { span, .. } => span,
             RecursiveCallChain { span, .. } => span,
+            TypeWithUnknownSize { span, .. } => span,
         }
     }
 

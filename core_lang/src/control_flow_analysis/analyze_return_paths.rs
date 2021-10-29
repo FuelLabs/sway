@@ -12,7 +12,7 @@ use crate::semantic_analysis::{
     TypedAstNode, TypedAstNodeContent,
 };
 use crate::span::Span;
-use crate::type_engine::{TypeEngine, TypeInfo, TYPE_ENGINE};
+use crate::type_engine::{resolve_type, TypeEngine, TypeInfo, TYPE_ENGINE};
 use crate::types::ResolvedType;
 use crate::{error::*, semantic_analysis::TypedParseTree};
 use petgraph::prelude::NodeIndex;
@@ -68,7 +68,7 @@ impl<'sc> ControlFlowGraph<'sc> {
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &'sc str,
-        return_ty: &ResolvedType<'sc>,
+        return_ty: &TypeInfo,
     ) -> Vec<CompileError<'sc>> {
         let mut rovers = vec![entry_point];
         let mut errors = vec![];
@@ -90,7 +90,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                     .graph
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
                     .collect::<Vec<_>>();
-                if neighbors.is_empty() && *return_ty != ResolvedType::Unit {
+                if neighbors.is_empty() && *return_ty != TypeInfo::Unit {
                     let span = match last_discovered_span {
                         Some(ref o) => o.clone(),
                         None => {
@@ -275,11 +275,8 @@ fn connect_typed_fn_decl<'sc>(
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
         exit_point: fn_exit_node,
-        return_type: TYPE_ENGINE
-            .lock()
-            .unwrap()
-            .resolve(fn_decl.return_type, &fn_decl.return_type_span)
-            .unwrap_or(ResolvedType::Unit),
+        return_type: resolve_type(fn_decl.return_type, &fn_decl.return_type_span)
+            .unwrap_or(TypeInfo::Unit),
     };
     graph
         .namespace

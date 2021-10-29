@@ -569,9 +569,9 @@ impl<'sc> TypedExpression<'sc> {
             .unwrap()
             .look_up_type_id(block_return_type)
         {
-            ResolvedType::Unit => match type_annotation {
+            TypeInfo::Unit => match type_annotation {
                 Some(ref ty)
-                    if TYPE_ENGINE.lock().unwrap().look_up_type_id(*ty) != ResolvedType::Unit =>
+                    if TYPE_ENGINE.lock().unwrap().look_up_type_id(*ty) != TypeInfo::Unit =>
                 {
                     errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
                         span: span.clone(),
@@ -842,8 +842,8 @@ impl<'sc> TypedExpression<'sc> {
             fields: definition
                 .fields
                 .iter()
-                .map(|TypedStructField { r#type, .. }| *r#type)
-                .collect(),
+                .map(TypedStructField::into_owned_typed_struct_field)
+                .collect::<Vec<_>>(),
         });
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
@@ -892,21 +892,21 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         );
-        let field = if let Some(field) = fields
-            .iter()
-            .find(|TypedStructField { name, .. }| *name == field_to_access)
-        {
+        let field = if let Some(field) =
+            fields.iter().find(|OwnedTypedStructField { name, .. }| {
+                name.as_str() == field_to_access.primary_name
+            }) {
             field
         } else {
             errors.push(CompileError::FieldNotFound {
                 span: field_to_access.span.clone(),
                 available_fields: fields
                     .iter()
-                    .map(|TypedStructField { name, .. }| &(*name.primary_name))
+                    .map(|OwnedTypedStructField { name, .. }| name.to_string())
                     .collect::<Vec<_>>()
                     .join("\n"),
                 field_name: field_to_access.primary_name,
-                struct_name: struct_name.primary_name,
+                struct_name: struct_name.clone(),
             });
             return err(warnings, errors);
         };
@@ -916,6 +916,7 @@ impl<'sc> TypedExpression<'sc> {
                 resolved_type_of_parent: parent.return_type.clone(),
                 prefix: Box::new(parent),
                 field_to_access: field.clone(),
+                field_to_access_span: span.clone(),
             },
             return_type: field.r#type,
             is_constant: IsConstant::No,
@@ -1027,7 +1028,10 @@ impl<'sc> TypedExpression<'sc> {
         // TODO use stdlib's Address type instead of b256
         // type check the address and make sure it is
         let err_span = address.span();
-        let address = check!(
+        // TODO(static span): the below String address should just be address_expr
+        // basically delete the bottom line and replace references to it with address_expr
+        let address_str = address.span().as_str().to_string();
+        let address_expr = check!(
             TypedExpression::type_check(
                 *address,
                 namespace,
@@ -1064,6 +1068,7 @@ impl<'sc> TypedExpression<'sc> {
             .unwrap()
             .insert(TypeInfo::ContractCaller {
                 abi_name: abi_name.to_owned_call_path(),
+                address: address_str,
             });
         let mut functions_buf = abi
             .interface_surface
@@ -1103,7 +1108,7 @@ impl<'sc> TypedExpression<'sc> {
         let exp = TypedExpression {
             expression: TypedExpressionVariant::AbiCast {
                 abi_name,
-                address: Box::new(address),
+                address: Box::new(address_expr),
                 span: span.clone(),
                 abi,
             },

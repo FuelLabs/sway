@@ -11,13 +11,13 @@ use crate::asm_lang::{
 use crate::{
     error::*,
     semantic_analysis::{ast_node::TypedEnumDeclaration, TypedExpression},
-    type_engine::{TypeEngine, TYPE_ENGINE},
+    type_engine::{resolve_type, TypeEngine, TYPE_ENGINE},
     CompileResult, Ident, Literal,
 };
 
 pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     decl: &TypedEnumDeclaration<'sc>,
-    _variant_name: &Ident<'sc>,
+    variant_name: &Ident<'sc>,
     tag: usize,
     contents: &Option<Box<TypedExpression<'sc>>>,
     return_register: &VirtualRegister,
@@ -46,18 +46,20 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
         VirtualRegister::Constant(ConstantRegister::StackPointer),
         "load $sp for enum pointer",
     ));
-    let ty = match TYPE_ENGINE
-        .lock()
-        .unwrap()
-        .resolve(decl.as_type(), &decl.span)
-    {
+    let ty = match resolve_type(decl.as_type(), &decl.span) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e.into());
             return err(warnings, errors);
         }
     };
-    let size_of_enum: u64 = 1 /* tag */ + ty.stack_size_of();
+    let size_of_enum: u64 = 1 /* tag */ + match ty.stack_size_of(&variant_name.span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e);
+            return err(warnings, errors);
+        }
+    };
     if size_of_enum > EIGHTEEN_BITS {
         errors.push(CompileError::Unimplemented(
             "Stack variables which exceed 2^18 words in size are not supported yet.",

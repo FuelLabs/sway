@@ -60,7 +60,8 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     // like looking up a field in a struct
     StructFieldAccess {
         prefix: Box<TypedExpression<'sc>>,
-        field_to_access: TypedStructField<'sc>,
+        field_to_access: OwnedTypedStructField,
+        field_to_access_span: Span<'sc>,
         resolved_type_of_parent: TypeId,
     },
     EnumInstantiation {
@@ -133,12 +134,12 @@ impl<'sc> TypedExpressionVariant<'sc> {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    todo!(
-                        "engine
-                        .look_up_type_id(resolved_type_of_parent)
-                        .friendly_type_str(),"
-                    ),
-                    field_to_access.name.primary_name
+                    TYPE_ENGINE
+                        .lock()
+                        .unwrap()
+                        .look_up_type_id(*resolved_type_of_parent)
+                        .friendly_type_str(),
+                    field_to_access.name
                 )
             }
             TypedExpressionVariant::VariableExpression { name, .. } => {

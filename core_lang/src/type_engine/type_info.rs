@@ -1,8 +1,12 @@
 use super::*;
 use crate::{
-    build_config::BuildConfig, error::*, parse_tree::OwnedCallPath,
-    semantic_analysis::ast_node::TypedStructField, semantic_analysis::TypedExpression,
-    types::ResolvedType, CallPath, Ident, Rule, Span,
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::OwnedCallPath,
+    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField, TypedStructField},
+    semantic_analysis::TypedExpression,
+    types::ResolvedType,
+    CallPath, Ident, Rule, Span,
 };
 use derivative::Derivative;
 use std::collections::HashMap;
@@ -19,11 +23,11 @@ pub enum TypeInfo {
     UnsignedInteger(IntegerBits),
     Enum {
         name: String,
-        variant_types: Vec<TypeId>,
+        variant_types: Vec<OwnedTypedEnumVariant>,
     },
     Struct {
         name: String,
-        fields: Vec<TypeId>,
+        fields: Vec<OwnedTypedStructField>,
     },
     Boolean,
     /// For the type inference engine to use when a type references another type
@@ -34,6 +38,9 @@ pub enum TypeInfo {
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
         abi_name: OwnedCallPath,
+        // this is raw source code to be evaluated later.
+        address: String,
+        // TODO(static span): the above String should be a TypedExpression
         //        #[derivative(PartialEq = "ignore", Hash = "ignore")]
         //        address: Box<TypedExpression<'sc>>,
     },
@@ -142,6 +149,156 @@ impl TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name.suffix)
             }
+        }
+    }
+
+    /// maps a type to a name that is used when constructing function selectors
+    pub(crate) fn to_selector_name<'sc>(
+        &self,
+        error_msg_span: &Span<'sc>,
+    ) -> CompileResult<'sc, String> {
+        use TypeInfo::*;
+        let name = match self {
+            Str(len) => format!("str[{}]", len),
+            UnsignedInteger(bits) => {
+                use IntegerBits::*;
+                match bits {
+                    Eight => "u8",
+                    Sixteen => "u16",
+                    ThirtyTwo => "u32",
+                    SixtyFour => "u64",
+                }
+                .into()
+            }
+            Boolean => "bool".into(),
+
+            Unit => "unit".into(),
+            Byte => "byte".into(),
+            B256 => "b256".into(),
+            Struct { fields, .. } => {
+                let field_names = {
+                    let names = fields
+                        .iter()
+                        .map(|OwnedTypedStructField { r#type, .. }| {
+                            resolve_type(*r#type, error_msg_span)
+                                .expect("unreachable?")
+                                .to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for name in names {
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
+                        }
+                    }
+                    buf
+                };
+
+                format!("s({})", field_names.join(","))
+            }
+            Enum { variant_types, .. } => {
+                let variant_names = {
+                    let names = variant_types
+                        .iter()
+                        .map(|ty| {
+                            let ty = match resolve_type(ty.r#type, error_msg_span) {
+                                Err(e) => return err(vec![], vec![e.into()]),
+                                Ok(ty) => ty,
+                            };
+                            ty.to_selector_name(error_msg_span)
+                        })
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for name in names {
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
+                        }
+                    }
+                    buf
+                };
+
+                format!("e({})", variant_names.join(","))
+            }
+            _ => {
+                return err(
+                    vec![],
+                    vec![CompileError::InvalidAbiType {
+                        span: error_msg_span.clone(),
+                    }],
+                )
+            }
+        };
+        ok(name, vec![], vec![])
+    }
+    /// Calculates the stack size of this type, to be used when allocating stack memory for it.
+    /// This is _in words_!
+    pub(crate) fn stack_size_of<'sc>(
+        &self,
+        err_span: &Span<'sc>,
+    ) -> Result<u64, CompileError<'sc>> {
+        match self {
+            // Each char is a byte, so the size is the num of characters / 8
+            // rounded up to the nearest word
+            TypeInfo::Str(len) => Ok((len + 7) / 8),
+            // Since things are unpacked, all unsigned integers are 64 bits.....for now
+            TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok(1),
+            TypeInfo::Boolean => Ok(1),
+            TypeInfo::Unit => Ok(0),
+            TypeInfo::Byte => Ok(1),
+            TypeInfo::B256 => Ok(4),
+            TypeInfo::Enum { variant_types, .. } => {
+                // the size of an enum is one word (for the tag) plus the maximum size
+                // of any individual variant
+                Ok(1 + variant_types
+                    .iter()
+                    .map(|x| -> Result<_, _> {
+                        TYPE_ENGINE
+                            .lock()
+                            .unwrap()
+                            .look_up_type_id(x.r#type)
+                            .stack_size_of(err_span)
+                    })
+                    .collect::<Result<Vec<u64>, _>>()?
+                    .into_iter()
+                    .max()
+                    .unwrap_or(0))
+            }
+            TypeInfo::Struct { fields, .. } => Ok(fields
+                .iter()
+                .map(|x| -> Result<_, _> {
+                    resolve_type(x.r#type, err_span)
+                        .expect("should be unreachable?")
+                        .stack_size_of(err_span)
+                })
+                .collect::<Result<Vec<u64>, _>>()?
+                .iter()
+                .sum()),
+            // `ContractCaller` types are unsized and used only in the type system for
+            // calling methods
+            TypeInfo::ContractCaller { .. } => Ok(0),
+            TypeInfo::Contract => unreachable!("contract types are never instantiated"),
+            TypeInfo::ErrorRecovery => unreachable!(),
+            TypeInfo::Unknown | TypeInfo::Custom { .. } | TypeInfo::SelfType => {
+                Err(CompileError::TypeMustBeKnown {
+                    ty: self.friendly_type_str(),
+                    span: err_span.clone(),
+                })
+            }
+            TypeInfo::Ref(id) => TYPE_ENGINE
+                .lock()
+                .unwrap()
+                .look_up_type_id(*id)
+                .stack_size_of(err_span),
+        }
+    }
+    pub(crate) fn is_copy_type(&self) -> bool {
+        match self {
+            TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Unit | TypeInfo::Byte => {
+                true
+            }
+            _ => false,
         }
     }
 }

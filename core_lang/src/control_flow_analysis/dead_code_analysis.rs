@@ -13,8 +13,7 @@ use crate::{
         TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
     span::Span,
-    type_engine::{TypeEngine, TypeInfo, TYPE_ENGINE},
-    types::ResolvedType,
+    type_engine::{resolve_type, TypeEngine, TypeInfo, TYPE_ENGINE},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
 use petgraph::algo::has_path_connecting;
@@ -419,7 +418,7 @@ fn connect_struct_declaration<'sc>(
     // of the field names
     graph
         .namespace
-        .insert_struct(name.clone(), entry_node, field_nodes);
+        .insert_struct(name.primary_name.to_string(), entry_node, field_nodes);
 }
 
 /// Implementations of traits are top-level things that are not conditional, so
@@ -564,11 +563,7 @@ fn connect_typed_fn_decl<'sc>(
 
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
-    let ty = TYPE_ENGINE
-        .lock()
-        .unwrap()
-        .resolve(fn_decl.return_type, &span)
-        .unwrap_or(ResolvedType::Unit);
+    let ty = resolve_type(fn_decl.return_type, &span).unwrap_or(TypeInfo::Unit);
 
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
@@ -786,7 +781,7 @@ fn connect_expression<'sc>(
             struct_name,
             fields,
         } => {
-            let decl = match graph.namespace.find_struct_decl(struct_name) {
+            let decl = match graph.namespace.find_struct_decl(struct_name.primary_name) {
                 Some(ix) => *ix,
                 None => {
                     graph.add_node(format!("External struct  {}", struct_name.primary_name).into())
@@ -823,23 +818,18 @@ fn connect_expression<'sc>(
         }
         StructFieldAccess {
             field_to_access,
+            field_to_access_span,
             resolved_type_of_parent,
             ..
         } => {
-            let ty = TYPE_ENGINE
-                .lock()
-                .unwrap()
-                .resolve(*resolved_type_of_parent, &field_to_access.span)
-                .unwrap_or(ResolvedType::Unit);
+            let ty = resolve_type(*resolved_type_of_parent, &field_to_access_span)
+                .unwrap_or(TypeInfo::Unit);
 
             let resolved_type_of_parent = ty;
 
-            assert!(matches!(
-                resolved_type_of_parent,
-                ResolvedType::Struct { .. }
-            ));
+            assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
             let resolved_type_of_parent = match resolved_type_of_parent {
-                ResolvedType::Struct { name, .. } => name.clone(),
+                TypeInfo::Struct { name, .. } => name.clone(),
                 _ => panic!("Called subfield on a non-struct"),
             };
             let field_name = &field_to_access.name;
@@ -855,7 +845,7 @@ fn connect_expression<'sc>(
             let this_ix = graph.add_node(
                 format!(
                     "Struct field access: {}.{}",
-                    resolved_type_of_parent.primary_name, field_name.primary_name
+                    resolved_type_of_parent, field_name
                 )
                 .into(),
             );

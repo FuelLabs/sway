@@ -1,9 +1,12 @@
-use super::ast_node::{TypedEnumDeclaration, TypedStructDeclaration, TypedStructField};
+use super::ast_node::{
+    OwnedTypedStructField, TypedEnumDeclaration, TypedEnumVariant, TypedStructDeclaration,
+    TypedStructField,
+};
 use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{Engine, TypeEngine, TypeId, TYPE_ENGINE};
+use crate::type_engine::{insert_type, look_up_type_id, Engine, TypeEngine, TypeId, TYPE_ENGINE};
 use crate::types::ResolvedType;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
@@ -17,7 +20,7 @@ type TraitName<'a> = CallPath<'a>;
 pub struct Namespace<'sc> {
     pub(crate) symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
     pub(crate) implemented_traits:
-        HashMap<(TraitName<'sc>, ResolvedType<'sc>), Vec<TypedFunctionDeclaration<'sc>>>,
+        HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     pub(crate) modules: HashMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
@@ -34,10 +37,6 @@ impl<'sc> Namespace<'sc> {
     ///
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
     pub(crate) fn resolve_type_with_self(&mut self, ty: TypeInfo, self_type: TypeId) -> TypeId {
-        todo!(
-            "still do the custom type to enum/struct type thing, but then\
-        use type IDs for the rest of it. do the self thing too."
-        );
         let ty = ty.clone();
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol_by_str(&name) {
@@ -49,8 +48,8 @@ impl<'sc> Namespace<'sc> {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
-                        .map(|TypedStructField { r#type, .. }| *r#type)
-                        .collect(),
+                        .map(TypedStructField::into_owned_typed_struct_field)
+                        .collect::<Vec<_>>(),
                 }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                     name,
@@ -58,55 +57,54 @@ impl<'sc> Namespace<'sc> {
                     ..
                 })) => crate::type_engine::insert_type(TypeInfo::Enum {
                     name: name.primary_name.to_string(),
-                    variant_types: variants.iter().map(|x| x.r#type).collect(),
+                    variant_types: variants
+                        .iter()
+                        .map(TypedEnumVariant::into_owned_typed_enum_variant)
+                        .collect(),
                 }),
-                Some(_) => todo!(),
+                Some(a) => todo!("{:?}", a),
                 None => crate::type_engine::insert_type(TypeInfo::Unknown),
             },
             TypeInfo::SelfType => self_type,
-
-            o => todo!("put type engine in namespace and use that"),
+            TypeInfo::Ref(id) => id,
+            o => insert_type(o),
         }
     }
 
     /// Used to resolve a type when there is no known self type. This is needed
     /// when declaring new self types.
-    pub(crate) fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeInfo {
-        todo!("return typeinfo here")
-        /*
+    pub(crate) fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeId {
         let ty = ty.clone();
         match ty {
-            TypeInfo::Custom { name } => match self.get_symbol(&name) {
+            TypeInfo::Custom { name } => match self.get_symbol_by_str(&name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,
                     ..
-                })) => MaybeResolvedType::Resolved(ResolvedType::Struct {
-                    name: name.clone(),
-                    fields: fields.clone(),
+                })) => crate::type_engine::insert_type(TypeInfo::Struct {
+                    name: name.primary_name.to_string(),
+                    fields: fields
+                        .iter()
+                        .map(TypedStructField::into_owned_typed_struct_field)
+                        .collect::<Vec<_>>(),
                 }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
                     name,
                     variants,
                     ..
-                })) => MaybeResolvedType::Resolved(ResolvedType::Enum {
-                    name: name.clone(),
+                })) => crate::type_engine::insert_type(TypeInfo::Enum {
+                    name: name.primary_name.to_string(),
                     variant_types: variants
                         .iter()
-                        .map(|x| self.look_up_type_id(x.r#type))
+                        .map(TypedEnumVariant::into_owned_typed_enum_variant)
                         .collect(),
                 }),
-                Some(_) => MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
-                    name: name.clone(),
-                }),
-                None => MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
-                    name: name.clone(),
-                }),
+                Some(a) => todo!("{:?}", a),
+                None => crate::type_engine::insert_type(TypeInfo::Unknown),
             },
-            TypeInfo::SelfType => MaybeResolvedType::Partial(PartiallyResolvedType::SelfType),
-            o => todo!("put type engine in namespace and use that to resolve"),
+            TypeInfo::Ref(id) => id,
+            o => insert_type(o),
         }
-            */
     }
     /// Given a path to a module, create synonyms to every symbol in that module.
     /// This is used when an import path contains an asterisk.
@@ -344,7 +342,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath<'sc>,
-        type_implementing_for: ResolvedType<'sc>,
+        type_implementing_for: TypeInfo,
         functions_buf: Vec<TypedFunctionDeclaration<'sc>>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
@@ -443,28 +441,27 @@ impl<'sc> Namespace<'sc> {
 
         for ident in ident_iter {
             // find the ident in the currently available fields
-            let TypedStructField { r#type, .. } = match fields.iter().find(|x| x.name == *ident) {
-                Some(field) => field.clone(),
-                None => {
-                    // gather available fields for the error message
-                    let field_name = &(*ident.primary_name);
-                    let available_fields = fields
-                        .iter()
-                        .map(|x| &(*x.name.primary_name))
-                        .collect::<Vec<_>>();
+            let OwnedTypedStructField { r#type, .. } =
+                match fields.iter().find(|x| &x.name == ident.primary_name) {
+                    Some(field) => field.clone(),
+                    None => {
+                        // gather available fields for the error message
+                        let field_name = &(*ident.primary_name);
+                        let available_fields =
+                            fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
 
-                    errors.push(CompileError::FieldNotFound {
-                        field_name,
-                        struct_name: &(*struct_name.primary_name),
-                        available_fields: available_fields.join(", "),
-                        span: ident.span.clone(),
-                    });
-                    return err(warnings, errors);
-                }
-            };
+                        errors.push(CompileError::FieldNotFound {
+                            field_name,
+                            struct_name: struct_name.clone(),
+                            available_fields: available_fields.join(", "),
+                            span: ident.span.clone(),
+                        });
+                        return err(warnings, errors);
+                    }
+                };
 
             match TYPE_ENGINE.lock().unwrap().look_up_type_id(r#type) {
-                ResolvedType::Struct {
+                TypeInfo::Struct {
                     fields: ref l_fields,
                     ..
                 } => {
@@ -553,7 +550,7 @@ impl<'sc> Namespace<'sc> {
                 if args_buf
                     .get(0)
                     .map(|x| TYPE_ENGINE.lock().unwrap().look_up_type_id(x.return_type))
-                    != Some(ResolvedType::ErrorRecovery)
+                    != Some(TypeInfo::ErrorRecovery)
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.primary_name.to_string(),
@@ -579,15 +576,15 @@ impl<'sc> Namespace<'sc> {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span<'sc>,
-    ) -> CompileResult<'sc, (Vec<TypedStructField<'sc>>, Ident<'sc>)> {
+    ) -> CompileResult<'sc, (Vec<OwnedTypedStructField>, String)> {
         let ty = TYPE_ENGINE.lock().unwrap().look_up_type_id(ty);
         match ty {
-            ResolvedType::Struct { name, fields } => {
+            TypeInfo::Struct { name, fields } => {
                 ok((fields.to_vec(), name.clone()), vec![], vec![])
             }
             // If we hit `ErrorRecovery` then the source of that type should have populated
             // the error buffer elsewhere
-            ResolvedType::ErrorRecovery => err(vec![], vec![]),
+            TypeInfo::ErrorRecovery => err(vec![], vec![]),
             a => err(
                 vec![],
                 vec![CompileError::NotAStruct {

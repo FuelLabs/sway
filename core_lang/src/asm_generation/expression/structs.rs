@@ -7,7 +7,7 @@ use crate::{
     },
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
-    type_engine::{IntegerBits, TypeEngine, TypeId, TYPE_ENGINE},
+    type_engine::{resolve_type, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE},
     types::ResolvedType,
     CompileResult, Ident,
 };
@@ -15,23 +15,26 @@ use crate::{
 /// Contains an ordered array of fields and their sizes in words. Used in the code generation
 /// of struct field reassignments, accesses, and struct initializations.
 #[derive(Debug)]
-pub(crate) struct StructMemoryLayoutDescriptor<'sc> {
-    fields: Vec<StructFieldMemoryLayoutDescriptor<'sc>>,
+pub(crate) struct StructMemoryLayoutDescriptor {
+    fields: Vec<StructFieldMemoryLayoutDescriptor>,
 }
 
 /// Describes the size, name, and type of an individual struct field in a memory layout.
 #[derive(Debug)]
-pub(crate) struct StructFieldMemoryLayoutDescriptor<'sc> {
-    name_of_field: Ident<'sc>,
+pub(crate) struct StructFieldMemoryLayoutDescriptor {
+    // TODO(static span) this should be an ident
+    name_of_field: String,
     size: u64,
-    type_of_field: ResolvedType<'sc>,
+    type_of_field: TypeInfo,
 }
 
-impl<'sc> StructMemoryLayoutDescriptor<'sc> {
+impl StructMemoryLayoutDescriptor {
     /// Calculates the offset in words from the start of a struct to a specific field.
-    pub(crate) fn offset_to_field_name(&self, name: &Ident<'sc>) -> CompileResult<'sc, u64> {
+    pub(crate) fn offset_to_field_name<'sc>(&self, name: &Ident<'sc>) -> CompileResult<'sc, u64> {
         let field_ix = if let Some(ix) = self.fields.iter().position(
-            |StructFieldMemoryLayoutDescriptor { name_of_field, .. }| name_of_field == name,
+            |StructFieldMemoryLayoutDescriptor { name_of_field, .. }| {
+                name_of_field.as_str() == name.primary_name
+            },
         ) {
             ix
         } else {
@@ -114,17 +117,27 @@ fn test_struct_memory_layout() {
 }
 
 pub(crate) fn get_struct_memory_layout<'sc>(
-    fields_with_names: &[(TypeId, &Ident<'sc>)],
-) -> CompileResult<'sc, StructMemoryLayoutDescriptor<'sc>> {
+    fields_with_names: &[(TypeId, &str)],
+) -> CompileResult<'sc, StructMemoryLayoutDescriptor> {
+    let span = crate::Span {
+        span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
+        path: None,
+    };
     let mut fields_with_sizes = vec![];
     let warnings = vec![];
     let mut errors = vec![];
     for (field, name) in fields_with_names {
         let ty = TYPE_ENGINE.lock().unwrap().look_up_type_id(*field);
-        let stack_size = ty.stack_size_of();
+        let stack_size = match ty.stack_size_of(&span) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e);
+                return err(warnings, errors);
+            }
+        };
 
         fields_with_sizes.push(StructFieldMemoryLayoutDescriptor {
-            name_of_field: (*name).clone(),
+            name_of_field: name.to_string(),
             type_of_field: ty,
             size: stack_size,
         });
@@ -164,7 +177,9 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     // step 0
     let fields_for_layout = fields
         .iter()
-        .map(|TypedStructExpressionField { name, value }| (value.return_type.clone(), name))
+        .map(|TypedStructExpressionField { name, value }| {
+            (value.return_type.clone(), name.primary_name)
+        })
         .collect::<Vec<_>>();
     let descriptor = check!(
         get_struct_memory_layout(&fields_for_layout[..]),
@@ -216,12 +231,14 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     for TypedStructExpressionField { name, value } in fields {
         // evaluate the expression
         let return_register = register_sequencer.next();
-        let value_stack_size: u64 = match TYPE_ENGINE
-            .lock()
-            .unwrap()
-            .resolve(value.return_type, &name.span)
-        {
-            Ok(o) => o.stack_size_of(),
+        let value_stack_size: u64 = match resolve_type(value.return_type, &name.span) {
+            Ok(o) => match o.stack_size_of(&name.span) {
+                Ok(o) => o,
+                Err(e) => {
+                    errors.push(e);
+                    return err(warnings, errors);
+                }
+            },
             Err(e) => {
                 errors.push(e.into());
                 return err(warnings, errors);

@@ -21,6 +21,30 @@ pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
     id
 }
 
+pub(crate) fn resolve_type<'sc>(
+    id: TypeId,
+    error_span: &Span<'sc>,
+) -> Result<TypeInfo, TypeError<'sc>> {
+    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let ty = match lock.resolve(id) {
+        Ok(TypeInfo::Unknown) => Err(TypeError::UnknownType {
+            span: error_span.clone(),
+        }),
+        o => o,
+    };
+    drop(lock);
+    ty
+}
+
+pub(crate) fn look_up_type_id<'sc>(id: TypeId) -> TypeInfo {
+    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let ty = lock
+        .resolve(id)
+        .expect("type engine did not contain type id: internal error");
+    drop(lock);
+    ty
+}
+
 // Workaround until we use an arena for spans
 // The below is just so we can have a static type engine. Ideally, we will
 // switch to a span that uses an arena to keep track of source code.
@@ -167,41 +191,15 @@ impl<'sc> TypeEngine<'sc> for Engine {
         }
     }
 
-    fn resolve(
-        &self,
-        id: Self::TypeId,
-        span: &Span<'sc>,
-    ) -> Result<Self::ResolvedType, Self::Error> {
-        use TypeInfo::*;
-        match self.vars[&id] {
-            Unknown => Err(TypeError::UnknownType { span: span.clone() }),
-            Ref(id) => self.resolve(id, span),
-            // defaults to u64
-            Numeric => Ok(ResolvedType::UnsignedInteger(IntegerBits::SixtyFour)),
-            Boolean => Ok(ResolvedType::Boolean),
-            // List(item) => todo!("Ok(ResolvedType::List(Box::new(self.reconstruct(item)?)))"),
-            // Func(i, o) => Ok(ResolvedType::Function {
-            //     from: Box::new(self.resolve(i)?),
-            //     to: Box::new(self.resolve(o)?),
-            // }),
-            UnsignedInteger(x) => Ok(ResolvedType::UnsignedInteger(x)),
-            ref a => todo!("{:?}", a),
+    fn resolve(&self, id: Self::TypeId) -> Result<Self::TypeInfo, Self::Error> {
+        match &self.vars[&id] {
+            TypeInfo::Ref(id) => self.resolve(*id),
+            otherwise => Ok(otherwise.clone()),
         }
     }
-    fn look_up_type_id(&self, id: TypeId) -> ResolvedType<'sc> {
-        self.resolve(
-            id,
-            &Span {
-                span: pest::Span::new(
-                    "because we \"expect\" here, we don't need this error span.",
-                    0,
-                    0,
-                )
-                .unwrap(),
-                path: Default::default(),
-            },
-        )
-        .expect("Internal error: type ID did not exist in type engine")
+    fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
+        self.resolve(id)
+            .expect("Internal error: type ID did not exist in type engine")
     }
 }
 fn numeric_cast_compat<'sc>(a: IntegerBits, b: IntegerBits) -> NumericCastCompatResult<'sc> {

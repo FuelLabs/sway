@@ -8,7 +8,6 @@ use crate::{
         TypedExpression,
     },
     type_engine::TYPE_ENGINE,
-    types::ResolvedType,
 };
 
 mod contract_call;
@@ -234,7 +233,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     ));
                 }
                 _ if TYPE_ENGINE.lock().unwrap().look_up_type_id(exp.return_type)
-                    == ResolvedType::Unit =>
+                    == TypeInfo::Unit =>
                 {
                     ()
                 }
@@ -254,10 +253,11 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             resolved_type_of_parent,
             prefix,
             field_to_access,
+            field_to_access_span,
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            field_to_access,
+            &field_to_access.into_typed_struct_field(field_to_access_span),
             *resolved_type_of_parent,
             namespace,
             register_sequencer,
