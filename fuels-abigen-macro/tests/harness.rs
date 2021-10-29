@@ -1,5 +1,9 @@
 use fuels_abigen_macro::abigen;
+use fuels_rs::contract::Contract;
 use sha2::{Digest, Sha256};
+
+const MOCK_CONTRACT_ADDRESS: &'static str =
+    "e50103684750e4916cd9825b14cf7e6763ffcc6523a9e0af63de93dbd6e3d736";
 
 #[test]
 fn compile_bindings_from_contract_file() {
@@ -11,7 +15,7 @@ fn compile_bindings_from_contract_file() {
     );
 
     // `SimpleContract` is the name of the contract
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     // Calls the function defined in the JSON ABI.
     // Note that this is type-safe, if the function does exist
@@ -66,7 +70,7 @@ fn compile_bindings_from_inline_contract() {
         "#
     );
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let contract_call = contract_instance.takes_ints_returns_bool(42 as u32, 10 as u16);
 
@@ -106,7 +110,7 @@ fn compile_bindings_single_param() {
         "#
     );
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let contract_call = contract_instance.takes_ints_returns_bool(42 as u32);
 
@@ -136,14 +140,14 @@ fn compile_bindings_array_input() {
                 ],
                 "name":"takes_array",
                 "outputs":[
-                    
+
                 ]
             }
         ]
         "#
     );
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let input: Vec<u16> = vec![1, 2, 3, 4];
     let contract_call = contract_instance.takes_array(input);
@@ -177,14 +181,14 @@ fn compile_bindings_bool_array_input() {
                 ],
                 "name":"takes_array",
                 "outputs":[
-                    
+
                 ]
             }
         ]
         "#
     );
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let input: Vec<bool> = vec![true, false, true];
     let contract_call = contract_instance.takes_array(input);
@@ -218,14 +222,14 @@ fn compile_bindings_byte_input() {
                 ],
                 "name":"takes_byte",
                 "outputs":[
-                    
+
                 ]
             }
         ]
         "#
     );
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let contract_call = contract_instance.takes_byte(10 as u8);
 
@@ -255,14 +259,14 @@ fn compile_bindings_string_input() {
                 ],
                 "name":"takes_string",
                 "outputs":[
-                    
+
                 ]
             }
         ]
         "#
     );
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let contract_call = contract_instance.takes_string("This is a full sentence".into());
 
@@ -295,14 +299,14 @@ fn compile_bindings_b256_input() {
                 ],
                 "name":"takes_b256",
                 "outputs":[
-                    
+
                 ]
             }
         ]
         "#
     );
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let mut hasher = Sha256::new();
     hasher.update("test string".as_bytes());
@@ -362,7 +366,7 @@ fn compile_bindings_struct_input() {
         bar: true,
     };
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let contract_call = contract_instance.takes_struct(input);
 
@@ -420,7 +424,7 @@ fn compile_bindings_nested_struct_input() {
         inner_struct,
     };
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let contract_call = contract_instance.takes_nested_struct(input);
 
@@ -467,7 +471,7 @@ fn compile_bindings_enum_input() {
 
     let variant = MyEnum::X(42);
 
-    let contract_instance = SimpleContract::new();
+    let contract_instance = SimpleContract::new(MOCK_CONTRACT_ADDRESS.into());
 
     let contract_call = contract_instance.takes_enum(variant);
 
@@ -477,4 +481,54 @@ fn compile_bindings_enum_input() {
     );
 
     assert_eq!("000000009542a3c90000000000000000000000000000002a", encoded);
+}
+
+#[tokio::test]
+async fn example_workflow() {
+    // This test case
+
+    // Generates the bindings from the an ABI definition inline.
+    // The generated bindings can be accessed through `SimpleContract`.
+    abigen!(
+        MyContract,
+        r#"
+        [
+            {
+                "type": "function",
+                "inputs": [
+                    {
+                        "name": "arg",
+                        "type": "u32"
+                    }
+                ],
+                "name": "takes_int",
+                "outputs": [
+                ]
+            }
+        ] 
+        "#
+    );
+
+    // Build the contract
+    let compiled = Contract::compile_sway_contract("tests/test_projects/contract_test").unwrap();
+
+    // Launch local network and deploy contract to testnet.
+    // Note that if `false` was passed to `stop_node`,
+    // `launch_and_deploy` would return a child process
+    // and we would be responsible for killing this process once
+    // we're done with testing.
+    // This is useful in case of long-lived local tests, spanning
+    // across different contracts being deployed and interacted with in
+    // the same session.
+    let (_, contract_id, logs) = Contract::launch_and_deploy(compiled, true).await.unwrap();
+
+    println!("Contract deployed @ 0x{}", contract_id);
+    println!("logs: {:?}\n", logs);
+
+    let contract_instance = MyContract::new(contract_id);
+
+    let contract_call = contract_instance.takes_int(42 as u32);
+
+    // Sends the actual transaction: builds TX and sends encoded params
+    // contract_call.send().await?;
 }

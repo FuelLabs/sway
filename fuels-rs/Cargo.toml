@@ -10,7 +10,11 @@ edition = "2018"
 anyhow = "1"
 blake2 = "0.9"
 bytes = { version = "1.0.1", features = ["serde"] }
+forc = {path = "../forc", features = ["test", "util"], default-features = false}
+fuel-client = {git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false}
+fuel-tx = {git = "ssh://git@github.com/FuelLabs/fuel-tx.git"}
 fuel-types = {git = "ssh://git@github.com/FuelLabs/fuel-types.git"}
+fuel-vm = {git = "ssh://git@github.com/FuelLabs/fuel-vm.git"}
 glob = { version = "0.3.0", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 Inflector = "0.11"
@@ -25,4 +29,5 @@ strum = "0.21"
 strum_macros = "0.21"
 syn = "1.0.12"
 thiserror = { version = "1.0.26", default-features = false }
+tokio = "1.12"
 url = "2.1"
