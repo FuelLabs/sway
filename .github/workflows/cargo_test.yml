@@ -35,11 +35,24 @@ jobs:
       - name: Install rustfmt
         run: rustup component add rustfmt
 
+      - name: Set git config
+        run: |
+          git config --global core.bigfilethreshold 100m
+
       - name: Check formatting
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all --verbose -- --check
+
+      - name: Clone and build fuel-core
+        run: |
+          git clone git@github.com:FuelLabs/fuel-core
+          (cd fuel-core && cargo build -p fuel-core)
+
+      - name: Run fuel-core
+        run: |
+          ./fuel-core/target/debug/fuel-core &
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -48,11 +61,6 @@ jobs:
           args: --verbose
         env:
           RUSTFLAGS: "-D warnings"
-
-      - name: Clone and build fuel-core
-        run: |
-          git clone git@github.com:FuelLabs/fuel-core
-          (cd fuel-core && cargo build -p fuel-core && cp target/debug/fuel-core /usr/bin)
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -68,4 +76,4 @@ jobs:
 
       - name: Run test suite
         run: |
-          ./fuel-core/target/debug/fuel-core & ./target/debug/test
+          ./target/debug/test
