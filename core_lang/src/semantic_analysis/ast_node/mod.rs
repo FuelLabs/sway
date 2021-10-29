@@ -94,7 +94,7 @@ impl<'sc> TypedAstNode<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -716,7 +716,7 @@ fn reassignment<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &JsonABI,
+    json_abi: &mut JsonABI,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -947,7 +947,7 @@ fn type_check_trait_methods<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &JsonABI,
+    json_abi: &mut JsonABI,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut warnings = vec![];
     let mut errors = vec![];

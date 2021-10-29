@@ -19,7 +19,7 @@ pub(crate) fn implementation_of_trait<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &JsonABI,
+    json_abi: &mut JsonABI,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -177,7 +177,7 @@ fn type_check_trait_implementation<'sc>(
     type_implementing_for: &MaybeResolvedType<'sc>,
     mode: Mode,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &JsonABI,
+    json_abi: &mut JsonABI,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];

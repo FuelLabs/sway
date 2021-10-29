@@ -18,7 +18,7 @@ pub(crate) fn instantiate_enum<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &JsonABI,
+    json_abi: &mut JsonABI,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];

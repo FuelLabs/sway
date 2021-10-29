@@ -4,7 +4,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::types::{IntegerBits, MaybeResolvedType, ResolvedType};
 use either::Either;
-use fuels_rs::json_abi;
+use fuels_rs::types;
 use fuels_rs::types::JsonABI;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -41,7 +41,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, Self> {
         let expr_span = other.span();
         let res = match other {
@@ -344,7 +344,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -467,7 +467,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -589,7 +589,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -652,7 +652,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -740,7 +740,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -803,7 +803,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -913,7 +913,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -985,7 +985,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1081,7 +1081,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1122,6 +1122,32 @@ impl<'sc> TypedExpression<'sc> {
                 return err(warnings, errors);
             }
         };
+
+        let mut functions: JsonABI = abi
+            .methods
+            .iter()
+            .map(|function| types::Function {
+                type_field: "function".to_string(),
+                inputs: function
+                    .parameters
+                    .iter()
+                    .map(|parameter| types::Property {
+                        name: parameter.name.primary_name.to_string(),
+                        type_field: format!("{:?}", parameter.r#type),
+                        components: None,
+                    })
+                    .collect(),
+                name: function.name.primary_name.to_string(),
+                outputs: vec![types::Property {
+                    name: "".to_string(),
+                    type_field: format!("{:?}", function.return_type),
+                    components: None,
+                }],
+            })
+            .collect();
+
+        json_abi.append(&mut functions);
+
         let return_type = MaybeResolvedType::Resolved(ResolvedType::ContractCaller {
             abi_name: abi_name.clone(),
             address: Box::new(address.clone()),

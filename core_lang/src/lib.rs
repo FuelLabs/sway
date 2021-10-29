@@ -222,6 +222,9 @@ pub(crate) fn compile_inner_dependency<'sc>(
             return err(warnings, errors);
         }
     }
+
+    let mut json_abi = vec![];
+
     let library_exports: LibraryExports = {
         let res: Vec<_> = parse_tree
             .library_exports
@@ -234,7 +237,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
                     &build_config.clone(),
                     dead_code_graph,
                     dependency_graph,
-                    &vec![],
+                    &mut json_abi,
                 )
                 .ok(&mut warnings, &mut errors)
                 .map(|value| (name, value))
@@ -349,6 +352,8 @@ pub fn compile_to_asm<'sc>(
         }
         exports
     };
+
+    println!("{:?}", json_abi);
 
     // If there are errors, display them now before performing control flow analysis.
     // It is necessary that the syntax tree is well-formed for control flow analysis

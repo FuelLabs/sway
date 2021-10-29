@@ -28,7 +28,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &JsonABI,
+        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, (Self, Option<MaybeResolvedType<'sc>>)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
