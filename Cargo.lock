@@ -1251,6 +1251,7 @@ name = "fuel-types"
 version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-types.git#565ac6a25343e487faf10c13c42fb5168f92b087"
 dependencies = [
+ "rand 0.8.4",
  "serde",
 ]
 
