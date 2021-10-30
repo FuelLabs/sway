@@ -7,5 +7,3 @@ entry = "main.sw"
 
 [dependencies]
 std = { path = "../../../../../stdlib" }
-
-
