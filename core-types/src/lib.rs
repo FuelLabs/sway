@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
-pub type Id = [u8; Bytes32::size_of()];
-pub type Contract = [u8; ContractId::size_of()];
+pub type Id = [u8; Bytes32::LEN];
+pub type Contract = [u8; ContractId::LEN];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Position {
