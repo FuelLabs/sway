@@ -45,36 +45,6 @@ pub(crate) fn look_up_type_id<'sc>(id: TypeId) -> TypeInfo {
     ty
 }
 
-// Workaround until we use an arena for spans
-// The below is just so we can have a static type engine. Ideally, we will
-// switch to a span that uses an arena to keep track of source code.
-impl crate::Span<'_> {
-    pub(crate) fn staticify(&self) -> crate::Span<'static> {
-        Span {
-            path: self.path.clone(),
-            span: pest::Span::new_unchecked(
-                Box::leak(self.input().to_string().into_boxed_str()),
-                self.start(),
-                self.end(),
-            ),
-        }
-    }
-}
-
-impl crate::Ident<'_> {
-    pub(crate) fn staticify(&self) -> crate::Ident<'static> {
-        Ident {
-            span: Span {
-                path: self.span.path.clone(),
-                span: pest::Span::new_unchecked(
-                    Box::leak(self.span.input().to_string().into_boxed_str()),
-                    self.span.start(),
-                    self.span.end(),
-                ),
-            },
-            primary_name: Box::leak(self.primary_name.to_string().into_boxed_str()),
-        }
-    }
 }
 #[derive(Default, Clone, Debug)]
 pub(crate) struct Engine {
