@@ -488,7 +488,7 @@ async fn example_workflow() {
     // This test case
 
     // Generates the bindings from the an ABI definition inline.
-    // The generated bindings can be accessed through `SimpleContract`.
+    // The generated bindings can be accessed through `MyContract`.
     abigen!(
         MyContract,
         r#"
@@ -529,6 +529,6 @@ async fn example_workflow() {
 
     let _contract_call = contract_instance.takes_int(42 as u32);
 
-    // Sends the actual transaction: builds TX and sends encoded params
+    // TODO: Send the actual transaction
     // contract_call.send().await?;
 }
