@@ -10,7 +10,7 @@ version = "0.1.0"
 forc = {path = "../forc", features = ["test"], default-features = false}
 fuel-asm = {git = "ssh://git@github.com/FuelLabs/fuel-asm.git"}
 fuel-tx = {git = "ssh://git@github.com/FuelLabs/fuel-tx.git"}
-fuel-vm = {git = "ssh://git@github.com/FuelLabs/fuel-vm.git"}
+fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git", rev = "bf6881fd213241be884552e63c58a2c27cb1da1e", features = ["random"] }
 rand = "0.8"
 regex = "1"
 tokio = "1.12"
