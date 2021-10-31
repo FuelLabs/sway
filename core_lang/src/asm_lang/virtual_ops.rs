@@ -124,6 +124,7 @@ pub(crate) enum VirtualOp {
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
     NOOP,
     FLAG(VirtualRegister),
+    GM(VirtualRegister, VirtualImmediate18),
     Undefined,
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
@@ -204,6 +205,7 @@ impl VirtualOp {
             S256(r1, r2, r3) => vec![r1, r2, r3],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
+            GM(r1, _imm) => vec![r1],
             Undefined | DataSectionOffsetPlaceholder => vec![],
             DataSectionRegisterLoadPlaceholder => vec![
                 &VirtualRegister::Constant(ConstantRegister::DataSectionStart),
@@ -533,6 +535,7 @@ impl VirtualOp {
             ),
             NOOP => AllocatedOpcode::NOOP,
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
+            GM(reg, imm) => AllocatedOpcode::GM(map_reg(&mapping, reg), imm.clone()),
             Undefined => AllocatedOpcode::Undefined,
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
             DataSectionRegisterLoadPlaceholder => {
