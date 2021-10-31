@@ -102,6 +102,7 @@ impl<'sc> TypedAstNode<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
+        println!("Type checking ast node {:?}", node);
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.

@@ -45,7 +45,6 @@ pub(crate) fn look_up_type_id<'sc>(id: TypeId) -> TypeInfo {
     ty
 }
 
-}
 #[derive(Default, Clone, Debug)]
 pub(crate) struct Engine {
     id_counter: usize, // Used to generate unique IDs

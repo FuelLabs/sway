@@ -39,6 +39,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, Self> {
+        println!("Type checking expression: {:?}", other.span().as_str());
         let expr_span = other.span();
         let res = match other {
             Expression::Literal { value: lit, span } => {
@@ -239,6 +240,7 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking literal: {:?}", span.as_str());
         let return_type = match lit {
             Literal::String(s) => TypeInfo::Str(s.len() as u64),
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
@@ -265,6 +267,7 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking var exp: {:?}", span.as_str());
         let mut errors = vec![];
         let exp = match namespace.get_symbol(&name) {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -313,6 +316,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking fn app: {:?}", span.as_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         let function_declaration = check!(
@@ -425,6 +429,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking lazy op: {:?}", span.as_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         let bool_type_id = crate::type_engine::insert_type(TypeInfo::Boolean);
@@ -541,6 +546,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking code block {:?}", span.as_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
@@ -611,6 +617,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking if exp: {:?}", span.as_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         let condition = Box::new(check!(
@@ -695,10 +702,12 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking asm exp {:?}", span.as_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         let return_type = namespace.resolve_type_with_self(asm.return_type, self_type);
         // type check the initializers
+        println!("regs");
         let typed_registers = asm
             .registers
             .into_iter()
@@ -731,6 +740,7 @@ impl<'sc> TypedExpression<'sc> {
                 },
             )
             .collect();
+        println!("exp");
         let exp = TypedExpression {
             expression: TypedExpressionVariant::AsmExpression {
                 whole_block_span: asm.whole_block_span,
@@ -742,6 +752,7 @@ impl<'sc> TypedExpression<'sc> {
             is_constant: IsConstant::No,
             span,
         };
+        println!("ok");
         ok(exp, warnings, errors)
     }
 
@@ -754,6 +765,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking struct expr {:?}", span.as_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
@@ -866,6 +878,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking subfield {:?}", span.as_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         let parent = check!(
@@ -935,6 +948,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("TYpe checking delineated {:?}", span.as_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         // The first step is to determine if the call path refers to a module or an enum.
@@ -1023,6 +1037,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        println!("Type checking abi cast {:?}", span.as_str());
         let mut warnings = vec![];
         let mut errors = vec![];
         // TODO use stdlib's Address type instead of b256
