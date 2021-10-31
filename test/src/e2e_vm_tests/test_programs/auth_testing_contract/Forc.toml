@@ -1,7 +1,7 @@
 [project]
-author  = "alex"
+author  = "Alexander Hansen"
 license = "MIT"
-name = "caller_auth_test"
+name = "auth_testing_contract"
 entry = "main.sw"
 
 [dependencies]

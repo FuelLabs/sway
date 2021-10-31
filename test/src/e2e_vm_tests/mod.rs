@@ -56,6 +56,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("aliased_imports", ProgramState::Return(42)),
         ("caller_auth_test", ProgramState::Return(1)), // true
     ];
+
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
             assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
