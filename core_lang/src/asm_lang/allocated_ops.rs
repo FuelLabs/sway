@@ -150,6 +150,7 @@ pub(crate) enum AllocatedOpcode {
     S256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     NOOP,
     FLAG(AllocatedRegister),
+    GM(AllocatedRegister, VirtualImmediate18),
     Undefined,
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
@@ -239,6 +240,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             S256(a, b, c)   => format!("s256 {} {} {}", a, b, c),
             NOOP            => "noop".to_string(),
             FLAG(a)         => format!("flag {}", a),
+            GM(a, b)         => format!("gm {} {}", a, b),
             Undefined       => format!("undefined op"),
             DataSectionOffsetPlaceholder => "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]".into(),
             DataSectionRegisterLoadPlaceholder => "lw   $ds $is 1".into()
@@ -339,6 +341,7 @@ impl<'sc> AllocatedOp<'sc> {
             S256(a, b, c)   => VmOp::S256(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             NOOP            => VmOp::NOOP,
             FLAG(a)         => VmOp::FLAG(a.to_register_id()),
+            GM(a, b)         => VmOp::GM(a.to_register_id(), b.value),
             Undefined       => VmOp::Undefined,
             DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes()),
             DataSectionRegisterLoadPlaceholder => VmOp::LW(crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as fuel_asm::RegisterId, ConstantRegister::InstructionStart.to_register_id(), 1),

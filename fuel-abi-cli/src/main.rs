@@ -1,4 +1,5 @@
-use fuels_rs::json_abi::ABI;
+use fuels_rs::json_abi::parse_param;
+use fuels_rs::json_abi::ABIParser;
 use fuels_rs::types::{ParamType, Property};
 use std::fs;
 use structopt::StructOpt;
@@ -77,7 +78,7 @@ where
 }
 
 fn encode_params(params: &[String]) -> anyhow::Result<String> {
-    let abi_coder = ABI::new();
+    let abi_coder = ABIParser::new();
 
     Ok(abi_coder.encode_params(params)?)
 }
@@ -89,7 +90,7 @@ fn encode_input(path: &str, function_name: &str, values: &[String]) -> anyhow::R
 
     let contract = fs::read_to_string(path)?;
 
-    let mut abi_coder = ABI::new();
+    let mut abi_coder = ABIParser::new();
 
     let result = abi_coder.encode_with_function_selector(&contract, function_name, values)?;
 
@@ -97,12 +98,12 @@ fn encode_input(path: &str, function_name: &str, values: &[String]) -> anyhow::R
 }
 
 fn decode_params(types: &[String], data: &str) -> anyhow::Result<String> {
-    let abi_coder = ABI::new();
+    let abi_coder = ABIParser::new();
 
     let types: Result<Vec<ParamType>, _> = types
         .iter()
         .map(|s| {
-            abi_coder.parse_param(&Property {
+            parse_param(&Property {
                 name: "".into(),
                 type_field: s.to_owned(),
                 components: None,
@@ -126,7 +127,7 @@ fn decode_params(types: &[String], data: &str) -> anyhow::Result<String> {
 fn decode_call_output(path: &str, function_name: &str, data: &str) -> anyhow::Result<String> {
     let contract = fs::read_to_string(path)?;
 
-    let abi_coder = ABI::new();
+    let abi_coder = ABIParser::new();
 
     let decoded = abi_coder.decode(&contract, function_name, &data.as_bytes())?;
 

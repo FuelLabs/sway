@@ -11,62 +11,65 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Setup SSH agent
-      uses: webfactory/ssh-agent@v0.5.2
-      with:
-        ssh-private-key: |
-          ${{ secrets.PRIVATE_KEY_FUEL_ASM }}
-          ${{ secrets.PRIVATE_KEY_FUEL_TX }}
-          ${{ secrets.PRIVATE_KEY_FUEL_VM }}
-          ${{ secrets.PRIVATE_KEY_FUEL_CORE }}
-          ${{ secrets.PRIVATE_KEY_FUEL_STORAGE }}
-          ${{ secrets.PRIVATE_KEY_FUEL_TYPES }}
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.5.2
+        with:
+          ssh-private-key: |
+            ${{ secrets.PRIVATE_KEY_FUEL_ASM }}
+            ${{ secrets.PRIVATE_KEY_FUEL_TX }}
+            ${{ secrets.PRIVATE_KEY_FUEL_VM }}
+            ${{ secrets.PRIVATE_KEY_FUEL_CORE }}
+            ${{ secrets.PRIVATE_KEY_FUEL_STORAGE }}
+            ${{ secrets.PRIVATE_KEY_FUEL_TYPES }}
 
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        override: true
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
 
-    - name: Install rustfmt
-      run: rustup component add rustfmt
+      - name: Install rustfmt
+        run: rustup component add rustfmt
 
-    - name: Check formatting
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all --verbose -- --check
+      - name: Set git config
+        run: |
+          git config --global core.bigfilethreshold 100m
 
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose
-      env:
-        RUSTFLAGS: "-D warnings"
+      - name: Check formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all --verbose -- --check
 
-    - name: Run tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --verbose
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose
+        env:
+          RUSTFLAGS: "-D warnings"
 
-    - name: Clone and build fuel-core
-      run: |
-        git clone git@github.com:FuelLabs/fuel-core
-        (cd fuel-core && cargo build -p fuel-core)
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose
 
-    - name: Build test suite
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --bin test
+      - name: Clone and build fuel-core
+        run: |
+          git clone git@github.com:FuelLabs/fuel-core
+          (cd fuel-core && cargo build -p fuel-core)
 
-    - name: Run test suite
-      run: |
-        ./fuel-core/target/debug/fuel-core & ./target/debug/test
+      - name: Build test suite
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --bin test
 
+      - name: Run test suite
+        run: |
+          ./fuel-core/target/debug/fuel-core & ./target/debug/test
