@@ -133,7 +133,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     ConstantRegister::parse_register_name(name).is_none(),
                     warnings,
                     name_span.clone(),
-                    Warning::ShadowingReservedRegister { reg_name: &name }
+                    Warning::ShadowingReservedRegister { reg_name: name }
                 );
 
                 mapping_of_real_registers_to_declared_names.insert(name, register.clone());
@@ -229,7 +229,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     };
                     asm_buf.push(Op::unowned_register_move_comment(
                         return_reg.clone(),
-                        mapped_asm_ret.clone(),
+                        mapped_asm_ret,
                         "return value from inline asm",
                     ));
                 }
@@ -477,7 +477,7 @@ pub(crate) fn convert_abi_fn_to_asm<'sc>(
     asm_buf.append(&mut body);
     // return the value from the abi function
     asm_buf.append(&mut check!(
-        ret_or_retd_value(&decl, return_register, register_sequencer, &mut namespace),
+        ret_or_retd_value(decl, return_register, register_sequencer, &mut namespace),
         return err(warnings, errors),
         warnings,
         errors

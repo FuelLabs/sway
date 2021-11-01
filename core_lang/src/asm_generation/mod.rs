@@ -602,7 +602,7 @@ impl<'sc> AsmNamespace<'sc> {
         &self,
         var_name: &Ident<'sc>,
     ) -> CompileResult<'sc, &VirtualRegister> {
-        match self.variables.get(&var_name) {
+        match self.variables.get(var_name) {
             Some(o) => ok(o, vec![], vec![]),
             None => err(
                 vec![],
@@ -1046,7 +1046,7 @@ fn convert_node_to_asm<'sc>(
                 "The ASM for this construct has not been written yet.",
                 node.clone().span,
             ));
-            return err(warnings, errors);
+            err(warnings, errors)
         }
     }
 }
@@ -1213,7 +1213,7 @@ fn add_global_constant_decls<'sc>(
     for declaration in declarations {
         if let TypedDeclaration::ConstantDeclaration(decl) = declaration {
             let mut ops = check!(
-                convert_constant_decl_to_asm(&decl, namespace, register_sequencer),
+                convert_constant_decl_to_asm(decl, namespace, register_sequencer),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1241,7 +1241,7 @@ fn add_module_constant_decls<'sc>(
         for (_, decl) in &ns.symbols {
             if let TypedDeclaration::ConstantDeclaration(decl) = decl {
                 let mut ops = check!(
-                    convert_constant_decl_to_asm(&decl, namespace, register_sequencer),
+                    convert_constant_decl_to_asm(decl, namespace, register_sequencer),
                     return err(warnings, errors),
                     warnings,
                     errors
