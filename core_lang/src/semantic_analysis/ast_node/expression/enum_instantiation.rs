@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
 use crate::semantic_analysis::ast_node::*;
-use crate::type_engine::TypeId;
+use crate::type_engine::{look_up_type_id, TypeId};
 use crate::types::ResolvedType;
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
@@ -44,10 +44,7 @@ pub(crate) fn instantiate_enum<'sc>(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (
-        &args[..],
-        TYPE_ENGINE.lock().unwrap().look_up_type_id(enum_field_type),
-    ) {
+    match (&args[..], look_up_type_id(enum_field_type)) {
         ([], TypeInfo::Unit) => ok(
             TypedExpression {
                 return_type: enum_decl.as_type(),

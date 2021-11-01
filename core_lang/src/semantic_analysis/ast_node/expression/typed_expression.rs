@@ -2,7 +2,7 @@ use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
-use crate::type_engine::{IntegerBits, TypeEngine, TYPE_ENGINE};
+use crate::type_engine::{insert_type, IntegerBits, TypeEngine, TYPE_ENGINE};
 use crate::types::ResolvedType;
 use either::Either;
 
@@ -980,7 +980,8 @@ impl<'sc> TypedExpression<'sc> {
                         enum_decl,
                         call_path.suffix,
                         args,
-                        todo!("generics"),
+                        //TODO(generics)
+                        type_arguments.into_iter().map(|x| insert_type(x)).collect(),
                         namespace,
                         self_type,
                         build_config,
