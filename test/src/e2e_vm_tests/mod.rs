@@ -54,7 +54,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("const_decl", ProgramState::Return(100)),
         ("const_decl_in_library", ProgramState::Return(1)), // true
         ("aliased_imports", ProgramState::Return(42)),
-        ("caller_auth_test", ProgramState::Return(1)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
@@ -84,7 +83,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
 
     // ---- Contract Deployments
     // contracts that should be deployed for the following tests to work
-    let contract_names = vec!["basic_storage", "increment_contract"];
+    let contract_names = vec![
+        "basic_storage",
+        "increment_contract",
+        "auth_testing_contract",
+    ];
 
     for name in contract_names {
         harness::deploy_contract(name)
@@ -92,7 +95,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
 
     // ---- Tests that need the above contracts deployed to work
     // TODO validate that call output is correct
-    let project_names = &["call_basic_storage", "call_increment_contract"];
+    let project_names = &[
+        "call_basic_storage",
+        "call_increment_contract",
+        "caller_auth_test",
+    ];
 
     project_names
         .into_iter()
