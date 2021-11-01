@@ -84,7 +84,7 @@ pub(crate) fn convert_if_exp_to_asm<'sc>(
         ));
         let else_branch_result = register_sequencer.next();
         let mut else_branch = check!(
-            convert_expression_to_asm(&r#else, namespace, &else_branch_result, register_sequencer),
+            convert_expression_to_asm(r#else, namespace, &else_branch_result, register_sequencer),
             return err(warnings, errors),
             warnings,
             errors

@@ -75,7 +75,7 @@ fn to_bytecode<'sc>(
             .fold(0, |acc, item| match &item.opcode {
                 AllocatedOpcode::LWDataId(_reg, data_label)
                     if data_section
-                        .type_of_data(&data_label)
+                        .type_of_data(data_label)
                         .expect("data label references non existent data -- internal error")
                         .stack_size_of()
                         > 1 =>
