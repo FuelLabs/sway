@@ -117,11 +117,8 @@ impl<'sc> TypeEngine<'sc> for Engine {
                 Ok(None)
             }
 
-            // Primitives are trivial to unify
-            (Numeric, Numeric) => Ok(None),
-            (Boolean, Boolean) => Ok(None),
-            (B256, B256) => Ok(None),
-            (Byte, Byte) => Ok(None),
+            // If the types are exactly the same, we are done.
+            (a, b) if a == b => Ok(None),
             (UnsignedInteger(x), UnsignedInteger(y)) => match numeric_cast_compat(x, y) {
                 NumericCastCompatResult::CastableWithWarning(warn) => {
                     // cast the one on the right to the one on the left
@@ -139,8 +136,6 @@ impl<'sc> TypeEngine<'sc> for Engine {
                 self.vars.insert(b, a);
                 Ok(None)
             }
-            (Enum { .. }, _) | (_, Enum { .. }) => todo!("enum ty"),
-            (Struct { .. }, _) | (_, Struct { .. }) => todo!("struct ty"),
 
             // When unifying complex types, we must check their sub-types. This
             // can be trivially implemented for tuples, sum types, etc.

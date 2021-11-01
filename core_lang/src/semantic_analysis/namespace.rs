@@ -274,7 +274,13 @@ impl<'sc> Namespace<'sc> {
             errors
         );
 
-        match module.get_symbol_by_str(name) {
+        match module.symbols.iter().find_map(|(item, other)| {
+            if item.primary_name == name {
+                Some(other)
+            } else {
+                None
+            }
+        }) {
             Some(decl) => ok(decl, warnings, errors),
             None => {
                 let span = match path.get(0) {
