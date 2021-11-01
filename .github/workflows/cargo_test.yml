@@ -42,7 +42,7 @@ jobs:
 
       - name: Set git config
         run: |
-          git config --global core.bigfilethreshold 100m
+          git config --global core.bigfilethreshold 500m
 
       - name: Check formatting
         uses: actions-rs/cargo@v1
