@@ -2,6 +2,7 @@ use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::span::Span;
+use crate::type_engine::FriendlyTypeString;
 use crate::type_engine::{resolve_type, TypeInfo, TYPE_ENGINE};
 use crate::{
     build_config::BuildConfig,
@@ -187,6 +188,7 @@ fn type_check_trait_implementation<'sc>(
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
     let mut warnings = vec![];
+    let self_type_id = type_implementing_for;
     // this list keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
@@ -199,13 +201,13 @@ fn type_check_trait_implementation<'sc>(
         // i.e. fn add(self, other: u64) -> Self becomes fn
         // add(self: u64, other: u64) -> u64
 
-        let mut fn_decl = check!(
+        let fn_decl = check!(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
                 namespace,
                 crate::type_engine::insert_type(TypeInfo::Unknown),
                 "",
-                self_type,
+                type_implementing_for,
                 build_config,
                 dead_code_graph,
                 mode
@@ -214,6 +216,7 @@ fn type_check_trait_implementation<'sc>(
             warnings,
             errors
         );
+        let mut fn_decl = fn_decl.replace_self_types(self_type_id);
         // remove this function from the "checklist"
         let ix_of_thing_to_remove = match function_checklist
             .iter()
@@ -267,20 +270,27 @@ fn type_check_trait_implementation<'sc>(
                             let fn_decl_param_type = fn_decl_param.r#type;
                             let trait_param_type = trait_param.r#type;
 
-                            let real_fn_decl_param_type = TYPE_ENGINE
-                                .lock()
-                                .unwrap()
-                                .look_up_type_id(fn_decl_param_type);
-                            let real_trait_param_type = TYPE_ENGINE
-                                .lock()
-                                .unwrap()
-                                .look_up_type_id(trait_param_type);
-                            if real_fn_decl_param_type != real_trait_param_type {
-                                errors.push(CompileError::MismatchedTypeInTrait {
-                                    span: trait_param.type_span.clone(),
-                                    given: real_trait_param_type.friendly_type_str(),
-                                    expected: real_fn_decl_param_type.friendly_type_str(),
-                                });
+                            match TYPE_ENGINE.lock().unwrap().unify_with_self(
+                                fn_decl_param_type,
+                                trait_param_type,
+                                self_type,
+                                &trait_param.type_span,
+                            ) {
+                                Ok(warn) => {
+                                    if let Some(warn) = warn {
+                                        warnings.push(CompileWarning {
+                                            warning_content: warn,
+                                            span: fn_decl_param.type_span.clone(),
+                                        });
+                                    }
+                                }
+                                Err(_e) => {
+                                    errors.push(CompileError::MismatchedTypeInTrait {
+                                        span: trait_param.type_span.clone(),
+                                        given: fn_decl_param_type.friendly_type_str(),
+                                        expected: trait_param_type.friendly_type_str(),
+                                    });
+                                }
                             }
                             if errors.is_empty() {
                                 None
@@ -291,17 +301,28 @@ fn type_check_trait_implementation<'sc>(
                     {
                         errors.append(&mut maybe_err);
                     }
-                    let real_ret_type = TYPE_ENGINE.lock().unwrap().look_up_type_id(*return_type);
-                    let real_fn_decl_ty = TYPE_ENGINE
-                        .lock()
-                        .unwrap()
-                        .look_up_type_id(fn_decl.return_type);
-                    if real_fn_decl_ty != real_ret_type {
-                        errors.push(CompileError::MismatchedTypeInTrait {
-                            span: fn_decl.return_type_span.clone(),
-                            expected: real_ret_type.friendly_type_str(),
-                            given: real_fn_decl_ty.friendly_type_str(),
-                        });
+
+                    match TYPE_ENGINE.lock().unwrap().unify_with_self(
+                        *return_type,
+                        fn_decl.return_type,
+                        type_implementing_for,
+                        &fn_decl.return_type_span,
+                    ) {
+                        Ok(warn) => {
+                            if let Some(warn) = warn {
+                                warnings.push(CompileWarning {
+                                    warning_content: warn,
+                                    span: fn_decl.return_type_span.clone(),
+                                });
+                            }
+                        }
+                        Err(_e) => {
+                            errors.push(CompileError::MismatchedTypeInTrait {
+                                span: fn_decl.return_type_span.clone(),
+                                expected: return_type.friendly_type_str(),
+                                given: fn_decl.return_type.friendly_type_str(),
+                            });
+                        }
                     }
                     if errors.is_empty() {
                         None
@@ -358,7 +379,6 @@ fn type_check_trait_implementation<'sc>(
             warnings,
             errors
         );
-        let self_type_id = type_implementing_for;
         let fn_decl = method.replace_self_types(self_type_id);
         functions_buf.push(fn_decl);
     }
