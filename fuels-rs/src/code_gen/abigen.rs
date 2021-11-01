@@ -93,11 +93,11 @@ impl Abigen {
                 use fuels_rs::tokens::{Tokenizable, Token};
                 use fuels_rs::types::EnumSelector;
 
-                pub struct #name;
+                pub struct #name { contract_id: String }
 
                 impl #name {
-                    pub fn new() -> Self {
-                        Self{}
+                    pub fn new(contract_id: String) -> Self {
+                        Self{contract_id}
                     }
 
                     #contract_functions

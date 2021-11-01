@@ -1,0 +1,5 @@
+[project]
+author  = "Rodrigo Araujo"
+license = "MIT"
+name = "contract_test"
+entry = "main.sw"
