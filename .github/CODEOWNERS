@@ -1,1 +1,12 @@
-* @sezna
+core_lang/ @sezna
+forc/ @leviathanbeak
+formatter/ @leviathanbeak
+docs/ @johnadlert
+fuel-abi-cli/ @digorithm
+fuels-abigen-macro/ @digorithm
+fuels-rs/ @digorithm
+stdlib/ @sezna
+test/ @sezna
+core-types/ @leviathanbeak
+scripts/ @leviathanbeak
+
