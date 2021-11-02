@@ -2,6 +2,7 @@ use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parser::{HllParser, Rule};
+use crate::type_engine::{look_up_type_id, look_up_type_with_self};
 use crate::types::ResolvedType;
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
@@ -50,8 +51,12 @@ pub(crate) fn type_check_method_application<'sc>(
 
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
-        let arg_ret_type = TYPE_ENGINE.lock().unwrap().look_up_type_id(arg.return_type);
-        let param_type = TYPE_ENGINE.lock().unwrap().look_up_type_id(param.r#type);
+        let arg_ret_type = look_up_type_id(
+            namespace.resolve_type_with_self(look_up_type_id(arg.return_type), self_type),
+        );
+        let param_type = look_up_type_id(
+            namespace.resolve_type_with_self(look_up_type_id(param.r#type), self_type),
+        );
         if arg_ret_type != param_type && arg_ret_type != TypeInfo::ErrorRecovery {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),

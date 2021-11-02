@@ -230,6 +230,9 @@ impl<'sc> TypedExpression<'sc> {
             // The annotation may result in a cast, which is handled in the type engine.
         }
 
+        typed_expression.return_type = namespace
+            .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type);
+
         ok(typed_expression, warnings, errors)
     }
 

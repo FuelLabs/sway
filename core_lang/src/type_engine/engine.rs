@@ -21,6 +21,23 @@ pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
     id
 }
 
+pub(crate) fn resolve_type_with_self<'sc>(
+    id: TypeId,
+    self_type: TypeId,
+    error_span: &Span<'sc>,
+) -> Result<TypeInfo, TypeError<'sc>> {
+    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let ty = match lock.resolve(id) {
+        Ok(TypeInfo::Unknown) => Err(TypeError::UnknownType {
+            span: error_span.clone(),
+        }),
+        Ok(TypeInfo::SelfType) => Ok(look_up_type_id(self_type)),
+        o => o,
+    };
+    drop(lock);
+    ty
+}
+
 pub(crate) fn resolve_type<'sc>(
     id: TypeId,
     error_span: &Span<'sc>,
@@ -34,6 +51,18 @@ pub(crate) fn resolve_type<'sc>(
     };
     drop(lock);
     ty
+}
+
+pub(crate) fn look_up_type_with_self<'sc>(id: TypeId, self_type: TypeId) -> TypeInfo {
+    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let ty = lock
+        .resolve(id)
+        .expect("type engine did not contain type id: internal error");
+    drop(lock);
+    match ty {
+        TypeInfo::SelfType => look_up_type_id(self_type),
+        _ => ty,
+    }
 }
 
 pub(crate) fn look_up_type_id<'sc>(id: TypeId) -> TypeInfo {

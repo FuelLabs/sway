@@ -6,7 +6,9 @@ use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{insert_type, look_up_type_id, Engine, TypeEngine, TypeId, TYPE_ENGINE};
+use crate::type_engine::{
+    insert_type, look_up_type_id, look_up_type_with_self, Engine, TypeEngine, TypeId, TYPE_ENGINE,
+};
 use crate::types::ResolvedType;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
@@ -528,10 +530,12 @@ impl<'sc> Namespace<'sc> {
                     warnings,
                     errors
                 );
-                todo!("resolving this type should mutate the parent namespace I think...come back to this. The cloned \
-                namespace could lead to issues.");
                 let r#type = if let Some(type_name) = type_name {
-                    module.resolve_type_with_self(type_name.clone(), self_type)
+                    if *type_name == TypeInfo::SelfType {
+                        self_type
+                    } else {
+                        insert_type(type_name.clone())
+                    }
                 } else {
                     args_buf[0].return_type.clone()
                 };
