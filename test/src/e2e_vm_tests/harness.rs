@@ -29,6 +29,7 @@ pub(crate) fn deploy_contract(file_name: &str) {
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
 pub(crate) fn runs_on_node(file_name: &str) {
+    println!("Running on node: {}", file_name);
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let command = RunCommand {
         data: None,
