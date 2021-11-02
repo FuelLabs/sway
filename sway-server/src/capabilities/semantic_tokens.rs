@@ -1,7 +1,4 @@
-use crate::core::{
-    session::Session,
-    token::{ContentType, DeclarationType, Token},
-};
+use crate::core::{session::Session, token::Token, token_type::TokenType};
 use lspower::lsp::{
     SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
     SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensParams,
@@ -49,7 +46,7 @@ pub fn to_semantic_tokes(tokens: &Vec<Token>) -> Vec<SemanticToken> {
 fn create_semantic_token(next_token: &Token, prev_token: Option<&Token>) -> SemanticToken {
     // TODO - improve with modifiers
     let token_modifiers_bitset = 0;
-    let token_type = get_type(&next_token.content_type);
+    let token_type = get_type(&next_token.token_type);
     let length = next_token.length;
 
     let next_token_start_char = next_token.range.start.character;
@@ -82,20 +79,16 @@ static ENUM: u32 = 10;
 static STRUCT: u32 = 11;
 static TRAIT: u32 = 12;
 
-fn get_type(content_type: &ContentType) -> u32 {
-    if let ContentType::Declaration(dec) = content_type {
-        match dec {
-            DeclarationType::Function => FUNCTION,
-            DeclarationType::Library => LIBRARY,
-            DeclarationType::Variable => VARIABLE,
-            DeclarationType::Enum => ENUM,
-            DeclarationType::Struct => STRUCT,
-            DeclarationType::Trait => TRAIT,
-            _ => VARIABLE,
-        }
-    } else {
+fn get_type(token_type: &TokenType) -> u32 {
+    match token_type {
+        TokenType::FunctionDeclaration(_) | &TokenType::FunctionApplication => FUNCTION,
+        TokenType::Library => LIBRARY,
+        TokenType::Variable(_) => VARIABLE,
+        TokenType::Enum => ENUM,
+        TokenType::Struct(_) => STRUCT,
+        TokenType::Trait(_) => TRAIT,
         // currently we return `variable` type as default
-        VARIABLE
+        _ => VARIABLE,
     }
 }
 

@@ -35,6 +35,7 @@ pub use declaration::{
 pub(crate) use expression::*;
 use impl_trait::implementation_of_trait;
 pub(crate) use return_statement::TypedReturnStatement;
+use std::collections::{HashMap, HashSet};
 pub(crate) use while_loop::TypedWhileLoop;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
@@ -80,7 +81,7 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
 }
 
 impl<'sc> TypedAstNode<'sc> {
-    fn type_info(&self, namespace: &Namespace<'sc>) -> TypeInfo {
+    fn type_info(&self) -> TypeInfo {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
@@ -102,6 +103,7 @@ impl<'sc> TypedAstNode<'sc> {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedAstNode<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -121,6 +123,7 @@ impl<'sc> TypedAstNode<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph,
             )
         };
 
@@ -130,7 +133,7 @@ impl<'sc> TypedAstNode<'sc> {
                     let mut res = match a.import_type {
                         ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
                         ImportType::Item(s) => {
-                            namespace.item_import(a.call_path, &s, a.is_absolute)
+                            namespace.item_import(a.call_path, &s, a.is_absolute, a.alias)
                         }
                     };
                     warnings.append(&mut res.warnings);
@@ -143,7 +146,13 @@ impl<'sc> TypedAstNode<'sc> {
                     // Import the file, parse it, put it in the namespace under the module name (alias or
                     // last part of the import by default)
                     let _ = check!(
-                        import_new_file(a, namespace, build_config, dead_code_graph),
+                        import_new_file(
+                            a,
+                            namespace,
+                            build_config,
+                            dead_code_graph,
+                            dependency_graph
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -217,6 +226,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     build_config,
                                     dead_code_graph,
                                     Mode::NonAbi,
+                                    dependency_graph
                                 ),
                                 error_recovery_function_declaration(fn_decl),
                                 warnings,
@@ -264,6 +274,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     insert_type(TypeInfo::SelfType),
                                     build_config,
                                     dead_code_graph,
+                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -289,7 +300,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     namespace,
                                     self_type,
                                     build_config,
-                                    dead_code_graph
+                                    dead_code_graph,
+                                    dependency_graph
                                 ),
                                 return err(warnings, errors),
                                 warnings,
@@ -301,7 +313,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 impl_trait,
                                 namespace,
                                 build_config,
-                                dead_code_graph
+                                dead_code_graph,
+                                dependency_graph
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -355,7 +368,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         implementing_for_type_id,
                                         build_config,
                                         dead_code_graph,
-                                        Mode::NonAbi
+                                        Mode::NonAbi,
+                                        dependency_graph
                                     ),
                                     continue,
                                     warnings,
@@ -429,6 +443,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
+                                    dependency_graph
                                 ),
                                 vec![],
                                 warnings,
@@ -455,7 +470,8 @@ impl<'sc> TypedAstNode<'sc> {
                             "",
                             self_type,
                             build_config,
-                            dead_code_graph
+                            dead_code_graph,
+                            dependency_graph
                         ),
                         error_recovery_expr(a.span()),
                         warnings,
@@ -474,7 +490,8 @@ impl<'sc> TypedAstNode<'sc> {
                                  annotation.",
                                 self_type,
                                 build_config,
-                                dead_code_graph
+                                dead_code_graph,
+                                dependency_graph
                             ),
                             error_recovery_expr(expr.span()),
                             warnings,
@@ -494,7 +511,8 @@ impl<'sc> TypedAstNode<'sc> {
                             ),
                             self_type,
                             build_config,
-                            dead_code_graph
+                            dead_code_graph,
+                            dependency_graph
                         ),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -511,7 +529,8 @@ impl<'sc> TypedAstNode<'sc> {
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
                             build_config,
-                            dead_code_graph
+                            dead_code_graph,
+                            dependency_graph
                         ),
                         return err(warnings, errors),
                         warnings,
@@ -528,6 +547,7 @@ impl<'sc> TypedAstNode<'sc> {
                             self_type,
                             build_config,
                             dead_code_graph,
+                            dependency_graph
                         ),
                         (
                             TypedCodeBlock {
@@ -547,23 +567,22 @@ impl<'sc> TypedAstNode<'sc> {
             },
             span: node.span.clone(),
         };
-        match node {
-            TypedAstNode {
-                content: TypedAstNodeContent::Expression(TypedExpression { .. }),
-                ..
-            } => {
-                let warning = Warning::UnusedReturnValue {
-                    r#type: node.type_info(namespace),
-                };
-                assert_or_warn!(
-                    node.type_info(namespace) == TypeInfo::Unit
-                        || node.type_info(namespace) == TypeInfo::ErrorRecovery,
-                    warnings,
-                    node.span.clone(),
-                    warning
-                );
-            }
-            _ => (),
+
+        if let TypedAstNode {
+            content: TypedAstNodeContent::Expression(TypedExpression { .. }),
+            ..
+        } = node
+        {
+            let warning = Warning::UnusedReturnValue {
+                r#type: node.type_info(),
+            };
+            assert_or_warn!(
+                node.type_info() == TypeInfo::Unit
+                    || node.type_info() == TypeInfo::ErrorRecovery,
+                warnings,
+                node.span.clone(),
+                warning
+            );
         }
 
         ok(node, warnings, errors)
@@ -577,6 +596,7 @@ fn import_new_file<'sc>(
     namespace: &mut Namespace<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -585,6 +605,15 @@ fn import_new_file<'sc>(
 
     let mut canonical_path = build_config.dir_of_code.clone();
     canonical_path.push(file_path);
+
+    let mut manifest_path = build_config.manifest_path.clone();
+    manifest_path.pop();
+    let canonical_path_clone = canonical_path.clone();
+    let file_name = match canonical_path_clone.strip_prefix(manifest_path) {
+        Ok(o) => o,
+        Err(_) => return err(warnings, errors),
+    };
+
     let res = if canonical_path.exists() {
         std::fs::read_to_string(canonical_path.clone())
     } else {
@@ -618,6 +647,7 @@ fn import_new_file<'sc>(
         canonical_path.pop();
         canonical_path
     };
+    dep_config.file_name = file_name.to_path_buf();
     dep_config.dir_of_code = dep_path;
     let crate::InnerDependencyCompileResult {
         mut library_exports,
@@ -626,7 +656,8 @@ fn import_new_file<'sc>(
             static_file_string,
             &dep_namespace,
             dep_config,
-            dead_code_graph
+            dead_code_graph,
+            dependency_graph
         ),
         return err(warnings, errors),
         warnings,
@@ -661,37 +692,42 @@ fn reassignment<'sc>(
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
     // ensure that the lhs is a variable expression or struct field access
     match *lhs {
         Expression::VariableExpression { name, span } => {
+            let name_in_use = name.clone();
             // check that the reassigned name exists
             let thing_to_reassign = match namespace.clone().get_symbol(&name) {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body,
                     is_mutable,
-                    ..
+                    name,
                 })) => {
                     // allow the type checking to continue unhindered even though
                     // this is an error
                     // basically pretending that this isn't an error by not
                     // early-returning, for the sake of better error reporting
                     if !is_mutable {
-                        errors.push(CompileError::AssignmentToNonMutable(
-                            name.primary_name.to_string(),
-                            span.clone(),
-                        ));
+                        errors.push(CompileError::AssignmentToNonMutable {
+                            name: name_in_use.primary_name,
+                            decl_span: name.span.clone(),
+                            usage_span: span.clone(),
+                        });
                     }
 
                     body.clone()
                 }
                 Some(o) => {
+                    let method = namespace.get_symbol(&name).unwrap();
                     errors.push(CompileError::ReassignmentToNonVariable {
                         name: name.primary_name,
                         kind: o.friendly_name(),
-                        span,
+                        decl_span: method.span(),
+                        usage_span: span,
                     });
                     return err(warnings, errors);
                 }
@@ -712,7 +748,8 @@ fn reassignment<'sc>(
                     "You can only reassign a value of the same type to a variable.",
                     self_type,
                     build_config,
-                    dead_code_graph
+                    dead_code_graph,
+                    dependency_graph
                 ),
                 error_recovery_expr(span),
                 warnings,
@@ -747,7 +784,8 @@ fn reassignment<'sc>(
                         "",
                         self_type,
                         build_config,
-                        dead_code_graph
+                        dead_code_graph,
+                        dependency_graph
                     ),
                     error_recovery_expr(expr.span()),
                     warnings,
@@ -811,7 +849,8 @@ fn reassignment<'sc>(
                     ),
                     self_type,
                     build_config,
-                    dead_code_graph
+                    dead_code_graph,
+                    dependency_graph
                 ),
                 error_recovery_expr(span),
                 warnings,
@@ -881,6 +920,7 @@ fn type_check_trait_methods<'sc>(
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1001,6 +1041,7 @@ fn type_check_trait_methods<'sc>(
                 self_type,
                 build_config,
                 dead_code_graph,
+                dependency_graph
             ),
             continue,
             warnings,

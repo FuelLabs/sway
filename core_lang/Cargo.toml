@@ -12,7 +12,7 @@ selector-debug = ["structopt", "hex"]
 derivative = "2.2.0"
 either = "1.6"
 fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
-fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
+fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git", rev = "bf6881fd213241be884552e63c58a2c27cb1da1e" }
 hex = { version = "0.4", optional = true }
 Inflector = { git = "https://github.com/sezna/Inflector.git" }
 pest_derive = "2.0"
@@ -23,7 +23,8 @@ structopt = { version = "0.3", default-features = false, optional = true }
 thiserror = "1.0"
 uuid-b64 = "0.1"
 lazy_static = "1.4"
-generational-arena = "0.2.8"
+line-col = "0.2"
+source-span = "2.4"
 
 [[bin]]
 name = "selector-debug"

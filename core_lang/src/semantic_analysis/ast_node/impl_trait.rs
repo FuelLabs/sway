@@ -13,12 +13,14 @@ use crate::{
     types::ResolvedType,
     CallPath, Ident,
 };
+use std::collections::{HashMap, HashSet};
 
 pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -69,6 +71,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     type_implementing_for_id,
                     &type_implementing_for_span,
                     Mode::NonAbi,
+                    dependency_graph
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -126,7 +129,8 @@ pub(crate) fn implementation_of_trait<'sc>(
                     &block_span,
                     type_implementing_for_id,
                     &type_implementing_for_span,
-                    Mode::ImplAbiFn
+                    Mode::ImplAbiFn,
+                    dependency_graph
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -181,6 +185,7 @@ fn type_check_trait_implementation<'sc>(
     type_implementing_for: TypeId,
     type_implementing_for_span: &Span<'sc>,
     mode: Mode,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
@@ -207,7 +212,8 @@ fn type_check_trait_implementation<'sc>(
                 type_implementing_for,
                 build_config,
                 dead_code_graph,
-                mode
+                mode,
+                dependency_graph
             ),
             continue,
             warnings,
@@ -370,7 +376,8 @@ fn type_check_trait_implementation<'sc>(
                 type_implementing_for,
                 build_config,
                 dead_code_graph,
-                mode
+                mode,
+                dependency_graph
             ),
             continue,
             warnings,

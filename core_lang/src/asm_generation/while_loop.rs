@@ -1,5 +1,5 @@
 use super::*;
-use crate::asm_lang::virtual_ops::{ConstantRegister, VirtualRegister};
+use crate::asm_lang::{ConstantRegister, VirtualRegister};
 use crate::semantic_analysis::ast_node::TypedWhileLoop;
 pub(super) fn convert_while_loop_to_asm<'sc>(
     r#loop: &TypedWhileLoop<'sc>,
@@ -46,7 +46,7 @@ pub(super) fn convert_while_loop_to_asm<'sc>(
     // compare the result to FALSE
     // if it is FALSE, then jump to the end of the block.
     buf.push(Op::jump_if_not_equal(
-        condition_result_register.into(),
+        condition_result_register,
         VirtualRegister::Constant(ConstantRegister::One),
         exit_label.clone(),
     ));

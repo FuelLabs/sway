@@ -10,12 +10,9 @@ mod test {
     #[test]
     fn test_var_decl() {
         let parsed = HllParser::parse(Rule::var_decl, r#"let x = 2;"#);
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
 
@@ -28,12 +25,9 @@ mod test {
         /* and a multiline comment
          * second line */"#,
         );
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
 
@@ -48,12 +42,9 @@ mod test {
             return 10;
         }"#,
         );
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
 
@@ -71,12 +62,9 @@ mod test {
             return 10;
         }"#,
         );
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
 
@@ -90,12 +78,9 @@ mod test {
             /* some comments */
         }"#,
         );
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
 
@@ -109,12 +94,9 @@ mod test {
             /* some comments */
         }"#,
         );
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
     #[test]
@@ -144,13 +126,9 @@ mod test {
         let x = 5 + 10;
         }"#,
         );
-        // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
 
@@ -165,13 +143,9 @@ mod test {
         return y;
         }"#,
         );
-        // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
     #[test]
@@ -185,13 +159,9 @@ mod test {
         return y;
         }"#,
         );
-        // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
     #[test]
@@ -203,13 +173,9 @@ mod test {
                     fn some_method_you_need_to_implement(x: i32) -> i32;
             }"#,
         );
-        // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
     #[test]
@@ -229,13 +195,9 @@ mod test {
 
             "#,
         );
-        // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
     #[test]
@@ -245,13 +207,9 @@ mod test {
             r#"use otherlibrary::packagename;
             "#,
         );
-        // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
     #[test]
@@ -269,12 +227,9 @@ mod test {
             "#,
         );
         // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                println!("{:#?}", e);
-                panic!()
-            }
-            Ok(_) => (),
+        if let Err(e) = parsed {
+            println!("{:#?}", e);
+            panic!()
         }
     }
     #[test]

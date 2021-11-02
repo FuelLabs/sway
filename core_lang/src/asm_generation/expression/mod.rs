@@ -1,7 +1,7 @@
 use super::*;
 use crate::span::Span;
 use crate::{
-    asm_lang::{virtual_ops::VirtualRegister, *},
+    asm_lang::*,
     parse_tree::{CallPath, Literal},
     semantic_analysis::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
@@ -67,6 +67,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     // user parameter
                     &arguments[3].1,
                     register_sequencer,
+                    return_register,
                     namespace,
                     exp.span.clone(),
                 )
@@ -132,7 +133,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     ConstantRegister::parse_register_name(name).is_none(),
                     warnings,
                     name_span.clone(),
-                    Warning::ShadowingReservedRegister { reg_name: &name }
+                    Warning::ShadowingReservedRegister { reg_name: name }
                 );
 
                 mapping_of_real_registers_to_declared_names.insert(name, register.clone());
@@ -228,7 +229,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                     };
                     asm_buf.push(Op::unowned_register_move_comment(
                         return_reg.clone(),
-                        mapped_asm_ret.clone(),
+                        mapped_asm_ret,
                         "return value from inline asm",
                     ));
                 }
@@ -248,7 +249,13 @@ pub(crate) fn convert_expression_to_asm<'sc>(
         TypedExpressionVariant::StructExpression {
             struct_name,
             fields,
-        } => convert_struct_expression_to_asm(struct_name, fields, namespace, register_sequencer),
+        } => convert_struct_expression_to_asm(
+            struct_name,
+            fields,
+            return_register,
+            namespace,
+            register_sequencer,
+        ),
         TypedExpressionVariant::StructFieldAccess {
             resolved_type_of_parent,
             prefix,
@@ -475,7 +482,7 @@ pub(crate) fn convert_abi_fn_to_asm<'sc>(
     asm_buf.append(&mut body);
     // return the value from the abi function
     asm_buf.append(&mut check!(
-        ret_or_retd_value(&decl, return_register, register_sequencer, &mut namespace),
+        ret_or_retd_value(decl, return_register, register_sequencer, &mut namespace),
         return err(warnings, errors),
         warnings,
         errors

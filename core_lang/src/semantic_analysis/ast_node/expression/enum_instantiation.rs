@@ -16,6 +16,7 @@ pub(crate) fn instantiate_enum<'sc>(
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -70,6 +71,7 @@ pub(crate) fn instantiate_enum<'sc>(
                     self_type,
                     build_config,
                     dead_code_graph,
+                    dependency_graph
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -99,20 +101,20 @@ pub(crate) fn instantiate_enum<'sc>(
             errors.push(CompileError::MissingEnumInstantiator {
                 span: enum_field_name.span.clone(),
             });
-            return err(warnings, errors);
+            err(warnings, errors)
         }
         (_too_many_expressions, TypeInfo::Unit) => {
             errors.push(CompileError::UnnecessaryEnumInstantiator {
                 span: enum_field_name.span.clone(),
             });
-            return err(warnings, errors);
+            err(warnings, errors)
         }
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_field_name.span.clone(),
                 ty: ty.friendly_type_str(),
             });
-            return err(warnings, errors);
+            err(warnings, errors)
         }
     }
 }

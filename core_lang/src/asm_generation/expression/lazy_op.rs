@@ -1,9 +1,6 @@
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
-    asm_lang::{
-        virtual_ops::{ConstantRegister, VirtualRegister},
-        Op,
-    },
+    asm_lang::{ConstantRegister, Op, VirtualRegister},
     error::*,
     parse_tree::LazyOp,
     semantic_analysis::TypedExpression,
@@ -27,7 +24,7 @@ pub(crate) fn convert_lazy_operator_to_asm<'sc>(
     // Always evaluate the LHS.  Put the result into the return register since with short
     // circuiting it might be all we need to do.
     let mut lhs_asm_ops = check!(
-        convert_expression_to_asm(lhs, namespace, &return_register, register_sequencer),
+        convert_expression_to_asm(lhs, namespace, return_register, register_sequencer),
         return err(warnings, errors),
         warnings,
         errors
@@ -52,7 +49,7 @@ pub(crate) fn convert_lazy_operator_to_asm<'sc>(
     // Evaluate the RHS.  Again, we can put the result into the return register as it will be the
     // final value we want.
     let mut rhs_asm_ops = check!(
-        convert_expression_to_asm(rhs, namespace, &return_register, register_sequencer),
+        convert_expression_to_asm(rhs, namespace, return_register, register_sequencer),
         return err(warnings, errors),
         warnings,
         errors

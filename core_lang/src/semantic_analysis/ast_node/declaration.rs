@@ -11,6 +11,7 @@ use crate::type_engine::{
 };
 use crate::{build_config::BuildConfig, error::*, types::ResolvedType, Ident};
 use sha2::{Digest, Sha256};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
@@ -299,7 +300,7 @@ pub struct TypedFunctionDeclaration<'sc> {
 impl<'sc> TypedFunctionDeclaration<'sc> {
     /// If there are parameters, join their spans. Otherwise, use the fn name span.
     pub(crate) fn parameters_span(&self) -> Span<'sc> {
-        if self.parameters.len() >= 1 {
+        if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span.clone(),
                 |acc, TypedFunctionParameter { type_span, .. }| {
@@ -333,7 +334,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             },
             type_parameters: self.type_parameters.clone(),
             return_type_span: self.return_type_span.clone(),
-            visibility: self.visibility.clone(),
+            visibility: self.visibility,
             is_contract_call: self.is_contract_call,
         }
     }
@@ -560,6 +561,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         mode: Mode,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -604,7 +606,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             (
                 TypedCodeBlock {
@@ -706,7 +709,10 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 }
             } else {
                 errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
-                    span: parameters[0].type_span.clone(),
+                    span: parameters
+                        .get(0)
+                        .map(|x| x.type_span.clone())
+                        .unwrap_or(fn_decl.name.span.clone()),
                 });
             }
         }

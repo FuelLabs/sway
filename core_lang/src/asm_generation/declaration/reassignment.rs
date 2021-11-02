@@ -4,7 +4,7 @@ use crate::{
         convert_expression_to_asm, expression::get_struct_memory_layout, AsmNamespace,
         RegisterSequencer,
     },
-    asm_lang::virtual_ops::VirtualImmediate12,
+    asm_lang::VirtualImmediate12,
     semantic_analysis::ast_node::{
         OwnedTypedStructField, ReassignmentLhs, TypedReassignment, TypedStructField,
     },
@@ -132,7 +132,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 offset_in_words += offset_of_this_field;
                 fields = match r#type {
                     TypeInfo::Struct { ref fields, .. } => fields.clone(),
-                    ref a => {
+                     a => {
                         errors.push(CompileError::NotAStruct {
                             name: name.primary_name.to_string(),
                             span: name.span.clone(),
@@ -142,9 +142,8 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     }
                 };
             }
-
             let ptr = check!(
-                namespace.look_up_variable(&top_level_decl),
+                namespace.look_up_variable(top_level_decl),
                 return err(warnings, errors),
                 warnings,
                 errors

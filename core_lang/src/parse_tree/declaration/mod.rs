@@ -12,11 +12,11 @@ mod variable_declaration;
 pub(crate) use abi_declaration::*;
 pub(crate) use constant_declaration::*;
 pub(crate) use enum_declaration::*;
-pub(crate) use function_declaration::*;
+pub use function_declaration::*;
 pub(crate) use impl_trait::*;
 pub(crate) use reassignment::*;
-pub(crate) use struct_declaration::*;
-pub(crate) use trait_declaration::*;
+pub use struct_declaration::*;
+pub use trait_declaration::*;
 pub(crate) use type_parameter::*;
 pub use variable_declaration::*;
 
@@ -148,12 +148,21 @@ impl<'sc> Declaration<'sc> {
                 warnings,
                 errors
             )),
-            Rule::abi_decl => Declaration::AbiDeclaration(check!(
-                AbiDeclaration::parse_from_pair(decl_inner, config, docstrings),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
+            Rule::abi_decl => {
+                let abi_decl = check!(
+                    AbiDeclaration::parse_from_pair(decl_inner, config, docstrings),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if !unassigned_docstring.is_empty() {
+                    docstrings.insert(
+                        format!("abi.{}", abi_decl.name.primary_name),
+                        unassigned_docstring,
+                    );
+                }
+                Declaration::AbiDeclaration(abi_decl)
+            }
             Rule::const_decl => Declaration::ConstantDeclaration(check!(
                 ConstantDeclaration::parse_from_pair(decl_inner, config, docstrings),
                 return err(warnings, errors),

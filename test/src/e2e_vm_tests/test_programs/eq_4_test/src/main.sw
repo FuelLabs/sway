@@ -1,5 +1,5 @@
 script;
 
 fn main() -> bool {
-     4 == 4 
+    4 == 4
 }

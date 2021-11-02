@@ -5,17 +5,18 @@
 //! Only things needed for opcode serialization and generation are included here.
 #![allow(dead_code)]
 
+pub(crate) mod allocated_ops;
+pub(crate) mod virtual_immediate;
+pub(crate) mod virtual_ops;
+pub(crate) mod virtual_register;
+pub(crate) use virtual_immediate::*;
+pub(crate) use virtual_ops::*;
+pub(crate) use virtual_register::*;
+
 use crate::span::Span;
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
 use either::Either;
 use std::{collections::HashSet, fmt};
-use virtual_ops::{
-    ConstantRegister, Label, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
-    VirtualRegister,
-};
-
-pub(crate) mod allocated_ops;
-pub(crate) mod virtual_ops;
 
 /// The column where the ; for comments starts
 const COMMENT_START_COLUMN: usize = 40;
@@ -871,6 +872,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::FLAG(r1)
                 }
+                "gm" => {
+                    let (r1, imm) = check!(
+                        single_reg_imm_18(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::GM(r1, imm)
+                }
 
                 other => {
                     errors.push(CompileError::UnrecognizedOp {
@@ -1021,6 +1031,8 @@ fn four_regs<'sc>(
                 "bal" => Balance,
                 "is" => InstructionStart,
                 "flag" => Flags,
+                "rl" => ReturnLength,
+                "rv" => ReturnValue,
                 "ds" => DataSectionStart,
                 _ => return None,
             })
@@ -1224,7 +1236,7 @@ fn two_regs_imm_12<'sc>(
 }
 
 impl fmt::Display for Op<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use OrganizationalOp::*;
         use VirtualOp::*;
         let op_str = match &self.opcode {
@@ -1300,6 +1312,7 @@ impl fmt::Display for Op<'_> {
                 S256(a, b, c) => format!("s256 {} {} {}", a, b, c),
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
+                GM(a, b) => format!("gm {} {}", a, b),
                 Undefined => format!("undefined op"),
                 VirtualOp::DataSectionOffsetPlaceholder => "data section offset placeholder".into(),
                 DataSectionRegisterLoadPlaceholder => {
@@ -1326,7 +1339,7 @@ impl fmt::Display for Op<'_> {
             op_and_comment.push_str(&format!("; {}", self.comment))
         }
 
-        write!(f, "{}", op_and_comment)
+        write!(fmtr, "{}", op_and_comment)
     }
 }
 
@@ -1346,10 +1359,10 @@ pub(crate) enum OrganizationalOp {
     DataSectionOffsetPlaceholder,
 }
 impl fmt::Display for OrganizationalOp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use OrganizationalOp::*;
         write!(
-            f,
+            fmtr,
             "{}",
             match self {
                 Label(lab) => format!("{}", lab),

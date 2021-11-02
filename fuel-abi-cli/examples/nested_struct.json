@@ -1,0 +1,33 @@
+[
+    {
+        "type": "contract",
+        "inputs": [
+            {
+                "name": "MyNestedStruct",
+                "type": "struct",
+                "components": [
+                    {
+                        "name": "x",
+                        "type": "u16"
+                    },
+                    {
+                        "name": "y",
+                        "type": "struct",
+                        "components": [
+                            {
+                                "name": "a",
+                                "type": "bool"
+                            },
+                            {
+                                "name": "b",
+                                "type": "u8[2]"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "name": "takes_nested_struct",
+        "outputs": []
+    }
+]

@@ -25,9 +25,9 @@ use pest::iterators::Pair;
 use pest::Parser;
 use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
-pub(crate) mod utils;
+pub mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
@@ -113,7 +113,7 @@ pub fn parse<'sc>(
                 vec![CompileError::ParseFailure {
                     span: span::Span {
                         span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
-                        path: config.map(|config| config.dir_of_code.clone()),
+                        path: config.map(|config| config.path()),
                     },
                     err: e,
                 }],
@@ -197,6 +197,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, InnerDependencyCompileResult<'sc>> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -233,6 +234,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
                     TreeType::Library,
                     &build_config.clone(),
                     dead_code_graph,
+                    dependency_graph,
                 )
                 .ok(&mut warnings, &mut errors)
                 .map(|value| (name, value))
@@ -278,6 +280,7 @@ pub fn compile_to_asm<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -301,6 +304,7 @@ pub fn compile_to_asm<'sc>(
                 tree_type,
                 &build_config.clone(),
                 &mut dead_code_graph,
+                dependency_graph,
             )
             .ok(&mut warnings, &mut errors)
         })
@@ -322,6 +326,7 @@ pub fn compile_to_asm<'sc>(
                     TreeType::Library,
                     &build_config.clone(),
                     &mut dead_code_graph,
+                    dependency_graph,
                 )
                 .ok(&mut warnings, &mut errors)
                 .map(|value| (name, value))
@@ -451,8 +456,9 @@ pub fn compile_to_bytecode<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> BytecodeCompilationResult<'sc> {
-    match compile_to_asm(input, initial_namespace, build_config) {
+    match compile_to_asm(input, initial_namespace, build_config, dependency_graph) {
         CompilationResult::Success {
             mut asm,
             mut warnings,
@@ -557,7 +563,7 @@ fn parse_root_from_pairs<'sc>(
                         Rule::docstring => {
                             let docstring = decl_inner.as_str().to_string().split_off(3);
                             let docstring = docstring.as_str().trim();
-                            unassigned_docstring.push_str("\n");
+                            unassigned_docstring.push('\n');
                             unassigned_docstring.push_str(docstring);
                         }
                         _ => {

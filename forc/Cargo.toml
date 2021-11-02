@@ -14,9 +14,9 @@ dirs = "3.0.2"
 flate2 = "1.0.20"
 formatter = {path = "../formatter"}
 fuel-asm = {git = "ssh://git@github.com/FuelLabs/fuel-asm.git"}
-fuel-client = {git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false}
+fuel-client = {git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false }
 fuel-tx = {git = "ssh://git@github.com/FuelLabs/fuel-tx.git"}
-fuel-vm = {git = "ssh://git@github.com/FuelLabs/fuel-vm.git"}
+fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git", rev = "bf6881fd213241be884552e63c58a2c27cb1da1e" }
 hex = "0.4.3"
 line-col = "0.2"
 pest = {git = "https://github.com/sezna/pest.git", rev = "8aa58791f759daf4caee26e8560e862df5a6afb7"}

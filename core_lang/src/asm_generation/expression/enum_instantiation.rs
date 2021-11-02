@@ -2,11 +2,8 @@ use crate::asm_generation::{
     compiler_constants::*, convert_expression_to_asm, AsmNamespace, RegisterSequencer,
 };
 use crate::asm_lang::{
-    virtual_ops::{
-        ConstantRegister, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
-        VirtualRegister,
-    },
-    Op,
+    ConstantRegister, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+    VirtualRegister,
 };
 use crate::{
     error::*,
@@ -91,7 +88,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     // step 2
     asm_buf.push(Op::write_register_to_memory(
         pointer_register.clone(),
-        tag_register.clone(),
+        tag_register,
         VirtualImmediate12::new_unchecked(0, "constant num; infallible"),
         decl.clone().span,
     ));
@@ -104,7 +101,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
             convert_expression_to_asm(
                 &*instantiation,
                 namespace,
-                &return_register.clone(),
+                &return_register,
                 register_sequencer
             ),
             return err(warnings, errors),
@@ -116,7 +113,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
         // step 2
         asm_buf.push(Op::write_register_to_memory_comment(
             pointer_register.clone(),
-            return_register.clone(),
+            return_register,
             VirtualImmediate12::new_unchecked(1, "this is the constant 1; infallible"), // offset by 1 because the tag was already written
             instantiation.span.clone(),
             format!("{} enum contents", decl.name.primary_name),

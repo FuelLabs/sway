@@ -3,6 +3,12 @@ use crate::span::Span;
 use crate::type_engine::{IntegerBits, TypeInfo};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
+use line_col::LineColLookup;
+use source_span::{
+    fmt::{Formatter, Style},
+    Position,
+};
+use std::fmt;
 use thiserror::Error;
 
 macro_rules! check {
@@ -169,6 +175,34 @@ impl<'sc> CompileWarning<'sc> {
             self.span.end_pos().line_col().into(),
         )
     }
+
+    pub fn format(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
+        let input = self.span.input();
+        let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+
+        let metrics = source_span::DEFAULT_METRICS;
+        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+
+        for c in buffer.iter() {
+            let _ = c.unwrap(); // report eventual errors.
+        }
+
+        let (start_pos, end_pos) = self.span();
+        let lookup = LineColLookup::new(input);
+        let (start_line, start_col) = lookup.get(start_pos);
+        let (end_line, end_col) = lookup.get(end_pos - 1);
+
+        let err_start = Position::new(start_line - 1, start_col - 1);
+        let err_end = Position::new(end_line - 1, end_col - 1);
+        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
+        fmt.add(
+            err_span,
+            Some(self.to_friendly_warning_string()),
+            Style::Warning,
+        );
+
+        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -222,83 +256,98 @@ pub enum Warning<'sc> {
     },
 }
 
-impl<'sc> Warning<'sc> {
-    fn to_string(&self) -> String {
+impl<'sc> fmt::Display for Warning<'sc> {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Warning::*;
         match self {
-            NonClassCaseStructName { struct_name } => format!(
+            NonClassCaseStructName { struct_name } => {
+                write!(f,
                 "Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \
                  \"{}\".",
                 struct_name,
                 to_class_case(struct_name)
-            ),
-            NonClassCaseTraitName { name } => format!(
+            )
+            }
+            NonClassCaseTraitName { name } => {
+                write!(f,
                 "Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \
                  \"{}\".",
                 name,
                 to_class_case(name)
-            ),
-            NonClassCaseEnumName { enum_name } => format!(
+            )
+            }
+            NonClassCaseEnumName { enum_name } => write!(
+                f,
                 "Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase \
                  name, like \"{}\".",
                 enum_name,
                 to_class_case(enum_name)
             ),
-            NonSnakeCaseStructFieldName { field_name } => format!(
+            NonSnakeCaseStructFieldName { field_name } => write!(
+                f,
                 "Struct field name \"{}\" is not idiomatic. Struct field names should have a \
                  snake_case name, like \"{}\".",
                 field_name,
                 to_snake_case(field_name)
             ),
-            NonClassCaseEnumVariantName { variant_name } => format!(
+            NonClassCaseEnumVariantName { variant_name } => write!(
+                f,
                 "Enum variant name \"{}\" is not idiomatic. Enum variant names should be \
                  ClassCase, like \"{}\".",
                 variant_name,
                 to_class_case(variant_name)
             ),
-            NonSnakeCaseFunctionName { name } => format!(
+            NonSnakeCaseFunctionName { name } => {
+                write!(f,
                 "Function name \"{}\" is not idiomatic. Function names should be snake_case, like \
                  \"{}\".",
                 name,
                 to_snake_case(name)
-            ),
+            )
+            }
             LossOfPrecision {
                 initial_type,
                 cast_to,
-            } => format!(
+            } => write!(f, 
                 "This cast, from integer type of width {} to integer type of width {}, will lose precision.",
                 initial_type.friendly_str(),
                 cast_to.friendly_str()
             ),
-            UnusedReturnValue { r#type } => format!(
+            UnusedReturnValue { r#type } => write!(
+                f,
                 "This returns a value of type {}, which is not assigned to anything and is \
                  ignored.",
                 r#type.friendly_type_str()
             ),
-            SimilarMethodFound { lib, module, name } => format!(
+            SimilarMethodFound { lib, module, name } => write!(
+                f,
                 "A method with the same name was found for type {} in dependency \"{}::{}\". \
                  Traits must be in scope in order to access their methods. ",
                 name, lib, module
             ),
-            OverridesOtherSymbol { name } => format!(
+            OverridesOtherSymbol { name } => write!(
+                f,
                 "This import would override another symbol with the same name \"{}\" in this \
                  namespace.",
                 name
             ),
-            OverridingTraitImplementation => format!(
+            OverridingTraitImplementation => write!(
+                f,
                 "This trait implementation overrides another one that was previously defined."
             ),
-            DeadDeclaration => "This declaration is never used.".into(),
-            DeadStructDeclaration => "This struct is never instantiated.".into(),
-            DeadFunctionDeclaration => "This function is never called.".into(),
-            UnreachableCode => "This code is unreachable.".into(),
+            DeadDeclaration => write!(f, "This declaration is never used."),
+            DeadStructDeclaration => write!(f, "This struct is never instantiated."),
+            DeadFunctionDeclaration => write!(f, "This function is never called."),
+            UnreachableCode => write!(f, "This code is unreachable."),
             DeadEnumVariant { variant_name } => {
-                format!("Enum variant {} is never constructed.", variant_name)
+                write!(f, "Enum variant {} is never constructed.", variant_name)
             }
-            DeadTrait => "This trait is never implemented.".into(),
-            DeadMethod => "This method is never called.".into(),
-            StructFieldNeverRead => "This struct field is never accessed.".into(),
-            ShadowingReservedRegister { reg_name } => format!(
+            DeadTrait => write!(f, "This trait is never implemented."),
+            DeadMethod => write!(f, "This method is never called."),
+            StructFieldNeverRead => write!(f, "This struct field is never accessed."),
+            ShadowingReservedRegister { reg_name } => write!(
+                f,
                 "This register declaration shadows the reserved register, \"{}\".",
                 reg_name
             ),
@@ -422,10 +471,15 @@ pub enum CompileError<'sc> {
     ReassignmentToNonVariable {
         name: &'sc str,
         kind: &'sc str,
-        span: Span<'sc>,
+        decl_span: Span<'sc>,
+        usage_span: Span<'sc>,
     },
-    #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
-    AssignmentToNonMutable(String, Span<'sc>),
+    #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
+    AssignmentToNonMutable {
+        name: &'sc str,
+        decl_span: Span<'sc>,
+        usage_span: Span<'sc>,
+    },
     #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
@@ -663,7 +717,8 @@ pub enum CompileError<'sc> {
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooManyArgumentsForFunction {
-        span: Span<'sc>,
+        decl_span: Span<'sc>,
+        usage_span: Span<'sc>,
         method_name: &'sc str,
         expected: usize,
         received: usize,
@@ -672,7 +727,8 @@ pub enum CompileError<'sc> {
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooFewArgumentsForFunction {
-        span: Span<'sc>,
+        decl_span: Span<'sc>,
+        usage_span: Span<'sc>,
         method_name: &'sc str,
         expected: usize,
         received: usize,
@@ -718,6 +774,8 @@ pub enum CompileError<'sc> {
         "The size of this type is not known. Try putting it on the heap or changing the type."
     )]
     TypeWithUnknownSize { span: Span<'sc> },
+    #[error("File {file_path} generates an infinite dependency cycle.")]
+    InfiniteDependencies { file_path: String, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -829,8 +887,8 @@ impl<'sc> CompileError<'sc> {
             PredicateMainDoesNotReturnBool(span) => span,
             NoScriptMainFunction(span) => span,
             MultipleScriptMainFunctions(span) => span,
-            ReassignmentToNonVariable { span, .. } => span,
-            AssignmentToNonMutable(_, span) => span,
+            ReassignmentToNonVariable { usage_span, .. } => usage_span,
+            AssignmentToNonMutable { usage_span, .. } => usage_span,
             TypeParameterNotInTypeScope { span, .. } => span,
             MultipleImmediates(span) => span,
             MismatchedTypeInTrait { span, .. } => span,
@@ -885,8 +943,8 @@ impl<'sc> CompileError<'sc> {
             UnnecessaryEnumInstantiator { span, .. } => span,
             TraitNotFound { span, .. } => span,
             InvalidExpressionOnLhs { span, .. } => span,
-            TooManyArgumentsForFunction { span, .. } => span,
-            TooFewArgumentsForFunction { span, .. } => span,
+            TooManyArgumentsForFunction { usage_span, .. } => usage_span,
+            TooFewArgumentsForFunction { usage_span, .. } => usage_span,
             InvalidAbiType { span, .. } => span,
             InvalidNumberOfAbiParams { span, .. } => span,
             NotAnAbi { span, .. } => span,
@@ -897,6 +955,7 @@ impl<'sc> CompileError<'sc> {
             RecursiveCall { span, .. } => span,
             RecursiveCallChain { span, .. } => span,
             TypeWithUnknownSize { span, .. } => span,
+            InfiniteDependencies { span, .. } => span,
         }
     }
 
@@ -906,5 +965,140 @@ impl<'sc> CompileError<'sc> {
             self.internal_span().start_pos().line_col().into(),
             self.internal_span().end_pos().line_col().into(),
         )
+    }
+
+    pub fn format(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
+        match self {
+            CompileError::AssignmentToNonMutable {
+                name,
+                decl_span,
+                usage_span,
+            } => self.format_one_hint_one_err(
+                fmt,
+                decl_span,
+                format!(
+                    "Variable {} not declared as mutable. Try adding 'mut'.",
+                    name
+                ),
+                usage_span,
+                format!("Assignment to immutable variable {}.", name),
+            ),
+            CompileError::TooFewArgumentsForFunction {
+                decl_span,
+                usage_span,
+                method_name,
+                expected,
+                received,
+            } => self.format_one_hint_one_err(
+                fmt,
+                decl_span,
+                format!("Function {} declared here.", method_name),
+                usage_span,
+                format!(
+                    "Function {} expected {} arguments and recieved {}.",
+                    method_name, expected, received
+                ),
+            ),
+            CompileError::TooManyArgumentsForFunction {
+                decl_span,
+                usage_span,
+                method_name,
+                expected,
+                received,
+            } => self.format_one_hint_one_err(
+                fmt,
+                decl_span,
+                format!("Function {} declared here.", method_name),
+                usage_span,
+                format!(
+                    "Function {} expected {} arguments and recieved {}.",
+                    method_name, expected, received
+                ),
+            ),
+            CompileError::ReassignmentToNonVariable {
+                name,
+                kind,
+                decl_span,
+                usage_span,
+            } => self.format_one_hint_one_err(
+                fmt,
+                decl_span,
+                format!("Symbol {} declared here.", name),
+                usage_span,
+                format!("Attempted to reassign to a symbol that is not a variable. Symbol {} is not a mutable \
+                variable, it is a {}.", name, kind)
+            ),
+            _ => self.format_err_simple(fmt),
+        }
+    }
+
+    fn format_err_simple(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
+        let input = self.internal_span().input();
+        let chars = input.chars().map(Result::<_, String>::Ok);
+
+        let metrics = source_span::DEFAULT_METRICS;
+        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+
+        for c in buffer.iter() {
+            let _ = c.unwrap(); // report eventual errors.
+        }
+
+        let (start_pos, end_pos) = self.span();
+        let lookup = LineColLookup::new(input);
+        let (start_line, start_col) = lookup.get(start_pos);
+        let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
+
+        let err_start = Position::new(start_line - 1, start_col - 1);
+        let err_end = Position::new(end_line - 1, end_col - 1);
+        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
+        fmt.add(
+            err_span,
+            Some(self.to_friendly_error_string()),
+            Style::Error,
+        );
+
+        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+    }
+
+    fn format_one_hint_one_err(
+        &self,
+        fmt: &mut Formatter,
+        hint_span: &Span<'sc>,
+        hint_message: String,
+        err_span: &Span<'sc>,
+        err_message: String,
+    ) -> source_span::fmt::Formatted {
+        self.format_one(fmt, hint_span.clone(), Style::Note, hint_message);
+        self.format_one(fmt, err_span.clone(), Style::Error, err_message);
+
+        let span = crate::utils::join_spans(hint_span.clone(), err_span.clone());
+        let input = span.input();
+        let chars = input.chars().map(Result::<_, String>::Ok);
+        let metrics = source_span::DEFAULT_METRICS;
+        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
+        for c in buffer.iter() {
+            let _ = c.unwrap(); // report eventual errors.
+        }
+
+        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
+    }
+
+    fn format_one(
+        &self,
+        fmt: &mut Formatter,
+        span: Span<'sc>,
+        style: source_span::fmt::Style,
+        friendly_string: String,
+    ) {
+        let input = span.input();
+        let (start_pos, end_pos) = (span.start(), span.end());
+        let lookup = LineColLookup::new(input);
+        let (start_line, start_col) = lookup.get(start_pos);
+        let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
+
+        let err_start = Position::new(start_line - 1, start_col - 1);
+        let err_end = Position::new(end_line - 1, end_col - 1);
+        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
+        fmt.add(err_span, Some(friendly_string), style);
     }
 }

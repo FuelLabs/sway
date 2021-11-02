@@ -15,6 +15,7 @@ pub(crate) fn type_check_method_application<'sc>(
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -28,7 +29,8 @@ pub(crate) fn type_check_method_application<'sc>(
                 "",
                 self_type,
                 build_config,
-                dead_code_graph
+                dead_code_graph,
+                dependency_graph
             ),
             error_recovery_expr(span.clone()),
             warnings,
@@ -81,7 +83,8 @@ pub(crate) fn type_check_method_application<'sc>(
         MethodName::FromModule { method_name } => {
             if args_buf.len() > method.parameters.len() {
                 errors.push(CompileError::TooManyArgumentsForFunction {
-                    span: span.clone(),
+                    decl_span: method.span.clone(),
+                    usage_span: span.clone(),
                     method_name: method_name.primary_name,
                     expected: method.parameters.len(),
                     received: args_buf.len(),
@@ -90,7 +93,9 @@ pub(crate) fn type_check_method_application<'sc>(
 
             if args_buf.len() < method.parameters.len() {
                 errors.push(CompileError::TooFewArgumentsForFunction {
-                    span: span.clone(),
+      
+                    decl_span: method.span.clone(),
+                    usage_span: span.clone(),
                     method_name: method_name.primary_name,
                     expected: method.parameters.len(),
                     received: args_buf.len(),
@@ -134,7 +139,8 @@ pub(crate) fn type_check_method_application<'sc>(
                                 &mut Default::default(),
                                 namespace,
                                 self_type,
-                                dead_code_graph
+                                dead_code_graph,
+                                dependency_graph,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -155,25 +161,28 @@ pub(crate) fn type_check_method_application<'sc>(
                 span,
             }
         }
-        // something like blah::blah::~Type::foo()
-        MethodName::FromType { ref call_path, .. } => {
-            if args_buf.len() > method.parameters.len() {
-                errors.push(CompileError::TooManyArgumentsForFunction {
-                    span: span.clone(),
-                    method_name: method_name.easy_name(),
-                    expected: method.parameters.len(),
-                    received: args_buf.len(),
-                });
-            }
+   
+            // something like blah::blah::~Type::foo()
+            MethodName::FromType { ref call_path, .. } => {
+                if args_buf.len() > method.parameters.len() {
+                    errors.push(CompileError::TooManyArgumentsForFunction {
+                        decl_span: method.span.clone(),
+                        usage_span: span.clone(),
+                        method_name: method_name.easy_name(),
+                        expected: method.parameters.len(),
+                        received: args_buf.len(),
+                    });
+                }
 
-            if args_buf.len() < method.parameters.len() {
-                errors.push(CompileError::TooFewArgumentsForFunction {
-                    span: span.clone(),
-                    method_name: method_name.easy_name(),
-                    expected: method.parameters.len(),
-                    received: args_buf.len(),
-                });
-            }
+                if args_buf.len() < method.parameters.len() {
+                    errors.push(CompileError::TooFewArgumentsForFunction {
+                        decl_span: method.span.clone(),
+                        usage_span: span.clone(),
+                        method_name: method_name.easy_name(),
+                        expected: method.parameters.len(),
+                        received: args_buf.len(),
+                    });
+                }
 
             let args_and_names = method
                 .parameters
@@ -206,7 +215,8 @@ pub(crate) fn type_check_method_application<'sc>(
                                 &mut Default::default(),
                                 namespace,
                                 self_type,
-                                dead_code_graph
+                                dead_code_graph,
+                                dependency_graph
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -240,6 +250,8 @@ fn re_parse_expression<'a>(
     namespace: &mut Namespace<'a>,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph<'a>,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
+
 ) -> CompileResult<'a, TypedExpression<'a>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -285,6 +297,7 @@ fn re_parse_expression<'a>(
             self_type,
             build_config,
             dead_code_graph,
+            dependency_graph,
         ),
         return err(warnings, errors),
         warnings,

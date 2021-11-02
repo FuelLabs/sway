@@ -3,6 +3,7 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::type_engine::{TypeEngine, TYPE_ENGINE};
 use crate::CodeBlock;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedCodeBlock<'sc> {
@@ -20,6 +21,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, (Self, TypeId)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -39,6 +41,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     self_type,
                     build_config,
                     dead_code_graph,
+                    dependency_graph,
                 )
                 .ok(&mut warnings, &mut errors)
             })
@@ -90,28 +93,7 @@ impl<'sc> TypedCodeBlock<'sc> {
             };
             // The annotation will result in a cast, so set the return type accordingly.
         }
-        /*
-        if let Some(ref return_type) = return_type {
-            let convertibility = return_type.is_convertible(
-                &type_annotation,
-                implicit_return_span.unwrap_or(other.whole_block_span.clone()),
-                help_text,
-            );
-            match convertibility {
-                Ok(warning) => {
-                    if let Some(warning) = warning {
-                        warnings.push(CompileWarning {
-                            warning_content: warning,
-                            span: other.whole_block_span.clone(),
-                        });
-                    }
-                }
-                Err(err) => {
-                    errors.push(err.into());
-                }
-            }
-        }
-        */
+  
 
         ok(
             (

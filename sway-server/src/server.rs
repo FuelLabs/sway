@@ -76,6 +76,12 @@ impl LanguageServer for Backend {
                     trigger_characters: None,
                     ..Default::default()
                 }),
+                rename_provider: Some(lsp::OneOf::Right(lsp::RenameOptions {
+                    prepare_provider: Some(true),
+                    work_done_progress_options: lsp::WorkDoneProgressOptions {
+                        work_done_progress: Some(true),
+                    },
+                })),
                 execute_command_provider: Some(lsp::ExecuteCommandOptions {
                     commands: vec![],
                     ..Default::default()
@@ -194,6 +200,23 @@ impl LanguageServer for Backend {
         params: lsp::DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<lsp::TextEdit>>> {
         Ok(capabilities::formatting::format_document(
+            self.session.clone(),
+            params,
+        ))
+    }
+
+    async fn rename(
+        &self,
+        params: lsp::RenameParams,
+    ) -> jsonrpc::Result<Option<lsp::WorkspaceEdit>> {
+        Ok(capabilities::rename::rename(self.session.clone(), params))
+    }
+
+    async fn prepare_rename(
+        &self,
+        params: lsp::TextDocumentPositionParams,
+    ) -> jsonrpc::Result<Option<lsp::PrepareRenameResponse>> {
+        Ok(capabilities::rename::prepare_rename(
             self.session.clone(),
             params,
         ))
