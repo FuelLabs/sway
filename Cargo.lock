@@ -447,17 +447,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
-name = "blake2"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a4e37d16930f5459780f5621038b6382b9bb37c19016f39fb6b5808d831f174"
-dependencies = [
- "crypto-mac 0.8.0",
- "digest 0.9.0",
- "opaque-debug 0.3.0",
-]
-
-[[package]]
 name = "blake2b_simd"
 version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -753,16 +742,6 @@ checksum = "d82cfc11ce7f2c3faef78d8a684447b40d503d9681acebed6cb728d45940c4db"
 dependencies = [
  "cfg-if 1.0.0",
  "lazy_static 1.4.0",
-]
-
-[[package]]
-name = "crypto-mac"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
-dependencies = [
- "generic-array 0.14.4",
- "subtle",
 ]
 
 [[package]]
@@ -1167,18 +1146,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 
 [[package]]
-name = "fuel-abi-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "fuels-rs",
- "hex",
- "itertools",
- "sha3",
- "structopt 0.3.25",
-]
-
-[[package]]
 name = "fuel-asm"
 version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#7c8f4b639a394026ef7fd8bd99c9765dcafcc8c3"
@@ -1284,62 +1251,6 @@ dependencies = [
  "serde",
  "sha3",
  "tracing",
-]
-
-[[package]]
-name = "fuels-abigen-macro"
-version = "0.1.0"
-dependencies = [
- "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "anyhow",
- "blake2",
- "bytes 1.1.0",
- "fuel-types",
- "fuels-rs",
- "glob",
- "hex",
- "itertools",
- "proc-macro2 1.0.32",
- "quote 1.0.10",
- "regex",
- "serde",
- "serde_json",
- "sha2",
- "strum",
- "strum_macros",
- "syn 1.0.81",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "fuels-rs"
-version = "0.1.0"
-dependencies = [
- "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "anyhow",
- "blake2",
- "bytes 1.1.0",
- "forc",
- "fuel-client",
- "fuel-tx",
- "fuel-types",
- "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git?rev=bf6881fd213241be884552e63c58a2c27cb1da1e)",
- "glob",
- "hex",
- "itertools",
- "proc-macro2 1.0.32",
- "quote 1.0.10",
- "regex",
- "serde",
- "serde_json",
- "sha2",
- "strum",
- "strum_macros",
- "syn 1.0.81",
- "thiserror",
- "tokio",
- "url",
 ]
 
 [[package]]
@@ -1509,12 +1420,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81a03ce013ffccead76c11a15751231f777d9295b845cc1266ed4d34fcbd7977"
 
 [[package]]
-name = "glob"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
-
-[[package]]
 name = "gloo-timers"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1602,7 +1507,7 @@ version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1441c6b1e930e2817404b5046f1f989899143a12bf92de603b69f4e0aee1e15"
 dependencies = [
- "crypto-mac 0.10.1",
+ "crypto-mac",
  "digest 0.9.0",
 ]
 
