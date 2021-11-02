@@ -134,10 +134,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    TYPE_ENGINE
-                        .lock()
-                        .unwrap()
-                        .look_up_type_id(*resolved_type_of_parent)
+                    look_up_type_id(*resolved_type_of_parent)
                         .friendly_type_str(),
                     field_to_access.name
                 )

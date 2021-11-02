@@ -7,7 +7,7 @@ use crate::{
     },
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
-    type_engine::{resolve_type, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE},
+    type_engine::{resolve_type, look_up_type_id, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE},
     types::ResolvedType,
     CompileResult, Ident,
 };
@@ -127,7 +127,7 @@ pub(crate) fn get_struct_memory_layout<'sc>(
     let warnings = vec![];
     let mut errors = vec![];
     for (field, name) in fields_with_names {
-        let ty = TYPE_ENGINE.lock().unwrap().look_up_type_id(*field);
+        let ty = look_up_type_id(*field);
         let stack_size = match ty.stack_size_of(&span) {
             Ok(o) => o,
             Err(e) => {

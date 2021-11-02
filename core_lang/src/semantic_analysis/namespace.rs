@@ -468,7 +468,7 @@ impl<'sc> Namespace<'sc> {
                     }
                 };
 
-            match TYPE_ENGINE.lock().unwrap().look_up_type_id(r#type) {
+            match crate::type_engine::look_up_type_id(r#type) {
                 TypeInfo::Struct {
                     fields: ref l_fields,
                     ..
@@ -492,7 +492,7 @@ impl<'sc> Namespace<'sc> {
         r#type: TypeId,
     ) -> Vec<TypedFunctionDeclaration<'sc>> {
         let mut methods = vec![];
-        let r#type = TYPE_ENGINE.lock().unwrap().look_up_type_id(r#type);
+        let r#type = crate::type_engine::look_up_type_id(r#type);
         for ((_trait_name, type_info), l_methods) in &self.implemented_traits {
             if *type_info == r#type {
                 methods.append(&mut l_methods.clone());
@@ -559,15 +559,12 @@ impl<'sc> Namespace<'sc> {
             None => {
                 if args_buf
                     .get(0)
-                    .map(|x| TYPE_ENGINE.lock().unwrap().look_up_type_id(x.return_type))
+                    .map(|x| crate::type_engine::look_up_type_id(x.return_type))
                     != Some(TypeInfo::ErrorRecovery)
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.primary_name.to_string(),
-                        type_name: TYPE_ENGINE
-                            .lock()
-                            .unwrap()
-                            .look_up_type_id(args_buf[0].return_type)
+                        type_name: look_up_type_id(args_buf[0].return_type)
                             .friendly_type_str(),
                         span: method_name.span.clone(),
                     });
@@ -587,7 +584,7 @@ impl<'sc> Namespace<'sc> {
         debug_string: impl Into<String>,
         debug_span: &Span<'sc>,
     ) -> CompileResult<'sc, (Vec<OwnedTypedStructField>, String)> {
-        let ty = TYPE_ENGINE.lock().unwrap().look_up_type_id(ty);
+        let ty = crate::type_engine::look_up_type_id(ty);
         match ty {
             TypeInfo::Struct { name, fields } => {
                 ok((fields.to_vec(), name.clone()), vec![], vec![])

@@ -473,10 +473,7 @@ fn test_function_selector_behavior() {
                         path: None,
                     },
                 },
-                r#type: TYPE_ENGINE
-                    .lock()
-                    .unwrap()
-                    .insert(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                r#type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span {
                     span: pest::Span::new(" ", 0, 0).unwrap(),
                     path: None,
@@ -654,7 +651,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             })
             .collect();
         for (stmt, span) in return_statements {
-            match TYPE_ENGINE.lock().unwrap().unify_with_self(
+            match crate::type_engine::unify_with_self(
                 stmt.return_type,
                 return_type,
                 self_type,
@@ -686,30 +683,21 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         //  it is a temporary workaround
         if mode == Mode::ImplAbiFn {
             if parameters.len() == 4 {
-                if TYPE_ENGINE
-                    .lock()
-                    .unwrap()
-                    .look_up_type_id(parameters[0].r#type)
+                if look_up_type_id(parameters[0].r#type)
                     != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[0].type_span.clone(),
                     });
                 }
-                if TYPE_ENGINE
-                    .lock()
-                    .unwrap()
-                    .look_up_type_id(parameters[1].r#type)
+                if look_up_type_id(parameters[1].r#type)
                     != TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[1].type_span.clone(),
                     });
                 }
-                if TYPE_ENGINE
-                    .lock()
-                    .unwrap()
-                    .look_up_type_id(parameters[2].r#type)
+                if look_up_type_id(parameters[2].r#type)
                     != TypeInfo::B256
                 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {

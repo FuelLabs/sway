@@ -52,7 +52,7 @@ pub(crate) fn type_check_method_application<'sc>(
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         // if the return type cannot be cast into the annotation type then it is a type error
-        match TYPE_ENGINE.lock().unwrap().unify_with_self(
+        match crate::type_engine::unify_with_self(
             arg.return_type,
             param.r#type,
             self_type,
@@ -114,7 +114,7 @@ pub(crate) fn type_check_method_application<'sc>(
                     function_body: method.body.clone(),
                     selector: if method.is_contract_call {
                         let contract_address = match contract_caller
-                            .map(|x| TYPE_ENGINE.lock().unwrap().look_up_type_id(x.return_type))
+                            .map(|x| crate::type_engine::look_up_type_id(x.return_type))
                         {
                             Some(TypeInfo::ContractCaller { address, .. }) => address,
                             _ => {
@@ -188,7 +188,7 @@ pub(crate) fn type_check_method_application<'sc>(
                     function_body: method.body.clone(),
                     selector: if method.is_contract_call {
                         let contract_address = match contract_caller
-                            .map(|x| TYPE_ENGINE.lock().unwrap().look_up_type_id(x.return_type))
+                            .map(|x| crate::type_engine::look_up_type_id(x.return_type))
                         {
                             Some(TypeInfo::ContractCaller { address, .. }) => address,
                             _ => {

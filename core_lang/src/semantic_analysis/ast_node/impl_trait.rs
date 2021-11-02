@@ -137,10 +137,7 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                TYPE_ENGINE
-                    .lock()
-                    .unwrap()
-                    .look_up_type_id(type_implementing_for_id),
+                look_up_type_id(type_implementing_for_id),
                 functions_buf.clone(),
             );
             ok(
@@ -270,7 +267,7 @@ fn type_check_trait_implementation<'sc>(
                             let fn_decl_param_type = fn_decl_param.r#type;
                             let trait_param_type = trait_param.r#type;
 
-                            match TYPE_ENGINE.lock().unwrap().unify_with_self(
+                            match crate::type_engine::unify_with_self(
                                 fn_decl_param_type,
                                 trait_param_type,
                                 self_type_id,
@@ -302,7 +299,7 @@ fn type_check_trait_implementation<'sc>(
                         errors.append(&mut maybe_err);
                     }
 
-                    match TYPE_ENGINE.lock().unwrap().unify_with_self(
+                    match crate::type_engine::unify_with_self(
                         *return_type,
                         fn_decl.return_type,
                         self_type_id,

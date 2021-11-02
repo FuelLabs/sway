@@ -68,7 +68,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         });
 
         if let Some(return_type) = return_type {
-            match TYPE_ENGINE.lock().unwrap().unify_with_self(
+            match crate::type_engine::unify_with_self(
                 return_type,
                 type_annotation,
                 self_type,

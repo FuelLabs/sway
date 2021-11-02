@@ -209,7 +209,7 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = res.errors;
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
-            match TYPE_ENGINE.lock().unwrap().unify_with_self(
+            match crate::type_engine::unify_with_self(
                 typed_expression.return_type,
                 type_annotation,
                 self_type,
@@ -566,21 +566,15 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         );
-        let block_return_type: TypeId = match TYPE_ENGINE
-            .lock()
-            .unwrap()
-            .look_up_type_id(block_return_type)
+        let block_return_type: TypeId = match look_up_type_id(block_return_type)
         {
             TypeInfo::Unit => match type_annotation {
                 Some(ref ty)
-                    if TYPE_ENGINE.lock().unwrap().look_up_type_id(*ty) != TypeInfo::Unit =>
+                    if crate::type_engine::look_up_type_id(*ty) != TypeInfo::Unit =>
                 {
                     errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
                         span: span.clone(),
-                        ty: TYPE_ENGINE
-                            .lock()
-                            .unwrap()
-                            .look_up_type_id(*ty)
+                        ty: look_up_type_id(*ty)
                             .friendly_type_str(),
                     });
                     crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
@@ -667,10 +661,7 @@ impl<'sc> TypedExpression<'sc> {
             if r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: TYPE_ENGINE
-                        .lock()
-                        .unwrap()
-                        .look_up_type_id(*annotation)
+                    r#type: look_up_type_id(*annotation)
                         .friendly_type_str(),
                 });
             }
@@ -795,10 +786,7 @@ impl<'sc> TypedExpression<'sc> {
                             name: def_field.name.clone(),
                             value: TypedExpression {
                                 expression: TypedExpressionVariant::Unit,
-                                return_type: TYPE_ENGINE
-                                    .lock()
-                                    .unwrap()
-                                    .insert(TypeInfo::ErrorRecovery),
+                                return_type: insert_type(TypeInfo::ErrorRecovery),
                                 is_constant: IsConstant::No,
                                 span: span.clone(),
                             },
@@ -1066,10 +1054,7 @@ impl<'sc> TypedExpression<'sc> {
                 return err(warnings, errors);
             }
         };
-        let return_type = TYPE_ENGINE
-            .lock()
-            .unwrap()
-            .insert(TypeInfo::ContractCaller {
+        let return_type = insert_type(TypeInfo::ContractCaller {
                 abi_name: abi_name.to_owned_call_path(),
                 address: address_str,
             });
@@ -1102,10 +1087,7 @@ impl<'sc> TypedExpression<'sc> {
         functions_buf.append(&mut type_checked_fn_buf);
         namespace.insert_trait_implementation(
             abi_name.clone(),
-            TYPE_ENGINE
-                .lock()
-                .unwrap()
-                .look_up_type_id(return_type.clone()),
+            look_up_type_id(return_type.clone()),
             functions_buf,
         );
         let exp = TypedExpression {
@@ -1126,10 +1108,7 @@ impl<'sc> TypedExpression<'sc> {
         format!(
             "{} ({})",
             self.expression.pretty_print(),
-            TYPE_ENGINE
-                .lock()
-                .unwrap()
-                .look_up_type_id(self.return_type)
+            look_up_type_id(self.return_type)
                 .friendly_type_str()
         )
     }

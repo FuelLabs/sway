@@ -12,8 +12,14 @@ use std::sync::Mutex;
 
 lazy_static! {
     pub(crate) static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
-}
+}   
 
+pub(crate) fn unify_with_self<'sc>(ty1: TypeId, ty2: TypeId, self_type: TypeId, span: &Span<'sc>) -> Result<Option<Warning<'sc>>, TypeError<'sc>>  {
+    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let res = lock.unify_with_self(ty1, ty2, self_type, span);
+    drop(lock);
+    res
+}
 pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
     let mut lock = TYPE_ENGINE.lock().unwrap();
     let id = lock.insert(ty);

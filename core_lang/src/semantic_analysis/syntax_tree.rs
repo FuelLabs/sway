@@ -6,7 +6,7 @@ use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{
     error::*,
-    type_engine::{TypeEngine, TypeId, TypeInfo, TYPE_ENGINE},
+    type_engine::*,
     types::ResolvedType,
 };
 use crate::{AstNode, ParseTree};
@@ -191,10 +191,8 @@ impl<'sc> TypedParseTree<'sc> {
                     ));
                 }
                 let main_func = &mains[0];
-                match TYPE_ENGINE
-                    .lock()
-                    .unwrap()
-                    .look_up_type_id(main_func.return_type)
+                match 
+                    look_up_type_id(main_func.return_type)
                 {
                     TypeInfo::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(

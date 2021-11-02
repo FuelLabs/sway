@@ -254,10 +254,7 @@ impl TypeInfo {
                 Ok(1 + variant_types
                     .iter()
                     .map(|x| -> Result<_, _> {
-                        TYPE_ENGINE
-                            .lock()
-                            .unwrap()
-                            .look_up_type_id(x.r#type)
+                    look_up_type_id(x.r#type)
                             .stack_size_of(err_span)
                     })
                     .collect::<Result<Vec<u64>, _>>()?
@@ -286,10 +283,7 @@ impl TypeInfo {
                     span: err_span.clone(),
                 })
             }
-            TypeInfo::Ref(id) => TYPE_ENGINE
-                .lock()
-                .unwrap()
-                .look_up_type_id(*id)
+            TypeInfo::Ref(id) => look_up_type_id(*id)
                 .stack_size_of(err_span),
         }
     }
