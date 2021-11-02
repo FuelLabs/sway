@@ -1,4 +1,5 @@
 library chain;
+dep chain/auth;
 
 // When generics land, these will be generic.
 pub fn log_u64(val: u64) {

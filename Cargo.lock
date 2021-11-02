@@ -23,9 +23,9 @@ dependencies = [
 
 [[package]]
 name = "addr2line"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e61f2b7f93d2c7d2b08263acaa4a363b3e276806c68af6134c44f523bf1aacd"
+checksum = "b9ecd88a8c8378ca913a680cd98f0f13ac67383d35993f86c90a70e3f137816b"
 dependencies = [
  "gimli",
 ]
@@ -396,9 +396,9 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "backtrace"
-version = "0.3.62"
+version = "0.3.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "091bcdf2da9950f96aa522681ce805e6857f6ca8df73833d35736ab2dc78e152"
+checksum = "321629d8ba6513061f26707241fa9bc89524ff1cd7a915a97ef0c62c666ce1b6"
 dependencies = [
  "addr2line",
  "cc",
@@ -708,7 +708,7 @@ dependencies = [
  "derivative",
  "either",
  "fuel-asm",
- "fuel-vm",
+ "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git?rev=bf6881fd213241be884552e63c58a2c27cb1da1e)",
  "hex",
  "line-col",
  "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
@@ -1109,7 +1109,7 @@ dependencies = [
  "fuel-asm",
  "fuel-client",
  "fuel-tx",
- "fuel-vm",
+ "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git?rev=bf6881fd213241be884552e63c58a2c27cb1da1e)",
  "hex",
  "line-col",
  "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
@@ -1190,11 +1190,11 @@ dependencies = [
 [[package]]
 name = "fuel-client"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-core?branch=sezna/pin_vm#4988b3ad615e2342b470207520666e9a6243af0b"
+source = "git+ssh://git@github.com/FuelLabs/fuel-core#a7bbb42075d0ec8787ca7bc151165e44999b01ba"
 dependencies = [
  "cynic",
  "fuel-core",
- "fuel-vm",
+ "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git)",
  "schemafy_lib",
  "serde",
  "serde_json",
@@ -1204,13 +1204,13 @@ dependencies = [
 [[package]]
 name = "fuel-core"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-core?branch=sezna/pin_vm#4988b3ad615e2342b470207520666e9a6243af0b"
+source = "git+ssh://git@github.com/FuelLabs/fuel-core#a7bbb42075d0ec8787ca7bc151165e44999b01ba"
 dependencies = [
  "async-graphql",
  "bincode",
  "dirs 3.0.2",
  "fuel-storage",
- "fuel-vm",
+ "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git)",
  "futures",
  "hyper",
  "itertools",
@@ -1249,7 +1249,7 @@ dependencies = [
 [[package]]
 name = "fuel-types"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-types.git#565ac6a25343e487faf10c13c42fb5168f92b087"
+source = "git+ssh://git@github.com/FuelLabs/fuel-types.git#84ef8780dfdb04b6a49242349621656545d544f1"
 dependencies = [
  "rand 0.8.4",
  "serde",
@@ -1259,6 +1259,21 @@ dependencies = [
 name = "fuel-vm"
 version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git?rev=bf6881fd213241be884552e63c58a2c27cb1da1e#bf6881fd213241be884552e63c58a2c27cb1da1e"
+dependencies = [
+ "fuel-asm",
+ "fuel-storage",
+ "fuel-tx",
+ "fuel-types",
+ "itertools",
+ "secp256k1",
+ "sha3",
+ "tracing",
+]
+
+[[package]]
+name = "fuel-vm"
+version = "0.1.0"
+source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#4c7f3072a490bd3247449e30d28ce55293718d5e"
 dependencies = [
  "fuel-asm",
  "fuel-storage",
@@ -1309,7 +1324,7 @@ dependencies = [
  "fuel-client",
  "fuel-tx",
  "fuel-types",
- "fuel-vm",
+ "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git?rev=bf6881fd213241be884552e63c58a2c27cb1da1e)",
  "glob",
  "hex",
  "itertools",
@@ -1489,9 +1504,9 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.25.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0a01e0497841a3b2db4f8afa483cce65f7e96a3498bd6c541734792aeac8fe7"
+checksum = "81a03ce013ffccead76c11a15751231f777d9295b845cc1266ed4d34fcbd7977"
 
 [[package]]
 name = "glob"
@@ -1844,9 +1859,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.105"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "869d572136620d55835903746bcb5cdc54cb2851fd0aeec53220b4bb65ef3013"
+checksum = "a60553f9a9e039a333b4e9b20573b9e9b9c0bb3a11e201ccc48ef4283456d673"
 
 [[package]]
 name = "libnghttp2-sys"
@@ -2129,9 +2144,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "openssl"
-version = "0.10.37"
+version = "0.10.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bc6b9e4403633698352880b22cbe2f0e45dd0177f6fabe4585536e56a3e4f75"
+checksum = "0c7ae222234c30df141154f159066c5093ff73b63204dcda7121eb082fc56a95"
 dependencies = [
  "bitflags",
  "cfg-if 1.0.0",
@@ -2149,9 +2164,9 @@ checksum = "28988d872ab76095a6e6ac88d99b54fd267702734fd7ffe610ca27f533ddb95a"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.68"
+version = "0.9.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c571f25d3f66dd427e417cebf73dbe2361d6125cf6e3a70d143fdf97c9f5150"
+checksum = "c6517987b3f8226b5da3661dad65ff7f300cc59fb5ea8333ca191fc65fde3edf"
 dependencies = [
  "autocfg",
  "cc",
@@ -3124,9 +3139,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "surf"
-version = "2.3.1"
+version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73f856d60bdb4679fc9ec516c34093484e963431b5016a8429f85a8e74b5ccaa"
+checksum = "718b1ae6b50351982dedff021db0def601677f2120938b070eadb10ba4038dd7"
 dependencies = [
  "async-std",
  "async-trait",
@@ -3257,7 +3272,7 @@ dependencies = [
  "forc",
  "fuel-asm",
  "fuel-tx",
- "fuel-vm",
+ "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git?rev=bf6881fd213241be884552e63c58a2c27cb1da1e)",
  "rand 0.8.4",
  "regex",
  "tokio",

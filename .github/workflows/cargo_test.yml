@@ -14,7 +14,7 @@ jobs:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
         with:
-        access_token: ${{ github.token }}
+          access_token: ${{ github.token }}
           
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -42,13 +42,13 @@ jobs:
 
       - name: Set git config
         run: |
-          git config --global core.bigfilethreshold 100m
+          git config --global core.bigfilethreshold 500m
 
       - name: Check formatting
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all --verbose -- --check
+          args: --all -- --check
 
       - name: Clone and build fuel-core
         run: |
@@ -63,7 +63,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --verbose
         env:
           RUSTFLAGS: "-D warnings"
 
@@ -71,7 +70,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --verbose
 
       - name: Build test suite
         uses: actions-rs/cargo@v1
