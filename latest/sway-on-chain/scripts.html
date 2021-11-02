@@ -168,13 +168,13 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
-<p>A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract.</p>
+<p>A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract. A script can return a value of any type.</p>
 <p>This example script calls a contract.</p>
 <pre><code class="language-sway">script;
 
 use example_contract::MyContract;
 
-struct InputStruct { 
+struct InputStruct {
   field_1: bool,
   field_2: u64
 }

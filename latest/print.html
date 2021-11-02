@@ -464,14 +464,14 @@ let baz: bool = true;
 <h2 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h2>
 <p>Sway has the following primitive types:</p>
 <ol>
-<li>8-bit unsigned integer</li>
-<li>16-bit unsigned integer</li>
-<li>32-bit unsigned integer</li>
-<li>64-bit unsigned integer</li>
-<li>String</li>
-<li>Boolean</li>
-<li>Byte</li>
-<li>Byte32 (32 bytes -- i.e. a hash)</li>
+<li><code>u8</code> (8-bit unsigned integer)</li>
+<li><code>u16</code> (16-bit unsigned integer)</li>
+<li><code>u32</code> (32-bit unsigned integer)</li>
+<li><code>u64</code> (64-bit unsigned integer)</li>
+<li><code>String</code></li>
+<li><code>Boolean</code></li>
+<li><code>Byte</code></li>
+<li><code>b256</code> (256 bits(32 bytes) -- i.e. a hash)</li>
 <li>Static-length arrays (as of now, not yet implemented)</li>
 </ol>
 <p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers -- this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
@@ -498,6 +498,9 @@ let baz: bool = true;
 <pre><code class="language-sway">let my_string: str[4] = &quot;fuel&quot;;
 </code></pre>
 <p>Because the string literal <code>&quot;fuel&quot;</code> is four letters, the type is <code>str[4]</code>, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.</p>
+<h2 id="address-type"><a class="header" href="#address-type">Address type</a></h2>
+<p>In Sway, the Address type is a type-safe wrapper around the primitive b256 type.
+(as of now, not yet implemented)</p>
 <h1 id="functions"><a class="header" href="#functions">Functions</a></h1>
 <p>Functions in Sway are declared with the <code>fn</code> keyword. Let's take a look:</p>
 <pre><code class="language-sway">fn equals(first_param: u64, second_param: u64) -&gt; bool {
@@ -553,13 +556,13 @@ pub struct MyStruct {
 <h1 id="smart-contracts"><a class="header" href="#smart-contracts">Smart Contracts</a></h1>
 <p>A smart contract is a callable entity that is deployed to the chain with some defined interface for interaction. See <a href="sway-on-chain/../examples/wallet_smart_contract.html">this contract</a> for an example.</p>
 <h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
-<p>A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract.</p>
+<p>A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract. A script can return a value of any type.</p>
 <p>This example script calls a contract.</p>
 <pre><code class="language-sway">script;
 
 use example_contract::MyContract;
 
-struct InputStruct { 
+struct InputStruct {
   field_1: bool,
   field_2: u64
 }

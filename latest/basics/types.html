@@ -173,14 +173,14 @@
 <h2 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h2>
 <p>Sway has the following primitive types:</p>
 <ol>
-<li>8-bit unsigned integer</li>
-<li>16-bit unsigned integer</li>
-<li>32-bit unsigned integer</li>
-<li>64-bit unsigned integer</li>
-<li>String</li>
-<li>Boolean</li>
-<li>Byte</li>
-<li>Byte32 (32 bytes -- i.e. a hash)</li>
+<li><code>u8</code> (8-bit unsigned integer)</li>
+<li><code>u16</code> (16-bit unsigned integer)</li>
+<li><code>u32</code> (32-bit unsigned integer)</li>
+<li><code>u64</code> (64-bit unsigned integer)</li>
+<li><code>String</code></li>
+<li><code>Boolean</code></li>
+<li><code>Byte</code></li>
+<li><code>b256</code> (256 bits(32 bytes) -- i.e. a hash)</li>
 <li>Static-length arrays (as of now, not yet implemented)</li>
 </ol>
 <p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers -- this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
@@ -207,6 +207,9 @@
 <pre><code class="language-sway">let my_string: str[4] = &quot;fuel&quot;;
 </code></pre>
 <p>Because the string literal <code>&quot;fuel&quot;</code> is four letters, the type is <code>str[4]</code>, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.</p>
+<h2 id="address-type"><a class="header" href="#address-type">Address type</a></h2>
+<p>In Sway, the Address type is a type-safe wrapper around the primitive b256 type.
+(as of now, not yet implemented)</p>
 
                     </main>
 
