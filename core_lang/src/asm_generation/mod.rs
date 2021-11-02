@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use crate::type_engine::{resolve_type, TypeEngine, TYPE_ENGINE};
+use crate::type_engine::{resolve_type, TypeEngine};
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
     asm_lang::{
@@ -31,7 +31,7 @@ pub(crate) use expression::*;
 pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
 
-use crate::type_engine::{Engine, TypeId};
+
 use while_loop::convert_while_loop_to_asm;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
@@ -193,7 +193,7 @@ impl<'sc> AbstractInstructionSet<'sc> {
     fn realize_labels(
         self,
         data_section: &DataSection<'sc>,
-        namespace: &AsmNamespace,
+        _namespace: &AsmNamespace,
     ) -> RealizedAbstractInstructionSet<'sc> {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
@@ -1398,7 +1398,7 @@ fn ret_or_retd_value<'sc>(
     namespace: &mut AsmNamespace<'sc>,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut errors = vec![];
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut asm_buf = vec![];
     let main_func_ret_ty: TypeInfo = match resolve_type(func.return_type, &func.return_type_span) {
         Ok(o) => o,

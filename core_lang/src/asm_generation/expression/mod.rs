@@ -7,7 +7,7 @@ use crate::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },
-    type_engine::{TYPE_ENGINE, look_up_type_id},
+    type_engine::{look_up_type_id},
 };
 
 mod contract_call;

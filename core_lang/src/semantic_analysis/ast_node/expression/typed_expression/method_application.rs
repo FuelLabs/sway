@@ -2,8 +2,8 @@ use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parser::{HllParser, Rule};
-use crate::type_engine::{look_up_type_id, look_up_type_with_self};
-use crate::types::ResolvedType;
+
+
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
@@ -68,7 +68,7 @@ pub(crate) fn type_check_method_application<'sc>(
                     });
                 }
             }
-            Err(e) => {
+            Err(_e) => {
                 errors.push(CompileError::ArgumentParameterTypeMismatch {
                     span: arg.span.clone(),
                     provided: arg.return_type.friendly_type_str(),

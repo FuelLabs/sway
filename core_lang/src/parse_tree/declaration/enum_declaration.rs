@@ -1,8 +1,8 @@
 use crate::build_config::BuildConfig;
 use crate::parser::Rule;
 use crate::span::Span;
-use crate::type_engine::{IntegerBits, TypeId, TypeInfo};
-use crate::types::ResolvedType;
+use crate::type_engine::{TypeId, TypeInfo};
+
 use crate::Ident;
 use crate::Namespace;
 use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
@@ -150,7 +150,7 @@ impl<'sc> EnumVariant<'sc> {
         &self,
         namespace: &mut Namespace<'sc>,
         self_type: TypeId,
-        span: Span<'sc>,
+        _span: Span<'sc>,
     ) -> CompileResult<'sc, TypedEnumVariant<'sc>> {
         ok(
             TypedEnumVariant {

@@ -8,7 +8,7 @@ use crate::asm_lang::{
 use crate::{
     error::*,
     semantic_analysis::{ast_node::TypedEnumDeclaration, TypedExpression},
-    type_engine::{resolve_type, TypeEngine, TYPE_ENGINE},
+    type_engine::{resolve_type},
     CompileResult, Ident, Literal,
 };
 

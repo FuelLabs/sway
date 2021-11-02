@@ -12,8 +12,8 @@ use crate::semantic_analysis::{
     TypedAstNode, TypedAstNodeContent,
 };
 use crate::span::Span;
-use crate::type_engine::{resolve_type, TypeEngine, TypeInfo, TYPE_ENGINE};
-use crate::types::ResolvedType;
+use crate::type_engine::{resolve_type, TypeInfo};
+
 use crate::{error::*, semantic_analysis::TypedParseTree};
 use petgraph::prelude::NodeIndex;
 

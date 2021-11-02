@@ -1,7 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::type_engine::{TypeEngine, TYPE_ENGINE};
+
 use crate::CodeBlock;
 use std::collections::{HashMap, HashSet};
 

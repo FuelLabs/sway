@@ -3,14 +3,13 @@ use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::span::Span;
 use crate::type_engine::{
-    insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeInfo, TYPE_ENGINE,
+    insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeInfo,
 };
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     error::*,
-    type_engine::{TypeEngine, TypeId},
-    types::ResolvedType,
+    type_engine::{TypeId},
     CallPath, Ident,
 };
 use std::collections::{HashMap, HashSet};
@@ -248,7 +247,7 @@ fn type_check_trait_implementation<'sc>(
                  name,
                  parameters,
                  return_type,
-                 return_type_span,
+                 return_type_span: _,
              }| {
                 if fn_decl.name == *name {
                     if fn_decl.parameters.len() != parameters.len() {

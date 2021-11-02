@@ -1,4 +1,4 @@
-use crate::{error::*, types::ResolvedType, Span};
+use crate::{error::*, Span};
 
 use std::iter::FromIterator;
 

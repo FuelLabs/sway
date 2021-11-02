@@ -1,13 +1,12 @@
 use super::*;
 use crate::{
-    build_config::BuildConfig, error::*, semantic_analysis::ast_node::TypedStructField,
-    semantic_analysis::TypedExpression, types::ResolvedType, CallPath, Ident, Rule, Span,
+    types::ResolvedType, Span,
 };
-use derivative::Derivative;
+
 use lazy_static::lazy_static;
-use pest::iterators::Pair;
+
 use std::collections::HashMap;
-use std::iter::FromIterator;
+
 use std::sync::Mutex;
 
 lazy_static! {
@@ -32,7 +31,7 @@ pub(crate) fn resolve_type_with_self<'sc>(
     self_type: TypeId,
     error_span: &Span<'sc>,
 ) -> Result<TypeInfo, TypeError<'sc>> {
-    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let lock = TYPE_ENGINE.lock().unwrap();
     let ty = match lock.resolve(id) {
         Ok(TypeInfo::Unknown) => Err(TypeError::UnknownType {
             span: error_span.clone(),
@@ -48,7 +47,7 @@ pub(crate) fn resolve_type<'sc>(
     id: TypeId,
     error_span: &Span<'sc>,
 ) -> Result<TypeInfo, TypeError<'sc>> {
-    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let lock = TYPE_ENGINE.lock().unwrap();
     let ty = match lock.resolve(id) {
         Ok(TypeInfo::Unknown) => Err(TypeError::UnknownType {
             span: error_span.clone(),
@@ -60,7 +59,7 @@ pub(crate) fn resolve_type<'sc>(
 }
 
 pub(crate) fn look_up_type_with_self<'sc>(id: TypeId, self_type: TypeId) -> TypeInfo {
-    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let lock = TYPE_ENGINE.lock().unwrap();
     let ty = lock
         .resolve(id)
         .expect("type engine did not contain type id: internal error");
@@ -72,7 +71,7 @@ pub(crate) fn look_up_type_with_self<'sc>(id: TypeId, self_type: TypeId) -> Type
 }
 
 pub(crate) fn look_up_type_id<'sc>(id: TypeId) -> TypeInfo {
-    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let lock = TYPE_ENGINE.lock().unwrap();
     let ty = lock
         .resolve(id)
         .expect("type engine did not contain type id: internal error");

@@ -13,7 +13,7 @@ use crate::{
         TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
     span::Span,
-    type_engine::{resolve_type, TypeEngine, TypeInfo, TYPE_ENGINE},
+    type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
 use petgraph::algo::has_path_connecting;

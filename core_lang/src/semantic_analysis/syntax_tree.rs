@@ -7,7 +7,6 @@ use crate::span::Span;
 use crate::{
     error::*,
     type_engine::*,
-    types::ResolvedType,
 };
 use crate::{AstNode, AstNodeContent, ParseTree};
 use std::collections::{HashMap, HashSet};

@@ -7,9 +7,9 @@ use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::type_engine::{
-    look_up_type_id, resolve_type, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE,
+    look_up_type_id, resolve_type, IntegerBits, TypeEngine, TypeId, TypeInfo,
 };
-use crate::{build_config::BuildConfig, error::*, types::ResolvedType, Ident};
+use crate::{build_config::BuildConfig, error::*, Ident};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -322,7 +322,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     let mut x = x.clone();
                     x.r#type = match look_up_type_id(x.r#type) {
                         TypeInfo::SelfType => self_type.clone(),
-                        otherwise => x.r#type,
+                        _otherwise => x.r#type,
                     };
                     x
                 })
@@ -330,7 +330,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             span: self.span.clone(),
             return_type: match look_up_type_id(self.return_type) {
                 TypeInfo::SelfType => self_type.clone(),
-                otherwise => self.return_type,
+                _otherwise => self.return_type,
             },
             type_parameters: self.type_parameters.clone(),
             return_type_span: self.return_type_span.clone(),

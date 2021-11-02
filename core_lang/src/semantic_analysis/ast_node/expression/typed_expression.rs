@@ -2,14 +2,14 @@ use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
-use crate::type_engine::{insert_type, IntegerBits, TypeEngine, TYPE_ENGINE};
-use crate::types::ResolvedType;
+use crate::type_engine::{insert_type, IntegerBits};
+
 use either::Either;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 mod method_application;
-use crate::type_engine::{Engine, TypeId};
+use crate::type_engine::{TypeId};
 use method_application::type_check_method_application;
 
 #[derive(Clone, Debug)]
@@ -252,7 +252,7 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_literal(
         lit: Literal<'sc>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        _namespace: &mut Namespace<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let return_type = match lit {
             Literal::String(s) => TypeInfo::Str(s.len() as u64),
@@ -608,7 +608,7 @@ impl<'sc> TypedExpression<'sc> {
                 }
                 _ => crate::type_engine::insert_type(TypeInfo::Unit),
             },
-            otherwise => block_return_type,
+            _otherwise => block_return_type,
         };
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {

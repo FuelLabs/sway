@@ -1,16 +1,12 @@
 use super::*;
 use crate::{
     build_config::BuildConfig,
-    error::*,
     parse_tree::OwnedCallPath,
-    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField, TypedStructField},
-    semantic_analysis::TypedExpression,
-    types::ResolvedType,
-    CallPath, Ident, Rule, Span,
+    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField}, Rule, Span,
 };
 use derivative::Derivative;
-use std::collections::HashMap;
-use std::iter::FromIterator;
+
+
 
 use pest::iterators::Pair;
 /// Type information without an associated value, used for type inferencing and definition.

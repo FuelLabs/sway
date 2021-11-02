@@ -1,5 +1,5 @@
 use super::{TypedCodeBlock, TypedExpression};
-use crate::type_engine::Engine;
+
 #[derive(Clone, Debug)]
 pub(crate) struct TypedWhileLoop<'sc> {
     pub(crate) condition: TypedExpression<'sc>,

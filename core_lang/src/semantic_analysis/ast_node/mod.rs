@@ -3,7 +3,7 @@ use crate::error::*;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::types::ResolvedType;
+
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
@@ -19,8 +19,7 @@ mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
 use crate::type_engine::{
-    insert_type, look_up_type_id, FriendlyTypeString, IntegerBits, TypeEngine, TypeId, TypeInfo,
-    TYPE_ENGINE,
+    insert_type, look_up_type_id, FriendlyTypeString, TypeEngine, TypeId, TypeInfo,
 };
 pub(crate) use code_block::TypedCodeBlock;
 pub(crate) use declaration::{

@@ -7,9 +7,9 @@ use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
 use crate::type_engine::{
-    insert_type, look_up_type_id, look_up_type_with_self, Engine, TypeEngine, TypeId, TYPE_ENGINE,
+    insert_type, look_up_type_id, TypeEngine, TypeId,
 };
-use crate::types::ResolvedType;
+
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
@@ -536,7 +536,7 @@ impl<'sc> Namespace<'sc> {
                 ref type_name,
                 ref is_absolute,
             } => {
-                let mut module = check!(
+                let module = check!(
                     self.find_module(&call_path.prefixes[..], *is_absolute),
                     return err(warnings, errors),
                     warnings,

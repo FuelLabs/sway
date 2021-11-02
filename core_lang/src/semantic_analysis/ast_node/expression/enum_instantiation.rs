@@ -3,7 +3,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
 use crate::semantic_analysis::ast_node::*;
 use crate::type_engine::{look_up_type_id, TypeId};
-use crate::types::ResolvedType;
+
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
@@ -61,7 +61,7 @@ pub(crate) fn instantiate_enum<'sc>(
             warnings,
             errors,
         ),
-        ([single_expr], r#type) => {
+        ([single_expr], _type) => {
             let typed_expr = check!(
                 TypedExpression::type_check(
                     single_expr.clone(),

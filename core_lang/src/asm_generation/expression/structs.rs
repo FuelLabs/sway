@@ -4,8 +4,7 @@ use crate::{
     asm_lang::{ConstantRegister, Op, VirtualImmediate12, VirtualImmediate24, VirtualRegister},
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
-    type_engine::{resolve_type, look_up_type_id, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE},
-    types::ResolvedType,
+    type_engine::{resolve_type, look_up_type_id, TypeId, TypeInfo},
     CompileResult, Ident,
 };
 

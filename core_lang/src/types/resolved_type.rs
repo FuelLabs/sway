@@ -1,6 +1,6 @@
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{resolve_type, IntegerBits, TypeEngine, TypeInfo, TYPE_ENGINE};
+use crate::type_engine::{resolve_type, IntegerBits, TypeInfo};
 use crate::{
     error::*,
     semantic_analysis::ast_node::{OwnedTypedStructField, TypedStructField},
@@ -62,8 +62,8 @@ impl ResolvedType<'_> {
                     .collect::<Vec<OwnedTypedStructField>>(),
             },
             Enum {
-                name,
-                variant_types,
+                name: _,
+                variant_types: _,
             } => todo!(),
             /// Represents the contract's type as a whole. Used for implementing
             /// traits on the contract itself, to enforce a specific type of ABI.
@@ -74,7 +74,7 @@ impl ResolvedType<'_> {
                 abi_name: abi_name.to_owned_call_path(),
                 address: (*address).span.as_str().to_string(),
             },
-            Function { from, to } => todo!("TypeInfo for functions"),
+            Function { from: _, to: _ } => todo!("TypeInfo for functions"),
             // used for recovering from errors in the ast
             ErrorRecovery => TypeInfo::ErrorRecovery,
         }
