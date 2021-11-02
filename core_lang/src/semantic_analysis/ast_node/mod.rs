@@ -107,7 +107,7 @@ impl<'sc> TypedAstNode<'sc> {
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
-            let type_id = crate::type_engine::insert_type(type_ascription);
+            let type_id = namespace.resolve_type_with_self(type_ascription, self_type);
             TypedExpression::type_check(
                 value,
                 namespace,

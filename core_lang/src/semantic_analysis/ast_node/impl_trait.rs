@@ -2,8 +2,9 @@ use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::span::Span;
-use crate::type_engine::FriendlyTypeString;
-use crate::type_engine::{resolve_type, TypeInfo, TYPE_ENGINE};
+use crate::type_engine::{
+    insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeInfo, TYPE_ENGINE,
+};
 use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
@@ -30,10 +31,9 @@ pub(crate) fn implementation_of_trait<'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
-    let type_implementing_for_id = TYPE_ENGINE
-        .lock()
-        .unwrap()
-        .insert(type_implementing_for.clone());
+    let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
+    let type_implementing_for = look_up_type_id(type_implementing_for);
+    let type_implementing_for_id = insert_type(type_implementing_for.clone());
     if !type_arguments.is_empty() {
         errors.push(CompileError::Internal(
             "Where clauses are not supported yet.",
@@ -205,7 +205,7 @@ fn type_check_trait_implementation<'sc>(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
                 namespace,
-                crate::type_engine::insert_type(TypeInfo::Unknown),
+                insert_type(TypeInfo::Unknown),
                 "",
                 type_implementing_for,
                 build_config,
