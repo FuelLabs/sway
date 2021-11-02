@@ -11,7 +11,7 @@ anyhow = "1"
 blake2 = "0.9"
 bytes = { version = "1.0.1", features = ["serde"] }
 forc = { path = "../forc", features = ["test", "util"], default-features = false }
-fuel-client = { git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false, branch = "sezna/pin_vm" }
+fuel-client = { git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false }
 fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
 fuel-types = { git = "ssh://git@github.com/FuelLabs/fuel-types.git" }
 fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git", rev = "bf6881fd213241be884552e63c58a2c27cb1da1e" }

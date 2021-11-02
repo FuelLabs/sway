@@ -1324,7 +1324,7 @@ dependencies = [
  "fuel-client",
  "fuel-tx",
  "fuel-types",
- "fuel-vm",
+ "fuel-vm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-vm.git?rev=bf6881fd213241be884552e63c58a2c27cb1da1e)",
  "glob",
  "hex",
  "itertools",
