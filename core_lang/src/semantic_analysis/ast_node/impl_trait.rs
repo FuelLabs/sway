@@ -177,7 +177,7 @@ fn type_check_trait_implementation<'sc>(
     trait_name: &Ident<'sc>,
     type_arguments: &[TypeParameter<'sc>],
     namespace: &mut Namespace<'sc>,
-    self_type: TypeId,
+    _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     block_span: &Span<'sc>,
@@ -273,7 +273,7 @@ fn type_check_trait_implementation<'sc>(
                             match TYPE_ENGINE.lock().unwrap().unify_with_self(
                                 fn_decl_param_type,
                                 trait_param_type,
-                                self_type,
+                                self_type_id,
                                 &trait_param.type_span,
                             ) {
                                 Ok(warn) => {
@@ -305,7 +305,7 @@ fn type_check_trait_implementation<'sc>(
                     match TYPE_ENGINE.lock().unwrap().unify_with_self(
                         *return_type,
                         fn_decl.return_type,
-                        type_implementing_for,
+                        self_type_id,
                         &fn_decl.return_type_span,
                     ) {
                         Ok(warn) => {
@@ -370,7 +370,7 @@ fn type_check_trait_implementation<'sc>(
                 &mut local_namespace,
                 crate::type_engine::insert_type(TypeInfo::Unknown),
                 "",
-                self_type,
+                type_implementing_for,
                 build_config,
                 dead_code_graph,
                 mode

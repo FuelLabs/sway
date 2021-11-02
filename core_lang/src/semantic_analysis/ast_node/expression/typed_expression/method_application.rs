@@ -51,19 +51,30 @@ pub(crate) fn type_check_method_application<'sc>(
 
     // type check all of the arguments against the parameters in the method declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
-        let arg_ret_type = look_up_type_id(
-            namespace.resolve_type_with_self(look_up_type_id(arg.return_type), self_type),
-        );
-        let param_type = look_up_type_id(
-            namespace.resolve_type_with_self(look_up_type_id(param.r#type), self_type),
-        );
-        if arg_ret_type != param_type && arg_ret_type != TypeInfo::ErrorRecovery {
-            errors.push(CompileError::ArgumentParameterTypeMismatch {
-                span: arg.span.clone(),
-                provided: arg_ret_type.friendly_type_str(),
-                should_be: param_type.friendly_type_str(),
-            });
+        // if the return type cannot be cast into the annotation type then it is a type error
+        match TYPE_ENGINE.lock().unwrap().unify_with_self(
+            arg.return_type,
+            param.r#type,
+            self_type,
+            &arg.span,
+        ) {
+            Ok(warning) => {
+                if let Some(warning) = warning {
+                    warnings.push(CompileWarning {
+                        warning_content: warning,
+                        span: arg.span.clone(),
+                    });
+                }
+            }
+            Err(e) => {
+                errors.push(CompileError::ArgumentParameterTypeMismatch {
+                    span: arg.span.clone(),
+                    provided: arg.return_type.friendly_type_str(),
+                    should_be: param.r#type.friendly_type_str(),
+                });
+            }
         }
+        // The annotation may result in a cast, which is handled in the type engine.
     }
     let exp = match method_name {
         // something like a.b(c)

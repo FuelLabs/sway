@@ -19,7 +19,8 @@ mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
 use crate::type_engine::{
-    look_up_type_id, FriendlyTypeString, IntegerBits, TypeEngine, TypeId, TypeInfo, TYPE_ENGINE,
+    insert_type, look_up_type_id, FriendlyTypeString, IntegerBits, TypeEngine, TypeId, TypeInfo,
+    TYPE_ENGINE,
 };
 pub(crate) use code_block::TypedCodeBlock;
 pub(crate) use declaration::{
@@ -260,7 +261,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 type_check_trait_methods(
                                     methods.clone(),
                                     &trait_namespace,
-                                    self_type,
+                                    insert_type(TypeInfo::SelfType),
                                     build_config,
                                     dead_code_graph,
                                 ),
