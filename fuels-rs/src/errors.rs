@@ -1,6 +1,7 @@
 use core::str::Utf8Error;
 use thiserror::Error;
 pub type Result<T> = core::result::Result<T, Error>;
+use std::net;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -22,4 +23,12 @@ pub enum Error {
     ParseHexError(#[from] hex::FromHexError),
     #[error("Utf8 error: {0}")]
     Utf8Error(#[from] Utf8Error),
+    #[error("Compilation error: {0}")]
+    CompilationError(String),
+    #[error("Network error: {0}")]
+    NetworkError(#[from] net::AddrParseError),
+    #[error("Transaction error: {0}")]
+    TransactionError(String),
+    #[error("Infrastructure error: {0}")]
+    InfrastructureError(String),
 }

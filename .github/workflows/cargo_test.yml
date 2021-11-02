@@ -50,6 +50,15 @@ jobs:
           command: fmt
           args: --all --verbose -- --check
 
+      - name: Clone and build fuel-core
+        run: |
+          git clone git@github.com:FuelLabs/fuel-core
+          (cd fuel-core && cargo build -p fuel-core)
+
+      - name: Run fuel-core
+        run: |
+          ./fuel-core/target/debug/fuel-core &
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -64,11 +73,6 @@ jobs:
           command: test
           args: --verbose
 
-      - name: Clone and build fuel-core
-        run: |
-          git clone git@github.com:FuelLabs/fuel-core
-          (cd fuel-core && cargo build -p fuel-core)
-
       - name: Build test suite
         uses: actions-rs/cargo@v1
         with:
@@ -77,4 +81,4 @@ jobs:
 
       - name: Run test suite
         run: |
-          ./fuel-core/target/debug/fuel-core & ./target/debug/test
+          ./target/debug/test

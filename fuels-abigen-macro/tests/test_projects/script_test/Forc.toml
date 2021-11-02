@@ -1,0 +1,17 @@
+[project]
+author  = "Rodrigo Araujo"
+license = "MIT"
+name = "script_test"
+entry = "main.sw"
+
+
+[dependencies]
+std = { path = "../../../../stdlib" }
+increment_abi = { path = "../library_test" }
+
+[[tx-input]]
+type = "Contract"
+contract-id = "0xe50103684750e4916cd9825b14cf7e6763ffcc6523a9e0af63de93dbd6e3d736"
+utxo-id = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
+balance-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"
+state-root = "0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd"

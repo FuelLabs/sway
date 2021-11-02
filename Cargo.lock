@@ -1309,6 +1309,7 @@ dependencies = [
  "strum_macros",
  "syn 1.0.81",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -1319,7 +1320,11 @@ dependencies = [
  "anyhow",
  "blake2",
  "bytes 1.1.0",
+ "forc",
+ "fuel-client",
+ "fuel-tx",
  "fuel-types",
+ "fuel-vm",
  "glob",
  "hex",
  "itertools",
@@ -1333,6 +1338,7 @@ dependencies = [
  "strum_macros",
  "syn 1.0.81",
  "thiserror",
+ "tokio",
  "url",
 ]
 

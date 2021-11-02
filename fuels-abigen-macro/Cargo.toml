@@ -29,3 +29,4 @@ strum = "0.21"
 strum_macros = "0.21"
 syn = "1.0.12"
 thiserror = { version = "1.0.26", default-features = false }
+tokio = "1.12.0"
