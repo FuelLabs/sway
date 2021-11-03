@@ -138,7 +138,7 @@ async fn send_tx(
     tx: &Transaction,
     pretty_print: bool,
 ) -> Result<(), CliError> {
-    match client.transact(&tx).await {
+    match client.submit(&tx).await {
         Ok(logs) => {
             if pretty_print {
                 println!("{:#?}", logs);

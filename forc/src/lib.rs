@@ -11,5 +11,7 @@ pub mod test {
 
 #[cfg(feature = "util")]
 pub mod util {
+    pub use crate::utils::client::start_fuel_core;
+    pub use crate::utils::constants;
     pub use crate::utils::helpers;
 }

@@ -872,6 +872,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::FLAG(r1)
                 }
+                "gm" => {
+                    let (r1, imm) = check!(
+                        single_reg_imm_18(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::GM(r1, imm)
+                }
 
                 other => {
                     errors.push(CompileError::UnrecognizedOp {
@@ -1303,6 +1312,7 @@ impl fmt::Display for Op<'_> {
                 S256(a, b, c) => format!("s256 {} {} {}", a, b, c),
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
+                GM(a, b) => format!("gm {} {}", a, b),
                 Undefined => format!("undefined op"),
                 VirtualOp::DataSectionOffsetPlaceholder => "data section offset placeholder".into(),
                 DataSectionRegisterLoadPlaceholder => {
