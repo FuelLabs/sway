@@ -2,6 +2,7 @@ use super::*;
 use crate::semantic_analysis::ast_node::*;
 use either::Either;
 /// Converts a function application of a contract ABI function into assembly
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn convert_contract_call_to_asm<'sc>(
     metadata: &ContractCallMetadata<'sc>,
     cgas: &TypedExpression<'sc>,

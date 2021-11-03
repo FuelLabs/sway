@@ -174,8 +174,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                                     .join("\n"),
                             }),
                         }
-                    })
-                    .collect::<Vec<Result<_, _>>>();
+                    });
 
                 let replaced_registers = replaced_registers
                     .into_iter()
@@ -316,10 +315,7 @@ fn realize_register(
 ) -> Option<VirtualRegister> {
     match mapping_of_real_registers_to_declared_names.get(register_name) {
         Some(x) => Some(x.clone()),
-        None => match ConstantRegister::parse_register_name(register_name) {
-            Some(x) => Some(VirtualRegister::Constant(x)),
-            None => None,
-        },
+        None => ConstantRegister::parse_register_name(register_name).map(VirtualRegister::Constant),
     }
 }
 
