@@ -1,27 +1,23 @@
 library types;
 
-////////////////////////////////////////////////////////////
-///////////////////////    B512    /////////////////////////
-////////////////////////////////////////////////////////////
-
-/// Stores two b256s in contiguous memory. Guaranteed to be contiguous for things like
-/// ECR.
+// Stores two b256s in contiguous memory.
+// Guaranteed to be contiguous for things like ECR.
 struct B512 {
     hi: b256,
     lo: b256,
 }
 
 impl B512 {
-    /// Initializes a blank B512
+    // Initializes a blank B512
     fn new() -> B512 {
         let hi = asm(rhi) {
-            mv rhi sp;
+            move rhi sp;
             cfei i32;
             rhi: b256
         };
 
         let lo = asm(rlo) {
-            mv rlo sp;
+            move rlo sp;
             cfei i32;
             rlo: b256
         };
@@ -41,14 +37,14 @@ impl B512 {
         // repeat w/ second ptr
 
         let hi = asm(r1: hi, rhi) {
-            mv rhi sp; // move stack pointer to rhi
+            move rhi sp; // move stack pointer to rhi
             cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
             mcpi rhi r1 i32;
             rhi: b256
         };
 
         let lo = asm(r1: lo, rlo) {
-            mv rlo sp;
+            move rlo sp;
             cfei i32;
             // now $rlo is pointing to blank memory that we can use
             mcpi rlo r1 i32;
