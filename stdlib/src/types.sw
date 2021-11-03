@@ -28,8 +28,6 @@ impl B512 {
         }
     }
 
-    //
-
     fn from_b256(hi: b256, lo: b256) -> B512 {
         // copy the two given b256s into contiguous stack memory
         // this involves grabbing the stack pointer, extending the stack by 256 bits,
