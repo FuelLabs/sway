@@ -1,9 +1,9 @@
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{resolve_type, IntegerBits, TypeInfo};
+use crate::type_engine::*;
 use crate::{
     error::*,
-    semantic_analysis::ast_node::{OwnedTypedStructField, TypedStructField},
+    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField, TypedStructField},
     CallPath, Ident,
 };
 use derivative::Derivative;
@@ -62,9 +62,20 @@ impl ResolvedType<'_> {
                     .collect::<Vec<OwnedTypedStructField>>(),
             },
             Enum {
-                name: _,
-                variant_types: _,
-            } => todo!(),
+                name,
+                variant_types,
+            } => TypeInfo::Enum {
+                name: name.primary_name.to_string(),
+                variant_types: variant_types
+                    .iter()
+                    .enumerate()
+                    .map(|(ix, x)| OwnedTypedEnumVariant {
+                        tag: ix,
+                        name: format!("{} variant {}", name.primary_name, ix),
+                        r#type: insert_type(x.to_type_info()),
+                    })
+                    .collect(),
+            },
             /// Represents the contract's type as a whole. Used for implementing
             /// traits on the contract itself, to enforce a specific type of ABI.
             Contract => TypeInfo::Contract,
