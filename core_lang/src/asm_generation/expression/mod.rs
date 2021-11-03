@@ -156,25 +156,22 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             // For each opcode in the asm expression, attempt to parse it into an opcode and
             // replace references to the above registers with the newly allocated ones.
             for op in body {
-                let replaced_registers = op
-                    .op_args
-                    .iter()
-                    .map(|x| -> Result<_, CompileError> {
-                        match realize_register(
-                            x.primary_name,
-                            &mapping_of_real_registers_to_declared_names,
-                        ) {
-                            Some(o) => Ok(o),
-                            None => Err(CompileError::UnknownRegister {
-                                span: x.span.clone(),
-                                initialized_registers: mapping_of_real_registers_to_declared_names
-                                    .iter()
-                                    .map(|(name, _)| name.to_string())
-                                    .collect::<Vec<_>>()
-                                    .join("\n"),
-                            }),
-                        }
-                    });
+                let replaced_registers = op.op_args.iter().map(|x| -> Result<_, CompileError> {
+                    match realize_register(
+                        x.primary_name,
+                        &mapping_of_real_registers_to_declared_names,
+                    ) {
+                        Some(o) => Ok(o),
+                        None => Err(CompileError::UnknownRegister {
+                            span: x.span.clone(),
+                            initialized_registers: mapping_of_real_registers_to_declared_names
+                                .iter()
+                                .map(|(name, _)| name.to_string())
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                        }),
+                    }
+                });
 
                 let replaced_registers = replaced_registers
                     .into_iter()
