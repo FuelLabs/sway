@@ -7,6 +7,30 @@ struct B512 {
     lo: b256,
 }
 
+// temp
+pub fn build_from_b256s(hi: b256, lo: b256) -> B512 {
+    let hi = asm(r1: hi, rhi, r2: 32) {
+            move rhi sp; // move stack pointer to rhi
+            cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
+            // addi r5 zero i32;
+            mcp rhi r1 r2;
+            rhi: b256
+        };
+
+        let lo = asm(r1: lo, rlo, r2: 32) {
+            move rlo sp;
+            cfei i32;
+            // now $rlo is pointing to blank memory that we can use
+            mcp rlo r1 r2;
+            rlo: b256
+        };
+
+        B512 {
+            hi: hi,
+            lo: lo
+        }
+}
+
 impl B512 {
     // Initializes a blank B512
     fn new() -> B512 {
@@ -34,18 +58,18 @@ impl B512 {
         // using MCP to copy hi into first ptr
         // repeat w/ second ptr
 
-        let hi = asm(r1: hi, rhi) {
+        let hi = asm(r1: hi, rhi, r2: 32) {
             move rhi sp; // move stack pointer to rhi
             cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
-            mcpi rhi r1 i32;
+            mcp rhi r1 r2; // refactor to use mcpi when implemented!
             rhi: b256
         };
 
-        let lo = asm(r1: lo, rlo) {
+        let lo = asm(r1: lo, rlo, r2) {
             move rlo sp;
             cfei i32;
             // now $rlo is pointing to blank memory that we can use
-            mcpi rlo r1 i32;
+            mcp rlo r1 r2; // refactor to use mcpi when implemented!
             rlo: b256
         };
 
