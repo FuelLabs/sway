@@ -61,7 +61,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
 
                         let client = FuelClient::new(node_url)?;
 
-                        match client.transact(&tx).await {
+                        match client.submit(&tx).await {
                             Ok(logs) => {
                                 println!("Logs:\n{:?}", logs);
                                 Ok(())
