@@ -82,11 +82,11 @@ fn test_struct_memory_layout() {
     let numbers = StructMemoryLayoutDescriptor {
         fields: vec![
             StructFieldMemoryLayoutDescriptor {
-                name_of_field: first_field_name.clone(),
+                name_of_field: first_field_name.primary_name.to_string(),
                 size: 1,
             },
             StructFieldMemoryLayoutDescriptor {
-                name_of_field: second_field_name.clone(),
+                name_of_field: second_field_name.primary_name.to_string(),
                 size: 1,
             },
         ],

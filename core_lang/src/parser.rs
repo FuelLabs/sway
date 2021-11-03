@@ -300,7 +300,7 @@ mod test {
             "#,
         );
         match parsed {
-            Err(e) => {
+            Err(_) => {
                 panic!()
             }
             Ok(_) => (),
@@ -323,7 +323,7 @@ mod test {
                 println!("{:#?}", e);
                 panic!()
             }
-            Ok(o) => {}
+            Ok(_) => {}
         }
     }
 }
