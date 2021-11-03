@@ -646,6 +646,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::MEQ(r1, r2, r3, r4)
                 }
+                "mcpi" => {
+                    let (r1, r2, imm) = check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MCPI(r1, r2, imm)
+                }
                 "sb" => {
                     let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
