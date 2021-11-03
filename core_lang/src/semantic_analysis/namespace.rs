@@ -6,9 +6,7 @@ use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{
-    insert_type, look_up_type_id, TypeEngine, TypeId,
-};
+use crate::type_engine::{insert_type, look_up_type_id, TypeEngine, TypeId};
 
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
@@ -64,8 +62,7 @@ impl<'sc> Namespace<'sc> {
                         .map(TypedEnumVariant::into_owned_typed_enum_variant)
                         .collect(),
                 }),
-                Some(a) => todo!("{:?}", a),
-                None => crate::type_engine::insert_type(TypeInfo::Unknown),
+                _ => crate::type_engine::insert_type(TypeInfo::Unknown),
             },
             TypeInfo::SelfType => self_type,
             TypeInfo::Ref(id) => id,
@@ -101,8 +98,7 @@ impl<'sc> Namespace<'sc> {
                         .map(TypedEnumVariant::into_owned_typed_enum_variant)
                         .collect(),
                 }),
-                Some(a) => todo!("{:?}", a),
-                None => crate::type_engine::insert_type(TypeInfo::Unknown),
+                _ => crate::type_engine::insert_type(TypeInfo::Unknown),
             },
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
@@ -201,7 +197,7 @@ impl<'sc> Namespace<'sc> {
         ok((), warnings, vec![])
     }
 
-    // TODO remove this and switch to spans when we have arena spans
+    // TODO(static span) remove this and switch to spans when we have arena spans
     pub(crate) fn get_symbol_by_str(&self, symbol: &str) -> Option<&TypedDeclaration<'sc>> {
         let empty = vec![];
         let path = self
@@ -273,7 +269,7 @@ impl<'sc> Namespace<'sc> {
         }
     }
 
-    // TODO remove this when typeinfo uses spans
+    // TODO(static span) remove this when typeinfo uses spans
     fn get_name_from_path_str(
         &self,
         path: &[Ident<'sc>],
@@ -576,8 +572,7 @@ impl<'sc> Namespace<'sc> {
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.primary_name.to_string(),
-                        type_name: look_up_type_id(args_buf[0].return_type)
-                            .friendly_type_str(),
+                        type_name: look_up_type_id(args_buf[0].return_type).friendly_type_str(),
                         span: method_name.span.clone(),
                     });
                 }
