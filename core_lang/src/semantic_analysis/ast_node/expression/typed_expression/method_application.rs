@@ -3,7 +3,6 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parser::{HllParser, Rule};
 
-
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
@@ -93,7 +92,6 @@ pub(crate) fn type_check_method_application<'sc>(
 
             if args_buf.len() < method.parameters.len() {
                 errors.push(CompileError::TooFewArgumentsForFunction {
-      
                     decl_span: method.span.clone(),
                     usage_span: span.clone(),
                     method_name: method_name.primary_name,
@@ -161,28 +159,28 @@ pub(crate) fn type_check_method_application<'sc>(
                 span,
             }
         }
-   
-            // something like blah::blah::~Type::foo()
-            MethodName::FromType { ref call_path, .. } => {
-                if args_buf.len() > method.parameters.len() {
-                    errors.push(CompileError::TooManyArgumentsForFunction {
-                        decl_span: method.span.clone(),
-                        usage_span: span.clone(),
-                        method_name: method_name.easy_name(),
-                        expected: method.parameters.len(),
-                        received: args_buf.len(),
-                    });
-                }
 
-                if args_buf.len() < method.parameters.len() {
-                    errors.push(CompileError::TooFewArgumentsForFunction {
-                        decl_span: method.span.clone(),
-                        usage_span: span.clone(),
-                        method_name: method_name.easy_name(),
-                        expected: method.parameters.len(),
-                        received: args_buf.len(),
-                    });
-                }
+        // something like blah::blah::~Type::foo()
+        MethodName::FromType { ref call_path, .. } => {
+            if args_buf.len() > method.parameters.len() {
+                errors.push(CompileError::TooManyArgumentsForFunction {
+                    decl_span: method.span.clone(),
+                    usage_span: span.clone(),
+                    method_name: method_name.easy_name(),
+                    expected: method.parameters.len(),
+                    received: args_buf.len(),
+                });
+            }
+
+            if args_buf.len() < method.parameters.len() {
+                errors.push(CompileError::TooFewArgumentsForFunction {
+                    decl_span: method.span.clone(),
+                    usage_span: span.clone(),
+                    method_name: method_name.easy_name(),
+                    expected: method.parameters.len(),
+                    received: args_buf.len(),
+                });
+            }
 
             let args_and_names = method
                 .parameters
@@ -251,7 +249,6 @@ fn re_parse_expression<'a>(
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph<'a>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-
 ) -> CompileResult<'a, TypedExpression<'a>> {
     let mut warnings = vec![];
     let mut errors = vec![];

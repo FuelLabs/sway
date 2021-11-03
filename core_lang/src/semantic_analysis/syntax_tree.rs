@@ -4,10 +4,7 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::{
-    error::*,
-    type_engine::*,
-};
+use crate::{error::*, type_engine::*};
 use crate::{AstNode, AstNodeContent, ParseTree};
 use std::collections::{HashMap, HashSet};
 
@@ -239,9 +236,7 @@ impl<'sc> TypedParseTree<'sc> {
                     ));
                 }
                 let main_func = &mains[0];
-                match 
-                    look_up_type_id(main_func.return_type)
-                {
+                match look_up_type_id(main_func.return_type) {
                     TypeInfo::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),

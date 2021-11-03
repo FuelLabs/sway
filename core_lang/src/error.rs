@@ -309,7 +309,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
             LossOfPrecision {
                 initial_type,
                 cast_to,
-            } => write!(f, 
+            } => write!(f,
                 "This cast, from integer type of width {} to integer type of width {}, will lose precision.",
                 initial_type.friendly_str(),
                 cast_to.friendly_str()

@@ -93,7 +93,6 @@ impl<'sc> TypedCodeBlock<'sc> {
             };
             // The annotation will result in a cast, so set the return type accordingly.
         }
-  
 
         ok(
             (

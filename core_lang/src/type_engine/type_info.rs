@@ -2,11 +2,10 @@ use super::*;
 use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
-    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField}, Rule, Span,
+    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
+    Rule, Span,
 };
 use derivative::Derivative;
-
-
 
 use pest::iterators::Pair;
 /// Type information without an associated value, used for type inferencing and definition.
@@ -249,10 +248,7 @@ impl TypeInfo {
                 // of any individual variant
                 Ok(1 + variant_types
                     .iter()
-                    .map(|x| -> Result<_, _> {
-                    look_up_type_id(x.r#type)
-                            .stack_size_of(err_span)
-                    })
+                    .map(|x| -> Result<_, _> { look_up_type_id(x.r#type).stack_size_of(err_span) })
                     .collect::<Result<Vec<u64>, _>>()?
                     .into_iter()
                     .max()
@@ -279,8 +275,7 @@ impl TypeInfo {
                     span: err_span.clone(),
                 })
             }
-            TypeInfo::Ref(id) => look_up_type_id(*id)
-                .stack_size_of(err_span),
+            TypeInfo::Ref(id) => look_up_type_id(*id).stack_size_of(err_span),
         }
     }
     pub(crate) fn is_copy_type(&self) -> bool {

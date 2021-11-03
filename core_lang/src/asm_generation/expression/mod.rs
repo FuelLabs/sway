@@ -7,7 +7,7 @@ use crate::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },
-    type_engine::{look_up_type_id},
+    type_engine::look_up_type_id,
 };
 
 mod contract_call;
@@ -233,11 +233,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
-                _ if look_up_type_id(exp.return_type)
-                    == TypeInfo::Unit =>
-                {
-                    ()
-                }
+                _ if look_up_type_id(exp.return_type) == TypeInfo::Unit => (),
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),

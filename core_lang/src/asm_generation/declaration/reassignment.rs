@@ -5,9 +5,7 @@ use crate::{
         RegisterSequencer,
     },
     asm_lang::VirtualImmediate12,
-    semantic_analysis::ast_node::{
-        OwnedTypedStructField, ReassignmentLhs, TypedReassignment,
-    },
+    semantic_analysis::ast_node::{OwnedTypedStructField, ReassignmentLhs, TypedReassignment},
     type_engine::{resolve_type, TypeInfo},
 };
 
@@ -131,7 +129,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 offset_in_words += offset_of_this_field;
                 fields = match r#type {
                     TypeInfo::Struct { ref fields, .. } => fields.clone(),
-                     a => {
+                    a => {
                         errors.push(CompileError::NotAStruct {
                             name: name.primary_name.to_string(),
                             span: name.span.clone(),

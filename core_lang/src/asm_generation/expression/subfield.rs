@@ -7,7 +7,7 @@ use crate::{
     error::*,
     ident::Ident,
     parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, UnaryOp},
-    type_engine::{TypeEngine, TypeId, TYPE_ENGINE, look_up_type_id},
+    type_engine::{look_up_type_id, TypeEngine, TypeId, TYPE_ENGINE},
 };
 use crate::{
     parse_tree::Literal,
@@ -51,9 +51,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     // now the pointer to the struct is in the prefix_reg, and we can access the subfield off
     // of that address
     // step 1
-    let fields = match 
-        look_up_type_id(resolved_type_of_parent)
-    {
+    let fields = match look_up_type_id(resolved_type_of_parent) {
         TypeInfo::Struct { fields, .. } => fields,
         _ => {
             unreachable!("Accessing a field on a non-struct should be caught during type checking.")
@@ -124,9 +122,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
             )),
             comment: format!(
                 "Loading copy type: {}",
-            
-                    look_up_type_id(type_of_this_field)
-                    .friendly_type_str()
+                look_up_type_id(type_of_this_field).friendly_type_str()
             ),
             owning_span: Some(span.clone()),
         }
