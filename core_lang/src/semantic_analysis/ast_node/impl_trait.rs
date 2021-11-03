@@ -6,11 +6,8 @@ use crate::type_engine::{
     insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeInfo,
 };
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
-    error::*,
-    type_engine::{TypeId},
-    CallPath, Ident,
+    build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*,
+    type_engine::TypeId, CallPath, Ident,
 };
 use std::collections::{HashMap, HashSet};
 

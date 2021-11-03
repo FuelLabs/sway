@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use crate::type_engine::{resolve_type, TypeEngine};
+use crate::type_engine::resolve_type;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
     asm_lang::{
@@ -30,7 +30,6 @@ pub(crate) use declaration::*;
 pub(crate) use expression::*;
 pub use finalized_asm::FinalizedAsm;
 pub(crate) use register_sequencer::*;
-
 
 use while_loop::convert_while_loop_to_asm;
 

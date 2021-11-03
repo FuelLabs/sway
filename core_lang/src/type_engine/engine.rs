@@ -1,7 +1,5 @@
 use super::*;
-use crate::{
-    types::ResolvedType, Span,
-};
+use crate::{types::ResolvedType, Span};
 
 use lazy_static::lazy_static;
 
@@ -11,9 +9,14 @@ use std::sync::Mutex;
 
 lazy_static! {
     pub(crate) static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
-}   
+}
 
-pub(crate) fn unify_with_self<'sc>(ty1: TypeId, ty2: TypeId, self_type: TypeId, span: &Span<'sc>) -> Result<Option<Warning<'sc>>, TypeError<'sc>>  {
+pub(crate) fn unify_with_self<'sc>(
+    ty1: TypeId,
+    ty2: TypeId,
+    self_type: TypeId,
+    span: &Span<'sc>,
+) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
     let mut lock = TYPE_ENGINE.lock().unwrap();
     let res = lock.unify_with_self(ty1, ty2, self_type, span);
     drop(lock);
@@ -24,23 +27,6 @@ pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
     let id = lock.insert(ty);
     drop(lock);
     id
-}
-
-pub(crate) fn resolve_type_with_self<'sc>(
-    id: TypeId,
-    self_type: TypeId,
-    error_span: &Span<'sc>,
-) -> Result<TypeInfo, TypeError<'sc>> {
-    let lock = TYPE_ENGINE.lock().unwrap();
-    let ty = match lock.resolve(id) {
-        Ok(TypeInfo::Unknown) => Err(TypeError::UnknownType {
-            span: error_span.clone(),
-        }),
-        Ok(TypeInfo::SelfType) => Ok(look_up_type_id(self_type)),
-        o => o,
-    };
-    drop(lock);
-    ty
 }
 
 pub(crate) fn resolve_type<'sc>(
@@ -58,18 +44,6 @@ pub(crate) fn resolve_type<'sc>(
     ty
 }
 
-pub(crate) fn look_up_type_with_self<'sc>(id: TypeId, self_type: TypeId) -> TypeInfo {
-    let lock = TYPE_ENGINE.lock().unwrap();
-    let ty = lock
-        .resolve(id)
-        .expect("type engine did not contain type id: internal error");
-    drop(lock);
-    match ty {
-        TypeInfo::SelfType => look_up_type_id(self_type),
-        _ => ty,
-    }
-}
-
 pub(crate) fn look_up_type_id<'sc>(id: TypeId) -> TypeInfo {
     let lock = TYPE_ENGINE.lock().unwrap();
     let ty = lock
@@ -83,12 +57,6 @@ pub(crate) fn look_up_type_id<'sc>(id: TypeId) -> TypeInfo {
 pub(crate) struct Engine {
     id_counter: usize, // Used to generate unique IDs
     vars: HashMap<TypeId, TypeInfo>,
-}
-
-impl Engine {
-    pub(crate) fn get_id(&self, id: &TypeId) -> Option<&TypeInfo> {
-        self.vars.get(id)
-    }
 }
 
 impl<'sc> TypeEngine<'sc> for Engine {

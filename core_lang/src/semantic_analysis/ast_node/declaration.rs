@@ -6,9 +6,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::type_engine::{
-    look_up_type_id, resolve_type, IntegerBits, TypeEngine, TypeId, TypeInfo,
-};
+use crate::type_engine::*;
 use crate::{build_config::BuildConfig, error::*, Ident};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
@@ -700,9 +698,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         span: parameters[1].type_span.clone(),
                     });
                 }
-                if look_up_type_id(parameters[2].r#type)
-                    != TypeInfo::B256
-                {
+                if look_up_type_id(parameters[2].r#type) != TypeInfo::B256 {
                     errors.push(CompileError::AbiFunctionRequiresSpecificSignature {
                         span: parameters[2].type_span.clone(),
                     });

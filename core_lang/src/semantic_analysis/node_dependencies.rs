@@ -474,13 +474,6 @@ impl<'sc> Dependencies<'sc> {
         self
     }
 
-    fn gather_from_option_typeinfo(self, opt_type_info: &Option<TypeInfo>) -> Self {
-        match opt_type_info {
-            None => self,
-            Some(type_info) => self.gather_from_typeinfo(type_info),
-        }
-    }
-
     fn gather_from_iter<I: Iterator, F: FnMut(Self, I::Item) -> Self>(self, iter: I, f: F) -> Self {
         iter.fold(self, f)
     }

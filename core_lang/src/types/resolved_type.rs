@@ -1,11 +1,6 @@
 use crate::semantic_analysis::TypedExpression;
-use crate::span::Span;
 use crate::type_engine::*;
-use crate::{
-    error::*,
-    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField, TypedStructField},
-    CallPath, Ident,
-};
+use crate::{semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use derivative::Derivative;
 
 #[derive(Derivative)]
@@ -44,53 +39,7 @@ pub enum ResolvedType<'sc> {
     ErrorRecovery,
 }
 
-impl ResolvedType<'_> {
-    pub(crate) fn to_type_info(&self) -> TypeInfo {
-        use ResolvedType::*;
-        match self {
-            Str(len) => TypeInfo::Str(*len),
-            UnsignedInteger(bits) => TypeInfo::UnsignedInteger(*bits),
-            Boolean => TypeInfo::Boolean,
-            Unit => TypeInfo::Unit,
-            Byte => TypeInfo::Byte,
-            B256 => TypeInfo::B256,
-            Struct { name, fields } => TypeInfo::Struct {
-                name: name.primary_name.to_string(),
-                fields: fields
-                    .iter()
-                    .map(TypedStructField::into_owned_typed_struct_field)
-                    .collect::<Vec<OwnedTypedStructField>>(),
-            },
-            Enum {
-                name,
-                variant_types,
-            } => TypeInfo::Enum {
-                name: name.primary_name.to_string(),
-                variant_types: variant_types
-                    .iter()
-                    .enumerate()
-                    .map(|(ix, x)| OwnedTypedEnumVariant {
-                        tag: ix,
-                        name: format!("{} variant {}", name.primary_name, ix),
-                        r#type: insert_type(x.to_type_info()),
-                    })
-                    .collect(),
-            },
-            /// Represents the contract's type as a whole. Used for implementing
-            /// traits on the contract itself, to enforce a specific type of ABI.
-            Contract => TypeInfo::Contract,
-            /// Represents a type which contains methods to issue a contract call.
-            /// The specific contract is identified via the `Ident` within.
-            ContractCaller { abi_name, address } => TypeInfo::ContractCaller {
-                abi_name: abi_name.to_owned_call_path(),
-                address: (*address).span.as_str().to_string(),
-            },
-            Function { from: _, to: _ } => todo!("TypeInfo for functions"),
-            // used for recovering from errors in the ast
-            ErrorRecovery => TypeInfo::ErrorRecovery,
-        }
-    }
-}
+impl ResolvedType<'_> {}
 
 impl Default for ResolvedType<'_> {
     fn default() -> Self {
@@ -99,55 +48,6 @@ impl Default for ResolvedType<'_> {
 }
 
 impl<'sc> ResolvedType<'sc> {
-    pub(crate) fn is_copy_type(&self) -> bool {
-        match self {
-            ResolvedType::UnsignedInteger(_)
-            | ResolvedType::Boolean
-            | ResolvedType::Unit
-            | ResolvedType::Byte => true,
-            _ => false,
-        }
-    }
-    pub(crate) fn friendly_type_str(&self) -> String {
-        use ResolvedType::*;
-        match self {
-            Str(len) => format!("str[{}]", len),
-            UnsignedInteger(bits) => {
-                use IntegerBits::*;
-                match bits {
-                    Eight => "u8",
-                    Sixteen => "u16",
-                    ThirtyTwo => "u32",
-                    SixtyFour => "u64",
-                }
-                .into()
-            }
-            Boolean => "bool".into(),
-
-            Unit => "()".into(),
-            Byte => "byte".into(),
-            B256 => "b256".into(),
-            Struct {
-                name: Ident { primary_name, .. },
-                ..
-            } => format!("struct {}", primary_name),
-            Enum {
-                name: Ident { primary_name, .. },
-                ..
-            } => format!("enum {}", primary_name),
-            Contract => "contract".into(),
-            ContractCaller { abi_name, .. } => {
-                format!("{} contract caller", abi_name.suffix.primary_name)
-            }
-            Function { from, to } => format!(
-                "fn({})->{}",
-                from.friendly_type_str(),
-                to.friendly_type_str()
-            ),
-            ErrorRecovery => "\"unknown due to error\"".into(),
-        }
-    }
-
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     /// This is _in words_!
     pub(crate) fn stack_size_of(&self) -> u64 {
@@ -194,79 +94,5 @@ impl<'sc> ResolvedType<'sc> {
 
     pub fn is_numeric(&self) -> bool {
         matches!(self, ResolvedType::UnsignedInteger(_))
-    }
-
-    /// maps a type to a name that is used when constructing function selectors
-    pub(crate) fn to_selector_name(
-        &self,
-        error_msg_span: &Span<'sc>,
-    ) -> CompileResult<'sc, String> {
-        use ResolvedType::*;
-        let name = match self {
-            Str(len) => format!("str[{}]", len),
-            UnsignedInteger(bits) => {
-                use IntegerBits::*;
-                match bits {
-                    Eight => "u8",
-                    Sixteen => "u16",
-                    ThirtyTwo => "u32",
-                    SixtyFour => "u64",
-                }
-                .into()
-            }
-            Boolean => "bool".into(),
-
-            Unit => "unit".into(),
-            Byte => "byte".into(),
-            B256 => "b256".into(),
-            Struct { fields, .. } => {
-                let field_names = {
-                    let names = fields
-                        .iter()
-                        .map(|TypedStructField { r#type, .. }| {
-                            CompileResult::from(resolve_type(*r#type, error_msg_span))
-                                .flat_map(|x| x.to_selector_name(error_msg_span))
-                        })
-                        .collect::<Vec<CompileResult<String>>>();
-                    let mut buf = vec![];
-                    for name in names {
-                        match name.value {
-                            Some(value) => buf.push(value),
-                            None => return name,
-                        }
-                    }
-                    buf
-                };
-
-                format!("s({})", field_names.join(","))
-            }
-            Enum { variant_types, .. } => {
-                let variant_names = {
-                    let names = variant_types
-                        .iter()
-                        .map(|ty| ty.to_selector_name(error_msg_span))
-                        .collect::<Vec<CompileResult<String>>>();
-                    let mut buf = vec![];
-                    for name in names {
-                        match name.value {
-                            Some(value) => buf.push(value),
-                            None => return name,
-                        }
-                    }
-                    buf
-                };
-
-                format!("e({})", variant_names.join(","))
-            }
-            _ => {
-                return err(
-                    vec![],
-                    vec![CompileError::InvalidAbiType {
-                        span: error_msg_span.clone(),
-                    }],
-                )
-            }
-        };
-        ok(name, vec![], vec![])
     }
 }

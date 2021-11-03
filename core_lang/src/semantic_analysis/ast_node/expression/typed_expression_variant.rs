@@ -75,8 +75,9 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     AbiCast {
         abi_name: CallPath<'sc>,
         address: Box<TypedExpression<'sc>>,
+        #[allow(dead_code)]
+        // this span may be used for errors in the future, although it is not right now.
         span: Span<'sc>,
-        abi: TypedAbiDeclaration<'sc>,
     },
 }
 
@@ -134,8 +135,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    look_up_type_id(*resolved_type_of_parent)
-                        .friendly_type_str(),
+                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
                     field_to_access.name
                 )
             }

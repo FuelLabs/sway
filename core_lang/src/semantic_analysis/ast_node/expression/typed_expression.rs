@@ -9,7 +9,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 mod method_application;
-use crate::type_engine::{TypeId};
+use crate::type_engine::TypeId;
 use method_application::type_check_method_application;
 
 #[derive(Clone, Debug)]
@@ -593,16 +593,12 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         );
-        let block_return_type: TypeId = match look_up_type_id(block_return_type)
-        {
+        let block_return_type: TypeId = match look_up_type_id(block_return_type) {
             TypeInfo::Unit => match type_annotation {
-                Some(ref ty)
-                    if crate::type_engine::look_up_type_id(*ty) != TypeInfo::Unit =>
-                {
+                Some(ref ty) if crate::type_engine::look_up_type_id(*ty) != TypeInfo::Unit => {
                     errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
                         span: span.clone(),
-                        ty: look_up_type_id(*ty)
-                            .friendly_type_str(),
+                        ty: look_up_type_id(*ty).friendly_type_str(),
                     });
                     crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
                 }
@@ -692,8 +688,7 @@ impl<'sc> TypedExpression<'sc> {
             if r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: look_up_type_id(*annotation)
-                        .friendly_type_str(),
+                    r#type: look_up_type_id(*annotation).friendly_type_str(),
                 });
             }
         }
@@ -1096,9 +1091,9 @@ impl<'sc> TypedExpression<'sc> {
             }
         };
         let return_type = insert_type(TypeInfo::ContractCaller {
-                abi_name: abi_name.to_owned_call_path(),
-                address: address_str,
-            });
+            abi_name: abi_name.to_owned_call_path(),
+            address: address_str,
+        });
         let mut functions_buf = abi
             .interface_surface
             .iter()
@@ -1137,7 +1132,6 @@ impl<'sc> TypedExpression<'sc> {
                 abi_name,
                 address: Box::new(address_expr),
                 span: span.clone(),
-                abi,
             },
             return_type,
             is_constant: IsConstant::No,
@@ -1150,8 +1144,7 @@ impl<'sc> TypedExpression<'sc> {
         format!(
             "{} ({})",
             self.expression.pretty_print(),
-            look_up_type_id(self.return_type)
-                .friendly_type_str()
+            look_up_type_id(self.return_type).friendly_type_str()
         )
     }
 }

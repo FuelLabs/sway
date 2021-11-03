@@ -447,7 +447,6 @@ impl<'sc> Expression<'sc> {
                     crate::CodeBlock {
                         contents: Vec::new(),
                         whole_block_span,
-                        scope: Default::default()
                     },
                     warnings,
                     errors

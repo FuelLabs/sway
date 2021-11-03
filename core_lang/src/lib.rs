@@ -46,9 +46,6 @@ pub struct HllParseTree<'sc> {
 
 #[derive(Debug)]
 pub struct HllTypedParseTree<'sc> {
-    contract_ast: Option<TypedParseTree<'sc>>,
-    script_ast: Option<TypedParseTree<'sc>>,
-    predicate_ast: Option<TypedParseTree<'sc>>,
     pub library_exports: LibraryExports<'sc>,
 }
 

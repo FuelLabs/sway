@@ -4,7 +4,7 @@ use crate::{
     asm_lang::{ConstantRegister, Op, VirtualImmediate12, VirtualImmediate24, VirtualRegister},
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
-    type_engine::{resolve_type, look_up_type_id, TypeId, TypeInfo},
+    type_engine::{look_up_type_id, resolve_type, TypeId},
     CompileResult, Ident,
 };
 
@@ -21,7 +21,6 @@ pub(crate) struct StructFieldMemoryLayoutDescriptor {
     // TODO(static span) this should be an ident
     name_of_field: String,
     size: u64,
-    type_of_field: TypeInfo,
 }
 
 impl StructMemoryLayoutDescriptor {
@@ -85,12 +84,10 @@ fn test_struct_memory_layout() {
             StructFieldMemoryLayoutDescriptor {
                 name_of_field: first_field_name.clone(),
                 size: 1,
-                type_of_field: ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
             },
             StructFieldMemoryLayoutDescriptor {
                 name_of_field: second_field_name.clone(),
                 size: 1,
-                type_of_field: ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
             },
         ],
     };
@@ -134,7 +131,6 @@ pub(crate) fn get_struct_memory_layout<'sc>(
 
         fields_with_sizes.push(StructFieldMemoryLayoutDescriptor {
             name_of_field: name.to_string(),
-            type_of_field: ty,
             size: stack_size,
         });
     }

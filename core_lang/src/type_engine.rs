@@ -42,15 +42,6 @@ pub trait TypeEngine<'sc> {
     fn look_up_type_id(&self, id: Self::TypeId) -> TypeInfo;
 }
 
-/// A concrete type that has been fully inferred
-#[derive(Debug)]
-enum Type {
-    Num,
-    Bool,
-    List(Box<Type>),
-    Func(Box<Type>, Box<Type>),
-}
-
 /// A identifier to uniquely refer to our type terms
 pub type TypeId = usize;
 

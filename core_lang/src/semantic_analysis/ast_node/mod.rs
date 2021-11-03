@@ -18,9 +18,7 @@ mod return_statement;
 mod while_loop;
 
 use super::ERROR_RECOVERY_DECLARATION;
-use crate::type_engine::{
-    insert_type, look_up_type_id, FriendlyTypeString, TypeEngine, TypeId, TypeInfo,
-};
+use crate::type_engine::*;
 pub(crate) use code_block::TypedCodeBlock;
 pub(crate) use declaration::{
     OwnedTypedEnumVariant, OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration,
@@ -576,8 +574,7 @@ impl<'sc> TypedAstNode<'sc> {
                 r#type: node.type_info(),
             };
             assert_or_warn!(
-                node.type_info() == TypeInfo::Unit
-                    || node.type_info() == TypeInfo::ErrorRecovery,
+                node.type_info() == TypeInfo::Unit || node.type_info() == TypeInfo::ErrorRecovery,
                 warnings,
                 node.span.clone(),
                 warning
@@ -738,12 +735,14 @@ fn reassignment<'sc>(
                     return err(warnings, errors);
                 }
             };
+            // the RHS is a ref type to the LHS
+            let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type.clone()));
             // type check the reassignment
             let rhs = check!(
                 TypedExpression::type_check(
                     rhs,
                     namespace,
-                    Some(thing_to_reassign.return_type.clone()),
+                    Some(rhs_type_id),
                     "You can only reassign a value of the same type to a variable.",
                     self_type,
                     build_config,
@@ -843,8 +842,7 @@ fn reassignment<'sc>(
                     Some(ty_of_field.clone()),
                     format!(
                         "This struct field has type \"{}\"",
-                        look_up_type_id(ty_of_field)
-                            .friendly_type_str()
+                        look_up_type_id(ty_of_field).friendly_type_str()
                     ),
                     self_type,
                     build_config,

@@ -27,7 +27,10 @@ pub struct ImplSelf<'sc> {
     pub functions: Vec<FunctionDeclaration<'sc>>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span<'sc>,
+    #[allow(dead_code)]
+    // these spans may be used for errors in the future, although it is not right now.
     pub(crate) type_arguments_span: Span<'sc>,
+    #[allow(dead_code)]
     pub(crate) type_name_span: Span<'sc>,
 }
 

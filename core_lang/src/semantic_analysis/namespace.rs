@@ -6,7 +6,7 @@ use crate::error::*;
 use crate::parse_tree::MethodName;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
-use crate::type_engine::{insert_type, look_up_type_id, TypeEngine, TypeId};
+use crate::type_engine::*;
 
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
