@@ -4,6 +4,5 @@
 mod documentation;
 mod documenter;
 mod error;
-mod parser;
 pub use documentation::*;
 pub use error::*;

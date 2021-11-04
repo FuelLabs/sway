@@ -1,13 +1,16 @@
 use crate::{Span, Token};
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::{prelude::*, stream::Stream};
+use generational_arena::Index;
 use std::{collections::HashMap, env, fmt, fs};
 
 pub(crate) struct Lexer {}
 
 impl Lexer {
-    pub(crate) fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
-        todo!("make this a struct");
+    pub(crate) fn lex(
+        input: &str,
+        file_ix: Index,
+    ) -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         // A parser for numbers
         let num = text::int(10)
             .chain::<char, _, _>(just('.').chain(text::digits(10)).or_not().flatten())
@@ -53,7 +56,9 @@ impl Lexer {
             .recover_with(skip_then_retry_until([]));
 
         token
-            .map_with_span(|tok, span| (tok, span))
+            .map_with_span(move |tok, span: core::ops::Range<usize>| {
+                (tok, Span::new_from_idx(file_ix, span.start, span.end))
+            })
             .padded()
             .repeated()
     }

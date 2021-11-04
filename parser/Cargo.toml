@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 chumsky = "0.5"
 ariadne = "0.1"
+generational-arena = "0.2"
+lazy_static = "1.4"
