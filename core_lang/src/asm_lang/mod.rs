@@ -1294,6 +1294,7 @@ impl fmt::Display for Op<'_> {
                 MCL(a, b) => format!("mcl {} {}", a, b),
                 MCLI(a, b) => format!("mcli {} {}", a, b),
                 MCP(a, b, c) => format!("mcp {} {} {}", a, b, c),
+                MCPI(a, b, c) => format!("mcpi {} {} {}", a, b, c),
                 MEQ(a, b, c, d) => format!("meq {} {} {} {}", a, b, c, d),
                 SB(a, b, c) => format!("sb {} {} {}", a, b, c),
                 SW(a, b, c) => format!("sw {} {} {}", a, b, c),
