@@ -1,5 +1,5 @@
 use crate::parse_tree::Expression;
-use crate::{types::TypeInfo, Ident};
+use crate::{type_engine::TypeInfo, Ident};
 
 use crate::build_config::BuildConfig;
 use crate::error::{err, ok, CompileResult};
@@ -9,7 +9,7 @@ use pest::iterators::Pair;
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration<'sc> {
     pub name: Ident<'sc>,
-    pub type_ascription: Option<TypeInfo<'sc>>,
+    pub type_ascription: TypeInfo,
     pub value: Expression<'sc>,
 }
 
@@ -32,14 +32,16 @@ impl<'sc> ConstantDeclaration<'sc> {
             }
             _ => None,
         };
-        let type_ascription = type_ascription.map(|ascription| {
-            check!(
-                TypeInfo::parse_from_pair(ascription, config.clone()),
-                TypeInfo::Unit,
-                warnings,
-                errors
-            )
-        });
+        let type_ascription = type_ascription
+            .map(|ascription| {
+                check!(
+                    TypeInfo::parse_from_pair(ascription, config.clone()),
+                    TypeInfo::Unit,
+                    warnings,
+                    errors
+                )
+            })
+            .unwrap_or(TypeInfo::Unknown);
         let value = check!(
             Expression::parse_from_pair_inner(maybe_value, config.clone()),
             return err(warnings, errors),

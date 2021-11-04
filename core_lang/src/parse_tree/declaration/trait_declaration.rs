@@ -3,7 +3,7 @@ use crate::build_config::BuildConfig;
 use crate::parse_tree::TypeParameter;
 use crate::parser::Rule;
 use crate::span::Span;
-use crate::types::TypeInfo;
+use crate::type_engine::TypeInfo;
 use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
@@ -117,7 +117,7 @@ impl<'sc> TraitDeclaration<'sc> {
 pub(crate) struct TraitFn<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type: TypeInfo,
     pub(crate) return_type_span: Span<'sc>,
 }
 

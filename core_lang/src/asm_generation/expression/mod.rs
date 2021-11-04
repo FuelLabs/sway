@@ -1,13 +1,13 @@
 use super::*;
 use crate::span::Span;
-use crate::{asm_lang::*, parse_tree::CallPath};
 use crate::{
-    parse_tree::Literal,
+    asm_lang::*,
+    parse_tree::{CallPath, Literal},
     semantic_analysis::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },
-    types::{MaybeResolvedType, ResolvedType},
+    type_engine::look_up_type_id,
 };
 
 mod contract_call;
@@ -156,26 +156,22 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             // For each opcode in the asm expression, attempt to parse it into an opcode and
             // replace references to the above registers with the newly allocated ones.
             for op in body {
-                let replaced_registers = op
-                    .op_args
-                    .iter()
-                    .map(|x| -> Result<_, CompileError> {
-                        match realize_register(
-                            x.primary_name,
-                            &mapping_of_real_registers_to_declared_names,
-                        ) {
-                            Some(o) => Ok(o),
-                            None => Err(CompileError::UnknownRegister {
-                                span: x.span.clone(),
-                                initialized_registers: mapping_of_real_registers_to_declared_names
-                                    .iter()
-                                    .map(|(name, _)| name.to_string())
-                                    .collect::<Vec<_>>()
-                                    .join("\n"),
-                            }),
-                        }
-                    })
-                    .collect::<Vec<Result<_, _>>>();
+                let replaced_registers = op.op_args.iter().map(|x| -> Result<_, CompileError> {
+                    match realize_register(
+                        x.primary_name,
+                        &mapping_of_real_registers_to_declared_names,
+                    ) {
+                        Some(o) => Ok(o),
+                        None => Err(CompileError::UnknownRegister {
+                            span: x.span.clone(),
+                            initialized_registers: mapping_of_real_registers_to_declared_names
+                                .iter()
+                                .map(|(name, _)| name.to_string())
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                        }),
+                    }
+                });
 
                 let replaced_registers = replaced_registers
                     .into_iter()
@@ -233,7 +229,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
-                _ if exp.return_type == MaybeResolvedType::Resolved(ResolvedType::Unit) => (),
+                _ if look_up_type_id(exp.return_type) == TypeInfo::Unit => (),
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),
@@ -256,11 +252,12 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             resolved_type_of_parent,
             prefix,
             field_to_access,
+            field_to_access_span,
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            field_to_access,
-            resolved_type_of_parent,
+            &field_to_access.into_typed_struct_field(field_to_access_span),
+            *resolved_type_of_parent,
             namespace,
             register_sequencer,
             return_register,
@@ -316,10 +313,7 @@ fn realize_register(
 ) -> Option<VirtualRegister> {
     match mapping_of_real_registers_to_declared_names.get(register_name) {
         Some(x) => Some(x.clone()),
-        None => match ConstantRegister::parse_register_name(register_name) {
-            Some(x) => Some(VirtualRegister::Constant(x)),
-            None => None,
-        },
+        None => ConstantRegister::parse_register_name(register_name).map(VirtualRegister::Constant),
     }
 }
 

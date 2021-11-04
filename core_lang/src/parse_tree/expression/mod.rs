@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parse_tree::{CallPath, Literal};
 use crate::Span;
-use crate::{parser::Rule, types::TypeInfo};
+use crate::{parser::Rule, type_engine::TypeInfo};
 use crate::{CodeBlock, Ident};
 use either::Either;
 use pest;
@@ -114,7 +114,7 @@ pub enum Expression<'sc> {
         call_path: CallPath<'sc>,
         args: Vec<Expression<'sc>>,
         span: Span<'sc>,
-        type_arguments: Vec<TypeInfo<'sc>>,
+        type_arguments: Vec<TypeInfo>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
@@ -440,7 +440,6 @@ impl<'sc> Expression<'sc> {
                     crate::CodeBlock {
                         contents: Vec::new(),
                         whole_block_span,
-                        scope: Default::default()
                     },
                     warnings,
                     errors

@@ -60,8 +60,9 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     // like looking up a field in a struct
     StructFieldAccess {
         prefix: Box<TypedExpression<'sc>>,
-        field_to_access: TypedStructField<'sc>,
-        resolved_type_of_parent: MaybeResolvedType<'sc>,
+        field_to_access: OwnedTypedStructField,
+        field_to_access_span: Span<'sc>,
+        resolved_type_of_parent: TypeId,
     },
     EnumInstantiation {
         /// for printing
@@ -74,8 +75,9 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     AbiCast {
         abi_name: CallPath<'sc>,
         address: Box<TypedExpression<'sc>>,
+        #[allow(dead_code)]
+        // this span may be used for errors in the future, although it is not right now.
         span: Span<'sc>,
-        abi: TypedAbiDeclaration<'sc>,
     },
 }
 
@@ -133,8 +135,8 @@ impl<'sc> TypedExpressionVariant<'sc> {
             } => {
                 format!(
                     "\"{}.{}\" struct field access",
-                    resolved_type_of_parent.friendly_type_str(),
-                    field_to_access.name.primary_name
+                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
+                    field_to_access.name
                 )
             }
             TypedExpressionVariant::VariableExpression { name, .. } => {

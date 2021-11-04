@@ -7,7 +7,7 @@ use core_lang::{
     error::CompileResult,
     parse_tree::function_declaration::FunctionDeclaration,
     semantic_analysis::ast_node::{declaration::TypedFunctionDeclaration, impl_trait::Mode},
-    types::{MaybeResolvedType, ResolvedType},
+    type_engine::TypeInfo,
     BuildConfig, HllParser, Rule,
 };
 
@@ -37,7 +37,7 @@ fn main() {
         &Default::default(),
         None,
         "",
-        &MaybeResolvedType::Resolved(ResolvedType::Unit),
+        TypeInfo::Unit,
         &BuildConfig::root_from_manifest_path(Default::default()),
         &mut Default::default(),
         Mode::ImplAbiFn,

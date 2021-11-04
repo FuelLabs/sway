@@ -1,5 +1,5 @@
 use crate::parse_tree::Expression;
-use crate::{types::TypeInfo, Ident};
+use crate::{type_engine::TypeInfo, Ident};
 
 use crate::build_config::BuildConfig;
 use crate::error::{err, ok, CompileResult};
@@ -9,7 +9,7 @@ use pest::iterators::Pair;
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration<'sc> {
     pub name: Ident<'sc>,
-    pub type_ascription: Option<TypeInfo<'sc>>,
+    pub type_ascription: TypeInfo,
     pub body: Expression<'sc>, // will be codeblock variant
     pub is_mutable: bool,
 }
@@ -40,14 +40,14 @@ impl<'sc> VariableDeclaration<'sc> {
             _ => None,
         };
         let type_ascription = if let Some(ascription) = type_ascription {
-            Some(check!(
+            check!(
                 TypeInfo::parse_from_pair(ascription, config.clone()),
                 TypeInfo::Unit,
                 warnings,
                 errors
-            ))
+            )
         } else {
-            None
+            TypeInfo::Unknown
         };
         let body = check!(
             Expression::parse_from_pair(maybe_body, config.clone()),

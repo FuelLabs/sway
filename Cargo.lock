@@ -768,8 +768,9 @@ dependencies = [
  "fuel-asm",
  "fuel-vm",
  "hex",
+ "lazy_static 1.4.0",
  "line-col",
- "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
+ "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=0ee8d107923f8979897efbd12e16a0eb99ea98b3)",
  "pest_derive",
  "petgraph",
  "sha2",
@@ -1243,7 +1244,7 @@ checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#cd2dac2e84de8080731734d176732b997cfa5126"
+source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#374039c2b466c2906a2f4515069d43f8299a32b6"
 dependencies = [
  "fuel-types",
  "serde",
@@ -2222,6 +2223,14 @@ name = "pest"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10f4872ae94d7b90ae48754df22fd42ad52ce740b8f370b03da4835417403e53"
+dependencies = [
+ "ucd-trie",
+]
+
+[[package]]
+name = "pest"
+version = "2.1.3"
+source = "git+https://github.com/sezna/pest.git?rev=0ee8d107923f8979897efbd12e16a0eb99ea98b3#0ee8d107923f8979897efbd12e16a0eb99ea98b3"
 dependencies = [
  "ucd-trie",
 ]

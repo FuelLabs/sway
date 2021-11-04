@@ -1,27 +1,20 @@
 use super::*;
 
-use crate::parse_tree::CallPath;
-use crate::semantic_analysis::ast_node::TypedStructExpressionField;
-use crate::span::Span;
-use crate::types::{MaybeResolvedType, ResolvedType};
 use crate::{
-    parse_tree::Visibility,
-    semantic_analysis::ast_node::{
-        TypedAbiDeclaration, TypedExpressionVariant, TypedReturnStatement, TypedStructDeclaration,
-        TypedTraitDeclaration,
-    },
-    CompileError, Ident, TreeType,
-};
-use crate::{
+    parse_tree::{CallPath, Visibility},
     semantic_analysis::{
         ast_node::{
-            TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration, TypedEnumDeclaration,
-            TypedExpression, TypedFunctionDeclaration, TypedReassignment, TypedVariableDeclaration,
-            TypedWhileLoop,
+            TypedAbiDeclaration, TypedCodeBlock, TypedConstantDeclaration, TypedDeclaration,
+            TypedEnumDeclaration, TypedExpression, TypedExpressionVariant,
+            TypedFunctionDeclaration, TypedReassignment, TypedReturnStatement,
+            TypedStructDeclaration, TypedStructExpressionField, TypedTraitDeclaration,
+            TypedVariableDeclaration, TypedWhileLoop,
         },
         TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
-    CompileWarning, Warning,
+    span::Span,
+    type_engine::{resolve_type, TypeInfo},
+    CompileError, CompileWarning, Ident, TreeType, Warning,
 };
 use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
@@ -425,7 +418,7 @@ fn connect_struct_declaration<'sc>(
     // of the field names
     graph
         .namespace
-        .insert_struct(name.clone(), entry_node, field_nodes);
+        .insert_struct(name.primary_name.to_string(), entry_node, field_nodes);
 }
 
 /// Implementations of traits are top-level things that are not conditional, so
@@ -552,7 +545,7 @@ fn connect_typed_fn_decl<'sc>(
     fn_decl: &TypedFunctionDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
-    _span: Span<'sc>,
+    span: Span<'sc>,
     exit_node: Option<NodeIndex>,
     tree_type: TreeType,
 ) -> Result<(), CompileError<'sc>> {
@@ -568,10 +561,14 @@ fn connect_typed_fn_decl<'sc>(
         graph.add_edge(fn_exit_node, exit_node, "".into());
     }
 
+    // not sure how correct it is to default to Unit here...
+    // I think types should all be resolved by now.
+    let ty = resolve_type(fn_decl.return_type, &span).unwrap_or(TypeInfo::Unit);
+
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
         exit_point: fn_exit_node,
-        return_type: fn_decl.return_type.clone(),
+        return_type: ty,
     };
 
     graph
@@ -784,7 +781,7 @@ fn connect_expression<'sc>(
             struct_name,
             fields,
         } => {
-            let decl = match graph.namespace.find_struct_decl(struct_name) {
+            let decl = match graph.namespace.find_struct_decl(struct_name.primary_name) {
                 Some(ix) => *ix,
                 None => {
                     graph.add_node(format!("External struct  {}", struct_name.primary_name).into())
@@ -821,15 +818,18 @@ fn connect_expression<'sc>(
         }
         StructFieldAccess {
             field_to_access,
+            field_to_access_span,
             resolved_type_of_parent,
             ..
         } => {
-            assert!(matches!(
-                resolved_type_of_parent,
-                MaybeResolvedType::Resolved(ResolvedType::Struct { .. })
-            ));
+            let ty = resolve_type(*resolved_type_of_parent, &field_to_access_span)
+                .unwrap_or(TypeInfo::Unit);
+
+            let resolved_type_of_parent = ty;
+
+            assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
             let resolved_type_of_parent = match resolved_type_of_parent {
-                MaybeResolvedType::Resolved(ResolvedType::Struct { name, .. }) => name.clone(),
+                TypeInfo::Struct { name, .. } => name.clone(),
                 _ => panic!("Called subfield on a non-struct"),
             };
             let field_name = &field_to_access.name;
@@ -845,7 +845,7 @@ fn connect_expression<'sc>(
             let this_ix = graph.add_node(
                 format!(
                     "Struct field access: {}.{}",
-                    resolved_type_of_parent.primary_name, field_name.primary_name
+                    resolved_type_of_parent, field_name
                 )
                 .into(),
             );

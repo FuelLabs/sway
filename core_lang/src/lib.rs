@@ -13,6 +13,7 @@ pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
 mod span;
+pub(crate) mod type_engine;
 
 pub use crate::parse_tree::*;
 pub use crate::parser::{HllParser, Rule};
@@ -33,7 +34,7 @@ pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-pub use types::TypeInfo;
+pub use type_engine::TypeInfo;
 
 // todo rename to language name
 #[derive(Debug)]
@@ -46,9 +47,6 @@ pub struct HllParseTree<'sc> {
 
 #[derive(Debug)]
 pub struct HllTypedParseTree<'sc> {
-    contract_ast: Option<TypedParseTree<'sc>>,
-    script_ast: Option<TypedParseTree<'sc>>,
-    predicate_ast: Option<TypedParseTree<'sc>>,
     pub library_exports: LibraryExports<'sc>,
 }
 
@@ -751,7 +749,6 @@ fn test_basic_prog() {
     "#,
         None,
     );
-    dbg!(&prog);
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     prog.unwrap(&mut warnings, &mut errors);
@@ -789,7 +786,6 @@ fn test_unary_ordering() {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     let prog = prog.unwrap(&mut warnings, &mut errors);
-    dbg!(&prog);
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
     if let AstNode {
