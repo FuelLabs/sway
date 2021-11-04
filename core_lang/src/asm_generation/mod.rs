@@ -108,11 +108,7 @@ impl<'sc> RealizedAbstractInstructionSet<'sc> {
             .map(|op| {
                 (
                     op.clone(),
-                    op.opcode
-                        .registers()
-                        .into_iter()
-                        .map(|x| x.clone())
-                        .collect(),
+                    op.opcode.registers().into_iter().cloned().collect(),
                 )
             })
             .collect::<Vec<_>>();
@@ -165,7 +161,9 @@ impl<'sc> AbstractInstructionSet<'sc> {
             buf.push(self.ops[i].clone());
         }
         // the last item cannot sequentially jump by definition so we add it in here
-        self.ops.last().map(|x| buf.push(x.clone()));
+        if let Some(x) = self.ops.last() {
+            buf.push(x.clone())
+        };
 
         // scan through the jumps and remove any labels that are unused
         // this could of course be N instead of 2N if i did this in the above for loop.
@@ -389,10 +387,7 @@ impl<'sc> DataSection<'sc> {
 
     /// Calculates the return type of the data held at a specific [DataId].
     pub(crate) fn type_of_data(&self, id: &DataId) -> Option<ResolvedType<'sc>> {
-        self.value_pairs
-            .iter()
-            .nth(id.0 as usize)
-            .map(|x| x.as_type())
+        self.value_pairs.get(id.0 as usize).map(|x| x.as_type())
     }
 
     /// When generating code, sometimes a hard-coded data pointer is needed to reference
@@ -436,7 +431,7 @@ impl fmt::Display for DataSection<'_> {
                 Literal::Byte(b) => format!(".byte {:#08b}", b),
                 Literal::B256(b) => format!(
                     ".b256 0x{}",
-                    b.into_iter()
+                    b.iter()
                         .map(|x| format!("{:02x}", x))
                         .collect::<Vec<_>>()
                         .join("")
