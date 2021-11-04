@@ -1,14 +1,14 @@
 use crate::{Span, Token};
-use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
-use chumsky::{prelude::*, stream::Stream};
+
+use chumsky::{prelude::*};
 use generational_arena::Index;
-use std::{collections::HashMap, env, fmt, fs};
+
 
 pub(crate) struct Lexer {}
 
 impl Lexer {
     pub(crate) fn lex(
-        input: &str,
+        _input: &str,
         file_ix: Index,
     ) -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         // A parser for numbers

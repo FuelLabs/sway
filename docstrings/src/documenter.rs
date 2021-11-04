@@ -14,7 +14,7 @@ impl Documenter {
     }
 
     /// Create a new [Documenter] from a mapping of module names to their source code.
-    pub fn new(raw: impl Into<Vec<SourceCodeModule>>) -> Self {
+    pub fn new(_raw: impl Into<Vec<SourceCodeModule>>) -> Self {
         todo!()
     }
 }

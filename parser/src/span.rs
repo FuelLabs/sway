@@ -3,7 +3,7 @@
 use core::ops::Range;
 use generational_arena::{Arena, Index};
 use lazy_static::lazy_static;
-use std::iter::Iterator;
+
 use std::{path::PathBuf, sync::Mutex};
 
 lazy_static! {
@@ -19,7 +19,7 @@ fn insert_source(val: SourceFile) -> Index {
 }
 
 fn get_source(ix: Index) -> SourceFile {
-    let mut lock = SOURCES.lock().unwrap();
+    let lock = SOURCES.lock().unwrap();
     let val = (*lock
         .get(ix)
         .expect("Invariant breached: Arena index doesn't exist in arena."))
