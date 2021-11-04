@@ -38,12 +38,10 @@ impl Lexer {
         let ident = text::ident().map(|ident: String| match ident.as_str() {
             "fn" => Token::Fn,
             "let" => Token::Let,
-            "print" => Token::Print,
             "if" => Token::If,
             "else" => Token::Else,
             "true" => Token::Bool(true),
             "false" => Token::Bool(false),
-            "null" => Token::Null,
             _ => Token::Ident(ident),
         });
 

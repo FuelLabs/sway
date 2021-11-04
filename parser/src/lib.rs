@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 mod lexer;
 mod span;
 mod token;
