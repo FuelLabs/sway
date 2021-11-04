@@ -18,6 +18,7 @@ use crate::{
 };
 use either::Either;
 
+pub(crate) mod checks;
 pub(crate) mod compiler_constants;
 mod declaration;
 mod expression;
@@ -764,6 +765,13 @@ pub(crate) fn compile_ast_to_asm<'sc>(
     if build_config.print_finalized_asm {
         println!("{}", finalized_asm);
     }
+
+    check!(
+        super::check_invalid_opcodes(&finalized_asm),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     ok(finalized_asm, warnings, errors)
 }

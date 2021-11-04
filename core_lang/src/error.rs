@@ -741,6 +741,14 @@ pub enum CompileError<'sc> {
     },
     #[error("File {file_path} generates an infinite dependency cycle.")]
     InfiniteDependencies { file_path: String, span: Span<'sc> },
+    #[error("The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.")]
+    GMFromExternalContract { span: Span<'sc> },
+    #[error("The MINT opcode cannot be used in an external context.")]
+    MintFromExternalContext { span: Span<'sc> },
+    #[error("The BURN opcode cannot be used in an external context.")]
+    BurnFromExternalContext { span: Span<'sc> },
+    #[error("Contract storage cannot be used in an external context.")]
+    ContractStorageFromExternalContext { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -917,6 +925,10 @@ impl<'sc> CompileError<'sc> {
             RecursiveCall { span, .. } => span,
             RecursiveCallChain { span, .. } => span,
             InfiniteDependencies { span, .. } => span,
+            GMFromExternalContract { span, .. } => span,
+            MintFromExternalContext { span, .. } => span,
+            BurnFromExternalContext { span, .. } => span,
+            ContractStorageFromExternalContext { span, .. } => span,
         }
     }
 
