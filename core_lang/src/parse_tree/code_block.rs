@@ -8,7 +8,6 @@ use crate::{
     span, AstNode, AstNodeContent, Declaration,
 };
 use pest::iterators::Pair;
-use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct CodeBlock<'sc> {

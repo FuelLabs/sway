@@ -134,7 +134,6 @@ pub(crate) fn type_check_method_application<'sc>(
                             re_parse_expression(
                                 contract_address,
                                 build_config,
-                                &mut Default::default(),
                                 namespace,
                                 self_type,
                                 dead_code_graph,
@@ -210,7 +209,6 @@ pub(crate) fn type_check_method_application<'sc>(
                             re_parse_expression(
                                 contract_address,
                                 build_config,
-                                &mut Default::default(),
                                 namespace,
                                 self_type,
                                 dead_code_graph,
@@ -244,7 +242,6 @@ pub(crate) fn type_check_method_application<'sc>(
 fn re_parse_expression<'a>(
     contract_string: String,
     build_config: &BuildConfig,
-    docstrings: &mut HashMap<String, String>,
     namespace: &mut Namespace<'a>,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph<'a>,
@@ -280,7 +277,7 @@ fn re_parse_expression<'a>(
     };
 
     let contract_address = check!(
-        Expression::parse_from_pair(contract_pair, Some(build_config), docstrings),
+        Expression::parse_from_pair(contract_pair, Some(build_config)),
         return err(warnings, errors),
         warnings,
         errors

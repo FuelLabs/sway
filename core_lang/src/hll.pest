@@ -29,11 +29,11 @@ const_decl_keyword  =  {"const"}
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
 
-library      =  {"library" ~ library_name ~ ";" ~ (declaration|use_statement|include_statement)* }
+library      =  {"library" ~ library_name ~ ";" ~ (non_var_decl|use_statement|include_statement)* }
 library_name =  {ident}
-contract     =  {"contract" ~ ";" ~ (declaration|use_statement|include_statement)*}
-script       =  {"script" ~ ";" ~ (declaration|use_statement|include_statement)*}
-predicate    =  {"predicate" ~ ";" ~ (declaration|use_statement|include_statement)*}
+contract     =  {"contract" ~ ";" ~ (non_var_decl|use_statement|include_statement)*}
+script       =  {"script" ~ ";" ~ (non_var_decl|use_statement|include_statement)*}
+predicate    =  {"predicate" ~ ";" ~ (non_var_decl|use_statement|include_statement)*}
 
 // including other files
 file_path         = { ident ~ ("/" ~ ident)* }
@@ -101,7 +101,8 @@ struct_expr_fields =  {struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name
 array_exp          =  {"[" ~ (expr ~ ("," ~ expr)*) ~ "]"}
 
 // declarations
-declaration               =  {(enum_decl|var_decl|fn_decl|trait_decl|abi_decl|struct_decl|reassignment|impl_trait|impl_self|const_decl)}
+declaration               =  {(non_var_decl|var_decl|reassignment)}
+non_var_decl              =  {(enum_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self|const_decl)}
 var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
 fn_decl                   =  {visibility ~ fn_signature ~ code_block}

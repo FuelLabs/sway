@@ -40,6 +40,85 @@ pub enum Declaration<'sc> {
     ConstantDeclaration(ConstantDeclaration<'sc>),
 }
 impl<'sc> Declaration<'sc> {
+    pub(crate) fn parse_non_var_from_pair(
+        decl: Pair<'sc, Rule>,
+        config: Option<&BuildConfig>,
+    ) -> CompileResult<'sc, Self> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        let mut pair = decl.clone().into_inner();
+        let decl_inner = pair.next().unwrap();
+        let parsed_declaration = match decl_inner.as_rule() {
+            Rule::non_var_decl => check!(
+                Self::parse_non_var_from_pair(decl_inner, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            Rule::fn_decl => {
+                let fn_decl = check!(
+                    FunctionDeclaration::parse_from_pair(decl_inner, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                Declaration::FunctionDeclaration(fn_decl)
+            }
+            Rule::trait_decl => Declaration::TraitDeclaration(check!(
+                TraitDeclaration::parse_from_pair(decl_inner, config,),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
+            Rule::struct_decl => {
+                let struct_decl = check!(
+                    StructDeclaration::parse_from_pair(decl_inner, config,),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                Declaration::StructDeclaration(struct_decl)
+            }
+            Rule::enum_decl => {
+                let enum_decl = check!(
+                    EnumDeclaration::parse_from_pair(decl_inner, config,),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                Declaration::EnumDeclaration(enum_decl)
+            }
+            Rule::impl_trait => Declaration::ImplTrait(check!(
+                ImplTrait::parse_from_pair(decl_inner, config,),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
+            Rule::impl_self => Declaration::ImplSelf(check!(
+                ImplSelf::parse_from_pair(decl_inner, config,),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
+            Rule::abi_decl => {
+                let abi_decl = check!(
+                    AbiDeclaration::parse_from_pair(decl_inner, config,),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                Declaration::AbiDeclaration(abi_decl)
+            }
+            Rule::const_decl => Declaration::ConstantDeclaration(check!(
+                ConstantDeclaration::parse_from_pair(decl_inner, config,),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
+            a => unreachable!("declarations don't have any other sub-types: {:?}", a),
+        };
+        ok(parsed_declaration, warnings, errors)
+    }
     pub(crate) fn parse_from_pair(
         decl: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
@@ -75,14 +154,14 @@ impl<'sc> Declaration<'sc> {
                     _ => None,
                 };
                 let type_ascription = if let Some(ascription) = type_ascription {
-                    Some(check!(
+                    check!(
                         TypeInfo::parse_from_pair(ascription, config.clone()),
                         TypeInfo::Unit,
                         warnings,
                         errors
-                    ))
+                    )
                 } else {
-                    None
+                    TypeInfo::Unknown
                 };
                 let body = check!(
                     Expression::parse_from_pair(maybe_body, config.clone()),
@@ -114,6 +193,12 @@ impl<'sc> Declaration<'sc> {
                 warnings,
                 errors
             )),
+            Rule::non_var_decl => check!(
+                Self::parse_non_var_from_pair(decl_inner, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
             Rule::enum_decl => Declaration::EnumDeclaration(check!(
                 EnumDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),

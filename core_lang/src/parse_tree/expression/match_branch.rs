@@ -4,7 +4,6 @@ use crate::parser::Rule;
 use crate::span;
 use crate::CodeBlock;
 use pest::iterators::Pair;
-use std::collections::HashMap;
 
 use super::{Expression, MatchCondition};
 

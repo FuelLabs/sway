@@ -551,9 +551,10 @@ fn parse_root_from_pairs<'sc>(
         let mut library_name = None;
         for pair in input {
             match pair.as_rule() {
-                Rule::declaration => {
+                Rule::non_var_decl => {
+                    let decl = pair.clone().into_inner();
                     let decl = check!(
-                        Declaration::parse_from_pair(pair.clone(), config),
+                        Declaration::parse_non_var_from_pair(pair.clone(), config),
                         continue,
                         warnings,
                         errors
