@@ -1,5 +1,6 @@
+use crate::parser::Rule;
 use crate::span::Span;
-use crate::{parser::Rule, types::MaybeResolvedType};
+use crate::type_engine::{IntegerBits, TypeInfo};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
 use line_col::LineColLookup;
@@ -66,6 +67,23 @@ pub struct CompileResult<'sc, T> {
     pub errors: Vec<CompileError<'sc>>,
 }
 
+impl<'sc, T> From<Result<T, TypeError<'sc>>> for CompileResult<'sc, T> {
+    fn from(o: Result<T, TypeError<'sc>>) -> Self {
+        match o {
+            Ok(o) => CompileResult {
+                value: Some(o),
+                warnings: vec![],
+                errors: vec![],
+            },
+            Err(e) => CompileResult {
+                value: None,
+                warnings: vec![],
+                errors: vec![e.into()],
+            },
+        }
+    }
+}
+
 impl<'sc, T> CompileResult<'sc, T> {
     pub fn ok(
         mut self,
@@ -81,6 +99,20 @@ impl<'sc, T> CompileResult<'sc, T> {
         match self.value {
             None => err(self.warnings, self.errors),
             Some(value) => ok(f(value), self.warnings, self.errors),
+        }
+    }
+
+    pub fn flat_map<U, F: FnOnce(T) -> CompileResult<'sc, U>>(self, f: F) -> CompileResult<'sc, U> {
+        match self.value {
+            None => err(self.warnings, self.errors),
+            Some(value) => {
+                let res = f(value);
+                CompileResult {
+                    value: res.value,
+                    warnings: [self.warnings, res.warnings].concat(),
+                    errors: [self.errors, res.errors].concat(),
+                }
+            }
         }
     }
 
@@ -194,11 +226,11 @@ pub enum Warning<'sc> {
         name: &'sc str,
     },
     LossOfPrecision {
-        initial_type: Box<MaybeResolvedType<'sc>>,
-        cast_to: Box<MaybeResolvedType<'sc>>,
+        initial_type: IntegerBits,
+        cast_to: IntegerBits,
     },
     UnusedReturnValue {
-        r#type: MaybeResolvedType<'sc>,
+        r#type: TypeInfo,
     },
     SimilarMethodFound {
         lib: &'sc str,
@@ -277,11 +309,10 @@ impl<'sc> fmt::Display for Warning<'sc> {
             LossOfPrecision {
                 initial_type,
                 cast_to,
-            } => write!(
-                f,
-                "This cast, from type {} to type {}, will lose precision.",
-                initial_type.friendly_type_str(),
-                cast_to.friendly_type_str()
+            } => write!(f,
+                "This cast, from integer type of width {} to integer type of width {}, will lose precision.",
+                initial_type.friendly_str(),
+                cast_to.friendly_str()
             ),
             UnusedReturnValue { r#type } => write!(
                 f,
@@ -455,7 +486,7 @@ pub enum CompileError<'sc> {
          {fn_name}<{comma_separated_generic_params}>({args}) -> ... `"
     )]
     TypeParameterNotInTypeScope {
-        name: &'sc str,
+        name: String,
         span: Span<'sc>,
         comma_separated_generic_params: String,
         fn_name: &'sc str,
@@ -558,11 +589,11 @@ pub enum CompileError<'sc> {
     FieldNotFound {
         field_name: &'sc str,
         available_fields: String,
-        struct_name: &'sc str,
+        struct_name: String,
         span: Span<'sc>,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { span: Span<'sc>, name: &'sc str },
+    SymbolNotFound { span: Span<'sc>, name: String },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -739,6 +770,10 @@ pub enum CompileError<'sc> {
         call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
         span: Span<'sc>,
     },
+    #[error(
+        "The size of this type is not known. Try putting it on the heap or changing the type."
+    )]
+    TypeWithUnknownSize { span: Span<'sc> },
     #[error("File {file_path} generates an infinite dependency cycle.")]
     InfiniteDependencies { file_path: String, span: Span<'sc> },
 }
@@ -761,6 +796,8 @@ pub enum TypeError<'sc> {
         help_text: String,
         span: Span<'sc>,
     },
+    #[error("This type is not known. Try annotating it with a type annotation.")]
+    UnknownType { span: Span<'sc> },
 }
 
 impl<'sc> TypeError<'sc> {
@@ -768,6 +805,7 @@ impl<'sc> TypeError<'sc> {
         use TypeError::*;
         match self {
             MismatchedType { span, .. } => span,
+            UnknownType { span } => span,
         }
     }
 }
@@ -916,6 +954,7 @@ impl<'sc> CompileError<'sc> {
             ArgumentParameterTypeMismatch { span, .. } => span,
             RecursiveCall { span, .. } => span,
             RecursiveCallChain { span, .. } => span,
+            TypeWithUnknownSize { span, .. } => span,
             InfiniteDependencies { span, .. } => span,
         }
     }

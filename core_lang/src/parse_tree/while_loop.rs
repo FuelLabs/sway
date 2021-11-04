@@ -49,7 +49,6 @@ impl<'sc> WhileLoop<'sc> {
             CodeBlock {
                 contents: Default::default(),
                 whole_block_span,
-                scope: Default::default()
             },
             warnings,
             errors

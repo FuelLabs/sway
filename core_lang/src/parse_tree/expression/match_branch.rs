@@ -12,6 +12,8 @@ use super::{Expression, MatchCondition};
 pub struct MatchBranch<'sc> {
     pub(crate) condition: MatchCondition<'sc>,
     pub(crate) result: Expression<'sc>,
+    #[allow(dead_code)]
+    // this span may be used for errors in the future, although it is not right now.
     pub(crate) span: span::Span<'sc>,
 }
 
@@ -96,7 +98,6 @@ impl<'sc> MatchBranch<'sc> {
                         CodeBlock {
                             contents: Vec::new(),
                             whole_block_span: span.clone(),
-                            scope: HashMap::default()
                         },
                         warnings,
                         errors

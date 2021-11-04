@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::parse_tree::declaration::TypeParameter;
 use crate::parser::Rule;
 use crate::span::Span;
-use crate::types::TypeInfo;
+use crate::type_engine::TypeInfo;
 use crate::{error::*, Ident};
 use inflector::cases::classcase::is_class_case;
 use inflector::cases::snakecase::is_snake_case;
@@ -22,7 +22,7 @@ pub struct StructDeclaration<'sc> {
 #[derive(Debug, Clone)]
 pub(crate) struct StructField<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) r#type: TypeInfo,
     pub(crate) span: Span<'sc>,
 }
 

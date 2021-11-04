@@ -2,14 +2,14 @@ use super::{FunctionDeclaration, TypeParameter};
 use crate::build_config::BuildConfig;
 use crate::parse_tree::CallPath;
 use crate::span::Span;
-use crate::{error::*, parser::Rule, types::TypeInfo};
+use crate::{error::*, parser::Rule, type_engine::TypeInfo};
 use pest::iterators::Pair;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct ImplTrait<'sc> {
     pub(crate) trait_name: CallPath<'sc>,
-    pub(crate) type_implementing_for: TypeInfo<'sc>,
+    pub(crate) type_implementing_for: TypeInfo,
     pub(crate) type_implementing_for_span: Span<'sc>,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
     pub functions: Vec<FunctionDeclaration<'sc>>,
@@ -22,12 +22,15 @@ pub struct ImplTrait<'sc> {
 /// like `impl MyType { fn foo { .. } }`
 #[derive(Debug, Clone)]
 pub struct ImplSelf<'sc> {
-    pub(crate) type_implementing_for: TypeInfo<'sc>,
+    pub(crate) type_implementing_for: TypeInfo,
     pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
     pub functions: Vec<FunctionDeclaration<'sc>>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span<'sc>,
+    #[allow(dead_code)]
+    // these spans may be used for errors in the future, although it is not right now.
     pub(crate) type_arguments_span: Span<'sc>,
+    #[allow(dead_code)]
     pub(crate) type_name_span: Span<'sc>,
 }
 
