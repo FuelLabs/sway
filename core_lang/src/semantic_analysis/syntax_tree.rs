@@ -4,10 +4,7 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::{
-    error::*,
-    types::{MaybeResolvedType, ResolvedType},
-};
+use crate::{error::*, type_engine::*};
 use crate::{AstNode, AstNodeContent, ParseTree};
 use std::collections::{HashMap, HashSet};
 
@@ -170,11 +167,11 @@ impl<'sc> TypedParseTree<'sc> {
                 TypedAstNode::type_check(
                     node.clone(),
                     namespace,
-                    None,
+                    crate::type_engine::insert_type(TypeInfo::Unknown),
                     "",
                     // TODO only allow impl traits on contract trees, do something else
                     // for other tree types
-                    &MaybeResolvedType::Resolved(ResolvedType::Contract),
+                    crate::type_engine::insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                     dependency_graph,
@@ -216,7 +213,7 @@ impl<'sc> TypedParseTree<'sc> {
                 // itself.
                 TypedAstNodeContent::Declaration(TypedDeclaration::ImplTrait {
                     methods,
-                    type_implementing_for: MaybeResolvedType::Resolved(ResolvedType::Contract),
+                    type_implementing_for: TypeInfo::Contract,
                     ..
                 }) => abi_entries.append(&mut methods.clone()),
                 // XXX we're excluding the above ABI methods, is that OK?
@@ -239,8 +236,8 @@ impl<'sc> TypedParseTree<'sc> {
                     ));
                 }
                 let main_func = &mains[0];
-                match main_func.return_type {
-                    MaybeResolvedType::Resolved(ResolvedType::Boolean) => (),
+                match look_up_type_id(main_func.return_type) {
+                    TypeInfo::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
                     )),

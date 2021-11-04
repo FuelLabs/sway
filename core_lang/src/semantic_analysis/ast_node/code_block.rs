@@ -1,7 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::types::MaybeResolvedType;
+
 use crate::CodeBlock;
 use std::collections::{HashMap, HashSet};
 
@@ -12,21 +12,17 @@ pub(crate) struct TypedCodeBlock<'sc> {
 }
 
 impl<'sc> TypedCodeBlock<'sc> {
-    pub(crate) fn replace_self_types(&self, _self_type: &MaybeResolvedType<'sc>) -> Self {
-        // TODO recursively replace all self types in the block
-        self.clone()
-    }
     pub(crate) fn type_check(
         other: CodeBlock<'sc>,
         namespace: &Namespace<'sc>,
         // this is for the return or implicit return
-        type_annotation: Option<MaybeResolvedType<'sc>>,
+        type_annotation: TypeId,
         help_text: impl Into<String> + Clone,
-        self_type: &MaybeResolvedType<'sc>,
+        self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-    ) -> CompileResult<'sc, (Self, Option<MaybeResolvedType<'sc>>)> {
+    ) -> CompileResult<'sc, (Self, TypeId)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -61,7 +57,7 @@ impl<'sc> TypedCodeBlock<'sc> {
             .flatten();
 
         // find the implicit return, if any, and use it as the code block's return type.
-        // The fact that there is at most one implicit return is an invariant held by the core_lang.
+        // The fact that there is at most one implicit return is an invariant held by the parser.
         let return_type = evaluated_contents.iter().find_map(|x| match x {
             TypedAstNode {
                 content:
@@ -70,30 +66,32 @@ impl<'sc> TypedCodeBlock<'sc> {
                         ..
                     }),
                 ..
-            } => Some(return_type.clone()),
+            } => Some(*return_type),
             _ => None,
         });
-        if let Some(ref return_type) = return_type {
-            if let Some(type_annotation) = type_annotation {
-                let convertability = return_type.is_convertible(
-                    &type_annotation,
-                    implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
-                    help_text,
-                );
-                match convertability {
-                    Ok(warning) => {
-                        if let Some(warning) = warning {
-                            warnings.push(CompileWarning {
-                                warning_content: warning,
-                                span: other.whole_block_span.clone(),
-                            });
-                        }
-                    }
-                    Err(err) => {
-                        errors.push(err.into());
+
+        if let Some(return_type) = return_type {
+            match crate::type_engine::unify_with_self(
+                return_type,
+                type_annotation,
+                self_type,
+                &implicit_return_span
+                    .clone()
+                    .unwrap_or(other.whole_block_span.clone()),
+            ) {
+                Ok(warning) => {
+                    if let Some(warning) = warning {
+                        warnings.push(CompileWarning {
+                            warning_content: warning,
+                            span: implicit_return_span.unwrap_or(other.whole_block_span.clone()),
+                        });
                     }
                 }
-            }
+                Err(e) => {
+                    errors.push(CompileError::TypeError(e));
+                }
+            };
+            // The annotation will result in a cast, so set the return type accordingly.
         }
 
         ok(
@@ -102,7 +100,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     contents: evaluated_contents,
                     whole_block_span: other.whole_block_span,
                 },
-                return_type,
+                return_type.unwrap_or_else(|| crate::type_engine::insert_type(TypeInfo::Unit)),
             ),
             warnings,
             errors,

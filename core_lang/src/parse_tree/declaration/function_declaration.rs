@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parse_tree::declaration::TypeParameter;
 use crate::span::Span;
-use crate::types::TypeInfo;
+use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
@@ -30,7 +30,7 @@ pub struct FunctionDeclaration<'sc> {
     pub body: CodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub span: Span<'sc>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type: TypeInfo,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) return_type_span: Span<'sc>,
 }
@@ -182,7 +182,6 @@ impl<'sc> FunctionDeclaration<'sc> {
             crate::CodeBlock {
                 contents: Vec::new(),
                 whole_block_span,
-                scope: Default::default()
             },
             warnings,
             errors
@@ -210,7 +209,7 @@ impl<'sc> FunctionDeclaration<'sc> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FunctionParameter<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) r#type: TypeInfo,
     pub(crate) type_span: Span<'sc>,
 }
 

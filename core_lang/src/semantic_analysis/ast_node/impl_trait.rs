@@ -2,12 +2,12 @@ use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
 use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::span::Span;
+use crate::type_engine::{
+    insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeInfo,
+};
 use crate::{
-    build_config::BuildConfig,
-    control_flow_analysis::ControlFlowGraph,
-    error::*,
-    types::{MaybeResolvedType, PartiallyResolvedType, ResolvedType},
-    CallPath, Ident,
+    build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*,
+    type_engine::TypeId, CallPath, Ident,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -29,14 +29,15 @@ pub(crate) fn implementation_of_trait<'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
+    let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
+    let type_implementing_for = look_up_type_id(type_implementing_for);
+    let type_implementing_for_id = insert_type(type_implementing_for.clone());
     if !type_arguments.is_empty() {
         errors.push(CompileError::Internal(
             "Where clauses are not supported yet.",
             type_arguments[0].clone().name_ident.span,
         ));
     }
-    let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
-    let self_type = type_implementing_for.clone();
     match namespace
         .get_call_path(&trait_name)
         .ok(&mut warnings, &mut errors)
@@ -59,11 +60,12 @@ pub(crate) fn implementation_of_trait<'sc>(
                     &tr.name,
                     &tr.type_parameters,
                     namespace,
-                    &self_type,
+                    type_implementing_for_id,
                     build_config,
                     dead_code_graph,
                     &block_span,
-                    &type_implementing_for,
+                    type_implementing_for_id,
+                    &type_implementing_for_span,
                     Mode::NonAbi,
                     dependency_graph
                 ),
@@ -76,7 +78,13 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                self_type,
+                match resolve_type(type_implementing_for_id, &type_implementing_for_span) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        errors.push(e.into());
+                        return err(warnings, errors);
+                    }
+                },
                 functions_buf.clone(),
             );
             ok(
@@ -95,7 +103,7 @@ pub(crate) fn implementation_of_trait<'sc>(
             // there are no type arguments here because we don't support generic types
             // in contract ABIs yet (or ever?) due to the complexity of communicating
             // the ABI layout in the descriptor file.
-            if type_implementing_for != MaybeResolvedType::Resolved(ResolvedType::Contract) {
+            if type_implementing_for != TypeInfo::Contract {
                 errors.push(CompileError::ImplAbiForNonContract {
                     span: type_implementing_for_span.clone(),
                     ty: type_implementing_for.friendly_type_str(),
@@ -111,11 +119,12 @@ pub(crate) fn implementation_of_trait<'sc>(
                     // ABIs don't have type parameters
                     &[],
                     namespace,
-                    &self_type,
+                    type_implementing_for_id,
                     build_config,
                     dead_code_graph,
                     &block_span,
-                    &type_implementing_for,
+                    type_implementing_for_id,
+                    &type_implementing_for_span,
                     Mode::ImplAbiFn,
                     dependency_graph
                 ),
@@ -128,7 +137,7 @@ pub(crate) fn implementation_of_trait<'sc>(
 
             namespace.insert_trait_implementation(
                 trait_name.clone(),
-                self_type,
+                look_up_type_id(type_implementing_for_id),
                 functions_buf.clone(),
             );
             ok(
@@ -165,17 +174,19 @@ fn type_check_trait_implementation<'sc>(
     trait_name: &Ident<'sc>,
     type_arguments: &[TypeParameter<'sc>],
     namespace: &mut Namespace<'sc>,
-    self_type: &MaybeResolvedType<'sc>,
+    _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     block_span: &Span<'sc>,
-    type_implementing_for: &MaybeResolvedType<'sc>,
+    type_implementing_for: TypeId,
+    type_implementing_for_span: &Span<'sc>,
     mode: Mode,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
     let mut warnings = vec![];
+    let self_type_id = type_implementing_for;
     // this list keeps track of the remaining functions in the
     // interface surface that still need to be implemented for the
     // trait to be fully implemented
@@ -188,13 +199,13 @@ fn type_check_trait_implementation<'sc>(
         // i.e. fn add(self, other: u64) -> Self becomes fn
         // add(self: u64, other: u64) -> u64
 
-        let mut fn_decl = check!(
+        let fn_decl = check!(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
                 namespace,
-                None,
+                insert_type(TypeInfo::Unknown),
                 "",
-                self_type,
+                type_implementing_for,
                 build_config,
                 dead_code_graph,
                 mode,
@@ -204,6 +215,7 @@ fn type_check_trait_implementation<'sc>(
             warnings,
             errors
         );
+        let mut fn_decl = fn_decl.replace_self_types(self_type_id);
         // remove this function from the "checklist"
         let ix_of_thing_to_remove = match function_checklist
             .iter()
@@ -232,7 +244,7 @@ fn type_check_trait_implementation<'sc>(
                  name,
                  parameters,
                  return_type,
-                 return_type_span,
+                 return_type_span: _,
              }| {
                 if fn_decl.name == *name {
                     if fn_decl.parameters.len() != parameters.len() {
@@ -254,43 +266,28 @@ fn type_check_trait_implementation<'sc>(
                             let mut errors = vec![];
                             // TODO use trait constraints as part of the type here to
                             // implement trait constraint solver */
-                            if let MaybeResolvedType::Partial(PartiallyResolvedType::Generic {
-                                ..
-                            }) = fn_decl_param.r#type
-                            {
-                                match trait_param.r#type {
-                                    MaybeResolvedType::Partial(
-                                        PartiallyResolvedType::Generic { .. },
-                                    ) => (),
-                                    _ => errors.push(CompileError::MismatchedTypeInTrait {
-                                        span: trait_param.type_span.clone(),
-                                        given: trait_param.r#type.friendly_type_str(),
-                                        expected: fn_decl_param.r#type.friendly_type_str(),
-                                    }),
-                                }
-                            } else {
-                                let fn_decl_param_type = check!(
-                                    fn_decl_param
-                                        .r#type
-                                        .force_resolution(self_type, &fn_decl_param.type_span),
-                                    return Some(errors),
-                                    warnings,
-                                    errors
-                                );
-                                let trait_param_type = check!(
-                                    trait_param
-                                        .r#type
-                                        .force_resolution(self_type, &fn_decl_param.type_span),
-                                    return Some(errors),
-                                    warnings,
-                                    errors
-                                );
+                            let fn_decl_param_type = fn_decl_param.r#type;
+                            let trait_param_type = trait_param.r#type;
 
-                                if fn_decl_param_type != trait_param_type {
+                            match crate::type_engine::unify_with_self(
+                                fn_decl_param_type,
+                                trait_param_type,
+                                self_type_id,
+                                &trait_param.type_span,
+                            ) {
+                                Ok(warn) => {
+                                    if let Some(warn) = warn {
+                                        warnings.push(CompileWarning {
+                                            warning_content: warn,
+                                            span: fn_decl_param.type_span.clone(),
+                                        });
+                                    }
+                                }
+                                Err(_e) => {
                                     errors.push(CompileError::MismatchedTypeInTrait {
                                         span: trait_param.type_span.clone(),
-                                        given: trait_param.r#type.friendly_type_str(),
-                                        expected: fn_decl_param.r#type.friendly_type_str(),
+                                        given: fn_decl_param_type.friendly_type_str(),
+                                        expected: trait_param_type.friendly_type_str(),
                                     });
                                 }
                             }
@@ -303,18 +300,28 @@ fn type_check_trait_implementation<'sc>(
                     {
                         errors.append(&mut maybe_err);
                     }
-                    let return_type = check!(
-                        return_type.force_resolution(self_type, return_type_span),
-                        ResolvedType::ErrorRecovery,
-                        warnings,
-                        errors
-                    );
-                    if fn_decl.return_type != MaybeResolvedType::Resolved(return_type.clone()) {
-                        errors.push(CompileError::MismatchedTypeInTrait {
-                            span: fn_decl.return_type_span.clone(),
-                            expected: return_type.friendly_type_str(),
-                            given: fn_decl.return_type.friendly_type_str(),
-                        });
+
+                    match crate::type_engine::unify_with_self(
+                        *return_type,
+                        fn_decl.return_type,
+                        self_type_id,
+                        &fn_decl.return_type_span,
+                    ) {
+                        Ok(warn) => {
+                            if let Some(warn) = warn {
+                                warnings.push(CompileWarning {
+                                    warning_content: warn,
+                                    span: fn_decl.return_type_span.clone(),
+                                });
+                            }
+                        }
+                        Err(_e) => {
+                            errors.push(CompileError::MismatchedTypeInTrait {
+                                span: fn_decl.return_type_span.clone(),
+                                expected: return_type.friendly_type_str(),
+                                given: fn_decl.return_type.friendly_type_str(),
+                            });
+                        }
                     }
                     if errors.is_empty() {
                         None
@@ -341,7 +348,13 @@ fn type_check_trait_implementation<'sc>(
             prefixes: vec![],
             suffix: trait_name.clone(),
         },
-        type_implementing_for.clone(),
+        match resolve_type(type_implementing_for, &type_implementing_for_span) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e.into());
+                return err(warnings, errors);
+            }
+        },
         functions_buf.clone(),
     );
     for method in methods {
@@ -353,10 +366,10 @@ fn type_check_trait_implementation<'sc>(
         let method = check!(
             TypedFunctionDeclaration::type_check(
                 method.clone(),
-                &local_namespace,
-                None,
+                &mut local_namespace,
+                crate::type_engine::insert_type(TypeInfo::Unknown),
                 "",
-                self_type,
+                type_implementing_for,
                 build_config,
                 dead_code_graph,
                 mode,
@@ -366,7 +379,7 @@ fn type_check_trait_implementation<'sc>(
             warnings,
             errors
         );
-        let fn_decl = method.replace_self_types(type_implementing_for);
+        let fn_decl = method.replace_self_types(self_type_id);
         functions_buf.push(fn_decl);
     }
 

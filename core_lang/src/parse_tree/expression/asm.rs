@@ -7,14 +7,14 @@ use pest::iterators::Pair;
 use std::collections::HashMap;
 
 use super::Expression;
-use crate::types::IntegerBits;
+use crate::type_engine::IntegerBits;
 
 #[derive(Debug, Clone)]
 pub struct AsmExpression<'sc> {
     pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
     pub(crate) body: Vec<AsmOp<'sc>>,
     pub(crate) returns: Option<(AsmRegister, Span<'sc>)>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type: TypeInfo,
     pub(crate) whole_block_span: Span<'sc>,
 }
 

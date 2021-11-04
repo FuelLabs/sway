@@ -1,13 +1,13 @@
 use super::*;
 use crate::span::Span;
-use crate::{asm_lang::*, parse_tree::CallPath};
 use crate::{
-    parse_tree::Literal,
+    asm_lang::*,
+    parse_tree::{CallPath, Literal},
     semantic_analysis::{
         ast_node::{TypedAsmRegisterDeclaration, TypedCodeBlock, TypedExpressionVariant},
         TypedExpression,
     },
-    types::{MaybeResolvedType, ResolvedType},
+    type_engine::look_up_type_id,
 };
 
 mod contract_call;
@@ -229,7 +229,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
-                _ if exp.return_type == MaybeResolvedType::Resolved(ResolvedType::Unit) => (),
+                _ if look_up_type_id(exp.return_type) == TypeInfo::Unit => (),
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),
@@ -252,11 +252,12 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             resolved_type_of_parent,
             prefix,
             field_to_access,
+            field_to_access_span,
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            field_to_access,
-            resolved_type_of_parent,
+            &field_to_access.into_typed_struct_field(field_to_access_span),
+            *resolved_type_of_parent,
             namespace,
             register_sequencer,
             return_register,

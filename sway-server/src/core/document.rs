@@ -8,7 +8,9 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct TextDocument {
+    #[allow(dead_code)]
     language_id: String,
+    #[allow(dead_code)]
     version: i32,
     uri: String,
     content: Rope,
