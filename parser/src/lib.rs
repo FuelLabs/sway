@@ -3,11 +3,5 @@ mod lexer;
 mod span;
 mod token;
 
-
-
-
-
-
-
 pub(crate) use span::*;
 pub(crate) use token::*;

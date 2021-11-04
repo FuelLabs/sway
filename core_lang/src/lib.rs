@@ -22,7 +22,7 @@ pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;

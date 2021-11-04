@@ -50,9 +50,7 @@ impl<'sc> AbiDeclaration<'sc> {
                         warnings,
                         errors
                     );
-                    let fn_sig_name = fn_sig.name.primary_name;
                     interface_surface.push(fn_sig);
-
                 }
                 Rule::fn_decl => methods.push(check!(
                     FunctionDeclaration::parse_from_pair(func, config),

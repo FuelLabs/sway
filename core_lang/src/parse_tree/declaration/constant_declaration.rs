@@ -6,8 +6,6 @@ use crate::error::{err, ok, CompileResult};
 use crate::parser::Rule;
 use pest::iterators::Pair;
 
-use std::collections::HashMap;
-
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration<'sc> {
     pub name: Ident<'sc>,

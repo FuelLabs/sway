@@ -1,8 +1,7 @@
 use crate::{Span, Token};
 
-use chumsky::{prelude::*};
+use chumsky::prelude::*;
 use generational_arena::Index;
-
 
 pub(crate) struct Lexer {}
 

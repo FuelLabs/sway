@@ -23,8 +23,8 @@ pub use variable_declaration::*;
 use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
-use pest::iterators::Pair;
 use crate::*;
+use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub enum Declaration<'sc> {
