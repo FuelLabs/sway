@@ -13,7 +13,6 @@ while_keyword       =  {"while"}
 match_keyword       =  {"match"}
 mut_keyword         =  {"mut"}
 assign              = _{"="}
-docstring_open      =  {"///"}
 line_comment_open   =  {"//"}
 block_comment_open  =  {"/*"}
 block_comment_close =  {"*/"}
@@ -30,11 +29,11 @@ const_decl_keyword  =  {"const"}
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
 
-library      =  {"library" ~ library_name ~ ";" ~ (non_var_decl|use_statement|include_statement)* }
+library      =  {"library" ~ library_name ~ ";" ~ (declaration|use_statement|include_statement)* }
 library_name =  {ident}
-contract     =  {"contract" ~ ";" ~ (non_var_decl|use_statement|include_statement)*}
-script       =  {"script" ~ ";" ~ (non_var_decl|use_statement|include_statement)*}
-predicate    =  {"predicate" ~ ";" ~ (non_var_decl|use_statement|include_statement)*}
+contract     =  {"contract" ~ ";" ~ (declaration|use_statement|include_statement)*}
+script       =  {"script" ~ ";" ~ (declaration|use_statement|include_statement)*}
+predicate    =  {"predicate" ~ ";" ~ (declaration|use_statement|include_statement)*}
 
 // including other files
 file_path         = { ident ~ ("/" ~ ident)* }
@@ -64,7 +63,7 @@ path_ident               =  {ident}
 
 // abi blocks and abi casting
 abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ expr ~ ")"}
-abi_decl = {docstring? ~ abi_keyword ~ abi_name ~ trait_methods}
+abi_decl = {abi_keyword ~ abi_name ~ trait_methods}
 abi_name = {ident}
 
 
@@ -102,11 +101,10 @@ struct_expr_fields =  {struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name
 array_exp          =  {"[" ~ (expr ~ ("," ~ expr)*) ~ "]"}
 
 // declarations
-declaration               =  {(non_var_decl|var_decl|reassignment)}
-non_var_decl              =  {(docstring|enum_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self|const_decl)}
+declaration               =  {(enum_decl|var_decl|fn_decl|trait_decl|abi_decl|struct_decl|reassignment|impl_trait|impl_self)}
 var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
-fn_decl                   =  {docstring? ~ visibility ~ fn_signature ~ code_block}
+fn_decl                   =  {visibility ~ fn_signature ~ code_block}
 fn_signature              =  {fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds?}
 var_name                  =  {ident}
 reassignment              =  {variable_reassignment | struct_field_reassignment}
@@ -118,11 +116,11 @@ visibility =  {"pub"?}
 
 struct_decl       =  {visibility ~ struct_keyword ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}"}
 struct_name       =  {ident}
-struct_fields     =  {docstring? ~ struct_field_name ~ ":" ~ type_name ~ ("," ~ docstring? ~ struct_field_name ~ ":" ~ type_name)* ~ ","?}
+struct_fields     =  {struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","?}
 struct_field_name =  {ident}
 // // enum declaration
 enum_decl         =  {enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}"}
-enum_fields       =  {docstring? ~ enum_field_name ~ ":" ~ type_name ~ ("," ~ docstring? ~ enum_field_name ~ ":" ~ type_name)* ~ ","?}
+enum_fields       =  {enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","?}
 enum_name         =  {ident}
 enum_field_name   =  {ident}
 
@@ -147,7 +145,7 @@ expr_statement   =  {expr ~ ";"}
 
 // traits
 trait_decl    =  {visibility ~ trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ trait_methods}
-trait_methods =  {"{" ~ (docstring? ~ fn_signature ~ ";")* ~ "}" ~ ("{" ~ docstring? ~ fn_decl* ~ "}")*}
+trait_methods =  {"{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{" ~ fn_decl* ~ "}")*}
 trait_name    =  {ident ~ (path_separator ~ ident)*}
 impl_trait    =  {impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
@@ -175,17 +173,16 @@ opcode                   =  {ident}
 control_flow = _{while_loop|return_statement}
 
 // boilerplate
-WHITESPACE        = _{(" "|"\t"|"\r"|"\n")+}
-COMMENT           = _{block_comment|line_comment}
-docstring         = @{docstring_open ~ (!("\r"|"\n") ~ ANY)*}
-block_comment     = @{block_comment_open ~ (!block_comment_close ~ ANY)* ~ block_comment_close}
-line_comment      = @{line_comment_open ~ (!"/") ~ (!("\r"|"\n") ~ ANY)*}
-char              = @{
+WHITESPACE     = _{(" "|"\t"|"\r"|"\n")+}
+COMMENT        = _{block_comment|line_comment}
+block_comment  = @{block_comment_open ~ (!block_comment_close ~ ANY)* ~ block_comment_close}
+line_comment   = @{line_comment_open ~ (!("\r"|"\n") ~ ANY)*}
+char           = @{
     !("\""|"\\") ~ ANY
   | "\\" ~ ("\""|"\\"|"/"|"b"|"f"|"n"|"r"|"t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-unit              =  {"(" ~ ")"}
-ident             = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")* }
-reserved_words    = @{(as_keyword|true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
+unit           =  {"(" ~ ")"}
+ident          = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")* }
+reserved_words = @{(true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
 

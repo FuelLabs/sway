@@ -19,7 +19,6 @@ impl<'sc> MatchBranch<'sc> {
     pub fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -45,7 +44,7 @@ impl<'sc> MatchBranch<'sc> {
         let condition = match condition.into_inner().next() {
             Some(e) => {
                 let expr = check!(
-                    Expression::parse_from_pair(e.clone(), config, docstrings),
+                    Expression::parse_from_pair(e.clone(), config),
                     Expression::Unit {
                         span: span::Span {
                             span: e.as_span(),
@@ -75,7 +74,7 @@ impl<'sc> MatchBranch<'sc> {
         };
         let result = match result.as_rule() {
             Rule::expr => check!(
-                Expression::parse_from_pair(result.clone(), config, docstrings),
+                Expression::parse_from_pair(result.clone(), config),
                 Expression::Unit {
                     span: span::Span {
                         span: result.as_span(),
@@ -92,7 +91,7 @@ impl<'sc> MatchBranch<'sc> {
                 };
                 Expression::CodeBlock {
                     contents: check!(
-                        CodeBlock::parse_from_pair(result, config, docstrings),
+                        CodeBlock::parse_from_pair(result, config),
                         CodeBlock {
                             contents: Vec::new(),
                             whole_block_span: span.clone(),

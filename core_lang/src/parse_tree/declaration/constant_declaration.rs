@@ -19,7 +19,6 @@ impl<'sc> ConstantDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, ConstantDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -44,7 +43,7 @@ impl<'sc> ConstantDeclaration<'sc> {
             )
         });
         let value = check!(
-            Expression::parse_from_pair_inner(maybe_value, config.clone(), docstrings),
+            Expression::parse_from_pair_inner(maybe_value, config.clone()),
             return err(warnings, errors),
             warnings,
             errors

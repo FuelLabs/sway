@@ -20,7 +20,6 @@ impl<'sc> VariableDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, VariableDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -53,7 +52,7 @@ impl<'sc> VariableDeclaration<'sc> {
             None
         };
         let body = check!(
-            Expression::parse_from_pair(maybe_body, config.clone(), docstrings),
+            Expression::parse_from_pair(maybe_body, config.clone()),
             return err(warnings, errors),
             warnings,
             errors

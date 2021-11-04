@@ -4,7 +4,6 @@ use crate::parser::Rule;
 use crate::span::Span;
 use crate::{Ident, TypeInfo};
 use pest::iterators::Pair;
-use std::collections::HashMap;
 
 use super::Expression;
 use crate::types::IntegerBits;
@@ -22,7 +21,6 @@ impl<'sc> AsmExpression<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let whole_block_span = Span {
@@ -35,7 +33,7 @@ impl<'sc> AsmExpression<'sc> {
         let _asm_keyword = iter.next();
         let asm_registers = iter.next().unwrap();
         let asm_registers = check!(
-            AsmRegisterDeclaration::parse_from_pair(asm_registers, config, docstrings),
+            AsmRegisterDeclaration::parse_from_pair(asm_registers, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -198,7 +196,6 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
     fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Vec<Self>> {
         let mut iter = pair.into_inner();
         let mut warnings = Vec::new();
@@ -212,7 +209,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
             // assigned to that register
             let initializer = if let Some(pair) = iter.next() {
                 Some(check!(
-                    Expression::parse_from_pair(pair, config, docstrings),
+                    Expression::parse_from_pair(pair, config),
                     return err(warnings, errors),
                     warnings,
                     errors
