@@ -73,6 +73,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "dependencies_parsing_error",
         "mut_error_message",
         "reassignment_to_non_variable_message",
+        "disallowed_gm",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
