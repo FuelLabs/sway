@@ -138,6 +138,12 @@ impl<'sc> Declaration<'sc> {
                 warnings,
                 errors
             )),
+            Rule::const_decl => Declaration::ConstantDeclaration(check!(
+                ConstantDeclaration::parse_from_pair(decl_inner, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
             Rule::abi_decl => Declaration::AbiDeclaration(check!(
                 AbiDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
