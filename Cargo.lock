@@ -1336,21 +1336,6 @@ dependencies = [
  "serde",
 ]
 
-[[package]]
-name = "fuel-vm"
-version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#409ce6241aa1a323c0ce44e8b3c7d484a55cda69"
-dependencies = [
- "fuel-asm",
- "fuel-storage",
- "fuel-tx",
- "fuel-types",
- "itertools",
- "secp256k1",
- "serde",
- "sha3",
- "tracing",
-]
 
 [[package]]
 name = "futures"
