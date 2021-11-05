@@ -6,8 +6,6 @@ use crate::error::{err, ok, CompileResult};
 use crate::parser::Rule;
 use pest::iterators::Pair;
 
-use std::collections::HashMap;
-
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration<'sc> {
     pub name: Ident<'sc>,
@@ -19,7 +17,6 @@ impl<'sc> ConstantDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, ConstantDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -46,7 +43,7 @@ impl<'sc> ConstantDeclaration<'sc> {
             })
             .unwrap_or(TypeInfo::Unknown);
         let value = check!(
-            Expression::parse_from_pair_inner(maybe_value, config.clone(), docstrings),
+            Expression::parse_from_pair_inner(maybe_value, config.clone()),
             return err(warnings, errors),
             warnings,
             errors

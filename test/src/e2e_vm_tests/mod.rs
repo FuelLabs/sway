@@ -47,7 +47,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("b256_ops", ProgramState::Return(100)),
         ("struct_field_access", ProgramState::Return(43)),
         ("bool_and_or", ProgramState::Return(42)),
-        ("doc_strings", ProgramState::Return(20)),
         ("neq_4_test", ProgramState::Return(0)),
         ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
