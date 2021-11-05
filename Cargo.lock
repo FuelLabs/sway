@@ -91,6 +91,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.3.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8fd72866655d1904d6b0997d0b07ba561047d070fbe29de039031c641b61217"
+dependencies = [
+ "const-random",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -128,6 +137,15 @@ name = "anyhow"
 version = "1.0.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee10e43ae4a853c0a3591d4e2ada1719e553be18199d9da9d4a83f5927c2f5c7"
+
+[[package]]
+name = "ariadne"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7080ae01b2f0c312065d4914cd0f0de045eb8832e9415b355106a6cff3073cb4"
+dependencies = [
+ "yansi",
+]
 
 [[package]]
 name = "arrayref"
@@ -604,6 +622,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "chumsky"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2d3efff85e8572b1c3fa0127706af58c4fff8458f8d9436d54b1e97573c7a3f"
+dependencies = [
+ "ahash",
+]
+
+[[package]]
 name = "cipher"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -647,6 +674,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30ed07550be01594c6026cff2a1d7fe9c8f683caa798e12b68694ac9e88286a3"
 dependencies = [
  "cache-padded",
+]
+
+[[package]]
+name = "const-random"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f590d95d011aa80b063ffe3253422ed5aa462af4e9867d43ce8337562bac77c4"
+dependencies = [
+ "const-random-macro",
+ "proc-macro-hack",
+]
+
+[[package]]
+name = "const-random-macro"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "615f6e27d000a2bffbc7f2f6a8669179378fa27ee4d0a509e985dfc0a7defb40"
+dependencies = [
+ "getrandom 0.2.3",
+ "lazy_static 1.4.0",
+ "proc-macro-hack",
+ "tiny-keccak",
 ]
 
 [[package]]
@@ -719,8 +768,9 @@ dependencies = [
  "fuel-asm",
  "fuel-vm",
  "hex",
+ "lazy_static 1.4.0",
  "line-col",
- "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
+ "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=0ee8d107923f8979897efbd12e16a0eb99ea98b3)",
  "pest_derive",
  "petgraph",
  "sha2",
@@ -763,6 +813,12 @@ dependencies = [
  "cfg-if 1.0.0",
  "lazy_static 1.4.0",
 ]
+
+[[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "crypto-mac"
@@ -1011,6 +1067,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
+name = "docstrings"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1122,6 +1185,7 @@ dependencies = [
  "fuel-client",
  "fuel-tx",
  "fuel-vm",
+ "futures",
  "hex",
  "line-col",
  "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
@@ -1395,6 +1459,15 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro-nested",
  "slab",
+]
+
+[[package]]
+name = "generational-arena"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e1d3b771574f62d0548cee0ad9057857e9fc25d7a3335f140c84f6acd0bf601"
+dependencies = [
+ "cfg-if 0.1.10",
 ]
 
 [[package]]
@@ -2131,6 +2204,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "parser"
+version = "0.1.0"
+dependencies = [
+ "ariadne",
+ "chumsky",
+ "generational-arena",
+ "lazy_static 1.4.0",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2141,6 +2224,14 @@ name = "pest"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10f4872ae94d7b90ae48754df22fd42ad52ce740b8f370b03da4835417403e53"
+dependencies = [
+ "ucd-trie",
+]
+
+[[package]]
+name = "pest"
+version = "2.1.3"
+source = "git+https://github.com/sezna/pest.git?rev=0ee8d107923f8979897efbd12e16a0eb99ea98b3#0ee8d107923f8979897efbd12e16a0eb99ea98b3"
 dependencies = [
  "ucd-trie",
 ]
@@ -3341,6 +3432,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tiny-keccak"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
+dependencies = [
+ "crunchy",
+]
+
+[[package]]
 name = "tinyvec"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3883,3 +3983,9 @@ checksum = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "yansi"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fc79f4a1e39857fc00c3f662cbf2651c771f00e9c15fe2abc341806bd46bd71"

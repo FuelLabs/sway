@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt};
 
+use crate::type_engine::resolve_type;
 use crate::{
     asm_generation::expression::convert_abi_fn_to_asm,
     asm_lang::{
@@ -13,11 +14,12 @@ use crate::{
         Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
         TypedParseTree,
     },
-    types::{MaybeResolvedType, ResolvedType},
-    BuildConfig, Ident,
+    types::ResolvedType,
+    BuildConfig, Ident, TypeInfo,
 };
 use either::Either;
 
+pub(crate) mod checks;
 pub(crate) mod compiler_constants;
 mod declaration;
 mod expression;
@@ -186,7 +188,11 @@ impl<'sc> AbstractInstructionSet<'sc> {
 
     /// Runs two passes -- one to get the instruction offsets of the labels
     /// and one to replace the labels in the organizational ops
-    fn realize_labels(self, data_section: &DataSection) -> RealizedAbstractInstructionSet<'sc> {
+    fn realize_labels(
+        self,
+        data_section: &DataSection<'sc>,
+        _namespace: &AsmNamespace,
+    ) -> RealizedAbstractInstructionSet<'sc> {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
         for op in &self.ops {
@@ -618,8 +624,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
     let mut register_sequencer = RegisterSequencer::new();
     let mut warnings = vec![];
     let mut errors = vec![];
-
-    let asm = match ast {
+    let (asm, asm_namespace) = match ast {
         TypedParseTree::Script {
             main_function,
             namespace: ast_namespace,
@@ -667,10 +672,13 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                 errors
             ));
 
-            HllAsmSet::ScriptMain {
-                program_section: AbstractInstructionSet { ops: asm_buf },
-                data_section: namespace.data_section,
-            }
+            (
+                HllAsmSet::ScriptMain {
+                    program_section: AbstractInstructionSet { ops: asm_buf },
+                    data_section: namespace.data_section.clone(),
+                },
+                namespace,
+            )
         }
         TypedParseTree::Predicate {
             main_function,
@@ -706,10 +714,13 @@ pub(crate) fn compile_ast_to_asm<'sc>(
             );
             asm_buf.append(&mut body);
 
-            HllAsmSet::PredicateMain {
-                program_section: AbstractInstructionSet { ops: asm_buf },
-                data_section: namespace.data_section,
-            }
+            (
+                HllAsmSet::PredicateMain {
+                    program_section: AbstractInstructionSet { ops: asm_buf },
+                    data_section: namespace.data_section.clone(),
+                },
+                namespace,
+            )
         }
         TypedParseTree::Contract {
             abi_entries,
@@ -744,12 +755,15 @@ pub(crate) fn compile_ast_to_asm<'sc>(
             ));
             asm_buf.append(&mut contract_asm);
 
-            HllAsmSet::ContractAbi {
-                program_section: AbstractInstructionSet { ops: asm_buf },
-                data_section: namespace.data_section,
-            }
+            (
+                HllAsmSet::ContractAbi {
+                    program_section: AbstractInstructionSet { ops: asm_buf },
+                    data_section: namespace.data_section.clone(),
+                },
+                namespace,
+            )
         }
-        TypedParseTree::Library { .. } => HllAsmSet::Library,
+        TypedParseTree::Library { .. } => (HllAsmSet::Library, Default::default()),
     };
 
     if build_config.print_intermediate_asm {
@@ -758,12 +772,19 @@ pub(crate) fn compile_ast_to_asm<'sc>(
 
     let finalized_asm = asm
         .remove_unnecessary_jumps()
-        .allocate_registers()
+        .allocate_registers(&asm_namespace)
         .optimize();
 
     if build_config.print_finalized_asm {
         println!("{}", finalized_asm);
     }
+
+    check!(
+        super::check_invalid_opcodes(&finalized_asm),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     ok(finalized_asm, warnings, errors)
 }
@@ -798,7 +819,7 @@ impl<'sc> HllAsmSet<'sc> {
 }
 
 impl<'sc> JumpOptimizedAsmSet<'sc> {
-    fn allocate_registers(self) -> RegisterAllocatedAsmSet<'sc> {
+    fn allocate_registers(self, namespace: &AsmNamespace) -> RegisterAllocatedAsmSet<'sc> {
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
             JumpOptimizedAsmSet::ScriptMain {
@@ -806,7 +827,7 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section)
+                    .realize_labels(&data_section, namespace)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::ScriptMain {
                     data_section,
@@ -818,7 +839,7 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section)
+                    .realize_labels(&data_section, namespace)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::PredicateMain {
                     data_section,
@@ -830,7 +851,7 @@ impl<'sc> JumpOptimizedAsmSet<'sc> {
                 data_section,
             } => RegisterAllocatedAsmSet::ContractAbi {
                 program_section: program_section
-                    .realize_labels(&data_section)
+                    .realize_labels(&data_section, namespace)
                     .allocate_registers(),
                 data_section,
             },
@@ -1379,19 +1400,17 @@ fn ret_or_retd_value<'sc>(
     namespace: &mut AsmNamespace<'sc>,
 ) -> CompileResult<'sc, Vec<Op<'sc>>> {
     let mut errors = vec![];
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut asm_buf = vec![];
-    let main_func_ret_ty = check!(
-        func.return_type.force_resolution(
-            &MaybeResolvedType::Resolved(ResolvedType::Unit),
-            &func.return_type_span
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let main_func_ret_ty: TypeInfo = match resolve_type(func.return_type, &func.return_type_span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    };
 
-    if main_func_ret_ty == ResolvedType::Unit {
+    if main_func_ret_ty == TypeInfo::Unit {
         // unit returns should always be zero, although because they can be
         // omitted from functions, the register is sometimes uninitialized.
         // Manually return zero in this case.
@@ -1407,8 +1426,14 @@ fn ret_or_retd_value<'sc>(
             errors,
         );
     }
+    let span = crate::Span {
+        span: pest::Span::new("TODO(static span)", 0, 0).unwrap(),
+        path: None,
+    };
 
-    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of() * 8;
+    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of(&span).expect(
+        "TODO(static span): Internal error: Static spans will allow for a proper error here.",
+    ) * 8;
     if size_of_main_func_return_bytes <= 8 {
         asm_buf.push(Op {
             owning_span: None,

@@ -4,7 +4,6 @@ use crate::parser::Rule;
 use crate::span;
 use crate::{CompileResult, Expression};
 use pest::iterators::Pair;
-use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct ReturnStatement<'sc> {
@@ -15,7 +14,6 @@ impl<'sc> ReturnStatement<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let span = span::Span {
             span: pair.as_span(),
@@ -32,7 +30,7 @@ impl<'sc> ReturnStatement<'sc> {
             },
             Some(expr_pair) => {
                 let expr = check!(
-                    Expression::parse_from_pair(expr_pair, config, docstrings),
+                    Expression::parse_from_pair(expr_pair, config),
                     Expression::Unit { span },
                     warnings,
                     errors

@@ -1,0 +1,12 @@
+[package]
+name = "parser"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chumsky = "0.5"
+ariadne = "0.1"
+generational-arena = "0.2"
+lazy_static = "1.4"
