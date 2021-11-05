@@ -8,7 +8,7 @@ struct B512 {
 }
 
 // temp
-pub fn build_from_b256s(hi: b256, lo: b256) -> B512 {
+pub fn build_from_b256(hi: b256, lo: b256) -> B512 {
     let hi = asm(r1: hi, rhi, r2: 32) {
             move rhi sp; // move stack pointer to rhi
             cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
