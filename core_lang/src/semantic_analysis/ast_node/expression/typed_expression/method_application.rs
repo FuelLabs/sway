@@ -1,6 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
+use crate::parse_tree::MethodName;
 use crate::parser::{HllParser, Rule};
 
 use pest::Parser;
@@ -37,9 +38,24 @@ pub(crate) fn type_check_method_application<'sc>(
         ));
     }
 
+    let ty = match method_name {
+        MethodName::FromType { ref type_name, .. } => type_name
+            .as_ref()
+            .map(|x| insert_type(x.clone()))
+            .unwrap_or_else(|| {
+                args_buf
+                    .get(0)
+                    .map(|x| x.return_type)
+                    .unwrap_or_else(|| insert_type(TypeInfo::Unknown))
+            }),
+        _ => args_buf
+            .get(0)
+            .map(|x| x.return_type)
+            .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
+    };
+
     let method = check!(
-        namespace
-            .find_method_for_type(args_buf[0].return_type, &method_name, self_type, &args_buf,),
+        namespace.find_method_for_type(ty, &method_name, self_type, &args_buf),
         return err(warnings, errors),
         warnings,
         errors

@@ -53,6 +53,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("const_decl", ProgramState::Return(100)),
         ("const_decl_in_library", ProgramState::Return(1)), // true
         ("aliased_imports", ProgramState::Return(42)),
+        ("empty_method_initializer", ProgramState::Return(1)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {

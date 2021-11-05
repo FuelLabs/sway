@@ -36,7 +36,7 @@ impl<'sc> Namespace<'sc> {
     ///
     ///
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
-    pub(crate) fn resolve_type_with_self(&mut self, ty: TypeInfo, self_type: TypeId) -> TypeId {
+    pub(crate) fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> TypeId {
         let ty = ty.clone();
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol_by_str(&name) {
@@ -553,6 +553,7 @@ impl<'sc> Namespace<'sc> {
 
         // This is a hack and I don't think it should be used.  We check the local namespace first,
         // but if nothing turns up then we try the namespace where the type itself is declared.
+        let r#type = namespace.resolve_type_with_self(look_up_type_id(r#type), self_type);
         let methods = self.get_methods_for_type(r#type);
         let methods = match methods[..] {
             [] => namespace.get_methods_for_type(r#type),
@@ -565,14 +566,12 @@ impl<'sc> Namespace<'sc> {
         {
             Some(o) => ok(o, warnings, errors),
             None => {
-                if args_buf
-                    .get(0)
-                    .map(|x| crate::type_engine::look_up_type_id(x.return_type))
+                if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
                     != Some(TypeInfo::ErrorRecovery)
                 {
                     errors.push(CompileError::MethodNotFound {
                         method_name: method_name.primary_name.to_string(),
-                        type_name: look_up_type_id(args_buf[0].return_type).friendly_type_str(),
+                        type_name: r#type.friendly_type_str(),
                         span: method_name.span.clone(),
                     });
                 }
