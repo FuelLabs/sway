@@ -36,8 +36,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         (
             "retd_struct",
             ProgramState::ReturnData(Bytes32::from([
-                139, 216, 67, 1, 172, 74, 189, 183, 82, 11, 99, 241, 23, 111, 195, 89, 208, 127,
-                16, 95, 247, 254, 168, 151, 227, 225, 199, 179, 50, 80, 63, 175,
+                251, 57, 24, 241, 63, 94, 17, 102, 252, 182, 8, 110, 140, 105, 102, 105, 138, 202,
+                155, 39, 97, 32, 94, 129, 141, 144, 190, 142, 33, 32, 33, 75,
             ])),
         ),
         ("op_precedence", ProgramState::Return(0)),
@@ -53,6 +53,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("const_decl", ProgramState::Return(100)),
         ("const_decl_in_library", ProgramState::Return(1)), // true
         ("aliased_imports", ProgramState::Return(42)),
+        ("b512_struct_alignment", ProgramState::Return(1)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
