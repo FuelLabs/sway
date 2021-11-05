@@ -1,6 +1,7 @@
 use core_lang::parse;
 use fuel_client::client::FuelClient;
 use fuel_tx::Transaction;
+use futures::TryFutureExt;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use tokio::process::Child;
@@ -138,7 +139,12 @@ async fn send_tx(
     tx: &Transaction,
     pretty_print: bool,
 ) -> Result<(), CliError> {
-    match client.submit(&tx).await {
+    let id = format!("{:#x}", tx.id());
+    match client
+        .submit(&tx)
+        .and_then(|_| client.receipts(id.as_str()))
+        .await
+    {
         Ok(logs) => {
             if pretty_print {
                 println!("{:#?}", logs);
