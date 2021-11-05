@@ -553,7 +553,6 @@ fn parse_root_from_pairs<'sc>(
         for pair in input {
             match pair.as_rule() {
                 Rule::non_var_decl => {
-                    let decl = pair.clone().into_inner();
                     let decl = check!(
                         Declaration::parse_non_var_from_pair(pair.clone(), config),
                         continue,
