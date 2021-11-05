@@ -1,18 +1,12 @@
 script;
 
-use std::context::Context;
-use auth_testing_abi::AuthTesting;
+// use std::context::Context;
 use std::constants::ETH_COLOR;
-
-// set up a simple contract
-// get the id of that contract
-// make a simple getter function which returns `Context.id()`
-// compare the 2 ids
-
-// send coins to the contract
-//
+use context_testing_abi::ContextTesting;
 
 fn main() -> bool {
-    let caller = abi(ContextTesting, <Address>);
-    caller.returns_id(1000, 0, ETH_COLOR, ())
+    let deployed_id = 0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586;
+    let caller = abi(ContextTesting, deployed_id);
+    let returned_id = caller.returns_id(1000, 0, ETH_COLOR, ());
+    returned_id == deployed_id
 }
