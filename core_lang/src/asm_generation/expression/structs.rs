@@ -1,7 +1,9 @@
 //! This module contains the logic for struct layout in memory and instantiation.
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
-    asm_lang::{ConstantRegister, Op, VirtualImmediate12, VirtualImmediate24, VirtualRegister},
+    asm_lang::{
+        ConstantRegister, Op, VirtualImmediate12, VirtualImmediate24, VirtualOp, VirtualRegister,
+    },
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
     type_engine::{look_up_type_id, resolve_type, TypeId},
@@ -219,6 +221,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     }
 
     // step 3
+    // `offset` is in words
     let mut offset = 0;
     for TypedStructExpressionField { name, value } in fields {
         // evaluate the expression
@@ -243,12 +246,50 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
             errors
         );
         asm_buf.append(&mut field_instantiation);
-        asm_buf.push(Op::write_register_to_memory(
-            struct_beginning_pointer.clone(),
-            return_register,
-            VirtualImmediate12::new_unchecked(offset, "the whole struct is less than 12 bits so every individual field should be as well."),
-            name.span.clone(),
-        ));
+        // if the value is less than one word in size, we write it via the SW opcode.
+        // Otherwise, use MCPI to copy the contiguous memory
+        let type_size = match look_up_type_id(value.return_type).stack_size_of(&name.span) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e.into());
+                return err(warnings, errors);
+            }
+        };
+        if type_size > 1 {
+            // copy the struct beginning pointer and add the offset to it
+            let address_to_write_to = register_sequencer.next();
+            // load the address via ADDI
+            asm_buf.push(Op {
+                opcode: either::Either::Left(VirtualOp::ADDI(
+                    address_to_write_to.clone(),
+                    struct_beginning_pointer.clone(),
+                    VirtualImmediate12::new_unchecked(offset * 8, "struct size is too large"),
+                )),
+                owning_span: Some(value.span.clone()),
+                comment: format!(
+                    "prep struct field reg (size {} for field {})",
+                    type_size, name.primary_name
+                ),
+            });
+
+            // copy the data
+            asm_buf.push(Op {
+                opcode: either::Either::Left(VirtualOp::MCPI(
+                    address_to_write_to,
+                    return_register,
+                    VirtualImmediate12::new_unchecked(type_size * 8, "struct cannot be this big"),
+                )),
+                owning_span: Some(value.span.clone()),
+                comment: format!("cp type size {} for field {}", type_size, name.primary_name),
+            });
+        } else {
+            asm_buf.push(Op::write_register_to_memory(
+                struct_beginning_pointer.clone(),
+                return_register,
+                VirtualImmediate12::new_unchecked(offset, "the whole struct is less than 12 bits so every individual field should be as well."),
+                name.span.clone(),
+            ));
+        }
         // TODO: if the struct needs multiple allocations, this offset could exceed the size of the
         // immediate value allowed in SW. In that case, we need to shift `struct_beginning_pointer`
         // to the max offset and start the offset back from 0. This is only for structs in excess

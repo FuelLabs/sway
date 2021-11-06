@@ -284,6 +284,14 @@ impl b256 {
             r4: bool
         }
     }
+    fn neq(self, other: Self) -> bool {
+        // Both self and other are addresses of the values, so we can use MEQ.
+        not(asm(r1: self, r2: other, r3, r4) {
+            addi r3 zero i32;
+            meq r4 r1 r2 r3;
+            r4: bool
+        })
+    }
 }
 
 
