@@ -1,33 +1,37 @@
 //! This module contains the logic for struct layout in memory and instantiation.
 use crate::{
     asm_generation::{convert_expression_to_asm, AsmNamespace, RegisterSequencer},
-    asm_lang::{ConstantRegister, Op, VirtualImmediate12, VirtualImmediate24, VirtualRegister},
+    asm_lang::{
+        ConstantRegister, Op, VirtualImmediate12, VirtualImmediate24, VirtualOp, VirtualRegister,
+    },
     error::*,
     semantic_analysis::ast_node::TypedStructExpressionField,
-    types::{IntegerBits, MaybeResolvedType, PartiallyResolvedType, ResolvedType},
+    type_engine::{look_up_type_id, resolve_type, TypeId},
     CompileResult, Ident,
 };
 
 /// Contains an ordered array of fields and their sizes in words. Used in the code generation
 /// of struct field reassignments, accesses, and struct initializations.
 #[derive(Debug)]
-pub(crate) struct StructMemoryLayoutDescriptor<'sc> {
-    fields: Vec<StructFieldMemoryLayoutDescriptor<'sc>>,
+pub(crate) struct StructMemoryLayoutDescriptor {
+    fields: Vec<StructFieldMemoryLayoutDescriptor>,
 }
 
 /// Describes the size, name, and type of an individual struct field in a memory layout.
 #[derive(Debug)]
-pub(crate) struct StructFieldMemoryLayoutDescriptor<'sc> {
-    name_of_field: Ident<'sc>,
+pub(crate) struct StructFieldMemoryLayoutDescriptor {
+    // TODO(static span) this should be an ident
+    name_of_field: String,
     size: u64,
-    type_of_field: ResolvedType<'sc>,
 }
 
-impl<'sc> StructMemoryLayoutDescriptor<'sc> {
+impl StructMemoryLayoutDescriptor {
     /// Calculates the offset in words from the start of a struct to a specific field.
-    pub(crate) fn offset_to_field_name(&self, name: &Ident<'sc>) -> CompileResult<'sc, u64> {
+    pub(crate) fn offset_to_field_name<'sc>(&self, name: &Ident<'sc>) -> CompileResult<'sc, u64> {
         let field_ix = if let Some(ix) = self.fields.iter().position(
-            |StructFieldMemoryLayoutDescriptor { name_of_field, .. }| name_of_field == name,
+            |StructFieldMemoryLayoutDescriptor { name_of_field, .. }| {
+                name_of_field.as_str() == name.primary_name
+            },
         ) {
             ix
         } else {
@@ -80,14 +84,12 @@ fn test_struct_memory_layout() {
     let numbers = StructMemoryLayoutDescriptor {
         fields: vec![
             StructFieldMemoryLayoutDescriptor {
-                name_of_field: first_field_name.clone(),
+                name_of_field: first_field_name.primary_name.to_string(),
                 size: 1,
-                type_of_field: ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
             },
             StructFieldMemoryLayoutDescriptor {
-                name_of_field: second_field_name.clone(),
+                name_of_field: second_field_name.primary_name.to_string(),
                 size: 1,
-                type_of_field: ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
             },
         ],
     };
@@ -110,30 +112,27 @@ fn test_struct_memory_layout() {
 }
 
 pub(crate) fn get_struct_memory_layout<'sc>(
-    fields_with_names: &[(MaybeResolvedType<'sc>, &Ident<'sc>)],
-) -> CompileResult<'sc, StructMemoryLayoutDescriptor<'sc>> {
+    fields_with_names: &[(TypeId, &str)],
+) -> CompileResult<'sc, StructMemoryLayoutDescriptor> {
+    let span = crate::Span {
+        span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
+        path: None,
+    };
     let mut fields_with_sizes = vec![];
     let warnings = vec![];
     let mut errors = vec![];
     for (field, name) in fields_with_names {
-        let (ty, stack_size) = match field {
-            MaybeResolvedType::Partial(PartiallyResolvedType::Numeric) => (
-                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour).stack_size_of(),
-            ),
-            MaybeResolvedType::Resolved(ref r) => (r.clone(), r.stack_size_of()),
-            MaybeResolvedType::Partial(ref p) => {
-                errors.push(CompileError::TypeMustBeKnown {
-                    span: name.span.clone(),
-                    ty: p.friendly_type_str(),
-                });
-                continue;
+        let ty = look_up_type_id(*field);
+        let stack_size = match ty.stack_size_of(&span) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e);
+                return err(warnings, errors);
             }
         };
 
         fields_with_sizes.push(StructFieldMemoryLayoutDescriptor {
-            name_of_field: (*name).clone(),
-            type_of_field: ty,
+            name_of_field: name.to_string(),
             size: stack_size,
         });
     }
@@ -173,7 +172,9 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     // step 0
     let fields_for_layout = fields
         .iter()
-        .map(|TypedStructExpressionField { name, value }| (value.return_type.clone(), name))
+        .map(|TypedStructExpressionField { name, value }| {
+            (value.return_type.clone(), name.primary_name)
+        })
         .collect::<Vec<_>>();
     let descriptor = check!(
         get_struct_memory_layout(&fields_for_layout[..]),
@@ -220,21 +221,22 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     }
 
     // step 3
+    // `offset` is in words
     let mut offset = 0;
     for TypedStructExpressionField { name, value } in fields {
         // evaluate the expression
         let return_register = register_sequencer.next();
-        let value_stack_size = match value.return_type {
-            MaybeResolvedType::Partial(PartiallyResolvedType::Numeric) => {
-                ResolvedType::UnsignedInteger(IntegerBits::SixtyFour).stack_size_of()
-            }
-            MaybeResolvedType::Resolved(ref r) => r.stack_size_of(),
-            MaybeResolvedType::Partial(ref p) => {
-                errors.push(CompileError::TypeMustBeKnown {
-                    span: value.span.clone(),
-                    ty: p.friendly_type_str(),
-                });
-                continue;
+        let value_stack_size: u64 = match resolve_type(value.return_type, &name.span) {
+            Ok(o) => match o.stack_size_of(&name.span) {
+                Ok(o) => o,
+                Err(e) => {
+                    errors.push(e);
+                    return err(warnings, errors);
+                }
+            },
+            Err(e) => {
+                errors.push(e.into());
+                return err(warnings, errors);
             }
         };
         let mut field_instantiation = check!(
@@ -244,12 +246,50 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
             errors
         );
         asm_buf.append(&mut field_instantiation);
-        asm_buf.push(Op::write_register_to_memory(
-            struct_beginning_pointer.clone(),
-            return_register,
-            VirtualImmediate12::new_unchecked(offset, "the whole struct is less than 12 bits so every individual field should be as well."),
-            name.span.clone(),
-        ));
+        // if the value is less than one word in size, we write it via the SW opcode.
+        // Otherwise, use MCPI to copy the contiguous memory
+        let type_size = match look_up_type_id(value.return_type).stack_size_of(&name.span) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e.into());
+                return err(warnings, errors);
+            }
+        };
+        if type_size > 1 {
+            // copy the struct beginning pointer and add the offset to it
+            let address_to_write_to = register_sequencer.next();
+            // load the address via ADDI
+            asm_buf.push(Op {
+                opcode: either::Either::Left(VirtualOp::ADDI(
+                    address_to_write_to.clone(),
+                    struct_beginning_pointer.clone(),
+                    VirtualImmediate12::new_unchecked(offset * 8, "struct size is too large"),
+                )),
+                owning_span: Some(value.span.clone()),
+                comment: format!(
+                    "prep struct field reg (size {} for field {})",
+                    type_size, name.primary_name
+                ),
+            });
+
+            // copy the data
+            asm_buf.push(Op {
+                opcode: either::Either::Left(VirtualOp::MCPI(
+                    address_to_write_to,
+                    return_register,
+                    VirtualImmediate12::new_unchecked(type_size * 8, "struct cannot be this big"),
+                )),
+                owning_span: Some(value.span.clone()),
+                comment: format!("cp type size {} for field {}", type_size, name.primary_name),
+            });
+        } else {
+            asm_buf.push(Op::write_register_to_memory(
+                struct_beginning_pointer.clone(),
+                return_register,
+                VirtualImmediate12::new_unchecked(offset, "the whole struct is less than 12 bits so every individual field should be as well."),
+                name.span.clone(),
+            ));
+        }
         // TODO: if the struct needs multiple allocations, this offset could exceed the size of the
         // immediate value allowed in SW. In that case, we need to shift `struct_beginning_pointer`
         // to the max offset and start the offset back from 0. This is only for structs in excess

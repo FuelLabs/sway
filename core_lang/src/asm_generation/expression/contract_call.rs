@@ -114,22 +114,12 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     // the contract address and parameters
     //
     // first, copy the address over
-    //
-    // load 32 into a register
-    let data_label = namespace.insert_data_value(&Literal::U32(32));
-    let num32_register = register_sequencer.next();
-    asm_buf.push(Op {
-        opcode: Either::Left(VirtualOp::LWDataId(num32_register.clone(), data_label)),
-        comment: "constant 32 load for call".into(),
-        owning_span: Some(span.clone()),
-    });
-
     // write the contract addr to bytes 0-32
     asm_buf.push(Op {
-        opcode: Either::Left(VirtualOp::MCP(
+        opcode: Either::Left(VirtualOp::MCPI(
             ra_pointer.clone(),
             contract_address,
-            num32_register,
+            VirtualImmediate12::new_unchecked(32, "infallible constant 32"),
         )),
         comment: "copy contract address for call".into(),
         owning_span: Some(span.clone()),

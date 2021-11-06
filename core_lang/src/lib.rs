@@ -13,7 +13,9 @@ pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
 mod span;
+pub(crate) mod type_engine;
 
+use crate::asm_generation::checks::check_invalid_opcodes;
 pub use crate::parse_tree::*;
 pub use crate::parser::{HllParser, Rule};
 use crate::{asm_generation::compile_ast_to_asm, error::*};
@@ -22,17 +24,18 @@ pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
+use std::collections::{HashMap, HashSet};
+
 use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
 pub mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
-use std::collections::{HashMap, HashSet};
 
 pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-pub use types::TypeInfo;
+pub use type_engine::TypeInfo;
 
 // todo rename to language name
 #[derive(Debug)]
@@ -45,9 +48,6 @@ pub struct HllParseTree<'sc> {
 
 #[derive(Debug)]
 pub struct HllTypedParseTree<'sc> {
-    contract_ast: Option<TypedParseTree<'sc>>,
-    script_ast: Option<TypedParseTree<'sc>>,
-    predicate_ast: Option<TypedParseTree<'sc>>,
     pub library_exports: LibraryExports<'sc>,
 }
 
@@ -119,9 +119,8 @@ pub fn parse<'sc>(
             )
         }
     };
-    let mut docstrings = HashMap::new();
     let res = check!(
-        parse_root_from_pairs(parsed.next().unwrap().into_inner(), config, &mut docstrings),
+        parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
         return err(warnings, errors),
         warnings,
         errors
@@ -533,7 +532,6 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
     config: Option<&BuildConfig>,
-    docstrings: &mut HashMap<String, String>,
 ) -> CompileResult<'sc, HllParseTree<'sc>> {
     let path = config.map(|config| config.dir_of_code.clone());
     let mut warnings = Vec::new();
@@ -544,7 +542,6 @@ fn parse_root_from_pairs<'sc>(
         predicate_ast: None,
         library_exports: vec![],
     };
-    let mut unassigned_docstring = "".to_string();
     for block in input {
         let mut parse_tree = ParseTree::new(span::Span {
             span: block.as_span(),
@@ -556,37 +553,19 @@ fn parse_root_from_pairs<'sc>(
         for pair in input {
             match pair.as_rule() {
                 Rule::non_var_decl => {
-                    let mut decl = pair.clone().into_inner();
-                    let decl_inner = decl.next().unwrap();
-                    match decl_inner.as_rule() {
-                        Rule::docstring => {
-                            let docstring = decl_inner.as_str().to_string().split_off(3);
-                            let docstring = docstring.as_str().trim();
-                            unassigned_docstring.push('\n');
-                            unassigned_docstring.push_str(docstring);
-                        }
-                        _ => {
-                            let decl = check!(
-                                Declaration::parse_non_var_from_pair(
-                                    pair.clone(),
-                                    config,
-                                    unassigned_docstring.clone(),
-                                    docstrings
-                                ),
-                                continue,
-                                warnings,
-                                errors
-                            );
-                            parse_tree.push(AstNode {
-                                content: AstNodeContent::Declaration(decl),
-                                span: span::Span {
-                                    span: pair.as_span(),
-                                    path: path.clone(),
-                                },
-                            });
-                            unassigned_docstring = "".to_string();
-                        }
-                    }
+                    let decl = check!(
+                        Declaration::parse_non_var_from_pair(pair.clone(), config),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                    parse_tree.push(AstNode {
+                        content: AstNodeContent::Declaration(decl),
+                        span: span::Span {
+                            span: pair.as_span(),
+                            path: path.clone(),
+                        },
+                    });
                 }
                 Rule::use_statement => {
                     let stmt = check!(
@@ -602,7 +581,6 @@ fn parse_root_from_pairs<'sc>(
                             path: path.clone(),
                         },
                     });
-                    unassigned_docstring = "".to_string();
                 }
                 Rule::library_name => {
                     let lib_pair = pair.into_inner().next().unwrap();
@@ -612,7 +590,6 @@ fn parse_root_from_pairs<'sc>(
                         warnings,
                         errors
                     ));
-                    unassigned_docstring = "".to_string();
                 }
                 Rule::include_statement => {
                     // parse the include statement into a reference to a specific file
@@ -629,7 +606,6 @@ fn parse_root_from_pairs<'sc>(
                             path: path.clone(),
                         },
                     });
-                    unassigned_docstring = "".to_string();
                 }
                 _ => unreachable!("{:?}", pair.as_str()),
             }
@@ -774,7 +750,6 @@ fn test_basic_prog() {
     "#,
         None,
     );
-    dbg!(&prog);
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     prog.unwrap(&mut warnings, &mut errors);
@@ -812,7 +787,6 @@ fn test_unary_ordering() {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     let prog = prog.unwrap(&mut warnings, &mut errors);
-    dbg!(&prog);
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
     if let AstNode {

@@ -1,17 +1,15 @@
 use crate::parse_tree::Expression;
-use crate::{types::TypeInfo, Ident};
+use crate::{type_engine::TypeInfo, Ident};
 
 use crate::build_config::BuildConfig;
 use crate::error::{err, ok, CompileResult};
 use crate::parser::Rule;
 use pest::iterators::Pair;
 
-use std::collections::HashMap;
-
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration<'sc> {
     pub name: Ident<'sc>,
-    pub type_ascription: Option<TypeInfo<'sc>>,
+    pub type_ascription: TypeInfo,
     pub value: Expression<'sc>,
 }
 
@@ -19,7 +17,6 @@ impl<'sc> ConstantDeclaration<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, ConstantDeclaration<'sc>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -35,16 +32,18 @@ impl<'sc> ConstantDeclaration<'sc> {
             }
             _ => None,
         };
-        let type_ascription = type_ascription.map(|ascription| {
-            check!(
-                TypeInfo::parse_from_pair(ascription, config.clone()),
-                TypeInfo::Unit,
-                warnings,
-                errors
-            )
-        });
+        let type_ascription = type_ascription
+            .map(|ascription| {
+                check!(
+                    TypeInfo::parse_from_pair(ascription, config.clone()),
+                    TypeInfo::Unit,
+                    warnings,
+                    errors
+                )
+            })
+            .unwrap_or(TypeInfo::Unknown);
         let value = check!(
-            Expression::parse_from_pair_inner(maybe_value, config.clone(), docstrings),
+            Expression::parse_from_pair_inner(maybe_value, config.clone()),
             return err(warnings, errors),
             warnings,
             errors

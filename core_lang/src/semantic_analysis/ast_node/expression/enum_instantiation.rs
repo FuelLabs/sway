@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
 use crate::semantic_analysis::ast_node::*;
-use crate::types::ResolvedType;
+use crate::type_engine::{look_up_type_id, TypeId};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
@@ -10,9 +10,9 @@ pub(crate) fn instantiate_enum<'sc>(
     enum_decl: TypedEnumDeclaration<'sc>,
     enum_field_name: Ident<'sc>,
     args: Vec<Expression<'sc>>,
-    type_arguments: Vec<MaybeResolvedType<'sc>>,
+    type_arguments: Vec<TypeId>,
     namespace: &mut Namespace<'sc>,
-    self_type: &MaybeResolvedType<'sc>,
+    self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -44,10 +44,10 @@ pub(crate) fn instantiate_enum<'sc>(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], enum_field_type) {
-        ([], ResolvedType::Unit) => ok(
+    match (&args[..], look_up_type_id(enum_field_type)) {
+        ([], TypeInfo::Unit) => ok(
             TypedExpression {
-                return_type: MaybeResolvedType::Resolved(enum_decl.as_type()),
+                return_type: enum_decl.as_type(),
                 expression: TypedExpressionVariant::EnumInstantiation {
                     tag,
                     contents: None,
@@ -60,12 +60,12 @@ pub(crate) fn instantiate_enum<'sc>(
             warnings,
             errors,
         ),
-        ([single_expr], r#type) => {
+        ([single_expr], _type) => {
             let typed_expr = check!(
                 TypedExpression::type_check(
                     single_expr.clone(),
                     namespace,
-                    Some(MaybeResolvedType::Resolved(r#type.clone())),
+                    Some(enum_field_type),
                     "Enum instantiator must match its declared variant type.",
                     self_type,
                     build_config,
@@ -82,7 +82,7 @@ pub(crate) fn instantiate_enum<'sc>(
 
             ok(
                 TypedExpression {
-                    return_type: MaybeResolvedType::Resolved(enum_decl.as_type()),
+                    return_type: enum_decl.as_type(),
                     expression: TypedExpressionVariant::EnumInstantiation {
                         tag,
                         contents: Some(Box::new(typed_expr)),
@@ -102,7 +102,7 @@ pub(crate) fn instantiate_enum<'sc>(
             });
             err(warnings, errors)
         }
-        (_too_many_expressions, ResolvedType::Unit) => {
+        (_too_many_expressions, TypeInfo::Unit) => {
             errors.push(CompileError::UnnecessaryEnumInstantiator {
                 span: enum_field_name.span.clone(),
             });

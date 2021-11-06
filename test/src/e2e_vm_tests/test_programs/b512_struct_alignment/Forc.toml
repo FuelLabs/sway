@@ -1,11 +1,9 @@
 [project]
-author  = "Emily Herbert <emily.herbert@fuel.sh>"
+author  = "Alexander Hansen"
 license = "MIT"
-name = "doc_strings"
+name = "b512_panic_test"
 entry = "main.sw"
-
 
 [dependencies]
 std = { path = "../../../../../stdlib" }
-
 
