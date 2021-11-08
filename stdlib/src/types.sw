@@ -9,19 +9,17 @@ struct B512 {
 
 // temp
 pub fn build_from_b256(hi: b256, lo: b256) -> B512 {
-    let hi = asm(r1: hi, rhi, r2: 32) {
+    let hi = asm(r1: hi, rhi) {
             move rhi sp; // move stack pointer to rhi
             cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
-            // addi r5 zero i32;
-            mcp rhi r1 r2;
+            mcpi rhi r1 i32;
             rhi: b256
         };
 
-        let lo = asm(r1: lo, rlo, r2: 32) {
+        let lo = asm(r1: lo, rlo) {
             move rlo sp;
             cfei i32;
-            // now $rlo is pointing to blank memory that we can use
-            mcp rlo r1 r2;
+            mcpi rlo r1 i32;
             rlo: b256
         };
 
@@ -52,7 +50,7 @@ impl B512 {
         }
     }
 
-    fn from_b256(hi: b256, lo: b256) -> B512 {
+    fn from_b_256(hi: b256, lo: b256) -> B512 {
         // copy the two given b256s into contiguous stack memory
         // this involves grabbing the stack pointer, extending the stack by 256 bits,
         // using MCP to copy hi into first ptr
