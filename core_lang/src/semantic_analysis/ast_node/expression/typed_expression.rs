@@ -281,7 +281,7 @@ impl<'sc> TypedExpression<'sc> {
         namespace: &mut Namespace<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut errors = vec![];
-        let exp = match namespace.get_symbol(&name) {
+        let exp = match namespace.get_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body, ..
             })) => TypedExpression {
@@ -782,23 +782,24 @@ impl<'sc> TypedExpression<'sc> {
 
         // TODO in here replace generic types with provided types
         // find the struct definition in the namespace
-        let definition: TypedStructDeclaration = match namespace.clone().get_symbol(&struct_name) {
-            Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
-            Some(_) => {
-                errors.push(CompileError::DeclaredNonStructAsStruct {
-                    name: struct_name.primary_name,
-                    span: span.clone(),
-                });
-                return err(warnings, errors);
-            }
-            None => {
-                errors.push(CompileError::StructNotFound {
-                    name: struct_name.primary_name,
-                    span: span.clone(),
-                });
-                return err(warnings, errors);
-            }
-        };
+        let definition: TypedStructDeclaration =
+            match namespace.clone().get_symbol(&struct_name).value {
+                Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
+                Some(_) => {
+                    errors.push(CompileError::DeclaredNonStructAsStruct {
+                        name: struct_name.primary_name,
+                        span: span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+                None => {
+                    errors.push(CompileError::StructNotFound {
+                        name: struct_name.primary_name,
+                        span: span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+            };
 
         // match up the names with their type annotations from the declaration
         for def_field in definition.fields.iter() {
@@ -989,7 +990,7 @@ impl<'sc> TypedExpression<'sc> {
                     errors.push(CompileError::AmbiguousPath { span: span.clone() });
                     return err(warnings, errors);
                 }
-                (Some(module), None) => match module.get_symbol(&call_path.suffix).cloned() {
+                (Some(module), None) => match module.get_symbol(&call_path.suffix).value.cloned() {
                     Some(decl) => Either::Left(decl),
                     None => {
                         errors.push(CompileError::SymbolNotFound {
