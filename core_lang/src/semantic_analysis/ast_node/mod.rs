@@ -697,7 +697,7 @@ fn reassignment<'sc>(
         Expression::VariableExpression { name, span } => {
             let name_in_use = name.clone();
             // check that the reassigned name exists
-            let thing_to_reassign = match namespace.clone().get_symbol(&name) {
+            let thing_to_reassign = match namespace.clone().get_symbol(&name).value {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body,
                     is_mutable,
@@ -718,7 +718,9 @@ fn reassignment<'sc>(
                     body.clone()
                 }
                 Some(o) => {
-                    let method = namespace.get_symbol(&name).unwrap();
+                    let method = namespace
+                        .get_symbol(&name)
+                        .unwrap(&mut warnings, &mut errors);
                     errors.push(CompileError::ReassignmentToNonVariable {
                         name: name.primary_name,
                         kind: o.friendly_name(),
