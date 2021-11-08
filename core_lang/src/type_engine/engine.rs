@@ -149,8 +149,8 @@ impl<'sc> TypeEngine<'sc> for Engine {
 
             // If no previous attempts to unify were successful, raise an error
             (a, b) => Err(TypeError::MismatchedType {
-                expected: a.friendly_type_str(),
-                received: b.friendly_type_str(),
+                expected: b.friendly_type_str(),
+                received: a.friendly_type_str(),
                 help_text: Default::default(),
                 span: span.clone(),
             }),
