@@ -3,7 +3,7 @@ use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
-    Rule, Span,
+    Rule, Span, TypeParameter,
 };
 use derivative::Derivative;
 
@@ -14,6 +14,9 @@ use pest::iterators::Pair;
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum TypeInfo {
     Unknown,
+    UnknownGeneric {
+        name: String,
+    },
     Str(u64),
     UnsignedInteger(IntegerBits),
     Enum {
@@ -121,6 +124,7 @@ impl TypeInfo {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
+            UnknownGeneric { name, .. } => format!("generic {}", name),
             Str(x) => format!("str[{}]", x),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -269,12 +273,13 @@ impl TypeInfo {
             TypeInfo::ContractCaller { .. } => Ok(0),
             TypeInfo::Contract => unreachable!("contract types are never instantiated"),
             TypeInfo::ErrorRecovery => unreachable!(),
-            TypeInfo::Unknown | TypeInfo::Custom { .. } | TypeInfo::SelfType => {
-                Err(CompileError::TypeMustBeKnown {
-                    ty: self.friendly_type_str(),
-                    span: err_span.clone(),
-                })
-            }
+            TypeInfo::Unknown
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::TypeMustBeKnown {
+                ty: self.friendly_type_str(),
+                span: err_span.clone(),
+            }),
             TypeInfo::Ref(id) => look_up_type_id(*id).stack_size_of(err_span),
         }
     }
@@ -285,5 +290,19 @@ impl TypeInfo {
             }
             _ => false,
         }
+    }
+
+    pub(crate) fn matches_type_parameter<'sc>(
+        &self,
+        mapping: &[(TypeParameter<'sc>, TypeId)],
+    ) -> Option<TypeId> {
+        if let TypeInfo::Custom { .. } = self {
+            for (param, ty_id) in mapping.iter() {
+                if param.name == *self {
+                    return Some(*ty_id);
+                }
+            }
+        }
+        None
     }
 }

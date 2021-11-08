@@ -337,106 +337,106 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         );
-        let exp = match function_declaration {
-            TypedDeclaration::FunctionDeclaration(decl) => {
-                let TypedFunctionDeclaration {
-                    parameters,
-                    return_type,
-                    body,
-                    span,
-                    ..
-                } = decl.clone();
-                match arguments.len().cmp(&parameters.len()) {
-                    Ordering::Greater => {
-                        let arguments_span = arguments.iter().fold(
-                            arguments
-                                .get(0)
-                                .map(|x| x.span())
-                                .unwrap_or_else(|| name.span()),
-                            |acc, arg| crate::utils::join_spans(acc, arg.span()),
-                        );
-                        errors.push(CompileError::TooManyArgumentsForFunction {
-                            decl_span: span.clone(),
-                            usage_span: arguments_span,
-                            method_name: name.suffix.primary_name,
-                            expected: parameters.len(),
-                            received: arguments.len(),
-                        });
-                    }
-                    Ordering::Less => {
-                        let arguments_span = arguments.iter().fold(
-                            arguments
-                                .get(0)
-                                .map(|x| x.span())
-                                .unwrap_or_else(|| name.span()),
-                            |acc, arg| crate::utils::join_spans(acc, arg.span()),
-                        );
-                        errors.push(CompileError::TooFewArgumentsForFunction {
-                            decl_span: span.clone(),
-                            usage_span: arguments_span,
-                            method_name: name.suffix.primary_name,
-                            expected: parameters.len(),
-                            received: arguments.len(),
-                        });
-                    }
-                    Ordering::Equal => {}
-                }
-                // type check arguments in function application vs arguments in function
-                // declaration. Use parameter type annotations as annotations for the
-                // arguments
-                //
-                let typed_call_arguments =
+        let TypedFunctionDeclaration {
+            parameters,
+            return_type,
+            body,
+            span,
+            ..
+        } = if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
+            decl
+        } else {
+            errors.push(CompileError::NotAFunction {
+                name: name.span().as_str().to_string(),
+                span: name.span(),
+                what_it_is: function_declaration.friendly_name(),
+            });
+            return err(warnings, errors);
+        };
+        match arguments.len().cmp(&parameters.len()) {
+            Ordering::Greater => {
+                let arguments_span = arguments.iter().fold(
                     arguments
-                        .into_iter()
-                        .zip(parameters.iter())
-                        .map(|(arg, param)| {
-                            (param.name.clone(), TypedExpression::type_check(
-                            arg.clone(),
-                            namespace,
-                            Some(param.r#type.clone()),
-                            "The argument that has been provided to this function's type does \
+                        .get(0)
+                        .map(|x| x.span())
+                        .unwrap_or_else(|| name.span()),
+                    |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                );
+                errors.push(CompileError::TooManyArgumentsForFunction {
+                    decl_span: span.clone(),
+                    usage_span: arguments_span,
+                    method_name: name.suffix.primary_name,
+                    expected: parameters.len(),
+                    received: arguments.len(),
+                });
+            }
+            Ordering::Less => {
+                let arguments_span = arguments.iter().fold(
+                    arguments
+                        .get(0)
+                        .map(|x| x.span())
+                        .unwrap_or_else(|| name.span()),
+                    |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                );
+                errors.push(CompileError::TooFewArgumentsForFunction {
+                    decl_span: span.clone(),
+                    usage_span: arguments_span,
+                    method_name: name.suffix.primary_name,
+                    expected: parameters.len(),
+                    received: arguments.len(),
+                });
+            }
+            Ordering::Equal => {}
+        }
+        // type check arguments in function application vs arguments in function
+        // declaration. Use parameter type annotations as annotations for the
+        // arguments
+        //
+        let typed_call_arguments = arguments
+            .into_iter()
+            .zip(parameters.iter())
+            .map(|(arg, param)| {
+                (
+                    param.name.clone(),
+                    TypedExpression::type_check(
+                        arg.clone(),
+                        namespace,
+                        Some(param.r#type.clone()),
+                        "The argument that has been provided to this function's type does \
                             not match the declared type of the parameter in the function \
                             declaration.",
-                            self_type,
-                            build_config,
-                            dead_code_graph,
-                            dependency_graph
-                        )
-                        .unwrap_or_else(
-                            &mut warnings,
-                            &mut errors,
-                            || error_recovery_expr(arg.span()),
-                        ))
-                        })
-                        .collect();
+                        self_type,
+                        build_config,
+                        dead_code_graph,
+                        dependency_graph,
+                    )
+                    .unwrap_or_else(&mut warnings, &mut errors, || {
+                        error_recovery_expr(arg.span())
+                    }),
+                )
+            })
+            .collect();
 
-                TypedExpression {
-                    return_type: return_type.clone(),
-                    // now check the function call return type
-                    // FEATURE this IsConstant can be true if the function itself is
-                    // constant-able const functions would be an
-                    // advanced feature and are not supported right
-                    // now
-                    is_constant: IsConstant::No,
-                    expression: TypedExpressionVariant::FunctionApplication {
-                        arguments: typed_call_arguments,
-                        name: name.clone(),
-                        function_body: body.clone(),
-                        selector: None, // regular functions cannot be in a contract call; only methods
-                    },
-                    span: app_span,
-                }
-            }
-            a => {
-                errors.push(CompileError::NotAFunction {
-                    name: name.span().as_str().to_string(),
-                    span: name.span(),
-                    what_it_is: a.friendly_name(),
-                });
-                error_recovery_expr(name.span())
-            }
-        };
-        ok(exp, warnings, errors)
+        ok(
+            TypedExpression {
+                return_type: return_type.clone(),
+                // now check the function call return type
+                // FEATURE this IsConstant can be true if the function itself is
+                // constant-able const functions would be an
+                // advanced feature and are not supported right
+                // now
+                is_constant: IsConstant::No,
+                expression: TypedExpressionVariant::FunctionApplication {
+                    arguments: typed_call_arguments,
+                    name: name.clone(),
+                    function_body: body.clone(),
+                    selector: None, // regular functions cannot be in a contract call; only methods
+                },
+                span: app_span,
+            },
+            warnings,
+            errors,
+        )
     }
 
     fn type_check_lazy_operator(

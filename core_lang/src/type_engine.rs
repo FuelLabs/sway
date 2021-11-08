@@ -40,6 +40,14 @@ pub trait TypeEngine<'sc> {
     /// Looks up a type id. Panics if the given ID doesn't exist in the type
     /// engine.
     fn look_up_type_id(&self, id: Self::TypeId) -> TypeInfo;
+
+    /// Given a specific type id for a generic type and its instantiated, known, type,
+    /// make copies of all references to that type id and update the root
+    /// referred-to type to the known type.
+    fn monomorphize(&self, unknown_generic: Self::TypeId, instantiated_type: Self::TypeInfo);
+
+    /// Updates a given `TypeId` to map to the given `TypeInfo`.
+    fn update_type(&mut self, id: TypeId, new_ty: TypeInfo);
 }
 
 /// A identifier to uniquely refer to our type terms

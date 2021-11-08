@@ -10,6 +10,11 @@ use std::sync::Mutex;
 lazy_static! {
     pub(crate) static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
 }
+pub(crate) fn update_type(type_id: TypeId, new_type: TypeInfo) {
+    let mut lock = TYPE_ENGINE.lock().unwrap();
+    lock.update_type(type_id, new_type);
+    drop(lock);
+}
 
 pub(crate) fn unify_with_self<'sc>(
     ty1: TypeId,
@@ -149,8 +154,8 @@ impl<'sc> TypeEngine<'sc> for Engine {
 
             // If no previous attempts to unify were successful, raise an error
             (a, b) => Err(TypeError::MismatchedType {
-                expected: a.friendly_type_str(),
-                received: b.friendly_type_str(),
+                expected: b.friendly_type_str(),
+                received: a.friendly_type_str(),
                 help_text: Default::default(),
                 span: span.clone(),
             }),
@@ -166,6 +171,20 @@ impl<'sc> TypeEngine<'sc> for Engine {
     fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
         self.resolve(id)
             .expect("Internal error: type ID did not exist in type engine")
+    }
+
+    fn monomorphize(&self, unknown_generic: Self::TypeId, instantiated_type: Self::TypeInfo) {
+        // find the type id of `unknown_generic` and assert that it is indeed an unknown generic.
+
+        // find all types that are `Ref(unknown_generic)`  in the mapping from parameters to type
+        // ids
+        // change them
+        todo!()
+    }
+
+    fn update_type(&mut self, id: TypeId, new_ty: TypeInfo) {
+        // hashmaps upsert by default
+        self.vars.insert(id, new_ty);
     }
 }
 fn numeric_cast_compat<'sc>(a: IntegerBits, b: IntegerBits) -> NumericCastCompatResult<'sc> {

@@ -4,7 +4,7 @@ use crate::{error::*, type_engine::TypeInfo, Ident};
 use crate::{CompileError, Rule};
 use pest::iterators::Pair;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct TypeParameter<'sc> {
     pub(crate) name: TypeInfo,
     pub(crate) name_ident: Ident<'sc>,
@@ -100,7 +100,7 @@ impl<'sc> TypeParameter<'sc> {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint<'sc> {
     pub(crate) name: Ident<'sc>,
 }
