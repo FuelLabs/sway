@@ -85,11 +85,11 @@ fn main() -> bool {
     let t2 = (a.hi == zero) && (a.lo == zero);
 
     // // it allows modification of fields:
-    // a.hi = hi_bits;
-    // a.lo = lo_bits;
-    // let t3 =  (a.hi == hi_bits) && (a.lo == lo_bits);
+    a.hi = hi_bits;
+    a.lo = lo_bits;
+    let t3 =  (a.hi == hi_bits) && (a.lo == lo_bits);
 
-    // it guarantees memory conitiguity:
+    // it guarantees memory contiguity:
     // let mut c = ~B512::new();
     // c.hi= hi_bits;
     // c.lo = lo_bits;
@@ -97,7 +97,7 @@ fn main() -> bool {
 
     // all checks must pass:
     // t1 && t2 && t3 && t4
-    t1
+    t1 && t2 //&& t3
 
 
 
