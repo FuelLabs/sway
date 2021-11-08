@@ -8,26 +8,26 @@ struct B512 {
 }
 
 // temp
-pub fn build_from_b256(hi: b256, lo: b256) -> B512 {
-    let hi = asm(r1: hi, rhi) {
-            move rhi sp; // move stack pointer to rhi
-            cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
-            mcpi rhi r1 i32;
-            rhi: b256
-        };
+// pub fn build_from_b256(hi: b256, lo: b256) -> B512 {
+//     let hi = asm(r1: hi, rhi) {
+//             move rhi sp; // move stack pointer to rhi
+//             cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
+//             mcpi rhi r1 i32;
+//             rhi: b256
+//         };
 
-        let lo = asm(r1: lo, rlo) {
-            move rlo sp;
-            cfei i32;
-            mcpi rlo r1 i32;
-            rlo: b256
-        };
+//         let lo = asm(r1: lo, rlo) {
+//             move rlo sp;
+//             cfei i32;
+//             mcpi rlo r1 i32;
+//             rlo: b256
+//         };
 
-        B512 {
-            hi: hi,
-            lo: lo
-        }
-}
+//         B512 {
+//             hi: hi,
+//             lo: lo
+//         }
+// }
 
 impl B512 {
     // Initializes a blank B512

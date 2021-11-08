@@ -3,7 +3,6 @@ script;
 // if test passes, return true
 
 use std::types::B512;
-use std::types::build_from_b256;
 use std::constants::ETH_COLOR;
 
 struct B512 {
@@ -38,10 +37,10 @@ impl B512 {
         // using MCP to copy hi into first ptr
         // repeat w/ second ptr
 
-        let hi = asm(r1: hi, rhi, r2: 32) {
+        let hi = asm(r1: hi, rhi) {
             move rhi sp; // move stack pointer to rhi
             cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
-            mcp rhi r1 r2; // refactor to use mcpi when implemented!
+            mcpi rhi r1 i32; // refactor to use mcpi when implemented!
             rhi: b256
         };
 
@@ -49,7 +48,7 @@ impl B512 {
             move rlo sp;
             cfei i32;
             // now $rlo is pointing to blank memory that we can use
-            mcp rlo r1 r2; // refactor to use mcpi when implemented!
+            mcpi rlo r1 i32; // refactor to use mcpi when implemented!
             rlo: b256
         };
 
@@ -78,7 +77,7 @@ fn main() -> bool {
     let zero: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
     // it allows building from 2 b256's:
-    let b: B512 = build_from_b256(hi_bits, lo_bits);
+    let b: B512 = ~B512::from_b_256(hi_bits, lo_bits);
     let t1 = (b.lo == lo_bits) && (b.hi == hi_bits);
 
     // it allows creation of new empty type:
