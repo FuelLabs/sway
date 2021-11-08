@@ -81,8 +81,8 @@ fn main() -> bool {
     let t1 = (b.lo == lo_bits) && (b.hi == hi_bits);
 
     // it allows creation of new empty type:
-    // let mut a = ~B512::new();
-    // let t2 = (a.hi == zero) && (a.lo == zero);
+    let mut a = ~B512::new();
+    let t2 = (a.hi == zero) && (a.lo == zero);
 
     // // it allows modification of fields:
     // a.hi = hi_bits;
