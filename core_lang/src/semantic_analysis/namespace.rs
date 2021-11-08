@@ -146,21 +146,16 @@ impl<'sc> Namespace<'sc> {
         match namespace.symbols.get(item) {
             Some(decl) => {
                 //  if this is an enum or struct, import its implementations
-                match decl {
-                    a @ TypedDeclaration::StructDeclaration { .. } => {
-                        let a = a.return_type().value;
-                        namespace
-                            .implemented_traits
-                            .iter()
-                            .filter(|((_trait_name, type_info), _impl)| {
-                                a.map(|a| look_up_type_id(a)).as_ref() == Some(type_info)
-                            })
-                            .for_each(|(a, b)| {
-                                impls_to_insert.push((a.clone(), b.to_vec()));
-                            });
-                    }
-                    _ => (),
-                }
+                let a = decl.return_type().value;
+                namespace
+                    .implemented_traits
+                    .iter()
+                    .filter(|((_trait_name, type_info), _impl)| {
+                        a.map(|a| look_up_type_id(a)).as_ref() == Some(type_info)
+                    })
+                    .for_each(|(a, b)| {
+                        impls_to_insert.push((a.clone(), b.to_vec()));
+                    });
                 // no matter what, import it this way though.
                 match alias {
                     Some(alias) => {
@@ -287,7 +282,6 @@ impl<'sc> Namespace<'sc> {
         match module.symbols.get(name) {
             Some(decl) => ok(decl, warnings, errors),
             None => {
-                dbg!(&name);
                 errors.push(CompileError::SymbolNotFound {
                     name: name.primary_name.to_string(),
                     span: name.span.clone(),
