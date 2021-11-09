@@ -22,7 +22,7 @@ pub struct TypedExpression<'sc> {
     pub(crate) span: Span<'sc>,
 }
 
-pub(crate) fn error_recovery_expr<'sc>(span: Span<'sc>) -> TypedExpression<'sc> {
+pub(crate) fn error_recovery_expr(span: Span<'_>) -> TypedExpression<'_> {
     TypedExpression {
         expression: TypedExpressionVariant::Unit,
         return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
@@ -661,25 +661,21 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         ));
-        let r#else = if let Some(expr) = r#else {
-            Some(Box::new(check!(
-                TypedExpression::type_check(
-                    *expr.clone(),
-                    namespace,
-                    Some(then.return_type),
-                    "",
-                    self_type,
-                    build_config,
-                    dead_code_graph,
-                    dependency_graph
-                ),
-                error_recovery_expr(expr.span()),
-                warnings,
-                errors
-            )))
-        } else {
-            None
-        };
+        let r#else = r#else.map(|expr| Box::new(check!(
+            TypedExpression::type_check(
+                *expr.clone(),
+                namespace,
+                Some(then.return_type),
+                "",
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph
+            ),
+            error_recovery_expr(expr.span()),
+            warnings,
+            errors
+        )));
 
         // if there is a type annotation, then the else branch must exist
         if let Some(ref annotation) = type_annotation {
@@ -861,7 +857,7 @@ impl<'sc> TypedExpression<'sc> {
             fields: definition
                 .fields
                 .iter()
-                .map(TypedStructField::into_owned_typed_struct_field)
+                .map(TypedStructField::as_owned_typed_struct_field)
                 .collect::<Vec<_>>(),
         });
         let exp = TypedExpression {

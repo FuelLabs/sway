@@ -1323,7 +1323,7 @@ impl fmt::Display for Op<'_> {
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 GM(a, b) => format!("gm {} {}", a, b),
-                Undefined => format!("undefined op"),
+                Undefined => "undefined op".into(),
                 VirtualOp::DataSectionOffsetPlaceholder => "data section offset placeholder".into(),
                 DataSectionRegisterLoadPlaceholder => {
                     "data section register load placeholder".into()
@@ -1335,7 +1335,7 @@ impl fmt::Display for Op<'_> {
                 Jump(label) => format!("jump {}", label),
                 JumpIfNotEq(reg0, reg1, label) => format!("jnei {} {} {}", reg0, reg1, label),
                 OrganizationalOp::DataSectionOffsetPlaceholder => {
-                    format!("data section offset placeholder")
+                    "data section offset placeholder".into()
                 }
             },
         };
@@ -1344,7 +1344,7 @@ impl fmt::Display for Op<'_> {
         let mut op_and_comment = op_str;
         if !self.comment.is_empty() {
             while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push_str(" ");
+                op_and_comment.push(' ');
             }
             op_and_comment.push_str(&format!("; {}", self.comment))
         }

@@ -47,7 +47,7 @@ impl<'sc> Namespace<'sc> {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
-                        .map(TypedStructField::into_owned_typed_struct_field)
+                        .map(TypedStructField::as_owned_typed_struct_field)
                         .collect::<Vec<_>>(),
                 }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
@@ -58,7 +58,7 @@ impl<'sc> Namespace<'sc> {
                     name: name.primary_name.to_string(),
                     variant_types: variants
                         .iter()
-                        .map(TypedEnumVariant::into_owned_typed_enum_variant)
+                        .map(TypedEnumVariant::as_owned_typed_enum_variant)
                         .collect(),
                 }),
                 _ => crate::type_engine::insert_type(TypeInfo::Unknown),
@@ -83,7 +83,7 @@ impl<'sc> Namespace<'sc> {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
-                        .map(TypedStructField::into_owned_typed_struct_field)
+                        .map(TypedStructField::as_owned_typed_struct_field)
                         .collect::<Vec<_>>(),
                 }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
@@ -94,7 +94,7 @@ impl<'sc> Namespace<'sc> {
                     name: name.primary_name.to_string(),
                     variant_types: variants
                         .iter()
-                        .map(TypedEnumVariant::into_owned_typed_enum_variant)
+                        .map(TypedEnumVariant::as_owned_typed_enum_variant)
                         .collect(),
                 }),
                 _ => crate::type_engine::insert_type(TypeInfo::Unknown),

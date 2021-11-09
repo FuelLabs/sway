@@ -73,7 +73,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
-                        .map(TypedStructField::into_owned_typed_struct_field)
+                        .map(TypedStructField::as_owned_typed_struct_field)
                         .collect(),
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
@@ -186,7 +186,7 @@ pub struct OwnedTypedStructField {
 }
 
 impl OwnedTypedStructField {
-    pub(crate) fn into_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
+    pub(crate) fn as_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
         TypedStructField {
             name: Ident {
                 span: span.clone(),
@@ -199,7 +199,7 @@ impl OwnedTypedStructField {
 }
 
 impl TypedStructField<'_> {
-    pub(crate) fn into_owned_typed_struct_field(&self) -> OwnedTypedStructField {
+    pub(crate) fn as_owned_typed_struct_field(&self) -> OwnedTypedStructField {
         OwnedTypedStructField {
             name: self.name.primary_name.to_string(),
             r#type: self.r#type,
@@ -234,7 +234,7 @@ impl TypedEnumDeclaration<'_> {
             variant_types: self
                 .variants
                 .iter()
-                .map(TypedEnumVariant::into_owned_typed_enum_variant)
+                .map(TypedEnumVariant::as_owned_typed_enum_variant)
                 .collect(),
         })
     }
@@ -248,7 +248,7 @@ pub struct TypedEnumVariant<'sc> {
 }
 
 impl TypedEnumVariant<'_> {
-    pub(crate) fn into_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
+    pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
         OwnedTypedEnumVariant {
             name: self.name.primary_name.to_string(),
             r#type: self.r#type,

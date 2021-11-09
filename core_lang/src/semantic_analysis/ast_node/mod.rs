@@ -1059,9 +1059,9 @@ fn type_check_trait_methods<'sc>(
 
 /// Used to create a stubbed out function when the function fails to compile, preventing cascading
 /// namespace errors
-fn error_recovery_function_declaration<'sc>(
-    decl: FunctionDeclaration<'sc>,
-) -> TypedFunctionDeclaration<'sc> {
+fn error_recovery_function_declaration(
+    decl: FunctionDeclaration<'_>,
+) -> TypedFunctionDeclaration<'_> {
     let FunctionDeclaration {
         name,
         return_type,

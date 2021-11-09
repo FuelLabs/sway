@@ -14,7 +14,7 @@ pub enum Visibility {
 }
 
 impl Visibility {
-    pub(crate) fn parse_from_pair<'sc>(input: Pair<'sc, Rule>) -> Self {
+    pub(crate) fn parse_from_pair(input: Pair<'_, Rule>) -> Self {
         match input.as_str().trim() {
             "pub" => Visibility::Public,
             _ => Visibility::Private,

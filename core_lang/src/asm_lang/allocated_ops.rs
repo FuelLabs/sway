@@ -244,7 +244,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             NOOP            => "noop".to_string(),
             FLAG(a)         => format!("flag {}", a),
             GM(a, b)         => format!("gm {} {}", a, b),
-            Undefined       => format!("undefined op"),
+            Undefined       => "undefined op".into(),
             DataSectionOffsetPlaceholder => "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]".into(),
             DataSectionRegisterLoadPlaceholder => "lw   $ds $is 1".into()
         };
@@ -253,7 +253,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
         let mut op_and_comment = string;
         if !self.comment.is_empty() {
             while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push_str(" ");
+                op_and_comment.push(' ');
             }
             op_and_comment.push_str(&format!("; {}", self.comment))
         }
