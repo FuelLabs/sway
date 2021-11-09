@@ -278,29 +278,32 @@ pub fn replace_dep_version(
 }
 
 pub fn get_current_dependency_version(dep_dir: &str) -> Result<VersionedDependencyDirectory> {
-    for entry in fs::read_dir(dep_dir).context(format!("couldn't read directory {}", dep_dir))? {
-        let path = entry?.path();
-        if !path.is_dir() {
-            bail!("{} isn't a directory.", dep_dir)
-        }
+    let mut entries = fs::read_dir(dep_dir).context(format!("couldn't read directory {}", dep_dir))?;
+    let entry = match entries.next() {
+        Some(entry) => entry,
+        None => bail!("Dependency directory is empty. Run `forc build` to install dependencies."),
+    };
 
-        let path_str = path.to_str().unwrap().to_string();
-
-        // Getting the base of the path (the dependency directory name)
-        let mut pieces = path_str.rsplit('/');
-        match pieces.next() {
-            Some(p) => {
-                return Ok(VersionedDependencyDirectory {
-                    // Dependencies directories are named as "$repo_owner-$repo-$concatenated_hash"
-                    // Here we're grabbing the hash.
-                    hash: p.to_owned().split('-').last().unwrap().into(),
-                    path: path_str,
-                });
-            }
-            None => bail!("Unexpected dependency naming scheme: {}", path_str),
-        }
+    let path = entry?.path();
+    if !path.is_dir() {
+        bail!("{} isn't a directory.", dep_dir)
     }
-    bail!("Dependency directory is empty. Run `forc build` to install dependencies.")
+
+    let path_str = path.to_str().unwrap().to_string();
+
+    // Getting the base of the path (the dependency directory name)
+    let mut pieces = path_str.rsplit('/');
+    match pieces.next() {
+        Some(p) => {
+            Ok(VersionedDependencyDirectory {
+                // Dependencies directories are named as "$repo_owner-$repo-$concatenated_hash"
+                // Here we're grabbing the hash.
+                hash: p.to_owned().split('-').last().unwrap().into(),
+                path: path_str,
+            })
+        }
+        None => bail!("Unexpected dependency naming scheme: {}", path_str),
+    }
 }
 
 // Returns the _truncated_ (e.g `e6940e4`) latest commit hash of a

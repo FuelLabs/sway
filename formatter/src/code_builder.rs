@@ -42,7 +42,7 @@ impl CodeBuilder {
 
         let num_of_lines = self.edits.len();
 
-        (num_of_lines, self.to_string())
+        (num_of_lines, self.build_string())
     }
 
     /// formats line of code and adds it to Vec<CodeLine>
@@ -183,7 +183,7 @@ impl CodeBuilder {
         self.add_line(code_line);
     }
 
-    fn to_string(&mut self) -> String {
+    fn build_string(&mut self) -> String {
         self.edits
             .iter()
             .map(|code_line| code_line.text.clone())

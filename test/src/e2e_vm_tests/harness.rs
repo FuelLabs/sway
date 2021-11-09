@@ -129,9 +129,10 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
 /// Panics if code _does_ compile, used for test cases where the source
 /// code should have been rejected by the compiler.
 pub(crate) fn does_not_compile(file_name: &str) {
-    if compile_to_bytes(file_name).is_ok() {
-        panic!("{} should not have compiled.", file_name);
-    }
+    assert!(
+        compile_to_bytes(file_name).is_err(),
+        "{} should not have compiled.", file_name,
+    )
 }
 
 /// Returns `true` if a file compiled without any errors or warnings,

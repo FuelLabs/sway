@@ -142,9 +142,7 @@ fn get_struct_field_type(line: &str, iter: &mut Peekable<Enumerate<Chars>>) -> S
 
     if let Some((next_index, _)) = iter.peek() {
         let leftover = &line[*next_index..];
-        if is_newline_incoming(leftover) {
-            result.push_str(NEW_LINE_PATTERN);
-        } else if !is_comment(leftover) && !is_multiline_comment(leftover) {
+        if is_newline_incoming(leftover) || !(is_comment(leftover) || is_multiline_comment(leftover)) {
             result.push_str(NEW_LINE_PATTERN);
         }
     }

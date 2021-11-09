@@ -17,15 +17,13 @@ pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
 
     while let Some(next_dir) = dir_entries.pop() {
         if let Ok(read_dir) = fs::read_dir(next_dir) {
-            for inner_entry in read_dir {
-                if let Ok(entry) = inner_entry {
-                    let path = entry.path();
+            for entry in read_dir.filter_map(|res| res.ok()) {
+                let path = entry.path();
 
-                    if path.is_dir() {
-                        dir_entries.push(path);
-                    } else if is_sway_file(&path) {
-                        files.push(path)
-                    }
+                if path.is_dir() {
+                    dir_entries.push(path);
+                } else if is_sway_file(&path) {
+                    files.push(path)
                 }
             }
         }

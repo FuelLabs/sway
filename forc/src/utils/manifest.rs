@@ -94,7 +94,7 @@ fn try_parse_contract_id(raw: &Option<String>) -> Result<fuel_tx::ContractId, St
     let mut raw = if let Some(raw) = raw {
         raw.to_string()
     } else {
-        return Err(format!("Missing contract-id in manifest."));
+        return Err("Missing contract-id in manifest.".into());
     };
     if raw.len() > 2 && &raw[0..2] == "0x" {
         raw = (&raw[2..]).to_string();

@@ -25,7 +25,7 @@ pub async fn start_fuel_core(node_url: &str, client: &FuelClient) -> Result<Chil
                 }
             }
 
-            Err(format!("Could not start fuel-core"))
+            Err("Could not start fuel-core".into())
         }
         Err(e) => Err(format!("Failed to spawn: {:?}. Error: {:?}", cmd, e)),
     }
