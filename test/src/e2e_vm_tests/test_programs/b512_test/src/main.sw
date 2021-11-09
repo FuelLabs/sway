@@ -5,14 +5,16 @@ use std::constants::ETH_COLOR;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.
 fn are_fields_aligned(big_value: B512) -> bool {
-    let next_bits = asm(r1: big_value.hi, r2, r3, r4: 32) {
-        move r1 sp;   // set the stack pointer to start of hi val
-        add r3 sp r4; // set r3 to hi + 32 bytes (use addi when implemented)
-        move r3 sp;   // move stack pointer to r3
-        mcpi r2 r3 i32; // copy the next 32 bytes to r2
-        r2: b256      // return what should be lo val
-    };
-    next_bits == big_value.lo
+    asm(hi: big_value.hi, lo: big_value.lo, buf, loptr, len, rslt) {
+        move buf sp;            // Save a copy of SP in hi.
+        cfei i64;               // Reserve 512 bits of stack space.  SP is now hi+64.
+        mcpi buf hi i64;        // Copy 64 bytes *starting at* big_value.hi.  This should include big_value.lo.
+        addi loptr buf i32;     // Point loptr at where we think big_value.lo was copied to.
+        addi len zero i32;      // Set len to 32.  Not sure if there's a better way to do this.  MEQI would be handy.
+        meq  rslt hi loptr len; // Compare the known big_value.lo in lo with our copied big_value.lo in loptr.
+        cfsi i64;               // Free the stack space.
+        rslt: bool
+    }
 }
 
 fn main() -> bool {
