@@ -55,6 +55,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("aliased_imports", ProgramState::Return(42)),
         ("empty_method_initializer", ProgramState::Return(1)), // true
         ("b512_struct_alignment", ProgramState::Return(1)),    // true
+        ("generic_structs", ProgramState::Return(1)),          // true
+        ("generic_functions", ProgramState::Return(1)),        // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
@@ -76,6 +78,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "mut_error_message",
         "reassignment_to_non_variable_message",
         "disallowed_gm",
+        "bad_generic_annotation",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
