@@ -41,16 +41,20 @@ fn main() -> bool {
     a.lo = modified;
     let t4 = (a.hi == modified) && (a.lo == modified);
 
-
     // it guarantees memory contiguity:
     let mut c = ~B512::new();
     c.hi= hi_bits;
     c.lo = lo_bits;
-    let t5 = are_fields_aligned(c);
+    let t5 = are_fields_contiguous(c);
 
     // all checks must pass:
-    t1 && t2 && t3 && t4
+    t1 && t2 && t3 && t4 && t5
 
-
+    // currently:
+    // t1 == true
+    // t2 == false
+    // t3 == true
+    // t4 == false
+    // t5 == false
 
 }
