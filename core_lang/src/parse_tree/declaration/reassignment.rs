@@ -76,7 +76,7 @@ impl<'sc> Reassignment<'sc> {
                     errors
                 );
 
-                let inner = lhs.into_inner().next().expect("guaranteed by gramar");
+                let inner = lhs.into_inner().next().expect("guaranteed by grammar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
 
                 // treat parent as one expr, final name as the field to be accessed
