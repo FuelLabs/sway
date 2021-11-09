@@ -14,7 +14,7 @@ pub fn get_completion(
     }
 }
 
-pub fn to_completion_items(tokens: &Vec<Token>) -> Vec<CompletionItem> {
+pub fn to_completion_items(tokens: &[Token]) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
     for token in tokens {

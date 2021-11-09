@@ -161,14 +161,13 @@ impl Span {
 
     pub fn input(&self) -> String {
         let input_file: SourceFile = get_source(self.arena_idx);
-        input_file.file_content.clone()
+        input_file.file_content
     }
 
     pub fn path(&self) -> String {
         let input_file: SourceFile = get_source(self.arena_idx);
         input_file
             .file_path
-            .clone()
             .into_os_string()
             .into_string()
             .expect("hopefully the file name isn't invalid utf-8")

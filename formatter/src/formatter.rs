@@ -4,7 +4,7 @@ use ropey::Rope;
 
 /// returns number of lines and formatted text
 pub fn get_formatted_data(file: &str, tab_size: u32) -> Result<(usize, String), Vec<String>> {
-    let parsed_res = core_lang::parse(&file, None);
+    let parsed_res = core_lang::parse(file, None);
     match parsed_res.value {
         Some(parse_tree) => {
             let changes = traverse_for_changes(&parse_tree);
@@ -22,7 +22,7 @@ pub fn get_formatted_data(file: &str, tab_size: u32) -> Result<(usize, String), 
             let mut code_builder = CodeBuilder::new(tab_size);
 
             let file = rope_file.to_string();
-            let lines: Vec<&str> = file.split("\n").collect();
+            let lines: Vec<&str> = file.split('\n').collect();
 
             // todo: handle lengthy lines of code
             for line in lines {

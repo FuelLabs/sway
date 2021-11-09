@@ -68,7 +68,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     let contract_root = contract.root();
     let contract_id = contract.id(&salt, &contract_root);
 
-    let output = Output::contract_created(contract_id.clone());
+    let output = Output::contract_created(contract_id);
 
     let bytecode_witness = 0;
     let gas_price = 10;
@@ -93,7 +93,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
         utxo_id: rng.gen(),
         balance_root: rng.gen(),
         state_root: rng.gen(),
-        contract_id: contract_id.clone(),
+        contract_id,
     };
     let output_contract = Output::Contract {
         input_index: 0,
@@ -121,16 +121,15 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     );
     let block_height = (u32::MAX >> 1) as u64;
     tx_to_test.validate(block_height).unwrap();
-    Interpreter::transition(&mut storage, tx_to_test)
+    *Interpreter::transition(&mut storage, tx_to_test)
         .unwrap()
         .state()
-        .clone()
 }
 
 /// Panics if code _does_ compile, used for test cases where the source
 /// code should have been rejected by the compiler.
 pub(crate) fn does_not_compile(file_name: &str) {
-    if let Ok(_) = compile_to_bytes(file_name) {
+    if compile_to_bytes(file_name).is_ok() {
         panic!("{} should not have compiled.", file_name);
     }
 }

@@ -23,10 +23,8 @@ pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
 
                     if path.is_dir() {
                         dir_entries.push(path);
-                    } else {
-                        if is_sway_file(&path) {
-                            files.push(path)
-                        }
+                    } else if is_sway_file(&path) {
+                        files.push(path)
                     }
                 }
             }
@@ -37,8 +35,8 @@ pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
 }
 
 // Continually go up in the file tree until a manifest (Forc.toml) is found.
-pub fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
-    let mut path = std::fs::canonicalize(starter_path.clone()).ok()?;
+pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
+    let mut path = std::fs::canonicalize(starter_path).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
         path.push(crate::utils::constants::MANIFEST_FILE_NAME);
@@ -53,9 +51,9 @@ pub fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
     None
 }
 
-pub fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
+pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
     let manifest_path = {
-        let mut man = manifest_dir.clone();
+        let mut man = PathBuf::from(manifest_dir);
         man.push(crate::utils::constants::MANIFEST_FILE_NAME);
         man
     };
@@ -77,10 +75,10 @@ pub fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
 
 pub fn get_main_file(
     manifest_of_dep: &Manifest,
-    manifest_dir: &PathBuf,
+    manifest_dir: &Path,
 ) -> Result<&'static mut String, String> {
     let main_path = {
-        let mut code_dir = manifest_dir.clone();
+        let mut code_dir = PathBuf::from(manifest_dir);
         code_dir.push(SRC_DIR);
         code_dir.push(&manifest_of_dep.project.entry);
         code_dir
@@ -90,7 +88,7 @@ pub fn get_main_file(
     let main_file = std::fs::read_to_string(&main_path).map_err(|e| e.to_string())?;
     let main_file = Box::new(main_file);
     let main_file: &'static mut String = Box::leak(main_file);
-    return Ok(main_file);
+    Ok(main_file)
 }
 
 pub fn println_red(txt: &str) -> io::Result<()> {

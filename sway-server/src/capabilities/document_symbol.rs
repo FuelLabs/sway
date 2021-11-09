@@ -9,7 +9,7 @@ pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbol
     }
 }
 
-pub fn to_symbol_information(tokens: &Vec<Token>, url: Url) -> Vec<SymbolInformation> {
+pub fn to_symbol_information(tokens: &[Token], url: Url) -> Vec<SymbolInformation> {
     let mut symbols: Vec<SymbolInformation> = vec![];
 
     for token in tokens {

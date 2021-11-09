@@ -55,7 +55,7 @@ impl<'sc> TypedDeclaration<'sc> {
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body, ..
-                }) => body.return_type.clone(),
+                }) => body.return_type,
                 TypedDeclaration::FunctionDeclaration { .. } => {
                     return err(
                         vec![],
@@ -77,7 +77,7 @@ impl<'sc> TypedDeclaration<'sc> {
                         .collect(),
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
-                    rhs.return_type.clone()
+                    rhs.return_type
                 }
                 decl => {
                     return err(
@@ -319,7 +319,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 .map(|x| {
                     let mut x = x.clone();
                     x.r#type = match look_up_type_id(x.r#type) {
-                        TypeInfo::SelfType => self_type.clone(),
+                        TypeInfo::SelfType => self_type,
                         _otherwise => x.r#type,
                     };
                     x
@@ -327,7 +327,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 .collect(),
             span: self.span.clone(),
             return_type: match look_up_type_id(self.return_type) {
-                TypeInfo::SelfType => self_type.clone(),
+                TypeInfo::SelfType => self_type,
                 _otherwise => self.return_type,
             },
             type_parameters: self.type_parameters.clone(),
@@ -600,7 +600,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,
-                return_type.clone(),
+                return_type,
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
@@ -708,7 +708,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     span: parameters
                         .get(0)
                         .map(|x| x.type_span.clone())
-                        .unwrap_or(fn_decl.name.span.clone()),
+                        .unwrap_or_else(|| fn_decl.name.span.clone()),
                 });
             }
         }

@@ -732,7 +732,7 @@ fn reassignment<'sc>(
                 }
             };
             // the RHS is a ref type to the LHS
-            let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type.clone()));
+            let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
             // type check the reassignment
             let rhs = check!(
                 TypedExpression::type_check(
@@ -754,7 +754,7 @@ fn reassignment<'sc>(
                 TypedDeclaration::Reassignment(TypedReassignment {
                     lhs: vec![ReassignmentLhs {
                         name,
-                        r#type: thing_to_reassign.return_type.clone(),
+                        r#type: thing_to_reassign.return_type,
                     }],
                     rhs,
                 }),
@@ -790,7 +790,7 @@ fn reassignment<'sc>(
                     Expression::VariableExpression { name, .. } => {
                         names_vec.push(ReassignmentLhs {
                             name,
-                            r#type: type_checked.return_type.clone(),
+                            r#type: type_checked.return_type,
                         });
                         break type_checked.return_type;
                     }
@@ -835,7 +835,7 @@ fn reassignment<'sc>(
                 TypedExpression::type_check(
                     rhs,
                     namespace,
-                    Some(ty_of_field.clone()),
+                    Some(ty_of_field),
                     format!(
                         "This struct field has type \"{}\"",
                         look_up_type_id(ty_of_field).friendly_type_str()
@@ -979,7 +979,7 @@ fn type_check_trait_methods<'sc>(
                 );
                 if type_parameters
                     .iter()
-                    .find(
+                    .any(
                         |TypeParameter {
                              name: this_name, ..
                          }| {
@@ -990,7 +990,6 @@ fn type_check_trait_methods<'sc>(
                             }
                         },
                     )
-                    .is_none()
                 {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
                         name: name.to_string(),

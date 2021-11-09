@@ -16,57 +16,51 @@ pub fn format_custom_types(text: &str) -> String {
 
     let mut result = String::default();
 
-    loop {
-        if let Some((_, current_char)) = iter.next() {
-            if is_curr_comment {
-                result.push(current_char);
-                if current_char == '\n' {
-                    is_curr_comment = false;
-                }
-            } else if is_curr_multi_comment {
-                result.push(current_char);
-                if current_char == '*' {
-                    if let Some((_, c)) = iter.peek() {
-                        if *c == '/' {
-                            iter.next();
-                            result.push('/');
-                            is_curr_multi_comment = false;
-                        }
+    while let Some((_, current_char)) = iter.next() {
+        result.push(current_char);
+        if is_curr_comment {
+            if current_char == '\n' {
+                is_curr_comment = false;
+            }
+        } else if is_curr_multi_comment {
+            if current_char == '*' {
+                if let Some((_, c)) = iter.peek() {
+                    if *c == '/' {
+                        iter.next();
+                        result.push('/');
+                        is_curr_multi_comment = false;
                     }
-                }
-            } else {
-                result.push(current_char);
-                match current_char {
-                    '/' => match iter.peek() {
-                        Some((_, '/')) => {
-                            result.push('/');
-                            iter.next();
-                            is_curr_comment = true;
-                        }
-                        Some((_, '*')) => {
-                            result.push('*');
-                            iter.next();
-                            is_curr_multi_comment = true;
-                        }
-                        _ => {}
-                    },
-                    '}' => {
-                        clean_all_whitespace(&mut iter);
-                        if let Some((_, next_char)) = iter.peek() {
-                            if *next_char != ',' {
-                                result.push(',');
-                            }
-                        }
-                    }
-                    ':' => {
-                        let struct_field_type = get_struct_field_type(text, &mut iter);
-                        result.push_str(&struct_field_type);
-                    }
-                    _ => {}
                 }
             }
         } else {
-            break;
+            match current_char {
+                '/' => match iter.peek() {
+                    Some((_, '/')) => {
+                        result.push('/');
+                        iter.next();
+                        is_curr_comment = true;
+                    }
+                    Some((_, '*')) => {
+                        result.push('*');
+                        iter.next();
+                        is_curr_multi_comment = true;
+                    }
+                    _ => {}
+                },
+                '}' => {
+                    clean_all_whitespace(&mut iter);
+                    if let Some((_, next_char)) = iter.peek() {
+                        if *next_char != ',' {
+                            result.push(',');
+                        }
+                    }
+                }
+                ':' => {
+                    let struct_field_type = get_struct_field_type(text, &mut iter);
+                    result.push_str(&struct_field_type);
+                }
+                _ => {}
+            }
         }
     }
 

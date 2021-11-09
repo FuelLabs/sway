@@ -92,7 +92,7 @@ impl<'sc> ImplTrait<'sc> {
             where_clause_pair,
             config,
         )
-        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
+        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
         let mut fn_decls_buf = vec![];
 
@@ -171,7 +171,7 @@ impl<'sc> ImplSelf<'sc> {
             where_clause_pair,
             config,
         )
-        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
+        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
         let mut fn_decls_buf = vec![];
 

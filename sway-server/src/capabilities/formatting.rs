@@ -21,8 +21,7 @@ pub fn get_format_text_edits(text: &str, options: FormattingOptions) -> Option<V
     // we only format if code is correct
     match get_formatted_data(text, options.tab_size) {
         Ok((num_of_lines, formatted_text)) => {
-            let lines: Vec<&str> = text.split("\n").collect();
-            let text_lines_count = lines.len();
+            let text_lines_count = text.split('\n').count();
             let line_end = std::cmp::max(num_of_lines, text_lines_count) as u32;
 
             let main_edit = TextEdit {

@@ -52,6 +52,7 @@ impl AllocatedRegister {
 /// between virtual ops and those which have gone through register allocation.
 /// A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug)]
 pub(crate) enum AllocatedOpcode {
     ADD(AllocatedRegister, AllocatedRegister, AllocatedRegister),
@@ -250,7 +251,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
         // we want the comment to always be COMMENT_START_COLUMN characters offset to the right
         // to not interfere with the ASM but to be aligned
         let mut op_and_comment = string;
-        if self.comment.len() > 0 {
+        if !self.comment.is_empty() {
             while op_and_comment.len() < COMMENT_START_COLUMN {
                 op_and_comment.push_str(" ");
             }

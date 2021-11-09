@@ -16,7 +16,7 @@ pub(crate) fn order_ast_nodes_by_dependency<'sc>(
     let decl_dependencies = DependencyMap::from_iter(
         nodes
             .iter()
-            .filter_map(|node| Dependencies::gather_from_decl_node(node)),
+            .filter_map(Dependencies::gather_from_decl_node),
     );
 
     // Check here for recursive calls now that we have a nice map of the dependencies to help us.

@@ -78,7 +78,6 @@ impl<'sc> Reassignment<'sc> {
 
                 let inner = lhs.into_inner().next().expect("guaranteed by gramar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
-                let name_parts = inner.into_inner().collect::<Vec<_>>();
 
                 // treat parent as one expr, final name as the field to be accessed
                 // if there are multiple fields, this is a nested expression
@@ -86,7 +85,7 @@ impl<'sc> Reassignment<'sc> {
                 // of field `b` on `a`
                 // the first thing is either an exp or a var, everything subsequent must be
                 // a field
-                let mut name_parts = name_parts.into_iter();
+                let mut name_parts = inner.into_inner();
                 let mut expr = check!(
                     parse_call_item_ensure_only_var(
                         name_parts.next().expect("guaranteed by grammar"),
@@ -157,14 +156,14 @@ fn parse_call_item_ensure_only_var<'sc>(
             ),
             span: Span {
                 span: item.as_span(),
-                path: path.clone(),
+                path,
             },
         },
         Rule::expr => {
             errors.push(CompileError::InvalidExpressionOnLhs {
                 span: Span {
                     span: item.as_span(),
-                    path: path.clone(),
+                    path,
                 },
             });
             return err(warnings, errors);

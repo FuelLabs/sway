@@ -35,7 +35,7 @@ impl<'sc> ConstantDeclaration<'sc> {
         let type_ascription = type_ascription
             .map(|ascription| {
                 check!(
-                    TypeInfo::parse_from_pair(ascription, config.clone()),
+                    TypeInfo::parse_from_pair(ascription, config),
                     TypeInfo::Unit,
                     warnings,
                     errors
@@ -43,7 +43,7 @@ impl<'sc> ConstantDeclaration<'sc> {
             })
             .unwrap_or(TypeInfo::Unknown);
         let value = check!(
-            Expression::parse_from_pair_inner(maybe_value, config.clone()),
+            Expression::parse_from_pair_inner(maybe_value, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -51,7 +51,7 @@ impl<'sc> ConstantDeclaration<'sc> {
         ok(
             ConstantDeclaration {
                 name: check!(
-                    Ident::parse_from_pair(name_pair, config.clone()),
+                    Ident::parse_from_pair(name_pair, config),
                     return err(warnings, errors),
                     warnings,
                     errors

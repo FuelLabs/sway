@@ -13,10 +13,10 @@ pub struct VirtualImmediate06 {
 impl VirtualImmediate06 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
         if raw > crate::asm_generation::compiler_constants::SIX_BITS {
-            return Err(CompileError::Immediate06TooLarge {
+            Err(CompileError::Immediate06TooLarge {
                 val: raw,
                 span: err_msg_span,
-            });
+            })
         } else {
             Ok(Self {
                 value: raw.try_into().unwrap(),
@@ -39,10 +39,10 @@ pub struct VirtualImmediate12 {
 impl VirtualImmediate12 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
         if raw > crate::asm_generation::compiler_constants::TWELVE_BITS {
-            return Err(CompileError::Immediate12TooLarge {
+            Err(CompileError::Immediate12TooLarge {
                 val: raw,
                 span: err_msg_span,
-            });
+            })
         } else {
             Ok(Self {
                 value: raw.try_into().unwrap(),
@@ -56,7 +56,7 @@ impl VirtualImmediate12 {
     /// A panic message is still required, just in case the programmer has made an error.
     pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
         Self {
-            value: raw.try_into().expect(&(msg.into())),
+            value: raw.try_into().unwrap_or_else(|_| panic!("{}", msg.into())),
         }
     }
 }
@@ -74,10 +74,10 @@ pub struct VirtualImmediate18 {
 impl VirtualImmediate18 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
         if raw > crate::asm_generation::compiler_constants::EIGHTEEN_BITS {
-            return Err(CompileError::Immediate18TooLarge {
+            Err(CompileError::Immediate18TooLarge {
                 val: raw,
                 span: err_msg_span,
-            });
+            })
         } else {
             Ok(Self {
                 value: raw.try_into().unwrap(),
@@ -91,7 +91,7 @@ impl VirtualImmediate18 {
     /// A panic message is still required, just in case the programmer has made an error.
     pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
         Self {
-            value: raw.try_into().expect(&(msg.into())),
+            value: raw.try_into().unwrap_or_else(|_| panic!("{}", msg.into())),
         }
     }
 }
@@ -109,10 +109,10 @@ pub struct VirtualImmediate24 {
 impl VirtualImmediate24 {
     pub(crate) fn new<'sc>(raw: u64, err_msg_span: Span<'sc>) -> Result<Self, CompileError<'sc>> {
         if raw > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
-            return Err(CompileError::Immediate24TooLarge {
+            Err(CompileError::Immediate24TooLarge {
                 val: raw,
                 span: err_msg_span,
-            });
+            })
         } else {
             Ok(Self {
                 value: raw.try_into().unwrap(),
@@ -126,7 +126,7 @@ impl VirtualImmediate24 {
     /// A panic message is still required, just in case the programmer has made an error.
     pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
         Self {
-            value: raw.try_into().expect(&(msg.into())),
+            value: raw.try_into().unwrap_or_else(|_| panic!("{}", &msg.into())),
         }
     }
 }

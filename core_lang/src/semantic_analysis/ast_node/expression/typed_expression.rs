@@ -88,7 +88,7 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 namespace,
                 type_annotation,
-                help_text.clone(),
+                help_text,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -107,7 +107,7 @@ impl<'sc> TypedExpression<'sc> {
                 r#else,
                 span,
                 namespace,
-                type_annotation.clone(),
+                type_annotation,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -204,11 +204,12 @@ impl<'sc> TypedExpression<'sc> {
                 dependency_graph,
             ),
             a => {
-                let mut errors = vec![];
-                errors.push(CompileError::Unimplemented(
-                    "Unimplemented expression",
-                    a.span(),
-                ));
+                let errors = vec![
+                    CompileError::Unimplemented(
+                        "Unimplemented expression",
+                        a.span(),
+                    ),
+                ];
 
                 let exp = error_recovery_expr(a.span());
                 ok(exp, vec![], errors)
@@ -285,7 +286,7 @@ impl<'sc> TypedExpression<'sc> {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                 body, ..
             })) => TypedExpression {
-                return_type: body.return_type.clone(),
+                return_type: body.return_type,
                 is_constant: body.is_constant,
                 expression: TypedExpressionVariant::VariableExpression { name: name.clone() },
                 span,
@@ -293,7 +294,7 @@ impl<'sc> TypedExpression<'sc> {
             Some(TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
                 value, ..
             })) => TypedExpression {
-                return_type: value.return_type.clone(),
+                return_type: value.return_type,
                 is_constant: IsConstant::Yes,
                 // Although this isn't strictly a 'variable' expression we can treat it as one for
                 // this context.
@@ -390,7 +391,7 @@ impl<'sc> TypedExpression<'sc> {
                             (param.name.clone(), TypedExpression::type_check(
                             arg.clone(),
                             namespace,
-                            Some(param.r#type.clone()),
+                            Some(param.r#type),
                             "The argument that has been provided to this function's type does \
                             not match the declared type of the parameter in the function \
                             declaration.",
@@ -408,7 +409,7 @@ impl<'sc> TypedExpression<'sc> {
                         .collect();
 
                 TypedExpression {
-                    return_type: return_type.clone(),
+                    return_type,
                     // now check the function call return type
                     // FEATURE this IsConstant can be true if the function itself is
                     // constant-able const functions would be an
@@ -574,7 +575,7 @@ impl<'sc> TypedExpression<'sc> {
                 namespace,
                 type_annotation
                     .unwrap_or_else(|| crate::type_engine::insert_type(TypeInfo::Unknown)),
-                help_text.clone(),
+                help_text,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -649,7 +650,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 *then.clone(),
                 namespace,
-                type_annotation.clone(),
+                type_annotation,
                 "",
                 self_type,
                 build_config,
@@ -665,7 +666,7 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression::type_check(
                     *expr.clone(),
                     namespace,
-                    Some(then.return_type.clone()),
+                    Some(then.return_type),
                     "",
                     self_type,
                     build_config,
@@ -926,14 +927,14 @@ impl<'sc> TypedExpression<'sc> {
                     .collect::<Vec<_>>()
                     .join("\n"),
                 field_name: field_to_access.primary_name,
-                struct_name: struct_name.clone(),
+                struct_name,
             });
             return err(warnings, errors);
         };
 
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructFieldAccess {
-                resolved_type_of_parent: parent.return_type.clone(),
+                resolved_type_of_parent: parent.return_type,
                 prefix: Box::new(parent),
                 field_to_access: field.clone(),
                 field_to_access_span: span.clone(),
@@ -1003,7 +1004,7 @@ impl<'sc> TypedExpression<'sc> {
                         call_path.suffix,
                         args,
                         //TODO(generics)
-                        type_arguments.into_iter().map(|x| insert_type(x)).collect(),
+                        type_arguments.into_iter().map(insert_type).collect(),
                         namespace,
                         self_type,
                         build_config,
@@ -1122,7 +1123,7 @@ impl<'sc> TypedExpression<'sc> {
         functions_buf.append(&mut type_checked_fn_buf);
         namespace.insert_trait_implementation(
             abi_name.clone(),
-            look_up_type_id(return_type.clone()),
+            look_up_type_id(return_type),
             functions_buf,
         );
         let exp = TypedExpression {

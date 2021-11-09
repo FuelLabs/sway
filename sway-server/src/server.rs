@@ -30,21 +30,18 @@ impl Backend {
     fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
-        match find_manifest_dir(&curr_dir) {
-            Some(path) => {
-                let files = get_sway_files(path);
+        if let Some(path) = find_manifest_dir(&curr_dir) {
+            let files = get_sway_files(path);
 
-                for file_path in files {
-                    if let Some(path) = file_path.to_str() {
-                        // store the document
-                        let text_document = TextDocument::build_from_path(path)?;
-                        self.session.store_document(text_document)?;
-                        // parse the document for tokens
-                        let _ = self.session.parse_document(path);
-                    }
+            for file_path in files {
+                if let Some(path) = file_path.to_str() {
+                    // store the document
+                    let text_document = TextDocument::build_from_path(path)?;
+                    self.session.store_document(text_document)?;
+                    // parse the document for tokens
+                    let _ = self.session.parse_document(path);
                 }
             }
-            _ => {}
         }
 
         Ok(())

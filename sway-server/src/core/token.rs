@@ -54,7 +54,7 @@ impl Token {
     pub fn from_variable(var_dec: &VariableDeclaration) -> Self {
         let ident = &var_dec.name;
         let name = ident.primary_name;
-        let var_body = extract_var_body(&var_dec);
+        let var_body = extract_var_body(var_dec);
 
         Token::new(
             &ident.span,
@@ -128,7 +128,7 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
 
         Declaration::TraitDeclaration(trait_dec) => {
             let ident = &trait_dec.name;
-            let token = Token::from_ident(&ident, TokenType::Trait(get_trait_details(&trait_dec)));
+            let token = Token::from_ident(ident, TokenType::Trait(get_trait_details(&trait_dec)));
             tokens.push(token);
 
             // todo
@@ -137,7 +137,7 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
         Declaration::StructDeclaration(struct_dec) => {
             let ident = &struct_dec.name;
             let token =
-                Token::from_ident(&ident, TokenType::Struct(get_struct_details(&struct_dec)));
+                Token::from_ident(ident, TokenType::Struct(get_struct_details(&struct_dec)));
             tokens.push(token);
         }
         Declaration::EnumDeclaration(enum_dec) => {
