@@ -34,18 +34,18 @@ impl B512 {
         // using MCP to copy hi into first ptr
         // repeat w/ second ptr
 
-        let hi = asm(r1: hi, rhi, r2: 32) {
+        let hi = asm(r1: hi, rhi) {
             move rhi sp; // move stack pointer to rhi
             cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
-            mcp rhi r1 r2; // refactor to use mcpi when implemented!
+            mcpi rhi r1 i32; // refactor to use mcpi when implemented!
             rhi: b256
         };
 
-        let lo = asm(r1: lo, rlo, r2: 32) {
+        let lo = asm(r1: lo, rlo) {
             move rlo sp;
             cfei i32;
             // now $rlo is pointing to blank memory that we can use
-            mcp rlo r1 r2; // refactor to use mcpi when implemented!
+            mcpi rlo r1 i32; // refactor to use mcpi when implemented!
             rlo: b256
         };
 
