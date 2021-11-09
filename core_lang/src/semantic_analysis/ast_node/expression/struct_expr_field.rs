@@ -6,3 +6,9 @@ pub(crate) struct TypedStructExpressionField<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) value: TypedExpression<'sc>,
 }
+
+impl TypedStructExpressionField<'_> {
+    pub(crate) fn copy_types(&mut self) {
+        self.value.copy_types();
+    }
+}

@@ -78,6 +78,14 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
 }
 
 impl<'sc> TypedAstNode<'sc> {
+    pub(crate) fn copy_types(&mut self) {
+        match self.content {
+            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => ret_stmt.copy_types(),
+            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => exp.copy_types(),
+            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(),
+            ref a => todo!("{:?}", a),
+        }
+    }
     fn type_info(&self) -> TypeInfo {
         // return statement should be ()
         use TypedAstNodeContent::*;

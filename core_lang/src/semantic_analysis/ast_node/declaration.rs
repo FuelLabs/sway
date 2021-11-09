@@ -4,7 +4,7 @@ use super::{
 };
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
-use crate::semantic_analysis::Namespace;
+use crate::semantic_analysis::{Namespace, TypedAstNode, TypedAstNodeContent};
 use crate::span::Span;
 use crate::type_engine::*;
 use crate::{build_config::BuildConfig, error::*, Ident};
@@ -12,7 +12,9 @@ use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
 mod function;
+mod variable;
 use function::*;
+pub(crate) use variable::*;
 
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
@@ -33,6 +35,16 @@ pub enum TypedDeclaration<'sc> {
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
     ErrorRecovery,
+}
+
+impl TypedDeclaration<'_> {
+    pub(crate) fn copy_types(&mut self) {
+        use TypedDeclaration::*;
+        match self {
+            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(),
+            a => todo!("{:?}", a),
+        }
+    }
 }
 
 impl<'sc> TypedDeclaration<'sc> {
@@ -189,6 +201,10 @@ pub struct OwnedTypedStructField {
 }
 
 impl OwnedTypedStructField {
+    pub(crate) fn copy_types(&mut self) {
+        self.r#type = insert_type(look_up_type_id(self.r#type));
+    }
+
     pub(crate) fn into_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
         TypedStructField {
             name: Ident {
@@ -230,6 +246,11 @@ impl<'sc> TypedEnumDeclaration<'sc> {
 }
 
 impl TypedEnumDeclaration<'_> {
+    pub(crate) fn copy_types(&mut self) {
+        self.variants
+            .iter_mut()
+            .for_each(TypedEnumVariant::copy_types);
+    }
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
         crate::type_engine::insert_type(TypeInfo::Enum {
@@ -251,6 +272,9 @@ pub struct TypedEnumVariant<'sc> {
 }
 
 impl TypedEnumVariant<'_> {
+    pub(crate) fn copy_types(&mut self) {
+        self.r#type = insert_type(look_up_type_id(self.r#type));
+    }
     pub(crate) fn into_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
         OwnedTypedEnumVariant {
             name: self.name.primary_name.to_string(),
@@ -266,13 +290,6 @@ pub struct OwnedTypedEnumVariant {
     pub(crate) name: String,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
-}
-
-#[derive(Clone, Debug)]
-pub struct TypedVariableDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) body: TypedExpression<'sc>, // will be codeblock variant
-    pub(crate) is_mutable: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -299,6 +316,35 @@ pub struct TypedFunctionDeclaration<'sc> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
+    /// Given a typed function declaration with type parameters, make a copy of it and update the
+    /// type ids which refer to generic types to be fresh copies, maintaining their referential
+    /// relationship. This is used so when this function is resolved, the types don't clobber the
+    /// generic type info.
+    pub(crate) fn monomorphize(
+        &self,
+        // If the user provided type arguments, i.e. the turbofish, then we know what these should
+        // be.
+        annotated_type_arguments: Option<Vec<TypeInfo>>,
+    ) -> TypedFunctionDeclaration<'sc> {
+        debug_assert!(!self.type_parameters.is_empty());
+        let mut new_decl = self.clone();
+
+        // make all type ids fresh ones
+        new_decl
+            .body
+            .contents
+            .iter_mut()
+            .for_each(TypedAstNode::copy_types);
+
+        new_decl
+            .parameters
+            .iter_mut()
+            .for_each(TypedFunctionParameter::copy_types);
+
+        new_decl.return_type = insert_type(look_up_type_id(new_decl.return_type));
+
+        new_decl
+    }
     /// If there are parameters, join their spans. Otherwise, use the fn name span.
     pub(crate) fn parameters_span(&self) -> Span<'sc> {
         if !self.parameters.is_empty() {
@@ -511,6 +557,12 @@ pub struct TypedFunctionParameter<'sc> {
     pub(crate) type_span: Span<'sc>,
 }
 
+impl TypedFunctionParameter<'_> {
+    pub(crate) fn copy_types(&mut self) {
+        self.r#type = insert_type(look_up_type_id(self.r#type));
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TypedTraitDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
@@ -588,7 +640,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             } else {
                 namespace.resolve_type_with_self(r#type, self_type)
             };
-            dbg!(&r#type.friendly_type_str());
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {

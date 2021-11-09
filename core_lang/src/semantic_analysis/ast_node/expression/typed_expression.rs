@@ -249,6 +249,12 @@ impl<'sc> TypedExpression<'sc> {
         ok(typed_expression, warnings, errors)
     }
 
+    /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
+    pub(crate) fn copy_types(&mut self) {
+        self.return_type = insert_type(look_up_type_id(self.return_type));
+        self.expression.copy_types();
+    }
+
     fn type_check_literal(
         lit: Literal<'sc>,
         span: Span<'sc>,
@@ -344,7 +350,15 @@ impl<'sc> TypedExpression<'sc> {
             span,
             ..
         } = if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
-            decl
+            // if this is a generic function, monomorphize its internal types and insert the resulting
+            // declaration into the namespace. Then, use that instead.
+            if decl.type_parameters.is_empty() {
+                decl
+            } else {
+                // TODO the below `None` can be annotations when we support type annotations
+                // for generic calls
+                decl.monomorphize(None)
+            }
         } else {
             errors.push(CompileError::NotAFunction {
                 name: name.span().as_str().to_string(),

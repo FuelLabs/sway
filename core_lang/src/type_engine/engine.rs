@@ -119,7 +119,18 @@ impl<'sc> TypeEngine<'sc> for Engine {
                 self.vars.insert(a, TypeInfo::Ref(b));
                 Ok(None)
             }
+
             (_, Unknown) => {
+                self.vars.insert(b, TypeInfo::Ref(a));
+                Ok(None)
+            }
+
+            (UnknownGeneric { .. }, _) => {
+                self.vars.insert(a, TypeInfo::Ref(b));
+                Ok(None)
+            }
+
+            (_, UnknownGeneric { .. }) => {
                 self.vars.insert(b, TypeInfo::Ref(a));
                 Ok(None)
             }
