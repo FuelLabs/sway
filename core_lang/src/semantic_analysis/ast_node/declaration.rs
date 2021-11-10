@@ -629,9 +629,15 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             visibility,
             ..
         } = fn_decl.clone();
-        let return_type = namespace.resolve_type_with_self(return_type, self_type);
         // insert type parameters as Unknown types
         let type_mapping = insert_type_parameters(&type_parameters);
+        let return_type =
+            if let Some(matching_id) = return_type.matches_type_parameter(&type_mapping) {
+                insert_type(TypeInfo::Ref(matching_id))
+            } else {
+                namespace.resolve_type_with_self(return_type, self_type)
+            };
+
         // insert parameters into namespace
         let mut namespace = namespace.clone();
         for FunctionParameter { name, r#type, .. } in parameters.clone() {
@@ -640,7 +646,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             } else {
                 namespace.resolve_type_with_self(r#type, self_type)
             };
-            println!("Decl type: {}", r#type.friendly_type_str());
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
