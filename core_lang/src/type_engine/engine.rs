@@ -10,11 +10,6 @@ use std::sync::Mutex;
 lazy_static! {
     pub(crate) static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
 }
-pub(crate) fn update_type(type_id: TypeId, new_type: TypeInfo) {
-    let mut lock = TYPE_ENGINE.lock().unwrap();
-    lock.update_type(type_id, new_type);
-    drop(lock);
-}
 
 pub(crate) fn unify_with_self<'sc>(
     ty1: TypeId,
@@ -125,16 +120,6 @@ impl<'sc> TypeEngine<'sc> for Engine {
                 Ok(None)
             }
 
-            (UnknownGeneric { .. }, _) => {
-                self.vars.insert(a, TypeInfo::Ref(b));
-                Ok(None)
-            }
-
-            (_, UnknownGeneric { .. }) => {
-                self.vars.insert(b, TypeInfo::Ref(a));
-                Ok(None)
-            }
-
             // If the types are exactly the same, we are done.
             (a, b) if a == b => Ok(None),
             (UnsignedInteger(x), UnsignedInteger(y)) => match numeric_cast_compat(x, y) {
@@ -146,6 +131,17 @@ impl<'sc> TypeEngine<'sc> for Engine {
                 // do nothing if compatible
                 NumericCastCompatResult::Compatible => Ok(None),
             },
+
+            (UnknownGeneric { .. }, _) => {
+                self.vars.insert(a, TypeInfo::Ref(b));
+                Ok(None)
+            }
+
+            (_, UnknownGeneric { .. }) => {
+                self.vars.insert(b, TypeInfo::Ref(a));
+                Ok(None)
+            }
+
             (Numeric, b @ UnsignedInteger(_)) => {
                 self.vars.insert(a, b);
                 Ok(None)
