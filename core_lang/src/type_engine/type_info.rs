@@ -134,7 +134,7 @@ impl TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name } => format!("{}", name),
+            Custom { name } => format!("unresolved {}", name),
             Ref(id) => format!("T{}", id),
             Unit => "()".into(),
             SelfType => "Self".into(),

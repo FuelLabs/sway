@@ -60,6 +60,7 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span,
                 namespace,
+                type_annotation,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -330,6 +331,7 @@ impl<'sc> TypedExpression<'sc> {
         arguments: Vec<Expression<'sc>>,
         app_span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
+        type_annotation: Option<TypeId>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -367,6 +369,32 @@ impl<'sc> TypedExpression<'sc> {
             });
             return err(warnings, errors);
         };
+
+        if let Some(annotation) = type_annotation {
+            println!(
+                "Annotation: {}, ret ty: {}",
+                annotation.friendly_type_str(),
+                return_type.friendly_type_str()
+            );
+            match unify_with_self(annotation, return_type, self_type, &app_span) {
+                Ok(warning) => {
+                    if let Some(warning) = warning {
+                        warnings.push(CompileWarning {
+                            warning_content: warning,
+                            span: app_span.clone(),
+                        });
+                    }
+                }
+                Err(e) => {
+                    errors.push(CompileError::TypeError(e));
+                }
+            }
+        }
+        println!(
+            "Annotation: {:?}, ret ty: {}",
+            type_annotation.map(|x| x.friendly_type_str()),
+            return_type.friendly_type_str()
+        );
         match arguments.len().cmp(&parameters.len()) {
             Ordering::Greater => {
                 let arguments_span = arguments.iter().fold(
@@ -410,6 +438,7 @@ impl<'sc> TypedExpression<'sc> {
             .into_iter()
             .zip(parameters.iter())
             .map(|(arg, param)| {
+                println!("param type: {}", param.r#type.friendly_type_str());
                 (
                     param.name.clone(),
                     TypedExpression::type_check(

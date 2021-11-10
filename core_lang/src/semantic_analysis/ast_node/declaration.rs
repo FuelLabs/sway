@@ -640,6 +640,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             } else {
                 namespace.resolve_type_with_self(r#type, self_type)
             };
+            println!("Decl type: {}", r#type.friendly_type_str());
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -679,6 +680,10 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             errors
         );
 
+        dbg!(&parameters
+            .iter()
+            .map(|x| x.r#type.friendly_type_str())
+            .collect::<Vec<_>>());
         let parameters = parameters
             .into_iter()
             .map(
@@ -688,7 +693,12 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                      type_span,
                  }| TypedFunctionParameter {
                     name,
-                    r#type: namespace.resolve_type_with_self(r#type, self_type),
+                    r#type: if let Some(matching_id) = r#type.matches_type_parameter(&type_mapping)
+                    {
+                        insert_type(TypeInfo::Ref(matching_id))
+                    } else {
+                        namespace.resolve_type_with_self(r#type, self_type)
+                    },
                     type_span,
                 },
             )

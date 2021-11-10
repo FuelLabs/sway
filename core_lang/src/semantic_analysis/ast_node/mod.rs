@@ -172,6 +172,7 @@ impl<'sc> TypedAstNode<'sc> {
                             body,
                             is_mutable,
                         }) => {
+                            dbg!(type_ascription.friendly_type_str());
                             let result =
                                 type_check_ascribed_expr(type_ascription, body, "Variable");
                             let body = check!(
@@ -180,6 +181,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 warnings,
                                 errors
                             );
+                            dbg!(body.return_type.friendly_type_str());
                             let typed_var_decl =
                                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                                     name: name.clone(),
