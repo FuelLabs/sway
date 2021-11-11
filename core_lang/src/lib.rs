@@ -312,7 +312,6 @@ pub fn compile_to_asm<'sc>(
     let contract_ast = type_check_ast(parse_tree.contract_ast, TreeType::Contract);
     let predicate_ast = type_check_ast(parse_tree.predicate_ast, TreeType::Predicate);
     let script_ast = type_check_ast(parse_tree.script_ast, TreeType::Script);
-    errors = filter_errors(errors);
 
     let library_exports: LibraryExports = {
         let res: Vec<_> = parse_tree
@@ -380,44 +379,38 @@ pub fn compile_to_asm<'sc>(
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
     // for each syntax tree, generate assembly.
-    let predicate_asm = (|| {
-        if let Some(tree) = predicate_ast {
-            Some(check!(
-                compile_ast_to_asm(tree, &build_config),
-                return None,
-                warnings,
-                errors
-            ))
-        } else {
-            None
-        }
-    })();
+    let predicate_asm = if let Some(tree) = predicate_ast {
+        Some(check!(
+            compile_ast_to_asm(tree, &build_config),
+            return CompilationResult::Failure { errors, warnings },
+            warnings,
+            errors
+        ))
+    } else {
+        None
+    };
 
-    let contract_asm = (|| {
-        if let Some(tree) = contract_ast {
-            Some(check!(
-                compile_ast_to_asm(tree, &build_config),
-                return None,
-                warnings,
-                errors
-            ))
-        } else {
-            None
-        }
-    })();
+    let contract_asm = if let Some(tree) = contract_ast {
+        Some(check!(
+            compile_ast_to_asm(tree, &build_config),
+            return CompilationResult::Failure { errors, warnings },
+            warnings,
+            errors
+        ))
+    } else {
+        None
+    };
 
-    let script_asm = (|| {
-        if let Some(tree) = script_ast {
-            Some(check!(
-                compile_ast_to_asm(tree, &build_config),
-                return None,
-                warnings,
-                errors
-            ))
-        } else {
-            None
-        }
-    })();
+    let script_asm = if let Some(tree) = script_ast {
+        Some(check!(
+            compile_ast_to_asm(tree, &build_config),
+            return CompilationResult::Failure { errors, warnings },
+            warnings,
+            errors
+        ))
+    } else {
+        None
+    };
 
     if errors.is_empty() {
         // TODO move this check earlier and don't compile all of them if there is only one
@@ -811,23 +804,4 @@ fn test_unary_ordering() {
     } else {
         panic!("Was not ast node")
     };
-}
-
-fn filter_errors<'sc>(errs: Vec<CompileError<'sc>>) -> Vec<CompileError<'sc>> {
-    let mut buf = Vec::with_capacity(errs.len());
-    // we don't want type errors if they are due to error recovery
-    for err in errs.into_iter() {
-        if buf.contains(&err) {
-            continue;
-        }
-        match err {
-            CompileError::TypeError(TypeError::MismatchedType {
-                expected, received, ..
-            }) if expected == "unknown due to error" || received == "unknown due to error" => {
-                continue
-            }
-            otherwise => buf.push(otherwise),
-        }
-    }
-    buf
 }

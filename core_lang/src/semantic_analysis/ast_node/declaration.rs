@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 
 mod function;
 mod variable;
-use function::*;
+pub(crate) use function::*;
 pub(crate) use variable::*;
 
 #[derive(Clone, Debug)]
@@ -252,19 +252,13 @@ pub struct TypedEnumDeclaration<'sc> {
     pub(crate) variants: Vec<TypedEnumVariant<'sc>>,
     pub(crate) span: Span<'sc>,
 }
-impl<'sc> TypedEnumDeclaration<'sc> {
-    /// Given type arguments, match them up with the type parameters and return the result.
-    /// Currently unimplemented as we don't support generic enums yet, but when we do, this will be
-    /// the place to resolve those typed.
-    pub(crate) fn resolve_generic_types(
-        &self,
-        _type_arguments: Vec<TypeId>,
-    ) -> CompileResult<'sc, Self> {
-        ok(self.clone(), vec![], vec![])
-    }
-}
-
 impl TypedEnumDeclaration<'_> {
+    pub(crate) fn monomorphize(&self) -> Self {
+        let mut new_decl = self.clone();
+        let type_mapping = insert_type_parameters(&self.type_parameters);
+        new_decl.copy_types(&type_mapping);
+        new_decl
+    }
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.variants
             .iter_mut()
@@ -351,7 +345,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // be.
         annotated_type_arguments: Option<Vec<TypeInfo>>,
     ) -> TypedFunctionDeclaration<'sc> {
-        println!("Monomorphizing {}", self.name.primary_name);
         debug_assert!(
             !self.type_parameters.is_empty(),
             "Only generic functions can be monomorphized"
