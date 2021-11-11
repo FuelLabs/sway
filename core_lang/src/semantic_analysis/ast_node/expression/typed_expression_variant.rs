@@ -89,9 +89,9 @@ pub(crate) struct TypedAsmRegisterDeclaration<'sc> {
 }
 
 impl TypedAsmRegisterDeclaration<'_> {
-    pub(crate) fn copy_types(&mut self) {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         if let Some(ref mut initializer) = self.initializer {
-            initializer.copy_types()
+            initializer.copy_types(type_mapping)
         }
     }
 }
@@ -163,7 +163,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
         }
     }
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
-    pub(crate) fn copy_types(&mut self) {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         use TypedExpressionVariant::*;
         match self {
             Literal(lit) => (),
@@ -175,27 +175,25 @@ impl<'sc> TypedExpressionVariant<'sc> {
             } => {
                 arguments
                     .iter_mut()
-                    .for_each(|(_ident, expr)| expr.copy_types());
-                function_body.copy_types();
+                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
+                function_body.copy_types(type_mapping);
             }
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).copy_types();
-                (*rhs).copy_types();
+                (*lhs).copy_types(type_mapping);
+                (*rhs).copy_types(type_mapping);
             }
             VariableExpression { name } => (),
             Unit => (),
             #[allow(dead_code)]
-            Array { contents } => contents.iter_mut().for_each(TypedExpression::copy_types),
+            Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
             #[allow(dead_code)]
             MatchExpression { .. } => (),
             StructExpression {
                 struct_name,
                 fields,
-            } => fields
-                .iter_mut()
-                .for_each(TypedStructExpressionField::copy_types),
+            } => fields.iter_mut().for_each(|x| x.copy_types(type_mapping)),
             CodeBlock(block) => {
-                block.copy_types();
+                block.copy_types(type_mapping);
             }
             FunctionParameter => (),
             IfExp {
@@ -203,17 +201,19 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 then,
                 r#else,
             } => {
-                condition.copy_types();
-                then.copy_types();
+                condition.copy_types(type_mapping);
+                then.copy_types(type_mapping);
                 if let Some(ref mut r#else) = r#else {
-                    r#else.copy_types();
+                    r#else.copy_types(type_mapping);
                 }
             }
             AsmExpression {
                 registers, //: Vec<TypedAsmRegisterDeclaration<'sc>>,
                 ..
             } => {
-                registers.iter_mut().for_each(|x| x.copy_types());
+                registers
+                    .iter_mut()
+                    .for_each(|x| x.copy_types(type_mapping));
             }
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
@@ -223,21 +223,28 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                *resolved_type_of_parent = insert_type(look_up_type_id(*resolved_type_of_parent));
-                field_to_access.copy_types();
-                prefix.copy_types();
+                *resolved_type_of_parent = if let Some(matching_id) =
+                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(&type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id))
+                } else {
+                    insert_type(look_up_type_id_raw(*resolved_type_of_parent))
+                };
+
+                field_to_access.copy_types(type_mapping);
+                prefix.copy_types(type_mapping);
             }
             EnumInstantiation {
                 enum_decl,
                 contents,
                 ..
             } => {
-                enum_decl.copy_types();
+                enum_decl.copy_types(type_mapping);
                 if let Some(ref mut contents) = contents {
-                    contents.copy_types()
+                    contents.copy_types(type_mapping)
                 };
             }
-            AbiCast { address, .. } => address.copy_types(),
+            AbiCast { address, .. } => address.copy_types(type_mapping),
         }
     }
 }

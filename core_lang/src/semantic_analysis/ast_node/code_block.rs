@@ -107,7 +107,9 @@ impl<'sc> TypedCodeBlock<'sc> {
         )
     }
 
-    pub(crate) fn copy_types(&mut self) {
-        self.contents.iter_mut().for_each(TypedAstNode::copy_types);
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.contents
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
     }
 }

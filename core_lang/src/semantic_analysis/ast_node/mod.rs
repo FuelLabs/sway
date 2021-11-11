@@ -78,11 +78,15 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
 }
 
 impl<'sc> TypedAstNode<'sc> {
-    pub(crate) fn copy_types(&mut self) {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         match self.content {
-            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => ret_stmt.copy_types(),
-            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => exp.copy_types(),
-            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(),
+            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
+                ret_stmt.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
+                exp.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
             ref a => todo!("{:?}", a),
         }
     }

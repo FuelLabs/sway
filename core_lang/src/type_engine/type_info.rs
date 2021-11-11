@@ -302,6 +302,16 @@ impl TypeInfo {
                     return Some(*ty_id);
                 }
             }
+        } else if let TypeInfo::UnknownGeneric { name, .. } = self {
+            for (param, ty_id) in mapping.iter() {
+                if param.name
+                    == (TypeInfo::Custom {
+                        name: name.to_string(),
+                    })
+                {
+                    return Some(*ty_id);
+                }
+            }
         }
         None
     }

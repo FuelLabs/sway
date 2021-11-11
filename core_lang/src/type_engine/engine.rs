@@ -44,11 +44,23 @@ pub(crate) fn resolve_type<'sc>(
     ty
 }
 
-pub(crate) fn look_up_type_id<'sc>(id: TypeId) -> TypeInfo {
+pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
     let lock = TYPE_ENGINE.lock().unwrap();
     let ty = lock
         .resolve(id)
         .expect("type engine did not contain type id: internal error");
+    drop(lock);
+    ty
+}
+
+/// The same as the above but it doesn't follow references. Used when monomorphizing.
+pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
+    let lock = TYPE_ENGINE.lock().unwrap();
+    let ty = lock
+        .vars
+        .get(&id)
+        .expect("type engine did not contain type id: internal error")
+        .clone();
     drop(lock);
     ty
 }

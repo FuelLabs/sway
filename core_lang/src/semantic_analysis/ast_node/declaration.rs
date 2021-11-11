@@ -38,10 +38,10 @@ pub enum TypedDeclaration<'sc> {
 }
 
 impl TypedDeclaration<'_> {
-    pub(crate) fn copy_types(&mut self) {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         use TypedDeclaration::*;
         match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(),
+            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
             a => todo!("{:?}", a),
         }
     }
@@ -201,8 +201,14 @@ pub struct OwnedTypedStructField {
 }
 
 impl OwnedTypedStructField {
-    pub(crate) fn copy_types(&mut self) {
-        self.r#type = insert_type(look_up_type_id(self.r#type));
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.r#type = if let Some(matching_id) =
+            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.r#type))
+        };
     }
 
     pub(crate) fn into_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
@@ -246,10 +252,10 @@ impl<'sc> TypedEnumDeclaration<'sc> {
 }
 
 impl TypedEnumDeclaration<'_> {
-    pub(crate) fn copy_types(&mut self) {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.variants
             .iter_mut()
-            .for_each(TypedEnumVariant::copy_types);
+            .for_each(|x| x.copy_types(type_mapping));
     }
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
@@ -272,8 +278,14 @@ pub struct TypedEnumVariant<'sc> {
 }
 
 impl TypedEnumVariant<'_> {
-    pub(crate) fn copy_types(&mut self) {
-        self.r#type = insert_type(look_up_type_id(self.r#type));
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.r#type = if let Some(matching_id) =
+            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.r#type))
+        };
     }
     pub(crate) fn into_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
         OwnedTypedEnumVariant {
@@ -326,7 +338,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // be.
         annotated_type_arguments: Option<Vec<TypeInfo>>,
     ) -> TypedFunctionDeclaration<'sc> {
-        debug_assert!(!self.type_parameters.is_empty());
+        debug_assert!(
+            !self.type_parameters.is_empty(),
+            "Only generic functions can be monomorphized"
+        );
+
+        let type_mapping = insert_type_parameters(&self.type_parameters);
+
         let mut new_decl = self.clone();
 
         // make all type ids fresh ones
@@ -334,14 +352,20 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .body
             .contents
             .iter_mut()
-            .for_each(TypedAstNode::copy_types);
+            .for_each(|x| x.copy_types(&type_mapping));
 
         new_decl
             .parameters
             .iter_mut()
-            .for_each(TypedFunctionParameter::copy_types);
+            .for_each(|x| x.copy_types(&type_mapping));
 
-        new_decl.return_type = insert_type(look_up_type_id(new_decl.return_type));
+        new_decl.return_type = if let Some(matching_id) =
+            look_up_type_id(new_decl.return_type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(new_decl.return_type))
+        };
 
         new_decl
     }
@@ -558,8 +582,14 @@ pub struct TypedFunctionParameter<'sc> {
 }
 
 impl TypedFunctionParameter<'_> {
-    pub(crate) fn copy_types(&mut self) {
-        self.r#type = insert_type(look_up_type_id(self.r#type));
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.r#type = if let Some(matching_id) =
+            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.r#type))
+        }
     }
 }
 
@@ -685,10 +715,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             errors
         );
 
-        dbg!(&parameters
-            .iter()
-            .map(|x| x.r#type.friendly_type_str())
-            .collect::<Vec<_>>());
         let parameters = parameters
             .into_iter()
             .map(

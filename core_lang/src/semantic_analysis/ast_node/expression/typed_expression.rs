@@ -251,9 +251,16 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
-    pub(crate) fn copy_types(&mut self) {
-        self.return_type = insert_type(look_up_type_id(self.return_type));
-        self.expression.copy_types();
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.return_type = if let Some(matching_id) =
+            look_up_type_id(self.return_type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.return_type))
+        };
+
+        self.expression.copy_types(type_mapping);
     }
 
     fn type_check_literal(
@@ -433,21 +440,6 @@ impl<'sc> TypedExpression<'sc> {
                 )
             })
             .collect();
-        if let Some(annotation) = type_annotation {
-            match unify_with_self(annotation, return_type, self_type, &app_span) {
-                Ok(warning) => {
-                    if let Some(warning) = warning {
-                        warnings.push(CompileWarning {
-                            warning_content: warning,
-                            span: app_span.clone(),
-                        });
-                    }
-                }
-                Err(e) => {
-                    errors.push(CompileError::TypeError(e));
-                }
-            }
-        }
 
         ok(
             TypedExpression {
