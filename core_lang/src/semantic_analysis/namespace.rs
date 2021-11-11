@@ -36,10 +36,14 @@ impl<'sc> Namespace<'sc> {
     ///
     ///
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
-    pub(crate) fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> TypeId {
+    pub(crate) fn resolve_type_with_self(
+        &self,
+        ty: TypeInfo,
+        self_type: TypeId,
+    ) -> Result<TypeId, ()> {
         let ty = ty.clone();
-        match ty {
-            TypeInfo::Custom { name } => match self.get_symbol_by_str(&name) {
+        Ok(match ty {
+            TypeInfo::Custom { ref name } => match self.get_symbol_by_str(&name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,
@@ -64,15 +68,15 @@ impl<'sc> Namespace<'sc> {
                 }),
                 Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
                     crate::type_engine::insert_type(TypeInfo::UnknownGeneric {
-                        name: name.to_string(),
+                        name: name.primary_name.to_string(),
                     })
                 }
-                _ => insert_type(TypeInfo::Unknown),
+                _ => return Err(()),
             },
             TypeInfo::SelfType => self_type,
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
-        }
+        })
     }
 
     /// Used to resolve a type when there is no known self type. This is needed

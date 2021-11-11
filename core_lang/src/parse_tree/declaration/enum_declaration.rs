@@ -1,7 +1,7 @@
 use crate::build_config::BuildConfig;
 use crate::parser::Rule;
 use crate::span::Span;
-use crate::type_engine::{TypeId, TypeInfo};
+use crate::type_engine::*;
 
 use crate::Ident;
 use crate::Namespace;
@@ -143,17 +143,24 @@ impl<'sc> EnumVariant<'sc> {
         &self,
         namespace: &mut Namespace<'sc>,
         self_type: TypeId,
-        _span: Span<'sc>,
+        span: Span<'sc>,
     ) -> CompileResult<'sc, TypedEnumVariant<'sc>> {
+        let mut errors = vec![];
         ok(
             TypedEnumVariant {
                 name: self.name.clone(),
-                r#type: namespace.resolve_type_with_self(self.r#type.clone(), self_type),
+                r#type: match namespace.resolve_type_with_self(self.r#type.clone(), self_type) {
+                    Ok(o) => o,
+                    Err(_) => {
+                        errors.push(CompileError::UnknownType { span });
+                        insert_type(TypeInfo::ErrorRecovery)
+                    }
+                },
                 tag: self.tag,
                 span: self.span.clone(),
             },
             vec![],
-            vec![],
+            errors,
         )
     }
     pub(crate) fn parse_from_pairs(

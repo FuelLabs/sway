@@ -32,6 +32,11 @@ pub enum TypedDeclaration<'sc> {
         type_implementing_for: TypeInfo,
     },
     AbiDeclaration(TypedAbiDeclaration<'sc>),
+    // If type parameters are defined for a function, they are put in the namespace just for
+    // the body of that function.
+    GenericTypeForFunctionScope {
+        name: Ident<'sc>,
+    },
     // no contents since it is a side-effectful declaration, i.e it populates a namespace
     SideEffect,
     ErrorRecovery,
@@ -61,6 +66,7 @@ impl<'sc> TypedDeclaration<'sc> {
             Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
+            GenericTypeForFunctionScope { .. } => "generic type parameter",
             SideEffect => "",
             ErrorRecovery => "error",
         }
@@ -94,6 +100,11 @@ impl<'sc> TypedDeclaration<'sc> {
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
                     rhs.return_type.clone()
                 }
+                TypedDeclaration::GenericTypeForFunctionScope { name } => {
+                    insert_type(TypeInfo::UnknownGeneric {
+                        name: name.primary_name.to_string(),
+                    })
+                }
                 decl => {
                     return err(
                         vec![],
@@ -126,7 +137,9 @@ impl<'sc> TypedDeclaration<'sc> {
             }
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
-            SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
+            SideEffect | ErrorRecovery | GenericTypeForFunctionScope { .. } => {
+                unreachable!("No span exists for these ast node types")
+            }
         }
     }
 
@@ -669,8 +682,12 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 namespace.resolve_type_with_self(return_type, self_type)
             };
 
-        // insert parameters into namespace
+        // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
+        println!("inserting type params");
+        type_parameters.iter().for_each(|param| {
+            namespace.insert(param.name_ident.clone(), param.into());
+        });
         for FunctionParameter { name, r#type, .. } in parameters.clone() {
             let r#type = if let Some(matching_id) = r#type.matches_type_parameter(&type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
