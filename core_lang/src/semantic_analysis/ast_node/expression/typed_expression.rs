@@ -322,7 +322,7 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_function_application(
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
-        app_span: Span<'sc>,
+        span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -343,7 +343,6 @@ impl<'sc> TypedExpression<'sc> {
                     parameters,
                     return_type,
                     body,
-                    span,
                     ..
                 } = decl.clone();
                 match arguments.len().cmp(&parameters.len()) {
@@ -356,8 +355,7 @@ impl<'sc> TypedExpression<'sc> {
                             |acc, arg| crate::utils::join_spans(acc, arg.span()),
                         );
                         errors.push(CompileError::TooManyArgumentsForFunction {
-                            decl_span: span.clone(),
-                            usage_span: arguments_span,
+                            span: arguments_span,
                             method_name: name.suffix.primary_name,
                             expected: parameters.len(),
                             received: arguments.len(),
@@ -372,8 +370,7 @@ impl<'sc> TypedExpression<'sc> {
                             |acc, arg| crate::utils::join_spans(acc, arg.span()),
                         );
                         errors.push(CompileError::TooFewArgumentsForFunction {
-                            decl_span: span.clone(),
-                            usage_span: arguments_span,
+                            span: arguments_span,
                             method_name: name.suffix.primary_name,
                             expected: parameters.len(),
                             received: arguments.len(),
@@ -424,7 +421,7 @@ impl<'sc> TypedExpression<'sc> {
                         function_body: body.clone(),
                         selector: None, // regular functions cannot be in a contract call; only methods
                     },
-                    span: app_span,
+                    span,
                 }
             }
             a => {

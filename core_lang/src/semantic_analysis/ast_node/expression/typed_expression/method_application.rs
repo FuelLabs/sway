@@ -98,8 +98,7 @@ pub(crate) fn type_check_method_application<'sc>(
         MethodName::FromModule { method_name } => {
             if args_buf.len() > method.parameters.len() {
                 errors.push(CompileError::TooManyArgumentsForFunction {
-                    decl_span: method.span.clone(),
-                    usage_span: span.clone(),
+                    span: span.clone(),
                     method_name: method_name.primary_name,
                     expected: method.parameters.len(),
                     received: args_buf.len(),
@@ -108,8 +107,7 @@ pub(crate) fn type_check_method_application<'sc>(
 
             if args_buf.len() < method.parameters.len() {
                 errors.push(CompileError::TooFewArgumentsForFunction {
-                    decl_span: method.span.clone(),
-                    usage_span: span.clone(),
+                    span: span.clone(),
                     method_name: method_name.primary_name,
                     expected: method.parameters.len(),
                     received: args_buf.len(),
@@ -179,8 +177,7 @@ pub(crate) fn type_check_method_application<'sc>(
         MethodName::FromType { ref call_path, .. } => {
             if args_buf.len() > method.parameters.len() {
                 errors.push(CompileError::TooManyArgumentsForFunction {
-                    decl_span: method.span.clone(),
-                    usage_span: span.clone(),
+                    span: span.clone(),
                     method_name: method_name.easy_name(),
                     expected: method.parameters.len(),
                     received: args_buf.len(),
@@ -189,8 +186,7 @@ pub(crate) fn type_check_method_application<'sc>(
 
             if args_buf.len() < method.parameters.len() {
                 errors.push(CompileError::TooFewArgumentsForFunction {
-                    decl_span: method.span.clone(),
-                    usage_span: span.clone(),
+                    span: span.clone(),
                     method_name: method_name.easy_name(),
                     expected: method.parameters.len(),
                     received: args_buf.len(),

@@ -28,7 +28,7 @@ use std::collections::{HashMap, HashSet};
 
 use semantic_analysis::{TreeType, TypedParseTree};
 pub mod types;
-pub mod utils;
+pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 
 pub use crate::span::Span;
