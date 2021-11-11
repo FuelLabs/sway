@@ -77,6 +77,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "mut_error_message",
         "reassignment_to_non_variable_message",
         "disallowed_gm",
+        "unify_identical_unknowns",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
