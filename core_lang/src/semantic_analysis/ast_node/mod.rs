@@ -278,14 +278,10 @@ impl<'sc> TypedAstNode<'sc> {
                                 warnings,
                                 errors
                             );
-                            if errors.is_empty() {
-                                // Add this function declaration to the namespace only if it
-                                // fully typechecked without errors.
-                                namespace.insert(
-                                    decl.name.clone(),
-                                    TypedDeclaration::FunctionDeclaration(decl.clone()),
-                                );
-                            }
+                            namespace.insert(
+                                decl.name.clone(),
+                                TypedDeclaration::FunctionDeclaration(decl.clone()),
+                            );
                             TypedDeclaration::FunctionDeclaration(decl)
                         }
                         Declaration::TraitDeclaration(TraitDeclaration {

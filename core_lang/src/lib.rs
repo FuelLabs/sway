@@ -312,6 +312,7 @@ pub fn compile_to_asm<'sc>(
     let contract_ast = type_check_ast(parse_tree.contract_ast, TreeType::Contract);
     let predicate_ast = type_check_ast(parse_tree.predicate_ast, TreeType::Predicate);
     let script_ast = type_check_ast(parse_tree.script_ast, TreeType::Script);
+    errors = filter_errors(errors);
 
     let library_exports: LibraryExports = {
         let res: Vec<_> = parse_tree
@@ -810,4 +811,23 @@ fn test_unary_ordering() {
     } else {
         panic!("Was not ast node")
     };
+}
+
+fn filter_errors<'sc>(errs: Vec<CompileError<'sc>>) -> Vec<CompileError<'sc>> {
+    let mut buf = Vec::with_capacity(errs.len());
+    // we don't want type errors if they are due to error recovery
+    for err in errs.into_iter() {
+        if buf.contains(&err) {
+            continue;
+        }
+        match err {
+            CompileError::TypeError(TypeError::MismatchedType {
+                expected, received, ..
+            }) if expected == "unknown due to error" || received == "unknown due to error" => {
+                continue
+            }
+            otherwise => buf.push(otherwise),
+        }
+    }
+    buf
 }

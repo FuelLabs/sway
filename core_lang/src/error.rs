@@ -355,7 +355,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
     }
 }
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: String, span: Span<'sc> },
@@ -792,7 +792,7 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
     }
 }
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum TypeError<'sc> {
     #[error(
         "Mismatched types: Expected type {expected} but found type {received}. Type {received} is \
