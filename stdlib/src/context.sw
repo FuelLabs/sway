@@ -27,7 +27,7 @@ impl Context {
         }
     }
     // returns the contract ID (analgous to calling `this.address` in solidity).
-    fn id(self) -> b256 {
+    fn id() -> b256 {
         asm() {
             fp: b256
         }
@@ -43,14 +43,14 @@ impl Msg {
     }
 
     // returns the value of coins contained in the msg
-    fn value(self) -> u64 {
+    fn value() -> u64 {
         asm(value) {
             bal: u64
         }
     }
 
     // returns the token_id of forwarded coins.
-    fn token_id(self) -> b256 {
+    fn token_id() -> b256 {
         asm(token_id) {
             addi token_id fp i32;
             token_id: b256
