@@ -233,7 +233,7 @@ impl<'sc> TypedExpression<'sc> {
                     if let Some(warning) = warning {
                         warnings.push(CompileWarning {
                             warning_content: warning,
-                            span: expr_span,
+                            span: expr_span.clone(),
                         });
                     }
                 }
@@ -245,7 +245,11 @@ impl<'sc> TypedExpression<'sc> {
         }
 
         typed_expression.return_type = namespace
-            .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type);
+            .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType { span: expr_span });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
 
         ok(typed_expression, warnings, errors)
     }
@@ -741,7 +745,18 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let return_type = namespace.resolve_type_with_self(asm.return_type, self_type);
+        let return_type = namespace
+            .resolve_type_with_self(asm.return_type.clone(), self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType {
+                    span: asm
+                        .returns
+                        .clone()
+                        .map(|x| x.1)
+                        .unwrap_or(asm.whole_block_span.clone()),
+                });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
         // type check the initializers
         let typed_registers = asm
             .registers

@@ -562,7 +562,14 @@ impl<'sc> Namespace<'sc> {
 
         // This is a hack and I don't think it should be used.  We check the local namespace first,
         // but if nothing turns up then we try the namespace where the type itself is declared.
-        let r#type = namespace.resolve_type_with_self(look_up_type_id(r#type), self_type);
+        let r#type = namespace
+            .resolve_type_with_self(look_up_type_id(r#type), self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType {
+                    span: method_name.span.clone(),
+                });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
         let methods = self.get_methods_for_type(r#type);
         let methods = match methods[..] {
             [] => namespace.get_methods_for_type(r#type),

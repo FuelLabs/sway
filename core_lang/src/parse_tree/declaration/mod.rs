@@ -153,6 +153,9 @@ impl<'sc> Declaration<'sc> {
                     }
                     _ => None,
                 };
+                let type_ascription_span = type_ascription
+                    .clone()
+                    .map(|x| x.into_inner().next().unwrap().as_span());
                 let type_ascription = if let Some(ascription) = type_ascription {
                     check!(
                         TypeInfo::parse_from_pair(ascription, config.clone()),
@@ -179,6 +182,10 @@ impl<'sc> Declaration<'sc> {
                     body,
                     is_mutable,
                     type_ascription,
+                    type_ascription_span: type_ascription_span.map(|type_ascription_span| Span {
+                        span: type_ascription_span,
+                        path: config.clone().map(|x| x.path()),
+                    }),
                 })
             }
             Rule::trait_decl => Declaration::TraitDeclaration(check!(

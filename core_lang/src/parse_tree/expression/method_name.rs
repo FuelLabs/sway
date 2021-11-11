@@ -1,6 +1,6 @@
 use crate::parse_tree::CallPath;
 use crate::type_engine::TypeInfo;
-use crate::Ident;
+use crate::{Ident, Span};
 
 #[derive(Debug, Clone)]
 pub enum MethodName<'sc> {

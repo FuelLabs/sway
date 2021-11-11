@@ -679,20 +679,38 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             if let Some(matching_id) = return_type.matches_type_parameter(&type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
-                namespace.resolve_type_with_self(return_type, self_type)
+                namespace
+                    .resolve_type_with_self(return_type, self_type)
+                    .unwrap_or_else(|_| {
+                        errors.push(CompileError::UnknownType {
+                            span: return_type_span.clone(),
+                        });
+                        insert_type(TypeInfo::ErrorRecovery)
+                    })
             };
 
         // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
-        println!("inserting type params");
         type_parameters.iter().for_each(|param| {
             namespace.insert(param.name_ident.clone(), param.into());
         });
-        for FunctionParameter { name, r#type, .. } in parameters.clone() {
+        for FunctionParameter {
+            name,
+            r#type,
+            type_span,
+        } in parameters.clone()
+        {
             let r#type = if let Some(matching_id) = r#type.matches_type_parameter(&type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
-                namespace.resolve_type_with_self(r#type, self_type)
+                namespace
+                    .resolve_type_with_self(r#type, self_type)
+                    .unwrap_or_else(|_| {
+                        errors.push(CompileError::UnknownType {
+                            span: type_span.clone(),
+                        });
+                        insert_type(TypeInfo::ErrorRecovery)
+                    })
             };
             namespace.insert(
                 name.clone(),
@@ -747,7 +765,14 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     {
                         insert_type(TypeInfo::Ref(matching_id))
                     } else {
-                        namespace.resolve_type_with_self(r#type, self_type)
+                        namespace
+                            .resolve_type_with_self(r#type, self_type)
+                            .unwrap_or_else(|_| {
+                                errors.push(CompileError::UnknownType {
+                                    span: type_span.clone(),
+                                });
+                                insert_type(TypeInfo::ErrorRecovery)
+                            })
                     },
                     type_span,
                 },
