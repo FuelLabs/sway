@@ -62,7 +62,12 @@ impl<'sc> Namespace<'sc> {
                         .map(TypedEnumVariant::into_owned_typed_enum_variant)
                         .collect(),
                 }),
-                _ => crate::type_engine::insert_type(TypeInfo::Unknown),
+                Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
+                    crate::type_engine::insert_type(TypeInfo::UnknownGeneric {
+                        name: name.to_string(),
+                    })
+                }
+                _ => insert_type(TypeInfo::Unknown),
             },
             TypeInfo::SelfType => self_type,
             TypeInfo::Ref(id) => id,

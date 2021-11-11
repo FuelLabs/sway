@@ -338,6 +338,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // be.
         annotated_type_arguments: Option<Vec<TypeInfo>>,
     ) -> TypedFunctionDeclaration<'sc> {
+        println!("Monomorphizing {}", self.name.primary_name);
         debug_assert!(
             !self.type_parameters.is_empty(),
             "Only generic functions can be monomorphized"
@@ -687,6 +688,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         span: name.span.clone(),
                     },
                     is_mutable: false, // TODO allow mutable function params?
+                    type_ascription: r#type,
                 }),
             );
         }

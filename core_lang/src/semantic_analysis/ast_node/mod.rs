@@ -117,24 +117,25 @@ impl<'sc> TypedAstNode<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
-            let type_id = namespace.resolve_type_with_self(type_ascription, self_type);
-            TypedExpression::type_check(
-                value,
-                namespace,
-                Some(type_id),
-                format!(
-                    "{} declaration's type annotation (type {}) does \
+        let mut type_check_ascribed_expr =
+            |namespace: &mut Namespace<'sc>, type_ascription: TypeInfo, value, decl_str| {
+                let type_id = namespace.resolve_type_with_self(type_ascription, self_type);
+                TypedExpression::type_check(
+                    value,
+                    namespace,
+                    Some(type_id),
+                    format!(
+                        "{} declaration's type annotation (type {}) does \
                      not match up with the assigned expression's type.",
-                    decl_str,
-                    type_id.friendly_type_str()
-                ),
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
-            )
-        };
+                        decl_str,
+                        type_id.friendly_type_str()
+                    ),
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                )
+            };
 
         let node = TypedAstNode {
             content: match node.content.clone() {
@@ -176,8 +177,15 @@ impl<'sc> TypedAstNode<'sc> {
                             body,
                             is_mutable,
                         }) => {
-                            let result =
-                                type_check_ascribed_expr(type_ascription, body, "Variable");
+                            println!("Name: {}", name.primary_name);
+                            let type_ascription =
+                                namespace.resolve_type_with_self(type_ascription, self_type);
+                            let result = type_check_ascribed_expr(
+                                namespace,
+                                look_up_type_id(type_ascription),
+                                body,
+                                "Variable",
+                            );
                             let body = check!(
                                 result,
                                 error_recovery_expr(name.span.clone()),
@@ -189,6 +197,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     name: name.clone(),
                                     body,
                                     is_mutable,
+                                    type_ascription,
                                 });
                             namespace.insert(name, typed_var_decl.clone());
                             typed_var_decl
@@ -198,8 +207,12 @@ impl<'sc> TypedAstNode<'sc> {
                             type_ascription,
                             value,
                         }) => {
-                            let result =
-                                type_check_ascribed_expr(type_ascription, value, "Constant");
+                            let result = type_check_ascribed_expr(
+                                namespace,
+                                type_ascription,
+                                value,
+                                "Constant",
+                            );
                             let value = check!(
                                 result,
                                 error_recovery_expr(name.span.clone()),
@@ -714,6 +727,7 @@ fn reassignment<'sc>(
                     body,
                     is_mutable,
                     name,
+                    type_ascription: _,
                 })) => {
                     // allow the type checking to continue unhindered even though
                     // this is an error
@@ -966,6 +980,7 @@ fn type_check_trait_methods<'sc>(
                         },
                         // TODO allow mutable function params?
                         is_mutable: false,
+                        type_ascription: r#type,
                     }),
                 );
             },
