@@ -131,7 +131,8 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
 pub(crate) fn does_not_compile(file_name: &str) {
     assert!(
         compile_to_bytes(file_name).is_err(),
-        "{} should not have compiled.", file_name,
+        "{} should not have compiled.",
+        file_name,
     )
 }
 

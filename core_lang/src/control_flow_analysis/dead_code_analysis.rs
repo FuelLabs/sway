@@ -81,15 +81,13 @@ impl<'sc> ControlFlowGraph<'sc> {
             .filter(|CompileWarning { span, .. }| {
                 // if any other warnings contain a span which completely covers this one, filter
                 // out this one.
-                all_warnings
-                    .iter()
-                    .any(
-                        |CompileWarning {
-                             span: other_span, ..
-                         }| {
-                            other_span.end() > span.end() && other_span.start() < span.start()
-                        },
-                    )
+                all_warnings.iter().any(
+                    |CompileWarning {
+                         span: other_span, ..
+                     }| {
+                        other_span.end() > span.end() && other_span.start() < span.start()
+                    },
+                )
             })
             .collect()
     }

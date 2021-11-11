@@ -41,8 +41,13 @@ impl Token {
         } else {
             matches!(
                 (&other_token.token_type, &self.token_type),
-                (TokenType::FunctionApplication, TokenType::FunctionDeclaration(_)) |
-                (TokenType::FunctionDeclaration(_), TokenType::FunctionApplication),
+                (
+                    TokenType::FunctionApplication,
+                    TokenType::FunctionDeclaration(_)
+                ) | (
+                    TokenType::FunctionDeclaration(_),
+                    TokenType::FunctionApplication
+                ),
             )
         }
     }
@@ -75,7 +80,10 @@ impl Token {
     }
 
     pub fn is_initial_declaration(&self) -> bool {
-        matches!(self.token_type, TokenType::Reassignment | TokenType::FunctionApplication)
+        matches!(
+            self.token_type,
+            TokenType::Reassignment | TokenType::FunctionApplication
+        )
     }
 }
 

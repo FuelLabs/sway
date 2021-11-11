@@ -204,12 +204,10 @@ impl<'sc> TypedExpression<'sc> {
                 dependency_graph,
             ),
             a => {
-                let errors = vec![
-                    CompileError::Unimplemented(
-                        "Unimplemented expression",
-                        a.span(),
-                    ),
-                ];
+                let errors = vec![CompileError::Unimplemented(
+                    "Unimplemented expression",
+                    a.span(),
+                )];
 
                 let exp = error_recovery_expr(a.span());
                 ok(exp, vec![], errors)
@@ -661,21 +659,23 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         ));
-        let r#else = r#else.map(|expr| Box::new(check!(
-            TypedExpression::type_check(
-                *expr.clone(),
-                namespace,
-                Some(then.return_type),
-                "",
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph
-            ),
-            error_recovery_expr(expr.span()),
-            warnings,
-            errors
-        )));
+        let r#else = r#else.map(|expr| {
+            Box::new(check!(
+                TypedExpression::type_check(
+                    *expr.clone(),
+                    namespace,
+                    Some(then.return_type),
+                    "",
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph
+                ),
+                error_recovery_expr(expr.span()),
+                warnings,
+                errors
+            ))
+        });
 
         // if there is a type annotation, then the else branch must exist
         if let Some(ref annotation) = type_annotation {

@@ -616,9 +616,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, (Vec<OwnedTypedStructField>, String)> {
         let ty = crate::type_engine::look_up_type_id(ty);
         match ty {
-            TypeInfo::Struct { name, fields } => {
-                ok((fields.to_vec(), name), vec![], vec![])
-            }
+            TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),
             // If we hit `ErrorRecovery` then the source of that type should have populated
             // the error buffer elsewhere
             TypeInfo::ErrorRecovery => err(vec![], vec![]),

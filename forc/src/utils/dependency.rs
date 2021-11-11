@@ -278,7 +278,8 @@ pub fn replace_dep_version(
 }
 
 pub fn get_current_dependency_version(dep_dir: &str) -> Result<VersionedDependencyDirectory> {
-    let mut entries = fs::read_dir(dep_dir).context(format!("couldn't read directory {}", dep_dir))?;
+    let mut entries =
+        fs::read_dir(dep_dir).context(format!("couldn't read directory {}", dep_dir))?;
     let entry = match entries.next() {
         Some(entry) => entry,
         None => bail!("Dependency directory is empty. Run `forc build` to install dependencies."),

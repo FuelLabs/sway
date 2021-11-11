@@ -166,8 +166,7 @@ impl CodeBuilder {
                             if current_index == 0 {
                                 // if there are 2 keywords on different lines - add whitespace between them
                                 if let Some(last_char) = code_line.get_last_char() {
-                                    if last_char.is_alphabetic() && current_char.is_alphabetic()
-                                    {
+                                    if last_char.is_alphabetic() && current_char.is_alphabetic() {
                                         code_line.append_whitespace()
                                     }
                                 }

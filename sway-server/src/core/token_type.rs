@@ -39,9 +39,10 @@ pub struct FunctionDetails {
 
 impl FunctionDetails {
     pub fn get_return_type_from_signature(&self) -> Option<String> {
-        self.signature.split("->").nth(1).map(|return_type| {
-            return_type.trim().split(' ').take(1).collect()
-        })
+        self.signature
+            .split("->")
+            .nth(1)
+            .map(|return_type| return_type.trim().split(' ').take(1).collect())
     }
 }
 

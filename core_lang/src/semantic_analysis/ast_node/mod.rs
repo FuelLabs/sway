@@ -977,20 +977,17 @@ fn type_check_trait_methods<'sc>(
                          ..
                      }| { crate::utils::join_spans(acc, span.clone()) },
                 );
-                if type_parameters
-                    .iter()
-                    .any(
-                        |TypeParameter {
-                             name: this_name, ..
-                         }| {
-                            if let TypeInfo::Custom { name: this_name } = this_name {
-                                this_name == name
-                            } else {
-                                false
-                            }
-                        },
-                    )
-                {
+                if type_parameters.iter().any(
+                    |TypeParameter {
+                         name: this_name, ..
+                     }| {
+                        if let TypeInfo::Custom { name: this_name } = this_name {
+                            this_name == name
+                        } else {
+                            false
+                        }
+                    },
+                ) {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
                         name: name.to_string(),
                         span: span.clone(),

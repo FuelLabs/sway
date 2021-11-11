@@ -3,7 +3,9 @@ use lspower::lsp::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKi
 use std::sync::Arc;
 
 pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
-    session.get_symbol_information(&url).map(DocumentSymbolResponse::Flat)
+    session
+        .get_symbol_information(&url)
+        .map(DocumentSymbolResponse::Flat)
 }
 
 pub fn to_symbol_information(tokens: &[Token], url: Url) -> Vec<SymbolInformation> {

@@ -469,12 +469,14 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors
                 ));
-                let r#else = else_pair.map(|else_pair| Box::new(check!(
-                    Expression::parse_from_pair_inner(else_pair, config),
-                    Expression::Unit { span: span.clone() },
-                    warnings,
-                    errors
-                )));
+                let r#else = else_pair.map(|else_pair| {
+                    Box::new(check!(
+                        Expression::parse_from_pair_inner(else_pair, config),
+                        Expression::Unit { span: span.clone() },
+                        warnings,
+                        errors
+                    ))
+                });
                 Expression::IfExp {
                     condition,
                     then,

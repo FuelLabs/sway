@@ -76,9 +76,7 @@ impl<'sc> TypedDeclaration<'sc> {
                         .map(TypedStructField::as_owned_typed_struct_field)
                         .collect(),
                 }),
-                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
-                    rhs.return_type
-                }
+                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 decl => {
                     return err(
                         vec![],

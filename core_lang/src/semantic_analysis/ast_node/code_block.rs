@@ -83,7 +83,8 @@ impl<'sc> TypedCodeBlock<'sc> {
                     if let Some(warning) = warning {
                         warnings.push(CompileWarning {
                             warning_content: warning,
-                            span: implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
+                            span: implicit_return_span
+                                .unwrap_or_else(|| other.whole_block_span.clone()),
                         });
                     }
                 }
