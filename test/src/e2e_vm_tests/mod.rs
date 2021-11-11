@@ -74,8 +74,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "infinite_dependencies",
         "top_level_vars",
         "dependencies_parsing_error",
-        "mut_error_message",
-        "reassignment_to_non_variable_message",
         "disallowed_gm",
         "unify_identical_unknowns",
     ];
