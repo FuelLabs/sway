@@ -135,7 +135,7 @@ impl<'sc, T> CompileResult<'sc, T> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CompileWarning<'sc> {
     pub span: Span<'sc>,
     pub warning_content: Warning<'sc>,
@@ -205,7 +205,7 @@ impl<'sc> CompileWarning<'sc> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Warning<'sc> {
     NonClassCaseStructName {
         struct_name: &'sc str,

@@ -57,6 +57,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("b512_struct_alignment", ProgramState::Return(1)),    // true
         ("generic_structs", ProgramState::Return(1)),          // true
         ("generic_functions", ProgramState::Return(1)),        // true
+        ("generic_enum", ProgramState::Return(1)),             // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {

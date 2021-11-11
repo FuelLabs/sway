@@ -378,6 +378,8 @@ pub fn compile_to_asm<'sc>(
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
+    errors = dedup_unsorted(errors);
+    warnings = dedup_unsorted(warnings);
     // for each syntax tree, generate assembly.
     let predicate_asm = if let Some(tree) = predicate_ast {
         Some(check!(
@@ -804,4 +806,19 @@ fn test_unary_ordering() {
     } else {
         panic!("Was not ast node")
     };
+}
+
+/// We want compile errors and warnings to retain their ordering, since typically
+/// they are grouped by relevance. However, we want to deduplicate them.
+/// Stdlib dedup in Rust assumes sorted data for efficiency, but we don't want that.
+/// A hash set would also mess up the order, so this is just a brute force way of doing it
+/// with a vector.
+fn dedup_unsorted<T: PartialEq>(data: Vec<T>) -> Vec<T> {
+    let mut buf = Vec::with_capacity(data.len());
+    for item in data.into_iter() {
+        if !buf.contains(&item) {
+            buf.push(item)
+        }
+    }
+    buf
 }
