@@ -5,7 +5,12 @@ use curl::easy::Easy;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, io::Cursor, path::{Path, PathBuf}};
+use std::{
+    collections::HashMap,
+    fs,
+    io::Cursor,
+    path::{Path, PathBuf},
+};
 use tar::Archive;
 
 // A collection of remote dependency related functions
@@ -238,7 +243,12 @@ pub fn download_tarball(url: &str, out_dir: &Path) -> Result<String> {
     // Unpack the tarball.
     Archive::new(GzDecoder::new(Cursor::new(data)))
         .unpack(out_dir)
-        .with_context(|| format!("failed to unpack tarball in directory: {}", out_dir.display()))?;
+        .with_context(|| {
+            format!(
+                "failed to unpack tarball in directory: {}",
+                out_dir.display()
+            )
+        })?;
 
     for entry in fs::read_dir(out_dir)? {
         let path = entry?.path();
@@ -292,14 +302,13 @@ pub fn get_current_dependency_version(dep_dir: &Path) -> Result<VersionedDepende
 
     let file_name = path.file_name().unwrap();
     // Dependencies directories are named as "$repo_owner-$repo-$concatenated_hash"
-    let hash = 
-        file_name
-            .to_str()
-            .with_context(|| format!("Invalid utf8 in dependency name: {}", path.display()))?
-            .split('-')
-            .last()
-            .with_context(|| format!("Unexpected dependency naming scheme: {}", path.display()))?
-            .into();
+    let hash = file_name
+        .to_str()
+        .with_context(|| format!("Invalid utf8 in dependency name: {}", path.display()))?
+        .split('-')
+        .last()
+        .with_context(|| format!("Unexpected dependency naming scheme: {}", path.display()))?
+        .into();
     Ok(VersionedDependencyDirectory { hash, path })
 }
 

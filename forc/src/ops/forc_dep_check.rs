@@ -6,7 +6,10 @@ use crate::utils::{
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
 use semver::Version;
-use std::{path::{Path, PathBuf}, str};
+use std::{
+    path::{Path, PathBuf},
+    str,
+};
 
 /// Forc check will check if there are updates to Github-based dependencies.
 /// If a target dependency `-d` is passed, it will check only this one dependency.
