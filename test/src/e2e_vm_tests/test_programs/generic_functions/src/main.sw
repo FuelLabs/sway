@@ -9,6 +9,7 @@ fn two_generics<A, B>(a: A, b: B) -> B {
 }
 
 fn three_generics<A, B, C>(a: A, b: B, c: C) -> B {
+  let a: A = a;
   b
 }
 

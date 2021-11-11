@@ -1,0 +1,5 @@
+[project]
+author  = "Alexander Hansen"
+license = "MIT"
+name = "bad_generic_var_annotation"
+entry = "main.sw"

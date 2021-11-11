@@ -79,6 +79,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "reassignment_to_non_variable_message",
         "disallowed_gm",
         "bad_generic_annotation",
+        "bad_generic_var_annotation",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
