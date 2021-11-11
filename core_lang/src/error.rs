@@ -3,8 +3,8 @@ use crate::span::Span;
 use crate::type_engine::{IntegerBits, TypeInfo};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
-use thiserror::Error;
 use std::fmt;
+use thiserror::Error;
 
 macro_rules! check {
     ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident) => {{
