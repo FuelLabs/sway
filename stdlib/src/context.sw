@@ -32,7 +32,7 @@ impl Msg {
     }
 
     // returns the value of coins contained in the msg
-    fn value() -> u64 {
+    fn value(self) -> u64 {
         asm(value) {
             bal: u64
         }
