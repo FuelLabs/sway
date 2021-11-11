@@ -1,7 +1,17 @@
 library context;
 
+// @todo review this. do we need to store values in struct, or just access methods?
+// if we only need the methods, why not just expose functions? ie:
+
+// fn contract_id() -> b256 {
+//     asm() {
+//             fp: b256
+//         }
+// }
+
 struct Context {
-    id: b256,
+    // id: b256
+    empty: (),
 }
 
 struct Msg {
@@ -12,7 +22,8 @@ struct Msg {
 impl Context {
     fn new() -> Context {
         Context {
-            id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+            // id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+            empty: (),
         }
     }
     // returns the contract ID (analgous to calling `this.address` in solidity).
