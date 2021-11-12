@@ -1,7 +1,7 @@
 use crate::parser::Rule;
 use crate::span::Span;
+use crate::style::{to_snake_case, to_upper_camel_case};
 use crate::type_engine::{IntegerBits, TypeInfo};
-use crate::style::{to_upper_camel_case, to_snake_case};
 use std::fmt;
 use thiserror::Error;
 

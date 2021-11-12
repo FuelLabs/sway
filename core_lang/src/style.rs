@@ -34,7 +34,7 @@ fn split_words(ident: &str) -> impl Iterator<Item = &str> {
 pub fn is_snake_case(ident: &str) -> bool {
     let trimmed = ident.trim_start_matches('_');
     if trimmed.contains("__") {
-        return false
+        return false;
     }
     if trimmed.contains(char::is_uppercase) {
         return false;
@@ -46,7 +46,7 @@ pub fn is_snake_case(ident: &str) -> bool {
 pub fn is_screaming_snake_case(ident: &str) -> bool {
     let trimmed = ident.trim_start_matches('_');
     if trimmed.contains("__") {
-        return false
+        return false;
     }
     if trimmed.contains(char::is_lowercase) {
         return false;
@@ -71,7 +71,8 @@ pub fn is_upper_camel_case(ident: &str) -> bool {
 pub fn to_snake_case(ident: &str) -> String {
     let mut ret = String::with_capacity(ident.len());
 
-    let (leading_underscores, trimmed) = ident.split_at(ident.find(|c| c != '_').unwrap_or_else(|| ident.len()));
+    let (leading_underscores, trimmed) =
+        ident.split_at(ident.find(|c| c != '_').unwrap_or_else(|| ident.len()));
     ret.push_str(leading_underscores);
     let mut words = split_words(trimmed);
     if let Some(word) = words.next() {
@@ -89,7 +90,8 @@ pub fn to_snake_case(ident: &str) -> String {
 pub fn to_screaming_snake_case(ident: &str) -> String {
     let mut ret = String::with_capacity(ident.len());
 
-    let (leading_underscores, trimmed) = ident.split_at(ident.find(|c| c != '_').unwrap_or_else(|| ident.len()));
+    let (leading_underscores, trimmed) =
+        ident.split_at(ident.find(|c| c != '_').unwrap_or_else(|| ident.len()));
     ret.push_str(leading_underscores);
     let mut words = split_words(trimmed);
     if let Some(word) = words.next() {
@@ -107,7 +109,8 @@ pub fn to_screaming_snake_case(ident: &str) -> String {
 pub fn to_upper_camel_case(ident: &str) -> String {
     let mut ret = String::with_capacity(ident.len());
 
-    let (leading_underscores, trimmed) = ident.split_at(ident.find(|c| c != '_').unwrap_or_else(|| ident.len()));
+    let (leading_underscores, trimmed) =
+        ident.split_at(ident.find(|c| c != '_').unwrap_or_else(|| ident.len()));
     ret.push_str(leading_underscores);
     for word in split_words(trimmed) {
         let mut chars = word.chars();
@@ -125,9 +128,21 @@ mod test {
 
     #[test]
     fn detect_styles() {
-        let snake_case_idents = ["hello", "__hello", "blah32", "some_words_here", "___some_words_here"];
+        let snake_case_idents = [
+            "hello",
+            "__hello",
+            "blah32",
+            "some_words_here",
+            "___some_words_here",
+        ];
         let screaming_snake_case_idents = ["SOME_WORDS_HERE", "___SOME_WORDS_HERE"];
-        let upper_camel_case_idents = ["Hello", "__Hello", "Blah32", "SomeWordsHere", "___SomeWordsHere"];
+        let upper_camel_case_idents = [
+            "Hello",
+            "__Hello",
+            "Blah32",
+            "SomeWordsHere",
+            "___SomeWordsHere",
+        ];
         let screaming_snake_case_or_upper_camel_case_idents = ["HELLO", "__HELLO", "BLAH32"];
         let styleless_idents = ["Mix_Of_Things", "__Mix_Of_Things", "FooBar_123"];
         for ident in snake_case_idents {
@@ -181,17 +196,32 @@ mod test {
         assert_eq!("HELLO", to_screaming_snake_case("hello"));
         assert_eq!("___HELLO", to_screaming_snake_case("___hello"));
         assert_eq!("BLAH32", to_screaming_snake_case("blah32"));
-        assert_eq!("SOME_WORDS_HERE", to_screaming_snake_case("some_words_here"));
-        assert_eq!("___SOME_WORDS_HERE", to_screaming_snake_case("___some_words_here"));
+        assert_eq!(
+            "SOME_WORDS_HERE",
+            to_screaming_snake_case("some_words_here")
+        );
+        assert_eq!(
+            "___SOME_WORDS_HERE",
+            to_screaming_snake_case("___some_words_here")
+        );
         assert_eq!("HELLO", to_screaming_snake_case("Hello"));
         assert_eq!("___HELLO", to_screaming_snake_case("___Hello"));
         assert_eq!("BLAH32", to_screaming_snake_case("Blah32"));
         assert_eq!("SOME_WORDS_HERE", to_screaming_snake_case("SomeWordsHere"));
-        assert_eq!("___SOME_WORDS_HERE", to_screaming_snake_case("___SomeWordsHere"));
+        assert_eq!(
+            "___SOME_WORDS_HERE",
+            to_screaming_snake_case("___SomeWordsHere")
+        );
         assert_eq!("SOME_WORDS_HERE", to_screaming_snake_case("someWordsHere"));
-        assert_eq!("___SOME_WORDS_HERE", to_screaming_snake_case("___someWordsHere"));
+        assert_eq!(
+            "___SOME_WORDS_HERE",
+            to_screaming_snake_case("___someWordsHere")
+        );
         assert_eq!("MIX_OF_THINGS", to_screaming_snake_case("Mix_Of_Things"));
-        assert_eq!("__MIX_OF_THINGS", to_screaming_snake_case("__Mix_Of_Things"));
+        assert_eq!(
+            "__MIX_OF_THINGS",
+            to_screaming_snake_case("__Mix_Of_Things")
+        );
         assert_eq!("FOO_BAR_123", to_screaming_snake_case("FooBar_123"));
     }
 
@@ -201,12 +231,18 @@ mod test {
         assert_eq!("___Hello", to_upper_camel_case("___hello"));
         assert_eq!("Blah32", to_upper_camel_case("blah32"));
         assert_eq!("SomeWordsHere", to_upper_camel_case("some_words_here"));
-        assert_eq!("___SomeWordsHere", to_upper_camel_case("___some_words_here"));
+        assert_eq!(
+            "___SomeWordsHere",
+            to_upper_camel_case("___some_words_here")
+        );
         assert_eq!("Hello", to_upper_camel_case("HELLO"));
         assert_eq!("___Hello", to_upper_camel_case("___HELLO"));
         assert_eq!("Blah32", to_upper_camel_case("BLAH32"));
         assert_eq!("SomeWordsHere", to_upper_camel_case("SOME_WORDS_HERE"));
-        assert_eq!("___SomeWordsHere", to_upper_camel_case("___SOME_WORDS_HERE"));
+        assert_eq!(
+            "___SomeWordsHere",
+            to_upper_camel_case("___SOME_WORDS_HERE")
+        );
         assert_eq!("SomeWordsHere", to_upper_camel_case("someWordsHere"));
         assert_eq!("___SomeWordsHere", to_upper_camel_case("___someWordsHere"));
         assert_eq!("MixOfThings", to_upper_camel_case("Mix_Of_Things"));
@@ -214,4 +250,3 @@ mod test {
         assert_eq!("FooBar123", to_upper_camel_case("FooBar_123"));
     }
 }
-

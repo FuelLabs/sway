@@ -2,9 +2,9 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parse_tree::{declaration::TypeParameter, Visibility};
 use crate::span::Span;
+use crate::style::is_snake_case;
 use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
-use crate::style::is_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
