@@ -1,8 +1,7 @@
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::type_engine::{IntegerBits, TypeInfo};
-use inflector::cases::classcase::to_class_case;
-use inflector::cases::snakecase::to_snake_case;
+use crate::style::{to_upper_camel_case, to_snake_case};
 use std::fmt;
 use thiserror::Error;
 
@@ -233,7 +232,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \
                  \"{}\".",
                 struct_name,
-                to_class_case(struct_name)
+                to_upper_camel_case(struct_name)
             )
             }
             NonClassCaseTraitName { name } => {
@@ -241,7 +240,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \
                  \"{}\".",
                 name,
-                to_class_case(name)
+                to_upper_camel_case(name)
             )
             }
             NonClassCaseEnumName { enum_name } => write!(
@@ -249,7 +248,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase \
                  name, like \"{}\".",
                 enum_name,
-                to_class_case(enum_name)
+                to_upper_camel_case(enum_name)
             ),
             NonSnakeCaseStructFieldName { field_name } => write!(
                 f,
@@ -263,7 +262,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Enum variant name \"{}\" is not idiomatic. Enum variant names should be \
                  ClassCase, like \"{}\".",
                 variant_name,
-                to_class_case(variant_name)
+                to_upper_camel_case(variant_name)
             ),
             NonSnakeCaseFunctionName { name } => {
                 write!(f,

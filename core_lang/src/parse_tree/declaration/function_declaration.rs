@@ -4,7 +4,7 @@ use crate::parse_tree::{declaration::TypeParameter, Visibility};
 use crate::span::Span;
 use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
-use inflector::cases::snakecase::is_snake_case;
+use crate::style::is_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]

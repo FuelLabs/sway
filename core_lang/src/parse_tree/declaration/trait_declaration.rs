@@ -5,8 +5,7 @@ use crate::parser::Rule;
 use crate::span::Span;
 use crate::type_engine::TypeInfo;
 use crate::{error::*, Ident};
-use inflector::cases::classcase::is_class_case;
-use inflector::cases::snakecase::is_snake_case;
+use crate::style::{is_upper_camel_case, is_snake_case};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -45,7 +44,7 @@ impl<'sc> TraitDeclaration<'sc> {
         );
         let span = name.span.clone();
         assert_or_warn!(
-            is_class_case(name_pair.as_str().trim()),
+            is_upper_camel_case(name_pair.as_str().trim()),
             warnings,
             span,
             Warning::NonClassCaseTraitName {
