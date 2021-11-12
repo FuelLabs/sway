@@ -208,6 +208,7 @@ pub struct TypedEnumDeclaration<'sc> {
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) variants: Vec<TypedEnumVariant<'sc>>,
     pub(crate) span: Span<'sc>,
+    pub(crate) visibility: Visibility,
 }
 impl<'sc> TypedEnumDeclaration<'sc> {
     /// Given type arguments, match them up with the type parameters and return the result.
@@ -271,6 +272,7 @@ pub struct TypedVariableDeclaration<'sc> {
 pub struct TypedConstantDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) value: TypedExpression<'sc>,
+    pub(crate) visibility: Visibility,
 }
 
 // TODO: type check generic type args and their usage

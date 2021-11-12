@@ -1,4 +1,4 @@
-use crate::parse_tree::Expression;
+use crate::parse_tree::{Expression, Visibility};
 use crate::{type_engine::TypeInfo, Ident};
 
 use crate::build_config::BuildConfig;
@@ -11,6 +11,7 @@ pub struct ConstantDeclaration<'sc> {
     pub name: Ident<'sc>,
     pub type_ascription: TypeInfo,
     pub value: Expression<'sc>,
+    pub visibility: Visibility,
 }
 
 impl<'sc> ConstantDeclaration<'sc> {
@@ -21,7 +22,14 @@ impl<'sc> ConstantDeclaration<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut const_decl_parts = pair.into_inner();
-        let _const_keyword = const_decl_parts.next();
+        let visibility = match const_decl_parts.next().unwrap().as_rule() {
+            Rule::const_decl_keyword => Visibility::Private,
+            Rule::visibility => {
+                let _const_keyword = const_decl_parts.next();
+                Visibility::Public
+            },
+            _ => unreachable!(),
+        };
         let name_pair = const_decl_parts.next().unwrap();
         let mut maybe_value = const_decl_parts.next().unwrap();
         let type_ascription = match maybe_value.as_rule() {
@@ -58,6 +66,7 @@ impl<'sc> ConstantDeclaration<'sc> {
                 ),
                 type_ascription,
                 value,
+                visibility,
             },
             warnings,
             errors,
