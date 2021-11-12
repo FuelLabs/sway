@@ -1,4 +1,4 @@
-library types;
+library b512;
 
 // Stores two b256s in contiguous memory.
 // Guaranteed to be contiguous for things like ECR.
