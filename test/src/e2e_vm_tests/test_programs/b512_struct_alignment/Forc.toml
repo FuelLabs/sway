@@ -1,9 +1,0 @@
-[project]
-author  = "Alexander Hansen"
-license = "MIT"
-name = "b512_panic_test"
-entry = "main.sw"
-
-[dependencies]
-std = { path = "../../../../../stdlib" }
-
