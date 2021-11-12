@@ -13,11 +13,8 @@ use crate::{
 pub(crate) fn order_ast_nodes_by_dependency<'sc>(
     nodes: Vec<AstNode<'sc>>,
 ) -> CompileResult<'sc, Vec<AstNode<'sc>>> {
-    let decl_dependencies = DependencyMap::from_iter(
-        nodes
-            .iter()
-            .filter_map(|node| Dependencies::gather_from_decl_node(node)),
-    );
+    let decl_dependencies =
+        DependencyMap::from_iter(nodes.iter().filter_map(Dependencies::gather_from_decl_node));
 
     // Check here for recursive calls now that we have a nice map of the dependencies to help us.
     let mut errors = find_recursive_calls(&decl_dependencies);

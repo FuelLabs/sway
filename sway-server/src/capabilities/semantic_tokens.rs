@@ -28,7 +28,7 @@ pub fn get_semantic_tokens_full(
     }
 }
 
-pub fn to_semantic_tokes(tokens: &Vec<Token>) -> Vec<SemanticToken> {
+pub fn to_semantic_tokes(tokens: &[Token]) -> Vec<SemanticToken> {
     if tokens.is_empty() {
         return vec![];
     }

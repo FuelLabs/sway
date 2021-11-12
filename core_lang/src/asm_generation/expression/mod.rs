@@ -256,7 +256,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            &field_to_access.into_typed_struct_field(field_to_access_span),
+            &field_to_access.as_typed_struct_field(field_to_access_span),
             *resolved_type_of_parent,
             namespace,
             register_sequencer,

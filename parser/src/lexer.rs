@@ -31,7 +31,7 @@ impl Lexer {
             .map(Token::Op);
 
         // A parser for control characters (delimiters, semicolons, etc.)
-        let ctrl = one_of("()[]{};,".chars()).map(|c| Token::Ctrl(c));
+        let ctrl = one_of("()[]{};,".chars()).map(Token::Ctrl);
 
         // A parser for identifiers and keywords
         let ident = text::ident().map(|ident: String| match ident.as_str() {

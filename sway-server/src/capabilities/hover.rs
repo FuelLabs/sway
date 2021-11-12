@@ -17,7 +17,7 @@ pub fn get_hover_data(session: Arc<Session>, params: HoverParams) -> Option<Hove
         Some(ref document) => {
             if let Some(token) = document.get_token_at_position(position) {
                 if token.is_initial_declaration() {
-                    return Some(get_hover_format(token, &session.documents));
+                    Some(get_hover_format(token, &session.documents))
                 } else {
                     // todo: this logic is flawed at the moment
                     // if there are multiple tokens with the same name and type in different files
@@ -43,7 +43,7 @@ fn get_hover_format(token: &Token, documents: &Documents) -> Hover {
     let value = match &token.token_type {
         TokenType::Variable(var_details) => {
             let var_type = match &var_details.var_body {
-                VarBody::FunctionCall(fn_name) => get_var_type_from_fn(&fn_name, documents),
+                VarBody::FunctionCall(fn_name) => get_var_type_from_fn(fn_name, documents),
                 VarBody::Type(var_type) => var_type.clone(),
                 _ => "".into(),
             };
@@ -81,14 +81,11 @@ fn get_hover_format(token: &Token, documents: &Documents) -> Hover {
 
 fn get_var_type_from_fn(fn_name: &str, documents: &Documents) -> String {
     for document_ref in documents {
-        if let Some(declared_token) = document_ref.get_declared_token(&fn_name) {
-            match &declared_token.token_type {
-                TokenType::FunctionDeclaration(func_details) => {
-                    return func_details
-                        .get_return_type_from_signature()
-                        .unwrap_or_default();
-                }
-                _ => {}
+        if let Some(declared_token) = document_ref.get_declared_token(fn_name) {
+            if let TokenType::FunctionDeclaration(func_details) = &declared_token.token_type {
+                return func_details
+                    .get_return_type_from_signature()
+                    .unwrap_or_default();
             }
         }
     }

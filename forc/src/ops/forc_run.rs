@@ -32,8 +32,8 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
             let parsed_result = parse(main_file, None);
             match parsed_result.value {
                 Some(parse_tree) => {
-                    if let Some(_) = &parse_tree.script_ast {
-                        let input_data = &command.data.unwrap_or("".into());
+                    if parse_tree.script_ast.is_some() {
+                        let input_data = &command.data.unwrap_or_else(|| "".into());
                         let data = format_hex_data(input_data);
                         let script_data = hex::decode(data).expect("Invalid hex");
 
@@ -141,7 +141,7 @@ async fn send_tx(
 ) -> Result<(), CliError> {
     let id = format!("{:#x}", tx.id());
     match client
-        .submit(&tx)
+        .submit(tx)
         .and_then(|_| client.receipts(id.as_str()))
         .await
     {
@@ -182,9 +182,5 @@ fn create_tx_with_script_and_data(
 
 // cut '0x' from the start
 fn format_hex_data(data: &str) -> &str {
-    if data.len() >= 2 && &data[..2] == "0x" {
-        &data[2..]
-    } else {
-        &data
-    }
+    data.strip_prefix("0x").unwrap_or(data)
 }

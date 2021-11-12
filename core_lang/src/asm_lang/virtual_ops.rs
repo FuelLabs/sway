@@ -20,6 +20,7 @@ use std::fmt;
 /// allows me to use the compiler's internal [VirtualRegister] types and maintain type safety
 /// between virtual ops and the real opcodes. A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug)]
 pub(crate) enum VirtualOp {
     ADD(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -234,10 +235,7 @@ impl VirtualOp {
                     (x, pool.get_register(x, &op_register_mapping[ix..]))
                 }
             })
-            .map(|(x, res)| match res {
-                Some(res) => Some((x, res)),
-                None => None,
-            })
+            .map(|(x, register_opt)| register_opt.map(|register| (x, register)))
             .collect::<Option<Vec<_>>>();
 
         // Maps virtual registers to their allocated equivalent

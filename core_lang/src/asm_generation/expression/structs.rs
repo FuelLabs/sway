@@ -172,9 +172,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     // step 0
     let fields_for_layout = fields
         .iter()
-        .map(|TypedStructExpressionField { name, value }| {
-            (value.return_type.clone(), name.primary_name)
-        })
+        .map(|TypedStructExpressionField { name, value }| (value.return_type, name.primary_name))
         .collect::<Vec<_>>();
     let descriptor = check!(
         get_struct_memory_layout(&fields_for_layout[..]),
@@ -251,7 +249,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         let type_size = match look_up_type_id(value.return_type).stack_size_of(&name.span) {
             Ok(o) => o,
             Err(e) => {
-                errors.push(e.into());
+                errors.push(e);
                 return err(warnings, errors);
             }
         };

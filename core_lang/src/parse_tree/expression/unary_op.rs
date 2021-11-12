@@ -31,7 +31,7 @@ impl UnaryOp {
                         path: config.map(|c| c.path()),
                     },
                 )];
-                return err(Vec::new(), errors);
+                err(Vec::new(), errors)
             }
         }
     }
@@ -55,11 +55,11 @@ impl UnaryOp {
             name: CallPath {
                 prefixes: vec![
                     Ident {
-                        primary_name: "std".into(),
+                        primary_name: "std",
                         span: op_span.clone(),
                     },
                     Ident {
-                        primary_name: "ops".into(),
+                        primary_name: "ops",
                         span: op_span.clone(),
                     },
                 ],

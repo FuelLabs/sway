@@ -3,7 +3,7 @@ use crate::ops::forc_build;
 use crate::utils::helpers::{find_manifest_dir, get_sway_files, println_green, println_red};
 use formatter::get_formatted_data;
 use prettydiff::{basic::DiffOp, diff_lines};
-use std::{fmt, fs, io, path::PathBuf};
+use std::{fmt, fs, io, path::Path};
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {
@@ -113,7 +113,7 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
     }
 }
 
-fn format_sway_file(file: &PathBuf, formatted_content: &str) -> Result<(), FormatError> {
+fn format_sway_file(file: &Path, formatted_content: &str) -> Result<(), FormatError> {
     fs::write(file, formatted_content)?;
 
     Ok(())

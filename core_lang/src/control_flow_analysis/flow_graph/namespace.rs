@@ -81,7 +81,7 @@ impl<'sc> ControlFlowNamespace<'sc> {
         variant_name: &Ident<'sc>,
     ) -> Option<(NodeIndex, NodeIndex)> {
         let (enum_ix, enum_decl) = self.enum_namespace.get(enum_name)?;
-        Some((enum_ix.clone(), enum_decl.get(variant_name)?.clone()))
+        Some((*enum_ix, *enum_decl.get(variant_name)?))
     }
 
     pub(crate) fn add_trait(&mut self, trait_name: CallPath<'sc>, trait_idx: NodeIndex) {

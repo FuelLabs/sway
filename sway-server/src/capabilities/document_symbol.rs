@@ -3,13 +3,12 @@ use lspower::lsp::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKi
 use std::sync::Arc;
 
 pub fn document_symbol(session: Arc<Session>, url: Url) -> Option<DocumentSymbolResponse> {
-    match session.get_symbol_information(&url) {
-        Some(symbols) => Some(DocumentSymbolResponse::Flat(symbols)),
-        _ => None,
-    }
+    session
+        .get_symbol_information(&url)
+        .map(DocumentSymbolResponse::Flat)
 }
 
-pub fn to_symbol_information(tokens: &Vec<Token>, url: Url) -> Vec<SymbolInformation> {
+pub fn to_symbol_information(tokens: &[Token], url: Url) -> Vec<SymbolInformation> {
     let mut symbols: Vec<SymbolInformation> = vec![];
 
     for token in tokens {

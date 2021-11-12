@@ -732,7 +732,7 @@ fn reassignment<'sc>(
                 }
             };
             // the RHS is a ref type to the LHS
-            let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type.clone()));
+            let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
             // type check the reassignment
             let rhs = check!(
                 TypedExpression::type_check(
@@ -754,7 +754,7 @@ fn reassignment<'sc>(
                 TypedDeclaration::Reassignment(TypedReassignment {
                     lhs: vec![ReassignmentLhs {
                         name,
-                        r#type: thing_to_reassign.return_type.clone(),
+                        r#type: thing_to_reassign.return_type,
                     }],
                     rhs,
                 }),
@@ -790,7 +790,7 @@ fn reassignment<'sc>(
                     Expression::VariableExpression { name, .. } => {
                         names_vec.push(ReassignmentLhs {
                             name,
-                            r#type: type_checked.return_type.clone(),
+                            r#type: type_checked.return_type,
                         });
                         break type_checked.return_type;
                     }
@@ -835,7 +835,7 @@ fn reassignment<'sc>(
                 TypedExpression::type_check(
                     rhs,
                     namespace,
-                    Some(ty_of_field.clone()),
+                    Some(ty_of_field),
                     format!(
                         "This struct field has type \"{}\"",
                         look_up_type_id(ty_of_field).friendly_type_str()
@@ -977,21 +977,17 @@ fn type_check_trait_methods<'sc>(
                          ..
                      }| { crate::utils::join_spans(acc, span.clone()) },
                 );
-                if type_parameters
-                    .iter()
-                    .find(
-                        |TypeParameter {
-                             name: this_name, ..
-                         }| {
-                            if let TypeInfo::Custom { name: this_name } = this_name {
-                                this_name == name
-                            } else {
-                                false
-                            }
-                        },
-                    )
-                    .is_none()
-                {
+                if type_parameters.iter().any(
+                    |TypeParameter {
+                         name: this_name, ..
+                     }| {
+                        if let TypeInfo::Custom { name: this_name } = this_name {
+                            this_name == name
+                        } else {
+                            false
+                        }
+                    },
+                ) {
                     errors.push(CompileError::TypeParameterNotInTypeScope {
                         name: name.to_string(),
                         span: span.clone(),
@@ -1060,9 +1056,9 @@ fn type_check_trait_methods<'sc>(
 
 /// Used to create a stubbed out function when the function fails to compile, preventing cascading
 /// namespace errors
-fn error_recovery_function_declaration<'sc>(
-    decl: FunctionDeclaration<'sc>,
-) -> TypedFunctionDeclaration<'sc> {
+fn error_recovery_function_declaration(
+    decl: FunctionDeclaration<'_>,
+) -> TypedFunctionDeclaration<'_> {
     let FunctionDeclaration {
         name,
         return_type,

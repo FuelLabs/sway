@@ -80,8 +80,8 @@ async fn check_dependency(
 
 async fn check_tagged_dependency(
     dependency_name: &str,
-    current_version: &String,
-    git_repo: &String,
+    current_version: &str,
+    git_repo: &str,
 ) -> Result<()> {
     let releases = dependency::get_github_repo_releases(git_repo).await?;
 
@@ -116,14 +116,14 @@ async fn check_tagged_dependency(
 }
 
 async fn check_untagged_dependency(
-    git_repo: &String,
+    git_repo: &str,
     target_directory: String,
     dependency_name: &str,
     dep: &dependency::DependencyDetails,
 ) -> Result<()> {
     let current = dependency::get_current_dependency_version(&target_directory)?;
 
-    let latest_hash = dependency::get_latest_commit_sha(&git_repo, &dep.branch).await?;
+    let latest_hash = dependency::get_latest_commit_sha(git_repo, &dep.branch).await?;
 
     if current.hash == latest_hash {
         println!("{} is up-to-date", dependency_name);

@@ -194,7 +194,7 @@ fn type_check_trait_implementation<'sc>(
         .iter()
         .map(|TypedTraitFn { name, .. }| name)
         .collect();
-    for fn_decl in functions.into_iter() {
+    for fn_decl in functions {
         // replace SelfType with type of implementor
         // i.e. fn add(self, other: u64) -> Self becomes fn
         // add(self: u64, other: u64) -> u64
@@ -348,7 +348,7 @@ fn type_check_trait_implementation<'sc>(
             prefixes: vec![],
             suffix: trait_name.clone(),
         },
-        match resolve_type(type_implementing_for, &type_implementing_for_span) {
+        match resolve_type(type_implementing_for, type_implementing_for_span) {
             Ok(o) => o,
             Err(e) => {
                 errors.push(e.into());

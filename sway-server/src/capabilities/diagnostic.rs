@@ -36,7 +36,7 @@ pub fn get_diagnostics(
     vec![warnings, errors].into_iter().flatten().collect()
 }
 
-fn get_range<'s>(warning_or_error: &WarningOrError<'s>) -> Range {
+fn get_range(warning_or_error: &WarningOrError<'_>) -> Range {
     let (start, end) = match warning_or_error {
         WarningOrError::Error(error) => error.line_col(),
         WarningOrError::Warning(warning) => warning.line_col(),
