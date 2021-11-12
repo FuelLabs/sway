@@ -141,18 +141,33 @@ impl<'sc> Namespace<'sc> {
             warnings,
             errors
         );
+        let mut impls_to_insert = vec![];
 
         match namespace.symbols.get(item) {
-            Some(_) => match alias {
-                Some(alias) => {
-                    self.use_synonyms.insert(alias.clone(), path);
-                    self.use_aliases
-                        .insert(alias.primary_name.to_string(), item.clone());
-                }
-                None => {
-                    self.use_synonyms.insert(item.clone(), path);
-                }
-            },
+            Some(decl) => {
+                //  if this is an enum or struct, import its implementations
+                let a = decl.return_type().value;
+                namespace
+                    .implemented_traits
+                    .iter()
+                    .filter(|((_trait_name, type_info), _impl)| {
+                        a.map(|a| look_up_type_id(a)).as_ref() == Some(type_info)
+                    })
+                    .for_each(|(a, b)| {
+                        impls_to_insert.push((a.clone(), b.to_vec()));
+                    });
+                // no matter what, import it this way though.
+                match alias {
+                    Some(alias) => {
+                        self.use_synonyms.insert(alias.clone(), path);
+                        self.use_aliases
+                            .insert(alias.primary_name.to_string(), item.clone());
+                    }
+                    None => {
+                        self.use_synonyms.insert(item.clone(), path);
+                    }
+                };
+            }
             None => {
                 errors.push(CompileError::SymbolNotFound {
                     name: item.primary_name.to_string(),
@@ -161,6 +176,10 @@ impl<'sc> Namespace<'sc> {
                 return err(warnings, errors);
             }
         };
+
+        impls_to_insert.into_iter().for_each(|(a, b)| {
+            self.implemented_traits.insert(a, b);
+        });
 
         ok((), warnings, errors)
     }
@@ -214,14 +233,17 @@ impl<'sc> Namespace<'sc> {
         self.get_name_from_path_str(path, symbol).value
     }
 
-    pub(crate) fn get_symbol(&self, symbol: &Ident<'sc>) -> Option<&TypedDeclaration<'sc>> {
+    pub(crate) fn get_symbol(
+        &self,
+        symbol: &Ident<'sc>,
+    ) -> CompileResult<'sc, &TypedDeclaration<'sc>> {
         let empty = vec![];
         let path = self.use_synonyms.get(symbol).unwrap_or(&empty);
         let true_symbol = self
             .use_aliases
             .get(&symbol.primary_name.to_string())
             .unwrap_or(symbol);
-        self.get_name_from_path(path, true_symbol).value
+        self.get_name_from_path(path, true_symbol)
     }
 
     /// Used for calls that look like this:
@@ -403,7 +425,10 @@ impl<'sc> Namespace<'sc> {
     }
     pub(crate) fn find_enum(&self, enum_name: &Ident<'sc>) -> Option<TypedEnumDeclaration<'sc>> {
         match self.get_symbol(enum_name) {
-            Some(TypedDeclaration::EnumDeclaration(inner)) => Some(inner.clone()),
+            CompileResult {
+                value: Some(TypedDeclaration::EnumDeclaration(inner)),
+                ..
+            } => Some(inner.clone()),
             _ => None,
         }
     }
