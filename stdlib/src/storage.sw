@@ -8,7 +8,7 @@ pub fn store<T>(key: b256, value: T) {
   };
 }
 
-pub fn get<T>(key: b256, value: T) {
+pub fn get<T>(key: b256) -> T {
   asm(r1: key, r2) {
     srw r2 r1;
     r2: T

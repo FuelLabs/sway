@@ -3,11 +3,6 @@ use crate::span::Span;
 use crate::type_engine::{IntegerBits, TypeInfo};
 use inflector::cases::classcase::to_class_case;
 use inflector::cases::snakecase::to_snake_case;
-use line_col::LineColLookup;
-use source_span::{
-    fmt::{Formatter, Style},
-    Position,
-};
 use std::fmt;
 use thiserror::Error;
 
@@ -174,34 +169,6 @@ impl<'sc> CompileWarning<'sc> {
             self.span.start_pos().line_col().into(),
             self.span.end_pos().line_col().into(),
         )
-    }
-
-    pub fn format(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
-        let input = self.span.input();
-        let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-
-        let metrics = source_span::DEFAULT_METRICS;
-        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-        for c in buffer.iter() {
-            let _ = c.unwrap(); // report eventual errors.
-        }
-
-        let (start_pos, end_pos) = self.span();
-        let lookup = LineColLookup::new(input);
-        let (start_line, start_col) = lookup.get(start_pos);
-        let (end_line, end_col) = lookup.get(end_pos - 1);
-
-        let err_start = Position::new(start_line - 1, start_col - 1);
-        let err_end = Position::new(end_line - 1, end_col - 1);
-        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
-        fmt.add(
-            err_span,
-            Some(self.to_friendly_warning_string()),
-            Style::Warning,
-        );
-
-        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
     }
 }
 
@@ -471,15 +438,10 @@ pub enum CompileError<'sc> {
     ReassignmentToNonVariable {
         name: &'sc str,
         kind: &'sc str,
-        decl_span: Span<'sc>,
-        usage_span: Span<'sc>,
+        span: Span<'sc>,
     },
-    #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
-    AssignmentToNonMutable {
-        name: &'sc str,
-        decl_span: Span<'sc>,
-        usage_span: Span<'sc>,
-    },
+    #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
+    AssignmentToNonMutable(String, Span<'sc>),
     #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
@@ -717,8 +679,7 @@ pub enum CompileError<'sc> {
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooManyArgumentsForFunction {
-        decl_span: Span<'sc>,
-        usage_span: Span<'sc>,
+        span: Span<'sc>,
         method_name: &'sc str,
         expected: usize,
         received: usize,
@@ -727,8 +688,7 @@ pub enum CompileError<'sc> {
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooFewArgumentsForFunction {
-        decl_span: Span<'sc>,
-        usage_span: Span<'sc>,
+        span: Span<'sc>,
         method_name: &'sc str,
         expected: usize,
         received: usize,
@@ -895,8 +855,8 @@ impl<'sc> CompileError<'sc> {
             PredicateMainDoesNotReturnBool(span) => span,
             NoScriptMainFunction(span) => span,
             MultipleScriptMainFunctions(span) => span,
-            ReassignmentToNonVariable { usage_span, .. } => usage_span,
-            AssignmentToNonMutable { usage_span, .. } => usage_span,
+            ReassignmentToNonVariable { span, .. } => span,
+            AssignmentToNonMutable(_, span) => span,
             TypeParameterNotInTypeScope { span, .. } => span,
             MultipleImmediates(span) => span,
             MismatchedTypeInTrait { span, .. } => span,
@@ -951,8 +911,8 @@ impl<'sc> CompileError<'sc> {
             UnnecessaryEnumInstantiator { span, .. } => span,
             TraitNotFound { span, .. } => span,
             InvalidExpressionOnLhs { span, .. } => span,
-            TooManyArgumentsForFunction { usage_span, .. } => usage_span,
-            TooFewArgumentsForFunction { usage_span, .. } => usage_span,
+            TooManyArgumentsForFunction { span, .. } => span,
+            TooFewArgumentsForFunction { span, .. } => span,
             InvalidAbiType { span, .. } => span,
             InvalidNumberOfAbiParams { span, .. } => span,
             NotAnAbi { span, .. } => span,
@@ -977,140 +937,5 @@ impl<'sc> CompileError<'sc> {
             self.internal_span().start_pos().line_col().into(),
             self.internal_span().end_pos().line_col().into(),
         )
-    }
-
-    pub fn format(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
-        match self {
-            CompileError::AssignmentToNonMutable {
-                name,
-                decl_span,
-                usage_span,
-            } => self.format_one_hint_one_err(
-                fmt,
-                decl_span,
-                format!(
-                    "Variable {} not declared as mutable. Try adding 'mut'.",
-                    name
-                ),
-                usage_span,
-                format!("Assignment to immutable variable {}.", name),
-            ),
-            CompileError::TooFewArgumentsForFunction {
-                decl_span,
-                usage_span,
-                method_name,
-                expected,
-                received,
-            } => self.format_one_hint_one_err(
-                fmt,
-                decl_span,
-                format!("Function {} declared here.", method_name),
-                usage_span,
-                format!(
-                    "Function {} expected {} arguments and recieved {}.",
-                    method_name, expected, received
-                ),
-            ),
-            CompileError::TooManyArgumentsForFunction {
-                decl_span,
-                usage_span,
-                method_name,
-                expected,
-                received,
-            } => self.format_one_hint_one_err(
-                fmt,
-                decl_span,
-                format!("Function {} declared here.", method_name),
-                usage_span,
-                format!(
-                    "Function {} expected {} arguments and recieved {}.",
-                    method_name, expected, received
-                ),
-            ),
-            CompileError::ReassignmentToNonVariable {
-                name,
-                kind,
-                decl_span,
-                usage_span,
-            } => self.format_one_hint_one_err(
-                fmt,
-                decl_span,
-                format!("Symbol {} declared here.", name),
-                usage_span,
-                format!("Attempted to reassign to a symbol that is not a variable. Symbol {} is not a mutable \
-                variable, it is a {}.", name, kind)
-            ),
-            _ => self.format_err_simple(fmt),
-        }
-    }
-
-    fn format_err_simple(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
-        let input = self.internal_span().input();
-        let chars = input.chars().map(Result::<_, String>::Ok);
-
-        let metrics = source_span::DEFAULT_METRICS;
-        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-        for c in buffer.iter() {
-            let _ = c.unwrap(); // report eventual errors.
-        }
-
-        let (start_pos, end_pos) = self.span();
-        let lookup = LineColLookup::new(input);
-        let (start_line, start_col) = lookup.get(start_pos);
-        let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
-
-        let err_start = Position::new(start_line - 1, start_col - 1);
-        let err_end = Position::new(end_line - 1, end_col - 1);
-        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
-        fmt.add(
-            err_span,
-            Some(self.to_friendly_error_string()),
-            Style::Error,
-        );
-
-        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
-    }
-
-    fn format_one_hint_one_err(
-        &self,
-        fmt: &mut Formatter,
-        hint_span: &Span<'sc>,
-        hint_message: String,
-        err_span: &Span<'sc>,
-        err_message: String,
-    ) -> source_span::fmt::Formatted {
-        self.format_one(fmt, hint_span.clone(), Style::Note, hint_message);
-        self.format_one(fmt, err_span.clone(), Style::Error, err_message);
-
-        let span = crate::utils::join_spans(hint_span.clone(), err_span.clone());
-        let input = span.input();
-        let chars = input.chars().map(Result::<_, String>::Ok);
-        let metrics = source_span::DEFAULT_METRICS;
-        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-        for c in buffer.iter() {
-            let _ = c.unwrap(); // report eventual errors.
-        }
-
-        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
-    }
-
-    fn format_one(
-        &self,
-        fmt: &mut Formatter,
-        span: Span<'sc>,
-        style: source_span::fmt::Style,
-        friendly_string: String,
-    ) {
-        let input = span.input();
-        let (start_pos, end_pos) = (span.start(), span.end());
-        let lookup = LineColLookup::new(input);
-        let (start_line, start_col) = lookup.get(start_pos);
-        let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
-
-        let err_start = Position::new(start_line - 1, start_col - 1);
-        let err_end = Position::new(end_line - 1, end_col - 1);
-        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
-        fmt.add(err_span, Some(friendly_string), style);
     }
 }

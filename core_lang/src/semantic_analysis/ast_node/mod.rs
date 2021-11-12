@@ -756,9 +756,8 @@ fn reassignment<'sc>(
     // ensure that the lhs is a variable expression or struct field access
     match *lhs {
         Expression::VariableExpression { name, span } => {
-            let name_in_use = name.clone();
             // check that the reassigned name exists
-            let thing_to_reassign = match namespace.clone().get_symbol(&name) {
+            let thing_to_reassign = match namespace.clone().get_symbol(&name).value {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body,
                     is_mutable,
@@ -770,22 +769,19 @@ fn reassignment<'sc>(
                     // basically pretending that this isn't an error by not
                     // early-returning, for the sake of better error reporting
                     if !is_mutable {
-                        errors.push(CompileError::AssignmentToNonMutable {
-                            name: name_in_use.primary_name,
-                            decl_span: name.span.clone(),
-                            usage_span: span.clone(),
-                        });
+                        errors.push(CompileError::AssignmentToNonMutable(
+                            name.primary_name.to_string(),
+                            span.clone(),
+                        ));
                     }
 
                     body.clone()
                 }
                 Some(o) => {
-                    let method = namespace.get_symbol(&name).unwrap();
                     errors.push(CompileError::ReassignmentToNonVariable {
                         name: name.primary_name,
                         kind: o.friendly_name(),
-                        decl_span: method.span(),
-                        usage_span: span,
+                        span,
                     });
                     return err(warnings, errors);
                 }

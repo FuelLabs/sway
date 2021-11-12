@@ -115,6 +115,9 @@ impl<'sc> TypeEngine<'sc> for Engine {
     ) -> Result<Option<Warning<'sc>>, Self::Error> {
         use TypeInfo::*;
         match (self.vars[&a].clone(), self.vars[&b].clone()) {
+            // If the types are exactly the same, we are done.
+            (a, b) if a == b => Ok(None),
+
             // Follow any references
             (Ref(a), _) => self.unify(a, b, span),
             (_, Ref(b)) => self.unify(a, b, span),
@@ -132,8 +135,6 @@ impl<'sc> TypeEngine<'sc> for Engine {
                 Ok(None)
             }
 
-            // If the types are exactly the same, we are done.
-            (a, b) if a == b => Ok(None),
             (UnsignedInteger(x), UnsignedInteger(y)) => match numeric_cast_compat(x, y) {
                 NumericCastCompatResult::CastableWithWarning(warn) => {
                     // cast the one on the right to the one on the left
