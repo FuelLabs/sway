@@ -8,7 +8,7 @@ The "Fuel Orchestrator" Forc is our equivalent of Rust's [Cargo](https://doc.rus
 
 ## Sway Language Server `sway-server`
 
-The Sway Language Server `sway-server` is provided to expose features to IDEs. Currently, only [Visual Studio Code is supported through a plugin](https://github.com/FuelLabs/sway-vscode-plugin). Vim support is forthcoming. Note that there is no need to manually run `sway-server`, however it should be included in your `$PATH`.
+The Sway Language Server `sway-server` is provided to expose features to IDEs. Currently, only [Visual Studio Code is supported through a plugin](https://github.com/FuelLabs/sway-vscode-plugin). Vim support is forthcoming, though [syntax highlighting is provided](https://github.com/FuelLabs/sway.vim). Note that there is no need to manually run `sway-server`, however it should be included in your `$PATH`.
 
 ## Fuel Core (`fuel-core`)
 
