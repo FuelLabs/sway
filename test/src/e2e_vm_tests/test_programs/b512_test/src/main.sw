@@ -35,7 +35,7 @@ fn main() -> bool {
     let t2: bool =  (a.hi == hi_bits) && (a.lo == lo_bits);
 
     // it allows building from 2 b256's:
-    let mut b: B512 = ~B512::from_b_256(hi_bits, lo_bits);
+    let mut b = ~B512::from_b_256(hi_bits, lo_bits);
     let t3: bool = (b.hi == hi_bits) && (b.lo == lo_bits);
 
     // it allows reassignment of fields:
