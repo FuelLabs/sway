@@ -49,7 +49,7 @@ impl<'sc> TypeParameter<'sc> {
                         Vec::new(),
                         vec![CompileError::UnexpectedWhereClause(Span {
                             span: where_clause_pair.as_span(),
-                            path: path.clone(),
+                            path,
                         })],
                     );
                 }

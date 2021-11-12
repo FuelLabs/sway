@@ -98,7 +98,7 @@ impl<'sc> TraitDeclaration<'sc> {
                 where_clause_pair,
                 config,
             )
-            .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
+            .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
         ok(
             TraitDeclaration {
                 type_parameters,
@@ -167,7 +167,7 @@ impl<'sc> TraitFn<'sc> {
                 let pair = signature.next().unwrap();
                 let span = Span {
                     span: pair.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 (
                     check!(

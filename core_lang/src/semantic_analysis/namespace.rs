@@ -37,7 +37,7 @@ impl<'sc> Namespace<'sc> {
     ///
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
     pub(crate) fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> TypeId {
-        let ty = ty.clone();
+        let ty = ty;
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol_by_str(&name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
@@ -239,7 +239,7 @@ impl<'sc> Namespace<'sc> {
         } else {
             &symbol.prefixes
         };
-        self.get_name_from_path(&path, &symbol.suffix)
+        self.get_name_from_path(path, &symbol.suffix)
             .map(|decl| decl.clone())
     }
 
@@ -434,7 +434,7 @@ impl<'sc> Namespace<'sc> {
                 warnings,
                 errors
             );
-            return ok((ty.clone(), ty), warnings, errors);
+            return ok((ty, ty), warnings, errors);
         }
         let mut symbol = check!(
             symbol.return_type(),
@@ -453,12 +453,12 @@ impl<'sc> Namespace<'sc> {
             Some(value) => value,
         };
 
-        let mut parent_rover = symbol.clone();
+        let mut parent_rover = symbol;
 
         for ident in ident_iter {
             // find the ident in the currently available fields
             let OwnedTypedStructField { r#type, .. } =
-                match fields.iter().find(|x| &x.name == ident.primary_name) {
+                match fields.iter().find(|x| x.name == ident.primary_name) {
                     Some(field) => field.clone(),
                     None => {
                         // gather available fields for the error message
@@ -468,7 +468,7 @@ impl<'sc> Namespace<'sc> {
 
                         errors.push(CompileError::FieldNotFound {
                             field_name,
-                            struct_name: struct_name.clone(),
+                            struct_name,
                             available_fields: available_fields.join(", "),
                             span: ident.span.clone(),
                         });
@@ -481,13 +481,13 @@ impl<'sc> Namespace<'sc> {
                     fields: ref l_fields,
                     ..
                 } => {
-                    parent_rover = symbol.clone();
+                    parent_rover = symbol;
                     fields = l_fields.clone();
                     symbol = r#type;
                 }
                 _ => {
                     fields = vec![];
-                    parent_rover = symbol.clone();
+                    parent_rover = symbol;
                     symbol = r#type;
                 }
             }
@@ -545,7 +545,7 @@ impl<'sc> Namespace<'sc> {
                         insert_type(type_name.clone())
                     }
                 } else {
-                    args_buf[0].return_type.clone()
+                    args_buf[0].return_type
                 };
                 (module, &call_path.suffix, r#type)
             }
@@ -593,7 +593,7 @@ impl<'sc> Namespace<'sc> {
         let ty = crate::type_engine::look_up_type_id(ty);
         match ty {
             TypeInfo::Struct { name, fields } => {
-                ok((fields.to_vec(), name.clone()), vec![], vec![])
+                ok((fields.to_vec(), name), vec![], vec![])
             }
             // If we hit `ErrorRecovery` then the source of that type should have populated
             // the error buffer elsewhere

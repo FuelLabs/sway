@@ -44,7 +44,7 @@ pub(crate) fn resolve_type<'sc>(
     ty
 }
 
-pub(crate) fn look_up_type_id<'sc>(id: TypeId) -> TypeInfo {
+pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
     let lock = TYPE_ENGINE.lock().unwrap();
     let ty = lock
         .resolve(id)

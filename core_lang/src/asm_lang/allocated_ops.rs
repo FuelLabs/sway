@@ -52,6 +52,7 @@ impl AllocatedRegister {
 /// between virtual ops and those which have gone through register allocation.
 /// A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug)]
 pub(crate) enum AllocatedOpcode {
     ADD(AllocatedRegister, AllocatedRegister, AllocatedRegister),
@@ -243,16 +244,16 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             NOOP            => "noop".to_string(),
             FLAG(a)         => format!("flag {}", a),
             GM(a, b)         => format!("gm {} {}", a, b),
-            Undefined       => format!("undefined op"),
+            Undefined       => "undefined op".to_string(),
             DataSectionOffsetPlaceholder => "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]".into(),
             DataSectionRegisterLoadPlaceholder => "lw   $ds $is 1".into()
         };
         // we want the comment to always be COMMENT_START_COLUMN characters offset to the right
         // to not interfere with the ASM but to be aligned
         let mut op_and_comment = string;
-        if self.comment.len() > 0 {
+        if !self.comment.is_empty() {
             while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push_str(" ");
+                op_and_comment.push(' ');
             }
             op_and_comment.push_str(&format!("; {}", self.comment))
         }

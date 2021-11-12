@@ -92,6 +92,7 @@ impl<'sc> TypedAstNode<'sc> {
             WhileLoop(_) | SideEffect => TypeInfo::Unit,
         }
     }
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn type_check(
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
@@ -680,6 +681,7 @@ fn import_new_file<'sc>(
     ok((), warnings, errors)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn reassignment<'sc>(
     lhs: Box<Expression<'sc>>,
     rhs: Expression<'sc>,
@@ -736,7 +738,7 @@ fn reassignment<'sc>(
                 }
             };
             // the RHS is a ref type to the LHS
-            let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type.clone()));
+            let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
             // type check the reassignment
             let rhs = check!(
                 TypedExpression::type_check(
@@ -758,7 +760,7 @@ fn reassignment<'sc>(
                 TypedDeclaration::Reassignment(TypedReassignment {
                     lhs: vec![ReassignmentLhs {
                         name,
-                        r#type: thing_to_reassign.return_type.clone(),
+                        r#type: thing_to_reassign.return_type,
                     }],
                     rhs,
                 }),
@@ -794,7 +796,7 @@ fn reassignment<'sc>(
                     Expression::VariableExpression { name, .. } => {
                         names_vec.push(ReassignmentLhs {
                             name,
-                            r#type: type_checked.return_type.clone(),
+                            r#type: type_checked.return_type,
                         });
                         break type_checked.return_type;
                     }
@@ -839,7 +841,7 @@ fn reassignment<'sc>(
                 TypedExpression::type_check(
                     rhs,
                     namespace,
-                    Some(ty_of_field.clone()),
+                    Some(ty_of_field),
                     format!(
                         "This struct field has type \"{}\"",
                         look_up_type_id(ty_of_field).friendly_type_str()

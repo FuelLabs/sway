@@ -33,13 +33,13 @@ impl<'sc> StructDeclaration<'sc> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut decl = decl.into_inner();
+        let decl = decl.into_inner();
         let mut visibility = Visibility::Private;
         let mut name = None;
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
         let mut fields_pair = None;
-        while let Some(pair) = decl.next() {
+        for pair in decl {
             match pair.as_rule() {
                 Rule::type_params => {
                     type_params_pair = Some(pair);
@@ -67,7 +67,7 @@ impl<'sc> StructDeclaration<'sc> {
             where_clause_pair,
             config,
         )
-        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
+        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
         let fields = if let Some(fields) = fields_pair {
             check!(
@@ -82,7 +82,7 @@ impl<'sc> StructDeclaration<'sc> {
 
         let span = Span {
             span: name.as_span(),
-            path: path.clone(),
+            path,
         };
         let name = check!(
             Ident::parse_from_pair(name, config),
@@ -137,7 +137,7 @@ impl<'sc> StructField<'sc> {
                 warnings,
                 span.clone(),
                 Warning::NonSnakeCaseStructFieldName {
-                    field_name: name.primary_name.clone()
+                    field_name: name.primary_name
                 }
             );
             let r#type = check!(

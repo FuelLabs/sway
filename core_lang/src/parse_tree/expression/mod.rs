@@ -313,11 +313,11 @@ impl<'sc> Expression<'sc> {
                 }
             }
             Rule::var_exp => {
-                let mut var_exp_parts = expr.into_inner();
+                let var_exp_parts = expr.into_inner();
                 // this means that this is something like `!`, `ref`, or `deref` and the next
                 // token is the actual expr value
                 let mut name = None;
-                while let Some(pair) = var_exp_parts.next() {
+                for pair in var_exp_parts {
                     match pair.as_rule() {
                         Rule::var_name_ident => {
                             name = Some(check!(
@@ -422,7 +422,7 @@ impl<'sc> Expression<'sc> {
                     Expression::Unit {
                         span: Span {
                             span: expr.as_span(),
-                            path: path.clone()
+                            path
                         }
                     },
                     warnings,
@@ -452,7 +452,7 @@ impl<'sc> Expression<'sc> {
             Rule::if_exp => {
                 let span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 let mut if_exp_pairs = expr.into_inner();
                 let condition_pair = if_exp_pairs.next().unwrap();
@@ -489,7 +489,7 @@ impl<'sc> Expression<'sc> {
             Rule::asm_expression => {
                 let whole_block_span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 let asm = check!(
                     AsmExpression::parse_from_pair(expr, config),
@@ -672,7 +672,7 @@ impl<'sc> Expression<'sc> {
                 // up in libraries
                 let span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
@@ -714,7 +714,7 @@ impl<'sc> Expression<'sc> {
             Rule::unit => Expression::Unit {
                 span: Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 },
             },
             Rule::struct_field_access => {
@@ -757,7 +757,7 @@ impl<'sc> Expression<'sc> {
             Rule::abi_cast => {
                 let span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 let mut iter = expr.into_inner();
                 let _abi_keyword = iter.next();
@@ -807,7 +807,7 @@ impl<'sc> Expression<'sc> {
                 Expression::Unit {
                     span: Span {
                         span: expr.as_span(),
-                        path: path.clone(),
+                        path,
                     },
                 }
             }
@@ -923,7 +923,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
                 op: a,
                 span: Span {
                     span: op.as_span(),
-                    path: path.clone(),
+                    path,
                 },
             });
             return err(Vec::new(), errors);
@@ -933,7 +933,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
         Op {
             span: Span {
                 span: op.as_span(),
-                path: path.clone(),
+                path,
             },
             op_variant,
         },
@@ -1081,11 +1081,11 @@ fn arrange_by_order_of_operations<'sc>(
                                 call_path: CallPath {
                                     prefixes: vec![
                                         Ident {
-                                            primary_name: "std".into(),
+                                            primary_name: "std",
                                             span: new_op.span.clone(),
                                         },
                                         Ident {
-                                            primary_name: "ops".into(),
+                                            primary_name: "ops",
                                             span: new_op.span.clone(),
                                         },
                                     ],
@@ -1141,11 +1141,11 @@ fn arrange_by_order_of_operations<'sc>(
                     call_path: CallPath {
                         prefixes: vec![
                             Ident {
-                                primary_name: "std".into(),
+                                primary_name: "std",
                                 span: op.span.clone(),
                             },
                             Ident {
-                                primary_name: "ops".into(),
+                                primary_name: "ops",
                                 span: op.span.clone(),
                             },
                         ],

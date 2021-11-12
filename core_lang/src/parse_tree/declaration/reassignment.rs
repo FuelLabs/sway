@@ -157,14 +157,14 @@ fn parse_call_item_ensure_only_var<'sc>(
             ),
             span: Span {
                 span: item.as_span(),
-                path: path.clone(),
+                path,
             },
         },
         Rule::expr => {
             errors.push(CompileError::InvalidExpressionOnLhs {
                 span: Span {
                     span: item.as_span(),
-                    path: path.clone(),
+                    path,
                 },
             });
             return err(warnings, errors);

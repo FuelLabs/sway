@@ -70,7 +70,7 @@ impl<'sc> CallPath<'sc> {
                 ));
             }
         }
-        assert!(pairs_buf.len() > 0);
+        assert!(!pairs_buf.is_empty());
         let suffix = pairs_buf.pop().unwrap();
         let prefixes = pairs_buf;
 

@@ -24,7 +24,7 @@ impl<'sc> Span<'sc> {
     }
 
     pub fn split(&self) -> (pest::Position<'sc>, pest::Position<'sc>) {
-        self.span.clone().split()
+        self.span.split()
     }
 
     pub fn str(self) -> String {

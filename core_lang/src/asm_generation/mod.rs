@@ -1253,8 +1253,8 @@ fn add_module_constant_decls<'sc>(
     // it we need to support hierarchical names (or at least absolute normalised names) to
     // AsmNamespace.  This can be done in the new ASM generator which translates from IR, coming
     // soon.
-    for (_, ns) in &ast_namespace.modules {
-        for (_, decl) in &ns.symbols {
+    for ns in ast_namespace.modules.values() {
+        for decl in ns.symbols.values() {
             if let TypedDeclaration::ConstantDeclaration(decl) = decl {
                 let mut ops = check!(
                     convert_constant_decl_to_asm(decl, namespace, register_sequencer),

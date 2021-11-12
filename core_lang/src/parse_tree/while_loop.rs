@@ -35,7 +35,7 @@ impl<'sc> WhileLoop<'sc> {
             Expression::Unit {
                 span: Span {
                     span: condition.as_span(),
-                    path: path.clone()
+                    path
                 }
             },
             warnings,

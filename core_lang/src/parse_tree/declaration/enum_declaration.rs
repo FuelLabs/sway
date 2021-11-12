@@ -73,7 +73,7 @@ impl<'sc> EnumDeclaration<'sc> {
         let mut type_params = None;
         let mut where_clause = None;
         let mut variants = None;
-        while let Some(pair) = inner.next() {
+        for pair in inner {
             match pair.as_rule() {
                 Rule::enum_name => {
                     enum_name = Some(pair);
@@ -96,7 +96,7 @@ impl<'sc> EnumDeclaration<'sc> {
             where_clause,
             config,
         )
-        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
+        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();
@@ -111,7 +111,7 @@ impl<'sc> EnumDeclaration<'sc> {
             warnings,
             Span {
                 span: enum_name.as_span(),
-                path: path.clone()
+                path
             },
             Warning::NonClassCaseEnumName {
                 enum_name: name.primary_name
@@ -197,7 +197,7 @@ impl<'sc> EnumVariant<'sc> {
                     tag,
                     span: variant_span,
                 });
-                tag = tag + 1;
+                tag += 1;
             }
         }
         ok(fields_buf, warnings, errors)

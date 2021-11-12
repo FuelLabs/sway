@@ -41,7 +41,7 @@ impl<'sc> AsmExpression<'sc> {
         let mut asm_op_buf = Vec::new();
         let mut implicit_op_return = None;
         let mut implicit_op_type = None;
-        while let Some(pair) = iter.next() {
+        for pair in iter {
             match pair.as_rule() {
                 Rule::asm_op => {
                     let op = check!(
@@ -124,7 +124,7 @@ impl<'sc> AsmRegister {
 
 impl Into<String> for AsmRegister {
     fn into(self) -> String {
-        self.name.clone()
+        self.name
     }
 }
 
@@ -149,7 +149,7 @@ impl<'sc> AsmOp<'sc> {
         );
         let mut args = vec![];
         let mut immediate_value = None;
-        while let Some(pair) = iter.next() {
+        for pair in iter {
             match pair.as_rule() {
                 Rule::asm_register => {
                     args.push(Ident {
@@ -197,11 +197,11 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Vec<Self>> {
-        let mut iter = pair.into_inner();
+        let iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut reg_buf: Vec<AsmRegisterDeclaration> = Vec::new();
-        while let Some(pair) = iter.next() {
+        for pair in iter {
             assert_eq!(pair.as_rule(), Rule::asm_register_declaration);
             let mut iter = pair.into_inner();
             let reg_name = iter.next().unwrap();
