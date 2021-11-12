@@ -1,15 +1,15 @@
-use crate::build_config::BuildConfig;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::type_engine::{TypeId, TypeInfo};
-
-use crate::Ident;
-use crate::Namespace;
-use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
 use crate::{
-    parse_tree::declaration::TypeParameter, semantic_analysis::ast_node::TypedEnumVariant,
+    build_config::BuildConfig,
+    case::is_pascal_case,
+    error::*,
+    parse_tree::declaration::TypeParameter,
+    parser::Rule,
+    semantic_analysis::ast_node::{TypedEnumDeclaration, TypedEnumVariant},
+    span::Span,
+    type_engine::{TypeId, TypeInfo},
+    Ident, Namespace,
 };
-use inflector::cases::classcase::is_class_case;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -107,7 +107,7 @@ impl<'sc> EnumDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_class_case(name.primary_name),
+            is_pascal_case(name.primary_name),
             warnings,
             Span {
                 span: enum_name.as_span(),
@@ -178,7 +178,7 @@ impl<'sc> EnumVariant<'sc> {
                     errors
                 );
                 assert_or_warn!(
-                    is_class_case(name.primary_name),
+                    is_pascal_case(name.primary_name),
                     warnings,
                     name.span.clone(),
                     Warning::NonClassCaseEnumVariantName {

@@ -6,6 +6,7 @@ pub mod error;
 mod asm_generation;
 mod asm_lang;
 mod build_config;
+mod case;
 pub mod constants;
 mod control_flow_analysis;
 mod ident;

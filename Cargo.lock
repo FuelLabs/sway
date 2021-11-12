@@ -13,15 +13,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "Inflector"
-version = "0.11.4"
-source = "git+https://github.com/sezna/Inflector.git#76f9a169d5574c732202d27f34471e41c97b8c89"
-dependencies = [
- "lazy_static 1.4.0",
- "regex",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -242,7 +233,7 @@ version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d24b9c0aa259aa9b8e77327111ae874b8d7bf85036f00cdb4c079da62043606b"
 dependencies = [
- "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "Inflector",
  "async-graphql-parser",
  "darling",
  "proc-macro-crate",
@@ -789,7 +780,6 @@ dependencies = [
 name = "core_lang"
 version = "0.1.0"
 dependencies = [
- "Inflector 0.11.4 (git+https://github.com/sezna/Inflector.git)",
  "derivative",
  "either",
  "fuel-asm",
@@ -947,7 +937,7 @@ version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7b58270fd2d5ced0cb1d2b4ca8b632be15840a6c99285d1062c37be40bd48ac"
 dependencies = [
- "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "Inflector",
  "darling",
  "graphql-parser",
  "lazy_static 1.4.0",
@@ -2805,7 +2795,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e953db32579999ca98c451d80801b6f6a7ecba6127196c5387ec0774c528befa"
 dependencies = [
- "Inflector 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "Inflector",
  "proc-macro2 1.0.32",
  "quote 1.0.10",
  "schemafy_core",

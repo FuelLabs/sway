@@ -14,7 +14,6 @@ either = "1.6"
 fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
 fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
 hex = { version = "0.4", optional = true }
-Inflector = { git = "https://github.com/sezna/Inflector.git" }
 pest_derive = "2.0"
 pest = { git = "https://github.com/sezna/pest.git" , rev = "0ee8d107923f8979897efbd12e16a0eb99ea98b3" }
 petgraph = "0.5"

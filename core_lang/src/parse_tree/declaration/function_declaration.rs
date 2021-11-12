@@ -1,10 +1,8 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parse_tree::declaration::TypeParameter;
-use crate::span::Span;
-use crate::type_engine::TypeInfo;
-use crate::{CodeBlock, Ident, Rule};
-use inflector::cases::snakecase::is_snake_case;
+use crate::{
+    build_config::BuildConfig, case::is_snake_case, error::*,
+    parse_tree::declaration::TypeParameter, span::Span, type_engine::TypeInfo, CodeBlock, Ident,
+    Rule,
+};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

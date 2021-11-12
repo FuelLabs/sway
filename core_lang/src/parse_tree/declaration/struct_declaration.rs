@@ -1,11 +1,13 @@
-use crate::build_config::BuildConfig;
-use crate::parse_tree::declaration::TypeParameter;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::type_engine::TypeInfo;
-use crate::{error::*, Ident};
-use inflector::cases::classcase::is_class_case;
-use inflector::cases::snakecase::is_snake_case;
+use crate::{
+    build_config::BuildConfig,
+    case::{is_pascal_case, is_snake_case},
+    error::*,
+    parse_tree::declaration::TypeParameter,
+    parser::Rule,
+    span::Span,
+    type_engine::TypeInfo,
+    Ident,
+};
 use pest::iterators::Pair;
 
 use super::Visibility;
@@ -91,7 +93,7 @@ impl<'sc> StructDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_class_case(name.primary_name),
+            is_pascal_case(name.primary_name),
             warnings,
             span,
             Warning::NonClassCaseStructName {
