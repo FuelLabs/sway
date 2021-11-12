@@ -1,6 +1,6 @@
 use crate::parser::Rule;
 use crate::span::Span;
-use crate::style::{to_snake_case, to_upper_camel_case};
+use crate::style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case};
 use crate::type_engine::{IntegerBits, TypeInfo};
 use std::fmt;
 use thiserror::Error;
@@ -191,6 +191,9 @@ pub enum Warning<'sc> {
     NonSnakeCaseFunctionName {
         name: &'sc str,
     },
+    NonScreamingSnakeCaseConstName {
+        name: &'sc str,
+    },
     LossOfPrecision {
         initial_type: IntegerBits,
         cast_to: IntegerBits,
@@ -272,6 +275,15 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 to_snake_case(name)
             )
             }
+            NonScreamingSnakeCaseConstName { name } => {
+                write!(
+                    f,
+                    "Constant name \"{}\" is not idiomatic. Constant names should be SCREAMING_SNAKE_CASE, like \
+                    \"{}\".",
+                    name,
+                    to_screaming_snake_case(name),
+                )
+            },
             LossOfPrecision {
                 initial_type,
                 cast_to,
