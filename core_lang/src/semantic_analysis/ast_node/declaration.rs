@@ -27,8 +27,6 @@ pub enum TypedDeclaration<'sc> {
         type_implementing_for: TypeInfo,
     },
     AbiDeclaration(TypedAbiDeclaration<'sc>),
-    // no contents since it is a side-effectful declaration, i.e it populates a namespace
-    SideEffect,
     ErrorRecovery,
 }
 
@@ -46,7 +44,6 @@ impl<'sc> TypedDeclaration<'sc> {
             Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
-            SideEffect => "",
             ErrorRecovery => "error",
         }
     }
@@ -109,7 +106,7 @@ impl<'sc> TypedDeclaration<'sc> {
             }
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
-            SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
+            ErrorRecovery => unreachable!("No span exists for these ast node types"),
         }
     }
 
