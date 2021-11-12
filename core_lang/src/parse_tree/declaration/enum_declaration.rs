@@ -7,10 +7,7 @@ use crate::Ident;
 use crate::Namespace;
 use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
 use crate::{
-    parse_tree::{
-        declaration::TypeParameter,
-        Visibility,
-    },
+    parse_tree::{declaration::TypeParameter, Visibility},
     semantic_analysis::ast_node::TypedEnumVariant,
 };
 use inflector::cases::classcase::is_class_case;

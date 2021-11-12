@@ -27,7 +27,7 @@ impl<'sc> ConstantDeclaration<'sc> {
             Rule::visibility => {
                 let _const_keyword = const_decl_parts.next();
                 Visibility::Public
-            },
+            }
             _ => unreachable!(),
         };
         let name_pair = const_decl_parts.next().unwrap();

@@ -6,8 +6,8 @@ mod include_statement;
 mod literal;
 mod return_statement;
 mod use_statement;
-mod while_loop;
 mod visibility;
+mod while_loop;
 
 pub use call_path::*;
 pub use code_block::*;
@@ -17,5 +17,5 @@ pub(crate) use include_statement::IncludeStatement;
 pub use literal::Literal;
 pub use return_statement::*;
 pub use use_statement::{ImportType, UseStatement};
-pub use while_loop::WhileLoop;
 pub use visibility::Visibility;
+pub use while_loop::WhileLoop;

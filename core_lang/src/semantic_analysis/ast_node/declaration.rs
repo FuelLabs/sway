@@ -147,16 +147,22 @@ impl<'sc> TypedDeclaration<'sc> {
 
     pub(crate) fn visibility(&self) -> Visibility {
         match self {
-            TypedDeclaration::VariableDeclaration(..) |
-            TypedDeclaration::Reassignment(..) |
-            TypedDeclaration::ImplTrait { .. } |
-            TypedDeclaration::AbiDeclaration(..) |
-            TypedDeclaration::ErrorRecovery => Visibility::Public,
-            TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { visibility, .. }) |
-            TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration { visibility, .. }) |
-            TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration { visibility, .. }) |
-            TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { visibility, .. }) |
-            TypedDeclaration::StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
+            TypedDeclaration::VariableDeclaration(..)
+            | TypedDeclaration::Reassignment(..)
+            | TypedDeclaration::ImplTrait { .. }
+            | TypedDeclaration::AbiDeclaration(..)
+            | TypedDeclaration::ErrorRecovery => Visibility::Public,
+            TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { visibility, .. })
+            | TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                visibility, ..
+            })
+            | TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
+                visibility, ..
+            })
+            | TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { visibility, .. })
+            | TypedDeclaration::StructDeclaration(TypedStructDeclaration { visibility, .. }) => {
+                *visibility
+            }
         }
     }
 }
