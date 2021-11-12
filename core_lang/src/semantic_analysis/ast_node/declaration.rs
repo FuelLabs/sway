@@ -199,6 +199,21 @@ pub struct TypedStructDeclaration<'sc> {
     pub(crate) visibility: Visibility,
 }
 
+impl<'sc> TypedStructDeclaration<'sc> {
+    pub(crate) fn monomorphize(&self) -> Self {
+        let mut new_decl = self.clone();
+        let type_mapping = insert_type_parameters(&self.type_parameters);
+        new_decl.copy_types(&type_mapping);
+        new_decl
+    }
+
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.fields
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TypedStructField<'sc> {
     pub(crate) name: Ident<'sc>,
@@ -237,6 +252,15 @@ impl OwnedTypedStructField {
 }
 
 impl TypedStructField<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.r#type = if let Some(matching_id) =
+            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.r#type))
+        };
+    }
     pub(crate) fn into_owned_typed_struct_field(&self) -> OwnedTypedStructField {
         OwnedTypedStructField {
             name: self.name.primary_name.to_string(),

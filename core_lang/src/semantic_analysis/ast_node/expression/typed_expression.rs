@@ -817,9 +817,6 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
 
-        // if this is generic, monomorphize it
-        todo!("monomorphize struct");
-
         let definition: TypedStructDeclaration =
             match namespace.clone().get_symbol(&struct_name).value {
                 Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
@@ -838,6 +835,14 @@ impl<'sc> TypedExpression<'sc> {
                     return err(warnings, errors);
                 }
             };
+        // if this is a generic struct, i.e. it has some type
+        // parameters, monomorphize it before unifying the
+        // types
+        let definition = if definition.type_parameters.is_empty() {
+            definition
+        } else {
+            definition.monomorphize()
+        };
 
         // match up the names with their type annotations from the declaration
         for def_field in definition.fields.iter() {
