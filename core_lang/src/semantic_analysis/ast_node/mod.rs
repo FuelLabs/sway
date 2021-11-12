@@ -134,9 +134,7 @@ impl<'sc> TypedAstNode<'sc> {
                         }
                     };
                     warnings.append(&mut res.warnings);
-                    if res.value.is_none() {
-                        errors.append(&mut res.errors);
-                    }
+                    errors.append(&mut res.errors);
                     TypedAstNodeContent::SideEffect
                 }
                 AstNodeContent::IncludeStatement(ref a) => {

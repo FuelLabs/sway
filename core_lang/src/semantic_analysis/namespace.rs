@@ -3,7 +3,7 @@ use super::ast_node::{
     TypedStructField,
 };
 use crate::error::*;
-use crate::parse_tree::MethodName;
+use crate::parse_tree::{MethodName, Visibility};
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
 use crate::type_engine::*;
@@ -118,8 +118,10 @@ impl<'sc> Namespace<'sc> {
             warnings,
             errors
         );
-        for (symbol, _) in namespace.symbols.clone() {
-            self.use_synonyms.insert(symbol, path.clone());
+        for (symbol, decl) in namespace.symbols.clone() {
+            if decl.visibility() == Visibility::Public {
+                self.use_synonyms.insert(symbol.clone(), path.clone());
+            }
         }
         ok((), warnings, errors)
     }
@@ -145,6 +147,12 @@ impl<'sc> Namespace<'sc> {
         match namespace.symbols.get(item) {
             Some(decl) => {
                 //  if this is an enum or struct, import its implementations
+                if decl.visibility() != Visibility::Public {
+                    errors.push(CompileError::ImportPrivateSymbol {
+                        name: item.primary_name.to_string(),
+                        span: item.span.clone(),
+                    });
+                }
                 let a = decl.return_type().value;
                 namespace
                     .implemented_traits

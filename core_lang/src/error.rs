@@ -556,6 +556,8 @@ pub enum CompileError<'sc> {
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { span: Span<'sc>, name: String },
+    #[error("Symbol \"{name}\" is private.")]
+    ImportPrivateSymbol { span: Span<'sc>, name: String },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -877,6 +879,7 @@ impl<'sc> CompileError<'sc> {
             NotAStruct { span, .. } => span,
             FieldNotFound { span, .. } => span,
             SymbolNotFound { span, .. } => span,
+            ImportPrivateSymbol { span, .. } => span,
             NoElseBranch { span, .. } => span,
             UnqualifiedSelfType { span, .. } => span,
             NotAType { span, .. } => span,
