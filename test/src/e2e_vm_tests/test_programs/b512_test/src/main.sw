@@ -51,8 +51,7 @@ fn main() -> bool {
 
     // all checks must pass:
     // t1 && t2 && t3 && t4 && t5
-    // t1 && t5 && t3
-    t4
+    t1 && t5 && t3
 
     // currently:
     // t2 == false
