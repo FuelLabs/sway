@@ -23,6 +23,7 @@ pub(crate) struct StructField<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) r#type: TypeInfo,
     pub(crate) span: Span<'sc>,
+    pub(crate) type_span: Span<'sc>,
 }
 
 impl<'sc> StructDeclaration<'sc> {
@@ -140,13 +141,23 @@ impl<'sc> StructField<'sc> {
                     field_name: name.primary_name.clone()
                 }
             );
+            let type_pair = fields[i + 1].clone();
+            let type_span = Span {
+                span: type_pair.as_span(),
+                path: path.clone(),
+            };
             let r#type = check!(
-                TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config),
+                TypeInfo::parse_from_pair_inner(type_pair, config),
                 TypeInfo::Unit,
                 warnings,
                 errors
             );
-            fields_buf.push(StructField { name, r#type, span });
+            fields_buf.push(StructField {
+                name,
+                r#type,
+                span,
+                type_span,
+            });
         }
         ok(fields_buf, warnings, errors)
     }

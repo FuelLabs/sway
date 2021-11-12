@@ -817,8 +817,9 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
 
-        // TODO in here replace generic types with provided types
-        // find the struct definition in the namespace
+        // if this is generic, monomorphize it
+        todo!("monomorphize struct");
+
         let definition: TypedStructDeclaration =
             match namespace.clone().get_symbol(&struct_name).value {
                 Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),

@@ -59,6 +59,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("generic_functions", ProgramState::Return(1)),        // true
         ("generic_enum", ProgramState::Return(1)),             // true
         ("import_method_from_other_file", ProgramState::Return(10)), // true
+        ("generic_struct", ProgramState::Return(1)),           // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {

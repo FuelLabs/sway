@@ -192,20 +192,6 @@ impl<'sc> TypeEngine<'sc> for Engine {
         self.resolve(id)
             .expect("Internal error: type ID did not exist in type engine")
     }
-
-    fn monomorphize(&self, unknown_generic: Self::TypeId, instantiated_type: Self::TypeInfo) {
-        // find the type id of `unknown_generic` and assert that it is indeed an unknown generic.
-
-        // find all types that are `Ref(unknown_generic)`  in the mapping from parameters to type
-        // ids
-        // change them
-        todo!()
-    }
-
-    fn update_type(&mut self, id: TypeId, new_ty: TypeInfo) {
-        // hashmaps upsert by default
-        self.vars.insert(id, new_ty);
-    }
 }
 fn numeric_cast_compat<'sc>(a: IntegerBits, b: IntegerBits) -> NumericCastCompatResult<'sc> {
     // if this is a downcast, warn for loss of precision. if upcast, then no warning.

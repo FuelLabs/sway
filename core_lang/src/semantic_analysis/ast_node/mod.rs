@@ -1,5 +1,6 @@
 use crate::build_config::BuildConfig;
 use crate::error::*;
+use crate::semantic_analysis::ast_node::declaration::insert_type_parameters;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
@@ -444,21 +445,36 @@ impl<'sc> TypedAstNode<'sc> {
                         }
                         Declaration::StructDeclaration(decl) => {
                             // look up any generic or struct types in the namespace
+                            // insert type parameters
+                            let type_mapping = insert_type_parameters(&decl.type_parameters);
                             let fields = decl
                                 .fields
                                 .into_iter()
-                                .map(|StructField { name, r#type, span }| TypedStructField {
-                                    name,
-                                    r#type: namespace
-                                        .resolve_type_with_self(r#type, self_type)
-                                        .unwrap_or_else(|_| {
-                                            errors.push(CompileError::UnknownType {
-                                                span: span.clone(),
-                                            });
-                                            insert_type(TypeInfo::ErrorRecovery)
-                                        }),
-                                    span,
-                                })
+                                .map(
+                                    |StructField {
+                                         name,
+                                         r#type,
+                                         span,
+                                         type_span,
+                                     }| TypedStructField {
+                                        name,
+                                        r#type: if let Some(matching_id) =
+                                            r#type.matches_type_parameter(&type_mapping)
+                                        {
+                                            insert_type(TypeInfo::Ref(matching_id))
+                                        } else {
+                                            namespace
+                                                .resolve_type_with_self(r#type, self_type)
+                                                .unwrap_or_else(|_| {
+                                                    errors.push(CompileError::UnknownType {
+                                                        span: type_span.clone(),
+                                                    });
+                                                    insert_type(TypeInfo::ErrorRecovery)
+                                                })
+                                        },
+                                        span,
+                                    },
+                                )
                                 .collect::<Vec<_>>();
                             let decl = TypedStructDeclaration {
                                 name: decl.name.clone(),
