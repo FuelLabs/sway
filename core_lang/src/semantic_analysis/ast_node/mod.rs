@@ -87,6 +87,7 @@ impl<'sc> TypedAstNode<'sc> {
                 exp.copy_types(type_mapping)
             }
             TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
+            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
             ref a => todo!("{:?}", a),
         }
     }
