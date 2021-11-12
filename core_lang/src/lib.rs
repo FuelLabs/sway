@@ -14,6 +14,7 @@ mod parser;
 pub mod semantic_analysis;
 mod span;
 pub(crate) mod type_engine;
+mod style;
 
 use crate::asm_generation::checks::check_invalid_opcodes;
 pub use crate::parse_tree::*;
