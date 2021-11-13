@@ -4,7 +4,7 @@ use super::{
 };
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
-use crate::semantic_analysis::{Namespace, TypedAstNode, TypedAstNodeContent};
+use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::type_engine::*;
 use crate::{build_config::BuildConfig, error::*, Ident};
@@ -47,7 +47,10 @@ impl TypedDeclaration<'_> {
         use TypedDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
-            a => todo!("{:?}", a),
+            ConstantDeclaration(ref mut const_decl) => const_decl.copy_types(type_mapping),
+            FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
+            TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
+            StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
         }
     }
 }
@@ -341,6 +344,12 @@ pub struct TypedConstantDeclaration<'sc> {
     pub(crate) value: TypedExpression<'sc>,
 }
 
+impl TypedConstantDeclaration<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.value.copy_types(type_mapping);
+    }
+}
+
 // TODO: type check generic type args and their usage
 #[derive(Clone, Debug)]
 pub struct TypedFunctionDeclaration<'sc> {
@@ -359,16 +368,25 @@ pub struct TypedFunctionDeclaration<'sc> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.body.copy_types(type_mapping);
+        self.parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+
+        self.return_type = if let Some(matching_id) =
+            look_up_type_id(self.return_type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.return_type))
+        };
+    }
     /// Given a typed function declaration with type parameters, make a copy of it and update the
     /// type ids which refer to generic types to be fresh copies, maintaining their referential
     /// relationship. This is used so when this function is resolved, the types don't clobber the
     /// generic type info.
-    pub(crate) fn monomorphize(
-        &self,
-        // If the user provided type arguments, i.e. the turbofish, then we know what these should
-        // be.
-        annotated_type_arguments: Option<Vec<TypeInfo>>,
-    ) -> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn monomorphize(&self) -> TypedFunctionDeclaration<'sc> {
         debug_assert!(
             !self.type_parameters.is_empty(),
             "Only generic functions can be monomorphized"

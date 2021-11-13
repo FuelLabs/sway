@@ -1,5 +1,4 @@
 use crate::{type_engine::*, TypeParameter};
-use std::collections::HashMap;
 
 /// Insert all type parameters as unknown types. Return a mapping of type parameter to
 /// [TypeId]

@@ -340,9 +340,9 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_function_application(
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
-        span: Span<'sc>,
+        _span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
-        type_annotation: Option<TypeId>,
+        _return_type_annotation: Option<TypeId>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -370,7 +370,7 @@ impl<'sc> TypedExpression<'sc> {
             } else {
                 // TODO the below `None` can be annotations when we support type annotations
                 // for generic calls
-                decl.monomorphize(None)
+                decl.monomorphize()
             }
         } else {
             errors.push(CompileError::NotAFunction {

@@ -89,7 +89,14 @@ impl<'sc> TypedAstNode<'sc> {
             }
             TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
             TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
-            ref a => todo!("{:?}", a),
+            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                ref mut condition,
+                ref mut body,
+            }) => {
+                condition.copy_types(type_mapping);
+                body.copy_types(type_mapping);
+            }
+            TypedAstNodeContent::SideEffect => (),
         }
     }
     fn type_info(&self) -> TypeInfo {

@@ -166,12 +166,11 @@ impl<'sc> TypedExpressionVariant<'sc> {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         use TypedExpressionVariant::*;
         match self {
-            Literal(lit) => (),
+            Literal(..) => (),
             FunctionApplication {
-                name,
                 arguments,
                 function_body,
-                selector,
+                ..
             } => {
                 arguments
                     .iter_mut()
@@ -182,16 +181,15 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 (*lhs).copy_types(type_mapping);
                 (*rhs).copy_types(type_mapping);
             }
-            VariableExpression { name } => (),
+            VariableExpression { .. } => (),
             Unit => (),
             #[allow(dead_code)]
             Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
             #[allow(dead_code)]
             MatchExpression { .. } => (),
-            StructExpression {
-                struct_name,
-                fields,
-            } => fields.iter_mut().for_each(|x| x.copy_types(type_mapping)),
+            StructExpression { fields, .. } => {
+                fields.iter_mut().for_each(|x| x.copy_types(type_mapping))
+            }
             CodeBlock(block) => {
                 block.copy_types(type_mapping);
             }
