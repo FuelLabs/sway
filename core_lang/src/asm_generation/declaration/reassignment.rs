@@ -102,7 +102,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // delve into this potentially nested field access and figure out the location of this
             // subfield
             for ReassignmentLhs { r#type, name } in iter {
-                let r#type = match resolve_type(r#type.clone(), &name.span) {
+                let r#type = match resolve_type(*r#type, &name.span) {
                     Ok(o) => o,
                     Err(e) => {
                         errors.push(CompileError::TypeError(e));

@@ -81,16 +81,13 @@ impl<'sc> ControlFlowGraph<'sc> {
             .filter(|CompileWarning { span, .. }| {
                 // if any other warnings contain a span which completely covers this one, filter
                 // out this one.
-                all_warnings
-                    .iter()
-                    .find(
-                        |CompileWarning {
-                             span: other_span, ..
-                         }| {
-                            other_span.end() > span.end() && other_span.start() < span.start()
-                        },
-                    )
-                    .is_none()
+                all_warnings.iter().any(
+                    |CompileWarning {
+                         span: other_span, ..
+                     }| {
+                        other_span.end() > span.end() && other_span.start() < span.start()
+                    },
+                )
             })
             .collect()
     }
@@ -241,10 +238,8 @@ fn connect_node<'sc>(
             // connect return to the exit node
             if let Some(exit_node) = exit_node {
                 graph.add_edge(this_index, exit_node, "return".into());
-                (return_contents, None)
-            } else {
-                (return_contents, None)
             }
+            (return_contents, None)
         }
         TypedAstNodeContent::WhileLoop(TypedWhileLoop { body, .. }) => {
             // a while loop can loop back to the beginning,
@@ -311,7 +306,7 @@ fn connect_node<'sc>(
                 graph.add_edge(*leaf, decl_node, "".into());
             }
             (
-                connect_declaration(&decl, graph, decl_node, span, exit_node, tree_type, leaves)?,
+                connect_declaration(decl, graph, decl_node, span, exit_node, tree_type, leaves)?,
                 exit_node,
             )
         }
@@ -347,19 +342,19 @@ fn connect_declaration<'sc>(
             Ok(leaves.to_vec())
         }
         TraitDeclaration(trait_decl) => {
-            connect_trait_declaration(&trait_decl, graph, entry_node);
+            connect_trait_declaration(trait_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         AbiDeclaration(abi_decl) => {
-            connect_abi_declaration(&abi_decl, graph, entry_node);
+            connect_abi_declaration(abi_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         StructDeclaration(struct_decl) => {
-            connect_struct_declaration(&struct_decl, graph, entry_node, tree_type);
+            connect_struct_declaration(struct_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         EnumDeclaration(enum_decl) => {
-            connect_enum_declaration(&enum_decl, graph, entry_node);
+            connect_enum_declaration(enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         Reassignment(TypedReassignment { rhs, .. }) => connect_expression(
@@ -376,7 +371,7 @@ fn connect_declaration<'sc>(
             methods,
             ..
         } => {
-            connect_impl_trait(&trait_name, graph, methods, entry_node, tree_type)?;
+            connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
         SideEffect | ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
@@ -398,7 +393,7 @@ fn connect_struct_declaration<'sc>(
         ..
     } = struct_decl;
     let field_nodes = fields
-        .into_iter()
+        .iter()
         .map(|field| (field.name.clone(), graph.add_node(field.into())))
         .collect::<Vec<_>>();
     // If this is a library or smart contract, and if this is public, then we want to connect the
@@ -456,7 +451,7 @@ fn connect_impl_trait<'sc>(
         // connect the impl declaration node to the functions themselves, as all trait functions are
         // public if the trait is in scope
         connect_typed_fn_decl(
-            &fn_decl,
+            fn_decl,
             graph,
             fn_decl_entry_node,
             fn_decl.span.clone(),
@@ -585,7 +580,7 @@ fn depth_first_insertion_code_block<'sc>(
     tree_type: TreeType,
 ) -> Result<(Vec<NodeIndex>, Option<NodeIndex>), CompileError<'sc>> {
     let mut leaves = leaves.to_vec();
-    let mut exit_node = exit_node.clone();
+    let mut exit_node = exit_node;
     for node in node_content.contents.iter() {
         let (this_node, l_exit_node) = connect_node(node, graph, &leaves, exit_node, tree_type)?;
         leaves = this_node;
@@ -822,14 +817,14 @@ fn connect_expression<'sc>(
             resolved_type_of_parent,
             ..
         } => {
-            let ty = resolve_type(*resolved_type_of_parent, &field_to_access_span)
+            let ty = resolve_type(*resolved_type_of_parent, field_to_access_span)
                 .unwrap_or(TypeInfo::Unit);
 
             let resolved_type_of_parent = ty;
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
             let resolved_type_of_parent = match resolved_type_of_parent {
-                TypeInfo::Struct { name, .. } => name.clone(),
+                TypeInfo::Struct { name, .. } => name,
                 _ => panic!("Called subfield on a non-struct"),
             };
             let field_name = &field_to_access.name;
@@ -838,7 +833,7 @@ fn connect_expression<'sc>(
                 .namespace
                 .find_struct_field_idx(&resolved_type_of_parent, field_name)
             {
-                Some(ix) => ix.clone(),
+                Some(ix) => *ix,
                 None => graph.add_node("external struct".into()),
             };
 

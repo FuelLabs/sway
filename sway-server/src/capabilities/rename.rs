@@ -57,7 +57,7 @@ pub fn prepare_rename(
     }
 }
 
-fn prepare_token_rename(tokens: &Vec<&Token>, new_name: String) -> Vec<lsp::TextEdit> {
+fn prepare_token_rename(tokens: &[&Token], new_name: String) -> Vec<lsp::TextEdit> {
     tokens
         .iter()
         .map(|token| lsp::TextEdit::new(make_range_end_inclusive(token.range), new_name.clone()))

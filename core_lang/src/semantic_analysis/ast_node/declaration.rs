@@ -91,7 +91,7 @@ impl<'sc> TypedDeclaration<'sc> {
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body, ..
-                }) => body.return_type.clone(),
+                }) => body.return_type,
                 TypedDeclaration::FunctionDeclaration { .. } => {
                     return err(
                         vec![],
@@ -109,7 +109,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
-                        .map(TypedStructField::into_owned_typed_struct_field)
+                        .map(TypedStructField::as_owned_typed_struct_field)
                         .collect(),
                 }),
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
@@ -254,7 +254,7 @@ impl OwnedTypedStructField {
         };
     }
 
-    pub(crate) fn into_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
+    pub(crate) fn as_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
         TypedStructField {
             name: Ident {
                 span: span.clone(),
@@ -276,7 +276,7 @@ impl TypedStructField<'_> {
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }
-    pub(crate) fn into_owned_typed_struct_field(&self) -> OwnedTypedStructField {
+    pub(crate) fn as_owned_typed_struct_field(&self) -> OwnedTypedStructField {
         OwnedTypedStructField {
             name: self.name.primary_name.to_string(),
             r#type: self.r#type,
@@ -310,7 +310,7 @@ impl TypedEnumDeclaration<'_> {
             variant_types: self
                 .variants
                 .iter()
-                .map(TypedEnumVariant::into_owned_typed_enum_variant)
+                .map(TypedEnumVariant::as_owned_typed_enum_variant)
                 .collect(),
         })
     }
@@ -333,7 +333,7 @@ impl TypedEnumVariant<'_> {
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }
-    pub(crate) fn into_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
+    pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
         OwnedTypedEnumVariant {
             name: self.name.primary_name.to_string(),
             r#type: self.r#type,
@@ -453,7 +453,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 .map(|x| {
                     let mut x = x.clone();
                     x.r#type = match look_up_type_id(x.r#type) {
-                        TypeInfo::SelfType => self_type.clone(),
+                        TypeInfo::SelfType => self_type,
                         _otherwise => x.r#type,
                     };
                     x
@@ -461,7 +461,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 .collect(),
             span: self.span.clone(),
             return_type: match look_up_type_id(self.return_type) {
-                TypeInfo::SelfType => self_type.clone(),
+                TypeInfo::SelfType => self_type,
                 _otherwise => self.return_type,
             },
             type_parameters: self.type_parameters.clone(),
@@ -808,7 +808,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,
-                return_type.clone(),
+                return_type,
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
@@ -928,7 +928,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     span: parameters
                         .get(0)
                         .map(|x| x.type_span.clone())
-                        .unwrap_or(fn_decl.name.span.clone()),
+                        .unwrap_or_else(|| fn_decl.name.span.clone()),
                 });
             }
         }

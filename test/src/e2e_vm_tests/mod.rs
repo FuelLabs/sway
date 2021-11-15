@@ -99,7 +99,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
 
     // Filter them first.
     let (contracts, projects): (Vec<_>, Vec<_>) = contract_and_project_names
-        .into_iter()
+        .iter()
         .filter(|names| filter(names.1))
         .cloned()
         .unzip();

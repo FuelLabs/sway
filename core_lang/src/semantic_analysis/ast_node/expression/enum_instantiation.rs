@@ -32,7 +32,7 @@ pub(crate) fn instantiate_enum<'sc>(
         .iter()
         .find(|x| x.name.primary_name == enum_field_name.primary_name)
     {
-        Some(o) => (o.r#type.clone(), o.tag, o.name.clone()),
+        Some(o) => (o.r#type, o.tag, o.name.clone()),
         None => {
             errors.push(CompileError::UnknownEnumVariant {
                 enum_name: enum_decl.name.primary_name,

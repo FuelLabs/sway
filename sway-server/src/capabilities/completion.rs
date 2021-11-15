@@ -8,13 +8,12 @@ pub fn get_completion(
 ) -> Option<CompletionResponse> {
     let url = params.text_document_position.text_document.uri;
 
-    match session.get_completion_items(&url) {
-        Some(items) => Some(CompletionResponse::Array(items)),
-        _ => None,
-    }
+    session
+        .get_completion_items(&url)
+        .map(CompletionResponse::Array)
 }
 
-pub fn to_completion_items(tokens: &Vec<Token>) -> Vec<CompletionItem> {
+pub fn to_completion_items(tokens: &[Token]) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
     for token in tokens {

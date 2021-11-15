@@ -158,7 +158,7 @@ impl<'sc> Declaration<'sc> {
                     .map(|x| x.into_inner().next().unwrap().as_span());
                 let type_ascription = if let Some(ascription) = type_ascription {
                     check!(
-                        TypeInfo::parse_from_pair(ascription, config.clone()),
+                        TypeInfo::parse_from_pair(ascription, config),
                         TypeInfo::Unit,
                         warnings,
                         errors
@@ -167,14 +167,14 @@ impl<'sc> Declaration<'sc> {
                     TypeInfo::Unknown
                 };
                 let body = check!(
-                    Expression::parse_from_pair(maybe_body, config.clone()),
+                    Expression::parse_from_pair(maybe_body, config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 Declaration::VariableDeclaration(VariableDeclaration {
                     name: check!(
-                        Ident::parse_from_pair(name_pair, config.clone()),
+                        Ident::parse_from_pair(name_pair, config),
                         return err(warnings, errors),
                         warnings,
                         errors

@@ -38,7 +38,7 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
             let parsed_result = parse(main_file, None);
             match parsed_result.value {
                 Some(parse_tree) => {
-                    if let Some(_) = &parse_tree.contract_ast {
+                    if parse_tree.contract_ast.is_some() {
                         let build_command = BuildCommand {
                             path,
                             print_finalized_asm,
