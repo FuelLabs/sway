@@ -56,6 +56,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("empty_method_initializer", ProgramState::Return(1)), // true
         ("b512_struct_alignment", ProgramState::Return(1)),    // true
         ("import_method_from_other_file", ProgramState::Return(10)), // true
+        ("b512_test", ProgramState::Return(1)), // true
+        ("ec_recover_test", ProgramState::Return(1)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {

@@ -6,3 +6,4 @@ dep storage;
 dep constants;
 dep chain;
 dep ecr;
+dep types;
