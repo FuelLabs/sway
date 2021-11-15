@@ -43,6 +43,8 @@ pub enum TypedDeclaration<'sc> {
 }
 
 impl TypedDeclaration<'_> {
+    /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
+    /// assuming `self` has already been copied.
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         use TypedDeclaration::*;
         match self {
@@ -51,6 +53,16 @@ impl TypedDeclaration<'_> {
             FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
             TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
             StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
+            EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping),
+            Reassignment(ref mut reassignment) => reassignment.copy_types(type_mapping),
+            ImplTrait {
+                ref mut methods, ..
+            } => {
+                methods.iter_mut().for_each(|x| x.copy_types(type_mapping));
+            }
+            // generics in an ABI is unsupported by design
+            AbiDeclaration(..) => (),
+            GenericTypeForFunctionScope { .. } | SideEffect | ErrorRecovery => (),
         }
     }
 }
@@ -650,6 +662,16 @@ pub struct TypedTraitDeclaration<'sc> {
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) visibility: Visibility,
 }
+impl TypedTraitDeclaration<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        let additional_type_map = insert_type_parameters(&self.type_parameters);
+        let type_mapping = [type_mapping, &additional_type_map].concat();
+        self.interface_surface
+            .iter_mut()
+            .for_each(|x| x.copy_types(&type_mapping[..]));
+        // we don't have to type check the methods because it hasn't been type checked yet
+    }
+}
 #[derive(Clone, Debug)]
 pub struct TypedTraitFn<'sc> {
     pub(crate) name: Ident<'sc>,
@@ -679,6 +701,23 @@ pub struct TypedReassignment<'sc> {
     // at series of struct fields/array indices (array syntax)
     pub(crate) lhs: Vec<ReassignmentLhs<'sc>>,
     pub(crate) rhs: TypedExpression<'sc>,
+}
+
+impl TypedReassignment<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.rhs.copy_types(type_mapping);
+        self.lhs
+            .iter_mut()
+            .for_each(|ReassignmentLhs { ref mut r#type, .. }| {
+                *r#type = if let Some(matching_id) =
+                    look_up_type_id(*r#type).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id))
+                } else {
+                    insert_type(look_up_type_id_raw(*r#type))
+                };
+            });
+    }
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
@@ -914,6 +953,15 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 }
 
 impl<'sc> TypedTraitFn<'sc> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.return_type = if let Some(matching_id) =
+            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.return_type))
+        };
+    }
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.
