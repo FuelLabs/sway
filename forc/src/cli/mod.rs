@@ -1,8 +1,9 @@
 use structopt::StructOpt;
 
 mod commands;
-use self::commands::{build, deploy, format, init, parse_bytecode, run, test, update};
+use self::commands::{json_abi, build, deploy, format, init, parse_bytecode, run, test, update};
 
+pub use json_abi::Command as JsonAbiCommand;
 pub use build::Command as BuildCommand;
 pub use deploy::Command as DeployCommand;
 pub use format::Command as FormatCommand;
@@ -31,6 +32,7 @@ enum Forc {
     Run(RunCommand),
     Test(TestCommand),
     Update(UpdateCommand),
+    JsonAbi(JsonAbiCommand),
 }
 
 pub(crate) async fn run_cli() -> Result<(), String> {
@@ -44,6 +46,7 @@ pub(crate) async fn run_cli() -> Result<(), String> {
         Forc::Run(command) => run::exec(command).await,
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
+        Forc::JsonAbi(command) => json_abi::exec(command),
     }?;
 
     Ok(())

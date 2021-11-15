@@ -1,5 +1,7 @@
 use super::constants::{SRC_DIR, SWAY_EXTENSION};
 use super::manifest::Manifest;
+use core_lang::{CompileError, CompileWarning};
+use source_span::fmt::{Color, Formatter};
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -53,6 +55,23 @@ pub fn find_manifest_dir(starter_path: &PathBuf) -> Option<PathBuf> {
     None
 }
 
+pub fn find_main_path(manifest_dir: &PathBuf, manifest: &Manifest) -> PathBuf {
+    let mut code_dir = manifest_dir.clone();
+    code_dir.push(crate::utils::constants::SRC_DIR);
+    code_dir.push(&manifest.project.entry);
+    code_dir
+}
+
+pub fn find_file_name<'sc>(manifest_dir: &'sc PathBuf, main_path: &'sc PathBuf) -> Result<&'sc Path, String> {
+    let mut file_path = manifest_dir.clone();
+    file_path.pop();
+    let file_name = match main_path.strip_prefix(file_path.clone()) {
+        Ok(o) => o,
+        Err(err) => return Err(err.to_string()),
+    };
+    Ok(file_name)
+}
+
 pub fn read_manifest(manifest_dir: &PathBuf) -> Result<Manifest, String> {
     let manifest_path = {
         let mut man = manifest_dir.clone();
@@ -91,6 +110,68 @@ pub fn get_main_file(
     let main_file = Box::new(main_file);
     let main_file: &'static mut String = Box::leak(main_file);
     return Ok(main_file);
+}
+
+pub fn print_on_success_script(silent_mode: bool, proj_name: &str, warnings: Vec<CompileWarning>) {
+    if !silent_mode {
+        warnings.iter().for_each(|warning| format_warning(warning));
+    }
+
+    if warnings.is_empty() {
+        let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
+    } else {
+        let _ = println_yellow_err(&format!(
+            "  Compiled script {:?} with {} {}.",
+            proj_name,
+            warnings.len(),
+            if warnings.len() > 1 {
+                "warnings"
+            } else {
+                "warning"
+            }
+        ));
+    }
+}
+
+pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: Vec<CompileWarning>) {
+    if !silent_mode {
+        warnings.iter().for_each(|warning| format_warning(warning));
+    }
+
+    if warnings.is_empty() {
+        let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
+    } else {
+        let _ = println_yellow_err(&format!(
+            "  Compiled library {:?} with {} {}.",
+            proj_name,
+            warnings.len(),
+            if warnings.len() > 1 {
+                "warnings"
+            } else {
+                "warning"
+            }
+        ));
+    }
+}
+
+pub fn print_on_failure(
+    silent_mode: bool,
+    warnings: Vec<CompileWarning>,
+    errors: Vec<CompileError>,
+) {
+    let e_len = errors.len();
+
+    if !silent_mode {
+        warnings.iter().for_each(|warning| format_warning(warning));
+        errors.into_iter().for_each(|error| format_err(&error));
+    }
+
+    println_red_err(&format!(
+        "  Aborting due to {} {}.",
+        e_len,
+        if e_len > 1 { "errors" } else { "error" }
+    ))
+    .unwrap();
 }
 
 pub fn println_red(txt: &str) -> io::Result<()> {
@@ -151,4 +232,20 @@ fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io
     writeln!(&mut stream, "{}", txt)?;
     stream.reset()?;
     Ok(())
+}
+
+fn format_err(err: &core_lang::CompileError) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = err.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", err.path());
+    println!("{}", formatted);
+}
+
+fn format_warning(warning: &core_lang::CompileWarning) {
+    let mut fmt = Formatter::with_margin_color(Color::Blue);
+    let formatted = warning.format(&mut fmt);
+    print_blue_err(" --> ").unwrap();
+    print!("{}", warning.path());
+    println!("{}", formatted);
 }

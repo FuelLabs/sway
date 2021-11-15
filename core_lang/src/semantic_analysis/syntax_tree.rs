@@ -23,7 +23,7 @@ pub(crate) enum TreeType {
 }
 
 #[derive(Debug)]
-pub(crate) enum TypedParseTree<'sc> {
+pub enum TypedParseTree<'sc> {
     Script {
         main_function: TypedFunctionDeclaration<'sc>,
         namespace: Namespace<'sc>,

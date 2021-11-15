@@ -1,24 +1,24 @@
 use crate::utils::dependency::{Dependency, DependencyDetails};
 use crate::{
-    cli::BuildCommand,
+    cli::JsonAbiCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_main_file, print_on_failure, print_on_success_library,
-        print_on_success_script, read_manifest,
+        find_file_name, find_main_path, find_manifest_dir, get_main_file, print_on_failure,
+        print_on_success_library, print_on_success_script, read_manifest,
     },
 };
 
-use core_lang::{
-    BuildConfig, BytecodeCompilationResult, CompilationResult, LibraryExports, Namespace,
-};
+use fuels_rs::types::Function;
 
-use anyhow::Result;
-use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
+
+use anyhow::Result;
+use core_lang::{BuildConfig, CompilationResult, LibraryExports, Namespace};
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
+pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
@@ -26,14 +26,13 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         std::env::current_dir().map_err(|e| format!("{:?}", e))?
     };
 
-    let BuildCommand {
-        binary_outfile,
-        print_finalized_asm,
-        print_intermediate_asm,
+    let JsonAbiCommand {
+        json_outfile,
         offline_mode,
         silent_mode,
         ..
     } = command;
+
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -43,30 +42,17 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
             ))
         }
     };
-
     let mut manifest = read_manifest(&manifest_dir)?;
-
-    let main_path = {
-        let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
-        code_dir.push(&manifest.project.entry);
-        code_dir
-    };
-    let mut file_path = manifest_dir.clone();
-    file_path.pop();
-    let file_name = match main_path.strip_prefix(file_path.clone()) {
-        Ok(o) => o,
-        Err(err) => return Err(err.to_string()),
-    };
+    let main_path = find_main_path(&manifest_dir, &manifest);
+    let file_name = find_file_name(&manifest_dir, &main_path)?;
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
         file_name.clone().to_path_buf(),
         manifest_dir.clone(),
-    )
-    .print_finalized_asm(print_finalized_asm)
-    .print_intermediate_asm(print_intermediate_asm);
+    );
 
     let mut dependency_graph = HashMap::new();
+    let mut json_abi = vec!();
 
     let mut namespace: Namespace = Default::default();
     if let Some(ref mut deps) = manifest.dependencies {
@@ -104,36 +90,36 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 dep.path = Some(downloaded_dep_path);
             }
 
-            compile_dependency_lib(
+            json_abi.append(&mut compile_dependency_lib(
                 &this_dir,
                 &dependency_name,
                 &dependency_details,
                 &mut namespace,
                 &mut dependency_graph,
                 silent_mode,
-            )?;
+            )?);
         }
     }
 
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
 
-    let main = compile(
+    json_abi.append(&mut compile(
         main_file,
         &manifest.project.name,
         &namespace,
         build_config,
         &mut dependency_graph,
         silent_mode,
-    )?;
-    if let Some(outfile) = binary_outfile {
+    )?);
+    if let Some(outfile) = json_outfile {
         let mut file = File::create(outfile).map_err(|e| e.to_string())?;
-        file.write_all(main.as_slice()).map_err(|e| e.to_string())?;
+        //file.write_all(json_abi).map_err(|e| e.to_string())?;
+    } else {
+        println!("{:?}", json_abi);
     }
 
-    println!("  Bytecode size is {} bytes.", main.len());
-
-    Ok(main)
+    Ok(json_abi)
 }
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
@@ -145,7 +131,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     namespace: &mut Namespace<'source>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<(), String> {
+) -> Result<Vec<Function>, String> {
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
             return Err(
@@ -175,21 +161,9 @@ fn compile_dependency_lib<'source, 'manifest>(
         Some(o) => o,
         None => return Err("Manifest not found for dependency.".into()),
     };
-
     let manifest_of_dep = read_manifest(&manifest_dir)?;
-
-    let main_path = {
-        let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
-        code_dir.push(&manifest_of_dep.project.entry);
-        code_dir
-    };
-    let mut file_path = manifest_dir.clone();
-    file_path.pop();
-    let file_name = match main_path.strip_prefix(file_path.clone()) {
-        Ok(o) => o,
-        Err(err) => return Err(err.to_string()),
-    };
+    let main_path = find_main_path(&manifest_dir, &manifest_of_dep);
+    let file_name = find_file_name(&manifest_dir, &main_path)?;
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
         file_name.clone().to_path_buf(),
@@ -217,7 +191,7 @@ fn compile_dependency_lib<'source, 'manifest>(
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
 
-    let compiled = compile_library(
+    let (compiled, json_abi) = compile_library(
         main_file,
         &manifest_of_dep.project.name,
         &dep_namespace,
@@ -229,7 +203,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
-    Ok(())
+    Ok(json_abi)
 }
 
 fn compile_library<'source, 'manifest>(
@@ -239,24 +213,24 @@ fn compile_library<'source, 'manifest>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<LibraryExports<'source>, String> {
+) -> Result<(LibraryExports<'source>, Vec<Function>), String> {
     let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
-            exports, warnings, ..
+            warnings,
+            json_abi,
+            exports,
         } => {
             print_on_success_library(silent_mode, proj_name, warnings);
-            Ok(exports)
+            Ok((exports, json_abi))
         }
-        CompilationResult::Failure { errors, warnings } => {
-            print_on_failure(silent_mode, warnings, errors);
+        CompilationResult::Success { warnings, .. } => {
+            print_on_failure(silent_mode, warnings, vec![]);
             Err(format!("Failed to compile {}", proj_name))
         }
-        _ => {
-            return Err(format!(
-                "Project \"{}\" was included as a dependency but it is not a library.",
-                proj_name
-            ))
+        CompilationResult::Failure { warnings, errors } => {
+            print_on_failure(silent_mode, warnings, errors);
+            Err(format!("Failed to compile {}", proj_name))
         }
     }
 }
@@ -268,20 +242,22 @@ fn compile<'source, 'manifest>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(&source, namespace, build_config, dependency_graph);
+) -> Result<Vec<Function>, String> {
+    let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
     match res {
-        BytecodeCompilationResult::Success { bytes, warnings } => {
+        CompilationResult::Success {
+            warnings, json_abi, ..
+        } => {
             print_on_success_script(silent_mode, proj_name, warnings);
-            return Ok(bytes);
+            Ok(json_abi)
         }
-        BytecodeCompilationResult::Library { warnings } => {
-            print_on_success_library(silent_mode, proj_name, warnings);
-            return Ok(vec![]);
+        CompilationResult::Library { warnings, .. } => {
+            print_on_failure(silent_mode, warnings, vec![]);
+            Err(format!("Failed to compile {}", proj_name))
         }
-        BytecodeCompilationResult::Failure { errors, warnings } => {
+        CompilationResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
-            return Err(format!("Failed to compile {}", proj_name));
+            Err(format!("Failed to compile {}", proj_name))
         }
     }
 }
