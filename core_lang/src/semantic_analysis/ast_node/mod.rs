@@ -8,7 +8,7 @@ use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
 use declaration::TypedTraitFn;
 pub(crate) use impl_trait::Mode;
-use std::path::Path;
+use std::sync::Arc;
 
 mod code_block;
 pub mod declaration;
@@ -596,22 +596,19 @@ fn import_new_file<'sc>(
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let file_path = Path::new(statement.file_path);
-    let file_path = file_path.with_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
-    let mut canonical_path = build_config.dir_of_code.clone();
-    canonical_path.push(file_path);
+    let mut canonical_path = (*build_config.dir_of_code).clone();
+    canonical_path.push(statement.file_path);
+    canonical_path.set_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
-    let mut manifest_path = build_config.manifest_path.clone();
-    manifest_path.pop();
-    let canonical_path_clone = canonical_path.clone();
-    let file_name = match canonical_path_clone.strip_prefix(manifest_path) {
-        Ok(o) => o,
+    let file_name = match canonical_path.strip_prefix(build_config.manifest_path.parent().unwrap())
+    {
+        Ok(file_name) => Arc::new(file_name.to_path_buf()),
         Err(_) => return err(warnings, errors),
     };
 
     let res = if canonical_path.exists() {
-        std::fs::read_to_string(canonical_path.clone())
+        std::fs::read_to_string(&*canonical_path)
     } else {
         errors.push(CompileError::FileNotFound {
             span: statement.path_span.clone(),
@@ -643,8 +640,8 @@ fn import_new_file<'sc>(
         canonical_path.pop();
         canonical_path
     };
-    dep_config.file_name = file_name.to_path_buf();
-    dep_config.dir_of_code = dep_path;
+    dep_config.file_name = file_name;
+    dep_config.dir_of_code = Arc::new(dep_path);
     let crate::InnerDependencyCompileResult {
         mut library_exports,
     } = check!(

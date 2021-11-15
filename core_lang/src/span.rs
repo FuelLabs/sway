@@ -1,9 +1,9 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Span<'sc> {
     pub span: pest::Span<'sc>,
-    pub(crate) path: Option<PathBuf>,
+    pub(crate) path: Option<Arc<PathBuf>>,
 }
 
 impl<'sc> Span<'sc> {
@@ -41,8 +41,8 @@ impl<'sc> Span<'sc> {
 
     pub fn path(&self) -> String {
         self.path
-            .clone()
-            .map(|p| p.into_os_string().into_string().unwrap())
+            .as_deref()
+            .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_else(|| "".to_string())
     }
 }
