@@ -89,7 +89,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                     .graph
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
                     .collect::<Vec<_>>();
-                if neighbors.is_empty() && *return_ty != TypeInfo::Unit {
+                if neighbors.is_empty() && !return_ty.is_unit() {
                     let span = match last_discovered_span {
                         Some(ref o) => o.clone(),
                         None => {
@@ -277,7 +277,7 @@ fn connect_typed_fn_decl<'sc>(
         entry_point: entry_node,
         exit_point: fn_exit_node,
         return_type: resolve_type(fn_decl.return_type, &fn_decl.return_type_span)
-            .unwrap_or(TypeInfo::Unit),
+            .unwrap_or(TypeInfo::Tuple(Vec::new())),
     };
     graph
         .namespace

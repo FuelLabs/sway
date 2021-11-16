@@ -558,7 +558,7 @@ fn connect_typed_fn_decl<'sc>(
 
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
-    let ty = resolve_type(fn_decl.return_type, &span).unwrap_or(TypeInfo::Unit);
+    let ty = resolve_type(fn_decl.return_type, &span).unwrap_or(TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
@@ -817,9 +817,9 @@ fn connect_expression<'sc>(
             resolved_type_of_parent,
             ..
         } => {
-            let resolved_type_of_parent =
-                resolve_type(*resolved_type_of_parent, field_to_access_span)
-                    .unwrap_or(TypeInfo::Unit);
+            let resolved_type_of_parent = resolve_type(*resolved_type_of_parent, field_to_access_span)
+                .unwrap_or(TypeInfo::Tuple(Vec::new()));
+
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
             let resolved_type_of_parent = match resolved_type_of_parent {

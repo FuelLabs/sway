@@ -248,7 +248,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
-                _ if look_up_type_id(exp.return_type) == TypeInfo::Unit => (),
+                _ if look_up_type_id(exp.return_type).is_unit() => (),
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),

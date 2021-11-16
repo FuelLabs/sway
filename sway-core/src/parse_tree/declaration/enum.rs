@@ -212,7 +212,7 @@ impl<'sc> EnumVariant<'sc> {
                 );
                 let r#type = check!(
                     TypeInfo::parse_from_pair(fields[i + 1].clone(), config),
-                    TypeInfo::Unit,
+                    TypeInfo::Tuple(Vec::new()),
                     warnings,
                     errors
                 );

@@ -191,7 +191,7 @@ impl<'sc> TypedExpression<'sc> {
             Expression::Unit { span } => {
                 let exp = TypedExpression {
                     expression: TypedExpressionVariant::Unit,
-                    return_type: crate::type_engine::insert_type(TypeInfo::Unit),
+                    return_type: crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new())),
                     is_constant: IsConstant::Yes,
                     span,
                 };
@@ -661,7 +661,7 @@ impl<'sc> TypedExpression<'sc> {
                     contents: vec![],
                     whole_block_span: span.clone()
                 },
-                crate::type_engine::insert_type(TypeInfo::Unit)
+                crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
             ),
             warnings,
             errors
@@ -777,12 +777,12 @@ impl<'sc> TypedExpression<'sc> {
         let r#else_ret_ty = r#else
             .as_ref()
             .map(|x| x.return_type)
-            .unwrap_or_else(|| insert_type(TypeInfo::Unit));
+            .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
         // if there is a type annotation, then the else branch must exist
         match unify_with_self(then.return_type, r#else_ret_ty, self_type, &span) {
             Ok(mut warn) => {
                 warnings.append(&mut warn);
-                if look_up_type_id(r#else_ret_ty) != TypeInfo::Unit && r#else.is_none() {
+                if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
                     errors.push(CompileError::NoElseBranch {
                         span: span.clone(),
                         r#type: look_up_type_id(type_annotation).friendly_type_str(),

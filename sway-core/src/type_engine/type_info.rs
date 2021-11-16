@@ -31,7 +31,7 @@ pub enum TypeInfo {
     /// For the type inference engine to use when a type references another type
     Ref(TypeId),
 
-    Unit,
+    Tuple(Vec<TypeInfo>),
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
@@ -115,7 +115,7 @@ impl TypeInfo {
                 "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
                 "u64" => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
                 "bool" => TypeInfo::Boolean,
-                "unit" => TypeInfo::Unit,
+                "unit" => TypeInfo::Tuple(Vec::new()),
                 "byte" => TypeInfo::Byte,
                 "b256" => TypeInfo::B256,
                 "Self" | "self" => TypeInfo::SelfType,
@@ -193,7 +193,7 @@ impl TypeInfo {
                 };
                 TypeInfo::Array(insert_type(elem_type_info), elem_count)
             }
-            Rule::unit => TypeInfo::Unit,
+            Rule::unit => TypeInfo::Tuple(Vec::new()),
             _ => {
                 errors.push(CompileError::Internal(
                     "Unexpected token while parsing inner type.",
@@ -221,7 +221,13 @@ impl TypeInfo {
             Boolean => "bool".into(),
             Custom { name } => format!("unresolved {}", name),
             Ref(id) => format!("T{} ({})", id, (*id).friendly_type_str()),
-            Unit => "()".into(),
+            Tuple(fields) => {
+                let field_strs = fields
+                    .iter()
+                    .map(|field| field.friendly_type_str())
+                    .collect::<Vec<String>>();
+                format!("({})", field_strs.join(", "))
+            }
             SelfType => "Self".into(),
             Byte => "byte".into(),
             B256 => "b256".into(),
@@ -261,7 +267,13 @@ impl TypeInfo {
             Boolean => "bool".into(),
             Custom { name } => format!("unresolved {}", name),
             Ref(id) => format!("T{} ({})", id, (*id).json_abi_str()),
-            Unit => "()".into(),
+            Tuple(fields) => {
+                let field_strs = fields
+                    .iter()
+                    .map(|field| field.json_abi_str())
+                    .collect::<Vec<String>>();
+                format!("({})", field_strs.join(", "))
+            }
             SelfType => "Self".into(),
             Byte => "byte".into(),
             B256 => "b256".into(),
@@ -301,7 +313,24 @@ impl TypeInfo {
             }
             Boolean => "bool".into(),
 
-            Unit => "unit".into(),
+            Tuple(fields) => {
+                let field_names = {
+                    let names = fields
+                        .iter()
+                        .map(|field| field.to_selector_name(error_msg_span))
+                        .collect::<Vec<CompileResult<String>>>();
+                    let mut buf = vec![];
+                    for name in names {
+                        match name.value {
+                            Some(value) => buf.push(value),
+                            None => return name,
+                        }
+                    }
+                    buf
+                };
+
+                format!("({})", field_names.join(","))
+            }
             Byte => "byte".into(),
             B256 => "b256".into(),
             Struct { fields, .. } => {
@@ -373,7 +402,12 @@ impl TypeInfo {
             // Since things are unpacked, all unsigned integers are 64 bits.....for now
             TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok(1),
             TypeInfo::Boolean => Ok(1),
-            TypeInfo::Unit => Ok(0),
+            TypeInfo::Tuple(fields) => Ok(fields
+                .iter()
+                .map(|field| field.size_in_words(err_span))
+                .collect::<Result<Vec<u64>, _>>()?
+                .iter()
+                .sum()),
             TypeInfo::Byte => Ok(1),
             TypeInfo::B256 => Ok(4),
             TypeInfo::Enum { variant_types, .. } => {
@@ -417,9 +451,74 @@ impl TypeInfo {
     }
     pub(crate) fn is_copy_type(&self) -> bool {
         match self {
-            TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Unit | TypeInfo::Byte => {
+            TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte => true,
+            TypeInfo::Tuple(fields) => fields.iter().all(|field| field.is_copy_type()),
+            _ => false,
+        }
+    }
+
+    pub fn is_uninhabited(&self) -> bool {
+        match self {
+            TypeInfo::Enum { variant_types, .. } => variant_types
+                .iter()
+                .all(|variant_type| look_up_type_id(variant_type.r#type).is_uninhabited()),
+            TypeInfo::Struct { fields, .. } => fields
+                .iter()
+                .any(|field| look_up_type_id(field.r#type).is_uninhabited()),
+            TypeInfo::Tuple(fields) => fields.iter().any(|field| field.is_uninhabited()),
+            _ => false,
+        }
+    }
+
+    pub fn is_zero_sized(&self) -> bool {
+        match self {
+            TypeInfo::Enum { variant_types, .. } => {
+                let mut found_unit_variant = false;
+                for variant_type in variant_types {
+                    let type_info = look_up_type_id(variant_type.r#type);
+                    if type_info.is_uninhabited() {
+                        continue;
+                    }
+                    if type_info.is_zero_sized() && !found_unit_variant {
+                        found_unit_variant = true;
+                        continue;
+                    }
+                    return false;
+                }
                 true
             }
+            TypeInfo::Struct { fields, .. } => {
+                let mut all_zero_sized = true;
+                for field in fields {
+                    let type_info = look_up_type_id(field.r#type);
+                    if type_info.is_uninhabited() {
+                        return true;
+                    }
+                    if !type_info.is_zero_sized() {
+                        all_zero_sized = false;
+                    }
+                }
+                all_zero_sized
+            }
+            TypeInfo::Tuple(fields) => {
+                let mut all_zero_sized = true;
+                for field in fields {
+                    if field.is_uninhabited() {
+                        return true;
+                    }
+                    if !field.is_zero_sized() {
+                        all_zero_sized = false;
+                    }
+                }
+                all_zero_sized
+            }
+            _ => false,
+        }
+    }
+
+    pub fn is_unit(&self) -> bool {
+        match self {
+            TypeInfo::Tuple(fields) => fields.is_empty(),
             _ => false,
         }
     }
@@ -485,12 +584,38 @@ impl TypeInfo {
             TypeInfo::Array(ary_ty_id, count) => look_up_type_id(*ary_ty_id)
                 .matches_type_parameter(mapping)
                 .map(|matching_id| insert_type(TypeInfo::Array(matching_id, *count))),
+            TypeInfo::Tuple(fields) => {
+                let mut new_fields = Vec::new();
+                let mut index = 0;
+                while index < fields.len() {
+                    let new_field_id_opt = fields[index].matches_type_parameter(mapping);
+                    if let Some(new_field_id) = new_field_id_opt {
+                        new_fields.extend(fields[..index].iter().cloned());
+                        new_fields.push(TypeInfo::Ref(new_field_id));
+                        index += 1;
+                        break;
+                    }
+                    index += 1;
+                }
+                while index < fields.len() {
+                    let new_field = match fields[index].matches_type_parameter(mapping) {
+                        Some(new_field_id) => TypeInfo::Ref(new_field_id),
+                        None => fields[index].clone(),
+                    };
+                    new_fields.push(new_field);
+                    index += 1;
+                }
+                if new_fields.is_empty() {
+                    None
+                } else {
+                    Some(insert_type(TypeInfo::Tuple(new_fields)))
+                }
+            },
             Unknown
             | Str(..)
             | UnsignedInteger(..)
             | Boolean
             | Ref(..)
-            | Unit
             | ContractCaller { .. }
             | SelfType
             | Byte
