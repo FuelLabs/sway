@@ -3,7 +3,7 @@ use super::ast_node::{
     TypedStructField,
 };
 use crate::error::*;
-use crate::parse_tree::MethodName;
+use crate::parse_tree::{MethodName, Visibility};
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
 use crate::type_engine::*;
@@ -37,7 +37,6 @@ impl<'sc> Namespace<'sc> {
     ///
     /// If a self type is given and anything on this ref chain refers to self, update the chain.
     pub(crate) fn resolve_type_with_self(&self, ty: TypeInfo, self_type: TypeId) -> TypeId {
-        let ty = ty.clone();
         match ty {
             TypeInfo::Custom { name } => match self.get_symbol_by_str(&name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
@@ -48,7 +47,7 @@ impl<'sc> Namespace<'sc> {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
-                        .map(TypedStructField::into_owned_typed_struct_field)
+                        .map(TypedStructField::as_owned_typed_struct_field)
                         .collect::<Vec<_>>(),
                 }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
@@ -59,7 +58,7 @@ impl<'sc> Namespace<'sc> {
                     name: name.primary_name.to_string(),
                     variant_types: variants
                         .iter()
-                        .map(TypedEnumVariant::into_owned_typed_enum_variant)
+                        .map(TypedEnumVariant::as_owned_typed_enum_variant)
                         .collect(),
                 }),
                 _ => crate::type_engine::insert_type(TypeInfo::Unknown),
@@ -84,7 +83,7 @@ impl<'sc> Namespace<'sc> {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
-                        .map(TypedStructField::into_owned_typed_struct_field)
+                        .map(TypedStructField::as_owned_typed_struct_field)
                         .collect::<Vec<_>>(),
                 }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
@@ -95,7 +94,7 @@ impl<'sc> Namespace<'sc> {
                     name: name.primary_name.to_string(),
                     variant_types: variants
                         .iter()
-                        .map(TypedEnumVariant::into_owned_typed_enum_variant)
+                        .map(TypedEnumVariant::as_owned_typed_enum_variant)
                         .collect(),
                 }),
                 _ => crate::type_engine::insert_type(TypeInfo::Unknown),
@@ -119,8 +118,10 @@ impl<'sc> Namespace<'sc> {
             warnings,
             errors
         );
-        for (symbol, _) in namespace.symbols.clone() {
-            self.use_synonyms.insert(symbol, path.clone());
+        for (symbol, decl) in namespace.symbols.clone() {
+            if decl.visibility() == Visibility::Public {
+                self.use_synonyms.insert(symbol.clone(), path.clone());
+            }
         }
         ok((), warnings, errors)
     }
@@ -146,12 +147,18 @@ impl<'sc> Namespace<'sc> {
         match namespace.symbols.get(item) {
             Some(decl) => {
                 //  if this is an enum or struct, import its implementations
+                if decl.visibility() != Visibility::Public {
+                    errors.push(CompileError::ImportPrivateSymbol {
+                        name: item.primary_name.to_string(),
+                        span: item.span.clone(),
+                    });
+                }
                 let a = decl.return_type().value;
                 namespace
                     .implemented_traits
                     .iter()
                     .filter(|((_trait_name, type_info), _impl)| {
-                        a.map(|a| look_up_type_id(a)).as_ref() == Some(type_info)
+                        a.map(look_up_type_id).as_ref() == Some(type_info)
                     })
                     .for_each(|(a, b)| {
                         impls_to_insert.push((a.clone(), b.to_vec()));
@@ -261,7 +268,7 @@ impl<'sc> Namespace<'sc> {
         } else {
             &symbol.prefixes
         };
-        self.get_name_from_path(&path, &symbol.suffix)
+        self.get_name_from_path(path, &symbol.suffix)
             .map(|decl| decl.clone())
     }
 
@@ -459,7 +466,7 @@ impl<'sc> Namespace<'sc> {
                 warnings,
                 errors
             );
-            return ok((ty.clone(), ty), warnings, errors);
+            return ok((ty, ty), warnings, errors);
         }
         let mut symbol = check!(
             symbol.return_type(),
@@ -478,12 +485,12 @@ impl<'sc> Namespace<'sc> {
             Some(value) => value,
         };
 
-        let mut parent_rover = symbol.clone();
+        let mut parent_rover = symbol;
 
         for ident in ident_iter {
             // find the ident in the currently available fields
             let OwnedTypedStructField { r#type, .. } =
-                match fields.iter().find(|x| &x.name == ident.primary_name) {
+                match fields.iter().find(|x| x.name == ident.primary_name) {
                     Some(field) => field.clone(),
                     None => {
                         // gather available fields for the error message
@@ -493,7 +500,7 @@ impl<'sc> Namespace<'sc> {
 
                         errors.push(CompileError::FieldNotFound {
                             field_name,
-                            struct_name: struct_name.clone(),
+                            struct_name,
                             available_fields: available_fields.join(", "),
                             span: ident.span.clone(),
                         });
@@ -506,13 +513,13 @@ impl<'sc> Namespace<'sc> {
                     fields: ref l_fields,
                     ..
                 } => {
-                    parent_rover = symbol.clone();
+                    parent_rover = symbol;
                     fields = l_fields.clone();
                     symbol = r#type;
                 }
                 _ => {
                     fields = vec![];
-                    parent_rover = symbol.clone();
+                    parent_rover = symbol;
                     symbol = r#type;
                 }
             }
@@ -570,7 +577,7 @@ impl<'sc> Namespace<'sc> {
                         insert_type(type_name.clone())
                     }
                 } else {
-                    args_buf[0].return_type.clone()
+                    args_buf[0].return_type
                 };
                 (module, &call_path.suffix, r#type)
             }
@@ -617,9 +624,7 @@ impl<'sc> Namespace<'sc> {
     ) -> CompileResult<'sc, (Vec<OwnedTypedStructField>, String)> {
         let ty = crate::type_engine::look_up_type_id(ty);
         match ty {
-            TypeInfo::Struct { name, fields } => {
-                ok((fields.to_vec(), name.clone()), vec![], vec![])
-            }
+            TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),
             // If we hit `ErrorRecovery` then the source of that type should have populated
             // the error buffer elsewhere
             TypeInfo::ErrorRecovery => err(vec![], vec![]),

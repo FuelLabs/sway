@@ -1,26 +1,11 @@
 use crate::build_config::BuildConfig;
 use crate::error::*;
-use crate::parse_tree::declaration::TypeParameter;
+use crate::parse_tree::{declaration::TypeParameter, Visibility};
 use crate::span::Span;
+use crate::style::is_snake_case;
 use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
-use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Visibility {
-    Public,
-    Private,
-}
-
-impl Visibility {
-    pub(crate) fn parse_from_pair<'sc>(input: Pair<'sc, Rule>) -> Self {
-        match input.as_str().trim() {
-            "pub" => Visibility::Public,
-            _ => Visibility::Private,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration<'sc> {
@@ -76,7 +61,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         let mut where_clause_pair = None;
         let mut parameters_pair = None;
         let mut return_type_pair = None;
-        while let Some(pair) = signature.next() {
+        for pair in signature {
             match pair.as_rule() {
                 Rule::type_params => {
                     type_params_pair = Some(pair);
@@ -136,7 +121,7 @@ impl<'sc> FunctionDeclaration<'sc> {
             where_clause_pair,
             config,
         )
-        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
+        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
         // check that all generic types used in function parameters are a part of the type
         // parameters
@@ -193,7 +178,7 @@ impl<'sc> FunctionDeclaration<'sc> {
                 body,
                 span: Span {
                     span: pair.as_span(),
-                    path: path.clone(),
+                    path,
                 },
                 return_type,
                 type_parameters,

@@ -6,7 +6,10 @@ use crate::utils::{
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
 use semver::Version;
-use std::{path::PathBuf, str};
+use std::{
+    path::{Path, PathBuf},
+    str,
+};
 
 /// Forc check will check if there are updates to Github-based dependencies.
 /// If a target dependency `-d` is passed, it will check only this one dependency.
@@ -64,15 +67,15 @@ async fn check_dependency(
     };
 
     let target_directory = match &dep.branch {
-        Some(b) => format!("{}/.forc/{}/{}", home_dir, dependency_name, &b),
-        None => format!("{}/.forc/{}/default", home_dir, dependency_name),
+        Some(b) => PathBuf::from(format!("{}/.forc/{}/{}", home_dir, dependency_name, &b)),
+        None => PathBuf::from(format!("{}/.forc/{}/default", home_dir, dependency_name)),
     };
 
     // Currently we only handle checks on github-based dependencies
     if let Some(git) = &dep.git {
         match &dep.version {
             Some(version) => check_tagged_dependency(dependency_name, version, git).await?,
-            None => check_untagged_dependency(git, target_directory, dependency_name, dep).await?,
+            None => check_untagged_dependency(git, &target_directory, dependency_name, dep).await?,
         }
     }
     Ok(())
@@ -80,8 +83,8 @@ async fn check_dependency(
 
 async fn check_tagged_dependency(
     dependency_name: &str,
-    current_version: &String,
-    git_repo: &String,
+    current_version: &str,
+    git_repo: &str,
 ) -> Result<()> {
     let releases = dependency::get_github_repo_releases(git_repo).await?;
 
@@ -116,14 +119,14 @@ async fn check_tagged_dependency(
 }
 
 async fn check_untagged_dependency(
-    git_repo: &String,
-    target_directory: String,
+    git_repo: &str,
+    target_directory: &Path,
     dependency_name: &str,
     dep: &dependency::DependencyDetails,
 ) -> Result<()> {
     let current = dependency::get_current_dependency_version(&target_directory)?;
 
-    let latest_hash = dependency::get_latest_commit_sha(&git_repo, &dep.branch).await?;
+    let latest_hash = dependency::get_latest_commit_sha(git_repo, &dep.branch).await?;
 
     if current.hash == latest_hash {
         println!("{} is up-to-date", dependency_name);

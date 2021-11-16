@@ -130,7 +130,7 @@ impl TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name } => format!("{}", name),
+            Custom { name } => name.into(),
             Ref(id) => format!("T{}", id),
             Unit => "()".into(),
             SelfType => "Self".into(),

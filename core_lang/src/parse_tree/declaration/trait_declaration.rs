@@ -3,10 +3,9 @@ use crate::build_config::BuildConfig;
 use crate::parse_tree::TypeParameter;
 use crate::parser::Rule;
 use crate::span::Span;
+use crate::style::{is_snake_case, is_upper_camel_case};
 use crate::type_engine::TypeInfo;
 use crate::{error::*, Ident};
-use inflector::cases::classcase::is_class_case;
-use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -45,7 +44,7 @@ impl<'sc> TraitDeclaration<'sc> {
         );
         let span = name.span.clone();
         assert_or_warn!(
-            is_class_case(name_pair.as_str().trim()),
+            is_upper_camel_case(name_pair.as_str().trim()),
             warnings,
             span,
             Warning::NonClassCaseTraitName {
@@ -98,7 +97,7 @@ impl<'sc> TraitDeclaration<'sc> {
                 where_clause_pair,
                 config,
             )
-            .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
+            .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
         ok(
             TraitDeclaration {
                 type_parameters,
@@ -167,7 +166,7 @@ impl<'sc> TraitFn<'sc> {
                 let pair = signature.next().unwrap();
                 let span = Span {
                     span: pair.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 (
                     check!(

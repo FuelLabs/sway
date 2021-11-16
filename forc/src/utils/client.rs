@@ -4,7 +4,7 @@ use tokio::process::{Child, Command};
 use tokio::time::{sleep, Duration};
 
 pub async fn start_fuel_core(node_url: &str, client: &FuelClient) -> Result<Child, String> {
-    let mut url_parts = node_url.split(":").collect::<Vec<&str>>();
+    let mut url_parts = node_url.split(':').collect::<Vec<&str>>();
     let port = url_parts.pop().unwrap_or("4000");
     let ip = url_parts.join(":");
 
@@ -14,18 +14,18 @@ pub async fn start_fuel_core(node_url: &str, client: &FuelClient) -> Result<Chil
 
     match cmd.spawn() {
         Ok(child) => {
-            if let Ok(_) = client.health().await {
+            if client.health().await.is_ok() {
                 return Ok(child);
             }
 
             for _ in 0..5 {
                 sleep(Duration::from_millis(300)).await;
-                if let Ok(_) = client.health().await {
+                if client.health().await.is_ok() {
                     return Ok(child);
                 }
             }
 
-            Err(format!("Could not start fuel-core"))
+            Err("Could not start fuel-core".into())
         }
         Err(e) => Err(format!("Failed to spawn: {:?}. Error: {:?}", cmd, e)),
     }

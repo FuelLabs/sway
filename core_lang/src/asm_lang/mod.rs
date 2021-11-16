@@ -1102,7 +1102,7 @@ fn single_imm_24<'sc>(
 ) -> CompileResult<'sc, VirtualImmediate24> {
     let warnings = vec![];
     let mut errors = vec![];
-    if args.len() > 0 {
+    if !args.is_empty() {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 0,
@@ -1323,7 +1323,7 @@ impl fmt::Display for Op<'_> {
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 GM(a, b) => format!("gm {} {}", a, b),
-                Undefined => format!("undefined op"),
+                Undefined => "undefined op".into(),
                 VirtualOp::DataSectionOffsetPlaceholder => "data section offset placeholder".into(),
                 DataSectionRegisterLoadPlaceholder => {
                     "data section register load placeholder".into()
@@ -1335,16 +1335,16 @@ impl fmt::Display for Op<'_> {
                 Jump(label) => format!("jump {}", label),
                 JumpIfNotEq(reg0, reg1, label) => format!("jnei {} {} {}", reg0, reg1, label),
                 OrganizationalOp::DataSectionOffsetPlaceholder => {
-                    format!("data section offset placeholder")
+                    "data section offset placeholder".into()
                 }
             },
         };
         // we want the comment to always be 40 characters offset to the right
         // to not interfere with the ASM but to be aligned
         let mut op_and_comment = op_str;
-        if self.comment.len() > 0 {
+        if !self.comment.is_empty() {
             while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push_str(" ");
+                op_and_comment.push(' ');
             }
             op_and_comment.push_str(&format!("; {}", self.comment))
         }

@@ -33,7 +33,7 @@ impl<'sc> UseStatement<'sc> {
         let mut stmt = stmt.into_inner();
         let _use_keyword = stmt.next();
         let import_path = if is_absolute {
-            stmt.clone().skip(1).next().expect("Guaranteed by grammar")
+            stmt.clone().nth(1).expect("Guaranteed by grammar")
         } else {
             stmt.clone().next().expect("Guaranteed by grammar")
         };
@@ -73,7 +73,7 @@ impl<'sc> UseStatement<'sc> {
         let mut alias = None;
         for item in stmt {
             if item.as_rule() == Rule::alias {
-                let item = item.into_inner().skip(1).next().unwrap();
+                let item = item.into_inner().nth(1).unwrap();
                 let alias_parsed = check!(
                     Ident::parse_from_pair(item, config),
                     continue,

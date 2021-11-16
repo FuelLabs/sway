@@ -9,9 +9,9 @@ pub enum VirtualRegister {
     Constant(ConstantRegister),
 }
 
-impl Into<VirtualRegister> for &VirtualRegister {
-    fn into(self) -> VirtualRegister {
-        self.clone()
+impl From<&VirtualRegister> for VirtualRegister {
+    fn from(register: &VirtualRegister) -> VirtualRegister {
+        register.clone()
     }
 }
 

@@ -5,7 +5,12 @@ use curl::easy::Easy;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, io::Cursor, path::Path};
+use std::{
+    collections::HashMap,
+    fs,
+    io::Cursor,
+    path::{Path, PathBuf},
+};
 use tar::Archive;
 
 // A collection of remote dependency related functions
@@ -56,7 +61,7 @@ pub struct GithubCommit {
 #[derive(Debug)]
 pub struct VersionedDependencyDirectory {
     pub hash: String,
-    pub path: String,
+    pub path: PathBuf,
 }
 
 pub type GitHubRepoReleases = Vec<TaggedRelease>;
@@ -86,7 +91,7 @@ pub struct TaggedRelease {
 /// If a version is specified, it will go in `~/.forc/dep/$version/$owner-$repo-$hash.
 /// Version takes precedence over branch reference.
 pub fn download_github_dep(
-    dep_name: &String,
+    dep_name: &str,
     repo_base_url: &str,
     branch: &Option<String>,
     version: &Option<String>,
@@ -99,34 +104,34 @@ pub fn download_github_dep(
 
     // Version tag takes precedence over branch reference.
     let out_dir = match &version {
-        Some(v) => format!(
+        Some(v) => PathBuf::from(format!(
             "{}/{}/{}/{}",
             home_dir,
             constants::FORC_DEPENDENCIES_DIRECTORY,
             dep_name,
             v
-        ),
+        )),
         // If no version specified, check if a branch was specified
         None => match &branch {
-            Some(b) => format!(
+            Some(b) => PathBuf::from(format!(
                 "{}/{}/{}/{}",
                 home_dir,
                 constants::FORC_DEPENDENCIES_DIRECTORY,
                 dep_name,
                 b
-            ),
+            )),
             // If no version and no branch, use default
-            None => format!(
+            None => PathBuf::from(format!(
                 "{}/{}/{}/default",
                 home_dir,
                 constants::FORC_DEPENDENCIES_DIRECTORY,
                 dep_name
-            ),
+            )),
         },
     };
 
     // Check if dependency is already installed, if so, return its path.
-    if Path::new(&out_dir).exists() {
+    if out_dir.exists() {
         for entry in fs::read_dir(&out_dir)? {
             let path = entry?.path();
             // If the path to that dependency at that branch/version already
@@ -151,7 +156,7 @@ pub fn download_github_dep(
         ));
     }
 
-    let github_api_url = build_github_repo_api_url(repo_base_url, &branch, &version);
+    let github_api_url = build_github_repo_api_url(repo_base_url, branch, version);
 
     println!("Downloading {:?} into {:?}", dep_name, out_dir);
 
@@ -171,17 +176,17 @@ pub fn build_github_repo_api_url(
     branch: &Option<String>,
     version: &Option<String>,
 ) -> String {
-    let dependency_url = dependency_url.trim_end_matches("/");
-    let mut pieces = dependency_url.rsplit("/");
+    let dependency_url = dependency_url.trim_end_matches('/');
+    let mut pieces = dependency_url.rsplit('/');
 
     let project_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
+        Some(p) => p,
+        None => dependency_url,
     };
 
     let owner_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
+        Some(p) => p,
+        None => dependency_url,
     };
 
     // Version tag takes precedence over branch reference.
@@ -211,7 +216,7 @@ pub fn build_github_repo_api_url(
     }
 }
 
-pub fn download_tarball(url: &str, out_dir: &str) -> Result<String> {
+pub fn download_tarball(url: &str, out_dir: &Path) -> Result<String> {
     let mut data = Vec::new();
     let mut handle = Easy::new();
 
@@ -238,7 +243,12 @@ pub fn download_tarball(url: &str, out_dir: &str) -> Result<String> {
     // Unpack the tarball.
     Archive::new(GzDecoder::new(Cursor::new(data)))
         .unpack(out_dir)
-        .with_context(|| format!("failed to unpack tarball in directory: {}", out_dir))?;
+        .with_context(|| {
+            format!(
+                "failed to unpack tarball in directory: {}",
+                out_dir.display()
+            )
+        })?;
 
     for entry in fs::read_dir(out_dir)? {
         let path = entry?.path();
@@ -250,19 +260,19 @@ pub fn download_tarball(url: &str, out_dir: &str) -> Result<String> {
 
     Err(anyhow!(
         "couldn't find downloaded dependency in directory: {}",
-        out_dir
+        out_dir.display(),
     ))
 }
 
 pub fn replace_dep_version(
-    target_directory: &str,
+    target_directory: &Path,
     git: &str,
     dep: &DependencyDetails,
 ) -> Result<()> {
-    let current = get_current_dependency_version(&target_directory)?;
+    let current = get_current_dependency_version(target_directory)?;
 
     let api_url = build_github_repo_api_url(git, &dep.branch, &dep.version);
-    download_tarball(&api_url, &target_directory)?;
+    download_tarball(&api_url, target_directory)?;
 
     // Delete old one
     match fs::remove_dir_all(current.path) {
@@ -277,30 +287,29 @@ pub fn replace_dep_version(
     }
 }
 
-pub fn get_current_dependency_version(dep_dir: &str) -> Result<VersionedDependencyDirectory> {
-    for entry in fs::read_dir(dep_dir).context(format!("couldn't read directory {}", dep_dir))? {
-        let path = entry?.path();
-        if !path.is_dir() {
-            bail!("{} isn't a directory.", dep_dir)
-        }
+pub fn get_current_dependency_version(dep_dir: &Path) -> Result<VersionedDependencyDirectory> {
+    let mut entries =
+        fs::read_dir(dep_dir).context(format!("couldn't read directory {}", dep_dir.display()))?;
+    let entry = match entries.next() {
+        Some(entry) => entry,
+        None => bail!("Dependency directory is empty. Run `forc build` to install dependencies."),
+    };
 
-        let path_str = path.to_str().unwrap().to_string();
-
-        // Getting the base of the path (the dependency directory name)
-        let mut pieces = path_str.rsplit("/");
-        match pieces.next() {
-            Some(p) => {
-                return Ok(VersionedDependencyDirectory {
-                    // Dependencies directories are named as "$repo_owner-$repo-$concatenated_hash"
-                    // Here we're grabbing the hash.
-                    hash: p.to_owned().split("-").last().unwrap().into(),
-                    path: path_str,
-                });
-            }
-            None => bail!("Unexpected dependency naming scheme: {}", path_str),
-        }
+    let path = entry?.path();
+    if !path.is_dir() {
+        bail!("{} isn't a directory.", dep_dir.display())
     }
-    bail!("Dependency directory is empty. Run `forc build` to install dependencies.")
+
+    let file_name = path.file_name().unwrap();
+    // Dependencies directories are named as "$repo_owner-$repo-$concatenated_hash"
+    let hash = file_name
+        .to_str()
+        .with_context(|| format!("Invalid utf8 in dependency name: {}", path.display()))?
+        .split('-')
+        .last()
+        .with_context(|| format!("Unexpected dependency naming scheme: {}", path.display()))?
+        .into();
+    Ok(VersionedDependencyDirectory { hash, path })
 }
 
 // Returns the _truncated_ (e.g `e6940e4`) latest commit hash of a
@@ -310,18 +319,18 @@ pub async fn get_latest_commit_sha(
     branch: &Option<String>,
 ) -> Result<String> {
     // Quick protection against `git` dependency URL ending with `/`.
-    let dependency_url = dependency_url.trim_end_matches("/");
+    let dependency_url = dependency_url.trim_end_matches('/');
 
-    let mut pieces = dependency_url.rsplit("/");
+    let mut pieces = dependency_url.rsplit('/');
 
     let project_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
+        Some(p) => p,
+        None => dependency_url,
     };
 
     let owner_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
+        Some(p) => p,
+        None => dependency_url,
     };
 
     let api_endpoint = match branch {
@@ -380,18 +389,18 @@ pub fn get_detailed_dependencies(manifest: &mut Manifest) -> HashMap<String, &De
 
 pub async fn get_github_repo_releases(dependency_url: &str) -> Result<Vec<String>> {
     // Quick protection against `git` dependency URL ending with `/`.
-    let dependency_url = dependency_url.trim_end_matches("/");
+    let dependency_url = dependency_url.trim_end_matches('/');
 
-    let mut pieces = dependency_url.rsplit("/");
+    let mut pieces = dependency_url.rsplit('/');
 
     let project_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
+        Some(p) => p,
+        None => dependency_url,
     };
 
     let owner_name: &str = match pieces.next() {
-        Some(p) => p.into(),
-        None => dependency_url.into(),
+        Some(p) => p,
+        None => dependency_url,
     };
 
     let api_endpoint = format!(

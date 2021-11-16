@@ -25,7 +25,7 @@ impl Manifest {
         let inputs = self
             .tx_input
             .clone()
-            .unwrap_or_else(Default::default)
+            .unwrap_or_default()
             .iter()
             .map(TxInput::to_input)
             .collect::<Result<Vec<_>, _>>()?;
@@ -41,13 +41,13 @@ impl Manifest {
 fn construct_output_from_input((idx, input): (usize, &fuel_tx::Input)) -> Option<fuel_tx::Output> {
     match input {
         fuel_tx::Input::Contract {
-            ref balance_root,
-            ref state_root,
+            balance_root,
+            state_root,
             ..
         } => Some(fuel_tx::Output::Contract {
             input_index: idx as u8, // probably safe unless a user inputs > u8::max inputs
-            balance_root: balance_root.clone(),
-            state_root: state_root.clone(),
+            balance_root: *balance_root,
+            state_root: *state_root,
         }),
         _ => None,
     }
@@ -94,7 +94,7 @@ fn try_parse_contract_id(raw: &Option<String>) -> Result<fuel_tx::ContractId, St
     let mut raw = if let Some(raw) = raw {
         raw.to_string()
     } else {
-        return Err(format!("Missing contract-id in manifest."));
+        return Err("Missing contract-id in manifest.".into());
     };
     if raw.len() > 2 && &raw[0..2] == "0x" {
         raw = (&raw[2..]).to_string();

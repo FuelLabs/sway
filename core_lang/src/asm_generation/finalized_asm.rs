@@ -105,7 +105,7 @@ fn to_bytecode<'sc>(
                     buf.resize(buf.len() + ((ops.len() - 1) * 4), 0);
                 }
                 for mut op in ops {
-                    op.read(&mut buf[half_word_ix * 4..])
+                    op.read_exact(&mut buf[half_word_ix * 4..])
                         .expect("Failed to write to in-memory buffer.");
                     half_word_ix += 1;
                 }

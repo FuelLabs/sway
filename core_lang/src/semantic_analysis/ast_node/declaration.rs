@@ -27,8 +27,6 @@ pub enum TypedDeclaration<'sc> {
         type_implementing_for: TypeInfo,
     },
     AbiDeclaration(TypedAbiDeclaration<'sc>),
-    // no contents since it is a side-effectful declaration, i.e it populates a namespace
-    SideEffect,
     ErrorRecovery,
 }
 
@@ -46,7 +44,6 @@ impl<'sc> TypedDeclaration<'sc> {
             Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
-            SideEffect => "",
             ErrorRecovery => "error",
         }
     }
@@ -55,7 +52,7 @@ impl<'sc> TypedDeclaration<'sc> {
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body, ..
-                }) => body.return_type.clone(),
+                }) => body.return_type,
                 TypedDeclaration::FunctionDeclaration { .. } => {
                     return err(
                         vec![],
@@ -73,12 +70,10 @@ impl<'sc> TypedDeclaration<'sc> {
                     name: name.primary_name.to_string(),
                     fields: fields
                         .iter()
-                        .map(TypedStructField::into_owned_typed_struct_field)
+                        .map(TypedStructField::as_owned_typed_struct_field)
                         .collect(),
                 }),
-                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
-                    rhs.return_type.clone()
-                }
+                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 decl => {
                     return err(
                         vec![],
@@ -111,7 +106,7 @@ impl<'sc> TypedDeclaration<'sc> {
             }
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
-            SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
+            ErrorRecovery => unreachable!("No span exists for these ast node types"),
         }
     }
 
@@ -148,6 +143,27 @@ impl<'sc> TypedDeclaration<'sc> {
                 _ => String::new(),
             }
         )
+    }
+
+    pub(crate) fn visibility(&self) -> Visibility {
+        match self {
+            TypedDeclaration::VariableDeclaration(..)
+            | TypedDeclaration::Reassignment(..)
+            | TypedDeclaration::ImplTrait { .. }
+            | TypedDeclaration::AbiDeclaration(..)
+            | TypedDeclaration::ErrorRecovery => Visibility::Public,
+            TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { visibility, .. })
+            | TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                visibility, ..
+            })
+            | TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
+                visibility, ..
+            })
+            | TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { visibility, .. })
+            | TypedDeclaration::StructDeclaration(TypedStructDeclaration { visibility, .. }) => {
+                *visibility
+            }
+        }
     }
 }
 
@@ -186,7 +202,7 @@ pub struct OwnedTypedStructField {
 }
 
 impl OwnedTypedStructField {
-    pub(crate) fn into_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
+    pub(crate) fn as_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
         TypedStructField {
             name: Ident {
                 span: span.clone(),
@@ -199,7 +215,7 @@ impl OwnedTypedStructField {
 }
 
 impl TypedStructField<'_> {
-    pub(crate) fn into_owned_typed_struct_field(&self) -> OwnedTypedStructField {
+    pub(crate) fn as_owned_typed_struct_field(&self) -> OwnedTypedStructField {
         OwnedTypedStructField {
             name: self.name.primary_name.to_string(),
             r#type: self.r#type,
@@ -213,6 +229,7 @@ pub struct TypedEnumDeclaration<'sc> {
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) variants: Vec<TypedEnumVariant<'sc>>,
     pub(crate) span: Span<'sc>,
+    pub(crate) visibility: Visibility,
 }
 impl<'sc> TypedEnumDeclaration<'sc> {
     /// Given type arguments, match them up with the type parameters and return the result.
@@ -234,7 +251,7 @@ impl TypedEnumDeclaration<'_> {
             variant_types: self
                 .variants
                 .iter()
-                .map(TypedEnumVariant::into_owned_typed_enum_variant)
+                .map(TypedEnumVariant::as_owned_typed_enum_variant)
                 .collect(),
         })
     }
@@ -248,7 +265,7 @@ pub struct TypedEnumVariant<'sc> {
 }
 
 impl TypedEnumVariant<'_> {
-    pub(crate) fn into_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
+    pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
         OwnedTypedEnumVariant {
             name: self.name.primary_name.to_string(),
             r#type: self.r#type,
@@ -276,6 +293,7 @@ pub struct TypedVariableDeclaration<'sc> {
 pub struct TypedConstantDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) value: TypedExpression<'sc>,
+    pub(crate) visibility: Visibility,
 }
 
 // TODO: type check generic type args and their usage
@@ -319,7 +337,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 .map(|x| {
                     let mut x = x.clone();
                     x.r#type = match look_up_type_id(x.r#type) {
-                        TypeInfo::SelfType => self_type.clone(),
+                        TypeInfo::SelfType => self_type,
                         _otherwise => x.r#type,
                     };
                     x
@@ -327,7 +345,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 .collect(),
             span: self.span.clone(),
             return_type: match look_up_type_id(self.return_type) {
-                TypeInfo::SelfType => self_type.clone(),
+                TypeInfo::SelfType => self_type,
                 _otherwise => self.return_type,
             },
             type_parameters: self.type_parameters.clone(),
@@ -600,7 +618,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,
-                return_type.clone(),
+                return_type,
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
@@ -708,7 +726,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     span: parameters
                         .get(0)
                         .map(|x| x.type_span.clone())
-                        .unwrap_or(fn_decl.name.span.clone()),
+                        .unwrap_or_else(|| fn_decl.name.span.clone()),
                 });
             }
         }

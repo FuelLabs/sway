@@ -36,7 +36,7 @@ impl<'sc> MatchBranch<'sc> {
                     "Unexpected empty iterator in match branch parsing.",
                     span::Span {
                         span: pair.as_span(),
-                        path: path.clone(),
+                        path,
                     },
                 ));
                 return err(warnings, errors);
@@ -67,7 +67,7 @@ impl<'sc> MatchBranch<'sc> {
                     "Unexpected empty iterator in match branch parsing.",
                     span::Span {
                         span: pair.as_span(),
-                        path: path.clone(),
+                        path,
                     },
                 ));
                 return err(warnings, errors);
@@ -88,7 +88,7 @@ impl<'sc> MatchBranch<'sc> {
             Rule::code_block => {
                 let span = span::Span {
                     span: result.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 Expression::CodeBlock {
                     contents: check!(
