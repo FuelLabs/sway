@@ -312,6 +312,10 @@ impl TypeInfo {
                     return Some(*ty_id);
                 }
             }
+        } else if let TypeInfo::Struct { fields, name, .. } = self {
+            todo!("check the type of each field and reconstruct this struct type if needed")
+        } else if let TypeInfo::Enum { variants, name, .. } = self {
+            todo!("check the type of each variant and reconstruct this enum type if needed")
         }
         None
     }
