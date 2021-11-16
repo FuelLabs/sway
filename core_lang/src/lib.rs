@@ -494,8 +494,8 @@ fn generate_assembly_directly_from_ast<'sc>(
 
 #[cfg(feature = "ir")]
 fn generate_assembly_via_ir<'sc>(
-    _build_config: BuildConfig,
-    /*mut*/ warnings: Vec<CompileWarning<'sc>>,
+    build_config: BuildConfig,
+    mut warnings: Vec<CompileWarning<'sc>>,
     mut errors: Vec<CompileError<'sc>>,
     predicate_ast: Option<TypedParseTree<'sc>>,
     contract_ast: Option<TypedParseTree<'sc>>,
@@ -519,20 +519,8 @@ fn generate_assembly_via_ir<'sc>(
         ),
     };
 
-    /*let ir =*/
-    match ir::compile_ast(typed_ast) {
-        //Ok(ir) => ir,
-        Ok(ir) => {
-            println!("{}", crate::ir::printer::to_string(&ir));
-            errors.push(CompileError::InternalOwned(
-                "IR compilation succeeded!".into(),
-                crate::span::Span {
-                    span: pest::Span::new(" ", 0, 0).unwrap(),
-                    path: None,
-                },
-            ));
-            return CompilationResult::Failure { errors, warnings };
-        }
+    let ir = match ir::compile_ast(typed_ast) {
+        Ok(ir) => ir,
         Err(msg) => {
             errors.push(CompileError::InternalOwned(
                 msg,
@@ -545,17 +533,14 @@ fn generate_assembly_via_ir<'sc>(
         }
     };
 
-    // XXX While I'm struggling with the 'sc lifetime we'll just focus on generating the IR and not
-    // bother with ASM yet.
-    //
-    //let asm = check!(
-    //    crate::asm_generation::compile_ir_to_asm(&ir, &build_config),
-    //    return CompilationResult::Failure { errors, warnings },
-    //    warnings,
-    //    errors
-    //);
+    let asm = check!(
+        crate::asm_generation::compile_ir_to_asm(&ir, &build_config),
+        return CompilationResult::Failure { errors, warnings },
+        warnings,
+        errors
+    );
 
-    //CompilationResult::Success { asm, warnings }
+    CompilationResult::Success { asm, warnings }
 }
 
 pub fn compile_to_bytecode<'sc>(
