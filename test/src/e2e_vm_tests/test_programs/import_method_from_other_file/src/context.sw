@@ -1,10 +1,10 @@
 library context;
-struct Context {
+pub struct Context {
   something: u64
 }
 
 impl Context {
-  fn foo() -> Self {
+  pub fn foo() -> Self {
     Context { something: 10 }
   }
 }
