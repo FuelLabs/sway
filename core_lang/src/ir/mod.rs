@@ -44,7 +44,7 @@ pub(crate) use parser::*;
 
 // -------------------------------------------------------------------------------------------------
 
-pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
+pub(crate) fn compile_ast<'sc>(ast: TypedParseTree<'sc>) -> Result<Context, String> {
     let mut ctx = Context::new();
     match ast {
         TypedParseTree::Script {
@@ -76,11 +76,11 @@ pub(crate) fn compile_ast(ast: TypedParseTree) -> Result<Context, String> {
 
 // -------------------------------------------------------------------------------------------------
 
-fn compile_script(
+fn compile_script<'sc>(
     context: &mut Context,
-    _namespace: Namespace,
-    main_function: TypedFunctionDeclaration,
-    declarations: Vec<TypedDeclaration>,
+    _namespace: Namespace<'sc>,
+    main_function: TypedFunctionDeclaration<'sc>,
+    declarations: Vec<TypedDeclaration<'sc>>,
 ) -> Result<Module, String> {
     let module = Module::new(context, Kind::Script, "script");
 
@@ -117,9 +117,9 @@ fn compile_script(
 
 // -------------------------------------------------------------------------------------------------
 
-fn compile_struct_decl(
+fn compile_struct_decl<'sc>(
     context: &mut Context,
-    struct_decl: TypedStructDeclaration,
+    struct_decl: TypedStructDeclaration<'sc>,
 ) -> Result<(), String> {
     let (field_types, syms): (Vec<_>, Vec<_>) = struct_decl
         .fields
@@ -149,7 +149,10 @@ fn compile_struct_decl(
 
 // -------------------------------------------------------------------------------------------------
 
-fn compile_enum_decl(context: &mut Context, enum_decl: TypedEnumDeclaration) -> Result<(), String> {
+fn compile_enum_decl<'sc>(
+    context: &mut Context,
+    enum_decl: TypedEnumDeclaration<'sc>,
+) -> Result<(), String> {
     let TypedEnumDeclaration {
         name,
         type_parameters,
@@ -183,10 +186,10 @@ fn compile_enum_decl(context: &mut Context, enum_decl: TypedEnumDeclaration) -> 
 
 // -------------------------------------------------------------------------------------------------
 
-fn compile_function(
+fn compile_function<'sc>(
     context: &mut Context,
     module: Module,
-    ast_fn_decl: TypedFunctionDeclaration,
+    ast_fn_decl: TypedFunctionDeclaration<'sc>,
 ) -> Result<(), String> {
     let TypedFunctionDeclaration {
         name,
@@ -233,7 +236,7 @@ struct FnCompiler {
     current_block: Block,
 }
 
-impl FnCompiler {
+impl<'sc> FnCompiler {
     fn new(context: &mut Context, module: Module, function: Function) -> Self {
         FnCompiler {
             module,
@@ -247,7 +250,7 @@ impl FnCompiler {
     fn compile_code_block(
         &mut self,
         context: &mut Context,
-        ast_block: &TypedCodeBlock,
+        ast_block: &TypedCodeBlock<'sc>,
     ) -> Result<Value, String> {
         ast_block
             .contents
@@ -295,7 +298,7 @@ impl FnCompiler {
     fn compile_expression(
         &mut self,
         context: &mut Context,
-        ast_expr: &TypedExpression,
+        ast_expr: &TypedExpression<'sc>,
     ) -> Result<Value, String> {
         match &ast_expr.expression {
             TypedExpressionVariant::Literal(l) => self.compile_literal(context, l),
@@ -359,7 +362,7 @@ impl FnCompiler {
     fn compile_return_statement(
         &mut self,
         context: &mut Context,
-        ast_expr: &TypedExpression,
+        ast_expr: &TypedExpression<'sc>,
     ) -> Result<Value, String> {
         let ret_value = self.compile_expression(context, ast_expr)?;
         match ret_value.get_type(context) {
@@ -376,7 +379,7 @@ impl FnCompiler {
     fn compile_literal(
         &mut self,
         context: &mut Context,
-        ast_literal: &Literal,
+        ast_literal: &Literal<'sc>,
     ) -> Result<Value, String> {
         match ast_literal {
             Literal::U8(n) | Literal::Byte(n) => Ok(Constant::get_uint(context, 8, *n as u64)),
@@ -395,8 +398,8 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         ast_op: &LazyOp,
-        ast_lhs: &TypedExpression,
-        ast_rhs: &TypedExpression,
+        ast_lhs: &TypedExpression<'sc>,
+        ast_rhs: &TypedExpression<'sc>,
     ) -> Result<Value, String> {
         let rhs_block = self.function.create_block(context, None);
         let final_block = self.function.create_block(context, None);
@@ -430,8 +433,8 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         ast_name: &str,
-        ast_args: &[(Ident, TypedExpression)],
-        callee_body: Option<&TypedCodeBlock>,
+        ast_args: &[(Ident<'sc>, TypedExpression<'sc>)],
+        callee_body: Option<&TypedCodeBlock<'sc>>,
     ) -> Result<Value, String> {
         // XXX To do: Calling into other modules, managing namespaces.
         //
@@ -522,7 +525,7 @@ impl FnCompiler {
         }
     }
 
-    fn get_codeblock_return_type(codeblock: &TypedCodeBlock) -> Option<TypeId> {
+    fn get_codeblock_return_type(codeblock: &TypedCodeBlock<'sc>) -> Option<TypeId> {
         codeblock
             .contents
             .iter()
@@ -538,9 +541,9 @@ impl FnCompiler {
     fn compile_if(
         &mut self,
         context: &mut Context,
-        ast_condition: &TypedExpression,
-        ast_then: &TypedExpression,
-        ast_else: &Option<Box<TypedExpression>>,
+        ast_condition: &TypedExpression<'sc>,
+        ast_then: &TypedExpression<'sc>,
+        ast_else: &Option<Box<TypedExpression<'sc>>>,
     ) -> Result<Value, String> {
         let true_block = self.function.create_block(context, None);
         let false_block = self.function.create_block(context, None);
@@ -578,7 +581,7 @@ impl FnCompiler {
     fn compile_while_loop(
         &mut self,
         context: &mut Context,
-        ast_while_loop: &TypedWhileLoop,
+        ast_while_loop: &TypedWhileLoop<'sc>,
     ) -> Result<Value, String> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
@@ -639,7 +642,7 @@ impl FnCompiler {
     fn compile_var_decl(
         &mut self,
         context: &mut Context,
-        ast_var_decl: &TypedVariableDeclaration,
+        ast_var_decl: &TypedVariableDeclaration<'sc>,
     ) -> Result<Value, String> {
         let TypedVariableDeclaration {
             name,
@@ -664,7 +667,7 @@ impl FnCompiler {
     fn compile_reassignment(
         &mut self,
         context: &mut Context,
-        ast_reassignment: &TypedReassignment,
+        ast_reassignment: &TypedReassignment<'sc>,
     ) -> Result<Value, String> {
         let name = ast_reassignment.lhs[0].name.primary_name;
         let ptr_val = self
@@ -739,7 +742,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         struct_name: &str,
-        fields: &[TypedStructExpressionField],
+        fields: &[TypedStructExpressionField<'sc>],
     ) -> Result<Value, String> {
         let aggregate = context
             .get_aggregate_by_name(struct_name)
@@ -786,7 +789,7 @@ impl FnCompiler {
     fn compile_struct_field_expr(
         &mut self,
         context: &mut Context,
-        ast_struct_expr: &TypedExpression,
+        ast_struct_expr: &TypedExpression<'sc>,
         ast_field: &OwnedTypedStructField,
         _ast_parent_type: &TypeId,
     ) -> Result<Value, String> {
@@ -835,7 +838,7 @@ impl FnCompiler {
         &mut self,
         context: &mut Context,
         tag: &usize,
-        contents: &Option<Box<TypedExpression>>,
+        contents: &Option<Box<TypedExpression<'sc>>>,
     ) -> Result<Value, String> {
         let tag_value = Constant::get_uint(context, 64, *tag as u64);
         Ok(match contents {
@@ -875,7 +878,7 @@ impl FnCompiler {
 
     // ---------------------------------------------------------------------------------------------
 
-    fn compile_asm_expr<'sc>(
+    fn compile_asm_expr(
         &mut self,
         context: &mut Context,
         registers: &Vec<TypedAsmRegisterDeclaration<'sc>>,
@@ -929,10 +932,10 @@ impl FnCompiler {
 
 // -------------------------------------------------------------------------------------------------
 
-fn convert_resolved_typeid(
+fn convert_resolved_typeid<'sc>(
     context: &mut Context,
     ast_type: &TypeId,
-    span: &crate::Span,
+    span: &crate::Span<'sc>,
 ) -> Result<Type, String> {
     // There's probably a better way to convert TypeError to String, but... we'll use something
     // other than String eventually?  IrError?

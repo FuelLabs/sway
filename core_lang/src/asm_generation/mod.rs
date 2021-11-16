@@ -1492,15 +1492,15 @@ fn ret_or_retd_value_impl<'sc, NsInserter: FnOnce(u64) -> (VirtualRegister, Data
 use crate::ir::*;
 
 #[cfg(feature = "ir")]
-pub(crate) fn compile_ir_to_asm<'ir>(
+pub(crate) fn compile_ir_to_asm<'sc, 'ir>(
     ir: &'ir Context,
     build_config: &BuildConfig,
-) -> CompileResult<'ir, FinalizedAsm<'ir>> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+) -> CompileResult<'sc, FinalizedAsm<'sc>> {
+    let mut warnings: Vec<CompileWarning<'sc>> = Vec::new();
+    let mut errors: Vec<CompileError<'sc>> = Vec::new();
 
     let mut reg_seqr = RegisterSequencer::new();
-    let mut bytecode = build_preamble(&mut reg_seqr).to_vec();
+    let mut bytecode: Vec<Op<'sc>> = build_preamble(&mut reg_seqr).to_vec();
 
     // Eventually when we get this 'correct' with no hacks we'll want to compile all the modules
     // separately and then use a linker to connect them.  This way we could also keep binary caches
@@ -1536,11 +1536,11 @@ pub(crate) fn compile_ir_to_asm<'ir>(
 }
 
 #[cfg(feature = "ir")]
-fn compile_module_to_asm<'ir>(
+fn compile_module_to_asm<'sc, 'ir>(
     reg_seqr: RegisterSequencer,
     context: &'ir Context,
     module: Module,
-) -> CompileResult<'ir, (DataSection<'ir>, Vec<Op<'ir>>)> {
+) -> CompileResult<'sc, (DataSection<'sc>, Vec<Op<'sc>>)> {
     // We can't to function calls yet, so we expect there to be only one function to compile.
     // (Alternatively, for now, we could only compile `main()`, ignore others.)
     assert!(
@@ -1552,11 +1552,11 @@ fn compile_module_to_asm<'ir>(
 }
 
 #[cfg(feature = "ir")]
-fn compile_function_to_asm<'ir>(
+fn compile_function_to_asm<'sc, 'ir>(
     reg_seqr: RegisterSequencer,
     context: &'ir Context,
     function: Function,
-) -> CompileResult<'ir, (DataSection<'ir>, Vec<Op<'ir>>)> {
+) -> CompileResult<'sc, (DataSection<'sc>, Vec<Op<'sc>>)> {
     // Add locals to the data section.
     let mut builder = AsmBuilder::new(DataSection::default(), reg_seqr, context);
     builder.add_locals(function);
@@ -1580,9 +1580,9 @@ fn compile_function_to_asm<'ir>(
 // -------------------------------------------------------------------------------------------------
 
 #[cfg(feature = "ir")]
-struct AsmBuilder<'ir> {
+struct AsmBuilder<'sc, 'ir> {
     // Data section is used by the rest of code gen to layout const memory.
-    data_section: DataSection<'ir>,
+    data_section: DataSection<'sc>,
 
     // Register sequencer dishes out new registers and labels.
     reg_seqr: RegisterSequencer,
@@ -1602,7 +1602,7 @@ struct AsmBuilder<'ir> {
     context: &'ir Context,
 
     // Final resulting VM bytecode ops.
-    bytecode: Vec<Op<'ir>>,
+    bytecode: Vec<Op<'sc>>,
 }
 
 // NOTE: For stack storage we need to be aware:
@@ -1617,9 +1617,9 @@ pub(super) enum Storage {
 }
 
 #[cfg(feature = "ir")]
-impl<'ir> AsmBuilder<'ir> {
+impl<'sc, 'ir> AsmBuilder<'sc, 'ir> {
     fn new(
-        data_section: DataSection<'ir>,
+        data_section: DataSection<'sc>,
         reg_seqr: RegisterSequencer,
         context: &'ir Context,
     ) -> Self {
@@ -1705,11 +1705,11 @@ impl<'ir> AsmBuilder<'ir> {
         }
     }
 
-    fn finalize(self) -> CompileResult<'ir, (DataSection<'ir>, Vec<Op<'ir>>)> {
+    fn finalize(self) -> CompileResult<'sc, (DataSection<'sc>, Vec<Op<'sc>>)> {
         ok((self.data_section, self.bytecode), Vec::new(), Vec::new())
     }
 
-    fn compile_instruction(&mut self, block: &Block, instr_val: &Value) -> CompileResult<'ir, ()> {
+    fn compile_instruction(&mut self, block: &Block, instr_val: &Value) -> CompileResult<'sc, ()> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         if let ValueContent::Instruction(instruction) = &self.context.values[instr_val.0] {
@@ -1781,9 +1781,9 @@ impl<'ir> AsmBuilder<'ir> {
         instr_val: &Value,
         asm: &AsmBlock,
         asm_args: &[AsmArg],
-    ) -> CompileResult<'ir, ()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    ) -> CompileResult<'sc, ()> {
+        let mut warnings: Vec<CompileWarning<'sc>> = Vec::new();
+        let mut errors: Vec<CompileError<'sc>> = Vec::new();
         let mut inline_reg_map = HashMap::new();
         let mut inline_ops = Vec::new();
         for AsmArg { name, initializer } in asm_args {
@@ -2119,7 +2119,7 @@ impl<'ir> AsmBuilder<'ir> {
         self.reg_map.insert(*instr_val, instr_reg);
     }
 
-    fn compile_ret(&mut self, ret_val: &Value, ty: &Type) -> CompileResult<'ir, ()> {
+    fn compile_ret(&mut self, ret_val: &Value, ty: &Type) -> CompileResult<'sc, ()> {
         let ret_reg = self.value_to_register(ret_val);
         ret_or_retd_value_impl(
             "main",
