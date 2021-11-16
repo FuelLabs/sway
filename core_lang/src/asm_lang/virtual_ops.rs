@@ -20,6 +20,7 @@ use std::fmt;
 /// allows me to use the compiler's internal [VirtualRegister] types and maintain type safety
 /// between virtual ops and the real opcodes. A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug)]
 pub(crate) enum VirtualOp {
     ADD(VirtualRegister, VirtualRegister, VirtualRegister),
@@ -78,6 +79,7 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
     ),
+    MCPI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     SB(VirtualRegister, VirtualRegister, VirtualImmediate12),
     SW(VirtualRegister, VirtualRegister, VirtualImmediate12),
     BHSH(VirtualRegister, VirtualRegister),
@@ -124,6 +126,7 @@ pub(crate) enum VirtualOp {
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
     NOOP,
     FLAG(VirtualRegister),
+    GM(VirtualRegister, VirtualImmediate18),
     Undefined,
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
@@ -178,6 +181,7 @@ impl VirtualOp {
             MCLI(r1, _imm) => vec![r1],
             MCP(r1, r2, r3) => vec![r1, r2, r3],
             MEQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            MCPI(r1, r2, _imm) => vec![r1, r2],
             SB(r1, r2, _i) => vec![r1, r2],
             SW(r1, r2, _i) => vec![r1, r2],
             BHSH(r1, r2) => vec![r1, r2],
@@ -204,6 +208,7 @@ impl VirtualOp {
             S256(r1, r2, r3) => vec![r1, r2, r3],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
+            GM(r1, _imm) => vec![r1],
             Undefined | DataSectionOffsetPlaceholder => vec![],
             DataSectionRegisterLoadPlaceholder => vec![
                 &VirtualRegister::Constant(ConstantRegister::DataSectionStart),
@@ -230,10 +235,7 @@ impl VirtualOp {
                     (x, pool.get_register(x, &op_register_mapping[ix..]))
                 }
             })
-            .map(|(x, res)| match res {
-                Some(res) => Some((x, res)),
-                None => None,
-            })
+            .map(|(x, register_opt)| register_opt.map(|register| (x, register)))
             .collect::<Option<Vec<_>>>();
 
         // Maps virtual registers to their allocated equivalent
@@ -441,6 +443,11 @@ impl VirtualOp {
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
+            MCPI(reg1, reg2, imm) => AllocatedOpcode::MCPI(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
             SB(reg1, reg2, imm) => AllocatedOpcode::SB(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -533,6 +540,7 @@ impl VirtualOp {
             ),
             NOOP => AllocatedOpcode::NOOP,
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
+            GM(reg, imm) => AllocatedOpcode::GM(map_reg(&mapping, reg), imm.clone()),
             Undefined => AllocatedOpcode::Undefined,
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
             DataSectionRegisterLoadPlaceholder => {

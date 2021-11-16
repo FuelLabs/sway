@@ -2,12 +2,11 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parse_tree::{CallPath, Literal};
 use crate::Span;
-use crate::{parser::Rule, types::TypeInfo};
+use crate::{parser::Rule, type_engine::TypeInfo};
 use crate::{CodeBlock, Ident};
 use either::Either;
 use pest;
 use pest::iterators::Pair;
-use std::collections::HashMap;
 use std::collections::VecDeque;
 
 mod asm;
@@ -115,7 +114,7 @@ pub enum Expression<'sc> {
         call_path: CallPath<'sc>,
         args: Vec<Expression<'sc>>,
         span: Span<'sc>,
-        type_arguments: Vec<TypeInfo<'sc>>,
+        type_arguments: Vec<TypeInfo>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
@@ -173,7 +172,6 @@ impl<'sc> Expression<'sc> {
     pub(crate) fn parse_from_pair(
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
@@ -183,7 +181,7 @@ impl<'sc> Expression<'sc> {
         // first expr is always here
         let first_expr = expr_iter.next().unwrap();
         let first_expr = check!(
-            Expression::parse_from_pair_inner(first_expr.clone(), config, docstrings),
+            Expression::parse_from_pair_inner(first_expr.clone(), config),
             Expression::Unit {
                 span: Span {
                     span: first_expr.as_span(),
@@ -213,7 +211,7 @@ impl<'sc> Expression<'sc> {
             // an op is necessarily followed by an expression
             let next_expr = match expr_iter.next() {
                 Some(o) => check!(
-                    Expression::parse_from_pair_inner(o.clone(), config, docstrings),
+                    Expression::parse_from_pair_inner(o.clone(), config),
                     Expression::Unit {
                         span: Span {
                             span: o.as_span(),
@@ -267,7 +265,6 @@ impl<'sc> Expression<'sc> {
     pub(crate) fn parse_from_pair_inner(
         expr: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
@@ -296,7 +293,7 @@ impl<'sc> Expression<'sc> {
                 let mut arguments_buf = Vec::new();
                 for argument in arguments.into_inner() {
                     let arg = check!(
-                        Expression::parse_from_pair(argument.clone(), config, docstrings),
+                        Expression::parse_from_pair(argument.clone(), config),
                         Expression::Unit {
                             span: Span {
                                 span: argument.as_span(),
@@ -316,11 +313,10 @@ impl<'sc> Expression<'sc> {
                 }
             }
             Rule::var_exp => {
-                let mut var_exp_parts = expr.into_inner();
                 // this means that this is something like `!`, `ref`, or `deref` and the next
                 // token is the actual expr value
                 let mut name = None;
-                while let Some(pair) = var_exp_parts.next() {
+                for pair in expr.into_inner() {
                     match pair.as_rule() {
                         Rule::var_name_ident => {
                             name = Some(check!(
@@ -345,7 +341,7 @@ impl<'sc> Expression<'sc> {
                 let mut contents = Vec::new();
                 for expr in array_exps {
                     contents.push(check!(
-                        Expression::parse_from_pair(expr, config, docstrings),
+                        Expression::parse_from_pair(expr, config),
                         Expression::Unit { span: span.clone() },
                         warnings,
                         errors
@@ -356,7 +352,7 @@ impl<'sc> Expression<'sc> {
             Rule::match_expression => {
                 let mut expr_iter = expr.into_inner();
                 let primary_expression = check!(
-                    Expression::parse_from_pair(expr_iter.next().unwrap(), config, docstrings),
+                    Expression::parse_from_pair(expr_iter.next().unwrap(), config),
                     Expression::Unit { span: span.clone() },
                     warnings,
                     errors
@@ -365,7 +361,7 @@ impl<'sc> Expression<'sc> {
                 let mut branches = Vec::new();
                 for exp in expr_iter {
                     let res = check!(
-                        MatchBranch::parse_from_pair(exp, config, docstrings),
+                        MatchBranch::parse_from_pair(exp, config),
                         MatchBranch {
                             condition: MatchCondition::CatchAll,
                             result: Expression::Unit { span: span.clone() },
@@ -405,7 +401,7 @@ impl<'sc> Expression<'sc> {
                         path: path.clone(),
                     };
                     let value = check!(
-                        Expression::parse_from_pair(fields[i + 1].clone(), config, docstrings),
+                        Expression::parse_from_pair(fields[i + 1].clone(), config),
                         Expression::Unit { span: span.clone() },
                         warnings,
                         errors
@@ -421,15 +417,11 @@ impl<'sc> Expression<'sc> {
             }
             Rule::parenthesized_expression => {
                 let expr = check!(
-                    Expression::parse_from_pair(
-                        expr.clone().into_inner().next().unwrap(),
-                        config,
-                        docstrings
-                    ),
+                    Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config),
                     Expression::Unit {
                         span: Span {
                             span: expr.as_span(),
-                            path: path.clone()
+                            path,
                         }
                     },
                     warnings,
@@ -443,11 +435,10 @@ impl<'sc> Expression<'sc> {
                     path,
                 };
                 let expr = check!(
-                    crate::CodeBlock::parse_from_pair(expr, config, docstrings),
+                    crate::CodeBlock::parse_from_pair(expr, config),
                     crate::CodeBlock {
                         contents: Vec::new(),
                         whole_block_span,
-                        scope: Default::default()
                     },
                     warnings,
                     errors
@@ -460,33 +451,32 @@ impl<'sc> Expression<'sc> {
             Rule::if_exp => {
                 let span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 let mut if_exp_pairs = expr.into_inner();
                 let condition_pair = if_exp_pairs.next().unwrap();
                 let then_pair = if_exp_pairs.next().unwrap();
                 let else_pair = if_exp_pairs.next();
                 let condition = Box::new(check!(
-                    Expression::parse_from_pair(condition_pair, config, docstrings),
+                    Expression::parse_from_pair(condition_pair, config),
                     Expression::Unit { span: span.clone() },
                     warnings,
                     errors
                 ));
                 let then = Box::new(check!(
-                    Expression::parse_from_pair_inner(then_pair, config, docstrings),
+                    Expression::parse_from_pair_inner(then_pair, config),
                     Expression::Unit { span: span.clone() },
                     warnings,
                     errors
                 ));
-                let r#else = match else_pair {
-                    Some(else_pair) => Some(Box::new(check!(
-                        Expression::parse_from_pair_inner(else_pair, config, docstrings),
+                let r#else = else_pair.map(|else_pair| {
+                    Box::new(check!(
+                        Expression::parse_from_pair_inner(else_pair, config),
                         Expression::Unit { span: span.clone() },
                         warnings,
                         errors
-                    ))),
-                    None => None,
-                };
+                    ))
+                });
                 Expression::IfExp {
                     condition,
                     then,
@@ -497,10 +487,10 @@ impl<'sc> Expression<'sc> {
             Rule::asm_expression => {
                 let whole_block_span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 let asm = check!(
-                    AsmExpression::parse_from_pair(expr, config, docstrings),
+                    AsmExpression::parse_from_pair(expr, config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -543,7 +533,7 @@ impl<'sc> Expression<'sc> {
                         let mut arguments_buf = VecDeque::new();
                         for argument in function_arguments {
                             let arg = check!(
-                                Expression::parse_from_pair(argument.clone(), config, docstrings),
+                                Expression::parse_from_pair(argument.clone(), config),
                                 Expression::Unit {
                                     span: Span {
                                         span: argument.as_span(),
@@ -561,8 +551,7 @@ impl<'sc> Expression<'sc> {
                         let mut expr = check!(
                             parse_call_item(
                                 name_parts.next().expect("guaranteed by grammar"),
-                                config,
-                                docstrings
+                                config
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -653,11 +642,7 @@ impl<'sc> Expression<'sc> {
                         if let Some(arguments) = arguments {
                             for argument in arguments.into_inner() {
                                 let arg = check!(
-                                    Expression::parse_from_pair(
-                                        argument.clone(),
-                                        config,
-                                        docstrings
-                                    ),
+                                    Expression::parse_from_pair(argument.clone(), config),
                                     Expression::Unit {
                                         span: Span {
                                             span: argument.as_span(),
@@ -685,7 +670,7 @@ impl<'sc> Expression<'sc> {
                 // up in libraries
                 let span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 let mut parts = expr.into_inner();
                 let path_component = parts.next().unwrap();
@@ -701,7 +686,7 @@ impl<'sc> Expression<'sc> {
                     let mut buf = vec![];
                     for exp in inst.into_inner() {
                         let exp = check!(
-                            Expression::parse_from_pair(exp, config, docstrings),
+                            Expression::parse_from_pair(exp, config),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -727,13 +712,12 @@ impl<'sc> Expression<'sc> {
             Rule::unit => Expression::Unit {
                 span: Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 },
             },
             Rule::struct_field_access => {
                 let inner = expr.into_inner().next().expect("guaranteed by grammar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
-                let name_parts = inner.into_inner().collect::<Vec<_>>();
 
                 // treat parent as one expr, final name as the field to be accessed
                 // if there are multiple fields, this is a nested expression
@@ -741,13 +725,9 @@ impl<'sc> Expression<'sc> {
                 // of field `b` on `a`
                 // the first thing is either an exp or a var, everything subsequent must be
                 // a field
-                let mut name_parts = name_parts.into_iter();
+                let mut name_parts = inner.into_inner();
                 let mut expr = check!(
-                    parse_call_item(
-                        name_parts.next().expect("guaranteed by grammar"),
-                        config,
-                        docstrings
-                    ),
+                    parse_call_item(name_parts.next().expect("guaranteed by grammar"), config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -774,7 +754,7 @@ impl<'sc> Expression<'sc> {
             Rule::abi_cast => {
                 let span = Span {
                     span: expr.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 let mut iter = expr.into_inner();
                 let _abi_keyword = iter.next();
@@ -787,7 +767,7 @@ impl<'sc> Expression<'sc> {
                 );
                 let address = iter.next().expect("guaranteed by grammar");
                 let address = check!(
-                    Expression::parse_from_pair(address, config, docstrings),
+                    Expression::parse_from_pair(address, config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -800,7 +780,7 @@ impl<'sc> Expression<'sc> {
             }
             Rule::unary_op_expr => {
                 check!(
-                    convert_unary_to_fn_calls(expr, config, docstrings),
+                    convert_unary_to_fn_calls(expr, config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -824,7 +804,7 @@ impl<'sc> Expression<'sc> {
                 Expression::Unit {
                     span: Span {
                         span: expr.as_span(),
-                        path: path.clone(),
+                        path,
                     },
                 }
             }
@@ -836,7 +816,6 @@ impl<'sc> Expression<'sc> {
 fn convert_unary_to_fn_calls<'sc>(
     item: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
-    docstrings: &mut HashMap<String, String>,
 ) -> CompileResult<'sc, Expression<'sc>> {
     let iter = item.into_inner();
     let mut unary_stack = vec![];
@@ -859,7 +838,7 @@ fn convert_unary_to_fn_calls<'sc>(
             )),
             _ => {
                 expr = Some(check!(
-                    Expression::parse_from_pair_inner(item, config, docstrings),
+                    Expression::parse_from_pair_inner(item, config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -886,7 +865,6 @@ fn convert_unary_to_fn_calls<'sc>(
 fn parse_call_item<'sc>(
     item: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
-    docstrings: &mut HashMap<String, String>,
 ) -> CompileResult<'sc, Expression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -906,7 +884,7 @@ fn parse_call_item<'sc>(
             },
         },
         Rule::expr => check!(
-            Expression::parse_from_pair(item, config, docstrings),
+            Expression::parse_from_pair(item, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -942,7 +920,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
                 op: a,
                 span: Span {
                     span: op.as_span(),
-                    path: path.clone(),
+                    path,
                 },
             });
             return err(Vec::new(), errors);
@@ -952,7 +930,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
         Op {
             span: Span {
                 span: op.as_span(),
-                path: path.clone(),
+                path,
             },
             op_variant,
         },
@@ -1100,11 +1078,11 @@ fn arrange_by_order_of_operations<'sc>(
                                 call_path: CallPath {
                                     prefixes: vec![
                                         Ident {
-                                            primary_name: "std".into(),
+                                            primary_name: "std",
                                             span: new_op.span.clone(),
                                         },
                                         Ident {
-                                            primary_name: "ops".into(),
+                                            primary_name: "ops",
                                             span: new_op.span.clone(),
                                         },
                                     ],
@@ -1160,11 +1138,11 @@ fn arrange_by_order_of_operations<'sc>(
                     call_path: CallPath {
                         prefixes: vec![
                             Ident {
-                                primary_name: "std".into(),
+                                primary_name: "std",
                                 span: op.span.clone(),
                             },
                             Ident {
-                                primary_name: "ops".into(),
+                                primary_name: "ops",
                                 span: op.span.clone(),
                             },
                         ],

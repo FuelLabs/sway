@@ -30,21 +30,18 @@ impl Backend {
     fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
         let curr_dir = std::env::current_dir().unwrap();
 
-        match find_manifest_dir(&curr_dir) {
-            Some(path) => {
-                let files = get_sway_files(path);
+        if let Some(path) = find_manifest_dir(&curr_dir) {
+            let files = get_sway_files(path);
 
-                for file_path in files {
-                    if let Some(path) = file_path.to_str() {
-                        // store the document
-                        let text_document = TextDocument::build_from_path(path)?;
-                        self.session.store_document(text_document)?;
-                        // parse the document for tokens
-                        let _ = self.session.parse_document(path);
-                    }
+            for file_path in files {
+                if let Some(path) = file_path.to_str() {
+                    // store the document
+                    let text_document = TextDocument::build_from_path(path)?;
+                    self.session.store_document(text_document)?;
+                    // parse the document for tokens
+                    let _ = self.session.parse_document(path);
                 }
             }
-            _ => {}
         }
 
         Ok(())
@@ -76,6 +73,12 @@ impl LanguageServer for Backend {
                     trigger_characters: None,
                     ..Default::default()
                 }),
+                rename_provider: Some(lsp::OneOf::Right(lsp::RenameOptions {
+                    prepare_provider: Some(true),
+                    work_done_progress_options: lsp::WorkDoneProgressOptions {
+                        work_done_progress: Some(true),
+                    },
+                })),
                 execute_command_provider: Some(lsp::ExecuteCommandOptions {
                     commands: vec![],
                     ..Default::default()
@@ -194,6 +197,23 @@ impl LanguageServer for Backend {
         params: lsp::DocumentFormattingParams,
     ) -> jsonrpc::Result<Option<Vec<lsp::TextEdit>>> {
         Ok(capabilities::formatting::format_document(
+            self.session.clone(),
+            params,
+        ))
+    }
+
+    async fn rename(
+        &self,
+        params: lsp::RenameParams,
+    ) -> jsonrpc::Result<Option<lsp::WorkspaceEdit>> {
+        Ok(capabilities::rename::rename(self.session.clone(), params))
+    }
+
+    async fn prepare_rename(
+        &self,
+        params: lsp::TextDocumentPositionParams,
+    ) -> jsonrpc::Result<Option<lsp::PrepareRenameResponse>> {
+        Ok(capabilities::rename::prepare_rename(
             self.session.clone(),
             params,
         ))

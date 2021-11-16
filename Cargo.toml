@@ -5,11 +5,10 @@ members = [
     "core-types",
     "forc",
     "formatter",
-    "fuel-abi-cli",
-    "fuels-rs",
-    "fuels-abigen-macro",
     "sway-server",
-    "test"
+    "test",
+    "docstrings",
+    "parser"
 ]
 
 [profile.dev.package.sway-server]

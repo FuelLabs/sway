@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    error::*, parse_tree::*, span::Span, types::IntegerBits, AstNode, AstNodeContent, CodeBlock,
-    Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
+    error::*, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode, AstNodeContent,
+    CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -13,11 +13,8 @@ use crate::{
 pub(crate) fn order_ast_nodes_by_dependency<'sc>(
     nodes: Vec<AstNode<'sc>>,
 ) -> CompileResult<'sc, Vec<AstNode<'sc>>> {
-    let decl_dependencies = DependencyMap::from_iter(
-        nodes
-            .iter()
-            .filter_map(|node| Dependencies::gather_from_decl_node(node)),
-    );
+    let decl_dependencies =
+        DependencyMap::from_iter(nodes.iter().filter_map(Dependencies::gather_from_decl_node));
 
     // Check here for recursive calls now that we have a nice map of the dependencies to help us.
     let mut errors = find_recursive_calls(&decl_dependencies);
@@ -224,14 +221,14 @@ impl<'sc> Dependencies<'sc> {
                 body,
                 ..
             }) => self
-                .gather_from_option_typeinfo(type_ascription)
+                .gather_from_typeinfo(type_ascription)
                 .gather_from_expr(body),
             Declaration::ConstantDeclaration(ConstantDeclaration {
                 type_ascription,
                 value,
                 ..
             }) => self
-                .gather_from_option_typeinfo(type_ascription)
+                .gather_from_typeinfo(type_ascription)
                 .gather_from_expr(value),
             Declaration::FunctionDeclaration(fn_decl) => self.gather_from_fn_decl(fn_decl),
             Declaration::StructDeclaration(StructDeclaration {
@@ -358,8 +355,9 @@ impl<'sc> Dependencies<'sc> {
                 fields,
                 ..
             } => {
-                self.deps
-                    .insert(DependentSymbol::Symbol(struct_name.primary_name));
+                self.deps.insert(DependentSymbol::Symbol(
+                    struct_name.primary_name.to_string(),
+                ));
                 self.gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
                 })
@@ -443,13 +441,14 @@ impl<'sc> Dependencies<'sc> {
             self.deps.insert(if is_fn_app {
                 DependentSymbol::Fn(call_path.suffix.primary_name, None)
             } else {
-                DependentSymbol::Symbol(call_path.suffix.primary_name)
+                DependentSymbol::Symbol(call_path.suffix.primary_name.to_string())
             });
         } else if use_prefix && call_path.prefixes.len() == 1 {
             // Here we can use the prefix (e.g., for 'Enum::Variant' -> 'Enum') as long is it's
             // only a single element.
-            self.deps
-                .insert(DependentSymbol::Symbol(call_path.prefixes[0].primary_name));
+            self.deps.insert(DependentSymbol::Symbol(
+                call_path.prefixes[0].primary_name.to_string(),
+            ));
         }
         self
     }
@@ -457,25 +456,19 @@ impl<'sc> Dependencies<'sc> {
     fn gather_from_traits(mut self, type_parameters: &[TypeParameter<'sc>]) -> Self {
         for type_param in type_parameters {
             for constraint in &type_param.trait_constraints {
-                self.deps
-                    .insert(DependentSymbol::Symbol(constraint.name.primary_name));
+                self.deps.insert(DependentSymbol::Symbol(
+                    constraint.name.primary_name.to_string(),
+                ));
             }
         }
         self
     }
 
-    fn gather_from_typeinfo(mut self, type_info: &TypeInfo<'sc>) -> Self {
+    fn gather_from_typeinfo(mut self, type_info: &TypeInfo) -> Self {
         if let TypeInfo::Custom { name } = type_info {
-            self.deps.insert(DependentSymbol::Symbol(name.primary_name));
+            self.deps.insert(DependentSymbol::Symbol(name.clone()));
         }
         self
-    }
-
-    fn gather_from_option_typeinfo(self, opt_type_info: &Option<TypeInfo<'sc>>) -> Self {
-        match opt_type_info {
-            None => self,
-            Some(type_info) => self.gather_from_typeinfo(type_info),
-        }
     }
 
     fn gather_from_iter<I: Iterator, F: FnMut(Self, I::Item) -> Self>(self, iter: I, f: F) -> Self {
@@ -494,9 +487,9 @@ impl<'sc> Dependencies<'sc> {
 
 #[derive(Debug, Eq)]
 enum DependentSymbol<'sc> {
-    Symbol(&'sc str),
+    Symbol(String),
     Fn(&'sc str, Option<Span<'sc>>),
-    Impl(&'sc str, &'sc str), // Trait or self, and type implementing for.
+    Impl(&'sc str, String), // Trait or self, and type implementing for.
 }
 
 // We'll use a custom Hash and PartialEq here to explicitly ignore the span in the Fn variant.
@@ -531,7 +524,7 @@ impl<'sc> Hash for DependentSymbol<'sc> {
 
 fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
     let dep_sym = |name| Some(DependentSymbol::Symbol(name));
-    let impl_sym = |trait_name, type_info: &TypeInfo<'sc>| {
+    let impl_sym = |trait_name, type_info: &TypeInfo| {
         Some(DependentSymbol::Impl(trait_name, type_info_name(type_info)))
     };
 
@@ -541,11 +534,11 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
             decl.name.primary_name,
             Some(decl.span.clone()),
         )),
-        Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.primary_name),
-        Declaration::StructDeclaration(decl) => dep_sym(decl.name.primary_name),
-        Declaration::EnumDeclaration(decl) => dep_sym(decl.name.primary_name),
-        Declaration::TraitDeclaration(decl) => dep_sym(decl.name.primary_name),
-        Declaration::AbiDeclaration(decl) => dep_sym(decl.name.primary_name),
+        Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
+        Declaration::StructDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
+        Declaration::EnumDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
+        Declaration::TraitDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
+        Declaration::AbiDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl) => impl_sym("self", &decl.type_implementing_for),
@@ -566,7 +559,9 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
     }
 }
 
-fn type_info_name<'sc>(type_info: &TypeInfo<'sc>) -> &'sc str {
+/// This is intentionally different from [[TypeInfo::friendly_type_str]] because it
+/// is used for keys and values in the tree.
+fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
         TypeInfo::Str(_) => "str",
         TypeInfo::UnsignedInteger(n) => match n {
@@ -576,7 +571,7 @@ fn type_info_name<'sc>(type_info: &TypeInfo<'sc>) -> &'sc str {
             IntegerBits::SixtyFour => "uint64",
         },
         TypeInfo::Boolean => "bool",
-        TypeInfo::Custom { name } => name.primary_name,
+        TypeInfo::Custom { name } => name,
         TypeInfo::Unit => "unit",
         TypeInfo::SelfType => "self",
         TypeInfo::Byte => "byte",
@@ -584,7 +579,13 @@ fn type_info_name<'sc>(type_info: &TypeInfo<'sc>) -> &'sc str {
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
+        TypeInfo::Ref(x) => return format!("T{}", x),
+        TypeInfo::Unknown => "unknown",
+        TypeInfo::ContractCaller { .. } => "contract caller",
+        TypeInfo::Struct { .. } => "struct",
+        TypeInfo::Enum { .. } => "enum",
     }
+    .to_string()
 }
 
 // -------------------------------------------------------------------------------------------------

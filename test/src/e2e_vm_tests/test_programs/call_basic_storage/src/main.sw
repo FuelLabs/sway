@@ -3,7 +3,7 @@ use basic_storage_abi::StoreU64;
 use basic_storage_abi::StoreU64Request;
 
 fn main() -> u64 {
-  let addr = abi(StoreU64,0xf74fceb7216df5753a1205d69fa9cc0e54c5b22569a1eae891e97d4f1306ce3a);       
+  let addr = abi(StoreU64, 0x145be2230354cac71a59580f00793ec67d2789b983025e1107867560360e007b);       
   let req = StoreU64Request {
     key: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
     value: 4242

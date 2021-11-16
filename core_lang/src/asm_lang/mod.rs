@@ -646,6 +646,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::MEQ(r1, r2, r3, r4)
                 }
+                "mcpi" => {
+                    let (r1, r2, imm) = check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::MCPI(r1, r2, imm)
+                }
                 "sb" => {
                     let (r1, r2, imm) = check!(
                         two_regs_imm_12(args, immediate, whole_op_span),
@@ -872,6 +881,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::FLAG(r1)
                 }
+                "gm" => {
+                    let (r1, imm) = check!(
+                        single_reg_imm_18(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::GM(r1, imm)
+                }
 
                 other => {
                     errors.push(CompileError::UnrecognizedOp {
@@ -1084,7 +1102,7 @@ fn single_imm_24<'sc>(
 ) -> CompileResult<'sc, VirtualImmediate24> {
     let warnings = vec![];
     let mut errors = vec![];
-    if args.len() > 0 {
+    if !args.is_empty() {
         errors.push(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
             expected: 0,
@@ -1276,6 +1294,7 @@ impl fmt::Display for Op<'_> {
                 MCL(a, b) => format!("mcl {} {}", a, b),
                 MCLI(a, b) => format!("mcli {} {}", a, b),
                 MCP(a, b, c) => format!("mcp {} {} {}", a, b, c),
+                MCPI(a, b, c) => format!("mcpi {} {} {}", a, b, c),
                 MEQ(a, b, c, d) => format!("meq {} {} {} {}", a, b, c, d),
                 SB(a, b, c) => format!("sb {} {} {}", a, b, c),
                 SW(a, b, c) => format!("sw {} {} {}", a, b, c),
@@ -1303,7 +1322,8 @@ impl fmt::Display for Op<'_> {
                 S256(a, b, c) => format!("s256 {} {} {}", a, b, c),
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
-                Undefined => format!("undefined op"),
+                GM(a, b) => format!("gm {} {}", a, b),
+                Undefined => "undefined op".into(),
                 VirtualOp::DataSectionOffsetPlaceholder => "data section offset placeholder".into(),
                 DataSectionRegisterLoadPlaceholder => {
                     "data section register load placeholder".into()
@@ -1315,16 +1335,16 @@ impl fmt::Display for Op<'_> {
                 Jump(label) => format!("jump {}", label),
                 JumpIfNotEq(reg0, reg1, label) => format!("jnei {} {} {}", reg0, reg1, label),
                 OrganizationalOp::DataSectionOffsetPlaceholder => {
-                    format!("data section offset placeholder")
+                    "data section offset placeholder".into()
                 }
             },
         };
         // we want the comment to always be 40 characters offset to the right
         // to not interfere with the ASM but to be aligned
         let mut op_and_comment = op_str;
-        if self.comment.len() > 0 {
+        if !self.comment.is_empty() {
             while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push_str(" ");
+                op_and_comment.push(' ');
             }
             op_and_comment.push_str(&format!("; {}", self.comment))
         }

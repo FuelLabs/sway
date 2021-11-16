@@ -5,8 +5,8 @@ use crate::{
         RegisterSequencer,
     },
     asm_lang::VirtualImmediate12,
-    semantic_analysis::ast_node::{ReassignmentLhs, TypedReassignment, TypedStructField},
-    types::{MaybeResolvedType, ResolvedType},
+    semantic_analysis::ast_node::{OwnedTypedStructField, ReassignmentLhs, TypedReassignment},
+    type_engine::{resolve_type, TypeInfo},
 };
 
 pub(crate) fn convert_reassignment_to_asm<'sc>(
@@ -79,21 +79,17 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             let mut iter = reassignment.lhs.iter();
             let (mut fields, top_level_decl) = match iter
                 .next()
-                .map(
-                    |ReassignmentLhs { r#type, name }| -> Result<_, CompileError<'sc>> {
-                        match r#type {
-                            MaybeResolvedType::Resolved(ResolvedType::Struct {
-                                ref fields,
-                                ..
-                            }) => Ok((fields.clone(), name)),
-                            a => Err(CompileError::NotAStruct {
-                                name: name.primary_name.to_string(),
-                                span: name.span.clone(),
-                                actually: a.friendly_type_str(),
-                            }),
-                        }
-                    },
-                )
+                .map(|ReassignmentLhs { r#type, name }| -> Result<_, _> {
+                    match resolve_type(*r#type, &name.span) {
+                        Ok(TypeInfo::Struct { ref fields, .. }) => Ok((fields.clone(), name)),
+                        Ok(ref a) => Err(CompileError::NotAStruct {
+                            name: name.primary_name.to_string(),
+                            span: name.span.clone(),
+                            actually: a.friendly_type_str(),
+                        }),
+                        Err(a) => Err(CompileError::TypeError(a)),
+                    }
+                })
                 .expect("Empty structs not allowed yet")
             {
                 Ok(o) => o,
@@ -106,11 +102,17 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // delve into this potentially nested field access and figure out the location of this
             // subfield
             for ReassignmentLhs { r#type, name } in iter {
+                let r#type = match resolve_type(*r#type, &name.span) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        errors.push(CompileError::TypeError(e));
+                        TypeInfo::ErrorRecovery
+                    }
+                };
+                // TODO(static span) use spans instead of strings below
                 let fields_for_layout = fields
                     .iter()
-                    .map(|TypedStructField { name, r#type, .. }| {
-                        (MaybeResolvedType::Resolved(r#type.clone()), name)
-                    })
+                    .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, name.as_str()))
                     .collect::<Vec<_>>();
                 let field_layout = check!(
                     get_struct_memory_layout(&fields_for_layout[..]),
@@ -126,9 +128,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 );
                 offset_in_words += offset_of_this_field;
                 fields = match r#type {
-                    MaybeResolvedType::Resolved(ResolvedType::Struct { ref fields, .. }) => {
-                        fields.clone()
-                    }
+                    TypeInfo::Struct { ref fields, .. } => fields.clone(),
                     a => {
                         errors.push(CompileError::NotAStruct {
                             name: name.primary_name.to_string(),
@@ -140,7 +140,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 };
             }
             let ptr = check!(
-                namespace.look_up_variable(&top_level_decl),
+                namespace.look_up_variable(top_level_decl),
                 return err(warnings, errors),
                 warnings,
                 errors

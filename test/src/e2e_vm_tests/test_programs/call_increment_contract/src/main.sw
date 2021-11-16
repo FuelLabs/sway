@@ -2,7 +2,7 @@ script;
 use increment_abi::Incrementor;
 use std::constants::ETH_COLOR;
 fn main() {
-  let abi = abi(Incrementor, 0xe50103684750e4916cd9825b14cf7e6763ffcc6523a9e0af63de93dbd6e3d736);   
+  let abi = abi(Incrementor, 0x1c1034f66a300fb0af4d3dcfba823e6237d329ce823f4e2a7f517b330ea5e875);   
   abi.initialize(10000, 0, ETH_COLOR, 0); // comment this line out to just increment without initializing
   abi.increment(10000, 0, ETH_COLOR, 5);
   let result = abi.increment(10000, 0, ETH_COLOR, 5);

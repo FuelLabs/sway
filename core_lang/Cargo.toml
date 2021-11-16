@@ -16,7 +16,7 @@ fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
 hex = { version = "0.4", optional = true }
 Inflector = { git = "https://github.com/sezna/Inflector.git" }
 pest_derive = "2.0"
-pest = { git = "https://github.com/sezna/pest.git" , rev = "8aa58791f759daf4caee26e8560e862df5a6afb7" }
+pest = { git = "https://github.com/sezna/pest.git" , rev = "0ee8d107923f8979897efbd12e16a0eb99ea98b3" }
 petgraph = "0.5"
 sha2 = "0.9"
 structopt = { version = "0.3", default-features = false, optional = true }
@@ -24,7 +24,9 @@ thiserror = "1.0"
 uuid-b64 = "0.1"
 line-col = "0.2"
 source-span = "2.4"
-fuels-rs = {path = "../fuels-rs"}
+core-types = { path = "../core-types" }
+lazy_static = "1.4"
+
 
 [[bin]]
 name = "selector-debug"

@@ -3,8 +3,7 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_main_file, print_on_failure, print_on_success_library,
-        print_on_success_script, read_manifest,
+        find_manifest_dir, read_manifest, get_main_file, print_on_success_library, print_on_success_script, print_on_failure
     },
 };
 
@@ -13,10 +12,10 @@ use core_lang::{
 };
 
 use anyhow::Result;
-use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     // find manifest directory, even if in subdirectory
@@ -60,7 +59,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     };
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.clone().to_path_buf(),
+        file_name.to_path_buf(),
         manifest_dir.clone(),
     )
     .print_finalized_asm(print_finalized_asm)
@@ -106,8 +105,8 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
             compile_dependency_lib(
                 &this_dir,
-                &dependency_name,
-                &dependency_details,
+                dependency_name,
+                dependency_details,
                 &mut namespace,
                 &mut dependency_graph,
                 silent_mode,
@@ -139,7 +138,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
 fn compile_dependency_lib<'source, 'manifest>(
-    project_file_path: &PathBuf,
+    project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
@@ -166,7 +165,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         };
 
     // dependency paths are relative to the path of the project being compiled
-    let mut project_path = project_file_path.clone();
+    let mut project_path = PathBuf::from(project_file_path);
     project_path.push(dep_path);
 
     // compile the dependencies of this dependency
@@ -192,21 +191,21 @@ fn compile_dependency_lib<'source, 'manifest>(
     };
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.clone().to_path_buf(),
+        file_name.to_path_buf(),
         manifest_dir.clone(),
     );
     let mut dep_namespace = namespace.clone();
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {
-        for dep in deps {
+        for (dependency_name, dependency_lib) in deps {
             // to do this properly, iterate over list of dependencies make sure there are no
             // circular dependencies
             //return Err("Unimplemented: dependencies that have dependencies".into());
             compile_dependency_lib(
                 project_file_path,
-                &dep.0,
-                &dep.1,
+                dependency_name,
+                dependency_lib,
                 // give it a cloned namespace, which we then merge with this namespace
                 &mut dep_namespace,
                 dependency_graph,
@@ -221,7 +220,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         main_file,
         &manifest_of_dep.project.name,
         &dep_namespace,
-        build_config.clone(),
+        build_config,
         dependency_graph,
         silent_mode,
     )?;
@@ -232,7 +231,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     Ok(())
 }
 
-fn compile_library<'source, 'manifest>(
+fn compile_library<'source>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
@@ -240,7 +239,7 @@ fn compile_library<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
+    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
             exports, warnings, ..
@@ -261,7 +260,7 @@ fn compile_library<'source, 'manifest>(
     }
 }
 
-fn compile<'source, 'manifest>(
+fn compile<'source>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
@@ -269,7 +268,7 @@ fn compile<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(&source, namespace, build_config, dependency_graph);
+    let res = core_lang::compile_to_bytecode(source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             print_on_success_script(silent_mode, proj_name, warnings);

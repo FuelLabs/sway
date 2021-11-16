@@ -1,6 +1,6 @@
 # Scripts
 
-A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract.
+A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract. A script can return a value of any type.
 
 This example script calls a contract.
 
@@ -9,7 +9,7 @@ script;
 
 use example_contract::MyContract;
 
-struct InputStruct { 
+struct InputStruct {
   field_1: bool,
   field_2: u64
 }

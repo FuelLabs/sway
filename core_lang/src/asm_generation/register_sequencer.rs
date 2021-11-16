@@ -16,12 +16,12 @@ impl RegisterSequencer {
     /// Choosing to not use the iterator trait, because this iterator goes on forever and thusly
     /// does not need to return an `Option<Item>`.
     pub(crate) fn next(&mut self) -> VirtualRegister {
-        let next_val = self.next_register.clone();
+        let next_val = self.next_register;
         self.next_register += 1;
         VirtualRegister::Virtual(next_val.to_string())
     }
     pub(crate) fn get_label(&mut self) -> Label {
-        let next_val = self.next_jump_label.clone();
+        let next_val = self.next_jump_label;
         self.next_jump_label += 1;
         Label(next_val)
     }

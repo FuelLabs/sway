@@ -39,11 +39,16 @@ impl Token {
         if other_token.token_type == self.token_type {
             true
         } else {
-            match (&other_token.token_type, &self.token_type) {
-                (TokenType::FunctionApplication, TokenType::FunctionDeclaration(_)) => true,
-                (TokenType::FunctionDeclaration(_), TokenType::FunctionApplication) => true,
-                _ => false,
-            }
+            matches!(
+                (&other_token.token_type, &self.token_type),
+                (
+                    TokenType::FunctionApplication,
+                    TokenType::FunctionDeclaration(_)
+                ) | (
+                    TokenType::FunctionDeclaration(_),
+                    TokenType::FunctionApplication
+                ),
+            )
         }
     }
 
@@ -54,7 +59,7 @@ impl Token {
     pub fn from_variable(var_dec: &VariableDeclaration) -> Self {
         let ident = &var_dec.name;
         let name = ident.primary_name;
-        let var_body = extract_var_body(&var_dec);
+        let var_body = extract_var_body(var_dec);
 
         Token::new(
             &ident.span,
@@ -75,10 +80,10 @@ impl Token {
     }
 
     pub fn is_initial_declaration(&self) -> bool {
-        match self.token_type {
-            TokenType::Reassignment | TokenType::FunctionApplication => false,
-            _ => true,
-        }
+        matches!(
+            self.token_type,
+            TokenType::Reassignment | TokenType::FunctionApplication
+        )
     }
 }
 
@@ -128,7 +133,7 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
 
         Declaration::TraitDeclaration(trait_dec) => {
             let ident = &trait_dec.name;
-            let token = Token::from_ident(&ident, TokenType::Trait(get_trait_details(&trait_dec)));
+            let token = Token::from_ident(ident, TokenType::Trait(get_trait_details(&trait_dec)));
             tokens.push(token);
 
             // todo
@@ -137,7 +142,7 @@ fn handle_declaration(declaration: Declaration, tokens: &mut Vec<Token>) {
         Declaration::StructDeclaration(struct_dec) => {
             let ident = &struct_dec.name;
             let token =
-                Token::from_ident(&ident, TokenType::Struct(get_struct_details(&struct_dec)));
+                Token::from_ident(ident, TokenType::Struct(get_struct_details(&struct_dec)));
             tokens.push(token);
         }
         Declaration::EnumDeclaration(enum_dec) => {

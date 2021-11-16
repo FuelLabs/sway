@@ -1,12 +1,12 @@
 use crate::build_config::BuildConfig;
 use crate::span::Span;
-use crate::{error::*, types::TypeInfo, Ident};
+use crate::{error::*, type_engine::TypeInfo, Ident};
 use crate::{CompileError, Rule};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TypeParameter<'sc> {
-    pub(crate) name: TypeInfo<'sc>,
+    pub(crate) name: TypeInfo,
     pub(crate) name_ident: Ident<'sc>,
     pub(crate) trait_constraints: Vec<TraitConstraint<'sc>>,
 }
@@ -49,52 +49,49 @@ impl<'sc> TypeParameter<'sc> {
                         Vec::new(),
                         vec![CompileError::UnexpectedWhereClause(Span {
                             span: where_clause_pair.as_span(),
-                            path: path.clone(),
+                            path,
                         })],
                     );
                 }
                 Vec::new()
             }
         };
-        match where_clause_pair {
-            Some(where_clause_pair) => {
-                let mut pair = where_clause_pair.into_inner().peekable();
-                while pair.peek().is_some() {
-                    let type_param = pair.next().unwrap();
-                    assert_eq!(type_param.as_rule(), Rule::generic_type_param);
-                    let trait_constraint = pair.next().unwrap();
-                    assert_eq!(trait_constraint.as_rule(), Rule::trait_name);
-                    // assign trait constraints to above parsed type params
-                    // find associated type name
-                    let param_to_edit =
-                        match params.iter_mut().find(|TypeParameter { name_ident, .. }| {
-                            name_ident.primary_name == type_param.as_str()
-                        }) {
-                            Some(o) => o,
-                            None => {
-                                errors.push(CompileError::ConstrainedNonExistentType {
-                                    type_name: type_param.as_str(),
-                                    trait_name: trait_constraint.as_str(),
-                                    span: Span {
-                                        span: trait_constraint.as_span(),
-                                        path: path.clone(),
-                                    },
-                                });
-                                continue;
-                            }
-                        };
+        if let Some(where_clause_pair) = where_clause_pair {
+            let mut pair = where_clause_pair.into_inner().peekable();
+            while pair.peek().is_some() {
+                let type_param = pair.next().unwrap();
+                assert_eq!(type_param.as_rule(), Rule::generic_type_param);
+                let trait_constraint = pair.next().unwrap();
+                assert_eq!(trait_constraint.as_rule(), Rule::trait_name);
+                // assign trait constraints to above parsed type params
+                // find associated type name
+                let param_to_edit =
+                    match params.iter_mut().find(|TypeParameter { name_ident, .. }| {
+                        name_ident.primary_name == type_param.as_str()
+                    }) {
+                        Some(o) => o,
+                        None => {
+                            errors.push(CompileError::ConstrainedNonExistentType {
+                                type_name: type_param.as_str(),
+                                trait_name: trait_constraint.as_str(),
+                                span: Span {
+                                    span: trait_constraint.as_span(),
+                                    path: path.clone(),
+                                },
+                            });
+                            continue;
+                        }
+                    };
 
-                    param_to_edit.trait_constraints.push(TraitConstraint {
-                        name: check!(
-                            Ident::parse_from_pair(trait_constraint, config),
-                            continue,
-                            warnings,
-                            errors
-                        ),
-                    });
-                }
+                param_to_edit.trait_constraints.push(TraitConstraint {
+                    name: check!(
+                        Ident::parse_from_pair(trait_constraint, config),
+                        continue,
+                        warnings,
+                        errors
+                    ),
+                });
             }
-            None => (),
         }
         ok(params, warnings, errors)
     }

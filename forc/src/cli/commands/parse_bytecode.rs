@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use std::fs::{self, File};
 use std::io::Read;
 use structopt::{self, StructOpt};
@@ -17,14 +16,16 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
     let metadata = fs::metadata(&command.file_path)
         .map_err(|_| format!("{}: file not found", command.file_path))?;
     let mut buffer = vec![0; metadata.len() as usize];
-    f.read(&mut buffer).expect("buffer overflow");
+    f.read_exact(&mut buffer).expect("buffer overflow");
     let mut instructions = vec![];
 
     for i in (0..buffer.len()).step_by(4) {
         let i = i as usize;
         let raw = &buffer[i..i + 4];
-        let op = fuel_asm::Opcode::from_bytes_unchecked(raw.try_into().unwrap());
-        instructions.push((raw, op));
+        unsafe {
+            let op = fuel_asm::Opcode::from_bytes_unchecked(raw);
+            instructions.push((raw, op));
+        };
     }
     let mut table = term_table::Table::new();
     table.separate_rows = false;

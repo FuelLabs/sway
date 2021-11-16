@@ -52,6 +52,7 @@ impl AllocatedRegister {
 /// between virtual ops and those which have gone through register allocation.
 /// A bit of copy/paste seemed worth it for that safety,
 /// so here it is.
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Clone, Debug)]
 pub(crate) enum AllocatedOpcode {
     ADD(AllocatedRegister, AllocatedRegister, AllocatedRegister),
@@ -104,6 +105,7 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
         AllocatedRegister,
     ),
+    MCPI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     SB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     SW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     BHSH(AllocatedRegister, AllocatedRegister),
@@ -150,6 +152,7 @@ pub(crate) enum AllocatedOpcode {
     S256(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     NOOP,
     FLAG(AllocatedRegister),
+    GM(AllocatedRegister, VirtualImmediate18),
     Undefined,
     DataSectionOffsetPlaceholder,
     DataSectionRegisterLoadPlaceholder,
@@ -213,6 +216,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             MCLI(a, b)      => format!("mcli {} {}", a, b),
             MCP(a, b, c)    => format!("mcp  {} {} {}", a, b, c),
             MEQ(a, b, c, d) => format!("meq  {} {} {} {}", a, b, c, d),
+            MCPI(a, b, c)   => format!("mcpi {} {} {}", a, b, c),
             SB(a, b, c)     => format!("sb   {} {} {}", a, b, c),
             SW(a, b, c)     => format!("sw   {} {} {}", a, b, c),
             BHSH(a, b)      => format!("bhsh {} {}", a, b),
@@ -239,16 +243,17 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             S256(a, b, c)   => format!("s256 {} {} {}", a, b, c),
             NOOP            => "noop".to_string(),
             FLAG(a)         => format!("flag {}", a),
-            Undefined       => format!("undefined op"),
+            GM(a, b)         => format!("gm {} {}", a, b),
+            Undefined       => "undefined op".into(),
             DataSectionOffsetPlaceholder => "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]".into(),
             DataSectionRegisterLoadPlaceholder => "lw   $ds $is 1".into()
         };
         // we want the comment to always be COMMENT_START_COLUMN characters offset to the right
         // to not interfere with the ASM but to be aligned
         let mut op_and_comment = string;
-        if self.comment.len() > 0 {
+        if !self.comment.is_empty() {
             while op_and_comment.len() < COMMENT_START_COLUMN {
-                op_and_comment.push_str(" ");
+                op_and_comment.push(' ');
             }
             op_and_comment.push_str(&format!("; {}", self.comment))
         }
@@ -313,6 +318,7 @@ impl<'sc> AllocatedOp<'sc> {
             MCLI(a, b)      => VmOp::MCLI(a.to_register_id(), b.value),
             MCP (a, b, c)   => VmOp::MCP (a.to_register_id(), b.to_register_id(), c.to_register_id()),
             MEQ (a, b, c, d)=> VmOp::MEQ (a.to_register_id(), b.to_register_id(), c.to_register_id(), d.to_register_id()),
+            MCPI(a, b, c)   => VmOp::MCPI(a.to_register_id(), b.to_register_id(), c.value),
             SB  (a, b, c)   => VmOp::SB  (a.to_register_id(), b.to_register_id(), c.value),
             SW  (a, b, c)   => VmOp::SW  (a.to_register_id(), b.to_register_id(), c.value),
             BHSH(a, b)      => VmOp::BHSH(a.to_register_id(), b.to_register_id()),
@@ -339,6 +345,7 @@ impl<'sc> AllocatedOp<'sc> {
             S256(a, b, c)   => VmOp::S256(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             NOOP            => VmOp::NOOP,
             FLAG(a)         => VmOp::FLAG(a.to_register_id()),
+            GM(a, b)         => VmOp::GM(a.to_register_id(), b.value),
             Undefined       => VmOp::Undefined,
             DataSectionOffsetPlaceholder => return Either::Right(offset_to_data_section.to_be_bytes()),
             DataSectionRegisterLoadPlaceholder => VmOp::LW(crate::asm_generation::compiler_constants::DATA_SECTION_REGISTER as fuel_asm::RegisterId, ConstantRegister::InstructionStart.to_register_id(), 1),

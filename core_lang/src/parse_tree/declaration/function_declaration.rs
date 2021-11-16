@@ -2,11 +2,10 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parse_tree::declaration::TypeParameter;
 use crate::span::Span;
-use crate::types::TypeInfo;
+use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
 use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
-use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Visibility {
@@ -15,7 +14,7 @@ pub enum Visibility {
 }
 
 impl Visibility {
-    pub(crate) fn parse_from_pair<'sc>(input: Pair<'sc, Rule>) -> Self {
+    pub(crate) fn parse_from_pair(input: Pair<'_, Rule>) -> Self {
         match input.as_str().trim() {
             "pub" => Visibility::Public,
             _ => Visibility::Private,
@@ -30,7 +29,7 @@ pub struct FunctionDeclaration<'sc> {
     pub body: CodeBlock<'sc>,
     pub(crate) parameters: Vec<FunctionParameter<'sc>>,
     pub span: Span<'sc>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type: TypeInfo,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) return_type_span: Span<'sc>,
 }
@@ -39,7 +38,6 @@ impl<'sc> FunctionDeclaration<'sc> {
     pub fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let mut parts = pair.clone().into_inner();
@@ -78,7 +76,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         let mut where_clause_pair = None;
         let mut parameters_pair = None;
         let mut return_type_pair = None;
-        while let Some(pair) = signature.next() {
+        for pair in signature {
             match pair.as_rule() {
                 Rule::type_params => {
                     type_params_pair = Some(pair);
@@ -138,7 +136,7 @@ impl<'sc> FunctionDeclaration<'sc> {
             where_clause_pair,
             config,
         )
-        .unwrap_or_else(&mut warnings, &mut errors, || Vec::new());
+        .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
         // check that all generic types used in function parameters are a part of the type
         // parameters
@@ -178,11 +176,10 @@ impl<'sc> FunctionDeclaration<'sc> {
             path: path.clone(),
         };
         let body = check!(
-            CodeBlock::parse_from_pair(body, config, docstrings),
+            CodeBlock::parse_from_pair(body, config),
             crate::CodeBlock {
                 contents: Vec::new(),
                 whole_block_span,
-                scope: Default::default()
             },
             warnings,
             errors
@@ -196,7 +193,7 @@ impl<'sc> FunctionDeclaration<'sc> {
                 body,
                 span: Span {
                     span: pair.as_span(),
-                    path: path.clone(),
+                    path,
                 },
                 return_type,
                 type_parameters,
@@ -210,7 +207,7 @@ impl<'sc> FunctionDeclaration<'sc> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FunctionParameter<'sc> {
     pub(crate) name: Ident<'sc>,
-    pub(crate) r#type: TypeInfo<'sc>,
+    pub(crate) r#type: TypeInfo,
     pub(crate) type_span: Span<'sc>,
 }
 

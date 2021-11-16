@@ -5,7 +5,6 @@ use crate::parser::Rule;
 use crate::span::Span;
 use crate::Ident;
 use pest::iterators::Pair;
-use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Reassignment<'sc> {
@@ -20,7 +19,6 @@ impl<'sc> Reassignment<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Reassignment<'sc>> {
         let path = config.map(|c| c.path());
         let span = Span {
@@ -35,14 +33,14 @@ impl<'sc> Reassignment<'sc> {
             Rule::variable_reassignment => {
                 let mut iter = variable_or_struct_reassignment.into_inner();
                 let name = check!(
-                    Expression::parse_from_pair_inner(iter.next().unwrap(), config, docstrings),
+                    Expression::parse_from_pair_inner(iter.next().unwrap(), config),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 let body = iter.next().unwrap();
                 let body = check!(
-                    Expression::parse_from_pair(body.clone(), config, docstrings),
+                    Expression::parse_from_pair(body.clone(), config),
                     Expression::Unit {
                         span: Span {
                             span: body.as_span(),
@@ -72,15 +70,14 @@ impl<'sc> Reassignment<'sc> {
                     path: path.clone(),
                 };
                 let body = check!(
-                    Expression::parse_from_pair(rhs, config, docstrings),
+                    Expression::parse_from_pair(rhs, config),
                     Expression::Unit { span: rhs_span },
                     warnings,
                     errors
                 );
 
-                let inner = lhs.into_inner().next().expect("guaranteed by gramar");
+                let inner = lhs.into_inner().next().expect("guaranteed by grammar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
-                let name_parts = inner.into_inner().collect::<Vec<_>>();
 
                 // treat parent as one expr, final name as the field to be accessed
                 // if there are multiple fields, this is a nested expression
@@ -88,7 +85,7 @@ impl<'sc> Reassignment<'sc> {
                 // of field `b` on `a`
                 // the first thing is either an exp or a var, everything subsequent must be
                 // a field
-                let mut name_parts = name_parts.into_iter();
+                let mut name_parts = inner.into_inner();
                 let mut expr = check!(
                     parse_call_item_ensure_only_var(
                         name_parts.next().expect("guaranteed by grammar"),
@@ -159,14 +156,14 @@ fn parse_call_item_ensure_only_var<'sc>(
             ),
             span: Span {
                 span: item.as_span(),
-                path: path.clone(),
+                path,
             },
         },
         Rule::expr => {
             errors.push(CompileError::InvalidExpressionOnLhs {
                 span: Span {
                     span: item.as_span(),
-                    path: path.clone(),
+                    path,
                 },
             });
             return err(warnings, errors);

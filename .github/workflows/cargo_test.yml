@@ -11,6 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+          
       - name: Checkout repository
         uses: actions/checkout@v2
 
@@ -37,19 +42,27 @@ jobs:
 
       - name: Set git config
         run: |
-          git config --global core.bigfilethreshold 100m
+          git config --global core.bigfilethreshold 500m
 
       - name: Check formatting
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all --verbose -- --check
+          args: --all -- --check
+
+      - name: Clone and build fuel-core
+        run: |
+          git clone git@github.com:FuelLabs/fuel-core
+          (cd fuel-core && cargo build -p fuel-core --no-default-features)
+
+      - name: Run fuel-core
+        run: |
+          ./fuel-core/target/debug/fuel-core &
 
       - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --verbose
         env:
           RUSTFLAGS: "-D warnings"
 
@@ -57,12 +70,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --verbose
-
-      - name: Clone and build fuel-core
-        run: |
-          git clone git@github.com:FuelLabs/fuel-core
-          (cd fuel-core && cargo build -p fuel-core)
 
       - name: Build test suite
         uses: actions-rs/cargo@v1
@@ -72,4 +79,4 @@ jobs:
 
       - name: Run test suite
         run: |
-          ./fuel-core/target/debug/fuel-core & ./target/debug/test
+          ./target/debug/test

@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
-pub type Id = [u8; Bytes32::size_of()];
-pub type Contract = [u8; ContractId::size_of()];
+pub type Id = [u8; Bytes32::LEN];
+pub type Contract = [u8; ContractId::LEN];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Position {
@@ -329,4 +329,29 @@ impl Context {
             _ => None,
         }
     }
+}
+
+/// Fuel/Sway ABI representation in JSON, originally
+/// specified here: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md
+/// This type is used by the compiler and the tooling around it convert
+/// an ABI representation into native Rust structs and vice-versa.
+pub type JsonABI = Vec<Function>;
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Function {
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub inputs: Vec<Property>,
+    pub name: String,
+    pub outputs: Vec<Property>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Property {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_field: String,
+    pub components: Option<Vec<Property>>, // Used for custom types
 }

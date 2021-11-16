@@ -47,7 +47,7 @@ pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
         let nodes = &script_tree.root_nodes;
 
         for node in nodes {
-            traverse_ast_node(&node, &mut changes)
+            traverse_ast_node(node, &mut changes)
         }
     }
 
@@ -55,7 +55,7 @@ pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
         let nodes = &contract_tree.root_nodes;
 
         for node in nodes {
-            traverse_ast_node(&node, &mut changes)
+            traverse_ast_node(node, &mut changes)
         }
     }
 
@@ -63,7 +63,7 @@ pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
         let nodes = &predicate_tree.root_nodes;
 
         for node in nodes {
-            traverse_ast_node(&node, &mut changes)
+            traverse_ast_node(node, &mut changes)
         }
     }
 
@@ -71,7 +71,7 @@ pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
         let nodes = &lib_tree.root_nodes;
 
         for node in nodes {
-            traverse_ast_node(&node, &mut changes)
+            traverse_ast_node(node, &mut changes)
         }
     }
 
@@ -92,7 +92,7 @@ fn traverse_ast_node(ast_node: &AstNode, changes: &mut Vec<Change>) {
             handle_implicit_return_expression(expr, changes)
         }
 
-        AstNodeContent::UseStatement(__) => {
+        AstNodeContent::UseStatement(_) => {
             changes.push(Change::new(&ast_node.span, ChangeType::UseStatement));
         }
 
@@ -122,21 +122,21 @@ fn handle_declaration(dec: &Declaration, ast_node: &AstNode, changes: &mut Vec<C
 
         Declaration::FunctionDeclaration(func) => {
             for content in &func.body.contents {
-                traverse_ast_node(&content, changes);
+                traverse_ast_node(content, changes);
             }
         }
 
         Declaration::ImplSelf(impl_self) => {
             for func in &impl_self.functions {
                 for content in &func.body.contents {
-                    traverse_ast_node(&content, changes);
+                    traverse_ast_node(content, changes);
                 }
             }
         }
         Declaration::ImplTrait(impl_trait) => {
             for func in &impl_trait.functions {
                 for content in &func.body.contents {
-                    traverse_ast_node(&content, changes);
+                    traverse_ast_node(content, changes);
                 }
             }
         }
@@ -165,7 +165,7 @@ fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
         }
         Expression::CodeBlock { contents, span: _ } => {
             for content in &contents.contents {
-                traverse_ast_node(&content, changes);
+                traverse_ast_node(content, changes);
             }
         }
         Expression::DelineatedPath {
@@ -174,7 +174,7 @@ fn handle_expression(expr: &Expression, changes: &mut Vec<Change>) {
             call_path: _,
             type_arguments: _,
         } => {
-            changes.push(Change::new(&span, ChangeType::DelineatedPath));
+            changes.push(Change::new(span, ChangeType::DelineatedPath));
         }
         _ => {}
     }

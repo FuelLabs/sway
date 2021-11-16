@@ -2,6 +2,7 @@ use super::{DataSection, InstructionSet};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
 use crate::span::Span;
+
 use either::Either;
 use std::io::Read;
 
@@ -75,7 +76,7 @@ fn to_bytecode<'sc>(
             .fold(0, |acc, item| match &item.opcode {
                 AllocatedOpcode::LWDataId(_reg, data_label)
                     if data_section
-                        .type_of_data(&data_label)
+                        .type_of_data(data_label)
                         .expect("data label references non existent data -- internal error")
                         .stack_size_of()
                         > 1 =>
@@ -104,7 +105,7 @@ fn to_bytecode<'sc>(
                     buf.resize(buf.len() + ((ops.len() - 1) * 4), 0);
                 }
                 for mut op in ops {
-                    op.read(&mut buf[half_word_ix * 4..])
+                    op.read_exact(&mut buf[half_word_ix * 4..])
                         .expect("Failed to write to in-memory buffer.");
                     half_word_ix += 1;
                 }

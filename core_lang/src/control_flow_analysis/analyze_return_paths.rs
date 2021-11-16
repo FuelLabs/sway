@@ -12,7 +12,8 @@ use crate::semantic_analysis::{
     TypedAstNode, TypedAstNodeContent,
 };
 use crate::span::Span;
-use crate::types::{MaybeResolvedType, ResolvedType};
+use crate::type_engine::{resolve_type, TypeInfo};
+
 use crate::{error::*, semantic_analysis::TypedParseTree};
 use petgraph::prelude::NodeIndex;
 
@@ -27,9 +28,8 @@ impl<'sc> ControlFlowGraph<'sc> {
         let mut leaves = vec![];
         for ast_entrypoint in ast.all_nodes().iter() {
             let l_leaves = connect_node(ast_entrypoint, &mut graph, &leaves);
-            match l_leaves {
-                NodeConnection::NextStep(nodes) => leaves = nodes,
-                _ => (),
+            if let NodeConnection::NextStep(nodes) = l_leaves {
+                leaves = nodes;
             }
         }
 
@@ -67,12 +67,12 @@ impl<'sc> ControlFlowGraph<'sc> {
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &'sc str,
-        return_ty: &MaybeResolvedType<'sc>,
+        return_ty: &TypeInfo,
     ) -> Vec<CompileError<'sc>> {
         let mut rovers = vec![entry_point];
         let mut errors = vec![];
         let mut max_iterations = 50;
-        while rovers.len() >= 1 && rovers[0] != exit_point && max_iterations > 0 {
+        while !rovers.is_empty() && rovers[0] != exit_point && max_iterations > 0 {
             max_iterations -= 1;
             rovers = rovers
                 .into_iter()
@@ -89,9 +89,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                     .graph
                     .neighbors_directed(rover, petgraph::Direction::Outgoing)
                     .collect::<Vec<_>>();
-                if neighbors.is_empty()
-                    && *return_ty != MaybeResolvedType::Resolved(ResolvedType::Unit)
-                {
+                if neighbors.is_empty() && *return_ty != TypeInfo::Unit {
                     let span = match last_discovered_span {
                         Some(ref o) => o.clone(),
                         None => {
@@ -163,7 +161,7 @@ fn connect_node<'sc>(
         }
         TypedAstNodeContent::SideEffect => NodeConnection::NextStep(leaves.to_vec()),
         TypedAstNodeContent::Declaration(decl) => {
-            NodeConnection::NextStep(connect_declaration(node, &decl, graph, span, leaves))
+            NodeConnection::NextStep(connect_declaration(node, decl, graph, span, leaves))
         }
     }
 }
@@ -211,7 +209,7 @@ fn connect_declaration<'sc>(
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
-            connect_impl_trait(&trait_name, graph, methods, entry_node);
+            connect_impl_trait(trait_name, graph, methods, entry_node);
             leaves.to_vec()
         }
         SideEffect | ErrorRecovery => leaves.to_vec(),
@@ -239,7 +237,7 @@ fn connect_impl_trait<'sc>(
         graph.add_edge(entry_node, fn_decl_entry_node, "".into());
         // connect the impl declaration node to the functions themselves, as all trait functions are
         // public if the trait is in scope
-        connect_typed_fn_decl(&fn_decl, graph, fn_decl_entry_node, fn_decl.span.clone());
+        connect_typed_fn_decl(fn_decl, graph, fn_decl_entry_node, fn_decl.span.clone());
         methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
     }
     // Now, insert the methods into the trait method namespace.
@@ -276,7 +274,8 @@ fn connect_typed_fn_decl<'sc>(
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
         exit_point: fn_exit_node,
-        return_type: fn_decl.return_type.clone(),
+        return_type: resolve_type(fn_decl.return_type, &fn_decl.return_type_span)
+            .unwrap_or(TypeInfo::Unit),
     };
     graph
         .namespace

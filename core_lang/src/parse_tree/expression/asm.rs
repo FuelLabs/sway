@@ -4,17 +4,16 @@ use crate::parser::Rule;
 use crate::span::Span;
 use crate::{Ident, TypeInfo};
 use pest::iterators::Pair;
-use std::collections::HashMap;
 
 use super::Expression;
-use crate::types::IntegerBits;
+use crate::type_engine::IntegerBits;
 
 #[derive(Debug, Clone)]
 pub struct AsmExpression<'sc> {
     pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
     pub(crate) body: Vec<AsmOp<'sc>>,
     pub(crate) returns: Option<(AsmRegister, Span<'sc>)>,
-    pub(crate) return_type: TypeInfo<'sc>,
+    pub(crate) return_type: TypeInfo,
     pub(crate) whole_block_span: Span<'sc>,
 }
 
@@ -22,7 +21,6 @@ impl<'sc> AsmExpression<'sc> {
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Self> {
         let path = config.map(|c| c.path());
         let whole_block_span = Span {
@@ -35,7 +33,7 @@ impl<'sc> AsmExpression<'sc> {
         let _asm_keyword = iter.next();
         let asm_registers = iter.next().unwrap();
         let asm_registers = check!(
-            AsmRegisterDeclaration::parse_from_pair(asm_registers, config, docstrings),
+            AsmRegisterDeclaration::parse_from_pair(asm_registers, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -43,7 +41,7 @@ impl<'sc> AsmExpression<'sc> {
         let mut asm_op_buf = Vec::new();
         let mut implicit_op_return = None;
         let mut implicit_op_type = None;
-        while let Some(pair) = iter.next() {
+        for pair in iter {
             match pair.as_rule() {
                 Rule::asm_op => {
                     let op = check!(
@@ -124,9 +122,9 @@ impl<'sc> AsmRegister {
     }
 }
 
-impl Into<String> for AsmRegister {
-    fn into(self) -> String {
-        self.name.clone()
+impl From<AsmRegister> for String {
+    fn from(register: AsmRegister) -> String {
+        register.name
     }
 }
 
@@ -151,7 +149,7 @@ impl<'sc> AsmOp<'sc> {
         );
         let mut args = vec![];
         let mut immediate_value = None;
-        while let Some(pair) = iter.next() {
+        for pair in iter {
             match pair.as_rule() {
                 Rule::asm_register => {
                     args.push(Ident {
@@ -198,13 +196,12 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
     fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
-        docstrings: &mut HashMap<String, String>,
     ) -> CompileResult<'sc, Vec<Self>> {
-        let mut iter = pair.into_inner();
+        let iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut reg_buf: Vec<AsmRegisterDeclaration> = Vec::new();
-        while let Some(pair) = iter.next() {
+        for pair in iter {
             assert_eq!(pair.as_rule(), Rule::asm_register_declaration);
             let mut iter = pair.into_inner();
             let reg_name = iter.next().unwrap();
@@ -212,7 +209,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
             // assigned to that register
             let initializer = if let Some(pair) = iter.next() {
                 Some(check!(
-                    Expression::parse_from_pair(pair, config, docstrings),
+                    Expression::parse_from_pair(pair, config),
                     return err(warnings, errors),
                     warnings,
                     errors

@@ -36,8 +36,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         (
             "retd_struct",
             ProgramState::ReturnData(Bytes32::from([
-                139, 216, 67, 1, 172, 74, 189, 183, 82, 11, 99, 241, 23, 111, 195, 89, 208, 127,
-                16, 95, 247, 254, 168, 151, 227, 225, 199, 179, 50, 80, 63, 175,
+                251, 57, 24, 241, 63, 94, 17, 102, 252, 182, 8, 110, 140, 105, 102, 105, 138, 202,
+                155, 39, 97, 32, 94, 129, 141, 144, 190, 142, 33, 32, 33, 75,
             ])),
         ),
         ("op_precedence", ProgramState::Return(0)),
@@ -47,14 +47,17 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("b256_ops", ProgramState::Return(100)),
         ("struct_field_access", ProgramState::Return(43)),
         ("bool_and_or", ProgramState::Return(42)),
-        ("doc_strings", ProgramState::Return(20)),
         ("neq_4_test", ProgramState::Return(0)),
         ("eq_4_test", ProgramState::Return(1)),
         ("local_impl_for_ord", ProgramState::Return(1)), // true
         ("const_decl", ProgramState::Return(100)),
         ("const_decl_in_library", ProgramState::Return(1)), // true
         ("aliased_imports", ProgramState::Return(42)),
+        ("empty_method_initializer", ProgramState::Return(1)), // true
+        ("b512_struct_alignment", ProgramState::Return(1)),    // true
+        ("import_method_from_other_file", ProgramState::Return(10)), // true
     ];
+
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
             assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
@@ -71,8 +74,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "infinite_dependencies",
         "top_level_vars",
         "dependencies_parsing_error",
-        "mut_error_message",
-        "reassignment_to_non_variable_message",
+        "disallowed_gm",
+        "unify_identical_unknowns",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
@@ -80,21 +83,28 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         }
     });
 
-    // ---- Contract Deployments
-    // contracts that should be deployed for the following tests to work
-    let contract_names = vec!["basic_storage", "increment_contract"];
+    // ---- Tests paired with contracts upon which they depend which must be pre-deployed.
+    // TODO validate that call output is correct
+    let contract_and_project_names = &[
+        ("basic_storage", "call_basic_storage"),
+        ("increment_contract", "call_increment_contract"),
+        ("auth_testing_contract", "caller_auth_test"),
+    ];
 
-    for name in contract_names {
+    // Filter them first.
+    let (contracts, projects): (Vec<_>, Vec<_>) = contract_and_project_names
+        .iter()
+        .filter(|names| filter(names.1))
+        .cloned()
+        .unzip();
+
+    // Deploy and then test.
+    for name in contracts {
         harness::deploy_contract(name)
     }
-
-    // ---- Tests that need the above contracts deployed to work
-    // TODO validate that call output is correct
-    let project_names = &["call_basic_storage", "call_increment_contract"];
-
-    project_names
-        .into_iter()
-        .for_each(|name| harness::runs_on_node(name));
+    for name in projects {
+        harness::runs_on_node(name);
+    }
 
     println!("_________________________________\nTests passed.");
 }

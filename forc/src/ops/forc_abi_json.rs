@@ -8,10 +8,10 @@ use crate::{
     },
 };
 
-use fuels_rs::types::Function;
+use core_types::Function;
 
 use std::fs::File;
-use std::io::Write;
+//use std::io::Write;
 
 use anyhow::Result;
 use core_lang::{BuildConfig, CompilationResult, LibraryExports, Namespace};
@@ -47,7 +47,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
     let file_name = find_file_name(&manifest_dir, &main_path)?;
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.clone().to_path_buf(),
+        file_name.to_owned().to_path_buf(),
         manifest_dir.clone(),
     );
 
@@ -113,7 +113,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
         silent_mode,
     )?);
     if let Some(outfile) = json_outfile {
-        let mut file = File::create(outfile).map_err(|e| e.to_string())?;
+        let _file = File::create(outfile).map_err(|e| e.to_string())?;
         //file.write_all(json_abi).map_err(|e| e.to_string())?;
     } else {
         println!("{:?}", json_abi);
@@ -166,7 +166,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     let file_name = find_file_name(&manifest_dir, &main_path)?;
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.clone().to_path_buf(),
+        file_name.to_owned().to_path_buf(),
         manifest_dir.clone(),
     );
     let mut dep_namespace = namespace.clone();

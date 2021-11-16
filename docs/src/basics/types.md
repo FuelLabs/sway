@@ -8,14 +8,14 @@ Sway is a statically typed language. At compile time, the types of every value m
 
 Sway has the following primitive types:
 
-1. 8-bit unsigned integer
-1. 16-bit unsigned integer
-1. 32-bit unsigned integer
-1. 64-bit unsigned integer
-1. String
-1. Boolean
-1. Byte
-1. Byte32 (32 bytes -- i.e. a hash)
+1. `u8` (8-bit unsigned integer)
+1. `u16` (16-bit unsigned integer)
+1. `u32` (32-bit unsigned integer)
+1. `u64` (64-bit unsigned integer)
+1. `String`
+1. `Boolean`
+1. `Byte`
+1. `b256` (256 bits(32 bytes) -- i.e. a hash)
 1. Static-length arrays (as of now, not yet implemented)
 
 All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers -- this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.
@@ -57,3 +57,8 @@ let my_string: str[4] = "fuel";
 ```
 
 Because the string literal `"fuel"` is four letters, the type is `str[4]`, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.
+
+## Address type
+
+In Sway, the Address type is a type-safe wrapper around the primitive b256 type.
+(as of now, not yet implemented)

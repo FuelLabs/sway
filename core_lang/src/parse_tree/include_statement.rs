@@ -9,6 +9,8 @@ use pest::iterators::Pair;
 pub struct IncludeStatement<'sc> {
     pub(crate) file_path: &'sc str,
     pub(crate) alias: Option<Ident<'sc>>,
+    #[allow(dead_code)]
+    // this span may be used for errors in the future, although it is not right now.
     span: Span<'sc>,
     pub(crate) path_span: Span<'sc>,
 }

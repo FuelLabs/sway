@@ -21,6 +21,24 @@ impl<'sc> std::convert::From<Ident<'sc>> for CallPath<'sc> {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct OwnedCallPath {
+    pub prefixes: Vec<String>,
+    pub suffix: String,
+}
+
+impl CallPath<'_> {
+    pub(crate) fn to_owned_call_path(&self) -> OwnedCallPath {
+        OwnedCallPath {
+            prefixes: self
+                .prefixes
+                .iter()
+                .map(|x| x.primary_name.to_string())
+                .collect(),
+            suffix: self.suffix.primary_name.to_string(),
+        }
+    }
+}
 impl<'sc> CallPath<'sc> {
     pub(crate) fn span(&self) -> Span<'sc> {
         if self.prefixes.is_empty() {
@@ -52,7 +70,7 @@ impl<'sc> CallPath<'sc> {
                 ));
             }
         }
-        assert!(pairs_buf.len() > 0);
+        assert!(!pairs_buf.is_empty());
         let suffix = pairs_buf.pop().unwrap();
         let prefixes = pairs_buf;
 

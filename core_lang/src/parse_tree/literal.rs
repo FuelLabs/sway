@@ -2,7 +2,8 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::span;
-use crate::types::{IntegerBits, ResolvedType};
+use crate::type_engine::IntegerBits;
+use crate::types::ResolvedType;
 use crate::CompileError;
 use pest::iterators::Pair;
 use std::convert::TryInto;
@@ -258,7 +259,7 @@ fn parse_hex_from_pair<'sc>(
                 .map(|two_hex_digits| -> Result<u8, CompileError> {
                     let mut str_buf = String::new();
                     two_hex_digits.iter().for_each(|x| str_buf.push(*x));
-                    Ok(u8::from_str_radix(&str_buf, 16).map_err(|_| {
+                    u8::from_str_radix(&str_buf, 16).map_err(|_| {
                         CompileError::Internal(
                             "Attempted to parse individual byte from invalid hex string.",
                             span::Span {
@@ -266,7 +267,7 @@ fn parse_hex_from_pair<'sc>(
                                 path: path.clone(),
                             },
                         )
-                    })?)
+                    })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|_| {
@@ -284,7 +285,7 @@ fn parse_hex_from_pair<'sc>(
             return Err(CompileError::InvalidByteLiteralLength {
                 span: span::Span {
                     span: pair.as_span(),
-                    path: path.clone(),
+                    path,
                 },
                 byte_length: a,
             })
@@ -320,7 +321,7 @@ fn parse_binary_from_pair<'sc>(
                 .map(|eight_bin_digits| -> Result<u8, CompileError> {
                     let mut str_buf = String::new();
                     eight_bin_digits.iter().for_each(|x| str_buf.push(*x));
-                    Ok(u8::from_str_radix(&str_buf, 2).map_err(|_| {
+                    u8::from_str_radix(&str_buf, 2).map_err(|_| {
                         CompileError::Internal(
                             "Attempted to parse individual byte from invalid bin.",
                             span::Span {
@@ -328,7 +329,7 @@ fn parse_binary_from_pair<'sc>(
                                 path: path.clone(),
                             },
                         )
-                    })?)
+                    })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let arr: [u8; 32] = vec_nums.as_slice().try_into().map_err(|_| {
@@ -346,7 +347,7 @@ fn parse_binary_from_pair<'sc>(
             return Err(CompileError::InvalidByteLiteralLength {
                 span: span::Span {
                     span: pair.as_span(),
-                    path: path.clone(),
+                    path,
                 },
                 byte_length: a,
             })
