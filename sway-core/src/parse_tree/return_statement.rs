@@ -26,12 +26,18 @@ impl<'sc> ReturnStatement<'sc> {
         let expr = inner.next();
         let res = match expr {
             None => ReturnStatement {
-                expr: Expression::Unit { span },
+                expr: Expression::Tuple {
+                    fields: vec![],
+                    span,
+                },
             },
             Some(expr_pair) => {
                 let expr = check!(
                     Expression::parse_from_pair(expr_pair, config),
-                    Expression::Unit { span },
+                    Expression::Tuple {
+                        fields: vec![],
+                        span
+                    },
                     warnings,
                     errors
                 );

@@ -341,7 +341,13 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             return_register,
             register_sequencer,
         ),
-        TypedExpressionVariant::Unit => ok(vec![], warnings, errors),
+        TypedExpressionVariant::Tuple { fields } => convert_tuple_expression_to_asm(
+            fields,
+            return_register,
+            namespace,
+            register_sequencer,
+            exp.span.clone(),
+        ),
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
         a => {
@@ -364,6 +370,25 @@ fn realize_register(
     match mapping_of_real_registers_to_declared_names.get(register_name) {
         Some(x) => Some(x.clone()),
         None => ConstantRegister::parse_register_name(register_name).map(VirtualRegister::Constant),
+    }
+}
+
+pub(crate) fn convert_tuple_expression_to_asm<'sc>(
+    fields: &[TypedExpression<'sc>],
+    _tuple_beginning_pointer: &VirtualRegister,
+    _namespace: &mut AsmNamespace<'sc>,
+    _register_sequencer: &mut RegisterSequencer,
+    span: Span<'sc>,
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    // TODO: this should re-use the asm-generation code for struct expressions.
+    if fields.is_empty() {
+        ok(vec![], vec![], vec![])
+    } else {
+        let errors = vec![CompileError::Unimplemented(
+            "ASM generation has not yet been implemented for non-unit tuples.",
+            span,
+        )];
+        err(vec![], errors)
     }
 }
 

@@ -856,7 +856,7 @@ fn connect_expression<'sc>(
             }
             Ok(vec![asm_node])
         }
-        Unit => Ok(vec![]),
+        Tuple { fields } if fields.is_empty() => Ok(vec![]),
         AbiCast { address, .. } => connect_expression(
             &address.expression,
             graph,

@@ -413,7 +413,9 @@ impl<'sc> Dependencies<'sc> {
             Expression::AbiCast { .. } => self,
 
             Expression::Literal { .. } => self,
-            Expression::Unit { .. } => self,
+            Expression::Tuple { fields, .. } => {
+                self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
+            }
             Expression::DelayedMatchTypeResolution { .. } => self,
         }
     }

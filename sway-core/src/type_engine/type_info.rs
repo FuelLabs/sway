@@ -193,7 +193,7 @@ impl TypeInfo {
                 };
                 TypeInfo::Array(insert_type(elem_type_info), elem_count)
             }
-            Rule::unit => TypeInfo::Tuple(Vec::new()),
+            Rule::tuple_type => TypeInfo::Tuple(Vec::new()),
             _ => {
                 errors.push(CompileError::Internal(
                     "Unexpected token while parsing inner type.",

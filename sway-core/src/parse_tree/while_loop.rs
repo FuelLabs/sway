@@ -33,7 +33,8 @@ impl<'sc> WhileLoop<'sc> {
 
         let condition = check!(
             Expression::parse_from_pair(condition.clone(), config),
-            Expression::Unit {
+            Expression::Tuple {
+                fields: vec![],
                 span: Span {
                     span: condition.as_span(),
                     path,
