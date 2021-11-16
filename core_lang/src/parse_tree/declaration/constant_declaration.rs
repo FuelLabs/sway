@@ -2,8 +2,10 @@ use crate::parse_tree::{Expression, Visibility};
 use crate::{type_engine::TypeInfo, Ident};
 
 use crate::build_config::BuildConfig;
-use crate::error::{err, ok, CompileResult};
+use crate::error::{err, ok, CompileResult, Warning};
 use crate::parser::Rule;
+use crate::span::Span;
+use crate::style::is_screaming_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -19,6 +21,7 @@ impl<'sc> ConstantDeclaration<'sc> {
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, ConstantDeclaration<'sc>> {
+        let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut const_decl_parts = pair.into_inner();
@@ -56,14 +59,26 @@ impl<'sc> ConstantDeclaration<'sc> {
             warnings,
             errors
         );
+        let name = check!(
+            Ident::parse_from_pair(name_pair.clone(), config),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        assert_or_warn!(
+            is_screaming_snake_case(name.primary_name),
+            warnings,
+            Span {
+                span: name_pair.as_span(),
+                path,
+            },
+            Warning::NonScreamingSnakeCaseConstName {
+                name: name.primary_name,
+            }
+        );
         ok(
             ConstantDeclaration {
-                name: check!(
-                    Ident::parse_from_pair(name_pair, config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
+                name,
                 type_ascription,
                 value,
                 visibility,

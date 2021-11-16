@@ -9,8 +9,8 @@ use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
 use crate::{
     parse_tree::{declaration::TypeParameter, Visibility},
     semantic_analysis::ast_node::TypedEnumVariant,
+    style::is_upper_camel_case,
 };
-use inflector::cases::classcase::is_class_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -114,7 +114,7 @@ impl<'sc> EnumDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_class_case(name.primary_name),
+            is_upper_camel_case(name.primary_name),
             warnings,
             Span {
                 span: enum_name.as_span(),
@@ -186,7 +186,7 @@ impl<'sc> EnumVariant<'sc> {
                     errors
                 );
                 assert_or_warn!(
-                    is_class_case(name.primary_name),
+                    is_upper_camel_case(name.primary_name),
                     warnings,
                     name.span.clone(),
                     Warning::NonClassCaseEnumVariantName {
