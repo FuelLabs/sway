@@ -137,9 +137,7 @@ impl<'sc> TypedAstNode<'sc> {
                         }
                     };
                     warnings.append(&mut res.warnings);
-                    if res.value.is_none() {
-                        errors.append(&mut res.errors);
-                    }
+                    errors.append(&mut res.errors);
                     TypedAstNodeContent::SideEffect
                 }
                 AstNodeContent::IncludeStatement(ref a) => {
@@ -188,6 +186,7 @@ impl<'sc> TypedAstNode<'sc> {
                             name,
                             type_ascription,
                             value,
+                            visibility,
                         }) => {
                             let result =
                                 type_check_ascribed_expr(type_ascription, value, "Constant");
@@ -201,6 +200,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
                                     name: name.clone(),
                                     value,
+                                    visibility,
                                 });
                             namespace.insert(name, typed_const_decl.clone());
                             typed_const_decl

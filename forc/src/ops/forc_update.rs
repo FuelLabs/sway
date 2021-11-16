@@ -84,8 +84,8 @@ async fn update_dependency(
             Some(version) => println!("Ignoring update for {} at version {}: Forc update not implemented for dependencies with specified tag. To update to another tag, change the tag in `Forc.toml` and run the build command.", dependency_name, version),
             None => {
                 let target_directory = match &dep.branch {
-                    Some(b) => format!("{}/{}/{}/{}", home_dir, constants::FORC_DEPENDENCIES_DIRECTORY, dependency_name, &b),
-                    None => format!("{}/{}/{}/default", home_dir, constants::FORC_DEPENDENCIES_DIRECTORY, dependency_name),
+                    Some(b) => PathBuf::from(format!("{}/{}/{}/{}", home_dir, constants::FORC_DEPENDENCIES_DIRECTORY, dependency_name, &b)),
+                    None => PathBuf::from(format!("{}/{}/{}/default", home_dir, constants::FORC_DEPENDENCIES_DIRECTORY, dependency_name)),
                 };
 
                 let current = dependency::get_current_dependency_version(&target_directory)?;
