@@ -27,8 +27,6 @@ pub enum TypedDeclaration<'sc> {
         type_implementing_for: TypeInfo,
     },
     AbiDeclaration(TypedAbiDeclaration<'sc>),
-    // no contents since it is a side-effectful declaration, i.e it populates a namespace
-    SideEffect,
     ErrorRecovery,
 }
 
@@ -46,7 +44,6 @@ impl<'sc> TypedDeclaration<'sc> {
             Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
-            SideEffect => "",
             ErrorRecovery => "error",
         }
     }
@@ -109,7 +106,7 @@ impl<'sc> TypedDeclaration<'sc> {
             }
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
-            SideEffect | ErrorRecovery => unreachable!("No span exists for these ast node types"),
+            ErrorRecovery => unreachable!("No span exists for these ast node types"),
         }
     }
 
@@ -146,6 +143,27 @@ impl<'sc> TypedDeclaration<'sc> {
                 _ => String::new(),
             }
         )
+    }
+
+    pub(crate) fn visibility(&self) -> Visibility {
+        match self {
+            TypedDeclaration::VariableDeclaration(..)
+            | TypedDeclaration::Reassignment(..)
+            | TypedDeclaration::ImplTrait { .. }
+            | TypedDeclaration::AbiDeclaration(..)
+            | TypedDeclaration::ErrorRecovery => Visibility::Public,
+            TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { visibility, .. })
+            | TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                visibility, ..
+            })
+            | TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
+                visibility, ..
+            })
+            | TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { visibility, .. })
+            | TypedDeclaration::StructDeclaration(TypedStructDeclaration { visibility, .. }) => {
+                *visibility
+            }
+        }
     }
 }
 
@@ -211,6 +229,7 @@ pub struct TypedEnumDeclaration<'sc> {
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) variants: Vec<TypedEnumVariant<'sc>>,
     pub(crate) span: Span<'sc>,
+    pub(crate) visibility: Visibility,
 }
 impl<'sc> TypedEnumDeclaration<'sc> {
     /// Given type arguments, match them up with the type parameters and return the result.
@@ -274,6 +293,7 @@ pub struct TypedVariableDeclaration<'sc> {
 pub struct TypedConstantDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) value: TypedExpression<'sc>,
+    pub(crate) visibility: Visibility,
 }
 
 // TODO: type check generic type args and their usage

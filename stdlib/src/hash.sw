@@ -10,7 +10,7 @@ pub fn not(a: bool) -> bool {
     }
 }
 
-enum HashMethod {
+pub enum HashMethod {
     Sha256: (),
     Keccak256: (),
 }
