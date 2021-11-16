@@ -6,8 +6,8 @@ use crate::span::Span;
 
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
 use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
-use declaration::TypedTraitFn;
 use core_types::JsonABI;
+use declaration::TypedTraitFn;
 pub(crate) use impl_trait::Mode;
 use std::sync::Arc;
 

@@ -58,7 +58,10 @@ pub fn find_main_path(manifest_dir: &PathBuf, manifest: &Manifest) -> PathBuf {
     code_dir
 }
 
-pub fn find_file_name<'sc>(manifest_dir: &'sc PathBuf, main_path: &'sc PathBuf) -> Result<&'sc Path, String> {
+pub fn find_file_name<'sc>(
+    manifest_dir: &'sc PathBuf,
+    main_path: &'sc PathBuf,
+) -> Result<&'sc Path, String> {
     let mut file_path = manifest_dir.clone();
     file_path.pop();
     let file_name = match main_path.strip_prefix(file_path.clone()) {

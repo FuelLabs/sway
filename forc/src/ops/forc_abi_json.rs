@@ -52,7 +52,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
     );
 
     let mut dependency_graph = HashMap::new();
-    let mut json_abi = vec!();
+    let mut json_abi = vec![];
 
     let mut namespace: Namespace = Default::default();
     if let Some(ref mut deps) = manifest.dependencies {

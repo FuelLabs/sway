@@ -2,13 +2,13 @@ use crate::parser::Rule;
 use crate::span::Span;
 use crate::style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case};
 use crate::type_engine::{IntegerBits, TypeInfo};
-use std::fmt;
-use thiserror::Error;
+use line_col::LineColLookup;
 use source_span::{
     fmt::{Formatter, Style},
     Position,
 };
-use line_col::LineColLookup;
+use std::fmt;
+use thiserror::Error;
 
 macro_rules! check {
     ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident) => {{

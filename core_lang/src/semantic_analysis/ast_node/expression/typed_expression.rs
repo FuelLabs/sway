@@ -4,8 +4,8 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::type_engine::{insert_type, IntegerBits};
 
-use either::Either;
 use core_types::JsonABI;
+use either::Either;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 

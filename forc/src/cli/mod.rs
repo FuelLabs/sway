@@ -1,13 +1,13 @@
 use structopt::StructOpt;
 
 mod commands;
-use self::commands::{json_abi, build, deploy, format, init, parse_bytecode, run, test, update};
+use self::commands::{build, deploy, format, init, json_abi, parse_bytecode, run, test, update};
 
-pub use json_abi::Command as JsonAbiCommand;
 pub use build::Command as BuildCommand;
 pub use deploy::Command as DeployCommand;
 pub use format::Command as FormatCommand;
 use init::Command as InitCommand;
+pub use json_abi::Command as JsonAbiCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use run::Command as RunCommand;
 use test::Command as TestCommand;

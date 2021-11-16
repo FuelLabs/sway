@@ -3,7 +3,8 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, read_manifest, get_main_file, print_on_success_library, print_on_success_script, print_on_failure
+        find_manifest_dir, get_main_file, print_on_failure, print_on_success_library,
+        print_on_success_script, read_manifest,
     },
 };
 
@@ -12,9 +13,9 @@ use core_lang::{
 };
 
 use anyhow::Result;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
-use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {

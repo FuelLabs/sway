@@ -5,13 +5,9 @@ use super::{
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
-use crate::{
-    build_config::BuildConfig,
-    error::*,
-    Ident,
-};
-use crate::ControlFlowGraph;
 use crate::type_engine::*;
+use crate::ControlFlowGraph;
+use crate::{build_config::BuildConfig, error::*, Ident};
 
 use core_types::JsonABI;
 
