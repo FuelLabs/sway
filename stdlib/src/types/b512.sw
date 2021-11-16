@@ -2,7 +2,7 @@ library b512;
 
 // Stores two b256s in contiguous memory.
 // Guaranteed to be contiguous for things like ECR.
-struct B512 {
+pub struct B512 {
     hi: b256,
     lo: b256,
 }
