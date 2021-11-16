@@ -5,4 +5,4 @@ dep hash;
 dep storage;
 dep constants;
 dep chain;
-assert;
+dep assert;
