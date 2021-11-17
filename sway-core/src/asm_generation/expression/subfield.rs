@@ -59,12 +59,16 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         }
     };
     // TODO(static span): str should be ident below
-    let fields_for_layout: Vec<(TypeId, &str)> = fields
+    let span = crate::Span {
+        span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
+        path: None,
+    };
+    let fields_for_layout = fields
         .iter()
-        .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, name.as_str()))
+        .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, span.clone(), name.clone()))
         .collect::<Vec<_>>();
     let descriptor = check!(
-        get_struct_memory_layout(&fields_for_layout[..]),
+        get_contiguous_memory_layout(&fields_for_layout[..]),
         return err(warnings, errors),
         warnings,
         errors
@@ -81,7 +85,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     // TODO(static span): name_for_this_field should be span_for_this_field
     let (type_of_this_field, name_for_this_field) = fields_for_layout
         .into_iter()
-        .find_map(|(ty, name)| {
+        .find_map(|(ty, _span, name)| {
             if name == field_to_access.name.primary_name {
                 Some((ty, name))
             } else {

@@ -20,7 +20,9 @@ mod subfield;
 use contract_call::convert_contract_call_to_asm;
 use enums::convert_enum_instantiation_to_asm;
 use if_exp::convert_if_exp_to_asm;
-pub(crate) use structs::{convert_struct_expression_to_asm, get_struct_memory_layout};
+pub(crate) use structs::{
+    convert_struct_expression_to_asm, convert_tuple_expression_to_asm, get_contiguous_memory_layout,
+};
 use subfield::convert_subfield_expression_to_asm;
 
 /// Given a [TypedExpression], convert it to assembly and put its return value, if any, in the
@@ -341,13 +343,9 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             return_register,
             register_sequencer,
         ),
-        TypedExpressionVariant::Tuple { fields } => convert_tuple_expression_to_asm(
-            fields,
-            return_register,
-            namespace,
-            register_sequencer,
-            exp.span.clone(),
-        ),
+        TypedExpressionVariant::Tuple { fields } => {
+            convert_tuple_expression_to_asm(fields, return_register, namespace, register_sequencer)
+        }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
         a => {
@@ -370,25 +368,6 @@ fn realize_register(
     match mapping_of_real_registers_to_declared_names.get(register_name) {
         Some(x) => Some(x.clone()),
         None => ConstantRegister::parse_register_name(register_name).map(VirtualRegister::Constant),
-    }
-}
-
-pub(crate) fn convert_tuple_expression_to_asm<'sc>(
-    fields: &[TypedExpression<'sc>],
-    _tuple_beginning_pointer: &VirtualRegister,
-    _namespace: &mut AsmNamespace<'sc>,
-    _register_sequencer: &mut RegisterSequencer,
-    span: Span<'sc>,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
-    // TODO: this should re-use the asm-generation code for struct expressions.
-    if fields.is_empty() {
-        ok(vec![], vec![], vec![])
-    } else {
-        let errors = vec![CompileError::Unimplemented(
-            "ASM generation has not yet been implemented for non-unit tuples.",
-            span,
-        )];
-        err(vec![], errors)
     }
 }
 
