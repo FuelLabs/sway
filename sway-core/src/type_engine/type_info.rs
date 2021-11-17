@@ -193,7 +193,19 @@ impl TypeInfo {
                 };
                 TypeInfo::Array(insert_type(elem_type_info), elem_count)
             }
-            Rule::tuple_type => TypeInfo::Tuple(Vec::new()),
+            Rule::tuple_type => {
+                let mut fields = vec![];
+                for field in input.into_inner() {
+                    let field = check!(
+                        TypeInfo::parse_from_pair(field, config),
+                        TypeInfo::Tuple(Vec::new()),
+                        warnings,
+                        errors
+                    );
+                    fields.push(field);
+                }
+                TypeInfo::Tuple(fields)
+            }
             _ => {
                 errors.push(CompileError::Internal(
                     "Unexpected token while parsing inner type.",
