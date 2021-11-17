@@ -1,5 +1,5 @@
 library assertions;
-use ::ops::*;
+use std::ops;
 
 /// a failing assertion should:
 /// - panic in a script
@@ -23,7 +23,7 @@ pub fn assert_neq<T>(a: T, b: T) -> bool {
     }
 }
 
-pub fn require(a: bool) -> () {
+pub fn require(a: bool) {
     if a {
         return ();
     } else {
