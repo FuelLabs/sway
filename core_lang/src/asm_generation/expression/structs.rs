@@ -246,14 +246,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         asm_buf.append(&mut field_instantiation);
         // if the value is less than one word in size, we write it via the SW opcode.
         // Otherwise, use MCPI to copy the contiguous memory
-        let type_size = match look_up_type_id(value.return_type).stack_size_of(&name.span) {
-            Ok(o) => o,
-            Err(e) => {
-                errors.push(e);
-                return err(warnings, errors);
-            }
-        };
-        if type_size > 1 {
+        if value_stack_size > 1 {
             // copy the struct beginning pointer and add the offset to it
             let address_to_write_to = register_sequencer.next();
             // load the address via ADDI
@@ -266,7 +259,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
                 owning_span: Some(value.span.clone()),
                 comment: format!(
                     "prep struct field reg (size {} for field {})",
-                    type_size, name.primary_name
+                    value_stack_size, name.primary_name
                 ),
             });
 
@@ -275,10 +268,16 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
                 opcode: either::Either::Left(VirtualOp::MCPI(
                     address_to_write_to,
                     return_register,
-                    VirtualImmediate12::new_unchecked(type_size * 8, "struct cannot be this big"),
+                    VirtualImmediate12::new_unchecked(
+                        value_stack_size * 8,
+                        "struct cannot be this big",
+                    ),
                 )),
                 owning_span: Some(value.span.clone()),
-                comment: format!("cp type size {} for field {}", type_size, name.primary_name),
+                comment: format!(
+                    "cp type size {} for field {}",
+                    value_stack_size, name.primary_name
+                ),
             });
         } else {
             asm_buf.push(Op::write_register_to_memory(
