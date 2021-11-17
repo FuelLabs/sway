@@ -1,5 +1,6 @@
 library chain;
 dep chain/auth;
+use ::ops::*;
 
 // When generics land, these will be generic.
 pub fn log_u64(val: u64) {
@@ -34,4 +35,13 @@ pub fn panic(code: u64) {
   asm(r1: code) {
     rvrt r1;
   }
+}
+
+/// Assert that a value is true
+pub fn assert(a: bool) {
+    if not(a) {
+        panic(0);
+    } else {
+        ()
+    }
 }
