@@ -188,6 +188,11 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         struct_name.primary_name
     )));
 
+    if total_size == 0 {
+        asm_buf.push(Op::new_comment("fields have total size of zero."));
+        return ok(asm_buf, warnings, errors);
+    }
+
     // step 1
     asm_buf.push(Op::unowned_register_move(
         struct_beginning_pointer.clone(),
