@@ -8,6 +8,9 @@ fn main() -> bool {
     assert(1 == 1);
     assert(1 + 1 == 2);
     assert(! false);
+    assert(true && true);
+    assert(true || false);
+    assert(!false && !false);
 
     true
 }
