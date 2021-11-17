@@ -199,7 +199,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     // and how many bits can be put in a single cfei op
     // limit struct size to 12 bits for now, for simplicity
     let twelve_bits = super::compiler_constants::TWELVE_BITS;
-    let number_of_allocations_necessary = (total_size / twelve_bits) + 1;
+    let number_of_allocations_necessary = (total_size + (twelve_bits - 1)) / twelve_bits;
 
     // construct the allocation ops
     for allocation_index in 0..number_of_allocations_necessary {
