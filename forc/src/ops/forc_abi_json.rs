@@ -47,7 +47,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
     let file_name = find_file_name(&manifest_dir, &main_path)?;
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.to_owned().to_path_buf(),
+        file_name.to_owned(),
         manifest_dir.clone(),
     );
 
@@ -92,8 +92,8 @@ pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
 
             json_abi.append(&mut compile_dependency_lib(
                 &this_dir,
-                &dependency_name,
-                &dependency_details,
+                dependency_name,
+                dependency_details,
                 &mut namespace,
                 &mut dependency_graph,
                 silent_mode,
@@ -166,7 +166,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     let file_name = find_file_name(&manifest_dir, &main_path)?;
 
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-        file_name.to_owned().to_path_buf(),
+        file_name.to_owned(),
         manifest_dir.clone(),
     );
     let mut dep_namespace = namespace.clone();
@@ -179,8 +179,8 @@ fn compile_dependency_lib<'source, 'manifest>(
             //return Err("Unimplemented: dependencies that have dependencies".into());
             compile_dependency_lib(
                 project_file_path,
-                &dep.0,
-                &dep.1,
+                dep.0,
+                dep.1,
                 // give it a cloned namespace, which we then merge with this namespace
                 &mut dep_namespace,
                 dependency_graph,

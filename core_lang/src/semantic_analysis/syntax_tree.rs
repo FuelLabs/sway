@@ -76,7 +76,6 @@ impl<'sc> TypedParseTree<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, Self> {
         let mut new_namespace = initial_namespace.clone();
         let mut warnings = Vec::new();
@@ -107,7 +106,6 @@ impl<'sc> TypedParseTree<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi
             ),
             return err(warnings, errors),
             warnings,
@@ -163,7 +161,6 @@ impl<'sc> TypedParseTree<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -181,7 +178,6 @@ impl<'sc> TypedParseTree<'sc> {
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                    json_abi,
                 )
             })
             .filter_map(|res| res.ok(&mut warnings, &mut errors))

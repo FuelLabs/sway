@@ -4,7 +4,6 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::ast_node::*;
 use crate::type_engine::{insert_type, IntegerBits};
 
-use core_types::JsonABI;
 use either::Either;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -42,7 +41,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, Self> {
         let expr_span = other.span();
         let res = match other {
@@ -66,7 +64,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             Expression::LazyOperator { op, lhs, rhs, span } => Self::type_check_lazy_operator(
                 op,
@@ -78,7 +75,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             Expression::MatchExpression { span, .. } => {
                 let errors = vec![CompileError::Unimplemented(
@@ -97,7 +93,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             // TODO if _condition_ is constant, evaluate it and compile this to an
             // expression with only one branch
@@ -117,7 +112,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             Expression::AsmExpression { asm, span, .. } => Self::type_check_asm_expression(
                 asm,
@@ -127,7 +121,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             Expression::StructExpression {
                 span,
@@ -142,7 +135,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             Expression::SubfieldExpression {
                 prefix,
@@ -157,7 +149,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             Expression::MethodApplication {
                 method_name,
@@ -172,7 +163,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             Expression::Unit { span } => {
                 let exp = TypedExpression {
@@ -198,7 +188,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             Expression::AbiCast {
                 abi_name,
@@ -213,7 +202,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi,
             ),
             a => {
                 let errors = vec![CompileError::Unimplemented(
@@ -339,7 +327,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -410,7 +397,6 @@ impl<'sc> TypedExpression<'sc> {
                             build_config,
                             dead_code_graph,
                             dependency_graph,
-                            json_abi
                         )
                         .unwrap_or_else(
                             &mut warnings,
@@ -459,7 +445,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -474,7 +459,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi
             ),
             error_recovery_expr(lhs.span()),
             warnings,
@@ -491,7 +475,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi
             ),
             error_recovery_expr(rhs.span()),
             warnings,
@@ -581,7 +564,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -596,7 +578,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi
             ),
             (
                 TypedCodeBlock {
@@ -645,7 +626,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -659,7 +639,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi
             ),
             error_recovery_expr(condition.span()),
             warnings,
@@ -675,7 +654,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi
             ),
             error_recovery_expr(then.span()),
             warnings,
@@ -692,7 +670,6 @@ impl<'sc> TypedExpression<'sc> {
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                    json_abi
                 ),
                 error_recovery_expr(expr.span()),
                 warnings,
@@ -731,7 +708,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -760,7 +736,6 @@ impl<'sc> TypedExpression<'sc> {
                                     build_config,
                                     dead_code_graph,
                                     dependency_graph,
-                                    json_abi
                                 ),
                                 error_recovery_expr(initializer.span()),
                                 warnings,
@@ -794,7 +769,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -856,7 +830,6 @@ impl<'sc> TypedExpression<'sc> {
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                    json_abi
                 ),
                 continue,
                 warnings,
@@ -908,7 +881,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -922,7 +894,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi
             ),
             return err(warnings, errors),
             warnings,
@@ -981,7 +952,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1036,7 +1006,6 @@ impl<'sc> TypedExpression<'sc> {
                         build_config,
                         dead_code_graph,
                         dependency_graph,
-                        json_abi
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -1074,7 +1043,6 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-        json_abi: &mut JsonABI,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1094,7 +1062,6 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi
             ),
             error_recovery_expr(err_span),
             warnings,
@@ -1142,7 +1109,6 @@ impl<'sc> TypedExpression<'sc> {
                     dead_code_graph,
                     Mode::ImplAbiFn,
                     dependency_graph,
-                    json_abi
                 ),
                 return err(warnings, errors),
                 warnings,

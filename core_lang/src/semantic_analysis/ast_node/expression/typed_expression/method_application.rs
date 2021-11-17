@@ -7,8 +7,6 @@ use crate::parser::{HllParser, Rule};
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
-use core_types::JsonABI;
-
 pub(crate) fn type_check_method_application<'sc>(
     method_name: MethodName<'sc>,
     arguments: Vec<Expression<'sc>>,
@@ -18,7 +16,6 @@ pub(crate) fn type_check_method_application<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &mut JsonABI,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -34,7 +31,6 @@ pub(crate) fn type_check_method_application<'sc>(
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                json_abi
             ),
             error_recovery_expr(span.clone()),
             warnings,
@@ -156,7 +152,6 @@ pub(crate) fn type_check_method_application<'sc>(
                                 self_type,
                                 dead_code_graph,
                                 dependency_graph,
-                                json_abi
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -230,7 +225,6 @@ pub(crate) fn type_check_method_application<'sc>(
                                 self_type,
                                 dead_code_graph,
                                 dependency_graph,
-                                json_abi
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -264,7 +258,6 @@ fn re_parse_expression<'a>(
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph<'a>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &mut JsonABI,
 ) -> CompileResult<'a, TypedExpression<'a>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -311,7 +304,6 @@ fn re_parse_expression<'a>(
             build_config,
             dead_code_graph,
             dependency_graph,
-            json_abi
         ),
         return err(warnings, errors),
         warnings,

@@ -243,8 +243,6 @@ pub(crate) fn compile_inner_dependency<'sc>(
         }
     }
 
-    let mut json_abi = vec![];
-
     let library_exports: LibraryExports = {
         let res: Vec<_> = parse_tree
             .library_exports
@@ -257,7 +255,6 @@ pub(crate) fn compile_inner_dependency<'sc>(
                     &build_config.clone(),
                     dead_code_graph,
                     dependency_graph,
-                    &mut json_abi,
                 )
                 .ok(&mut warnings, &mut errors)
                 .map(|value| (name, value))
@@ -276,6 +273,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
         }
         exports
     };
+
     // look for return path errors
     for tree in &library_exports.trees {
         let graph = ControlFlowGraph::construct_return_path_graph(tree);
@@ -299,17 +297,17 @@ pub(crate) fn compile_inner_dependency<'sc>(
     )
 }
 
-fn compile_asts<'sc>(
+pub fn compile_to_asm<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
-    build_config: &BuildConfig,
+    build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompileASTsResult<'sc> {
+) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
-        parse(input, Some(build_config)),
-        return CompileASTsResult::Failure { errors, warnings },
+        parse(input, Some(&build_config)),
+        return CompilationResult::Failure { errors, warnings },
         warnings,
         errors
     );
@@ -318,8 +316,6 @@ fn compile_asts<'sc>(
         entry_points: vec![],
         namespace: Default::default(),
     };
-
-    let mut json_abi = vec![];
 
     let mut type_check_ast = |ast: Option<_>, tree_type| {
         ast.map(|tree| {
@@ -330,7 +326,6 @@ fn compile_asts<'sc>(
                 &build_config.clone(),
                 &mut dead_code_graph,
                 dependency_graph,
-                &mut json_abi,
             )
             .ok(&mut warnings, &mut errors)
         })
@@ -353,7 +348,6 @@ fn compile_asts<'sc>(
                     &build_config.clone(),
                     &mut dead_code_graph,
                     dependency_graph,
-                    &mut json_abi,
                 )
                 .ok(&mut warnings, &mut errors)
                 .map(|value| (name, value))
@@ -374,159 +368,112 @@ fn compile_asts<'sc>(
     };
 
     if !errors.is_empty() {
-        return CompileASTsResult::Failure { errors, warnings };
+        return CompilationResult::Failure { errors, warnings };
     }
 
-    CompileASTsResult::Success {
-        contract_ast,
-        predicate_ast,
-        script_ast,
-        library_exports,
-        json_abi,
-        dead_code_graph,
-        warnings,
-    }
-}
+    // perform control flow analysis on each branch
+    let (script_warnings, script_errors) =
+        perform_control_flow_analysis(&script_ast, TreeType::Script, &mut dead_code_graph);
+    let (contract_warnings, contract_errors) =
+        perform_control_flow_analysis(&contract_ast, TreeType::Contract, &mut dead_code_graph);
+    let (predicate_warnings, predicate_errors) =
+        perform_control_flow_analysis(&predicate_ast, TreeType::Predicate, &mut dead_code_graph);
+    let (library_warnings, library_errors) =
+        perform_control_flow_analysis_on_library_exports(&library_exports, &mut dead_code_graph);
 
-pub fn compile_to_asm<'sc>(
-    input: &'sc str,
-    initial_namespace: &Namespace<'sc>,
-    build_config: BuildConfig,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompilationResult<'sc> {
-    match compile_asts(input, initial_namespace, &build_config, dependency_graph) {
-        CompileASTsResult::Failure { warnings, errors } => {
-            CompilationResult::Failure { warnings, errors }
+    let mut l_warnings = [
+        script_warnings,
+        contract_warnings,
+        predicate_warnings,
+        library_warnings,
+    ]
+    .concat();
+    let mut l_errors = [
+        script_errors,
+        contract_errors,
+        predicate_errors,
+        library_errors,
+    ]
+    .concat();
+
+    errors.append(&mut l_errors);
+    warnings.append(&mut l_warnings);
+    // for each syntax tree, generate assembly.
+    let predicate_asm = (|| {
+        if let Some(tree) = predicate_ast {
+            Some(check!(
+                compile_ast_to_asm(tree, &build_config),
+                return None,
+                warnings,
+                errors
+            ))
+        } else {
+            None
         }
-        CompileASTsResult::Success {
-            script_ast,
-            contract_ast,
-            library_exports,
-            predicate_ast,
-            mut dead_code_graph,
-            mut warnings,
-            json_abi,
-        } => {
-            let mut errors = vec![];
+    })();
 
-            // perform control flow analysis on each branch
-            let (script_warnings, script_errors) =
-                perform_control_flow_analysis(&script_ast, TreeType::Script, &mut dead_code_graph);
-            let (contract_warnings, contract_errors) = perform_control_flow_analysis(
-                &contract_ast,
-                TreeType::Contract,
-                &mut dead_code_graph,
-            );
-            let (predicate_warnings, predicate_errors) = perform_control_flow_analysis(
-                &predicate_ast,
-                TreeType::Predicate,
-                &mut dead_code_graph,
-            );
-            let (library_warnings, library_errors) =
-                perform_control_flow_analysis_on_library_exports(
-                    &library_exports,
-                    &mut dead_code_graph,
-                );
+    let contract_asm = (|| {
+        if let Some(tree) = contract_ast {
+            Some(check!(
+                compile_ast_to_asm(tree, &build_config),
+                return None,
+                warnings,
+                errors
+            ))
+        } else {
+            None
+        }
+    })();
 
-            let mut l_warnings = [
-                script_warnings,
-                contract_warnings,
-                predicate_warnings,
-                library_warnings,
-            ]
-            .concat();
-            let mut l_errors = [
-                script_errors,
-                contract_errors,
-                predicate_errors,
-                library_errors,
-            ]
-            .concat();
+    let script_asm = (|| {
+        if let Some(tree) = script_ast {
+            Some(check!(
+                compile_ast_to_asm(tree, &build_config),
+                return None,
+                warnings,
+                errors
+            ))
+        } else {
+            None
+        }
+    })();
 
-            errors.append(&mut l_errors);
-            warnings.append(&mut l_warnings);
-            // for each syntax tree, generate assembly.
-            let predicate_asm = (|| {
-                if let Some(tree) = predicate_ast {
-                    Some(check!(
-                        compile_ast_to_asm(tree, &build_config),
-                        return None,
-                        warnings,
-                        errors
-                    ))
-                } else {
-                    None
-                }
-            })();
+    let json_abi = vec![];
 
-            let contract_asm = (|| {
-                if let Some(tree) = contract_ast {
-                    Some(check!(
-                        compile_ast_to_asm(tree, &build_config),
-                        return None,
-                        warnings,
-                        errors
-                    ))
-                } else {
-                    None
-                }
-            })();
-
-            let script_asm = (|| {
-                if let Some(tree) = script_ast {
-                    Some(check!(
-                        compile_ast_to_asm(tree, &build_config),
-                        return None,
-                        warnings,
-                        errors
-                    ))
-                } else {
-                    None
-                }
-            })();
-
-            if errors.is_empty() {
-                // TODO move this check earlier and don't compile all of them if there is only one
-                match (predicate_asm, contract_asm, script_asm, library_exports) {
-                    (Some(pred), None, None, o) if o.trees.is_empty() => {
-                        CompilationResult::Success {
-                            asm: pred,
-                            json_abi,
-                            warnings,
-                        }
-                    }
-                    (None, Some(contract), None, o) if o.trees.is_empty() => {
-                        CompilationResult::Success {
-                            asm: contract,
-                            json_abi,
-                            warnings,
-                        }
-                    }
-                    (None, None, Some(script), o) if o.trees.is_empty() => {
-                        CompilationResult::Success {
-                            asm: script,
-                            json_abi,
-                            warnings,
-                        }
-                    }
-                    (None, None, None, o) if !o.trees.is_empty() => CompilationResult::Library {
-                        warnings,
-                        json_abi,
-                        exports: o,
-                    },
-                    (None, None, None, o) if o.trees.is_empty() => {
-                        todo!("do we want empty files to be valid programs?")
-                    }
-                    // Default to compiling an empty library if there is no code or invalid state
-                    _ => unimplemented!(
-                    "Multiple contracts, libraries, scripts, or predicates in a single file are \
-                    unsupported."
-                ),
-                }
-            } else {
-                CompilationResult::Failure { errors, warnings }
+    if errors.is_empty() {
+        // TODO move this check earlier and don't compile all of them if there is only one
+        match (predicate_asm, contract_asm, script_asm, library_exports) {
+            (Some(pred), None, None, o) if o.trees.is_empty() => CompilationResult::Success {
+                asm: pred,
+                json_abi,
+                warnings,
+            },
+            (None, Some(contract), None, o) if o.trees.is_empty() => CompilationResult::Success {
+                asm: contract,
+                json_abi,
+                warnings,
+            },
+            (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::Success {
+                asm: script,
+                json_abi,
+                warnings,
+            },
+            (None, None, None, o) if !o.trees.is_empty() => CompilationResult::Library {
+                warnings,
+                json_abi,
+                exports: o,
+            },
+            (None, None, None, o) if o.trees.is_empty() => {
+                todo!("do we want empty files to be valid programs?")
             }
+            // Default to compiling an empty library if there is no code or invalid state
+            _ => unimplemented!(
+                "Multiple contracts, libraries, scripts, or predicates in a single file are \
+            unsupported."
+            ),
         }
+    } else {
+        CompilationResult::Failure { errors, warnings }
     }
 }
 

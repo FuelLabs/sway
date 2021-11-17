@@ -1,7 +1,7 @@
 use crate::ops::forc_abi_json;
 use structopt::{self, StructOpt};
 
-/// Compile the current or target project.
+/// Output the JSON associated with the ABI.
 #[derive(Debug, StructOpt)]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.

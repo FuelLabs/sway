@@ -1,5 +1,3 @@
-use core_types::JsonABI;
-
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
@@ -18,7 +16,6 @@ pub(crate) fn instantiate_enum<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &mut JsonABI,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -74,7 +71,6 @@ pub(crate) fn instantiate_enum<'sc>(
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                    json_abi
                 ),
                 return err(warnings, errors),
                 warnings,

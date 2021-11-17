@@ -19,7 +19,6 @@ pub(crate) fn implementation_of_trait<'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &mut JsonABI,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -71,7 +70,6 @@ pub(crate) fn implementation_of_trait<'sc>(
                     &type_implementing_for_span,
                     Mode::NonAbi,
                     dependency_graph,
-                    json_abi
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -131,7 +129,6 @@ pub(crate) fn implementation_of_trait<'sc>(
                     &type_implementing_for_span,
                     Mode::ImplAbiFn,
                     dependency_graph,
-                    json_abi
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -187,7 +184,6 @@ fn type_check_trait_implementation<'sc>(
     type_implementing_for_span: &Span<'sc>,
     mode: Mode,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-    json_abi: &mut JsonABI,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
@@ -216,7 +212,6 @@ fn type_check_trait_implementation<'sc>(
                 dead_code_graph,
                 mode,
                 dependency_graph,
-                json_abi
             ),
             continue,
             warnings,
@@ -381,7 +376,6 @@ fn type_check_trait_implementation<'sc>(
                 dead_code_graph,
                 mode,
                 dependency_graph,
-                json_abi
             ),
             continue,
             warnings,
