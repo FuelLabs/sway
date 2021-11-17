@@ -23,6 +23,7 @@
   - [Generic Types](./advanced/generic_types.md)
   - [Traits](./advanced/traits.md)
   - [Trait Constraints](./advanced/trait_constraints.md)
+  - [Assembly](./advanced/assembly.md)
 - [Conventions](./style/index.md)
   - [Capitalization](./style/capitalization.md)
 - [Strategy and Roadmap](./strategy/strategy_and_roadmap.md)
