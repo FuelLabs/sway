@@ -154,8 +154,9 @@ impl<'sc> Declaration<'sc> {
                     _ => None,
                 };
                 let type_ascription = if let Some(ascription) = type_ascription {
+                    let type_name = ascription.into_inner().next().unwrap();
                     check!(
-                        TypeInfo::parse_from_pair(ascription, config),
+                        TypeInfo::parse_from_pair(type_name, config),
                         TypeInfo::Unit,
                         warnings,
                         errors
