@@ -4,10 +4,12 @@ use crate::{
         convert_expression_to_asm, expression::get_struct_memory_layout, AsmNamespace,
         RegisterSequencer,
     },
-    asm_lang::VirtualImmediate12,
+    asm_lang::{VirtualImmediate12, VirtualOp},
     semantic_analysis::ast_node::{OwnedTypedStructField, ReassignmentLhs, TypedReassignment},
+    type_engine::*,
     type_engine::{resolve_type, TypeInfo},
 };
+use either::Either;
 
 pub(crate) fn convert_reassignment_to_asm<'sc>(
     reassignment: &TypedReassignment<'sc>,
@@ -159,12 +161,58 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // the register `ptr` (the struct pointer)
             // + the offset in words (imm is in words, the vm multiplies it by 8)
 
-            buf.push(Op::write_register_to_memory(
-                ptr.clone(),
-                return_register,
-                offset_in_words,
-                crate::utils::join_spans(reassignment.lhs[0].span(), reassignment.rhs.span.clone()),
-            ));
+            // if the size of this type is > 1 word, then we use MCP to copy the entire value to
+            // the mem address pointed to by the struct.
+            let size_of_ty = look_up_type_id(reassignment.rhs.return_type)
+                .stack_size_of(&reassignment.rhs.span)
+                .unwrap_or_else(|e| {
+                    errors.push(e);
+                    0
+                });
+            match size_of_ty {
+                0 => (),
+                1 => {
+                    buf.push(Op::write_register_to_memory(
+                        ptr.clone(),
+                        return_register,
+                        offset_in_words,
+                        crate::utils::join_spans(
+                            reassignment.lhs[0].span(),
+                            reassignment.rhs.span.clone(),
+                        ),
+                    ));
+                }
+                size => {
+                    // 0. grab the current struct field value as the ptr (ptr + offset in bytes)
+                    // 1. MCPI current ptr, ret register, size_of_ty
+
+                    // 0.
+                    let ptr_reg = register_sequencer.next();
+                    buf.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            ptr_reg.clone(),
+                            ptr.clone(),
+                            offset_in_words,
+                        )),
+                        comment: "reassign multiword struct field".into(),
+                        owning_span: None,
+                    });
+
+                    // 1.
+                    buf.push(Op {
+                        opcode: Either::Left(VirtualOp::MCPI(
+                            ptr_reg,
+                            return_register,
+                            VirtualImmediate12::new_unchecked(
+                                size * 8,
+                                "structs fields can't be this big",
+                            ),
+                        )),
+                        comment: Default::default(),
+                        owning_span: None,
+                    });
+                }
+            }
         }
     }
 
