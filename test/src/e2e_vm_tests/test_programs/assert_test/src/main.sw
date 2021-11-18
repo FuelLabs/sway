@@ -3,6 +3,7 @@ use std::chain::*;
 use std::ops::*;
 
 // @todo add a test using this in a contract.
+// @todo add a test confirming that assert(false) does panic/revert
 fn main() -> bool {
     assert(true);
     assert(1 == 1);
