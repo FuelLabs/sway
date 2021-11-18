@@ -10,6 +10,7 @@
   - [Subcurrency](./examples/subcurrency.md)
   - [FizzBuzz](./examples/fizzbuzz.md)
   - [Wallet Smart Contract](./examples/wallet_smart_contract.md)
+- [New Concepts](./new-concepts/index.md)
 - [Basics](./basics/index.md)
   - [Project Structure](./basics/project_structure.md)
   - [Variables](./basics/variables.md)
