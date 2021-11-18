@@ -42,7 +42,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ),
         ("op_precedence", ProgramState::Return(0)),
         ("asm_without_return", ProgramState::Return(0)),
-        ("op_precedence", ProgramState::Return(0)), // 1 == false
+        ("op_precedence", ProgramState::Return(0)), // false
         ("b256_bad_jumps", ProgramState::Return(1)),
         ("b256_ops", ProgramState::Return(100)),
         ("struct_field_access", ProgramState::Return(43)),
@@ -55,8 +55,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("aliased_imports", ProgramState::Return(42)),
         ("empty_method_initializer", ProgramState::Return(1)), // true
         ("b512_struct_alignment", ProgramState::Return(1)),    // true
-        ("import_method_from_other_file", ProgramState::Return(10)), // true
-        ("assert_test", ProgramState::Return(1)),              // true
+        ("import_method_from_other_file", ProgramState::Return(10)),
+        ("assert_test", ProgramState::Return(1)),  // true
+        ("array_basics", ProgramState::Return(1)), // true
+        ("array_dynamic_oob", ProgramState::Revert(1)),
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
@@ -77,6 +79,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "dependencies_parsing_error",
         "disallowed_gm",
         "unify_identical_unknowns",
+        "array_oob",
+        "array_bad_index",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
