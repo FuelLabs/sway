@@ -1,14 +1,11 @@
 use crate::build_config::BuildConfig;
-use crate::parse_tree::declaration::TypeParameter;
+use crate::parse_tree::{declaration::TypeParameter, Visibility};
 use crate::parser::Rule;
 use crate::span::Span;
+use crate::style::{is_snake_case, is_upper_camel_case};
 use crate::type_engine::TypeInfo;
 use crate::{error::*, Ident};
-use inflector::cases::classcase::is_class_case;
-use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
-
-use super::Visibility;
 
 #[derive(Debug, Clone)]
 pub struct StructDeclaration<'sc> {
@@ -92,7 +89,7 @@ impl<'sc> StructDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_class_case(name.primary_name),
+            is_upper_camel_case(name.primary_name),
             warnings,
             span,
             Warning::NonClassCaseStructName {

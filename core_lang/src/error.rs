@@ -1,8 +1,7 @@
 use crate::parser::Rule;
 use crate::span::Span;
+use crate::style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case};
 use crate::type_engine::{IntegerBits, TypeInfo};
-use inflector::cases::classcase::to_class_case;
-use inflector::cases::snakecase::to_snake_case;
 use std::fmt;
 use thiserror::Error;
 
@@ -192,6 +191,9 @@ pub enum Warning<'sc> {
     NonSnakeCaseFunctionName {
         name: &'sc str,
     },
+    NonScreamingSnakeCaseConstName {
+        name: &'sc str,
+    },
     LossOfPrecision {
         initial_type: IntegerBits,
         cast_to: IntegerBits,
@@ -233,7 +235,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \
                  \"{}\".",
                 struct_name,
-                to_class_case(struct_name)
+                to_upper_camel_case(struct_name)
             )
             }
             NonClassCaseTraitName { name } => {
@@ -241,7 +243,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \
                  \"{}\".",
                 name,
-                to_class_case(name)
+                to_upper_camel_case(name)
             )
             }
             NonClassCaseEnumName { enum_name } => write!(
@@ -249,7 +251,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase \
                  name, like \"{}\".",
                 enum_name,
-                to_class_case(enum_name)
+                to_upper_camel_case(enum_name)
             ),
             NonSnakeCaseStructFieldName { field_name } => write!(
                 f,
@@ -263,7 +265,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Enum variant name \"{}\" is not idiomatic. Enum variant names should be \
                  ClassCase, like \"{}\".",
                 variant_name,
-                to_class_case(variant_name)
+                to_upper_camel_case(variant_name)
             ),
             NonSnakeCaseFunctionName { name } => {
                 write!(f,
@@ -273,6 +275,15 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 to_snake_case(name)
             )
             }
+            NonScreamingSnakeCaseConstName { name } => {
+                write!(
+                    f,
+                    "Constant name \"{}\" is not idiomatic. Constant names should be SCREAMING_SNAKE_CASE, like \
+                    \"{}\".",
+                    name,
+                    to_screaming_snake_case(name),
+                )
+            },
             LossOfPrecision {
                 initial_type,
                 cast_to,
@@ -556,6 +567,8 @@ pub enum CompileError<'sc> {
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { span: Span<'sc>, name: String },
+    #[error("Symbol \"{name}\" is private.")]
+    ImportPrivateSymbol { span: Span<'sc>, name: String },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -877,6 +890,7 @@ impl<'sc> CompileError<'sc> {
             NotAStruct { span, .. } => span,
             FieldNotFound { span, .. } => span,
             SymbolNotFound { span, .. } => span,
+            ImportPrivateSymbol { span, .. } => span,
             NoElseBranch { span, .. } => span,
             UnqualifiedSelfType { span, .. } => span,
             NotAType { span, .. } => span,
