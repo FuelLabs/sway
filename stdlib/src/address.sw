@@ -8,18 +8,18 @@ pub struct Address {
    inner: b256
 }
 
+// @todo make this generic when possible
 pub trait From {
-    fn from(self) -> Self;
+    fn from(b: b256) -> Self;
+} {
+    fn into(addr: Address) -> b256 {
+        addr.inner
+    }
 }
-// {
-//     fn into(Self) -> self {
-//         self
-//     }
-// }
 
 impl From for Address {
-    fn from(self) -> Address {
-        let addr = asm(r1: self, inner) {
+    fn from(bits: b256) -> Address {
+        let addr = asm(r1: bits, inner) {
             move inner sp; // move stack pointer to inner
             cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $inner is pointing to blank, uninitialized (but allocated) memory
             mcpi inner r1 i32; // refactor to use mcpi when implemented!
@@ -29,19 +29,4 @@ impl From for Address {
           inner: addr,
       }
     }
-}
-
-impl Address {
-  fn from_b256(a: b256) -> Address {
-
-      let addr = asm(r1: a, inner) {
-            move inner sp; // move stack pointer to inner
-            cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $inner is pointing to blank, uninitialized (but allocated) memory
-            mcpi inner r1 i32; // refactor to use mcpi when implemented!
-            inner: b256
-        };
-      Address {
-          inner: addr,
-      }
-  }
 }
