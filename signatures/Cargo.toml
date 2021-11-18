@@ -1,0 +1,16 @@
+[package]
+name = "signatures"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ethers-core = "^0.5.0"
+ethers-signers = "^0.5.0"
+rand = "0.8.4"
+anyhow = "1.0.39"
+tokio = { version = "1.5", features = ["macros", "rt-multi-thread"] }
+elliptic-curve = "0.10.6"
+
+[workspace]
