@@ -138,7 +138,7 @@ impl<'sc> StructField<'sc> {
                 }
             );
             let r#type = check!(
-                TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config),
+                TypeInfo::parse_from_pair(fields[i + 1].clone(), config),
                 TypeInfo::Unit,
                 warnings,
                 errors
