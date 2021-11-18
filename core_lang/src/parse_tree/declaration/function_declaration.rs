@@ -66,7 +66,7 @@ impl<'sc> FunctionDeclaration<'sc> {
                 Rule::type_params => {
                     type_params_pair = Some(pair);
                 }
-                Rule::return_type => {
+                Rule::type_name => {
                     return_type_pair = Some(pair);
                 }
                 Rule::fn_decl_params => {
@@ -240,7 +240,7 @@ impl<'sc> FunctionParameter<'sc> {
                 path: path.clone(),
             };
             let r#type = check!(
-                TypeInfo::parse_from_pair_inner(type_pair, config),
+                TypeInfo::parse_from_pair(type_pair, config),
                 TypeInfo::ErrorRecovery,
                 warnings,
                 errors
