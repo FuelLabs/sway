@@ -5,6 +5,7 @@ use crate::{
         RegisterSequencer,
     },
     asm_lang::{VirtualImmediate12, VirtualOp},
+    constants::VM_WORD_SIZE,
     semantic_analysis::ast_node::{OwnedTypedStructField, ReassignmentLhs, TypedReassignment},
     type_engine::*,
     type_engine::{resolve_type, TypeInfo},
@@ -148,6 +149,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 errors
             );
 
+            let offset_in_bytes = offset_in_words * VM_WORD_SIZE;
             let offset_in_words =
                 match VirtualImmediate12::new(offset_in_words, reassignment.rhs.span.clone()) {
                     Ok(o) => o,
@@ -183,16 +185,19 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     ));
                 }
                 size => {
-                    // 0. grab the current struct field value as the ptr (ptr + offset in bytes)
+                    // 0. grab the position of the data in the struct (ptr_start + offset_in_bytes)
                     // 1. MCPI current ptr, ret register, size_of_ty
 
                     // 0.
-                    let ptr_reg = register_sequencer.next();
+                    let addr_of_field = register_sequencer.next();
                     buf.push(Op {
-                        opcode: Either::Left(VirtualOp::LW(
-                            ptr_reg.clone(),
+                        opcode: Either::Left(VirtualOp::ADDI(
+                            addr_of_field.clone(),
                             ptr.clone(),
-                            offset_in_words,
+                            VirtualImmediate12::new_unchecked(
+                                offset_in_bytes,
+                                "structs can't be this big",
+                            ),
                         )),
                         comment: "reassign multiword struct field".into(),
                         owning_span: None,
@@ -201,10 +206,10 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     // 1.
                     buf.push(Op {
                         opcode: Either::Left(VirtualOp::MCPI(
-                            ptr_reg,
+                            addr_of_field,
                             return_register,
                             VirtualImmediate12::new_unchecked(
-                                size * 8,
+                                size * VM_WORD_SIZE,
                                 "structs fields can't be this big",
                             ),
                         )),
