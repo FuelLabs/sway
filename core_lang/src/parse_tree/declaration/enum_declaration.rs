@@ -7,9 +7,10 @@ use crate::Ident;
 use crate::Namespace;
 use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
 use crate::{
-    parse_tree::declaration::TypeParameter, semantic_analysis::ast_node::TypedEnumVariant,
+    parse_tree::{declaration::TypeParameter, Visibility},
+    semantic_analysis::ast_node::TypedEnumVariant,
+    style::is_upper_camel_case,
 };
-use inflector::cases::classcase::is_class_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -18,6 +19,7 @@ pub struct EnumDeclaration<'sc> {
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) variants: Vec<EnumVariant<'sc>>,
     pub(crate) span: Span<'sc>,
+    pub visibility: Visibility,
 }
 
 #[derive(Debug, Clone)]
@@ -53,6 +55,7 @@ impl<'sc> EnumDeclaration<'sc> {
             type_parameters: self.type_parameters.clone(),
             variants: variants_buf,
             span: self.span.clone(),
+            visibility: self.visibility,
         }
     }
 
@@ -67,8 +70,8 @@ impl<'sc> EnumDeclaration<'sc> {
         };
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut inner = decl_inner.into_inner();
-        let _enum_keyword = inner.next().unwrap();
+        let inner = decl_inner.into_inner();
+        let mut visibility = Visibility::Private;
         let mut enum_name = None;
         let mut type_params = None;
         let mut where_clause = None;
@@ -86,6 +89,10 @@ impl<'sc> EnumDeclaration<'sc> {
                 }
                 Rule::enum_fields => {
                     variants = Some(pair);
+                }
+                Rule::enum_keyword => (),
+                Rule::visibility => {
+                    visibility = Visibility::parse_from_pair(pair);
                 }
                 _ => unreachable!(),
             }
@@ -107,7 +114,7 @@ impl<'sc> EnumDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_class_case(name.primary_name),
+            is_upper_camel_case(name.primary_name),
             warnings,
             Span {
                 span: enum_name.as_span(),
@@ -131,6 +138,7 @@ impl<'sc> EnumDeclaration<'sc> {
                 type_parameters,
                 variants,
                 span: whole_enum_span,
+                visibility,
             },
             warnings,
             errors,
@@ -178,7 +186,7 @@ impl<'sc> EnumVariant<'sc> {
                     errors
                 );
                 assert_or_warn!(
-                    is_class_case(name.primary_name),
+                    is_upper_camel_case(name.primary_name),
                     warnings,
                     name.span.clone(),
                     Warning::NonClassCaseEnumVariantName {
@@ -186,7 +194,7 @@ impl<'sc> EnumVariant<'sc> {
                     }
                 );
                 let r#type = check!(
-                    TypeInfo::parse_from_pair_inner(fields[i + 1].clone(), config),
+                    TypeInfo::parse_from_pair(fields[i + 1].clone(), config),
                     TypeInfo::Unit,
                     warnings,
                     errors

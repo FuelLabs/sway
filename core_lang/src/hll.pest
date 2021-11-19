@@ -106,12 +106,12 @@ non_var_decl              =  {(enum_decl|fn_decl|trait_decl|abi_decl|struct_decl
 var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
 fn_decl                   =  {visibility ~ fn_signature ~ code_block}
-fn_signature              =  {fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ return_type)? ~ trait_bounds?}
+fn_signature              =  {fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ type_name)? ~ trait_bounds?}
 var_name                  =  {ident}
 reassignment              =  {variable_reassignment | struct_field_reassignment}
 variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}
 struct_field_reassignment =  {struct_field_access ~ assign ~ expr ~ ";" }
-const_decl                =  {const_decl_keyword ~ var_name ~ type_ascription? ~ assign ~ literal_value ~ ";"}
+const_decl                =  {visibility ~ const_decl_keyword ~ var_name ~ type_ascription? ~ assign ~ literal_value ~ ";"}
 
 visibility =  {"pub"?}
 
@@ -120,7 +120,7 @@ struct_name       =  {ident}
 struct_fields     =  {struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","?}
 struct_field_name =  {ident}
 // // enum declaration
-enum_decl         =  {enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}"}
+enum_decl         =  {visibility ~ enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}"}
 enum_fields       =  {enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","?}
 enum_name         =  {ident}
 enum_field_name   =  {ident}
@@ -132,9 +132,8 @@ fn_decl_params     =  {"(" ~ (fn_decl_param ~ ("," ~ fn_decl_param)*)? ~ ")"}
 type_params        =  {"<" ~ generic_type_param ~ (", " ~ generic_type_param)* ~ ">"}
 fn_decl_param      =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
 fn_decl_param_name =  {ident}
-return_type        =  {ident}
 fn_decl_name       =  {ident}
-type_name          =  {(str_type|ident ~ type_params?)|unit}
+type_name          =  {str_type|ident ~ type_params?|unit}
 str_type           =  { "str" ~ "[" ~ basic_integer ~ "]" }
 trait_bounds       =  {"where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)*}
 generic_type_param =  {ident}

@@ -1,26 +1,11 @@
 use crate::build_config::BuildConfig;
 use crate::error::*;
-use crate::parse_tree::declaration::TypeParameter;
+use crate::parse_tree::{declaration::TypeParameter, Visibility};
 use crate::span::Span;
+use crate::style::is_snake_case;
 use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
-use inflector::cases::snakecase::is_snake_case;
 use pest::iterators::Pair;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Visibility {
-    Public,
-    Private,
-}
-
-impl Visibility {
-    pub(crate) fn parse_from_pair(input: Pair<'_, Rule>) -> Self {
-        match input.as_str().trim() {
-            "pub" => Visibility::Public,
-            _ => Visibility::Private,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration<'sc> {
@@ -81,7 +66,7 @@ impl<'sc> FunctionDeclaration<'sc> {
                 Rule::type_params => {
                     type_params_pair = Some(pair);
                 }
-                Rule::return_type => {
+                Rule::type_name => {
                     return_type_pair = Some(pair);
                 }
                 Rule::fn_decl_params => {
@@ -255,7 +240,7 @@ impl<'sc> FunctionParameter<'sc> {
                 path: path.clone(),
             };
             let r#type = check!(
-                TypeInfo::parse_from_pair_inner(type_pair, config),
+                TypeInfo::parse_from_pair(type_pair, config),
                 TypeInfo::ErrorRecovery,
                 warnings,
                 errors

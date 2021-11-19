@@ -212,7 +212,7 @@ fn connect_declaration<'sc>(
             connect_impl_trait(trait_name, graph, methods, entry_node);
             leaves.to_vec()
         }
-        SideEffect | ErrorRecovery => leaves.to_vec(),
+        ErrorRecovery => leaves.to_vec(),
     }
 }
 
