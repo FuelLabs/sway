@@ -26,4 +26,3 @@ fn main() -> bool {
 
     true
 }
-ln -s /home/furnic/dev/fuel/fuel-core-master ~/bin
