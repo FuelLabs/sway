@@ -10,12 +10,11 @@ use crate::{
 
 use core_types::Function;
 
-use std::fs::File;
-//use std::io::Write;
-
 use anyhow::Result;
 use core_lang::{BuildConfig, CompilationResult, LibraryExports, Namespace};
+use serde_json::json;
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 use std::path::PathBuf;
 
 pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
@@ -113,10 +112,10 @@ pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
         silent_mode,
     )?);
     if let Some(outfile) = json_outfile {
-        let _file = File::create(outfile).map_err(|e| e.to_string())?;
-        //file.write_all(json_abi).map_err(|e| e.to_string())?;
+        let file = File::create(outfile).map_err(|e| e.to_string())?;
+        serde_json::to_writer(&file, &json!(json_abi)).map_err(|e| e.to_string())?;
     } else {
-        println!("{:?}", json_abi);
+        println!("{:?}", json!(json_abi));
     }
 
     Ok(json_abi)

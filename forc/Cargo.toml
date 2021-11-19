@@ -25,6 +25,7 @@ prettydiff = "0.4.0"
 reqwest = {version = "0.11.4", features = ["json"]}
 semver = "1.0.3"
 serde = {version = "1.0", features = ["derive"]}
+serde_json = "*"
 source-span = "2.4"
 structopt = "0.3"
 tar = "0.4.35"
