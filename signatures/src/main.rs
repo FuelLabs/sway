@@ -24,8 +24,8 @@ async fn main() -> Result<()> {
     // The concated public Key is: 1847637560306280107622622502715552825033773557495040513239277815084649981513331589016081394344042535895449449754985848875729991940298763648723723322522
     //its hex is 0x907F3D3FD34158C4A4348823692272EA4211FD1543D2412E60F9CA87C92283C7802B042FCE39869C4C652024F8F635F3EA885858116133D114DD1D39D849A
 
-    let mut key_hasher = Sha256::new();
-    key_hasher.update(&pubkey);
+    // let mut key_hasher = Sha256::new();
+    // key_hasher.update(&pubkey);
 
     // create a Sha256 object
     let mut hasher = Sha256::new();
