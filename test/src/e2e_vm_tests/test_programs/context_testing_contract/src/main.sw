@@ -1,8 +1,6 @@
 contract;
 
-use std::context::this_id;
-use std::context::msg_value;
-use std::context::msg_token_id;
+use std::context::*;
 use context_testing_abi::ContextTesting;
 
 impl ContextTesting for Contract {
@@ -16,7 +14,15 @@ impl ContextTesting for Contract {
         msg_value()
     }
 
-    fn get_token_id(gas: u64, coins: u64, color: b256, input: ()) -> b256 {
-        msg_token_id()
+    fn get_color(gas: u64, coins: u64, color: b256, input: ()) -> b256 {
+        msg_color()
+    }
+
+    fn get_gas(gas: u64, coins: u64, color: b256, input: ()) -> u64 {
+        msg_gas()
+    }
+
+    fn get_global_gas(gas: u64, coins: u64, color: b256, input: ()) -> u64 {
+        global_gas()
     }
 }
