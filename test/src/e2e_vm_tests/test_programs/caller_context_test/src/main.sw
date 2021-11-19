@@ -24,10 +24,12 @@ fn main() -> bool {
     assert(returned_color == test_color);
 
     // test Context::msg_gas():
+    // @todo expect the correct gas here... this should fail using `1000`
     let msg_gas = test_contract.get_gas(gas, value, test_color, ());
     assert(msg_gas == 1000);
 
     // test Context::global_gas():
+    // @todo expect the correct gas here... this should fail using `1000`
     let global_gas = test_contract.get_global_gas(gas, value, test_color, ());
     assert(global_gas == 1000);
 
