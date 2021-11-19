@@ -31,5 +31,7 @@ pub fn msg_gas() -> u64 {
 
 // get the remaining gas globally
 pub fn global_gas() -> u64 {
-    ggas: u64
+    asm() {
+        ggas: u64
+    }
 }
