@@ -50,11 +50,5 @@ fn main() -> bool {
     let t5: bool = are_fields_contiguous(c);
 
     // all checks must pass:
-    // t1 && t2 && t3 && t4 && t5
-    t1 && t5 && t3
-
-    // currently:
-    // t2 == false
-    // t4 == false
-
+    t1 && t2 && t3 && t4 && t5
 }
