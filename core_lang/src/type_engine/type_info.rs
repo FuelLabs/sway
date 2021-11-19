@@ -68,23 +68,43 @@ impl TypeInfo {
         input: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let mut r#type = input.into_inner();
-        Self::parse_from_pair_inner(r#type.next().unwrap(), config)
+        match input.as_rule() {
+            Rule::type_name => (),
+            _ => {
+                let span = Span {
+                    span: input.as_span(),
+                    path: config.map(|config| config.dir_of_code.clone()),
+                };
+                let errors = vec![CompileError::Internal(
+                    "Unexpected token while parsing type.",
+                    span,
+                )];
+                return err(vec![], errors);
+            }
+        }
+        Self::parse_from_pair_inner(input.into_inner().next().unwrap(), config)
     }
 
-    pub(crate) fn parse_from_pair_inner<'sc>(
+    fn parse_from_pair_inner<'sc>(
         input: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let input = if let Some(input) = input.clone().into_inner().next() {
-            input
-        } else {
-            input
-        };
-        ok(
-            match input.as_str().trim() {
+        let type_info = match input.as_rule() {
+            Rule::str_type => {
+                let mut warnings = vec![];
+                let mut errors = vec![];
+                let span = Span {
+                    span: input.as_span(),
+                    path: config.map(|config| config.dir_of_code.clone()),
+                };
+                check!(
+                    parse_str_type(input.as_str(), span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Rule::ident => match input.as_str().trim() {
                 "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
                 "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
                 "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
@@ -95,26 +115,24 @@ impl TypeInfo {
                 "b256" => TypeInfo::B256,
                 "Self" | "self" => TypeInfo::SelfType,
                 "Contract" => TypeInfo::Contract,
-                "()" => TypeInfo::Unit,
-                a if a.contains("str[") => check!(
-                    parse_str_type(
-                        a,
-                        Span {
-                            span: input.as_span(),
-                            path: config.map(|config| config.dir_of_code.clone())
-                        }
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
                 _other => TypeInfo::Custom {
                     name: input.as_str().trim().to_string(),
                 },
             },
-            warnings,
-            errors,
-        )
+            Rule::unit => TypeInfo::Unit,
+            _ => {
+                let span = Span {
+                    span: input.as_span(),
+                    path: config.map(|config| config.dir_of_code.clone()),
+                };
+                let errors = vec![CompileError::Internal(
+                    "Unexpected token while parsing inner type.",
+                    span,
+                )];
+                return err(vec![], errors);
+            }
+        };
+        ok(type_info, vec![], vec![])
     }
 
     pub(crate) fn friendly_type_str(&self) -> String {

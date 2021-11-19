@@ -1,4 +1,5 @@
 # Advanced Concepts
 
-- [Generic Types](./generic_types.md) 
-- [Traits](./generic_types.md) 
+- [Generic Types](./generic_types.md)
+- [Traits](./generic_types.md)
+- [Assembly](./assembly.md)
