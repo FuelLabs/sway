@@ -7,8 +7,7 @@ struct InputStruct {
 
 abi MyContract {
     fn foo(gas: u64, coin: u64, color: b256, input: InputStruct) -> InputStruct;
-    fn baz(gas: u64, coin: u64, color: b256, input: bool) {
-    }
+    fn baz(gas: u64, coin: u64, color: b256, input: bool);
 }
 
 impl MyContract for Contract {
@@ -20,6 +19,8 @@ impl MyContract for Contract {
         };
         calls_other_contract()
     }
+
+    fn baz(gas: u64, coin: u64, color: b256, input: bool) { }
 }
 
 fn calls_other_contract() -> InputStruct {
