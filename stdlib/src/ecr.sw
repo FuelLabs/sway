@@ -1,5 +1,5 @@
 library ecr;
-use ::types::B512;
+use ::b512::B512;
 
 /// Recover the address of the private key used to sign a message
 // @todo change return type to `Address`
