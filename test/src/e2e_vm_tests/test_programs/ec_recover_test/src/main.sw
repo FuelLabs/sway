@@ -1,8 +1,8 @@
 script;
 // if test passes, return true
 
-use std::types::B512;
-use std::types::build_from_b256s;
+use std::b512::B512;
+use std::b512::from_b256s;
 use std::ecr::ec_recover;
 
 fn main() -> bool {
