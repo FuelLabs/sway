@@ -7,8 +7,6 @@ use crate::span::Span;
 use crate::{error::*, type_engine::*};
 use crate::{AstNode, AstNodeContent, ParseTree};
 
-use core_types::JsonABI;
-
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -19,7 +17,7 @@ pub(crate) enum TreeType {
     Library,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypedParseTree<'sc> {
     Script {
         main_function: TypedFunctionDeclaration<'sc>,

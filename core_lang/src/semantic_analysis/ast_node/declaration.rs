@@ -9,6 +9,7 @@ use crate::type_engine::*;
 use crate::ControlFlowGraph;
 use crate::{build_config::BuildConfig, error::*, Ident};
 
+use core_types::JsonABI;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -164,6 +165,15 @@ impl<'sc> TypedDeclaration<'sc> {
             | TypedDeclaration::StructDeclaration(TypedStructDeclaration { visibility, .. }) => {
                 *visibility
             }
+        }
+    }
+
+    pub fn parse_json_abi(&self) -> JsonABI {
+        match self {
+            TypedDeclaration::AbiDeclaration(TypedAbiDeclaration { methods, .. }) => {
+                methods.iter().map(|x| x.parse_json_abi()).collect()
+            }
+            _ => vec![],
         }
     }
 }

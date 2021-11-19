@@ -23,7 +23,7 @@ use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
-use core_types::Function;
+use core_types::{Function, JsonABI};
 use pest::iterators::Pair;
 use pest::Parser;
 use std::collections::{HashMap, HashSet};
@@ -371,6 +371,12 @@ pub fn compile_to_asm<'sc>(
         return CompilationResult::Failure { errors, warnings };
     }
 
+    let mut json_abi = vec![];
+    json_abi.append(&mut parse_json_abi(&script_ast));
+    json_abi.append(&mut parse_json_abi(&contract_ast));
+    json_abi.append(&mut parse_json_abi(&predicate_ast));
+    json_abi.append(&mut parse_json_abi_from_library_exports(&library_exports));
+
     // perform control flow analysis on each branch
     let (script_warnings, script_errors) =
         perform_control_flow_analysis(&script_ast, TreeType::Script, &mut dead_code_graph);
@@ -553,6 +559,31 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
         errors.append(&mut graph.analyze_return_paths());
     }
     (warnings, errors)
+}
+
+fn parse_json_abi<'sc>(ast: &Option<TypedParseTree>) -> JsonABI {
+    match ast {
+        Some(TypedParseTree::Contract { declarations, .. }) => declarations
+            .iter()
+            .flat_map(|x| x.parse_json_abi())
+            .collect(),
+        Some(TypedParseTree::Predicate { declarations, .. }) => declarations
+            .iter()
+            .flat_map(|x| x.parse_json_abi())
+            .collect(),
+        Some(TypedParseTree::Script { declarations, .. }) => declarations
+            .iter()
+            .flat_map(|x| x.parse_json_abi())
+            .collect(),
+        _ => vec![],
+    }
+}
+
+fn parse_json_abi_from_library_exports(ast: &LibraryExports) -> JsonABI {
+    ast.trees
+        .iter()
+        .flat_map(|x| parse_json_abi(&Some((*x).clone())))
+        .collect()
 }
 
 // strategy: parse top level things
