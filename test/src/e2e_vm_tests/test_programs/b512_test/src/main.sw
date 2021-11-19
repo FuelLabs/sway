@@ -2,6 +2,7 @@ script;
 
 use std::b512::B512;
 use std::constants::ETH_COLOR;
+use std::chain::assert;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.
 fn are_fields_contiguous(big_value: B512) -> bool {
@@ -27,28 +28,27 @@ fn main() -> bool {
 
     // it allows creation of new empty type:
     let mut a = ~B512::new();
-    let t1: bool = (a.hi == zero) && (a.lo == zero);
+    assert((a.hi == zero) && (a.lo == zero));
 
     // it allows reassignment of fields:
     a.hi = hi_bits;
     a.lo = lo_bits;
-    let t2: bool =  (a.hi == hi_bits) && (a.lo == lo_bits);
+    assert((a.hi == hi_bits) && (a.lo == lo_bits));
 
     // it allows building from 2 b256's:
     let mut b = ~B512::from_b256(hi_bits, lo_bits);
-    let t3: bool = (b.hi == hi_bits) && (b.lo == lo_bits);
+    assert((b.hi == hi_bits) && (b.lo == lo_bits));
 
     // it allows reassignment of fields:
     b.hi = modified;
     b.lo = modified;
-    let t4: bool = (b.hi == modified) && (b.lo == modified);
+    assert((b.hi == modified) && (b.lo == modified));
 
     // it guarantees memory contiguity:
     let mut c = ~B512::new();
     c.hi= hi_bits;
     c.lo = lo_bits;
-    let t5: bool = are_fields_contiguous(c);
+    assert(are_fields_contiguous(c));
 
-    // all checks must pass:
-    t1 && t2 && t3 && t4 && t5
+    true
 }
