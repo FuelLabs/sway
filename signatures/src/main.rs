@@ -10,19 +10,16 @@ use elliptic_curve::*;
 #[tokio::main]
 async fn main() -> Result<()> {
 
-    // let secret_key = SecretKey::from_bytes("0x007").unwrap();
-
-    // let public_key = SecretKey::public_key(&secret_key);
-
     // Generate a random wallet
     let wallet = LocalWallet::new(&mut thread_rng());
+    println!("Wallet addr:    {:?}", wallet.address());
 
     // Declare the message you want to sign.
-    let message = "Some data";
+    let message = "Hello from Fuel! The number is 42.";
 
     // sign message from your wallet and print out signature produced.
     let signature = wallet.sign_message(message).await?;
-    println!("Produced signature {}", signature);
+    println!("Signature       {}", signature);
 
     // verify the signature produced from your wallet.
     signature.verify(message, wallet.address()).unwrap();
@@ -30,9 +27,8 @@ async fn main() -> Result<()> {
     let recovered_addr = signature.recover(message).unwrap();
 
     assert_eq!(recovered_addr, wallet.address());
-    println!("Verified signature produced by {:?}!", wallet.address());
-    println!(" {:?}, {:?}", recovered_addr, wallet.address());
-    // println!("public Key {:?}", public_key);
+    println!("Signed by:      {:?}", wallet.address());
+    println!("Recovered addr: {:?}", recovered_addr);
 
     Ok(())
 }
