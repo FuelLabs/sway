@@ -12,5 +12,8 @@ rand = "0.8.4"
 anyhow = "1.0.39"
 tokio = { version = "1.5", features = ["macros", "rt-multi-thread"] }
 elliptic-curve = "0.10.6"
+libsecp256k1 = "0.7.0"
+sha2 = "0.9.3"
+hex-literal = "0.3.4"
 
 [workspace]
