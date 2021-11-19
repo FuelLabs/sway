@@ -6,7 +6,10 @@ use crate::utils::{
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
 use semver::Version;
-use std::{path::PathBuf, str};
+use std::{
+    path::{Path, PathBuf},
+    str,
+};
 
 /// Forc check will check if there are updates to Github-based dependencies.
 /// If a target dependency `-d` is passed, it will check only this one dependency.
@@ -64,15 +67,15 @@ async fn check_dependency(
     };
 
     let target_directory = match &dep.branch {
-        Some(b) => format!("{}/.forc/{}/{}", home_dir, dependency_name, &b),
-        None => format!("{}/.forc/{}/default", home_dir, dependency_name),
+        Some(b) => PathBuf::from(format!("{}/.forc/{}/{}", home_dir, dependency_name, &b)),
+        None => PathBuf::from(format!("{}/.forc/{}/default", home_dir, dependency_name)),
     };
 
     // Currently we only handle checks on github-based dependencies
     if let Some(git) = &dep.git {
         match &dep.version {
             Some(version) => check_tagged_dependency(dependency_name, version, git).await?,
-            None => check_untagged_dependency(git, target_directory, dependency_name, dep).await?,
+            None => check_untagged_dependency(git, &target_directory, dependency_name, dep).await?,
         }
     }
     Ok(())
@@ -117,7 +120,7 @@ async fn check_tagged_dependency(
 
 async fn check_untagged_dependency(
     git_repo: &str,
-    target_directory: String,
+    target_directory: &Path,
     dependency_name: &str,
     dep: &dependency::DependencyDetails,
 ) -> Result<()> {
