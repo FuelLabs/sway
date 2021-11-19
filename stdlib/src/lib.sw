@@ -5,5 +5,5 @@ dep hash;
 dep storage;
 dep constants;
 dep chain;
-dep ecr;
 dep b512;
+dep ecr;
