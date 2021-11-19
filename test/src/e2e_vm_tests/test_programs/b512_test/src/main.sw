@@ -36,7 +36,7 @@ fn main() -> bool {
     assert((a.hi == hi_bits) && (a.lo == lo_bits));
 
     // it allows building from 2 b256's:
-    let mut b = ~B512::from_b256(hi_bits, lo_bits);
+    let mut b = ~B512::from(hi_bits, lo_bits);
     assert((b.hi == hi_bits) && (b.lo == lo_bits));
 
     // it allows reassignment of fields:
