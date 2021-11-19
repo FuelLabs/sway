@@ -72,7 +72,7 @@ impl TypeInfo {
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
         match input.as_rule() {
-            Rule::type_name => (),
+            Rule::type_name | Rule::generic_type_param => (),
             _ => {
                 let span = Span {
                     span: input.as_span(),
@@ -107,7 +107,7 @@ impl TypeInfo {
                     errors
                 )
             }
-            Rule::ident => match input.as_str().trim() {
+            Rule::ident | Rule::generic_type_param => match input.as_str().trim() {
                 "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
                 "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
                 "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
