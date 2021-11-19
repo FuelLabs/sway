@@ -71,23 +71,43 @@ impl TypeInfo {
         input: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let mut r#type = input.into_inner();
-        Self::parse_from_pair_inner(r#type.next().unwrap(), config)
+        match input.as_rule() {
+            Rule::type_name => (),
+            _ => {
+                let span = Span {
+                    span: input.as_span(),
+                    path: config.map(|config| config.dir_of_code.clone()),
+                };
+                let errors = vec![CompileError::Internal(
+                    "Unexpected token while parsing type.",
+                    span,
+                )];
+                return err(vec![], errors);
+            }
+        }
+        Self::parse_from_pair_inner(input.into_inner().next().unwrap(), config)
     }
 
-    pub(crate) fn parse_from_pair_inner<'sc>(
+    fn parse_from_pair_inner<'sc>(
         input: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let input = if let Some(input) = input.clone().into_inner().next() {
-            input
-        } else {
-            input
-        };
-        ok(
-            match input.as_str().trim() {
+        let type_info = match input.as_rule() {
+            Rule::str_type => {
+                let mut warnings = vec![];
+                let mut errors = vec![];
+                let span = Span {
+                    span: input.as_span(),
+                    path: config.map(|config| config.dir_of_code.clone()),
+                };
+                check!(
+                    parse_str_type(input.as_str(), span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+            Rule::ident => match input.as_str().trim() {
                 "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
                 "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
                 "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
@@ -98,26 +118,24 @@ impl TypeInfo {
                 "b256" => TypeInfo::B256,
                 "Self" | "self" => TypeInfo::SelfType,
                 "Contract" => TypeInfo::Contract,
-                "()" => TypeInfo::Unit,
-                a if a.contains("str[") => check!(
-                    parse_str_type(
-                        a,
-                        Span {
-                            span: input.as_span(),
-                            path: config.map(|config| config.dir_of_code.clone())
-                        }
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
                 _other => TypeInfo::Custom {
                     name: input.as_str().trim().to_string(),
                 },
             },
-            warnings,
-            errors,
-        )
+            Rule::unit => TypeInfo::Unit,
+            _ => {
+                let span = Span {
+                    span: input.as_span(),
+                    path: config.map(|config| config.dir_of_code.clone()),
+                };
+                let errors = vec![CompileError::Internal(
+                    "Unexpected token while parsing inner type.",
+                    span,
+                )];
+                return err(vec![], errors);
+            }
+        };
+        ok(type_info, vec![], vec![])
     }
 
     pub(crate) fn friendly_type_str(&self) -> String {
@@ -296,26 +314,58 @@ impl TypeInfo {
         &self,
         mapping: &[(TypeParameter<'sc>, TypeId)],
     ) -> Option<TypeId> {
-        if let TypeInfo::Custom { .. } = self {
-            for (param, ty_id) in mapping.iter() {
-                if param.name == *self {
-                    return Some(*ty_id);
+        match self {
+            TypeInfo::Custom { .. } => {
+                for (param, ty_id) in mapping.iter() {
+                    if param.name == *self {
+                        return Some(*ty_id);
+                    }
                 }
             }
-        } else if let TypeInfo::UnknownGeneric { name, .. } = self {
-            for (param, ty_id) in mapping.iter() {
-                if param.name
-                    == (TypeInfo::Custom {
-                        name: name.to_string(),
-                    })
-                {
-                    return Some(*ty_id);
+            TypeInfo::UnknownGeneric { name, .. } => {
+                for (param, ty_id) in mapping.iter() {
+                    if param.name
+                        == (TypeInfo::Custom {
+                            name: name.to_string(),
+                        })
+                    {
+                        return Some(*ty_id);
+                    }
                 }
             }
-        } else if let TypeInfo::Struct { fields, name, .. } = self {
-            todo!("check the type of each field and reconstruct this struct type if needed")
-        } else if let TypeInfo::Enum { variants, name, .. } = self {
-            todo!("check the type of each variant and reconstruct this enum type if needed")
+            TypeInfo::Struct { fields, name } => {
+                let mut new_fields = fields.clone();
+                for new_field in new_fields.iter_mut() {
+                    if let Some(matching_id) =
+                        look_up_type_id(new_field.r#type).matches_type_parameter(mapping)
+                    {
+                        new_field.r#type = insert_type(TypeInfo::Ref(matching_id));
+                    }
+                }
+                return Some(insert_type(TypeInfo::Struct {
+                    fields: new_fields,
+                    name: name.clone(),
+                }));
+            }
+            TypeInfo::Enum {
+                variant_types,
+                name,
+            } => {
+                let mut new_variants = variant_types.clone();
+                for new_variant in new_variants.iter_mut() {
+                    if let Some(matching_id) =
+                        look_up_type_id(new_variant.r#type).matches_type_parameter(mapping)
+                    {
+                        new_variant.r#type = insert_type(TypeInfo::Ref(matching_id));
+                    }
+                }
+
+                return Some(insert_type(TypeInfo::Enum {
+                    variant_types: new_variants,
+                    name: name.clone(),
+                }));
+            }
+            _ => return None,
         }
         None
     }

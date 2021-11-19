@@ -45,8 +45,9 @@ impl<'sc> ConstantDeclaration<'sc> {
         };
         let type_ascription = type_ascription
             .map(|ascription| {
+                let type_name = ascription.into_inner().next().unwrap();
                 check!(
-                    TypeInfo::parse_from_pair(ascription, config),
+                    TypeInfo::parse_from_pair(type_name, config),
                     TypeInfo::Unit,
                     warnings,
                     errors

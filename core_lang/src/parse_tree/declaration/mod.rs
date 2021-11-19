@@ -157,8 +157,9 @@ impl<'sc> Declaration<'sc> {
                     .clone()
                     .map(|x| x.into_inner().next().unwrap().as_span());
                 let type_ascription = if let Some(ascription) = type_ascription {
+                    let type_name = ascription.into_inner().next().unwrap();
                     check!(
-                        TypeInfo::parse_from_pair(ascription, config),
+                        TypeInfo::parse_from_pair(type_name, config),
                         TypeInfo::Unit,
                         warnings,
                         errors

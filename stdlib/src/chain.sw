@@ -1,5 +1,6 @@
 library chain;
 dep chain/auth;
+use ::ops::*;
 
 // When generics land, these will be generic.
 pub fn log_u64(val: u64) {
@@ -27,8 +28,10 @@ pub fn log_u8(val: u8) {
 }
 
 
-/// Reverts the transaction with a given code.
-pub fn revert(code: u64) {
+/// Context-dependent:
+/// will panic if used in a predicate
+/// will revert if used in a contract
+pub fn panic(code: u64) {
   asm(r1: code) {
     rvrt r1;
   }
@@ -65,5 +68,14 @@ pub fn get_script_data() -> u64 {
         // copy script data into above buffer
         mcp to_return script_data_ptr script_data_len;
         to_return: u64 // should be T when generic
+    }
+}
+
+/// Assert that a value is true
+pub fn assert(a: bool) {
+    if not(a) {
+        panic(0);
+    } else {
+        ()
     }
 }

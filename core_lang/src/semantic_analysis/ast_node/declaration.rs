@@ -32,16 +32,11 @@ pub enum TypedDeclaration<'sc> {
         type_implementing_for: TypeInfo,
     },
     AbiDeclaration(TypedAbiDeclaration<'sc>),
-<<<<<<< HEAD
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope {
         name: Ident<'sc>,
     },
-    // no contents since it is a side-effectful declaration, i.e it populates a namespace
-    SideEffect,
-=======
->>>>>>> 250265fc234d23e385aee3c3af504114453f46eb
     ErrorRecovery,
 }
 
@@ -65,7 +60,7 @@ impl TypedDeclaration<'_> {
             }
             // generics in an ABI is unsupported by design
             AbiDeclaration(..) => (),
-            GenericTypeForFunctionScope { .. } | SideEffect | ErrorRecovery => (),
+            GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
         }
     }
 }
@@ -84,11 +79,7 @@ impl<'sc> TypedDeclaration<'sc> {
             Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
-<<<<<<< HEAD
             GenericTypeForFunctionScope { .. } => "generic type parameter",
-            SideEffect => "",
-=======
->>>>>>> 250265fc234d23e385aee3c3af504114453f46eb
             ErrorRecovery => "error",
         }
     }
@@ -158,13 +149,9 @@ impl<'sc> TypedDeclaration<'sc> {
             }
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
-<<<<<<< HEAD
-            SideEffect | ErrorRecovery | GenericTypeForFunctionScope { .. } => {
+            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
                 unreachable!("No span exists for these ast node types")
             }
-=======
-            ErrorRecovery => unreachable!("No span exists for these ast node types"),
->>>>>>> 250265fc234d23e385aee3c3af504114453f46eb
         }
     }
 
@@ -204,23 +191,19 @@ impl<'sc> TypedDeclaration<'sc> {
     }
 
     pub(crate) fn visibility(&self) -> Visibility {
+        use TypedDeclaration::*;
         match self {
-            TypedDeclaration::VariableDeclaration(..)
-            | TypedDeclaration::Reassignment(..)
-            | TypedDeclaration::ImplTrait { .. }
-            | TypedDeclaration::AbiDeclaration(..)
-            | TypedDeclaration::ErrorRecovery => Visibility::Public,
-            TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { visibility, .. })
-            | TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                visibility, ..
-            })
-            | TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-                visibility, ..
-            })
-            | TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { visibility, .. })
-            | TypedDeclaration::StructDeclaration(TypedStructDeclaration { visibility, .. }) => {
-                *visibility
-            }
+            VariableDeclaration(..)
+            | GenericTypeForFunctionScope { .. }
+            | Reassignment(..)
+            | ImplTrait { .. }
+            | AbiDeclaration(..)
+            | ErrorRecovery => Visibility::Public,
+            EnumDeclaration(TypedEnumDeclaration { visibility, .. })
+            | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
+            | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
+            | TraitDeclaration(TypedTraitDeclaration { visibility, .. })
+            | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
         }
     }
 }
