@@ -142,7 +142,7 @@ impl TypeInfo {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
-            UnknownGeneric { name, .. } => format!("generic {}", name),
+            UnknownGeneric { name, .. } => name.to_string(),
             Str(x) => format!("str[{}]", x),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",

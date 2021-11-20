@@ -13,7 +13,7 @@ fn three_generics<A, B, C>(a: A, b: B, c: C) -> B {
   b
 }
 
-fn main() {
+fn main() -> bool {
   let a: bool   = identity(true);
   let b: u32    = identity(10);
   let c: u64    = identity(42);
@@ -21,5 +21,7 @@ fn main() {
 
   let f: u64 = two_generics(true, 10);
   let g: str[3] = three_generics(true, "foo", 10);
+
+  a
 
 }

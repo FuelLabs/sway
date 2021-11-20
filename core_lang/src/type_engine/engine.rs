@@ -164,15 +164,11 @@ impl<'sc> TypeEngine<'sc> for Engine {
                     fields: b_fields, ..
                 },
             ) if {
-                let a_fields = a_fields
-                    .iter()
-                    .map(|x| self.look_up_type_id(x.r#type))
-                    .collect::<Vec<_>>();
-                let b_fields = b_fields
-                    .iter()
-                    .map(|x| self.look_up_type_id(x.r#type))
-                    .collect::<Vec<_>>();
-                a_fields == b_fields
+                let a_fields = a_fields.iter().map(|x| x.r#type);
+                let b_fields = b_fields.iter().map(|x| x.r#type);
+
+                let mut zipped = a_fields.zip(b_fields);
+                zipped.all(|(a, b)| self.unify(a, b, span).is_ok())
             } =>
             {
                 Ok(None)
@@ -187,15 +183,11 @@ impl<'sc> TypeEngine<'sc> for Engine {
                     ..
                 },
             ) if {
-                let a_variants = a_variants
-                    .iter()
-                    .map(|x| self.look_up_type_id(x.r#type))
-                    .collect::<Vec<_>>();
-                let b_variants = b_variants
-                    .iter()
-                    .map(|x| self.look_up_type_id(x.r#type))
-                    .collect::<Vec<_>>();
-                a_variants == b_variants
+                let a_variants = a_variants.iter().map(|x| x.r#type);
+                let b_variants = b_variants.iter().map(|x| x.r#type);
+
+                let mut zipped = a_variants.zip(b_variants);
+                zipped.all(|(a, b)| self.unify(a, b, span).is_ok())
             } =>
             {
                 Ok(None)
