@@ -23,9 +23,7 @@ pub(crate) fn unify_with_self<'sc>(
     res
 }
 pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
-    println!("Getting insert lock");
     let mut lock = TYPE_ENGINE.write().unwrap();
-    println!("Got insert lock");
     let id = lock.insert(ty);
     drop(lock);
     id
@@ -47,9 +45,7 @@ pub(crate) fn resolve_type<'sc>(
 }
 
 pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
-    println!("looking up in real func");
     let lock = TYPE_ENGINE.read().unwrap();
-    println!("got lookup lock in real func");
     let ty = lock
         .resolve(id)
         .expect("type engine did not contain type id: internal error");
@@ -177,9 +173,9 @@ impl<'sc> TypeEngine<'sc> for Engine {
             // }
 
             // If no previous attempts to unify were successful, raise an error
-            (a, b) => Err(TypeError::MismatchedType {
-                expected: b.friendly_type_str(),
-                received: a.friendly_type_str(),
+            (_, _) => Err(TypeError::MismatchedType {
+                expected: b,
+                received: a,
                 help_text: Default::default(),
                 span: span.clone(),
             }),

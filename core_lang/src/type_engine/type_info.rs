@@ -140,7 +140,6 @@ impl TypeInfo {
 
     pub(crate) fn friendly_type_str(&self) -> String {
         use TypeInfo::*;
-        println!("outer");
         match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => format!("generic {}", name),
@@ -381,15 +380,11 @@ impl TypeInfo {
 }
 
 fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
-    println!("Iinner");
     format!(
         "{}<{}>",
         name,
         inner_types
-            .map(|x| {
-                println!("yo");
-                x.friendly_type_str()
-            })
+            .map(|x| x.friendly_type_str())
             .collect::<Vec<_>>()
             .join(", ")
     )

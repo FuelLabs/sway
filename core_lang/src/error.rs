@@ -1,6 +1,7 @@
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case};
+use crate::type_engine::*;
 use crate::type_engine::{IntegerBits, TypeInfo};
 use std::fmt;
 use thiserror::Error;
@@ -470,7 +471,8 @@ pub enum CompileError<'sc> {
     )]
     MultipleImmediates(Span<'sc>),
     #[error(
-        "Expected type {expected}, but found type {given}. The definition of this function must \
+        "Expected: {expected} \n\
+         found:    {given}. The definition of this function must \
          match the one in the trait declaration."
     )]
     MismatchedTypeInTrait {
@@ -768,12 +770,14 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum TypeError<'sc> {
     #[error(
-        "Mismatched types: Expected type {expected} but found type {received}. Type {received} is \
-         not castable to type {expected}.\n help: {help_text}"
+        "Mismatched types.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         {help}", expected=look_up_type_id(*expected).friendly_type_str(), received=look_up_type_id(*received).friendly_type_str(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
     )]
     MismatchedType {
-        expected: String,
-        received: String,
+        expected: TypeId,
+        received: TypeId,
         help_text: String,
         span: Span<'sc>,
     },
