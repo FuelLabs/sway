@@ -5,10 +5,10 @@ use lazy_static::lazy_static;
 
 use std::collections::HashMap;
 
-use std::sync::Mutex;
+use std::sync::RwLock;
 
 lazy_static! {
-    pub(crate) static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
+    pub(crate) static ref TYPE_ENGINE: RwLock<Engine> = Default::default();
 }
 
 pub(crate) fn unify_with_self<'sc>(
@@ -17,13 +17,15 @@ pub(crate) fn unify_with_self<'sc>(
     self_type: TypeId,
     span: &Span<'sc>,
 ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
-    let mut lock = TYPE_ENGINE.lock().unwrap();
+    let mut lock = TYPE_ENGINE.write().unwrap();
     let res = lock.unify_with_self(ty1, ty2, self_type, span);
     drop(lock);
     res
 }
 pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
-    let mut lock = TYPE_ENGINE.lock().unwrap();
+    println!("Getting insert lock");
+    let mut lock = TYPE_ENGINE.write().unwrap();
+    println!("Got insert lock");
     let id = lock.insert(ty);
     drop(lock);
     id
@@ -33,7 +35,7 @@ pub(crate) fn resolve_type<'sc>(
     id: TypeId,
     error_span: &Span<'sc>,
 ) -> Result<TypeInfo, TypeError<'sc>> {
-    let lock = TYPE_ENGINE.lock().unwrap();
+    let lock = TYPE_ENGINE.read().unwrap();
     let ty = match lock.resolve(id) {
         Ok(TypeInfo::Unknown) => Err(TypeError::UnknownType {
             span: error_span.clone(),
@@ -45,7 +47,9 @@ pub(crate) fn resolve_type<'sc>(
 }
 
 pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
-    let lock = TYPE_ENGINE.lock().unwrap();
+    println!("looking up in real func");
+    let lock = TYPE_ENGINE.read().unwrap();
+    println!("got lookup lock in real func");
     let ty = lock
         .resolve(id)
         .expect("type engine did not contain type id: internal error");
@@ -55,7 +59,7 @@ pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
 
 /// The same as the above but it doesn't follow references. Used when monomorphizing.
 pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
-    let lock = TYPE_ENGINE.lock().unwrap();
+    let lock = TYPE_ENGINE.read().unwrap();
     let ty = lock
         .vars
         .get(&id)

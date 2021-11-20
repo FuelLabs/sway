@@ -51,7 +51,10 @@ pub(crate) trait FriendlyTypeString {
 
 impl FriendlyTypeString for TypeId {
     fn friendly_type_str(&self) -> String {
-        look_up_type_id(*self).friendly_type_str()
+        println!("looking up");
+        let res = look_up_type_id(*self).friendly_type_str();
+        println!("looked up");
+        res
     }
 }
 
