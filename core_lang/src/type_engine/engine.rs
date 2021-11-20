@@ -155,6 +155,52 @@ impl<'sc> TypeEngine<'sc> for Engine {
                 Ok(None)
             }
 
+            // if the types, once their ids have been looked up, are the same, we are done
+            (
+                Struct {
+                    fields: a_fields, ..
+                },
+                Struct {
+                    fields: b_fields, ..
+                },
+            ) if {
+                let a_fields = a_fields
+                    .iter()
+                    .map(|x| self.look_up_type_id(x.r#type))
+                    .collect::<Vec<_>>();
+                let b_fields = b_fields
+                    .iter()
+                    .map(|x| self.look_up_type_id(x.r#type))
+                    .collect::<Vec<_>>();
+                a_fields == b_fields
+            } =>
+            {
+                Ok(None)
+            }
+            (
+                Enum {
+                    variant_types: a_variants,
+                    ..
+                },
+                Enum {
+                    variant_types: b_variants,
+                    ..
+                },
+            ) if {
+                let a_variants = a_variants
+                    .iter()
+                    .map(|x| self.look_up_type_id(x.r#type))
+                    .collect::<Vec<_>>();
+                let b_variants = b_variants
+                    .iter()
+                    .map(|x| self.look_up_type_id(x.r#type))
+                    .collect::<Vec<_>>();
+                a_variants == b_variants
+            } =>
+            {
+                Ok(None)
+            }
+
             (Numeric, b @ UnsignedInteger(_)) => {
                 self.vars.insert(a, b);
                 Ok(None)
