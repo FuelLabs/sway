@@ -24,63 +24,63 @@ impl FriendlyTypeString for TypeId {
 
 #[test]
 fn basic_numeric_unknown() {
-    let mut engine = Engine::default();
+    let engine = Engine::default();
 
     let sp = Span {
         span: pest::Span::new(" ", 0, 0).unwrap(),
         path: None,
     };
     // numerics
-    let id = engine.insert(TypeInfo::Numeric);
-    let id2 = engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = engine.insert_type(TypeInfo::Numeric);
+    let id2 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
     engine.unify(id, id2, &sp).unwrap();
 
     assert_eq!(
-        engine.resolve(id).unwrap(),
+        engine.resolve_type(id, &sp).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
 #[test]
 fn chain_of_refs() {
-    let mut engine = Engine::default();
+    let engine = Engine::default();
     let sp = Span {
         span: pest::Span::new(" ", 0, 0).unwrap(),
         path: None,
     };
     // numerics
-    let id = engine.insert(TypeInfo::Numeric);
-    let id2 = engine.insert(TypeInfo::Ref(id));
-    let id3 = engine.insert(TypeInfo::Ref(id));
-    let id4 = engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = engine.insert_type(TypeInfo::Numeric);
+    let id2 = engine.insert_type(TypeInfo::Ref(id));
+    let id3 = engine.insert_type(TypeInfo::Ref(id));
+    let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
     engine.unify(id4, id2, &sp).unwrap();
 
     assert_eq!(
-        engine.resolve(id3).unwrap(),
+        engine.resolve_type(id3, &sp).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
 #[test]
 fn chain_of_refs_2() {
-    let mut engine = Engine::default();
+    let engine = Engine::default();
     let sp = Span {
         span: pest::Span::new(" ", 0, 0).unwrap(),
         path: None,
     };
     // numerics
-    let id = engine.insert(TypeInfo::Numeric);
-    let id2 = engine.insert(TypeInfo::Ref(id));
-    let id3 = engine.insert(TypeInfo::Ref(id));
-    let id4 = engine.insert(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = engine.insert_type(TypeInfo::Numeric);
+    let id2 = engine.insert_type(TypeInfo::Ref(id));
+    let id3 = engine.insert_type(TypeInfo::Ref(id));
+    let id4 = engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
     engine.unify(id2, id4, &sp).unwrap();
 
     assert_eq!(
-        engine.resolve(id3).unwrap(),
+        engine.resolve_type(id3, &sp).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     );
 }
