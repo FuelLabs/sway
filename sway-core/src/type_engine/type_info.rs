@@ -31,7 +31,7 @@ pub enum TypeInfo {
     /// For the type inference engine to use when a type references another type
     Ref(TypeId),
 
-    Tuple(Vec<TypeInfo>),
+    Tuple(Vec<TypeId>),
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
@@ -194,17 +194,18 @@ impl TypeInfo {
                 TypeInfo::Array(insert_type(elem_type_info), elem_count)
             }
             Rule::tuple_type => {
-                let mut fields = vec![];
+                let mut field_type_ids = vec![];
                 for field in input.into_inner() {
-                    let field = check!(
+                    let field_type = check!(
                         TypeInfo::parse_from_pair(field, config),
                         TypeInfo::Tuple(Vec::new()),
                         warnings,
                         errors
                     );
-                    fields.push(field);
+                    let field_type_id = crate::type_engine::insert_type(field_type);
+                    field_type_ids.push(field_type_id);
                 }
-                TypeInfo::Tuple(fields)
+                TypeInfo::Tuple(field_type_ids)
             }
             _ => {
                 errors.push(CompileError::Internal(
@@ -329,7 +330,11 @@ impl TypeInfo {
                 let field_names = {
                     let names = fields
                         .iter()
-                        .map(|field| field.to_selector_name(error_msg_span))
+                        .map(|field_type| {
+                            resolve_type(*field_type, error_msg_span)
+                                .expect("unreachable?")
+                                .to_selector_name(error_msg_span)
+                        })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
                     for name in names {
@@ -416,7 +421,11 @@ impl TypeInfo {
             TypeInfo::Boolean => Ok(1),
             TypeInfo::Tuple(fields) => Ok(fields
                 .iter()
-                .map(|field| field.size_in_words(err_span))
+                .map(|field_type| {
+                    resolve_type(*field_type, err_span)
+                        .expect("should be unreachable?")
+                        .size_in_words(err_span)
+                })
                 .collect::<Result<Vec<u64>, _>>()?
                 .iter()
                 .sum()),
@@ -464,7 +473,9 @@ impl TypeInfo {
     pub(crate) fn is_copy_type(&self) -> bool {
         match self {
             TypeInfo::UnsignedInteger(_) | TypeInfo::Boolean | TypeInfo::Byte => true,
-            TypeInfo::Tuple(fields) => fields.iter().all(|field| field.is_copy_type()),
+            TypeInfo::Tuple(fields) => fields
+                .iter()
+                .all(|field_type| look_up_type_id(*field_type).is_copy_type()),
             _ => false,
         }
     }
@@ -477,7 +488,9 @@ impl TypeInfo {
             TypeInfo::Struct { fields, .. } => fields
                 .iter()
                 .any(|field| look_up_type_id(field.r#type).is_uninhabited()),
-            TypeInfo::Tuple(fields) => fields.iter().any(|field| field.is_uninhabited()),
+            TypeInfo::Tuple(fields) => fields
+                .iter()
+                .any(|field_type| look_up_type_id(*field_type).is_uninhabited()),
             _ => false,
         }
     }
@@ -515,10 +528,11 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    if field.is_uninhabited() {
+                    let field_type = look_up_type_id(*field);
+                    if field_type.is_uninhabited() {
                         return true;
                     }
-                    if !field.is_zero_sized() {
+                    if !field_type.is_zero_sized() {
                         all_zero_sized = false;
                     }
                 }
@@ -600,18 +614,18 @@ impl TypeInfo {
                 let mut new_fields = Vec::new();
                 let mut index = 0;
                 while index < fields.len() {
-                    let new_field_id_opt = fields[index].matches_type_parameter(mapping);
+                    let new_field_id_opt = look_up_type_id(fields[index]).matches_type_parameter(mapping);
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
-                        new_fields.push(TypeInfo::Ref(new_field_id));
+                        new_fields.push(insert_type(TypeInfo::Ref(new_field_id)));
                         index += 1;
                         break;
                     }
                     index += 1;
                 }
                 while index < fields.len() {
-                    let new_field = match fields[index].matches_type_parameter(mapping) {
-                        Some(new_field_id) => TypeInfo::Ref(new_field_id),
+                    let new_field = match look_up_type_id(fields[index]).matches_type_parameter(mapping) {
+                        Some(new_field_id) => insert_type(TypeInfo::Ref(new_field_id)),
                         None => fields[index].clone(),
                     };
                     new_fields.push(new_field);

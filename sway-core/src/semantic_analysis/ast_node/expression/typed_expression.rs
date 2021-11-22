@@ -1102,12 +1102,7 @@ impl<'sc> TypedExpression<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let field_type_ids_opt = match look_up_type_id(type_annotation) {
-            TypeInfo::Tuple(field_types) if field_types.len() == fields.len() => {
-                let mut field_type_ids = Vec::with_capacity(field_types.len());
-                for field_type in field_types {
-                    let field_type_id = crate::type_engine::insert_type(field_type);
-                    field_type_ids.push(field_type_id);
-                }
+            TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
                 Some(field_type_ids)
             },
             _ => None,
@@ -1140,7 +1135,7 @@ impl<'sc> TypedExpression<'sc> {
             if let IsConstant::No = typed_field.is_constant {
                 is_constant = IsConstant::No;
             }
-            typed_field_types.push(look_up_type_id(typed_field.return_type));
+            typed_field_types.push(typed_field.return_type);
             typed_fields.push(typed_field);
         }
         let exp = TypedExpression {

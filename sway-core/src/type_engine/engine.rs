@@ -65,6 +65,14 @@ impl Engine {
                 Some(_) => self.unify(received, expected, span),
             },
 
+            (Tuple(fields_a), Tuple(fields_b)) if fields_a.len() == fields_b.len() => {
+                let mut warnings = vec![];
+                for (field_a, field_b) in fields_a.iter().zip(fields_b.iter()) {
+                    warnings.extend(self.unify(*field_a, *field_b, span)?);
+                }
+                Ok(warnings)
+            }
+
             (
                 ref received_info @ UnsignedInteger(recieved_width),
                 ref expected_info @ UnsignedInteger(expected_width),
