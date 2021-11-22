@@ -21,12 +21,7 @@ where
         inner[index].clone()
     }
 
-    pub fn replace(
-        &self,
-        index: usize,
-        prev_value: &T,
-        new_value: T,
-    ) -> Option<T> {
+    pub fn replace(&self, index: usize, prev_value: &T, new_value: T) -> Option<T> {
         let mut inner = self.inner.write().unwrap();
         let actual_prev_value = &inner[index];
         if actual_prev_value != prev_value {

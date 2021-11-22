@@ -1,6 +1,6 @@
 use super::*;
-use crate::Span;
 use crate::concurrent_slab::ConcurrentSlab;
+use crate::Span;
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -44,18 +44,14 @@ impl Engine {
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about
-            (Unknown, _) => {
-                match self.slab.replace(a, &Unknown, TypeInfo::Ref(b)) {
-                    None => Ok(vec![]),
-                    Some(_) => self.unify(a, b, span),
-                }
-            }
-            (_, Unknown) => {
-                match self.slab.replace(b, &Unknown, TypeInfo::Ref(a)) {
-                    None => Ok(vec![]),
-                    Some(_) => self.unify(a, b, span),
-                }
-            }
+            (Unknown, _) => match self.slab.replace(a, &Unknown, TypeInfo::Ref(b)) {
+                None => Ok(vec![]),
+                Some(_) => self.unify(a, b, span),
+            },
+            (_, Unknown) => match self.slab.replace(b, &Unknown, TypeInfo::Ref(a)) {
+                None => Ok(vec![]),
+                Some(_) => self.unify(a, b, span),
+            },
 
             (UnsignedInteger(x), UnsignedInteger(y)) => match numeric_cast_compat(x, y) {
                 NumericCastCompatResult::CastableWithWarning(warn) => {
@@ -148,10 +144,7 @@ pub fn unify_with_self<'sc>(
     TYPE_ENGINE.unify_with_self(a, b, self_type, span)
 }
 
-pub fn resolve_type<'sc>(
-    id: TypeId,
-    error_span: &Span<'sc>,
-) -> Result<TypeInfo, TypeError<'sc>> {
+pub fn resolve_type<'sc>(id: TypeId, error_span: &Span<'sc>) -> Result<TypeInfo, TypeError<'sc>> {
     TYPE_ENGINE.resolve_type(id, error_span)
 }
 
