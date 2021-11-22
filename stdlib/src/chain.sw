@@ -54,8 +54,7 @@ pub fn panic(code: u64) {
 // SCRIPT_START    = $is 
 
 // TODO some safety checks on the input data? We are going to assume it is the right type for now.
-// TODO make this generic 
-pub fn get_script_data() -> u64 {
+pub fn get_script_data<T>() -> T{
     asm(script_data_len, to_return, script_data_ptr, script_len, script_len_ptr: 376, script_data_len_ptr: 384) {
         lw script_len script_len_ptr;
         lw script_data_len script_data_len_ptr;
