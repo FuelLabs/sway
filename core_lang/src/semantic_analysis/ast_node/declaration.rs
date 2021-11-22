@@ -676,8 +676,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 self_type,
                 span,
             ) {
-                Ok(warning) => {
-                    if let Some(warning) = warning {
+                Ok(ws) => {
+                    for warning in ws {
                         warnings.push(CompileWarning {
                             warning_content: warning,
                             span: span.clone(),

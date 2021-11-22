@@ -31,11 +31,11 @@ impl Engine {
         a: TypeId,
         b: TypeId,
         span: &Span<'sc>,
-    ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
+    ) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
         use TypeInfo::*;
         match (self.slab.get(a), self.slab.get(b)) {
             // If the types are exactly the same, we are done.
-            (a, b) if a == b => Ok(None),
+            (a, b) if a == b => Ok(vec![]),
 
             // Follow any references
             (Ref(a), _) => self.unify(a, b, span),
@@ -46,13 +46,13 @@ impl Engine {
             // one we may know something about
             (Unknown, _) => {
                 match self.slab.replace(a, &Unknown, TypeInfo::Ref(b)) {
-                    None => Ok(None),
+                    None => Ok(vec![]),
                     Some(_) => self.unify(a, b, span),
                 }
             }
             (_, Unknown) => {
                 match self.slab.replace(b, &Unknown, TypeInfo::Ref(a)) {
-                    None => Ok(None),
+                    None => Ok(vec![]),
                     Some(_) => self.unify(a, b, span),
                 }
             }
@@ -60,20 +60,20 @@ impl Engine {
             (UnsignedInteger(x), UnsignedInteger(y)) => match numeric_cast_compat(x, y) {
                 NumericCastCompatResult::CastableWithWarning(warn) => {
                     // cast the one on the right to the one on the left
-                    Ok(Some(warn))
+                    Ok(vec![warn])
                 }
                 // do nothing if compatible
-                NumericCastCompatResult::Compatible => Ok(None),
+                NumericCastCompatResult::Compatible => Ok(vec![]),
             },
             (Numeric, b_info @ UnsignedInteger(_)) => {
                 match self.slab.replace(a, &Numeric, b_info) {
-                    None => Ok(None),
+                    None => Ok(vec![]),
                     Some(_) => self.unify(a, b, span),
                 }
             }
             (a_info @ UnsignedInteger(_), Numeric) => {
                 match self.slab.replace(b, &Numeric, a_info) {
-                    None => Ok(None),
+                    None => Ok(vec![]),
                     Some(_) => self.unify(a, b, span),
                 }
             }
@@ -102,7 +102,7 @@ impl Engine {
         b: TypeId,
         self_type: TypeId,
         span: &Span<'sc>,
-    ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
+    ) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
         let a = if self.look_up_type_id(a) == TypeInfo::SelfType {
             self_type
         } else {
@@ -144,7 +144,7 @@ pub fn unify_with_self<'sc>(
     b: TypeId,
     self_type: TypeId,
     span: &Span<'sc>,
-) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
+) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
     TYPE_ENGINE.unify_with_self(a, b, self_type, span)
 }
 
