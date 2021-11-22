@@ -430,7 +430,7 @@ impl<'sc> TypedAstNode<'sc> {
                             type_check_interface_surface(interface_surface, namespace);
                         // type check these for errors but don't actually use them yet -- the real
                         // ones will be type checked with proper symbols when the ABI is implemented
-                        let methodz = check!(
+                        let _methods = check!(
                             type_check_trait_methods(
                                 methods.clone(),
                                 namespace,
@@ -443,8 +443,6 @@ impl<'sc> TypedAstNode<'sc> {
                             warnings,
                             errors
                         );
-
-                        println!("{:?}", methodz);
 
                         let decl = TypedDeclaration::AbiDeclaration(TypedAbiDeclaration {
                             interface_surface,

@@ -9,7 +9,7 @@ use crate::type_engine::*;
 use crate::ControlFlowGraph;
 use crate::{build_config::BuildConfig, error::*, Ident};
 
-use core_types::JsonABI;
+use core_types::{Function, JsonABI, Property};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -420,6 +420,27 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             warnings,
             errors,
         )
+    }
+
+    pub fn parse_json_abi(&self) -> Function {
+        Function {
+            name: self.name.primary_name.to_string(),
+            type_field: "function".to_string(),
+            inputs: self
+                .parameters
+                .iter()
+                .map(|x| Property {
+                    name: x.name.primary_name.to_string(),
+                    type_field: x.r#type.friendly_type_str(),
+                    components: None,
+                })
+                .collect(),
+            outputs: vec![Property {
+                name: "".to_string(),
+                type_field: self.return_type.friendly_type_str(),
+                components: None,
+            }],
+        }
     }
 }
 

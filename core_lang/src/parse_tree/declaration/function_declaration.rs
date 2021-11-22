@@ -204,7 +204,7 @@ impl<'sc> FunctionDeclaration<'sc> {
                 .collect(),
             outputs: vec![Property {
                 name: "".to_string(),
-                type_field: self.return_type.friendly_type_str().to_string(),
+                type_field: self.return_type.friendly_type_str(),
                 components: None,
             }],
         }

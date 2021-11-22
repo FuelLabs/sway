@@ -372,10 +372,7 @@ pub fn compile_to_asm<'sc>(
     }
 
     let mut json_abi = vec![];
-    json_abi.append(&mut parse_json_abi(&script_ast));
     json_abi.append(&mut parse_json_abi(&contract_ast));
-    json_abi.append(&mut parse_json_abi(&predicate_ast));
-    json_abi.append(&mut parse_json_abi_from_library_exports(&library_exports));
 
     // perform control flow analysis on each branch
     let (script_warnings, script_errors) =
@@ -443,8 +440,6 @@ pub fn compile_to_asm<'sc>(
             None
         }
     })();
-
-    let json_abi = vec![];
 
     if errors.is_empty() {
         // TODO move this check earlier and don't compile all of them if there is only one
@@ -561,29 +556,13 @@ fn perform_control_flow_analysis_on_library_exports<'sc>(
     (warnings, errors)
 }
 
-fn parse_json_abi<'sc>(ast: &Option<TypedParseTree>) -> JsonABI {
+fn parse_json_abi(ast: &Option<TypedParseTree>) -> JsonABI {
     match ast {
-        Some(TypedParseTree::Contract { declarations, .. }) => declarations
-            .iter()
-            .flat_map(|x| x.parse_json_abi())
-            .collect(),
-        Some(TypedParseTree::Predicate { declarations, .. }) => declarations
-            .iter()
-            .flat_map(|x| x.parse_json_abi())
-            .collect(),
-        Some(TypedParseTree::Script { declarations, .. }) => declarations
-            .iter()
-            .flat_map(|x| x.parse_json_abi())
-            .collect(),
+        Some(TypedParseTree::Contract { abi_entries, .. }) => {
+            abi_entries.iter().map(|x| x.parse_json_abi()).collect()
+        }
         _ => vec![],
     }
-}
-
-fn parse_json_abi_from_library_exports(ast: &LibraryExports) -> JsonABI {
-    ast.trees
-        .iter()
-        .flat_map(|x| parse_json_abi(&Some((*x).clone())))
-        .collect()
 }
 
 // strategy: parse top level things
