@@ -54,10 +54,12 @@ impl<'sc> TypedExpression<'sc> {
                 name,
                 arguments,
                 span,
+                type_arguments,
                 ..
             } => Self::type_check_function_application(
                 name,
                 arguments,
+                type_arguments,
                 span,
                 namespace,
                 type_annotation,
@@ -339,6 +341,7 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_function_application(
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
+        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
         _span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         _return_type_annotation: Option<TypeId>,
@@ -367,9 +370,12 @@ impl<'sc> TypedExpression<'sc> {
             if decl.type_parameters.is_empty() {
                 decl
             } else {
-                // TODO the below `None` can be annotations when we support type annotations
-                // for generic calls
-                decl.monomorphize()
+                check!(
+                    decl.monomorphize(type_arguments, self_type),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
             }
         } else {
             errors.push(CompileError::NotAFunction {

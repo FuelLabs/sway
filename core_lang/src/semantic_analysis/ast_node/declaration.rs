@@ -414,13 +414,47 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     /// type ids which refer to generic types to be fresh copies, maintaining their referential
     /// relationship. This is used so when this function is resolved, the types don't clobber the
     /// generic type info.
-    pub(crate) fn monomorphize(&self) -> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn monomorphize(
+        &self,
+        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
+        self_type: TypeId,
+    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
+        let mut warnings: Vec<CompileWarning> = vec![];
+        let mut errors: Vec<CompileError> = vec![];
         debug_assert!(
             !self.type_parameters.is_empty(),
             "Only generic functions can be monomorphized"
         );
 
         let type_mapping = insert_type_parameters(&self.type_parameters);
+        if !type_arguments.is_empty() {
+            // check type arguments against parameters
+            if self.type_parameters.len() != type_arguments.len() {
+                todo!("incorrect number of type args err");
+            }
+
+            // check the type arguments
+            for ((_, decl_param), (type_argument, type_argument_span)) in
+                type_mapping.iter().zip(type_arguments.iter())
+            {
+                match unify_with_self(
+                    *decl_param,
+                    insert_type(type_argument.clone()),
+                    self_type,
+                    type_argument_span,
+                ) {
+                    Ok(Some(w)) => warnings.push(CompileWarning {
+                        warning_content: w,
+                        span: type_argument_span.clone(),
+                    }),
+                    Ok(_) => (),
+                    Err(e) => {
+                        errors.push(e.into());
+                        continue;
+                    }
+                }
+            }
+        }
 
         let mut new_decl = self.clone();
 
@@ -444,7 +478,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             insert_type(look_up_type_id_raw(new_decl.return_type))
         };
 
-        new_decl
+        ok(new_decl, warnings, errors)
     }
     /// If there are parameters, join their spans. Otherwise, use the fn name span.
     pub(crate) fn parameters_span(&self) -> Span<'sc> {
