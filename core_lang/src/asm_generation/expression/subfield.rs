@@ -7,7 +7,7 @@ use crate::{
     error::*,
     ident::Ident,
     parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, UnaryOp},
-    type_engine::{look_up_type_id, TypeEngine, TypeId, TYPE_ENGINE},
+    type_engine::{look_up_type_id, TypeId},
 };
 use crate::{
     parse_tree::Literal,

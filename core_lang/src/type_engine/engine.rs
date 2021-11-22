@@ -1,5 +1,5 @@
 use super::*;
-use crate::{types::ResolvedType, Span};
+use crate::Span;
 
 use lazy_static::lazy_static;
 
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 lazy_static! {
-    pub(crate) static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
+    static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
 }
 
 pub(crate) fn unify_with_self<'sc>(
@@ -59,13 +59,9 @@ pub(crate) struct Engine {
     vars: HashMap<TypeId, TypeInfo>,
 }
 
-impl<'sc> TypeEngine<'sc> for Engine {
-    type TypeId = usize;
-    type TypeInfo = TypeInfo;
-    type ResolvedType = ResolvedType<'sc>;
-    type Error = TypeError<'sc>;
+impl Engine {
     /// Create a new type term with whatever we have about its type
-    fn insert(&mut self, info: TypeInfo) -> TypeId {
+    pub fn insert(&mut self, info: TypeInfo) -> TypeId {
         // Generate a new ID for our type term
         self.id_counter += 1;
         let id = self.id_counter;
@@ -73,13 +69,13 @@ impl<'sc> TypeEngine<'sc> for Engine {
         id
     }
 
-    fn unify_with_self(
+    pub fn unify_with_self<'sc>(
         &mut self,
-        a: Self::TypeId,
-        b: Self::TypeId,
-        self_type: Self::TypeId,
+        a: TypeId,
+        b: TypeId,
+        self_type: TypeId,
         span: &Span<'sc>,
-    ) -> Result<Option<Warning<'sc>>, Self::Error> {
+    ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
         let a = if self.vars[&a] == TypeInfo::SelfType {
             self_type
         } else {
@@ -95,12 +91,12 @@ impl<'sc> TypeEngine<'sc> for Engine {
     }
     /// Make the types of two type terms equivalent (or produce an error if
     /// there is a conflict between them)
-    fn unify(
+    pub fn unify<'sc>(
         &mut self,
-        a: Self::TypeId,
-        b: Self::TypeId,
+        a: TypeId,
+        b: TypeId,
         span: &Span<'sc>,
-    ) -> Result<Option<Warning<'sc>>, Self::Error> {
+    ) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
         use TypeInfo::*;
         match (self.vars[&a].clone(), self.vars[&b].clone()) {
             // If the types are exactly the same, we are done.
@@ -158,15 +154,11 @@ impl<'sc> TypeEngine<'sc> for Engine {
         }
     }
 
-    fn resolve(&self, id: Self::TypeId) -> Result<Self::TypeInfo, Self::Error> {
+    pub fn resolve<'sc>(&self, id: TypeId) -> Result<TypeInfo, TypeError<'sc>> {
         match &self.vars[&id] {
             TypeInfo::Ref(id) => self.resolve(*id),
             otherwise => Ok(otherwise.clone()),
         }
-    }
-    fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
-        self.resolve(id)
-            .expect("Internal error: type ID did not exist in type engine")
     }
 }
 fn numeric_cast_compat<'sc>(a: IntegerBits, b: IntegerBits) -> NumericCastCompatResult<'sc> {

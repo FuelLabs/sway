@@ -9,39 +9,6 @@ pub(crate) use engine::*;
 pub use integer_bits::*;
 pub use type_info::*;
 
-pub trait TypeEngine<'sc> {
-    type TypeId;
-    type TypeInfo;
-    type ResolvedType;
-    type Error;
-    /// Insert a new bit of inference information about a specific type. Receive a [Self::TypeId]
-    /// representing that information in return.
-    fn insert(&mut self, info: Self::TypeInfo) -> Self::TypeId;
-    /// Attempt to unify two type ids into one equivalence class. Throw an error if it is impossible.
-    fn unify(
-        &mut self,
-        a: Self::TypeId,
-        b: Self::TypeId,
-        span: &Span<'sc>,
-    ) -> Result<Option<Warning<'sc>>, Self::Error>;
-    /// Like `unify`, but also takes a self type in case either type is Self.
-    fn unify_with_self(
-        &mut self,
-        a: Self::TypeId,
-        b: Self::TypeId,
-        self_type: Self::TypeId,
-        span: &Span<'sc>,
-    ) -> Result<Option<Warning<'sc>>, Self::Error>;
-    /// Attempt to reconstruct a concrete type from the given type term ID. This
-    /// may fail if we don't yet have enough information to figure out what the
-    /// type is.
-    fn resolve(&self, id: Self::TypeId) -> Result<Self::TypeInfo, Self::Error>;
-
-    /// Looks up a type id. Panics if the given ID doesn't exist in the type
-    /// engine.
-    fn look_up_type_id(&self, id: Self::TypeId) -> TypeInfo;
-}
-
 /// A identifier to uniquely refer to our type terms
 pub type TypeId = usize;
 
