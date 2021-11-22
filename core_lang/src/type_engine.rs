@@ -5,6 +5,7 @@ use std::iter::FromIterator;
 mod engine;
 mod integer_bits;
 mod type_info;
+use core_types::Property;
 pub(crate) use engine::*;
 pub use integer_bits::*;
 pub use type_info::*;
@@ -52,6 +53,24 @@ pub(crate) trait FriendlyTypeString {
 impl FriendlyTypeString for TypeId {
     fn friendly_type_str(&self) -> String {
         look_up_type_id(*self).friendly_type_str()
+    }
+}
+
+pub(crate) trait ToJsonAbi {
+    fn parse_json_abi(&self) -> Option<Vec<Property>>;
+}
+
+impl ToJsonAbi for TypeId {
+    fn parse_json_abi(&self) -> Option<Vec<Property>> {
+        match look_up_type_id(*self) {
+            TypeInfo::Struct { fields, .. } => {
+                Some(fields.iter().map(|x| x.parse_json_abi()).collect())
+            }
+            TypeInfo::Enum { variant_types, .. } => {
+                Some(variant_types.iter().map(|x| x.parse_json_abi()).collect())
+            }
+            _ => None,
+        }
     }
 }
 

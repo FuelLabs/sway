@@ -9,7 +9,7 @@ use crate::type_engine::*;
 use crate::ControlFlowGraph;
 use crate::{build_config::BuildConfig, error::*, Ident};
 
-use core_types::{Function, JsonABI, Property};
+use core_types::{Function, Property};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -214,6 +214,14 @@ impl OwnedTypedStructField {
             span: span.clone(),
         }
     }
+
+    pub fn parse_json_abi(&self) -> Property {
+        Property {
+            name: self.name.clone(),
+            type_field: self.r#type.friendly_type_str(),
+            components: self.r#type.parse_json_abi(),
+        }
+    }
 }
 
 impl TypedStructField<'_> {
@@ -282,6 +290,16 @@ pub struct OwnedTypedEnumVariant {
     pub(crate) name: String,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
+}
+
+impl OwnedTypedEnumVariant {
+    pub fn parse_json_abi(&self) -> Property {
+        Property {
+            name: self.name.clone(),
+            type_field: self.r#type.friendly_type_str(),
+            components: self.r#type.parse_json_abi(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -423,13 +441,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 .map(|x| Property {
                     name: x.name.primary_name.to_string(),
                     type_field: x.r#type.friendly_type_str(),
-                    components: None,
+                    components: x.r#type.parse_json_abi(),
                 })
                 .collect(),
             outputs: vec![Property {
                 name: "".to_string(),
                 type_field: self.return_type.friendly_type_str(),
-                components: None,
+                components: self.return_type.parse_json_abi(),
             }],
         }
     }
