@@ -167,15 +167,6 @@ impl<'sc> TypedDeclaration<'sc> {
             }
         }
     }
-
-    pub fn parse_json_abi(&self) -> JsonABI {
-        match self {
-            TypedDeclaration::AbiDeclaration(TypedAbiDeclaration { methods, .. }) => {
-                methods.iter().map(|x| x.parse_json_abi()).collect()
-            }
-            _ => vec![],
-        }
-    }
 }
 
 /// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's [AbiDeclaration].
