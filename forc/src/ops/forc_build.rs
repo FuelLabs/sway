@@ -22,6 +22,7 @@ use core_lang::{
 };
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::fs;
 
 pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     // find manifest directory, even if in subdirectory
@@ -116,6 +117,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 &mut namespace,
                 &mut dependency_graph,
                 silent_mode,
+                manifest_dir.clone()
             )?;
         }
     }
@@ -150,6 +152,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     namespace: &mut Namespace<'source>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
+    initial_project_path: PathBuf
 ) -> Result<(), String> {
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
@@ -196,6 +199,8 @@ fn compile_dependency_lib<'source, 'manifest>(
         Err(err) => return Err(err.to_string()),
     };
 
+    println!("initial_project_path: {:?}", initial_project_path);
+
     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_path_buf(),
         manifest_dir.clone(),
@@ -216,11 +221,16 @@ fn compile_dependency_lib<'source, 'manifest>(
                 &mut dep_namespace,
                 dependency_graph,
                 silent_mode,
+                initial_project_path.clone()
             )?;
         }
     }
 
     let main_file = get_main_file(&manifest_of_dep, &manifest_dir)?;
+
+    let mut build_cache_outfile = initial_project_path;
+    build_cache_outfile.push("/.cache");
+    build_cache_outfile.push(file_name);
 
     let compiled = compile_library(
         main_file,
@@ -229,6 +239,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         build_config,
         dependency_graph,
         silent_mode,
+        build_cache_outfile
     )?;
 
     namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
@@ -244,7 +255,11 @@ fn compile_library<'source>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
+    build_cache_outfile: PathBuf
 ) -> Result<LibraryExports<'source>, String> {
+    fs::create_dir_all(build_cache_outfile.clone()).expect("Unable to create path");
+    fs::write(build_cache_outfile, source.clone()).expect("Unable to write file");
+
     let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
