@@ -35,10 +35,10 @@ pub(crate) fn resolve_type<'sc>(
 ) -> Result<TypeInfo, TypeError<'sc>> {
     let lock = TYPE_ENGINE.lock().unwrap();
     let ty = match lock.resolve(id) {
-        Ok(TypeInfo::Unknown) => Err(TypeError::UnknownType {
+        TypeInfo::Unknown => Err(TypeError::UnknownType {
             span: error_span.clone(),
         }),
-        o => o,
+        o => Ok(o),
     };
     drop(lock);
     ty
@@ -46,9 +46,7 @@ pub(crate) fn resolve_type<'sc>(
 
 pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
     let lock = TYPE_ENGINE.lock().unwrap();
-    let ty = lock
-        .resolve(id)
-        .expect("type engine did not contain type id: internal error");
+    let ty = lock.resolve(id);
     drop(lock);
     ty
 }
@@ -154,10 +152,10 @@ impl Engine {
         }
     }
 
-    pub fn resolve<'sc>(&self, id: TypeId) -> Result<TypeInfo, TypeError<'sc>> {
+    pub fn resolve(&self, id: TypeId) -> TypeInfo {
         match &self.vars[&id] {
             TypeInfo::Ref(id) => self.resolve(*id),
-            otherwise => Ok(otherwise.clone()),
+            otherwise => otherwise.clone(),
         }
     }
 }
