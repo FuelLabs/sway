@@ -8,10 +8,10 @@ use crate::{
     },
 };
 
-use core_types::Function;
+use core_types::{Function, JsonABI};
 
 use anyhow::Result;
-use core_lang::{BuildConfig, CompilationResult, LibraryExports, Namespace};
+use core_lang::{BuildConfig, CompileASTResult, LibraryExports, Namespace, TypedParseTree};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -216,21 +216,19 @@ fn compile_library<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<(LibraryExports<'source>, Vec<Function>), String> {
-    let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
+    let res = core_lang::compile_to_ast(&source, namespace, &build_config, dependency_graph);
     match res {
-        CompilationResult::Library {
+        CompileASTResult::Success {
             warnings,
-            json_abi,
-            exports,
+            contract_ast,
+            library_exports: exports,
+            ..
         } => {
             print_on_success_library(silent_mode, proj_name, warnings);
+            let json_abi = parse_json_abi(&contract_ast);
             Ok((exports, json_abi))
         }
-        CompilationResult::Success { warnings, .. } => {
-            print_on_failure(silent_mode, warnings, vec![]);
-            Err(format!("Failed to compile {}", proj_name))
-        }
-        CompilationResult::Failure { warnings, errors } => {
+        CompileASTResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
             Err(format!("Failed to compile {}", proj_name))
         }
@@ -245,21 +243,29 @@ fn compile<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<Function>, String> {
-    let res = core_lang::compile_to_asm(&source, namespace, build_config, dependency_graph);
+    let res = core_lang::compile_to_ast(&source, namespace, &build_config, dependency_graph);
     match res {
-        CompilationResult::Success {
-            warnings, json_abi, ..
+        CompileASTResult::Success {
+            warnings,
+            contract_ast,
+            ..
         } => {
             print_on_success_script(silent_mode, proj_name, warnings);
+            let json_abi = parse_json_abi(&contract_ast);
             Ok(json_abi)
         }
-        CompilationResult::Library { warnings, .. } => {
-            print_on_failure(silent_mode, warnings, vec![]);
-            Err(format!("Failed to compile {}", proj_name))
-        }
-        CompilationResult::Failure { warnings, errors } => {
+        CompileASTResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
             Err(format!("Failed to compile {}", proj_name))
         }
+    }
+}
+
+fn parse_json_abi(ast: &Option<TypedParseTree>) -> JsonABI {
+    match ast {
+        Some(TypedParseTree::Contract { abi_entries, .. }) => {
+            abi_entries.iter().map(|x| x.parse_json_abi()).collect()
+        }
+        _ => vec![],
     }
 }

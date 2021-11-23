@@ -10,7 +10,7 @@ use crate::{AstNode, AstNodeContent, ParseTree};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TreeType {
+pub enum TreeType {
     Predicate,
     Script,
     Contract,
