@@ -29,6 +29,7 @@ jobs:
             ${{ secrets.PRIVATE_KEY_FUEL_CORE }}
             ${{ secrets.PRIVATE_KEY_FUEL_STORAGE }}
             ${{ secrets.PRIVATE_KEY_FUEL_TYPES }}
+            ${{ secrets.PRIVATE_KEY_FUEL_MERKLE }}
 
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
