@@ -79,11 +79,12 @@ impl<'sc> TypedCodeBlock<'sc> {
                     .clone()
                     .unwrap_or_else(|| other.whole_block_span.clone()),
             ) {
-                Ok(warning) => {
-                    if let Some(warning) = warning {
+                Ok(ws) => {
+                    for warning in ws {
                         warnings.push(CompileWarning {
                             warning_content: warning,
                             span: implicit_return_span
+                                .clone()
                                 .unwrap_or_else(|| other.whole_block_span.clone()),
                         });
                     }

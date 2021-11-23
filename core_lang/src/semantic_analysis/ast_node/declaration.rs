@@ -443,11 +443,14 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     self_type,
                     type_argument_span,
                 ) {
-                    Ok(Some(w)) => warnings.push(CompileWarning {
-                        warning_content: w,
-                        span: type_argument_span.clone(),
-                    }),
-                    Ok(_) => (),
+                    Ok(ws) => {
+                        for warning in ws {
+                            warnings.push(CompileWarning {
+                                warning_content: warning,
+                                span: type_argument_span.clone(),
+                            });
+                        }
+                    }
                     Err(e) => {
                         errors.push(e.into());
                         continue;
@@ -928,8 +931,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 self_type,
                 span,
             ) {
-                Ok(warning) => {
-                    if let Some(warning) = warning {
+                Ok(ws) => {
+                    for warning in ws {
                         warnings.push(CompileWarning {
                             warning_content: warning,
                             span: span.clone(),

@@ -322,6 +322,7 @@ impl TypeInfo {
         &self,
         mapping: &[(TypeParameter<'sc>, TypeId)],
     ) -> Option<TypeId> {
+        use TypeInfo::*;
         match self {
             TypeInfo::Custom { .. } => {
                 for (param, ty_id) in mapping.iter() {
@@ -329,6 +330,7 @@ impl TypeInfo {
                         return Some(*ty_id);
                     }
                 }
+                None
             }
             TypeInfo::UnknownGeneric { name, .. } => {
                 for (param, ty_id) in mapping.iter() {
@@ -340,6 +342,7 @@ impl TypeInfo {
                         return Some(*ty_id);
                     }
                 }
+                None
             }
             TypeInfo::Struct { fields, name } => {
                 let mut new_fields = fields.clone();
@@ -350,10 +353,10 @@ impl TypeInfo {
                         new_field.r#type = insert_type(TypeInfo::Ref(matching_id));
                     }
                 }
-                return Some(insert_type(TypeInfo::Struct {
+                Some(insert_type(TypeInfo::Struct {
                     fields: new_fields,
                     name: name.clone(),
-                }));
+                }))
             }
             TypeInfo::Enum {
                 variant_types,
@@ -368,14 +371,25 @@ impl TypeInfo {
                     }
                 }
 
-                return Some(insert_type(TypeInfo::Enum {
+                Some(insert_type(TypeInfo::Enum {
                     variant_types: new_variants,
                     name: name.clone(),
-                }));
+                }))
             }
-            _ => return None,
+            Unknown
+            | Str(..)
+            | UnsignedInteger(..)
+            | Boolean
+            | Ref(..)
+            | Unit
+            | ContractCaller { .. }
+            | SelfType
+            | Byte
+            | B256
+            | Numeric
+            | Contract
+            | ErrorRecovery => None,
         }
-        None
     }
 }
 

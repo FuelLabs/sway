@@ -230,8 +230,8 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 &expr_span,
             ) {
-                Ok(warning) => {
-                    if let Some(warning) = warning {
+                Ok(ws) => {
+                    for warning in ws {
                         warnings.push(CompileWarning {
                             warning_content: warning,
                             span: expr_span.clone(),

@@ -66,7 +66,7 @@ pub fn get_script_data<T>() -> T{
         cfe script_data_len;
         // copy script data into above buffer
         mcp to_return script_data_ptr script_data_len;
-        to_return: u64 // should be T when generic
+        to_return: T
     }
 }
 
