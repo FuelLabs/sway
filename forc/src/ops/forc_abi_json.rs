@@ -111,7 +111,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
         &mut dependency_graph,
         silent_mode,
     )?);
-    
+
     let output_json = json!(json_abi);
 
     if let Some(outfile) = json_outfile {
