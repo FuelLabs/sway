@@ -275,8 +275,8 @@ fn type_check_trait_implementation<'sc>(
                                 self_type_id,
                                 &trait_param.type_span,
                             ) {
-                                Ok(warn) => {
-                                    if let Some(warn) = warn {
+                                Ok(ws) => {
+                                    for warn in ws {
                                         warnings.push(CompileWarning {
                                             warning_content: warn,
                                             span: fn_decl_param.type_span.clone(),
@@ -307,8 +307,8 @@ fn type_check_trait_implementation<'sc>(
                         self_type_id,
                         &fn_decl.return_type_span,
                     ) {
-                        Ok(warn) => {
-                            if let Some(warn) = warn {
+                        Ok(ws) => {
+                            for warn in ws {
                                 warnings.push(CompileWarning {
                                     warning_content: warn,
                                     span: fn_decl.return_type_span.clone(),

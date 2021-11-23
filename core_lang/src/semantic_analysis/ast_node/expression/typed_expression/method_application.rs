@@ -75,8 +75,8 @@ pub(crate) fn type_check_method_application<'sc>(
             self_type,
             &arg.span,
         ) {
-            Ok(warning) => {
-                if let Some(warning) = warning {
+            Ok(ws) => {
+                for warning in ws {
                     warnings.push(CompileWarning {
                         warning_content: warning,
                         span: arg.span.clone(),
