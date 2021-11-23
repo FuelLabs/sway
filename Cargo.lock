@@ -3379,6 +3379,7 @@ dependencies = [
  "fuel-vm",
  "rand 0.8.4",
  "regex",
+ "serde_json",
  "tokio",
 ]
 

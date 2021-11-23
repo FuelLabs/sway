@@ -62,6 +62,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
             assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
+            assert_eq!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(()));
         }
     });
 

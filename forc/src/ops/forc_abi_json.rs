@@ -12,12 +12,12 @@ use core_types::Function;
 
 use anyhow::Result;
 use core_lang::{BuildConfig, CompilationResult, LibraryExports, Namespace};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::PathBuf;
 
-pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
+pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // find manifest directory, even if in subdirectory
     let this_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
@@ -111,14 +111,17 @@ pub fn build(command: JsonAbiCommand) -> Result<Vec<Function>, String> {
         &mut dependency_graph,
         silent_mode,
     )?);
+    
+    let output_json = json!(json_abi);
+
     if let Some(outfile) = json_outfile {
         let file = File::create(outfile).map_err(|e| e.to_string())?;
-        serde_json::to_writer(&file, &json!(json_abi)).map_err(|e| e.to_string())?;
+        serde_json::to_writer(&file, &output_json.clone()).map_err(|e| e.to_string())?;
     } else {
-        println!("{:?}", json!(json_abi));
+        println!("{}", output_json);
     }
 
-    Ok(json_abi)
+    Ok(output_json)
 }
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
