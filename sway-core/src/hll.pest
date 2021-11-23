@@ -204,8 +204,8 @@ char           = @{
   | "\\" ~ ("\""|"\\"|"/"|"b"|"f"|"n"|"r"|"t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-tuple_type     =  {"(" ~ (type_name ~ ("," ~ type_name)*)? ~ ")" }
-tuple_expr     =  {"(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
+tuple_type     =  {"(" ~ (type_name ~ ("," ~ type_name)* ~ ","?)? ~ ")" }
+tuple_expr     =  {"(" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ ")" }
 ident          = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")* }
 reserved_words = @{(true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
 
