@@ -3,16 +3,16 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_main_file, print_blue_err, println_green_err, println_red_err,
-        println_yellow_err, read_manifest,
+        find_manifest_dir, get_main_file, println_green_err, println_red_err, println_yellow_err,
+        read_manifest,
     },
 };
-use core_lang::FinalizedAsm;
-use line_col::LineColLookup;
-use source_span::{
-    fmt::{Color, Formatter, Style},
-    Position, Span,
+use annotate_snippets::{
+    display_list::{DisplayList, FormatOptions},
+    snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
+use core_lang::FinalizedAsm;
+
 use std::fs::File;
 use std::io::Write;
 
@@ -366,71 +366,74 @@ fn compile<'source>(
 
 fn format_warning(err: &core_lang::CompileWarning) {
     let input = err.span.input();
-    let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+    let path = err.path();
 
-    let metrics = source_span::DEFAULT_METRICS;
-    let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-
-    for c in buffer.iter() {
-        let _ = c.unwrap(); // report eventual errors.
+    let (start_pos, mut end_pos) = err.span();
+    let friendly_str = err.to_friendly_warning_string();
+    if start_pos == end_pos {
+        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
+        end_pos += 1;
     }
-
-    let (start_pos, end_pos) = err.span();
-    let lookup = LineColLookup::new(input);
-    let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(end_pos - 1);
-
-    let err_start = Position::new(start_line - 1, start_col - 1);
-    let err_end = Position::new(end_line - 1, end_col - 1);
-    let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(
-        err_span,
-        Some(err.to_friendly_warning_string()),
-        Style::Warning,
-    );
-
-    let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
+    let snippet = Snippet {
+        title: Some(Annotation {
+            label: None,
+            id: None,
+            annotation_type: AnnotationType::Warning,
+        }),
+        footer: vec![],
+        slices: vec![Slice {
+            source: input,
+            line_start: 0,
+            origin: Some(&path),
+            fold: true,
+            annotations: vec![SourceAnnotation {
+                label: &friendly_str,
+                annotation_type: AnnotationType::Warning,
+                range: (start_pos, end_pos),
+            }],
+        }],
+        opt: FormatOptions {
+            color: true,
+            ..Default::default()
+        },
+    };
+    eprintln!("{}", DisplayList::from(snippet))
 }
 
 fn format_err(err: &core_lang::CompileError) {
     let input = err.internal_span().input();
-    let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
+    let path = err.path();
 
-    let metrics = source_span::DEFAULT_METRICS;
-    let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-
-    for c in buffer.iter() {
-        let _ = c.unwrap(); // report eventual errors.
+    let (start_pos, mut end_pos) = err.span();
+    if start_pos == end_pos {
+        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
+        end_pos += 1;
     }
-
-    let (start_pos, end_pos) = err.span();
-    let lookup = LineColLookup::new(input);
-    let (start_line, start_col) = lookup.get(start_pos);
-    let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
-
-    let err_start = Position::new(start_line - 1, start_col - 1);
-    let err_end = Position::new(end_line - 1, end_col - 1);
-    let err_span = Span::new(err_start, err_end, err_end.next_column());
-    fmt.add(err_span, Some(err.to_friendly_error_string()), Style::Error);
-
-    let formatted = fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap();
-    fmt.add(
-        buffer.span(),
-        Some("this is the whole program\nwhat a nice program!".to_string()),
-        Style::Error,
-    );
-
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
+    let friendly_str = err.to_friendly_error_string();
+    let snippet = Snippet {
+        title: Some(Annotation {
+            label: None,
+            id: None,
+            annotation_type: AnnotationType::Error,
+        }),
+        footer: vec![],
+        slices: vec![Slice {
+            source: input,
+            line_start: 0,
+            origin: Some(&path),
+            fold: true,
+            annotations: vec![SourceAnnotation {
+                label: &friendly_str,
+                annotation_type: AnnotationType::Error,
+                range: (start_pos, end_pos),
+            }],
+        }],
+        opt: FormatOptions {
+            color: true,
+            ..Default::default()
+        },
+    };
+    eprintln!("{}", DisplayList::from(snippet))
 }
 
 fn compile_to_asm<'source>(
