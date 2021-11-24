@@ -10,7 +10,7 @@ context_testing_abi = { path = "../context_testing_abi" }
 
 [[tx-input]]
 type = "Contract"
-contract-id = "0x27b323db2cfa318890a8be57b223f40fb364419ba1999cb59eda061aea40730c"
+contract-id = "0x24e580ddc54ad0f840e4aee850578833c1aabc97abe582a18920450eac478d3d"
 utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
