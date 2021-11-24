@@ -14,12 +14,12 @@ impl ContextTesting for Contract {
         msg_value()
     }
 
-    fn get_color(gas: u64, coins: u64, color: b256, input: ()) -> b256 {
-        msg_color()
+    fn get_token_id(gas: u64, coins: u64, color: b256, input: ()) -> b256 {
+        msg_token_id()
     }
 
     fn get_gas(gas: u64, coins: u64, color: b256, input: ()) -> u64 {
-        msg_gas()
+        gas()
     }
 
     fn get_global_gas(gas: u64, coins: u64, color: b256, input: ()) -> u64 {
