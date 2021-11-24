@@ -7,6 +7,7 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+annotate-snippets = {version="0.9", features=["color"]} # used for formating error/warning print
 anyhow = "1.0.41"
 core_lang = {path = "../core_lang"}
 curl = "0.4.38"
@@ -32,7 +33,6 @@ termcolor = "1.1"
 tokio = {version = "1.8.0", features = ["macros", "rt-multi-thread", "process"]}
 toml = "0.5"
 whoami = "1.1"
-annotate-snippets = {version="0.9", features=["color"] } # used for formating error/warning print
 
 [features]
 default = []
