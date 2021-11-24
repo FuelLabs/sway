@@ -24,11 +24,12 @@ jobs:
         with:
           ssh-private-key: |
             ${{ secrets.PRIVATE_KEY_FUEL_ASM }}
-            ${{ secrets.PRIVATE_KEY_FUEL_TX }}
-            ${{ secrets.PRIVATE_KEY_FUEL_VM }}
             ${{ secrets.PRIVATE_KEY_FUEL_CORE }}
+            ${{ secrets.PRIVATE_KEY_FUEL_MERKLE }}
             ${{ secrets.PRIVATE_KEY_FUEL_STORAGE }}
+            ${{ secrets.PRIVATE_KEY_FUEL_TX }}
             ${{ secrets.PRIVATE_KEY_FUEL_TYPES }}
+            ${{ secrets.PRIVATE_KEY_FUEL_VM }}
 
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
