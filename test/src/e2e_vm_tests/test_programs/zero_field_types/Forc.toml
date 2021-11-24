@@ -1,0 +1,5 @@
+[project]
+author  = "Andrew Cann"
+license = "MIT"
+name = "zero_field_types"
+entry = "main.sw"
