@@ -3,8 +3,8 @@ library context;
 /// get the contract id for the current contract
 pub fn this_id() -> b256 {
     asm() {
-            fp: b256
-        }
+        fp: b256
+    }
 }
 
 /// get the value of coins being sent
