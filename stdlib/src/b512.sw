@@ -1,7 +1,8 @@
 library b512;
+//! A wrapper around 2 b256 types to support the usage of 64-byte values in Sway, which are needed when working with public-keys and signatures.
 
-// Stores two b256s in contiguous memory.
-// Guaranteed to be contiguous for things like ECR.
+/// Stores two b256s in contiguous memory.
+/// Guaranteed to be contiguous for use with EC-Recover.
 pub struct B512 {
     hi: b256,
     lo: b256,
@@ -15,6 +16,7 @@ pub trait From {
     // fn into() {...}
 }
 
+/// Functions for casting between B512 and b256 types.
 impl From for B512 {
     fn from(hi: b256, lo: b256) -> B512 {
         // copy the two given b256s into contiguous stack memory
@@ -44,8 +46,9 @@ impl From for B512 {
     }
 }
 
+/// Methods on the B512 type
 impl B512 {
-    // Initializes a blank B512
+    /// Initializes a new, zeroed B512.
     fn new() -> B512 {
         let hi = asm(rhi) {
             move rhi sp;
