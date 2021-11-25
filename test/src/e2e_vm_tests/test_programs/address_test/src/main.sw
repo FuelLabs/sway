@@ -8,7 +8,7 @@ fn main() -> bool {
 
     // test from()
     let addr = ~Address::from(bits);
-    assert(addr.inner == bits);
+    assert(addr.value == bits);
 
     // test into()
     let new_bits = addr.into();
