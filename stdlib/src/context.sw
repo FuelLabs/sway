@@ -1,7 +1,6 @@
 library context;
 //! Functionality for accessing context-specific information about the current contract or message.
 
-
 /// Get the current contract's id when called in an internal context.
 /// **Note !** If called in an external context, this will **not** return a contract ID.
 pub fn this_id() -> b256 {
