@@ -1,20 +1,23 @@
 library context;
+//! Functionality for accessing context-specific information about the current contract or message.
 
-/// get the contract id for the current contract
+
+/// Get the current contract's id when called in an internal context.
+/// **Note !** If called in an external context, this will **not** return a contract ID.
 pub fn this_id() -> b256 {
     asm() {
         fp: b256
     }
 }
 
-/// get the value of coins being sent
+/// Get the value of coins being sent.
 pub fn msg_value() -> u64 {
     asm() {
         bal: u64
     }
 }
 
-/// get the token_id (color) of coins being sent
+/// Get the token_id of coins being sent.
 pub fn msg_token_id() -> b256 {
     asm(token_id) {
         addi token_id fp i32;
@@ -22,14 +25,14 @@ pub fn msg_token_id() -> b256 {
     }
 }
 
-// get the remaining gas in the context
+/// Get the remaining gas in the context.
 pub fn gas() -> u64 {
     asm() {
         cgas: u64
     }
 }
 
-// get the remaining gas globally
+/// Get the remaining gas globally.
 pub fn global_gas() -> u64 {
     asm() {
         ggas: u64
