@@ -1,8 +1,8 @@
 library b512;
-//! A wrapper around 2 b256 types to support the usage of 64-byte values in Sway, which are needed when working with public-keys and signatures.
+//! A wrapper around 2 b256 types to support the usage of 64-byte values in Sway, which are needed when working with public keys and signatures.
 
 /// Stores two b256s in contiguous memory.
-/// Guaranteed to be contiguous for use with EC-Recover.
+/// Guaranteed to be contiguous for use with ec-recover: std::ecr::ec_recover().
 pub struct B512 {
     hi: b256,
     lo: b256,
