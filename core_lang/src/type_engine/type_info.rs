@@ -55,6 +55,8 @@ pub enum TypeInfo {
     Contract,
     // used for recovering from errors in the ast
     ErrorRecovery,
+    // Static, constant size arrays.
+    Array(TypeId, usize),
 }
 
 impl Default for TypeInfo {
@@ -89,14 +91,14 @@ impl TypeInfo {
         input: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let span = Span {
+            span: input.as_span(),
+            path: config.map(|config| config.dir_of_code.clone()),
+        };
         let type_info = match input.as_rule() {
             Rule::str_type => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
-                let span = Span {
-                    span: input.as_span(),
-                    path: config.map(|config| config.dir_of_code.clone()),
-                };
                 check!(
                     parse_str_type(input.as_str(), span),
                     return err(warnings, errors),
@@ -119,20 +121,85 @@ impl TypeInfo {
                     name: input.as_str().trim().to_string(),
                 },
             },
+            Rule::array_type => {
+                let mut array_inner_iter = input.into_inner();
+                let elem_type_info = match array_inner_iter.next() {
+                    None => {
+                        errors.push(CompileError::Internal(
+                            "Missing array element type while parsing array type.",
+                            span,
+                        ));
+                        return err(warnings, errors);
+                    }
+                    Some(array_elem_type_pair) => {
+                        check!(
+                            Self::parse_from_pair(array_elem_type_pair, config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                    }
+                };
+                let elem_count: usize = match array_inner_iter.next() {
+                    None => {
+                        errors.push(CompileError::Internal(
+                            "Missing array element count while parsing array type.",
+                            span,
+                        ));
+                        return err(warnings, errors);
+                    }
+                    Some(array_elem_count_pair) => {
+                        match array_elem_count_pair.as_rule() {
+                            Rule::u64_integer => {
+                                // Parse the count directly to a usize.
+                                check!(
+                                    array_elem_count_pair
+                                        .as_str()
+                                        .trim()
+                                        .replace("_", "")
+                                        .parse::<usize>()
+                                        // Could probably just .unwrap() here since it will succeed.
+                                        .map_or_else(
+                                            |_err| {
+                                                err(
+                                                    Vec::new(),
+                                                    vec![CompileError::Internal(
+                                                        "Failed to parse array elem count as \
+                                                        integer while parsing array type.",
+                                                        span,
+                                                    )],
+                                                )
+                                            },
+                                            |count| ok(count, Vec::new(), Vec::new()),
+                                        ),
+                                    return err(warnings, errors),
+                                    warnings,
+                                    errors
+                                )
+                            }
+                            _otherwise => {
+                                errors.push(CompileError::Internal(
+                                    "Unexpected token for array element count \
+                                    while parsing array type.",
+                                    span,
+                                ));
+                                return err(warnings, errors);
+                            }
+                        }
+                    }
+                };
+                TypeInfo::Array(insert_type(elem_type_info), elem_count)
+            }
             Rule::unit => TypeInfo::Unit,
             _ => {
-                let span = Span {
-                    span: input.as_span(),
-                    path: config.map(|config| config.dir_of_code.clone()),
-                };
-                let errors = vec![CompileError::Internal(
+                errors.push(CompileError::Internal(
                     "Unexpected token while parsing inner type.",
                     span,
-                )];
-                return err(vec![], errors);
+                ));
+                return err(warnings, errors);
             }
         };
-        ok(type_info, vec![], vec![])
+        ok(type_info, warnings, errors)
     }
 
     pub(crate) fn friendly_type_str(&self) -> String {
@@ -162,6 +229,7 @@ impl TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name.suffix)
             }
+            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.friendly_type_str(), count),
         }
     }
 
@@ -247,6 +315,10 @@ impl TypeInfo {
     }
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     /// This is _in words_!
+    ///
+    /// XXX rename this to size_in_words()!
+    ///
+    ///
     pub(crate) fn stack_size_of<'sc>(
         &self,
         err_span: &Span<'sc>,
@@ -294,6 +366,9 @@ impl TypeInfo {
                 })
             }
             TypeInfo::Ref(id) => look_up_type_id(*id).stack_size_of(err_span),
+            TypeInfo::Array(elem_ty, count) => {
+                Ok(look_up_type_id(*elem_ty).stack_size_of(err_span)? * *count as u64)
+            }
         }
     }
     pub(crate) fn is_copy_type(&self) -> bool {

@@ -29,9 +29,12 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         name: Ident<'sc>,
     },
     Unit,
-    #[allow(dead_code)]
     Array {
         contents: Vec<TypedExpression<'sc>>,
+    },
+    ArrayIndex {
+        prefix: Box<TypedExpression<'sc>>,
+        index: Box<TypedExpression<'sc>>,
     },
     #[allow(dead_code)]
     MatchExpression {
@@ -117,6 +120,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
             },
             TypedExpressionVariant::Unit => "unit".into(),
             TypedExpressionVariant::Array { .. } => "array".into(),
+            TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
             TypedExpressionVariant::MatchExpression { .. } => "match exp".into(),
             TypedExpressionVariant::StructExpression { struct_name, .. } => {
                 format!("\"{}\" struct init", struct_name.primary_name)
