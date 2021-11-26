@@ -7,6 +7,6 @@ edition = "2018"
 repository = "https://github.com/FuelLabs/sway"
 
 [dependencies]
-serde = {version="1.0", features=["derive"]}
-fuel-asm = {git="ssh://git@github.com/FuelLabs/fuel-asm.git"}
-fuel-tx = {git="ssh://git@github.com/FuelLabs/fuel-tx.git"}
+fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
+fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
+serde = { version = "1.0", features = ["derive"] }
