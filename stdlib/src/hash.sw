@@ -28,31 +28,31 @@ impl HashMethod {
 }
 
 pub fn hash_u64(value: u64, method: HashMethod) -> b256 {
-  if method.eq(HashMethod::Sha256) {
-    asm(r1: value, hashed_b256_ptr, r3, value_ptr) {
-      // put the u64 on the stack
-      move value_ptr sp;
-      cfei i8;
-      sw value_ptr r1 i0;
-      move hashed_b256_ptr sp;
-      cfei i32;
-      addi r3 zero i8; // hash eight bytes since a u64 is eight bytes
-      s256 hashed_b256_ptr r1 r3;
-      hashed_b256_ptr: b256
+    if method.eq(HashMethod::Sha256) {
+        asm(r1: value, hashed_b256_ptr, r3, value_ptr) {
+            // put the u64 on the stack
+            move value_ptr sp;
+            cfei i8;
+            sw value_ptr r1 i0;
+            move hashed_b256_ptr sp;
+            cfei i32;
+            addi r3 zero i8; // hash eight bytes since a u64 is eight bytes
+            s256 hashed_b256_ptr r1 r3;
+            hashed_b256_ptr: b256
+        }
+    } else {
+        asm(r1: value, hashed_b256_ptr, r3, value_ptr) {
+            // put the u64 on the stack
+            move value_ptr sp;
+            cfei i8;
+            sw value_ptr r1 i0;
+            move hashed_b256_ptr sp;
+            cfei i32;
+            addi r3 zero i8; // hash eight bytes since a u64 is eight bytes
+            k256 hashed_b256_ptr r1 r3;
+            hashed_b256_ptr: b256
+        }
     }
-  } else {
-    asm(r1: value, hashed_b256_ptr, r3, value_ptr) {
-      // put the u64 on the stack
-      move value_ptr sp;
-      cfei i8;
-      sw value_ptr r1 i0;
-      move hashed_b256_ptr sp;
-      cfei i32;
-      addi r3 zero i8; // hash eight bytes since a u64 is eight bytes
-      k256 hashed_b256_ptr r1 r3;
-      hashed_b256_ptr: b256
-    }
-  }
 }
 
 pub fn hash_value(value: b256, method: HashMethod) -> b256 {

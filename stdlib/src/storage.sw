@@ -1,5 +1,5 @@
 library storage;
-// These methods will all be replaced by generic functions when those come in. 
+// These methods will all be replaced by generic functions when those come in.
 // See https://github.com/FuelLabs/sway/issues/272 for details.
 
 pub fn store<T>(key: b256, value: T) {
