@@ -800,6 +800,7 @@ dependencies = [
  "pest_derive",
  "petgraph",
  "sha2",
+ "smallvec",
  "structopt 0.3.25",
  "thiserror",
  "uuid-b64",

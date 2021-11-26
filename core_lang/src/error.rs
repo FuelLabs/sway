@@ -130,7 +130,7 @@ impl<'sc, T> CompileResult<'sc, T> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct CompileWarning<'sc> {
     pub span: Span<'sc>,
     pub warning_content: Warning<'sc>,
@@ -172,7 +172,7 @@ impl<'sc> CompileWarning<'sc> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Warning<'sc> {
     NonClassCaseStructName {
         struct_name: &'sc str,
@@ -334,7 +334,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq, Hash)]
 pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: String, span: Span<'sc> },
@@ -767,7 +767,7 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
     }
 }
 
-#[derive(Error, Debug, Clone, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq, Hash)]
 pub enum TypeError<'sc> {
     #[error(
         "Mismatched types.\n\
