@@ -28,7 +28,7 @@ pub(super) fn convert_array_instantiation_to_asm<'sc>(
         errors
     );
     let elem_size_in_words =
-        check_std_result!(elem_type.stack_size_of(&contents[0].span), warnings, errors);
+        check_std_result!(elem_type.size_in_words(&contents[0].span), warnings, errors);
     let mut array_size = elem_size_in_words * 8 * contents.len() as u64;
 
     // Reserve space on the stack.  First copy $SP and then expand with CFEI.  We may need more
@@ -280,7 +280,7 @@ pub(super) fn convert_array_index_to_asm<'sc>(
 
     // Get the element size in words first.
     let elem_size_in_words =
-        check_std_result!(elem_type.stack_size_of(&prefix.span), warnings, errors);
+        check_std_result!(elem_type.size_in_words(&prefix.span), warnings, errors);
 
     // The element offset can be calculated as a byte offset.  We need to multiply the index by the
     // element size.

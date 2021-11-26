@@ -166,7 +166,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // if the size of this type is > 1 word, then we use MCP to copy the entire value to
             // the mem address pointed to by the struct.
             let size_of_ty = look_up_type_id(reassignment.rhs.return_type)
-                .stack_size_of(&reassignment.rhs.span)
+                .size_in_words(&reassignment.rhs.span)
                 .unwrap_or_else(|e| {
                     errors.push(e);
                     0

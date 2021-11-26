@@ -314,12 +314,7 @@ impl TypeInfo {
         ok(name, vec![], vec![])
     }
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
-    /// This is _in words_!
-    ///
-    /// XXX rename this to size_in_words()!
-    ///
-    ///
-    pub(crate) fn stack_size_of<'sc>(
+    pub(crate) fn size_in_words<'sc>(
         &self,
         err_span: &Span<'sc>,
     ) -> Result<u64, CompileError<'sc>> {
@@ -338,7 +333,7 @@ impl TypeInfo {
                 // of any individual variant
                 Ok(1 + variant_types
                     .iter()
-                    .map(|x| -> Result<_, _> { look_up_type_id(x.r#type).stack_size_of(err_span) })
+                    .map(|x| -> Result<_, _> { look_up_type_id(x.r#type).size_in_words(err_span) })
                     .collect::<Result<Vec<u64>, _>>()?
                     .into_iter()
                     .max()
@@ -349,7 +344,7 @@ impl TypeInfo {
                 .map(|x| -> Result<_, _> {
                     resolve_type(x.r#type, err_span)
                         .expect("should be unreachable?")
-                        .stack_size_of(err_span)
+                        .size_in_words(err_span)
                 })
                 .collect::<Result<Vec<u64>, _>>()?
                 .iter()
@@ -365,9 +360,9 @@ impl TypeInfo {
                     span: err_span.clone(),
                 })
             }
-            TypeInfo::Ref(id) => look_up_type_id(*id).stack_size_of(err_span),
+            TypeInfo::Ref(id) => look_up_type_id(*id).size_in_words(err_span),
             TypeInfo::Array(elem_ty, count) => {
-                Ok(look_up_type_id(*elem_ty).stack_size_of(err_span)? * *count as u64)
+                Ok(look_up_type_id(*elem_ty).size_in_words(err_span)? * *count as u64)
             }
         }
     }
