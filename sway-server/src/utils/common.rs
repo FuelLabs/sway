@@ -12,16 +12,12 @@ pub(crate) fn extract_visibility(visibility: &Visibility) -> String {
 
 pub(crate) fn extract_var_body(var_dec: &VariableDeclaration) -> VarBody {
     match &var_dec.body {
-        Expression::FunctionApplication {
-            name,
-            arguments: _,
-            span: _,
-        } => VarBody::FunctionCall(name.suffix.primary_name.into()),
-        Expression::StructExpression {
-            struct_name,
-            fields: _,
-            span: _,
-        } => VarBody::Type(struct_name.primary_name.into()),
+        Expression::FunctionApplication { name, .. } => {
+            VarBody::FunctionCall(name.suffix.primary_name.into())
+        }
+        Expression::StructExpression { struct_name, .. } => {
+            VarBody::Type(struct_name.primary_name.into())
+        }
         _ => VarBody::Other,
     }
 }

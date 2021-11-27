@@ -175,9 +175,11 @@ fn connect_declaration<'sc>(
 ) -> Vec<NodeIndex> {
     use TypedDeclaration::*;
     match decl {
-        TraitDeclaration(_) | AbiDeclaration(_) | StructDeclaration(_) | EnumDeclaration(_) => {
-            leaves.to_vec()
-        }
+        TraitDeclaration(_)
+        | AbiDeclaration(_)
+        | StructDeclaration(_)
+        | EnumDeclaration(_)
+        | GenericTypeForFunctionScope { .. } => leaves.to_vec(),
         VariableDeclaration(_) | ConstantDeclaration(_) => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {

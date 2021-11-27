@@ -3,7 +3,7 @@ use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
-    Rule, Span,
+    Rule, Span, TypeParameter,
 };
 use derivative::Derivative;
 
@@ -14,6 +14,9 @@ use pest::iterators::Pair;
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum TypeInfo {
     Unknown,
+    UnknownGeneric {
+        name: String,
+    },
     Str(u64),
     UnsignedInteger(IntegerBits),
     Enum {
@@ -69,7 +72,7 @@ impl TypeInfo {
         config: Option<&BuildConfig>,
     ) -> CompileResult<'sc, Self> {
         match input.as_rule() {
-            Rule::type_name => (),
+            Rule::type_name | Rule::generic_type_param => (),
             _ => {
                 let span = Span {
                     span: input.as_span(),
@@ -104,7 +107,7 @@ impl TypeInfo {
                     errors
                 )
             }
-            Rule::ident => match input.as_str().trim() {
+            Rule::ident | Rule::generic_type_param => match input.as_str().trim() {
                 "u8" => TypeInfo::UnsignedInteger(IntegerBits::Eight),
                 "u16" => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
                 "u32" => TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
@@ -139,6 +142,7 @@ impl TypeInfo {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
+            UnknownGeneric { name, .. } => name.to_string(),
             Str(x) => format!("str[{}]", x),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -148,8 +152,8 @@ impl TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name } => name.into(),
-            Ref(id) => format!("T{}", id),
+            Custom { name } => format!("unresolved {}", name),
+            Ref(id) => format!("T{} ({})", id, (*id).friendly_type_str()),
             Unit => "()".into(),
             SelfType => "Self".into(),
             Byte => "byte".into(),
@@ -157,8 +161,16 @@ impl TypeInfo {
             Numeric => "numeric".into(),
             Contract => "contract".into(),
             ErrorRecovery => "unknown due to error".into(),
-            Enum { name, .. } => format!("enum {}", name),
-            Struct { name, .. } => format!("struct {}", name),
+            Enum {
+                name,
+                variant_types,
+            } => print_inner_types(
+                format!("enum {}", name),
+                variant_types.iter().map(|x| x.r#type),
+            ),
+            Struct { name, fields } => {
+                print_inner_types(format!("struct {}", name), fields.iter().map(|x| x.r#type))
+            }
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name.suffix)
             }
@@ -287,12 +299,13 @@ impl TypeInfo {
             TypeInfo::ContractCaller { .. } => Ok(0),
             TypeInfo::Contract => unreachable!("contract types are never instantiated"),
             TypeInfo::ErrorRecovery => unreachable!(),
-            TypeInfo::Unknown | TypeInfo::Custom { .. } | TypeInfo::SelfType => {
-                Err(CompileError::TypeMustBeKnown {
-                    ty: self.friendly_type_str(),
-                    span: err_span.clone(),
-                })
-            }
+            TypeInfo::Unknown
+            | TypeInfo::Custom { .. }
+            | TypeInfo::SelfType
+            | TypeInfo::UnknownGeneric { .. } => Err(CompileError::TypeMustBeKnown {
+                ty: self.friendly_type_str(),
+                span: err_span.clone(),
+            }),
             TypeInfo::Ref(id) => look_up_type_id(*id).stack_size_of(err_span),
         }
     }
@@ -304,4 +317,89 @@ impl TypeInfo {
             _ => false,
         }
     }
+
+    pub(crate) fn matches_type_parameter<'sc>(
+        &self,
+        mapping: &[(TypeParameter<'sc>, TypeId)],
+    ) -> Option<TypeId> {
+        use TypeInfo::*;
+        match self {
+            TypeInfo::Custom { .. } => {
+                for (param, ty_id) in mapping.iter() {
+                    if param.name == *self {
+                        return Some(*ty_id);
+                    }
+                }
+                None
+            }
+            TypeInfo::UnknownGeneric { name, .. } => {
+                for (param, ty_id) in mapping.iter() {
+                    if param.name
+                        == (TypeInfo::Custom {
+                            name: name.to_string(),
+                        })
+                    {
+                        return Some(*ty_id);
+                    }
+                }
+                None
+            }
+            TypeInfo::Struct { fields, name } => {
+                let mut new_fields = fields.clone();
+                for new_field in new_fields.iter_mut() {
+                    if let Some(matching_id) =
+                        look_up_type_id(new_field.r#type).matches_type_parameter(mapping)
+                    {
+                        new_field.r#type = insert_type(TypeInfo::Ref(matching_id));
+                    }
+                }
+                Some(insert_type(TypeInfo::Struct {
+                    fields: new_fields,
+                    name: name.clone(),
+                }))
+            }
+            TypeInfo::Enum {
+                variant_types,
+                name,
+            } => {
+                let mut new_variants = variant_types.clone();
+                for new_variant in new_variants.iter_mut() {
+                    if let Some(matching_id) =
+                        look_up_type_id(new_variant.r#type).matches_type_parameter(mapping)
+                    {
+                        new_variant.r#type = insert_type(TypeInfo::Ref(matching_id));
+                    }
+                }
+
+                Some(insert_type(TypeInfo::Enum {
+                    variant_types: new_variants,
+                    name: name.clone(),
+                }))
+            }
+            Unknown
+            | Str(..)
+            | UnsignedInteger(..)
+            | Boolean
+            | Ref(..)
+            | Unit
+            | ContractCaller { .. }
+            | SelfType
+            | Byte
+            | B256
+            | Numeric
+            | Contract
+            | ErrorRecovery => None,
+        }
+    }
+}
+
+fn print_inner_types(name: String, inner_types: impl Iterator<Item = TypeId>) -> String {
+    format!(
+        "{}<{}>",
+        name,
+        inner_types
+            .map(|x| x.friendly_type_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
 }
