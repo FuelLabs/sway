@@ -7,11 +7,11 @@ impl ContextTesting for Contract {
 
 
     fn get_id(gas: u64, coins: u64, color: b256, input: ()) -> b256 {
-        this_id()
+        contract_id()
     }
 
-    fn get_value(gas: u64, coins: u64, color: b256, input: ()) -> u64 {
-        msg_value()
+    fn get_amount(gas: u64, coins: u64, color: b256, input: ()) -> u64 {
+        msg_amount()
     }
 
     fn get_token_id(gas: u64, coins: u64, color: b256, input: ()) -> b256 {
