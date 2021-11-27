@@ -21,13 +21,13 @@ impl From for B512 {
     fn from(hi: b256, lo: b256) -> B512 {
         // copy the two given b256s into contiguous stack memory
         // this involves grabbing the stack pointer, extending the stack by 256 bits,
-        // using MCP to copy hi into first ptr
+        // using MCPI to copy hi into first ptr
         // repeat w/ second ptr
 
         let hi = asm(r1: hi, rhi) {
             move rhi sp; // move stack pointer to rhi
-            cfei i32;  // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
-            mcpi rhi r1 i32; // refactor to use mcpi when implemented!
+            cfei i32; // extend call frame by 32 bytes to allocate more memory. now $rhi is pointing to blank, uninitialized (but allocated) memory
+            mcpi rhi r1 i32;
             rhi: b256
         };
 
@@ -35,13 +35,13 @@ impl From for B512 {
             move rlo sp;
             cfei i32;
             // now $rlo is pointing to blank memory that we can use
-            mcpi rlo r1 i32; // refactor to use mcpi when implemented!
+            mcpi rlo r1 i32;
             rlo: b256
         };
 
         B512 {
             hi: hi,
-            lo: lo
+            lo: lo,
         }
     }
 }
@@ -64,7 +64,7 @@ impl B512 {
 
         B512 {
             hi: hi,
-            lo: lo
+            lo: lo,
         }
     }
 }
