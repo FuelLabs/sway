@@ -3,14 +3,15 @@ library context;
 
 /// Get the current contract's id when called in an internal context.
 /// **Note !** If called in an external context, this will **not** return a contract ID.
-pub fn this_id() -> b256 {
+// @dev If called externally, will actually return a pointer to the transaction ID.
+pub fn contract_id() -> b256 {
     asm() {
         fp: b256
     }
 }
 
-/// Get the value of coins being sent.
-pub fn msg_value() -> u64 {
+/// Get the amount of units of `msg_token_id()` being sent.
+pub fn msg_amount() -> u64 {
     asm() {
         bal: u64
     }
