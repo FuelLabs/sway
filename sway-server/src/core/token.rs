@@ -163,11 +163,7 @@ fn handle_expression(exp: Expression, tokens: &mut Vec<Token>) {
                 traverse_node(node, tokens);
             }
         }
-        Expression::FunctionApplication {
-            name,
-            span: _span,
-            arguments: _arguments,
-        } => {
+        Expression::FunctionApplication { name, .. } => {
             let ident = name.suffix;
             let token = Token::from_ident(&ident, TokenType::FunctionApplication);
             tokens.push(token);

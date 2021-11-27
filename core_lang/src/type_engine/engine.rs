@@ -17,6 +17,10 @@ impl Engine {
         self.slab.insert(ty)
     }
 
+    pub fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
+        self.slab.get(id)
+    }
+
     pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
         match self.slab.get(id) {
             TypeInfo::Ref(other) => self.look_up_type_id(other),
@@ -61,6 +65,55 @@ impl Engine {
                 // do nothing if compatible
                 NumericCastCompatResult::Compatible => Ok(vec![]),
             },
+
+            (ref a_info @ UnknownGeneric { .. }, _) => {
+                self.slab.replace(a, a_info, TypeInfo::Ref(b));
+                Ok(vec![])
+            }
+
+            (_, ref b_info @ UnknownGeneric { .. }) => {
+                self.slab.replace(b, b_info, TypeInfo::Ref(a));
+                Ok(vec![])
+            }
+
+            // if the types, once their ids have been looked up, are the same, we are done
+            (
+                Struct {
+                    fields: a_fields, ..
+                },
+                Struct {
+                    fields: b_fields, ..
+                },
+            ) if {
+                let a_fields = a_fields.iter().map(|x| x.r#type);
+                let b_fields = b_fields.iter().map(|x| x.r#type);
+
+                let mut zipped = a_fields.zip(b_fields);
+                zipped.all(|(a, b)| self.unify(a, b, span).is_ok())
+            } =>
+            {
+                Ok(vec![])
+            }
+            (
+                Enum {
+                    variant_types: a_variants,
+                    ..
+                },
+                Enum {
+                    variant_types: b_variants,
+                    ..
+                },
+            ) if {
+                let a_variants = a_variants.iter().map(|x| x.r#type);
+                let b_variants = b_variants.iter().map(|x| x.r#type);
+
+                let mut zipped = a_variants.zip(b_variants);
+                zipped.all(|(a, b)| self.unify(a, b, span).is_ok())
+            } =>
+            {
+                Ok(vec![])
+            }
+
             (Numeric, b_info @ UnsignedInteger(_)) => {
                 match self.slab.replace(a, &Numeric, b_info) {
                     None => Ok(vec![]),
@@ -83,9 +136,9 @@ impl Engine {
             // }
 
             // If no previous attempts to unify were successful, raise an error
-            (a, b) => Err(TypeError::MismatchedType {
-                expected: b.friendly_type_str(),
-                received: a.friendly_type_str(),
+            (_, _) => Err(TypeError::MismatchedType {
+                expected: b,
+                received: a,
                 help_text: Default::default(),
                 span: span.clone(),
             }),
@@ -133,6 +186,10 @@ pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
 
 pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id(id)
+}
+
+pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
+    TYPE_ENGINE.look_up_type_id_raw(id)
 }
 
 pub fn unify_with_self<'sc>(

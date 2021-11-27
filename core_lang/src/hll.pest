@@ -45,7 +45,8 @@ parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
-func_app                 =  {fn_name ~ fn_args}
+func_app                 =  {fn_name ~ type_args? ~ fn_args}
+type_args                =  {path_separator ~ type_params}
 fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 fn_name                  =  {var_exp}
 var_exp                  =  {var_name_ident}
