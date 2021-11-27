@@ -374,7 +374,7 @@ fn connect_declaration<'sc>(
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
-        ErrorRecovery => Ok(leaves.to_vec()),
+        ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
     }
 }
 

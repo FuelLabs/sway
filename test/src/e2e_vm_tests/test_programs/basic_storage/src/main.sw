@@ -5,11 +5,11 @@ use basic_storage_abi::*;
 
 impl StoreU64 for Contract {
   fn store_u64(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, storage: StoreU64Request) {
-   store_u64(storage.key, storage.value);
+   store(storage.key, storage.value);
   }
 
   fn get_u64(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, storage_key: b256) -> u64 {
-    get_u64(storage_key)
+    get(storage_key)
   }
 }
 
