@@ -1,8 +1,8 @@
 [project]
 author  = "Nick Furfaro"
 license = "MIT"
-name = "empty_method_initializer"
+name = "address_test"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../stdlib" }
+std = { path = "../../../../../stdlib"}
