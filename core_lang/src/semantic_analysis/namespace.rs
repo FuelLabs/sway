@@ -18,19 +18,42 @@ type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
-    pub(crate) symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    pub(crate) implemented_traits:
+    symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
+    implemented_traits:
         HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
-    pub(crate) modules: HashMap<ModuleName, Namespace<'sc>>,
+    modules: HashMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
     /// namespace _is_ the root namespace.
-    pub(crate) crate_namespace: Box<Option<Namespace<'sc>>>,
+    crate_namespace: Box<Option<Namespace<'sc>>>,
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
     use_aliases: HashMap<String, Ident<'sc>>,
 }
 
 impl<'sc> Namespace<'sc> {
+    pub fn clone_inherit_crate_namespace(&self) -> Namespace<'sc> {
+        let mut ret = self.clone();
+        if ret.crate_namespace.is_none() {
+            ret.crate_namespace = Box::new(Some(self.clone()));
+        }
+        ret
+    }
+
+    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration<'sc>> {
+        self.symbols.values()
+    }
+
+    pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &Namespace<'sc>> {
+        self.modules.values()
+    }
+
+    pub fn overwrite_modules_with_alias(&mut self, alias: &str) {
+        let modules = std::mem::replace(&mut self.modules, HashMap::new());
+        if let Some(value) = modules.into_values().next() {
+            self.modules.insert(alias.to_string(), value);
+        }
+    }
+
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
     ///

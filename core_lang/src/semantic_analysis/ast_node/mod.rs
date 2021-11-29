@@ -713,10 +713,7 @@ fn import_new_file<'sc>(
         }
     };
 
-    let mut dep_namespace = namespace.clone();
-    if namespace.crate_namespace.is_none() {
-        dep_namespace.crate_namespace = Box::new(Some(namespace.clone()));
-    }
+    let dep_namespace = namespace.clone_inherit_crate_namespace();
     // :)
     let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
     let mut dep_config = build_config.clone();
@@ -741,21 +738,9 @@ fn import_new_file<'sc>(
         errors
     );
 
-    library_exports.namespace.modules = library_exports
-        .namespace
-        .modules
-        .into_iter()
-        .map(|(name, content)| {
-            (
-                if let Some(ref alias) = statement.alias {
-                    alias.primary_name.to_string()
-                } else {
-                    name
-                },
-                content,
-            )
-        })
-        .collect();
+    if let Some(ref alias) = statement.alias {
+        library_exports.namespace.overwrite_modules_with_alias(alias.primary_name);
+    }
     namespace.merge_namespaces(&library_exports.namespace);
 
     ok((), warnings, errors)
