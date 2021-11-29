@@ -1040,14 +1040,15 @@ impl<'sc> TypedExpression<'sc> {
         let mut probe_warnings = Vec::new();
         let mut probe_errors = Vec::new();
         let module_result = namespace
-            .find_module(&call_path.prefixes, false)
+            .inner
+            .find_module_relative(&call_path.prefixes)
             .ok(&mut probe_warnings, &mut probe_errors);
         let enum_module_combined_result = {
             // also, check if this is an enum _in_ another module.
             let (module_path, enum_name) =
                 call_path.prefixes.split_at(call_path.prefixes.len() - 1);
             let enum_name = enum_name[0].clone();
-            let namespace = namespace.find_module(module_path, false);
+            let namespace = namespace.inner.find_module_relative(module_path);
             let namespace = namespace.ok(&mut warnings, &mut errors);
             namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
         };

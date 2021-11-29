@@ -44,7 +44,7 @@ impl<'sc> Namespace<'sc> {
         ret
     }
 
-    pub(crate) fn find_module(
+    fn find_module(
         &self,
         path: &[Ident<'sc>],
         is_absolute: bool,
@@ -489,7 +489,7 @@ impl<'sc> NamespaceInner<'sc> {
         }
     }
 
-    fn find_module_relative(
+    pub(crate) fn find_module_relative(
         &self,
         path: &[Ident<'sc>],
     ) -> CompileResult<'sc, &NamespaceInner<'sc>> {
