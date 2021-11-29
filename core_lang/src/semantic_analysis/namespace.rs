@@ -318,7 +318,7 @@ impl<'sc> Namespace<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
-            self.find_module(path, false),
+            self.find_module_relative(path),
             return err(warnings, errors),
             warnings,
             errors
@@ -345,7 +345,7 @@ impl<'sc> Namespace<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
-            self.find_module(path, false),
+            self.find_module_relative(path),
             return err(warnings, errors),
             warnings,
             errors
@@ -381,24 +381,11 @@ impl<'sc> Namespace<'sc> {
         }
     }
 
-    pub(crate) fn find_module(
+    fn find_module_relative(
         &self,
         path: &[Ident<'sc>],
-        is_absolute: bool,
     ) -> CompileResult<'sc, &Namespace<'sc>> {
-        let mut namespace = if is_absolute {
-            if let Some(ns) = &self.crate_namespace {
-                // this is an absolute import and this is a submodule, so we want the
-                // crate global namespace here
-                ns
-            } else {
-                // this is an absolute import and we are in the root module, so we want
-                // this namespace
-                self
-            }
-        } else {
-            self
-        };
+        let mut namespace = self;
         let mut errors = vec![];
         let warnings = vec![];
         for ident in path {
@@ -420,6 +407,27 @@ impl<'sc> Namespace<'sc> {
             };
         }
         ok(namespace, warnings, errors)
+    }
+
+    pub(crate) fn find_module(
+        &self,
+        path: &[Ident<'sc>],
+        is_absolute: bool,
+    ) -> CompileResult<'sc, &Namespace<'sc>> {
+        let namespace = if is_absolute {
+            if let Some(ns) = &self.crate_namespace {
+                // this is an absolute import and this is a submodule, so we want the
+                // crate global namespace here
+                ns
+            } else {
+                // this is an absolute import and we are in the root module, so we want
+                // this namespace
+                self
+            }
+        } else {
+            self
+        };
+        namespace.find_module_relative(path)
     }
 
     pub(crate) fn insert_trait_implementation(
