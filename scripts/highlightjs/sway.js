@@ -54,20 +54,16 @@ export default function(hljs) {
     
   ];
   const TYPES = [
-    "u8",
-    "u16",
-    "u32",
-    "u64",
+    "bool", "char", "u8", "u16", "u32", "u64", "u128", "b256", "b512", "str", "Self"
   ];
   return {
     name: 'Sway',
     aliases: [ 'sw' ],
     keywords: {
       $pattern: hljs.IDENT_RE + '!?',
-      type: TYPES,
       keyword: KEYWORDS,
       literal: LITERALS,
-      built_in: BUILTINS
+      built_in: TYPES
     },
     illegal: '</',
     contains: [
@@ -149,7 +145,7 @@ export default function(hljs) {
       },
       {
         begin: [
-          /(?:trait|enum|struct|impl|for|library)/,
+          /(?:trait|enum|struct|impl|for|library|abi)/,
           /\s+/,
           hljs.UNDERSCORE_IDENT_RE
         ],
