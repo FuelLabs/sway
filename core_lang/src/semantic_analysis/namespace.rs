@@ -151,10 +151,15 @@ impl<'sc> Namespace<'sc> {
             warnings,
             errors
         );
-        for (symbol, decl) in namespace.symbols.clone() {
+        let symbols = namespace.symbols.iter().filter_map(|(symbol, decl)| {
             if decl.visibility() == Visibility::Public {
-                self.use_synonyms.insert(symbol.clone(), path.clone());
+                Some(symbol.clone())
+            } else {
+                None
             }
+        }).collect::<Vec<_>>();
+        for symbol in symbols {
+            self.use_synonyms.insert(symbol, path.clone());
         }
         ok((), warnings, errors)
     }
