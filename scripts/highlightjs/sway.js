@@ -22,17 +22,21 @@ export default function(hljs) {
   const NUMBER_SUFFIX = '([u](8|16|32|64))\?';
 
   const KEYWORDS = [
+    "abi",
     "as",
     "asm",
+    "const",
     "contract",
     "deref",
     "enum",
     "fn",
+    "if",
     "impl",
     "let",
     "library",
     "match",
     "mut",
+    "else",
     "predicate",
     "ref",
     "return",
@@ -122,7 +126,7 @@ export default function(hljs) {
       },
       {
         begin: [
-          /let/, /\s+/,
+          /(let|const)/, /\s+/,
           /(?:mut\s+)?/,
           hljs.UNDERSCORE_IDENT_RE
         ],
