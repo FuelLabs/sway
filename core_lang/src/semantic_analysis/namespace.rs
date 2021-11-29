@@ -25,7 +25,7 @@ pub struct Namespace<'sc> {
     modules: HashMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
     /// namespace _is_ the root namespace.
-    crate_namespace: Box<Option<Namespace<'sc>>>,
+    crate_namespace: Option<Box<Namespace<'sc>>>,
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
     use_aliases: HashMap<String, Ident<'sc>>,
 }
@@ -34,7 +34,7 @@ impl<'sc> Namespace<'sc> {
     pub fn clone_inherit_crate_namespace(&self) -> Namespace<'sc> {
         let mut ret = self.clone();
         if ret.crate_namespace.is_none() {
-            ret.crate_namespace = Box::new(Some(self.clone()));
+            ret.crate_namespace = Some(Box::new(self.clone()));
         }
         ret
     }
@@ -382,7 +382,7 @@ impl<'sc> Namespace<'sc> {
         is_absolute: bool,
     ) -> CompileResult<'sc, &Namespace<'sc>> {
         let mut namespace = if is_absolute {
-            if let Some(ns) = &*self.crate_namespace {
+            if let Some(ns) = &self.crate_namespace {
                 // this is an absolute import and this is a submodule, so we want the
                 // crate global namespace here
                 ns
