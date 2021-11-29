@@ -380,45 +380,41 @@ pub fn compile_to_asm<'sc>(
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
+    errors = dedup_unsorted(errors);
+    warnings = dedup_unsorted(warnings);
     // for each syntax tree, generate assembly.
-    let predicate_asm = (|| {
-        if let Some(tree) = predicate_ast {
-            Some(check!(
-                compile_ast_to_asm(tree, &build_config),
-                return None,
-                warnings,
-                errors
-            ))
-        } else {
-            None
-        }
-    })();
+    let predicate_asm = if let Some(tree) = predicate_ast {
+        Some(check!(
+            compile_ast_to_asm(tree, &build_config),
+            return CompilationResult::Failure { errors, warnings },
+            warnings,
+            errors
+        ))
+    } else {
+        None
+    };
 
-    let contract_asm = (|| {
-        if let Some(tree) = contract_ast {
-            Some(check!(
-                compile_ast_to_asm(tree, &build_config),
-                return None,
-                warnings,
-                errors
-            ))
-        } else {
-            None
-        }
-    })();
+    let contract_asm = if let Some(tree) = contract_ast {
+        Some(check!(
+            compile_ast_to_asm(tree, &build_config),
+            return CompilationResult::Failure { errors, warnings },
+            warnings,
+            errors
+        ))
+    } else {
+        None
+    };
 
-    let script_asm = (|| {
-        if let Some(tree) = script_ast {
-            Some(check!(
-                compile_ast_to_asm(tree, &build_config),
-                return None,
-                warnings,
-                errors
-            ))
-        } else {
-            None
-        }
-    })();
+    let script_asm = if let Some(tree) = script_ast {
+        Some(check!(
+            compile_ast_to_asm(tree, &build_config),
+            return CompilationResult::Failure { errors, warnings },
+            warnings,
+            errors
+        ))
+    } else {
+        None
+    };
 
     if errors.is_empty() {
         // TODO move this check earlier and don't compile all of them if there is only one
@@ -812,4 +808,43 @@ fn test_unary_ordering() {
     } else {
         panic!("Was not ast node")
     };
+}
+
+/// We want compile errors and warnings to retain their ordering, since typically
+/// they are grouped by relevance. However, we want to deduplicate them.
+/// Stdlib dedup in Rust assumes sorted data for efficiency, but we don't want that.
+/// A hash set would also mess up the order, so this is just a brute force way of doing it
+/// with a vector.
+fn dedup_unsorted<T: PartialEq + std::hash::Hash>(mut data: Vec<T>) -> Vec<T> {
+    use smallvec::SmallVec;
+    use std::collections::hash_map::{DefaultHasher, Entry};
+    use std::hash::Hasher;
+
+    let mut write_index = 0;
+    let mut indexes: HashMap<u64, SmallVec<[usize; 1]>> = HashMap::with_capacity(data.len());
+    for read_index in 0..data.len() {
+        let hash = {
+            let mut hasher = DefaultHasher::new();
+            data[read_index].hash(&mut hasher);
+            hasher.finish()
+        };
+        let index_vec = match indexes.entry(hash) {
+            Entry::Occupied(oe) => {
+                if oe
+                    .get()
+                    .iter()
+                    .any(|index| data[*index] == data[read_index])
+                {
+                    continue;
+                }
+                oe.into_mut()
+            }
+            Entry::Vacant(ve) => ve.insert(SmallVec::new()),
+        };
+        data.swap(write_index, read_index);
+        index_vec.push(write_index);
+        write_index += 1;
+    }
+    data.truncate(write_index);
+    data
 }

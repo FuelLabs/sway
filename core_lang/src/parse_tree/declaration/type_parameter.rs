@@ -1,14 +1,22 @@
 use crate::build_config::BuildConfig;
 use crate::span::Span;
-use crate::{error::*, type_engine::TypeInfo, Ident};
-use crate::{CompileError, Rule};
+use crate::{error::*, type_engine::*, CompileError, Ident, Rule, TypedDeclaration};
 use pest::iterators::Pair;
+use std::convert::Into;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct TypeParameter<'sc> {
     pub(crate) name: TypeInfo,
     pub(crate) name_ident: Ident<'sc>,
     pub(crate) trait_constraints: Vec<TraitConstraint<'sc>>,
+}
+
+impl<'sc> Into<TypedDeclaration<'sc>> for &TypeParameter<'sc> {
+    fn into(self) -> TypedDeclaration<'sc> {
+        TypedDeclaration::GenericTypeForFunctionScope {
+            name: self.name_ident.clone(),
+        }
+    }
 }
 
 impl<'sc> TypeParameter<'sc> {
@@ -97,7 +105,7 @@ impl<'sc> TypeParameter<'sc> {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct TraitConstraint<'sc> {
     pub(crate) name: Ident<'sc>,
 }

@@ -30,6 +30,7 @@ pub enum Expression<'sc> {
     FunctionApplication {
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
+        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
         span: Span<'sc>,
     },
     LazyOperator {
@@ -279,6 +280,8 @@ impl<'sc> Expression<'sc> {
             span: expr.as_span(),
             path: path.clone(),
         };
+        #[allow(unused_assignments)]
+        let mut maybe_type_args = Vec::new();
         let parsed = match expr.as_rule() {
             Rule::literal_value => Literal::parse_from_pair(expr.clone(), config)
                 .map(|(value, span)| Expression::Literal { value, span })
@@ -295,7 +298,17 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors
                 );
-                let arguments = func_app_parts.next().unwrap();
+                let (arguments, type_args) = {
+                    let maybe_type_args = func_app_parts.next().unwrap();
+                    match maybe_type_args.as_rule() {
+                        Rule::type_args => (func_app_parts.next().unwrap(), Some(maybe_type_args)),
+                        Rule::fn_args => (maybe_type_args, None),
+                        _ => unreachable!(),
+                    }
+                };
+                maybe_type_args = type_args
+                    .map(|x| x.into_inner().skip(1).collect::<Vec<_>>())
+                    .unwrap_or_else(Vec::new);
                 let mut arguments_buf = Vec::new();
                 for argument in arguments.into_inner() {
                     let arg = check!(
@@ -311,11 +324,28 @@ impl<'sc> Expression<'sc> {
                     );
                     arguments_buf.push(arg);
                 }
+                let mut type_args_buf = vec![];
+                for arg in maybe_type_args {
+                    let sp = Span {
+                        span: arg.as_span(),
+                        path: path.clone(),
+                    };
+                    type_args_buf.push((
+                        check!(
+                            TypeInfo::parse_from_pair(arg.into_inner().next().unwrap(), config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+                        sp,
+                    ));
+                }
 
                 Expression::FunctionApplication {
                     name,
                     arguments: arguments_buf,
                     span,
+                    type_arguments: type_args_buf,
                 }
             }
             Rule::var_exp => {

@@ -55,9 +55,16 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("aliased_imports", ProgramState::Return(42)),
         ("empty_method_initializer", ProgramState::Return(1)), // true
         ("b512_struct_alignment", ProgramState::Return(1)),    // true
-        ("import_method_from_other_file", ProgramState::Return(10)),
-        ("assert_test", ProgramState::Return(1)),  // true
-        ("array_basics", ProgramState::Return(1)), // true
+        ("generic_structs", ProgramState::Return(1)),          // true
+        ("generic_functions", ProgramState::Return(1)),        // true
+        ("generic_enum", ProgramState::Return(1)),             // true
+        ("import_method_from_other_file", ProgramState::Return(10)), // true
+        ("address_test", ProgramState::Return(1)),             // true
+        ("generic_struct", ProgramState::Return(1)),           // true
+        ("assert_test", ProgramState::Return(1)),              // true
+        ("b512_test", ProgramState::Return(1)),                // true
+        ("assert_test", ProgramState::Return(1)),              // true
+        ("array_basics", ProgramState::Return(1)),             // true
         ("array_dynamic_oob", ProgramState::Revert(1)),
     ];
 
@@ -78,6 +85,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "top_level_vars",
         "dependencies_parsing_error",
         "disallowed_gm",
+        "bad_generic_annotation",
+        "bad_generic_var_annotation",
         "unify_identical_unknowns",
         "array_oob",
         "array_bad_index",

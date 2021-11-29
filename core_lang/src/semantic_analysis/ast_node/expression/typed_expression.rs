@@ -54,10 +54,12 @@ impl<'sc> TypedExpression<'sc> {
                 name,
                 arguments,
                 span,
+                type_arguments,
                 ..
             } => Self::type_check_function_application(
                 name,
                 arguments,
+                type_arguments,
                 span,
                 namespace,
                 self_type,
@@ -245,8 +247,8 @@ impl<'sc> TypedExpression<'sc> {
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
             match crate::type_engine::unify_with_self(
-                typed_expression.return_type,
                 type_annotation,
+                typed_expression.return_type,
                 self_type,
                 &expr_span,
             ) {
@@ -266,9 +268,26 @@ impl<'sc> TypedExpression<'sc> {
         }
 
         typed_expression.return_type = namespace
-            .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type);
+            .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType { span: expr_span });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
 
         ok(typed_expression, warnings, errors)
+    }
+
+    /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.return_type = if let Some(matching_id) =
+            look_up_type_id(self.return_type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.return_type))
+        };
+
+        self.expression.copy_types(type_mapping);
     }
 
     fn type_check_literal(
@@ -344,7 +363,8 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_function_application(
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
-        span: Span<'sc>,
+        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
+        _span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -359,103 +379,116 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         );
-        let exp = match function_declaration {
-            TypedDeclaration::FunctionDeclaration(decl) => {
-                let TypedFunctionDeclaration {
-                    parameters,
-                    return_type,
-                    body,
-                    ..
-                } = decl.clone();
-                match arguments.len().cmp(&parameters.len()) {
-                    Ordering::Greater => {
-                        let arguments_span = arguments.iter().fold(
-                            arguments
-                                .get(0)
-                                .map(|x| x.span())
-                                .unwrap_or_else(|| name.span()),
-                            |acc, arg| crate::utils::join_spans(acc, arg.span()),
-                        );
-                        errors.push(CompileError::TooManyArgumentsForFunction {
-                            span: arguments_span,
-                            method_name: name.suffix.primary_name,
-                            expected: parameters.len(),
-                            received: arguments.len(),
-                        });
-                    }
-                    Ordering::Less => {
-                        let arguments_span = arguments.iter().fold(
-                            arguments
-                                .get(0)
-                                .map(|x| x.span())
-                                .unwrap_or_else(|| name.span()),
-                            |acc, arg| crate::utils::join_spans(acc, arg.span()),
-                        );
-                        errors.push(CompileError::TooFewArgumentsForFunction {
-                            span: arguments_span,
-                            method_name: name.suffix.primary_name,
-                            expected: parameters.len(),
-                            received: arguments.len(),
-                        });
-                    }
-                    Ordering::Equal => {}
-                }
-                // type check arguments in function application vs arguments in function
-                // declaration. Use parameter type annotations as annotations for the
-                // arguments
-                //
-                let typed_call_arguments =
+        let TypedFunctionDeclaration {
+            parameters,
+            return_type,
+            body,
+            span,
+            ..
+        } = if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
+            // if this is a generic function, monomorphize its internal types and insert the resulting
+            // declaration into the namespace. Then, use that instead.
+            if decl.type_parameters.is_empty() {
+                decl
+            } else {
+                check!(
+                    decl.monomorphize(type_arguments, self_type),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )
+            }
+        } else {
+            errors.push(CompileError::NotAFunction {
+                name: name.span().as_str().to_string(),
+                span: name.span(),
+                what_it_is: function_declaration.friendly_name(),
+            });
+            return err(warnings, errors);
+        };
+
+        match arguments.len().cmp(&parameters.len()) {
+            Ordering::Greater => {
+                let arguments_span = arguments.iter().fold(
                     arguments
-                        .into_iter()
-                        .zip(parameters.iter())
-                        .map(|(arg, param)| {
-                            (param.name.clone(), TypedExpression::type_check(
-                            arg.clone(),
-                            namespace,
-                            Some(param.r#type),
-                            "The argument that has been provided to this function's type does \
+                        .get(0)
+                        .map(|x| x.span())
+                        .unwrap_or_else(|| name.span()),
+                    |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                );
+                errors.push(CompileError::TooManyArgumentsForFunction {
+                    span: arguments_span,
+                    method_name: name.suffix.primary_name,
+                    expected: parameters.len(),
+                    received: arguments.len(),
+                });
+            }
+            Ordering::Less => {
+                let arguments_span = arguments.iter().fold(
+                    arguments
+                        .get(0)
+                        .map(|x| x.span())
+                        .unwrap_or_else(|| name.span()),
+                    |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                );
+                errors.push(CompileError::TooFewArgumentsForFunction {
+                    span: arguments_span,
+                    method_name: name.suffix.primary_name,
+                    expected: parameters.len(),
+                    received: arguments.len(),
+                });
+            }
+            Ordering::Equal => {}
+        }
+        // type check arguments in function application vs arguments in function
+        // declaration. Use parameter type annotations as annotations for the
+        // arguments
+        //
+        let typed_call_arguments = arguments
+            .into_iter()
+            .zip(parameters.iter())
+            .map(|(arg, param)| {
+                (
+                    param.name.clone(),
+                    TypedExpression::type_check(
+                        arg.clone(),
+                        namespace,
+                        Some(param.r#type.clone()),
+                        "The argument that has been provided to this function's type does \
                             not match the declared type of the parameter in the function \
                             declaration.",
-                            self_type,
-                            build_config,
-                            dead_code_graph,
-                            dependency_graph
-                        )
-                        .unwrap_or_else(
-                            &mut warnings,
-                            &mut errors,
-                            || error_recovery_expr(arg.span()),
-                        ))
-                        })
-                        .collect();
+                        self_type,
+                        build_config,
+                        dead_code_graph,
+                        dependency_graph,
+                    )
+                    .unwrap_or_else(&mut warnings, &mut errors, || {
+                        error_recovery_expr(arg.span())
+                    }),
+                )
+            })
+            .collect();
 
-                TypedExpression {
-                    return_type,
-                    // now check the function call return type
-                    // FEATURE this IsConstant can be true if the function itself is
-                    // constant-able const functions would be an
-                    // advanced feature and are not supported right
-                    // now
-                    is_constant: IsConstant::No,
-                    expression: TypedExpressionVariant::FunctionApplication {
-                        arguments: typed_call_arguments,
-                        name: name.clone(),
-                        function_body: body.clone(),
-                        selector: None, // regular functions cannot be in a contract call; only methods
-                    },
-                    span,
-                }
-            }
-            a => {
-                errors.push(CompileError::NotAFunction {
-                    name: name.span().as_str().to_string(),
-                    span: name.span(),
-                    what_it_is: a.friendly_name(),
-                });
-                error_recovery_expr(name.span())
-            }
-        };
-        ok(exp, warnings, errors)
+        ok(
+            TypedExpression {
+                return_type: return_type.clone(),
+                // now check the function call return type
+                // FEATURE this IsConstant can be true if the function itself is
+                // constant-able const functions would be an
+                // advanced feature and are not supported right
+                // now
+                is_constant: IsConstant::No,
+                expression: TypedExpressionVariant::FunctionApplication {
+                    arguments: typed_call_arguments,
+                    name: name.clone(),
+                    function_body: body.clone(),
+                    selector: None, // regular functions cannot be in a contract call; only methods
+                },
+                span,
+            },
+            warnings,
+            errors,
+        )
     }
 
     fn type_check_lazy_operator(
@@ -734,7 +767,18 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let return_type = namespace.resolve_type_with_self(asm.return_type, self_type);
+        let return_type = namespace
+            .resolve_type_with_self(asm.return_type.clone(), self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType {
+                    span: asm
+                        .returns
+                        .clone()
+                        .map(|x| x.1)
+                        .unwrap_or(asm.whole_block_span.clone()),
+                });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
         // type check the initializers
         let typed_registers = asm
             .registers
@@ -797,8 +841,6 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
 
-        // TODO in here replace generic types with provided types
-        // find the struct definition in the namespace
         let definition: TypedStructDeclaration =
             match namespace.clone().get_symbol(&struct_name).value {
                 Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
@@ -817,6 +859,14 @@ impl<'sc> TypedExpression<'sc> {
                     return err(warnings, errors);
                 }
             };
+        // if this is a generic struct, i.e. it has some type
+        // parameters, monomorphize it before unifying the
+        // types
+        let definition = if definition.type_parameters.is_empty() {
+            definition
+        } else {
+            definition.monomorphize()
+        };
 
         // match up the names with their type annotations from the declaration
         for def_field in definition.fields.iter() {
@@ -969,7 +1019,8 @@ impl<'sc> TypedExpression<'sc> {
         call_path: CallPath<'sc>,
         span: Span<'sc>,
         args: Vec<Expression<'sc>>,
-        type_arguments: Vec<TypeInfo>,
+        // TODO these will be needed for enum instantiation
+        _type_arguments: Vec<TypeInfo>,
         namespace: &mut Namespace<'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -1022,8 +1073,6 @@ impl<'sc> TypedExpression<'sc> {
                         enum_decl,
                         call_path.suffix,
                         args,
-                        //TODO(generics)
-                        type_arguments.into_iter().map(insert_type).collect(),
                         namespace,
                         self_type,
                         build_config,

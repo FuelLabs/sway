@@ -584,6 +584,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::ErrorRecovery => "err_recov",
         TypeInfo::Ref(x) => return format!("T{}", x),
         TypeInfo::Unknown => "unknown",
+        TypeInfo::UnknownGeneric { name } => return format!("generic {}", name),
         TypeInfo::ContractCaller { .. } => "contract caller",
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
