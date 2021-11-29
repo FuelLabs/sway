@@ -446,6 +446,9 @@ impl TypeInfo {
                     name: name.clone(),
                 }))
             }
+            TypeInfo::Array(ary_ty_id, count) => look_up_type_id(*ary_ty_id)
+                .matches_type_parameter(mapping)
+                .map(|matching_id| insert_type(TypeInfo::Array(matching_id, *count))),
             Unknown
             | Str(..)
             | UnsignedInteger(..)

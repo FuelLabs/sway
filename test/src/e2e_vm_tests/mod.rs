@@ -66,6 +66,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("assert_test", ProgramState::Return(1)),              // true
         ("array_basics", ProgramState::Return(1)),             // true
         ("array_dynamic_oob", ProgramState::Revert(1)),
+        ("array_generics", ProgramState::Return(1)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {

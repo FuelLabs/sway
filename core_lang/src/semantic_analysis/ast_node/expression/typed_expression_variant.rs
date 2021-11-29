@@ -188,8 +188,11 @@ impl<'sc> TypedExpressionVariant<'sc> {
             }
             VariableExpression { .. } => (),
             Unit => (),
-            #[allow(dead_code)]
             Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
+            ArrayIndex { prefix, index } => {
+                (*prefix).copy_types(type_mapping);
+                (*index).copy_types(type_mapping);
+            }
             #[allow(dead_code)]
             MatchExpression { .. } => (),
             StructExpression { fields, .. } => {

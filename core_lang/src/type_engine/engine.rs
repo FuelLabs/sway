@@ -132,8 +132,8 @@ impl Engine {
                 // If there was an error then we want to report the array types as mismatching, not
                 // the elem types.
                 .map_err(|_| TypeError::MismatchedType {
-                    expected: b.friendly_type_str(),
-                    received: a.friendly_type_str(),
+                    expected: b,
+                    received: a,
                     help_text: Default::default(),
                     span: span.clone(),
                 }),

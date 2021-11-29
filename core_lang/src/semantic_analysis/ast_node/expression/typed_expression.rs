@@ -1473,7 +1473,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected == "bool" && received == "u64"));
+                         }) if expected.friendly_type_str() == "bool"
+                                && received.friendly_type_str() == "u64"));
     }
 
     #[test]
@@ -1499,20 +1500,21 @@ mod tests {
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
-        println!("{:?}", comp_res.errors[1]);
         assert!(comp_res.errors.len() == 2);
         assert!(matches!(&comp_res.errors[0],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
                              received,
                              ..
-                         }) if expected == "u64" && received == "bool"));
+                         }) if expected.friendly_type_str() == "u64"
+                                && received.friendly_type_str() == "bool"));
         assert!(matches!(&comp_res.errors[1],
                          CompileError::TypeError(TypeError::MismatchedType {
                              expected,
                              received,
                              ..
-                         }) if expected == "[bool; 2]" && received == "[u64; 2]"));
+                         }) if expected.friendly_type_str() == "[bool; 2]"
+                                && received.friendly_type_str() == "[u64; 2]"));
     }
 
     #[test]
@@ -1548,7 +1550,8 @@ mod tests {
                              expected,
                              received,
                              ..
-                         }) if expected == "[bool; 2]" && received == "[bool; 3]"));
+                         }) if expected.friendly_type_str() == "[bool; 2]"
+                                && received.friendly_type_str() == "[bool; 3]"));
     }
 
     #[test]
