@@ -247,8 +247,8 @@ impl<'sc> TypedExpression<'sc> {
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
             match crate::type_engine::unify_with_self(
-                type_annotation,
                 typed_expression.return_type,
+                type_annotation,
                 self_type,
                 &expr_span,
             ) {
