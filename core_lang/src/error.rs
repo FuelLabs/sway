@@ -18,6 +18,18 @@ macro_rules! check {
     }};
 }
 
+macro_rules! check_std_result {
+    ($result_expr: expr, $warnings: ident, $errors: ident) => {{
+        match $result_expr {
+            Ok(res) => res,
+            Err(e) => {
+                $errors.push(e.into());
+                return err($warnings, $errors);
+            }
+        }
+    }};
+}
+
 macro_rules! assert_or_warn {
     ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr) => {
         if !$bool_expr {
@@ -759,6 +771,12 @@ pub enum CompileError<'sc> {
     BurnFromExternalContext { span: Span<'sc> },
     #[error("Contract storage cannot be used in an external context.")]
     ContractStorageFromExternalContext { span: Span<'sc> },
+    #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
+    ArrayOutOfBounds {
+        index: u64,
+        count: u64,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -946,6 +964,7 @@ impl<'sc> CompileError<'sc> {
             MintFromExternalContext { span, .. } => span,
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
+            ArrayOutOfBounds { span, .. } => span,
         }
     }
 

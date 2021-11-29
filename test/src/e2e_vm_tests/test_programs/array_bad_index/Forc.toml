@@ -1,0 +1,5 @@
+[project]
+author  = "Toby Hutton <toby.hutton@fuel.sh>"
+license = "MIT"
+name = "array_bad_index"
+entry = "main.sw"

@@ -205,7 +205,30 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
             ),
-            a => {
+            Expression::Array { contents, span } => Self::type_check_array(
+                contents,
+                span,
+                namespace,
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+            ),
+            Expression::ArrayIndex {
+                prefix,
+                index,
+                span,
+            } => Self::type_check_array_index(
+                *prefix,
+                *index,
+                span,
+                namespace,
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+            ),
+            /* a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented expression",
                     a.span(),
@@ -213,7 +236,7 @@ impl<'sc> TypedExpression<'sc> {
 
                 let exp = error_recovery_expr(a.span());
                 ok(exp, vec![], errors)
-            }
+            } */
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -224,8 +247,8 @@ impl<'sc> TypedExpression<'sc> {
         // if the return type cannot be cast into the annotation type then it is a type error
         if let Some(type_annotation) = type_annotation {
             match crate::type_engine::unify_with_self(
-                type_annotation,
                 typed_expression.return_type,
+                type_annotation,
                 self_type,
                 &expr_span,
             ) {
@@ -1184,11 +1207,369 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
+    fn type_check_array(
+        contents: Vec<Expression<'sc>>,
+        span: Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        self_type: TypeId,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
+    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        if contents.is_empty() {
+            return ok(
+                TypedExpression {
+                    expression: TypedExpressionVariant::Array {
+                        contents: Vec::new(),
+                    },
+                    return_type: insert_type(TypeInfo::Array(insert_type(TypeInfo::Unknown), 0)),
+                    is_constant: IsConstant::Yes,
+                    span,
+                },
+                Vec::new(),
+                Vec::new(),
+            );
+        };
+
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        let typed_contents: Vec<TypedExpression> = contents
+            .into_iter()
+            .map(|expr| {
+                let span = expr.span();
+                check!(
+                    Self::type_check(
+                        expr,
+                        namespace,
+                        None,
+                        "",
+                        self_type,
+                        build_config,
+                        dead_code_graph,
+                        dependency_graph,
+                    ),
+                    error_recovery_expr(span),
+                    warnings,
+                    errors
+                )
+            })
+            .collect();
+
+        let elem_type = typed_contents[0].return_type;
+        for typed_elem in &typed_contents[1..] {
+            match unify_with_self(
+                typed_elem.return_type,
+                elem_type,
+                self_type,
+                &typed_elem.span,
+            ) {
+                // In both cases, if there are warnings or errors then break here, since we don't
+                // need to spam type errors for every element once we have one.
+                Ok(ws) => {
+                    let no_warnings = ws.is_empty();
+                    for warn in ws {
+                        warnings.push(CompileWarning {
+                            warning_content: warn,
+                            span: typed_elem.span.clone(),
+                        });
+                    }
+                    if !no_warnings {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    errors.push(CompileError::TypeError(e));
+                    break;
+                }
+            };
+        }
+
+        let array_count = typed_contents.len();
+        ok(
+            TypedExpression {
+                expression: TypedExpressionVariant::Array {
+                    contents: typed_contents,
+                },
+                return_type: insert_type(TypeInfo::Array(elem_type, array_count)),
+                is_constant: IsConstant::No, // Maybe?
+                span,
+            },
+            warnings,
+            errors,
+        )
+    }
+
+    fn type_check_array_index(
+        prefix: Expression<'sc>,
+        index: Expression<'sc>,
+        span: Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        self_type: TypeId,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
+    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+
+        let prefix_te = check!(
+            TypedExpression::type_check(
+                prefix.clone(),
+                namespace,
+                None,
+                "",
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // If the return type is a static array then create a TypedArrayIndex.
+        if let TypeInfo::Array(elem_type_id, _) = look_up_type_id(prefix_te.return_type) {
+            let index_te = check!(
+                TypedExpression::type_check(
+                    index,
+                    namespace,
+                    Some(insert_type(TypeInfo::UnsignedInteger(
+                        IntegerBits::SixtyFour
+                    ))),
+                    "",
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
+            return ok(
+                TypedExpression {
+                    expression: TypedExpressionVariant::ArrayIndex {
+                        prefix: Box::new(prefix_te),
+                        index: Box::new(index_te),
+                    },
+                    return_type: elem_type_id,
+                    is_constant: IsConstant::No,
+                    span: span.clone(),
+                },
+                warnings,
+                errors,
+            );
+        } else {
+            // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
+            let method_name = MethodName::FromType {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident {
+                            primary_name: "std",
+                            span: span.clone(),
+                        },
+                        Ident {
+                            primary_name: "ops",
+                            span: span.clone(),
+                        },
+                    ],
+                    suffix: Ident {
+                        primary_name: "index",
+                        span: span.clone(),
+                    },
+                },
+                type_name: None,
+                is_absolute: true,
+            };
+            type_check_method_application(
+                method_name,
+                vec![prefix, index],
+                span,
+                namespace,
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+            )
+        }
+    }
+
     pub(crate) fn pretty_print(&self) -> String {
         format!(
             "{} ({})",
             self.expression.pretty_print(),
             look_up_type_id(self.return_type).friendly_type_str()
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn do_type_check<'sc>(
+        expr: Expression<'sc>,
+        type_annotation: TypeId,
+    ) -> CompileResult<'sc, TypedExpression> {
+        let mut namespace: Namespace<'sc> = Default::default();
+        let self_type = insert_type(TypeInfo::Unknown);
+        let build_config = BuildConfig {
+            file_name: Arc::new("test.sw".into()),
+            dir_of_code: Arc::new("".into()),
+            manifest_path: Arc::new("".into()),
+            print_intermediate_asm: false,
+            print_finalized_asm: false,
+        };
+        let mut dead_code_graph: ControlFlowGraph = Default::default();
+        let mut dependency_graph = HashMap::new();
+
+        TypedExpression::type_check(
+            expr,
+            &mut namespace,
+            Some(type_annotation),
+            "",
+            self_type,
+            &build_config,
+            &mut dead_code_graph,
+            &mut dependency_graph,
+        )
+    }
+
+    fn do_type_check_for_boolx2<'sc>(expr: Expression<'sc>) -> CompileResult<'sc, TypedExpression> {
+        do_type_check(
+            expr,
+            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 2)),
+        )
+    }
+
+    #[test]
+    fn test_array_type_check_non_homogeneous_0<'sc>() {
+        let empty_span = Span {
+            span: pest::Span::new_unchecked(" ", 0, 0),
+            path: None,
+        };
+
+        // [true, 0] -- first element is correct, assumes type is [bool; 2].
+        let expr = Expression::Array {
+            contents: vec![
+                Expression::Literal {
+                    value: Literal::Boolean(true),
+                    span: empty_span.clone(),
+                },
+                Expression::Literal {
+                    value: Literal::U64(0),
+                    span: empty_span.clone(),
+                },
+            ],
+            span: empty_span.clone(),
+        };
+
+        let comp_res = do_type_check_for_boolx2(expr);
+        assert!(comp_res.errors.len() == 1);
+        assert!(matches!(&comp_res.errors[0],
+                         CompileError::TypeError(TypeError::MismatchedType {
+                             expected,
+                             received,
+                             ..
+                         }) if expected.friendly_type_str() == "bool"
+                                && received.friendly_type_str() == "u64"));
+    }
+
+    #[test]
+    fn test_array_type_check_non_homogeneous_1<'sc>() {
+        let empty_span = Span {
+            span: pest::Span::new_unchecked(" ", 0, 0),
+            path: None,
+        };
+
+        // [0, false] -- first element is incorrect, assumes type is [u64; 2].
+        let expr = Expression::Array {
+            contents: vec![
+                Expression::Literal {
+                    value: Literal::U64(0),
+                    span: empty_span.clone(),
+                },
+                Expression::Literal {
+                    value: Literal::Boolean(true),
+                    span: empty_span.clone(),
+                },
+            ],
+            span: empty_span.clone(),
+        };
+
+        let comp_res = do_type_check_for_boolx2(expr);
+        assert!(comp_res.errors.len() == 2);
+        assert!(matches!(&comp_res.errors[0],
+                         CompileError::TypeError(TypeError::MismatchedType {
+                             expected,
+                             received,
+                             ..
+                         }) if expected.friendly_type_str() == "u64"
+                                && received.friendly_type_str() == "bool"));
+        assert!(matches!(&comp_res.errors[1],
+                         CompileError::TypeError(TypeError::MismatchedType {
+                             expected,
+                             received,
+                             ..
+                         }) if expected.friendly_type_str() == "[bool; 2]"
+                                && received.friendly_type_str() == "[u64; 2]"));
+    }
+
+    #[test]
+    fn test_array_type_check_bad_count<'sc>() {
+        let empty_span = Span {
+            span: pest::Span::new_unchecked(" ", 0, 0),
+            path: None,
+        };
+
+        // [0, false] -- first element is incorrect, assumes type is [u64; 2].
+        let expr = Expression::Array {
+            contents: vec![
+                Expression::Literal {
+                    value: Literal::Boolean(true),
+                    span: empty_span.clone(),
+                },
+                Expression::Literal {
+                    value: Literal::Boolean(true),
+                    span: empty_span.clone(),
+                },
+                Expression::Literal {
+                    value: Literal::Boolean(true),
+                    span: empty_span.clone(),
+                },
+            ],
+            span: empty_span.clone(),
+        };
+
+        let comp_res = do_type_check_for_boolx2(expr);
+        assert!(comp_res.errors.len() == 1);
+        assert!(matches!(&comp_res.errors[0],
+                         CompileError::TypeError(TypeError::MismatchedType {
+                             expected,
+                             received,
+                             ..
+                         }) if expected.friendly_type_str() == "[bool; 2]"
+                                && received.friendly_type_str() == "[bool; 3]"));
+    }
+
+    #[test]
+    fn test_array_type_check_empty<'sc>() {
+        let empty_span = Span {
+            span: pest::Span::new_unchecked(" ", 0, 0),
+            path: None,
+        };
+
+        let expr = Expression::Array {
+            contents: Vec::new(),
+            span: empty_span.clone(),
+        };
+
+        let comp_res = do_type_check(
+            expr,
+            insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 0)),
+        );
+        assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
     }
 }

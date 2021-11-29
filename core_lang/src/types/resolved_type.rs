@@ -78,7 +78,7 @@ impl<'sc> ResolvedType<'sc> {
             ResolvedType::Struct { fields, .. } => fields.iter().fold(0, |acc, x| {
                 acc + (resolve_type(x.r#type, &x.span)
                     .expect("TODO(static spans)")
-                    .stack_size_of(&span)
+                    .size_in_words(&span)
                     .expect("TODO(static spans)"))
             }),
             // `ContractCaller` types are unsized and used only in the type system for
