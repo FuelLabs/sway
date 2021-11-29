@@ -807,6 +807,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
                 namespace
+                    .inner
                     .resolve_type_with_self(return_type, self_type)
                     .unwrap_or_else(|_| {
                         errors.push(CompileError::UnknownType {
@@ -819,7 +820,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
         type_parameters.iter().for_each(|param| {
-            namespace.insert(param.name_ident.clone(), param.into());
+            namespace.inner.insert(param.name_ident.clone(), param.into());
         });
         for FunctionParameter {
             name,
@@ -831,6 +832,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
                 namespace
+                    .inner
                     .resolve_type_with_self(r#type, self_type)
                     .unwrap_or_else(|_| {
                         errors.push(CompileError::UnknownType {
@@ -839,7 +841,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         insert_type(TypeInfo::ErrorRecovery)
                     })
             };
-            namespace.insert(
+            namespace.inner.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     name: name.clone(),
@@ -893,6 +895,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         insert_type(TypeInfo::Ref(matching_id))
                     } else {
                         namespace
+                            .inner
                             .resolve_type_with_self(r#type, self_type)
                             .unwrap_or_else(|_| {
                                 errors.push(CompileError::UnknownType {

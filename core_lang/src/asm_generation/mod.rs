@@ -11,7 +11,7 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+        NamespaceInner, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
         TypedParseTree,
     },
     types::ResolvedType,
@@ -639,7 +639,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace,
+                    &ast_namespace.inner,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -694,7 +694,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace,
+                    &ast_namespace.inner,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -736,7 +736,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace,
+                    &ast_namespace.inner,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -1199,7 +1199,7 @@ fn add_all_constant_decls<'sc>(
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op<'sc>>,
     declarations: &[TypedDeclaration<'sc>],
-    ast_namespace: &Namespace<'sc>,
+    ast_namespace: &NamespaceInner<'sc>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1244,7 +1244,7 @@ fn add_module_constant_decls<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op<'sc>>,
-    ast_namespace: &Namespace<'sc>,
+    ast_namespace: &NamespaceInner<'sc>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];

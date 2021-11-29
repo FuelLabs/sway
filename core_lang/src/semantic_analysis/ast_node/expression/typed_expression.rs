@@ -1,7 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::semantic_analysis::ast_node::*;
+use crate::semantic_analysis::{ast_node::*, NamespaceInner};
 use crate::type_engine::{insert_type, IntegerBits};
 
 use either::Either;
@@ -48,7 +48,7 @@ impl<'sc> TypedExpression<'sc> {
                 Self::type_check_literal(lit, span, namespace)
             }
             Expression::VariableExpression { name, span, .. } => {
-                Self::type_check_variable_expression(name, span, namespace)
+                Self::type_check_variable_expression(name, span, &namespace.inner)
             }
             Expression::FunctionApplication {
                 name,
@@ -268,6 +268,7 @@ impl<'sc> TypedExpression<'sc> {
         }
 
         typed_expression.return_type = namespace
+            .inner
             .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
             .unwrap_or_else(|_| {
                 errors.push(CompileError::UnknownType { span: expr_span });
@@ -319,7 +320,7 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_variable_expression(
         name: Ident<'sc>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &NamespaceInner<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut errors = vec![];
         let exp = match namespace.get_symbol(&name).value {
@@ -374,7 +375,7 @@ impl<'sc> TypedExpression<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let function_declaration = check!(
-            namespace.get_call_path(&name),
+            namespace.inner.get_call_path(&name),
             return err(warnings, errors),
             warnings,
             errors
@@ -768,6 +769,7 @@ impl<'sc> TypedExpression<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let return_type = namespace
+            .inner
             .resolve_type_with_self(asm.return_type.clone(), self_type)
             .unwrap_or_else(|_| {
                 errors.push(CompileError::UnknownType {
@@ -842,7 +844,7 @@ impl<'sc> TypedExpression<'sc> {
         let mut typed_fields_buf = vec![];
 
         let definition: TypedStructDeclaration =
-            match namespace.clone().get_symbol(&struct_name).value {
+            match namespace.inner.clone().get_symbol(&struct_name).value {
                 Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
                 Some(_) => {
                     errors.push(CompileError::DeclaredNonStructAsStruct {
@@ -973,7 +975,7 @@ impl<'sc> TypedExpression<'sc> {
             errors
         );
         let (fields, struct_name) = check!(
-            namespace.get_struct_type_fields(
+            namespace.inner.get_struct_type_fields(
                 parent.return_type,
                 parent.span.as_str(),
                 &parent.span
@@ -1141,7 +1143,7 @@ impl<'sc> TypedExpression<'sc> {
         );
         // look up the call path and get the declaration it references
         let abi = check!(
-            namespace.get_call_path(&abi_name),
+            namespace.inner.get_call_path(&abi_name),
             return err(warnings, errors),
             warnings,
             errors
@@ -1189,7 +1191,7 @@ impl<'sc> TypedExpression<'sc> {
         }
 
         functions_buf.append(&mut type_checked_fn_buf);
-        namespace.insert_trait_implementation(
+        namespace.inner.insert_trait_implementation(
             abi_name.clone(),
             look_up_type_id(return_type),
             functions_buf,

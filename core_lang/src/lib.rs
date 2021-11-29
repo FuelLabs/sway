@@ -36,7 +36,7 @@ pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
-pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+pub use semantic_analysis::{Namespace, NamespaceInner, TypedDeclaration, TypedFunctionDeclaration};
 pub use type_engine::TypeInfo;
 
 // todo rename to language name
@@ -245,9 +245,9 @@ pub(crate) fn compile_inner_dependency<'sc>(
             trees: vec![],
         };
         for (ref name, parse_tree) in res {
-            exports.namespace.insert_module(
+            exports.namespace.inner.insert_module(
                 name.primary_name.to_string(),
-                parse_tree.namespace().clone(),
+                parse_tree.namespace().inner.clone(),
             );
             exports.trees.push(parse_tree);
         }
@@ -337,9 +337,9 @@ pub fn compile_to_asm<'sc>(
             trees: vec![],
         };
         for (ref name, parse_tree) in res {
-            exports.namespace.insert_module(
+            exports.namespace.inner.insert_module(
                 name.primary_name.to_string(),
-                parse_tree.namespace().clone(),
+                parse_tree.namespace().inner.clone(),
             );
             exports.trees.push(parse_tree);
         }
