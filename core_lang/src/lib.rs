@@ -100,6 +100,22 @@ impl<'sc> ParseTree<'sc> {
     }
 }
 
+/// Given an input `str` and an optional [BuildConfig], parse the input into a [HllParseTree].
+///
+/// Here, the `'sc` lifetime is introduced to the compilation process. It stands for _source code_,
+/// and all references to `'sc` in the compiler refer to the lifetime of the original source input
+/// `str`.
+///
+/// # Example
+/// ```
+/// # fn main() {
+///     let input = "script; fn main() -> bool { true }";
+///     let result = parse(input, Default::default());
+/// # }
+/// ```
+///
+/// # Panics
+/// Panics if the generated parser from Pest panics.
 pub fn parse<'sc>(
     input: &'sc str,
     config: Option<&BuildConfig>,
@@ -448,6 +464,7 @@ pub fn compile_to_asm<'sc>(
         CompilationResult::Failure { errors, warnings }
     }
 }
+
 pub fn compile_to_bytecode<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
