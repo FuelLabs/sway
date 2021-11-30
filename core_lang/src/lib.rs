@@ -434,6 +434,8 @@ pub fn compile_to_asm<'sc>(
 
             errors.append(&mut l_errors);
             warnings.append(&mut l_warnings);
+            errors = dedup_unsorted(errors);
+            warnings = dedup_unsorted(warnings);
             // for each syntax tree, generate assembly.
             let predicate_asm = (|| {
                 if let Some(tree) = predicate_ast {
