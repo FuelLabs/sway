@@ -17,8 +17,8 @@ type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
-pub struct Namespace<'sc> {
-    crate_namespace: Option<Box<NamespaceInner<'sc>>>,
+pub struct Namespace<'n, 'sc> {
+    crate_namespace: Option<&'n NamespaceInner<'sc>>,
     pub inner: NamespaceInner<'sc>
 }
 
@@ -35,11 +35,11 @@ pub struct NamespaceInner<'sc> {
     use_aliases: HashMap<String, Ident<'sc>>,
 }
 
-impl<'sc> Namespace<'sc> {
-    pub fn clone_inherit_crate_namespace(&self) -> Namespace<'sc> {
+impl<'n, 'sc> Namespace<'n, 'sc> {
+    pub fn clone_inherit_crate_namespace<'a>(&'a self) -> Namespace<'a, 'sc> {
         let mut ret = self.clone();
         if ret.crate_namespace.is_none() {
-            ret.crate_namespace = Some(Box::new(self.inner.clone()));
+            ret.crate_namespace = Some(&self.inner);
         }
         ret
     }

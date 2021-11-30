@@ -113,9 +113,9 @@ impl<'sc> TypedAstNode<'sc> {
             WhileLoop(_) | SideEffect => TypeInfo::Unit,
         }
     }
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'n>(
         node: AstNode<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         return_type_annotation: TypeId,
         help_text: impl Into<String>,
         self_type: TypeId,
@@ -127,7 +127,7 @@ impl<'sc> TypedAstNode<'sc> {
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
         let mut type_check_ascribed_expr =
-            |namespace: &mut Namespace<'sc>, type_ascription: TypeInfo, value, decl_str| {
+            |namespace: &mut Namespace<'n, 'sc>, type_ascription: TypeInfo, value, decl_str| {
                 let type_id = namespace
                     .inner
                     .resolve_type_with_self(type_ascription, self_type)
@@ -674,9 +674,9 @@ impl<'sc> TypedAstNode<'sc> {
 
 /// Imports a new file, populates the given [Namespace] with its content,
 /// and appends the module's content to the control flow graph for later analysis.
-fn import_new_file<'sc>(
+fn import_new_file<'n, 'sc>(
     statement: &IncludeStatement<'sc>,
-    namespace: &mut Namespace<'sc>,
+    namespace: &mut Namespace<'n, 'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -716,44 +716,47 @@ fn import_new_file<'sc>(
         }
     };
 
-    let dep_namespace = namespace.clone_inherit_crate_namespace();
-    // :)
-    let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
-    let mut dep_config = build_config.clone();
-    let dep_path = {
-        canonical_path.pop();
-        canonical_path
-    };
-    dep_config.file_name = file_name;
-    dep_config.dir_of_code = Arc::new(dep_path);
-    let crate::InnerDependencyCompileResult {
-        mut library_exports,
-    } = check!(
-        crate::compile_inner_dependency(
-            static_file_string,
-            &dep_namespace,
-            dep_config,
-            dead_code_graph,
-            dependency_graph
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let dep_inner = {
+        let dep_namespace = namespace.clone_inherit_crate_namespace();
+        // :)
+        let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
+        let mut dep_config = build_config.clone();
+        let dep_path = {
+            canonical_path.pop();
+            canonical_path
+        };
+        dep_config.file_name = file_name;
+        dep_config.dir_of_code = Arc::new(dep_path);
+        let crate::InnerDependencyCompileResult {
+            mut library_exports,
+        } = check!(
+            crate::compile_inner_dependency(
+                static_file_string,
+                &dep_namespace,
+                dep_config,
+                dead_code_graph,
+                dependency_graph
+            ),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
-    if let Some(ref alias) = statement.alias {
-        library_exports.namespace.inner.overwrite_modules_with_alias(alias.primary_name);
-    }
-    namespace.inner.merge_namespaces(&library_exports.namespace.inner);
+        if let Some(ref alias) = statement.alias {
+            library_exports.namespace.inner.overwrite_modules_with_alias(alias.primary_name);
+        }
+        library_exports.namespace.inner
+    };
+    namespace.inner.merge_namespaces(&dep_inner);
 
     ok((), warnings, errors)
 }
 
-fn reassignment<'sc>(
+fn reassignment<'n, 'sc>(
     lhs: Box<Expression<'sc>>,
     rhs: Expression<'sc>,
     span: Span<'sc>,
-    namespace: &mut Namespace<'sc>,
+    namespace: &mut Namespace<'n, 'sc>,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -996,9 +999,9 @@ fn type_check_interface_surface<'sc>(
     )
 }
 
-fn type_check_trait_methods<'sc>(
+fn type_check_trait_methods<'n, 'sc>(
     methods: Vec<FunctionDeclaration<'sc>>,
-    namespace: &Namespace<'sc>,
+    namespace: &Namespace<'n, 'sc>,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,

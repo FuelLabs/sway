@@ -11,9 +11,9 @@ use crate::{
 };
 use std::collections::{HashMap, HashSet};
 
-pub(crate) fn implementation_of_trait<'sc>(
+pub(crate) fn implementation_of_trait<'n, 'sc>(
     impl_trait: ImplTrait<'sc>,
-    namespace: &mut Namespace<'sc>,
+    namespace: &mut Namespace<'n, 'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -168,13 +168,13 @@ pub enum Mode {
     NonAbi,
 }
 
-fn type_check_trait_implementation<'sc>(
+fn type_check_trait_implementation<'n, 'sc>(
     interface_surface: &[TypedTraitFn<'sc>],
     functions: &[FunctionDeclaration<'sc>],
     methods: &[FunctionDeclaration<'sc>],
     trait_name: &Ident<'sc>,
     type_arguments: &[TypeParameter<'sc>],
-    namespace: &mut Namespace<'sc>,
+    namespace: &mut Namespace<'n, 'sc>,
     _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,

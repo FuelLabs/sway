@@ -32,9 +32,9 @@ pub(crate) fn error_recovery_expr(span: Span<'_>) -> TypedExpression<'_> {
 }
 
 impl<'sc> TypedExpression<'sc> {
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'n>(
         other: Expression<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         type_annotation: Option<TypeId>,
         help_text: impl Into<String> + Clone,
         self_type: TypeId,
@@ -291,10 +291,10 @@ impl<'sc> TypedExpression<'sc> {
         self.expression.copy_types(type_mapping);
     }
 
-    fn type_check_literal(
+    fn type_check_literal<'n>(
         lit: Literal<'sc>,
         span: Span<'sc>,
-        _namespace: &mut Namespace<'sc>,
+        _namespace: &mut Namespace<'n, 'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let return_type = match lit {
             Literal::String(s) => TypeInfo::Str(s.len() as u64),
@@ -361,12 +361,12 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, vec![], errors)
     }
 
-    fn type_check_function_application(
+    fn type_check_function_application<'n>(
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
         type_arguments: Vec<(TypeInfo, Span<'sc>)>,
         _span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -492,12 +492,12 @@ impl<'sc> TypedExpression<'sc> {
         )
     }
 
-    fn type_check_lazy_operator(
+    fn type_check_lazy_operator<'n>(
         op: LazyOp,
         lhs: Expression<'sc>,
         rhs: Expression<'sc>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -611,10 +611,10 @@ impl<'sc> TypedExpression<'sc> {
         unimplemented!()
     }
 
-    fn type_check_code_block(
+    fn type_check_code_block<'n>(
         contents: CodeBlock<'sc>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         type_annotation: Option<TypeId>,
         help_text: impl Into<String> + Clone,
         self_type: TypeId,
@@ -672,12 +672,12 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_if_expression(
+    fn type_check_if_expression<'n>(
         condition: Box<Expression<'sc>>,
         then: Box<Expression<'sc>>,
         r#else: Option<Box<Expression<'sc>>>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         type_annotation: Option<TypeId>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -757,10 +757,10 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_asm_expression(
+    fn type_check_asm_expression<'n>(
         asm: AsmExpression<'sc>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -829,11 +829,11 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_struct_expression(
+    fn type_check_struct_expression<'n>(
         span: Span<'sc>,
         struct_name: Ident<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -947,11 +947,11 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_subfield_expression(
+    fn type_check_subfield_expression<'n>(
         prefix: Box<Expression<'sc>>,
         span: Span<'sc>,
         field_to_access: Ident<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -1017,13 +1017,13 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_delineated_path(
+    fn type_check_delineated_path<'n>(
         call_path: CallPath<'sc>,
         span: Span<'sc>,
         args: Vec<Expression<'sc>>,
         // TODO these will be needed for enum instantiation
         _type_arguments: Vec<TypeInfo>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -1109,11 +1109,11 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_abi_cast(
+    fn type_check_abi_cast<'n>(
         abi_name: CallPath<'sc>,
         address: Box<Expression<'sc>>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,

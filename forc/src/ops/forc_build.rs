@@ -143,11 +143,11 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib<'source, 'manifest>(
+fn compile_dependency_lib<'n, 'source, 'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
-    namespace: &mut Namespace<'source>,
+    namespace: &mut Namespace<'n, 'source>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<(), String> {
@@ -237,14 +237,14 @@ fn compile_dependency_lib<'source, 'manifest>(
     Ok(())
 }
 
-fn compile_library<'source>(
+fn compile_library<'n, 'source>(
     source: &'source str,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace<'n, 'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<LibraryExports<'source>, String> {
+) -> Result<LibraryExports<'n, 'source>, String> {
     let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
@@ -293,10 +293,10 @@ fn compile_library<'source>(
     }
 }
 
-fn compile<'source>(
+fn compile<'n, 'source>(
     source: &'source str,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace<'n, 'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
@@ -436,10 +436,10 @@ fn format_err(err: &core_lang::CompileError) {
     eprintln!("{}", DisplayList::from(snippet))
 }
 
-fn compile_to_asm<'source>(
+fn compile_to_asm<'n, 'source>(
     source: &'source str,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace<'n, 'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> Result<FinalizedAsm<'source>, String> {

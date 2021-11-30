@@ -774,9 +774,9 @@ impl TypedReassignment<'_> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub fn type_check(
+    pub fn type_check<'n>(
         fn_decl: FunctionDeclaration<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         _return_type_annotation: TypeId,
         _help_text: impl Into<String>,
         // If there are any `Self` types in this declaration,

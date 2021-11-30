@@ -617,8 +617,8 @@ impl<'sc> AsmNamespace<'sc> {
     }
 }
 
-pub(crate) fn compile_ast_to_asm<'sc>(
-    ast: TypedParseTree<'sc>,
+pub(crate) fn compile_ast_to_asm<'n, 'sc>(
+    ast: TypedParseTree<'n, 'sc>,
     build_config: &BuildConfig,
 ) -> CompileResult<'sc, FinalizedAsm<'sc>> {
     let mut register_sequencer = RegisterSequencer::new();
