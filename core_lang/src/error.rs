@@ -1,6 +1,7 @@
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case};
+use crate::type_engine::*;
 use crate::type_engine::{IntegerBits, TypeInfo};
 use line_col::LineColLookup;
 use source_span::{
@@ -18,6 +19,18 @@ macro_rules! check {
         match res.value {
             None => $error_recovery,
             Some(value) => value,
+        }
+    }};
+}
+
+macro_rules! check_std_result {
+    ($result_expr: expr, $warnings: ident, $errors: ident) => {{
+        match $result_expr {
+            Ok(res) => res,
+            Err(e) => {
+                $errors.push(e.into());
+                return err($warnings, $errors);
+            }
         }
     }};
 }
@@ -134,7 +147,7 @@ impl<'sc, T> CompileResult<'sc, T> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct CompileWarning<'sc> {
     pub span: Span<'sc>,
     pub warning_content: Warning<'sc>,
@@ -204,7 +217,7 @@ impl<'sc> CompileWarning<'sc> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Warning<'sc> {
     NonClassCaseStructName {
         struct_name: &'sc str,
@@ -366,7 +379,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
     }
 }
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, PartialEq, Hash)]
 pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: String, span: Span<'sc> },
@@ -503,7 +516,8 @@ pub enum CompileError<'sc> {
     )]
     MultipleImmediates(Span<'sc>),
     #[error(
-        "Expected type {expected}, but found type {given}. The definition of this function must \
+        "Expected: {expected} \n\
+         found:    {given}. The definition of this function must \
          match the one in the trait declaration."
     )]
     MismatchedTypeInTrait {
@@ -790,6 +804,12 @@ pub enum CompileError<'sc> {
     BurnFromExternalContext { span: Span<'sc> },
     #[error("Contract storage cannot be used in an external context.")]
     ContractStorageFromExternalContext { span: Span<'sc> },
+    #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
+    ArrayOutOfBounds {
+        index: u64,
+        count: u64,
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -798,15 +818,17 @@ impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
     }
 }
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, PartialEq, Hash)]
 pub enum TypeError<'sc> {
     #[error(
-        "Mismatched types: Expected type {expected} but found type {received}. Type {received} is \
-         not castable to type {expected}.\n help: {help_text}"
+        "Mismatched types.\n\
+         expected: {expected}\n\
+         found:    {received}.\n\
+         {help}", expected=look_up_type_id(*expected).friendly_type_str(), received=look_up_type_id(*received).friendly_type_str(), help=if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
     )]
     MismatchedType {
-        expected: String,
-        received: String,
+        expected: TypeId,
+        received: TypeId,
         help_text: String,
         span: Span<'sc>,
     },
@@ -975,6 +997,7 @@ impl<'sc> CompileError<'sc> {
             MintFromExternalContext { span, .. } => span,
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
+            ArrayOutOfBounds { span, .. } => span,
         }
     }
 

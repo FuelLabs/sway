@@ -30,6 +30,7 @@ pub enum Expression<'sc> {
     FunctionApplication {
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
+        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
         span: Span<'sc>,
     },
     LazyOperator {
@@ -122,6 +123,11 @@ pub enum Expression<'sc> {
         address: Box<Expression<'sc>>,
         span: Span<'sc>,
     },
+    ArrayIndex {
+        prefix: Box<Expression<'sc>>,
+        index: Box<Expression<'sc>>,
+        span: Span<'sc>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -166,6 +172,7 @@ impl<'sc> Expression<'sc> {
             SubfieldExpression { span, .. } => span,
             DelineatedPath { span, .. } => span,
             AbiCast { span, .. } => span,
+            ArrayIndex { span, .. } => span,
         })
         .clone()
     }
@@ -273,6 +280,8 @@ impl<'sc> Expression<'sc> {
             span: expr.as_span(),
             path: path.clone(),
         };
+        #[allow(unused_assignments)]
+        let mut maybe_type_args = Vec::new();
         let parsed = match expr.as_rule() {
             Rule::literal_value => Literal::parse_from_pair(expr.clone(), config)
                 .map(|(value, span)| Expression::Literal { value, span })
@@ -289,7 +298,17 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors
                 );
-                let arguments = func_app_parts.next().unwrap();
+                let (arguments, type_args) = {
+                    let maybe_type_args = func_app_parts.next().unwrap();
+                    match maybe_type_args.as_rule() {
+                        Rule::type_args => (func_app_parts.next().unwrap(), Some(maybe_type_args)),
+                        Rule::fn_args => (maybe_type_args, None),
+                        _ => unreachable!(),
+                    }
+                };
+                maybe_type_args = type_args
+                    .map(|x| x.into_inner().skip(1).collect::<Vec<_>>())
+                    .unwrap_or_else(Vec::new);
                 let mut arguments_buf = Vec::new();
                 for argument in arguments.into_inner() {
                     let arg = check!(
@@ -305,11 +324,28 @@ impl<'sc> Expression<'sc> {
                     );
                     arguments_buf.push(arg);
                 }
+                let mut type_args_buf = vec![];
+                for arg in maybe_type_args {
+                    let sp = Span {
+                        span: arg.as_span(),
+                        path: path.clone(),
+                    };
+                    type_args_buf.push((
+                        check!(
+                            TypeInfo::parse_from_pair(arg.into_inner().next().unwrap(), config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+                        sp,
+                    ));
+                }
 
                 Expression::FunctionApplication {
                     name,
                     arguments: arguments_buf,
                     span,
+                    type_arguments: type_args_buf,
                 }
             }
             Rule::var_exp => {
@@ -336,19 +372,18 @@ impl<'sc> Expression<'sc> {
                 let name = name.unwrap();
                 Expression::VariableExpression { name, span }
             }
-            Rule::array_exp => {
-                let array_exps = expr.into_inner();
-                let mut contents = Vec::new();
-                for expr in array_exps {
-                    contents.push(check!(
-                        Expression::parse_from_pair(expr, config),
-                        Expression::Unit { span: span.clone() },
-                        warnings,
-                        errors
-                    ));
-                }
-                Expression::Array { contents, span }
-            }
+            Rule::array_exp => match expr.into_inner().next() {
+                None => Expression::Array {
+                    contents: Vec::new(),
+                    span,
+                },
+                Some(array_elems) => check!(
+                    parse_array_elems(array_elems, config),
+                    Expression::Unit { span: span.clone() },
+                    warnings,
+                    errors
+                ),
+            },
             Rule::match_expression => {
                 let mut expr_iter = expr.into_inner();
                 let primary_expression = check!(
@@ -786,6 +821,27 @@ impl<'sc> Expression<'sc> {
                     errors
                 )
             }
+            Rule::array_index => {
+                let span = expr.as_span();
+                let mut inner_iter = expr.into_inner();
+                let prefix = check!(
+                    parse_call_item(inner_iter.next().unwrap(), config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let index = check!(
+                    Expression::parse_from_pair(inner_iter.next().unwrap(), config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                Expression::ArrayIndex {
+                    prefix: Box::new(prefix),
+                    index: Box::new(index),
+                    span: Span { span, path },
+                }
+            }
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -892,6 +948,80 @@ fn parse_call_item<'sc>(
         a => unreachable!("{:?}", a),
     };
     ok(exp, warnings, errors)
+}
+
+fn parse_array_elems<'sc>(
+    elems: Pair<'sc, Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<'sc, Expression<'sc>> {
+    let mut warnings = Vec::new();
+    let mut errors = Vec::new();
+
+    let path = config.map(|cfg| cfg.path());
+    let span = Span {
+        span: elems.as_span(),
+        path: path.clone(),
+    };
+
+    let mut elem_iter = elems.into_inner();
+    let first_elem = elem_iter.next().unwrap();
+    let contents = match first_elem.as_rule() {
+        Rule::literal_value => {
+            // The form [initialiser; count].
+            let span = first_elem.as_span();
+            let init = Literal::parse_from_pair(first_elem, config)
+                .map(|(value, span)| Expression::Literal { value, span })
+                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit {
+                    span: Span { span, path },
+                });
+
+            // This is a constant integer expression we need to parse now into a count.  Currently
+            // assuming it's a `u64_integer` in the grammar, so we can just use the builtin
+            // `parse()` to get it.
+            let count = elem_iter
+                .next()
+                .unwrap()
+                .as_str()
+                .trim()
+                .parse::<usize>()
+                .unwrap();
+            let mut elems = Vec::with_capacity(count);
+            elems.resize(count as usize, init);
+            elems
+        }
+        _otherwise => {
+            // The simple form [elem0, elem1, ..., elemN].
+            let span = first_elem.as_span();
+            let first_elem_expr = check!(
+                Expression::parse_from_pair(first_elem, config),
+                Expression::Unit {
+                    span: Span {
+                        span,
+                        path: path.clone()
+                    }
+                },
+                warnings,
+                errors
+            );
+            elem_iter.fold(vec![first_elem_expr], |mut elems, pair| {
+                let span = pair.as_span();
+                elems.push(check!(
+                    Expression::parse_from_pair(pair, config),
+                    Expression::Unit {
+                        span: Span {
+                            span,
+                            path: path.clone()
+                        }
+                    },
+                    warnings,
+                    errors
+                ));
+                elems
+            })
+        }
+    };
+
+    ok(Expression::Array { contents, span }, warnings, errors)
 }
 
 fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileResult<'sc, Op<'sc>> {

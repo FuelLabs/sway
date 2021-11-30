@@ -52,6 +52,7 @@ impl UnaryOp {
         op_span: Span<'sc>,
     ) -> Expression<'sc> {
         Expression::FunctionApplication {
+            type_arguments: Default::default(),
             name: CallPath {
                 prefixes: vec![
                     Ident {

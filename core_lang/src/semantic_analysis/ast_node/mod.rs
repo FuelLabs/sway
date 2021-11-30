@@ -1,5 +1,6 @@
 use crate::build_config::BuildConfig;
 use crate::error::*;
+use crate::semantic_analysis::ast_node::declaration::insert_type_parameters;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
@@ -78,6 +79,26 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
 }
 
 impl<'sc> TypedAstNode<'sc> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        match self.content {
+            TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
+                ret_stmt.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
+                exp.copy_types(type_mapping)
+            }
+            TypedAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping),
+            TypedAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping),
+            TypedAstNodeContent::WhileLoop(TypedWhileLoop {
+                ref mut condition,
+                ref mut body,
+            }) => {
+                condition.copy_types(type_mapping);
+                body.copy_types(type_mapping);
+            }
+            TypedAstNodeContent::SideEffect => (),
+        }
+    }
     fn type_info(&self) -> TypeInfo {
         // return statement should be ()
         use TypedAstNodeContent::*;
@@ -105,24 +126,32 @@ impl<'sc> TypedAstNode<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |type_ascription: TypeInfo, value, decl_str| {
-            let type_id = namespace.resolve_type_with_self(type_ascription, self_type);
-            TypedExpression::type_check(
-                value,
-                namespace,
-                Some(type_id),
-                format!(
-                    "{} declaration's type annotation (type {}) does \
+        let mut type_check_ascribed_expr =
+            |namespace: &mut Namespace<'sc>, type_ascription: TypeInfo, value, decl_str| {
+                let type_id = namespace
+                    .resolve_type_with_self(type_ascription, self_type)
+                    .unwrap_or_else(|_| {
+                        errors.push(CompileError::UnknownType {
+                            span: node.span.clone(),
+                        });
+                        insert_type(TypeInfo::ErrorRecovery)
+                    });
+                TypedExpression::type_check(
+                    value,
+                    namespace,
+                    Some(type_id),
+                    format!(
+                        "{} declaration's type annotation (type {}) does \
                      not match up with the assigned expression's type.",
-                    decl_str,
-                    type_id.friendly_type_str()
-                ),
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
-            )
-        };
+                        decl_str,
+                        type_id.friendly_type_str()
+                    ),
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                )
+            };
 
         let content = match node.content.clone() {
             AstNodeContent::UseStatement(a) => {
@@ -313,6 +342,7 @@ impl<'sc> TypedAstNode<'sc> {
                         return err(warnings, errors),
                         warnings,
                         errors
+<<<<<<< HEAD
                     ),
 
                     Declaration::ImplSelf(ImplSelf {
@@ -331,6 +361,87 @@ impl<'sc> TypedAstNode<'sc> {
                                 "Where clauses are not supported yet.",
                                 type_arguments[0].clone().name_ident.span,
                             ));
+=======
+                    );
+                    TypedAstNodeContent::SideEffect
+                }
+                AstNodeContent::Declaration(a) => {
+                    TypedAstNodeContent::Declaration(match a {
+                        Declaration::VariableDeclaration(VariableDeclaration {
+                            name,
+                            type_ascription,
+                            type_ascription_span,
+                            body,
+                            is_mutable,
+                        }) => {
+                            let type_ascription = namespace
+                                .resolve_type_with_self(type_ascription, self_type)
+                                .unwrap_or_else(|_| {
+                                    errors.push(CompileError::UnknownType {
+                                        span: type_ascription_span.expect("Invariant violated: type checked an annotation that did not exist in the source").clone(),
+                                    });
+                                    insert_type(TypeInfo::ErrorRecovery)
+                                });
+
+                            let result = {
+                                TypedExpression::type_check(
+                                    body,
+                                    namespace,
+                                    Some(type_ascription),
+                                    format!(
+                                        "Variable declaration's type annotation (type {}) does \
+                     not match up with the assigned expression's type.",
+                                        type_ascription.friendly_type_str()
+                                    ),
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph,
+                                    dependency_graph,
+                                )
+                            };
+                            let body = check!(
+                                result,
+                                error_recovery_expr(name.span.clone()),
+                                warnings,
+                                errors
+                            );
+                            let typed_var_decl =
+                                TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                                    name: name.clone(),
+                                    body,
+                                    is_mutable,
+                                    type_ascription,
+                                });
+                            namespace.insert(name, typed_var_decl.clone());
+                            typed_var_decl
+                        }
+                        Declaration::ConstantDeclaration(ConstantDeclaration {
+                            name,
+                            type_ascription,
+                            value,
+                            visibility,
+                        }) => {
+                            let result = type_check_ascribed_expr(
+                                namespace,
+                                type_ascription,
+                                value,
+                                "Constant",
+                            );
+                            let value = check!(
+                                result,
+                                error_recovery_expr(name.span.clone()),
+                                warnings,
+                                errors
+                            );
+                            let typed_const_decl =
+                                TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
+                                    name: name.clone(),
+                                    value,
+                                    visibility,
+                                });
+                            namespace.insert(name, typed_const_decl.clone());
+                            typed_const_decl
+>>>>>>> origin/master
                         }
                         for mut fn_decl in functions.into_iter() {
                             let mut type_arguments = type_arguments.clone();
@@ -368,6 +479,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 continue,
                                 warnings,
                                 errors
+<<<<<<< HEAD
                             ));
                         }
                         let trait_name = CallPath {
@@ -386,8 +498,104 @@ impl<'sc> TypedAstNode<'sc> {
                             trait_name,
                             span: block_span,
                             methods: functions_buf,
+=======
+                            );
+                            namespace.insert(
+                                decl.name.clone(),
+                                TypedDeclaration::FunctionDeclaration(decl.clone()),
+                            );
+                            TypedDeclaration::FunctionDeclaration(decl)
+                        }
+                        Declaration::TraitDeclaration(TraitDeclaration {
+                            name,
+                            interface_surface,
+                            methods,
+                            type_parameters,
+                            visibility,
+                        }) => {
+                            // type check the interface surface
+                            let interface_surface = check!(
+                                type_check_interface_surface(interface_surface, namespace),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            let mut trait_namespace = namespace.clone();
+                            // insert placeholder functions representing the interface surface
+                            // to allow methods to use those functions
+                            trait_namespace.insert_trait_implementation(
+                                CallPath {
+                                    prefixes: vec![],
+                                    suffix: name.clone(),
+                                },
+                                TypeInfo::SelfType,
+                                interface_surface
+                                    .iter()
+                                    .map(|x| x.to_dummy_func(Mode::NonAbi))
+                                    .collect(),
+                            );
+                            // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
+                            let _methods = check!(
+                                type_check_trait_methods(
+                                    methods.clone(),
+                                    &trait_namespace,
+                                    insert_type(TypeInfo::SelfType),
+                                    build_config,
+                                    dead_code_graph,
+                                    dependency_graph
+                                ),
+                                vec![],
+                                warnings,
+                                errors
+                            );
+                            let trait_decl =
+                                TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
+                                    name: name.clone(),
+                                    interface_surface,
+                                    methods,
+                                    type_parameters,
+                                    visibility,
+                                });
+                            namespace.insert(name, trait_decl.clone());
+                            trait_decl
+                        }
+                        Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
+                            check!(
+                                reassignment(
+                                    lhs,
+                                    rhs,
+                                    span,
+                                    namespace,
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph,
+                                    dependency_graph
+                                ),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            )
+                        }
+                        Declaration::ImplTrait(impl_trait) => check!(
+                            implementation_of_trait(
+                                impl_trait,
+                                namespace,
+                                build_config,
+                                dead_code_graph,
+                                dependency_graph
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ),
+
+                        Declaration::ImplSelf(ImplSelf {
+                            type_arguments,
+                            functions,
+>>>>>>> origin/master
                             type_implementing_for,
                         }
+<<<<<<< HEAD
                     }
                     Declaration::StructDeclaration(decl) => {
                         // look up any generic or struct types in the namespace
@@ -412,6 +620,88 @@ impl<'sc> TypedAstNode<'sc> {
                             decl.name.clone(),
                             TypedDeclaration::StructDeclaration(decl.clone()),
                         );
+=======
+                        Declaration::StructDeclaration(decl) => {
+                            // look up any generic or struct types in the namespace
+                            // insert type parameters
+                            let type_mapping = insert_type_parameters(&decl.type_parameters);
+                            let fields = decl
+                                .fields
+                                .into_iter()
+                                .map(
+                                    |StructField {
+                                         name,
+                                         r#type,
+                                         span,
+                                         type_span,
+                                     }| TypedStructField {
+                                        name,
+                                        r#type: if let Some(matching_id) =
+                                            r#type.matches_type_parameter(&type_mapping)
+                                        {
+                                            insert_type(TypeInfo::Ref(matching_id))
+                                        } else {
+                                            namespace
+                                                .resolve_type_with_self(r#type, self_type)
+                                                .unwrap_or_else(|_| {
+                                                    errors.push(CompileError::UnknownType {
+                                                        span: type_span.clone(),
+                                                    });
+                                                    insert_type(TypeInfo::ErrorRecovery)
+                                                })
+                                        },
+                                        span,
+                                    },
+                                )
+                                .collect::<Vec<_>>();
+                            let decl = TypedStructDeclaration {
+                                name: decl.name.clone(),
+                                type_parameters: decl.type_parameters.clone(),
+                                fields,
+                                visibility: decl.visibility,
+                            };
+
+                            // insert struct into namespace
+                            namespace.insert(
+                                decl.name.clone(),
+                                TypedDeclaration::StructDeclaration(decl.clone()),
+                            );
+
+                            TypedDeclaration::StructDeclaration(decl)
+                        }
+                        Declaration::AbiDeclaration(AbiDeclaration {
+                            name,
+                            interface_surface,
+                            methods,
+                            span,
+                        }) => {
+                            // type check the interface surface and methods
+                            // We don't want the user to waste resources by contract calling
+                            // themselves, and we don't want to do more work in the compiler,
+                            // so we don't support the case of calling a contract's own interface
+                            // from itself. This is by design.
+                            let interface_surface = check!(
+                                type_check_interface_surface(interface_surface, namespace),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            // type check these for errors but don't actually use them yet -- the real
+                            // ones will be type checked with proper symbols when the ABI is implemented
+                            let _methods = check!(
+                                type_check_trait_methods(
+                                    methods.clone(),
+                                    namespace,
+                                    self_type,
+                                    build_config,
+                                    dead_code_graph,
+                                    dependency_graph
+                                ),
+                                vec![],
+                                warnings,
+                                errors
+                            );
+>>>>>>> origin/master
 
                         TypedDeclaration::StructDeclaration(decl)
                     }
@@ -697,7 +987,8 @@ fn reassignment<'sc>(
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body,
                     is_mutable,
-                    ..
+                    name,
+                    type_ascription: _,
                 })) => {
                     // allow the type checking to continue unhindered even though
                     // this is an error
@@ -866,42 +1157,61 @@ fn reassignment<'sc>(
 fn type_check_interface_surface<'sc>(
     interface_surface: Vec<TraitFn<'sc>>,
     namespace: &mut Namespace<'sc>,
-) -> Vec<TypedTraitFn<'sc>> {
-    interface_surface
-        .into_iter()
-        .map(
-            |TraitFn {
-                 name,
-                 parameters,
-                 return_type,
-                 return_type_span,
-             }| TypedTraitFn {
-                name,
-                return_type_span,
-                parameters: parameters
-                    .into_iter()
-                    .map(
-                        |FunctionParameter {
-                             name,
-                             r#type,
-                             type_span,
-                         }| TypedFunctionParameter {
-                            name,
-                            r#type: namespace.resolve_type_with_self(
-                                r#type,
-                                crate::type_engine::insert_type(TypeInfo::SelfType),
-                            ),
-                            type_span,
-                        },
-                    )
-                    .collect(),
-                return_type: namespace.resolve_type_with_self(
-                    return_type,
-                    crate::type_engine::insert_type(TypeInfo::SelfType),
-                ),
-            },
-        )
-        .collect::<Vec<_>>()
+) -> CompileResult<'sc, Vec<TypedTraitFn<'sc>>> {
+    let mut errors = vec![];
+    ok(
+        interface_surface
+            .into_iter()
+            .map(
+                |TraitFn {
+                     name,
+                     parameters,
+                     return_type,
+                     return_type_span,
+                 }| TypedTraitFn {
+                    name,
+                    return_type_span: return_type_span.clone(),
+                    parameters: parameters
+                        .into_iter()
+                        .map(
+                            |FunctionParameter {
+                                 name,
+                                 r#type,
+                                 type_span,
+                             }| TypedFunctionParameter {
+                                name,
+                                r#type: namespace
+                                    .resolve_type_with_self(
+                                        r#type,
+                                        crate::type_engine::insert_type(TypeInfo::SelfType),
+                                    )
+                                    .unwrap_or_else(|_| {
+                                        errors.push(CompileError::UnknownType {
+                                            span: type_span.clone(),
+                                        });
+                                        insert_type(TypeInfo::ErrorRecovery)
+                                    }),
+                                type_span,
+                            },
+                        )
+                        .collect(),
+                    return_type: namespace
+                        .resolve_type_with_self(
+                            return_type,
+                            crate::type_engine::insert_type(TypeInfo::SelfType),
+                        )
+                        .unwrap_or_else(|_| {
+                            errors.push(CompileError::UnknownType {
+                                span: return_type_span,
+                            });
+                            insert_type(TypeInfo::ErrorRecovery)
+                        }),
+                },
+            )
+            .collect::<Vec<_>>(),
+        vec![],
+        errors,
+    )
 }
 
 fn type_check_trait_methods<'sc>(
@@ -931,10 +1241,17 @@ fn type_check_trait_methods<'sc>(
             |FunctionParameter {
                  name, ref r#type, ..
              }| {
-                let r#type = function_namespace.resolve_type_with_self(
-                    r#type.clone(),
-                    crate::type_engine::insert_type(TypeInfo::SelfType),
-                );
+                let r#type = function_namespace
+                    .resolve_type_with_self(
+                        r#type.clone(),
+                        crate::type_engine::insert_type(TypeInfo::SelfType),
+                    )
+                    .unwrap_or_else(|_| {
+                        errors.push(CompileError::UnknownType {
+                            span: name.span.clone(),
+                        });
+                        insert_type(TypeInfo::ErrorRecovery)
+                    });
                 function_namespace.insert(
                     name.clone(),
                     TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -947,6 +1264,7 @@ fn type_check_trait_methods<'sc>(
                         },
                         // TODO allow mutable function params?
                         is_mutable: false,
+                        type_ascription: r#type,
                     }),
                 );
             },
@@ -1005,10 +1323,17 @@ fn type_check_trait_methods<'sc>(
                  }| {
                     TypedFunctionParameter {
                         name,
-                        r#type: function_namespace.resolve_type_with_self(
-                            r#type,
-                            crate::type_engine::insert_type(TypeInfo::SelfType),
-                        ),
+                        r#type: function_namespace
+                            .resolve_type_with_self(
+                                r#type,
+                                crate::type_engine::insert_type(TypeInfo::SelfType),
+                            )
+                            .unwrap_or_else(|_| {
+                                errors.push(CompileError::UnknownType {
+                                    span: type_span.clone(),
+                                });
+                                insert_type(TypeInfo::ErrorRecovery)
+                            }),
                         type_span,
                     }
                 },
@@ -1016,7 +1341,14 @@ fn type_check_trait_methods<'sc>(
             .collect::<Vec<_>>();
 
         // TODO check code block implicit return
-        let return_type = function_namespace.resolve_type_with_self(return_type, self_type);
+        let return_type = function_namespace
+            .resolve_type_with_self(return_type, self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType {
+                    span: return_type_span.clone(),
+                });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
         let (body, _code_block_implicit_return) = check!(
             TypedCodeBlock::type_check(
                 body,

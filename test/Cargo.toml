@@ -3,13 +3,12 @@ authors = ["Alex Hansen <alex.hansen@fuel.sh>"]
 edition = "2018"
 name = "test"
 version = "0.1.0"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-forc = {path = "../forc", features = ["test"], default-features = false}
-fuel-asm = {git = "ssh://git@github.com/FuelLabs/fuel-asm.git"}
-fuel-tx = {git = "ssh://git@github.com/FuelLabs/fuel-tx.git"}
+forc = { path = "../forc", features = ["test"], default-features = false }
+fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
+fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
 fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git", features = ["random"] }
 rand = "0.8"
 regex = "1"

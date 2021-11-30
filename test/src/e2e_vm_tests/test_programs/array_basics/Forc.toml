@@ -1,0 +1,8 @@
+[project]
+author  = "Toby Hutton <toby.hutton@fuel.sh>"
+license = "MIT"
+name = "array_basics"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../stdlib" }

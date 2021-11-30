@@ -374,7 +374,7 @@ fn connect_declaration<'sc>(
             connect_impl_trait(trait_name, graph, methods, entry_node, tree_type)?;
             Ok(leaves.to_vec())
         }
-        ErrorRecovery => Ok(leaves.to_vec()),
+        ErrorRecovery | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
     }
 }
 
@@ -817,10 +817,9 @@ fn connect_expression<'sc>(
             resolved_type_of_parent,
             ..
         } => {
-            let ty = resolve_type(*resolved_type_of_parent, field_to_access_span)
-                .unwrap_or(TypeInfo::Unit);
-
-            let resolved_type_of_parent = ty;
+            let resolved_type_of_parent =
+                resolve_type(*resolved_type_of_parent, field_to_access_span)
+                    .unwrap_or(TypeInfo::Unit);
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
             let resolved_type_of_parent = match resolved_type_of_parent {
@@ -867,6 +866,44 @@ fn connect_expression<'sc>(
             tree_type,
             address.span.clone(),
         ),
+        Array { contents } => {
+            let nodes = contents
+                .iter()
+                .map(|elem| {
+                    connect_expression(
+                        &elem.expression,
+                        graph,
+                        leaves,
+                        exit_node,
+                        "",
+                        tree_type,
+                        elem.span.clone(),
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(nodes.concat())
+        }
+        ArrayIndex { prefix, index } => {
+            let prefix_idx = connect_expression(
+                &prefix.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                prefix.span.clone(),
+            )?;
+            let index_idx = connect_expression(
+                &index.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                index.span.clone(),
+            )?;
+            Ok([prefix_idx, index_idx].concat())
+        }
         a => {
             println!("Unimplemented: {:?}", a);
             return Err(CompileError::Unimplemented(

@@ -10,7 +10,6 @@ pub(crate) fn instantiate_enum<'sc>(
     enum_decl: TypedEnumDeclaration<'sc>,
     enum_field_name: Ident<'sc>,
     args: Vec<Expression<'sc>>,
-    type_arguments: Vec<TypeId>,
     namespace: &mut Namespace<'sc>,
     self_type: TypeId,
     build_config: &BuildConfig,
@@ -19,12 +18,14 @@ pub(crate) fn instantiate_enum<'sc>(
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let enum_decl = check!(
-        enum_decl.resolve_generic_types(type_arguments),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    // if this is a generic enum, i.e. it has some type
+    // parameters, monomorphize it before unifying the
+    // types
+    let enum_decl = if enum_decl.type_parameters.is_empty() {
+        enum_decl
+    } else {
+        enum_decl.monomorphize()
+    };
     let (enum_field_type, tag, variant_name) = match enum_decl
         .variants
         .iter()
