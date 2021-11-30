@@ -11,7 +11,7 @@ use crate::{
 use core_types::{Function, JsonABI};
 
 use anyhow::Result;
-use core_lang::{BuildConfig, CompileASTResult, LibraryExports, Namespace, TypedParseTree};
+use core_lang::{BuildConfig, CompileAstResult, LibraryExports, Namespace, TypedParseTree};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -218,7 +218,7 @@ fn compile_library<'source, 'manifest>(
 ) -> Result<(LibraryExports<'source>, Vec<Function>), String> {
     let res = core_lang::compile_to_ast(&source, namespace, &build_config, dependency_graph);
     match res {
-        CompileASTResult::Success {
+        CompileAstResult::Success {
             warnings,
             contract_ast,
             library_exports: exports,
@@ -228,7 +228,7 @@ fn compile_library<'source, 'manifest>(
             let json_abi = parse_json_abi(&contract_ast);
             Ok((exports, json_abi))
         }
-        CompileASTResult::Failure { warnings, errors } => {
+        CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
             Err(format!("Failed to compile {}", proj_name))
         }
@@ -245,7 +245,7 @@ fn compile<'source, 'manifest>(
 ) -> Result<Vec<Function>, String> {
     let res = core_lang::compile_to_ast(&source, namespace, &build_config, dependency_graph);
     match res {
-        CompileASTResult::Success {
+        CompileAstResult::Success {
             warnings,
             contract_ast,
             ..
@@ -254,7 +254,7 @@ fn compile<'source, 'manifest>(
             let json_abi = parse_json_abi(&contract_ast);
             Ok(json_abi)
         }
-        CompileASTResult::Failure { warnings, errors } => {
+        CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
             Err(format!("Failed to compile {}", proj_name))
         }

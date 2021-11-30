@@ -145,7 +145,7 @@ pub enum CompilationResult<'sc> {
     },
 }
 
-pub enum CompileASTResult<'sc> {
+pub enum CompileAstResult<'sc> {
     Success {
         contract_ast: Option<TypedParseTree<'sc>>,
         script_ast: Option<TypedParseTree<'sc>>,
@@ -299,12 +299,12 @@ pub fn compile_to_ast<'sc>(
     initial_namespace: &Namespace<'sc>,
     build_config: &BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompileASTResult<'sc> {
+) -> CompileAstResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
         parse(input, Some(build_config)),
-        return CompileASTResult::Failure { errors, warnings },
+        return CompileAstResult::Failure { errors, warnings },
         warnings,
         errors
     );
@@ -365,10 +365,10 @@ pub fn compile_to_ast<'sc>(
     };
 
     if !errors.is_empty() {
-        return CompileASTResult::Failure { errors, warnings };
+        return CompileAstResult::Failure { errors, warnings };
     }
 
-    CompileASTResult::Success {
+    CompileAstResult::Success {
         contract_ast,
         predicate_ast,
         script_ast,
@@ -385,10 +385,10 @@ pub fn compile_to_asm<'sc>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompilationResult<'sc> {
     match compile_to_ast(input, initial_namespace, &build_config, dependency_graph) {
-        CompileASTResult::Failure { warnings, errors } => {
+        CompileAstResult::Failure { warnings, errors } => {
             CompilationResult::Failure { warnings, errors }
         }
-        CompileASTResult::Success {
+        CompileAstResult::Success {
             predicate_ast,
             script_ast,
             contract_ast,
