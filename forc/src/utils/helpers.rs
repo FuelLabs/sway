@@ -1,7 +1,10 @@
 use super::constants::{SRC_DIR, SWAY_EXTENSION};
 use super::manifest::Manifest;
+use annotate_snippets::{
+    display_list::{DisplayList, FormatOptions},
+    snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
+};
 use core_lang::{CompileError, CompileWarning};
-use source_span::fmt::{Color, Formatter};
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -234,17 +237,73 @@ fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io
 }
 
 fn format_err(err: &core_lang::CompileError) {
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-    let formatted = err.format(&mut fmt);
-    print_blue_err(" --> ").unwrap();
-    print!("{}", err.path());
-    println!("{}", formatted);
+    let input = err.internal_span().input();
+    let path = err.path();
+
+    let (start_pos, mut end_pos) = err.span();
+    if start_pos == end_pos {
+        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
+        end_pos += 1;
+    }
+    let friendly_str = err.to_friendly_error_string();
+    let snippet = Snippet {
+        title: Some(Annotation {
+            label: None,
+            id: None,
+            annotation_type: AnnotationType::Error,
+        }),
+        footer: vec![],
+        slices: vec![Slice {
+            source: input,
+            line_start: 0,
+            origin: Some(&path),
+            fold: true,
+            annotations: vec![SourceAnnotation {
+                label: &friendly_str,
+                annotation_type: AnnotationType::Error,
+                range: (start_pos, end_pos),
+            }],
+        }],
+        opt: FormatOptions {
+            color: true,
+            ..Default::default()
+        },
+    };
+    eprintln!("{}", DisplayList::from(snippet))
 }
 
-fn format_warning(warning: &core_lang::CompileWarning) {
-    let mut fmt = Formatter::with_margin_color(Color::Blue);
-    let formatted = warning.format(&mut fmt);
-    print_blue_err(" --> ").unwrap();
-    print!("{}", warning.path());
-    println!("{}", formatted);
+fn format_warning(err: &core_lang::CompileWarning) {
+    let input = err.span.input();
+    let path = err.path();
+
+    let (start_pos, mut end_pos) = err.span();
+    let friendly_str = err.to_friendly_warning_string();
+    if start_pos == end_pos {
+        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
+        end_pos += 1;
+    }
+    let snippet = Snippet {
+        title: Some(Annotation {
+            label: None,
+            id: None,
+            annotation_type: AnnotationType::Warning,
+        }),
+        footer: vec![],
+        slices: vec![Slice {
+            source: input,
+            line_start: 0,
+            origin: Some(&path),
+            fold: true,
+            annotations: vec![SourceAnnotation {
+                label: &friendly_str,
+                annotation_type: AnnotationType::Warning,
+                range: (start_pos, end_pos),
+            }],
+        }],
+        opt: FormatOptions {
+            color: true,
+            ..Default::default()
+        },
+    };
+    eprintln!("{}", DisplayList::from(snippet))
 }

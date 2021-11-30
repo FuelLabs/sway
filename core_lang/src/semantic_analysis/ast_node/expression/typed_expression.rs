@@ -379,77 +379,6 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         );
-<<<<<<< HEAD
-        let exp = match function_declaration {
-            TypedDeclaration::FunctionDeclaration(decl) => {
-                let TypedFunctionDeclaration {
-                    parameters,
-                    return_type,
-                    body,
-                    ..
-                } = decl.clone();
-                match arguments.len().cmp(&parameters.len()) {
-                    Ordering::Greater => {
-                        let arguments_span = arguments.iter().fold(
-                            arguments
-                                .get(0)
-                                .map(|x| x.span())
-                                .unwrap_or_else(|| name.span()),
-                            |acc, arg| crate::utils::join_spans(acc, arg.span()),
-                        );
-                        errors.push(CompileError::TooManyArgumentsForFunction {
-                            span: arguments_span,
-                            method_name: name.suffix.primary_name,
-                            expected: parameters.len(),
-                            received: arguments.len(),
-                        });
-                    }
-                    Ordering::Less => {
-                        let arguments_span = arguments.iter().fold(
-                            arguments
-                                .get(0)
-                                .map(|x| x.span())
-                                .unwrap_or_else(|| name.span()),
-                            |acc, arg| crate::utils::join_spans(acc, arg.span()),
-                        );
-                        errors.push(CompileError::TooFewArgumentsForFunction {
-                            span: arguments_span,
-                            method_name: name.suffix.primary_name,
-                            expected: parameters.len(),
-                            received: arguments.len(),
-                        });
-                    }
-                    Ordering::Equal => {}
-                }
-                // type check arguments in function application vs arguments in function
-                // declaration. Use parameter type annotations as annotations for the
-                // arguments
-                //
-                let typed_call_arguments =
-                    arguments
-                        .into_iter()
-                        .zip(parameters.iter())
-                        .map(|(arg, param)| {
-                            (param.name.clone(), TypedExpression::type_check(
-                            arg.clone(),
-                            namespace,
-                            Some(param.r#type),
-                            "The argument that has been provided to this function's type does \
-                            not match the declared type of the parameter in the function \
-                            declaration.",
-                            self_type,
-                            build_config,
-                            dead_code_graph,
-                            dependency_graph,
-                        )
-                        .unwrap_or_else(
-                            &mut warnings,
-                            &mut errors,
-                            || error_recovery_expr(arg.span()),
-                        ))
-                        })
-                        .collect();
-=======
         let TypedFunctionDeclaration {
             parameters,
             return_type,
@@ -477,7 +406,6 @@ impl<'sc> TypedExpression<'sc> {
             });
             return err(warnings, errors);
         };
->>>>>>> origin/master
 
         match arguments.len().cmp(&parameters.len()) {
             Ordering::Greater => {
@@ -586,7 +514,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
+                dependency_graph
             ),
             error_recovery_expr(lhs.span()),
             warnings,
@@ -602,7 +530,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
+                dependency_graph
             ),
             error_recovery_expr(rhs.span()),
             warnings,
@@ -705,7 +633,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
+                dependency_graph
             ),
             (
                 TypedCodeBlock {
@@ -766,7 +694,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
+                dependency_graph
             ),
             error_recovery_expr(condition.span()),
             warnings,
@@ -781,7 +709,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
+                dependency_graph
             ),
             error_recovery_expr(then.span()),
             warnings,
@@ -797,7 +725,7 @@ impl<'sc> TypedExpression<'sc> {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
+                    dependency_graph
                 ),
                 error_recovery_expr(expr.span()),
                 warnings,
@@ -874,7 +802,7 @@ impl<'sc> TypedExpression<'sc> {
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph,
+                                    dependency_graph
                                 ),
                                 error_recovery_expr(initializer.span()),
                                 warnings,
@@ -974,7 +902,7 @@ impl<'sc> TypedExpression<'sc> {
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph,
+                    dependency_graph
                 ),
                 continue,
                 warnings,
@@ -1038,7 +966,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
+                dependency_graph
             ),
             return err(warnings, errors),
             warnings,
@@ -1149,7 +1077,7 @@ impl<'sc> TypedExpression<'sc> {
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph,
+                        dependency_graph
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -1205,7 +1133,7 @@ impl<'sc> TypedExpression<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph,
+                dependency_graph
             ),
             error_recovery_expr(err_span),
             warnings,
@@ -1252,7 +1180,7 @@ impl<'sc> TypedExpression<'sc> {
                     build_config,
                     dead_code_graph,
                     Mode::ImplAbiFn,
-                    dependency_graph,
+                    dependency_graph
                 ),
                 return err(warnings, errors),
                 warnings,
