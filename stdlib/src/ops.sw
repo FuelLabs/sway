@@ -294,7 +294,6 @@ impl b256 {
     }
 }
 
-
 impl u64 {
     fn binary_and(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {

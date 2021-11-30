@@ -1,0 +1,8 @@
+[project]
+author  = "Alexander Hansen"
+license = "MIT"
+name = "generic_enum"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../stdlib" }

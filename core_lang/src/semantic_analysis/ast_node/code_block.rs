@@ -79,11 +79,12 @@ impl<'sc> TypedCodeBlock<'sc> {
                     .clone()
                     .unwrap_or_else(|| other.whole_block_span.clone()),
             ) {
-                Ok(warning) => {
-                    if let Some(warning) = warning {
+                Ok(ws) => {
+                    for warning in ws {
                         warnings.push(CompileWarning {
                             warning_content: warning,
                             span: implicit_return_span
+                                .clone()
                                 .unwrap_or_else(|| other.whole_block_span.clone()),
                         });
                     }
@@ -106,5 +107,11 @@ impl<'sc> TypedCodeBlock<'sc> {
             warnings,
             errors,
         )
+    }
+
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.contents
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
     }
 }

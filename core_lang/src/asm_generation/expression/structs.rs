@@ -123,7 +123,7 @@ pub(crate) fn get_struct_memory_layout<'sc>(
     let mut errors = vec![];
     for (field, name) in fields_with_names {
         let ty = look_up_type_id(*field);
-        let stack_size = match ty.stack_size_of(&span) {
+        let stack_size = match ty.size_in_words(&span) {
             Ok(o) => o,
             Err(e) => {
                 errors.push(e);
@@ -230,7 +230,7 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         // evaluate the expression
         let return_register = register_sequencer.next();
         let value_stack_size: u64 = match resolve_type(value.return_type, &name.span) {
-            Ok(o) => match o.stack_size_of(&name.span) {
+            Ok(o) => match o.size_in_words(&name.span) {
                 Ok(o) => o,
                 Err(e) => {
                     errors.push(e);

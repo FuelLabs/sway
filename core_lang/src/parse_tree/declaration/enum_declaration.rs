@@ -1,11 +1,14 @@
 use crate::build_config::BuildConfig;
 use crate::parser::Rule;
 use crate::span::Span;
-use crate::type_engine::{TypeId, TypeInfo};
+use crate::type_engine::*;
 
 use crate::Ident;
 use crate::Namespace;
-use crate::{error::*, semantic_analysis::ast_node::TypedEnumDeclaration};
+use crate::{
+    error::*,
+    semantic_analysis::ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration},
+};
 use crate::{
     parse_tree::{declaration::TypeParameter, Visibility},
     semantic_analysis::ast_node::TypedEnumVariant,
@@ -42,9 +45,10 @@ impl<'sc> EnumDeclaration<'sc> {
         let mut errors = vec![];
         let mut warnings = vec![];
 
+        let type_mapping = insert_type_parameters(&self.type_parameters);
         for variant in &self.variants {
             variants_buf.push(check!(
-                variant.to_typed_decl(namespace, self_type, variant.span.clone()),
+                variant.to_typed_decl(namespace, self_type, variant.span.clone(), &type_mapping),
                 continue,
                 warnings,
                 errors
@@ -151,17 +155,30 @@ impl<'sc> EnumVariant<'sc> {
         &self,
         namespace: &mut Namespace<'sc>,
         self_type: TypeId,
-        _span: Span<'sc>,
+        span: Span<'sc>,
+        type_mapping: &[(TypeParameter, TypeId)],
     ) -> CompileResult<'sc, TypedEnumVariant<'sc>> {
+        let mut errors = vec![];
+        let enum_variant_type =
+            if let Some(matching_id) = self.r#type.matches_type_parameter(&type_mapping) {
+                insert_type(TypeInfo::Ref(matching_id))
+            } else {
+                namespace
+                    .resolve_type_with_self(self.r#type.clone(), self_type)
+                    .unwrap_or_else(|_| {
+                        errors.push(CompileError::UnknownType { span });
+                        insert_type(TypeInfo::ErrorRecovery)
+                    })
+            };
         ok(
             TypedEnumVariant {
                 name: self.name.clone(),
-                r#type: namespace.resolve_type_with_self(self.r#type.clone(), self_type),
+                r#type: enum_variant_type,
                 tag: self.tag,
                 span: self.span.clone(),
             },
             vec![],
-            vec![],
+            errors,
         )
     }
     pub(crate) fn parse_from_pairs(
