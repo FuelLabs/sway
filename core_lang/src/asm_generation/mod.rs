@@ -1431,7 +1431,7 @@ fn ret_or_retd_value<'sc>(
         path: None,
     };
 
-    let size_of_main_func_return_bytes = main_func_ret_ty.stack_size_of(&span).expect(
+    let size_of_main_func_return_bytes = main_func_ret_ty.size_in_words(&span).expect(
         "TODO(static span): Internal error: Static spans will allow for a proper error here.",
     ) * 8;
     if size_of_main_func_return_bytes <= 8 {

@@ -10,6 +10,7 @@ use crate::{
     type_engine::look_up_type_id,
 };
 
+mod array;
 mod contract_call;
 mod enum_instantiation;
 mod if_exp;
@@ -291,6 +292,20 @@ pub(crate) fn convert_expression_to_asm<'sc>(
         TypedExpressionVariant::CodeBlock(block) => {
             convert_code_block_to_asm(block, namespace, register_sequencer, Some(return_register))
         }
+        TypedExpressionVariant::Array { contents } => array::convert_array_instantiation_to_asm(
+            contents,
+            namespace,
+            return_register,
+            register_sequencer,
+        ),
+        TypedExpressionVariant::ArrayIndex { prefix, index } => array::convert_array_index_to_asm(
+            prefix,
+            index,
+            &exp.span,
+            namespace,
+            return_register,
+            register_sequencer,
+        ),
         TypedExpressionVariant::Unit => ok(vec![], warnings, errors),
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),

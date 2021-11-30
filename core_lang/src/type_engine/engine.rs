@@ -127,6 +127,17 @@ impl Engine {
                 }
             }
 
+            (Array(a_elem, a_count), Array(b_elem, b_count)) if a_count == b_count => self
+                .unify(a_elem, b_elem, span)
+                // If there was an error then we want to report the array types as mismatching, not
+                // the elem types.
+                .map_err(|_| TypeError::MismatchedType {
+                    expected: b,
+                    received: a,
+                    help_text: Default::default(),
+                    span: span.clone(),
+                }),
+
             // When unifying complex types, we must check their sub-types. This
             // can be trivially implemented for tuples, sum types, etc.
             // (List(a_item), List(b_item)) => self.unify(a_item, b_item),
