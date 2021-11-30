@@ -1276,12 +1276,19 @@ fn add_module_constant_decls<'sc>(
     ok((), warnings, errors)
 }
 
+/// The function selector value and corresponding label.
+type JumpDestination = Vec<([u8; 4], Label)>;
+/// A vector of opcodes representing the body of a contract ABI function.
+type AbiFunctionOpcodeBuffer<'sc> = Vec<Op<'sc>>;
+/// The function selector information and compiled body of a contract ABI function.
+type SerializedAbiFunction<'sc> = (JumpDestination, AbiFunctionOpcodeBuffer<'sc>);
+
 /// Given a contract's abi entries, compile them to jump destinations and an opcode buffer.
 fn compile_contract_to_selectors<'sc>(
     abi_entries: Vec<TypedFunctionDeclaration<'sc>>,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, (Vec<([u8; 4], Label)>, Vec<Op<'sc>>)> {
+) -> CompileResult<'sc, SerializedAbiFunction<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     // for every ABI function, we need:
