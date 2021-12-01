@@ -2,25 +2,30 @@ script;
 // if test passes, return true
 
 use std::b512::B512;
+use std::address::Address;
 use std::ecr::ec_recover;
+use std::chain::assert;
 
 fn main() -> bool {
-    // the 32 byte address derived from the original private key. Sha256(pubkey)
-    let address: Address = 0x2792dd476211c61c6391d04ff5d6807a85310749000000000000000000000000;
+    // the 32 byte address derived from the original private key of '1'.
+    // @todo
+    let address: Address = ~Address::from(0x50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0);
 
-    let message = "Hello from fuel. The comitted number is 42.";
+    let message = 0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a;
 
-    let sig_hi = 0x4807129506fb24141129677eca31bd65bfc9e6621f937935dc70b00e0e0c31d9;
-    let sig_lo = 0x6c54a4c1a8d533bcd465b1882c165a36cdc47f1b2365f4c87be109f9c0430d39;
+    // full sig: 74a6b203feee506ab5c39ecb33a32769f79cbf765db4578d15f7e196fb6863a96e4b0679559655534b1c575b9857f1f2604eaf21edd0e703cf723042992c2cb4
+    let sig_hi = 0x74a6b203feee506ab5c39ecb33a32769f79cbf765db4578d15f7e196fb6863a9;
+    let sig_lo = 0x6e4b0679559655534b1c575b9857f1f2604eaf21edd0e703cf723042992c2cb4;
 
     // // create a signature
-    let signature: B512 = ~B512::from_b256(sig_hi, sig_lo);
+    let signature: B512 = ~B512::from(sig_hi, sig_lo);
 
     // // hash the message (SHA256(message))
     let msg_hash = 0x623abe7551f140b6b83aefa0cbe5f5254dd0b8115bc83297bba99c871f418886;
 
     // // recover the address
-    let mut recovered_address: Address = ec_recover(signature, msg_hash);
+    let mut recovered_address: Address = ~Address::from(ec_recover(signature, msg_hash));
+    assert(recovered_address.value == address.value);
 
     true
 }

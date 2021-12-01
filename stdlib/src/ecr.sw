@@ -21,7 +21,7 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> b256 {
     };
 
     // @todo switch to use `from()` when implemented
-    let pub_key: B512 = ~B512::from_b256(hi, lo);
+    let pub_key: B512 = ~B512::from(hi, lo);
 
     let address = asm(r1, r2: pub_key.hi , r3: 64) {
         // addi r3 zero i64;
