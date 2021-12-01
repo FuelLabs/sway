@@ -3,18 +3,11 @@ name = "signatures"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-ethers-core = "^0.5.0"
-ethers-signers = "^0.5.0"
-rand = "0.8.4"
 anyhow = "1.0.39"
 tokio = { version = "1.5", features = ["macros", "rt-multi-thread"] }
-elliptic-curve = "0.10.6"
-libsecp256k1 = "0.7.0"
 secp256k1-test = { package = "secp256k1", version = "0.20.3", features = ["rand-std", "recovery"] }
-hex-literal = "0.3.4"
 sha256 = "1.0.3"
+hex = "*"
 
 [workspace]
