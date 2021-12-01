@@ -13,7 +13,8 @@ anyhow = "1.0.39"
 tokio = { version = "1.5", features = ["macros", "rt-multi-thread"] }
 elliptic-curve = "0.10.6"
 libsecp256k1 = "0.7.0"
-sha2 = "0.9.3"
+secp256k1-test = { package = "secp256k1", version = "0.20.3", features = ["rand-std", "recovery"] }
 hex-literal = "0.3.4"
+sha256 = "1.0.3"
 
 [workspace]
