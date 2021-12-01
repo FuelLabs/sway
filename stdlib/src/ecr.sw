@@ -17,18 +17,6 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Address {
         buffer: b256
     };
 
-    // try without this step, it may be totally unneccessary!
-
-    // // Store the last 32 bytes of the public key in lo:
-    // let lo_bits = asm(r1: hi_bits, r2) {
-    //     addi r2 r1 i32; // add 32 bytes to hi location
-    //     move r2 sp; // move stack pointer to hi + 32
-    //     cfei i32;
-    //     r2: b256  // return the next 32 bytes
-    // };
-
-    // let pub_key: B512 = ~B512::from(hi_bits, lo_bits);
-
     // hash 64 bytes starting at `first` (start of 64-byte public key)
     let address = asm(buffer, first: pub_key_initial_bytes , r3: 64) {
         move buffer sp; // Result buffer.
