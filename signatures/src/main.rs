@@ -1,10 +1,10 @@
+//! This utility generates data used for testing Sway's ec_recover function (stdlib/ecr.sw).
+
 use anyhow::Result;
 use secp256k1_test::{Message as SecpMessage, Secp256k1};
 use sha256::digest_bytes;
 
-// Use the `tokio::main` macro for using async on the main function
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let secp256k1 = Secp256k1::new();
     let message_arr = [42u8; 32];
     let secret_key = secp256k1_test::key::ONE_KEY; // the number 1 as a secret key

@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.39"
-tokio = { version = "1.5", features = ["macros", "rt-multi-thread"] }
 secp256k1-test = { package = "secp256k1", version = "0.20.3", features = ["rand-std", "recovery"] }
 sha256 = "1.0.3"
 hex = "*"
