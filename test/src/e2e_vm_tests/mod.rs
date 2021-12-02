@@ -63,10 +63,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("generic_struct", ProgramState::Return(1)),           // true
         ("assert_test", ProgramState::Return(1)),              // true
         ("match_expressions", ProgramState::Return(42)),
-        ("assert_test", ProgramState::Return(1)),              // true
-        ("array_basics", ProgramState::Return(1)),             // true
+        ("assert_test", ProgramState::Return(1)),  // true
+        ("array_basics", ProgramState::Return(1)), // true
         ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
+    ];
 
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {

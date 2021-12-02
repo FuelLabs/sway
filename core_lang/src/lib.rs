@@ -9,6 +9,7 @@ mod build_config;
 mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
+mod desugar;
 mod ident;
 pub mod parse_tree;
 mod parser;
@@ -121,13 +122,19 @@ pub fn parse<'sc>(
             )
         }
     };
-    let res = check!(
+    let parsed_root = check!(
         parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
         return err(warnings, errors),
         warnings,
         errors
     );
-    ok(res, warnings, errors)
+    let desugared = check!(
+        desugar::desugar(parsed_root),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    ok(desugared, warnings, errors)
 }
 
 pub enum CompilationResult<'sc> {
