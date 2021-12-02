@@ -11,6 +11,11 @@ use crate::{build_config::BuildConfig, error::*, Ident};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
+mod function;
+mod variable;
+pub(crate) use function::*;
+pub(crate) use variable::*;
+
 #[derive(Clone, Debug)]
 pub enum TypedDeclaration<'sc> {
     VariableDeclaration(TypedVariableDeclaration<'sc>),
@@ -27,7 +32,37 @@ pub enum TypedDeclaration<'sc> {
         type_implementing_for: TypeInfo,
     },
     AbiDeclaration(TypedAbiDeclaration<'sc>),
+    // If type parameters are defined for a function, they are put in the namespace just for
+    // the body of that function.
+    GenericTypeForFunctionScope {
+        name: Ident<'sc>,
+    },
     ErrorRecovery,
+}
+
+impl TypedDeclaration<'_> {
+    /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
+    /// assuming `self` has already been copied.
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        use TypedDeclaration::*;
+        match self {
+            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping),
+            ConstantDeclaration(ref mut const_decl) => const_decl.copy_types(type_mapping),
+            FunctionDeclaration(ref mut fn_decl) => fn_decl.copy_types(type_mapping),
+            TraitDeclaration(ref mut trait_decl) => trait_decl.copy_types(type_mapping),
+            StructDeclaration(ref mut struct_decl) => struct_decl.copy_types(type_mapping),
+            EnumDeclaration(ref mut enum_decl) => enum_decl.copy_types(type_mapping),
+            Reassignment(ref mut reassignment) => reassignment.copy_types(type_mapping),
+            ImplTrait {
+                ref mut methods, ..
+            } => {
+                methods.iter_mut().for_each(|x| x.copy_types(type_mapping));
+            }
+            // generics in an ABI is unsupported by design
+            AbiDeclaration(..) => (),
+            GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
+        }
+    }
 }
 
 impl<'sc> TypedDeclaration<'sc> {
@@ -44,6 +79,7 @@ impl<'sc> TypedDeclaration<'sc> {
             Reassignment(_) => "reassignment",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
+            GenericTypeForFunctionScope { .. } => "generic type parameter",
             ErrorRecovery => "error",
         }
     }
@@ -73,7 +109,14 @@ impl<'sc> TypedDeclaration<'sc> {
                         .map(TypedStructField::as_owned_typed_struct_field)
                         .collect(),
                 }),
-                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
+                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
+                    rhs.return_type.clone()
+                }
+                TypedDeclaration::GenericTypeForFunctionScope { name } => {
+                    insert_type(TypeInfo::UnknownGeneric {
+                        name: name.primary_name.to_string(),
+                    })
+                }
                 decl => {
                     return err(
                         vec![],
@@ -106,7 +149,9 @@ impl<'sc> TypedDeclaration<'sc> {
             }
             AbiDeclaration(TypedAbiDeclaration { span, .. }) => span.clone(),
             ImplTrait { span, .. } => span.clone(),
-            ErrorRecovery => unreachable!("No span exists for these ast node types"),
+            ErrorRecovery | GenericTypeForFunctionScope { .. } => {
+                unreachable!("No span exists for these ast node types")
+            }
         }
     }
 
@@ -146,23 +191,19 @@ impl<'sc> TypedDeclaration<'sc> {
     }
 
     pub(crate) fn visibility(&self) -> Visibility {
+        use TypedDeclaration::*;
         match self {
-            TypedDeclaration::VariableDeclaration(..)
-            | TypedDeclaration::Reassignment(..)
-            | TypedDeclaration::ImplTrait { .. }
-            | TypedDeclaration::AbiDeclaration(..)
-            | TypedDeclaration::ErrorRecovery => Visibility::Public,
-            TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { visibility, .. })
-            | TypedDeclaration::ConstantDeclaration(TypedConstantDeclaration {
-                visibility, ..
-            })
-            | TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
-                visibility, ..
-            })
-            | TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { visibility, .. })
-            | TypedDeclaration::StructDeclaration(TypedStructDeclaration { visibility, .. }) => {
-                *visibility
-            }
+            VariableDeclaration(..)
+            | GenericTypeForFunctionScope { .. }
+            | Reassignment(..)
+            | ImplTrait { .. }
+            | AbiDeclaration(..)
+            | ErrorRecovery => Visibility::Public,
+            EnumDeclaration(TypedEnumDeclaration { visibility, .. })
+            | ConstantDeclaration(TypedConstantDeclaration { visibility, .. })
+            | FunctionDeclaration(TypedFunctionDeclaration { visibility, .. })
+            | TraitDeclaration(TypedTraitDeclaration { visibility, .. })
+            | StructDeclaration(TypedStructDeclaration { visibility, .. }) => *visibility,
         }
     }
 }
@@ -187,6 +228,21 @@ pub struct TypedStructDeclaration<'sc> {
     pub(crate) visibility: Visibility,
 }
 
+impl<'sc> TypedStructDeclaration<'sc> {
+    pub(crate) fn monomorphize(&self) -> Self {
+        let mut new_decl = self.clone();
+        let type_mapping = insert_type_parameters(&self.type_parameters);
+        new_decl.copy_types(&type_mapping);
+        new_decl
+    }
+
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.fields
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct TypedStructField<'sc> {
     pub(crate) name: Ident<'sc>,
@@ -202,6 +258,16 @@ pub struct OwnedTypedStructField {
 }
 
 impl OwnedTypedStructField {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.r#type = if let Some(matching_id) =
+            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.r#type))
+        };
+    }
+
     pub(crate) fn as_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
         TypedStructField {
             name: Ident {
@@ -215,6 +281,15 @@ impl OwnedTypedStructField {
 }
 
 impl TypedStructField<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.r#type = if let Some(matching_id) =
+            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.r#type))
+        };
+    }
     pub(crate) fn as_owned_typed_struct_field(&self) -> OwnedTypedStructField {
         OwnedTypedStructField {
             name: self.name.primary_name.to_string(),
@@ -231,19 +306,18 @@ pub struct TypedEnumDeclaration<'sc> {
     pub(crate) span: Span<'sc>,
     pub(crate) visibility: Visibility,
 }
-impl<'sc> TypedEnumDeclaration<'sc> {
-    /// Given type arguments, match them up with the type parameters and return the result.
-    /// Currently unimplemented as we don't support generic enums yet, but when we do, this will be
-    /// the place to resolve those typed.
-    pub(crate) fn resolve_generic_types(
-        &self,
-        _type_arguments: Vec<TypeId>,
-    ) -> CompileResult<'sc, Self> {
-        ok(self.clone(), vec![], vec![])
-    }
-}
-
 impl TypedEnumDeclaration<'_> {
+    pub(crate) fn monomorphize(&self) -> Self {
+        let mut new_decl = self.clone();
+        let type_mapping = insert_type_parameters(&self.type_parameters);
+        new_decl.copy_types(&type_mapping);
+        new_decl
+    }
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.variants
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+    }
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
         crate::type_engine::insert_type(TypeInfo::Enum {
@@ -265,6 +339,15 @@ pub struct TypedEnumVariant<'sc> {
 }
 
 impl TypedEnumVariant<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.r#type = if let Some(matching_id) =
+            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.r#type))
+        };
+    }
     pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
         OwnedTypedEnumVariant {
             name: self.name.primary_name.to_string(),
@@ -283,17 +366,16 @@ pub struct OwnedTypedEnumVariant {
 }
 
 #[derive(Clone, Debug)]
-pub struct TypedVariableDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) body: TypedExpression<'sc>, // will be codeblock variant
-    pub(crate) is_mutable: bool,
-}
-
-#[derive(Clone, Debug)]
 pub struct TypedConstantDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
     pub(crate) value: TypedExpression<'sc>,
     pub(crate) visibility: Visibility,
+}
+
+impl TypedConstantDeclaration<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.value.copy_types(type_mapping);
+    }
 }
 
 // TODO: type check generic type args and their usage
@@ -314,6 +396,93 @@ pub struct TypedFunctionDeclaration<'sc> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.body.copy_types(type_mapping);
+        self.parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(type_mapping));
+
+        self.return_type = if let Some(matching_id) =
+            look_up_type_id(self.return_type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.return_type))
+        };
+    }
+    /// Given a typed function declaration with type parameters, make a copy of it and update the
+    /// type ids which refer to generic types to be fresh copies, maintaining their referential
+    /// relationship. This is used so when this function is resolved, the types don't clobber the
+    /// generic type info.
+    pub(crate) fn monomorphize(
+        &self,
+        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
+        self_type: TypeId,
+    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
+        let mut warnings: Vec<CompileWarning> = vec![];
+        let mut errors: Vec<CompileError> = vec![];
+        debug_assert!(
+            !self.type_parameters.is_empty(),
+            "Only generic functions can be monomorphized"
+        );
+
+        let type_mapping = insert_type_parameters(&self.type_parameters);
+        if !type_arguments.is_empty() {
+            // check type arguments against parameters
+            if self.type_parameters.len() != type_arguments.len() {
+                todo!("incorrect number of type args err");
+            }
+
+            // check the type arguments
+            for ((_, decl_param), (type_argument, type_argument_span)) in
+                type_mapping.iter().zip(type_arguments.iter())
+            {
+                match unify_with_self(
+                    *decl_param,
+                    insert_type(type_argument.clone()),
+                    self_type,
+                    type_argument_span,
+                ) {
+                    Ok(ws) => {
+                        for warning in ws {
+                            warnings.push(CompileWarning {
+                                warning_content: warning,
+                                span: type_argument_span.clone(),
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        errors.push(e.into());
+                        continue;
+                    }
+                }
+            }
+        }
+
+        let mut new_decl = self.clone();
+
+        // make all type ids fresh ones
+        new_decl
+            .body
+            .contents
+            .iter_mut()
+            .for_each(|x| x.copy_types(&type_mapping));
+
+        new_decl
+            .parameters
+            .iter_mut()
+            .for_each(|x| x.copy_types(&type_mapping));
+
+        new_decl.return_type = if let Some(matching_id) =
+            look_up_type_id(new_decl.return_type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(new_decl.return_type))
+        };
+
+        ok(new_decl, warnings, errors)
+    }
     /// If there are parameters, join their spans. Otherwise, use the fn name span.
     pub(crate) fn parameters_span(&self) -> Span<'sc> {
         if !self.parameters.is_empty() {
@@ -526,6 +695,18 @@ pub struct TypedFunctionParameter<'sc> {
     pub(crate) type_span: Span<'sc>,
 }
 
+impl TypedFunctionParameter<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.r#type = if let Some(matching_id) =
+            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.r#type))
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TypedTraitDeclaration<'sc> {
     pub(crate) name: Ident<'sc>,
@@ -533,6 +714,16 @@ pub struct TypedTraitDeclaration<'sc> {
     pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
     pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
     pub(crate) visibility: Visibility,
+}
+impl TypedTraitDeclaration<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        let additional_type_map = insert_type_parameters(&self.type_parameters);
+        let type_mapping = [type_mapping, &additional_type_map].concat();
+        self.interface_surface
+            .iter_mut()
+            .for_each(|x| x.copy_types(&type_mapping[..]));
+        // we don't have to type check the methods because it hasn't been type checked yet
+    }
 }
 #[derive(Clone, Debug)]
 pub struct TypedTraitFn<'sc> {
@@ -565,6 +756,23 @@ pub struct TypedReassignment<'sc> {
     pub(crate) rhs: TypedExpression<'sc>,
 }
 
+impl TypedReassignment<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.rhs.copy_types(type_mapping);
+        self.lhs
+            .iter_mut()
+            .for_each(|ReassignmentLhs { ref mut r#type, .. }| {
+                *r#type = if let Some(matching_id) =
+                    look_up_type_id(*r#type).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id))
+                } else {
+                    insert_type(look_up_type_id_raw(*r#type))
+                };
+            });
+    }
+}
+
 impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
@@ -592,11 +800,45 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             visibility,
             ..
         } = fn_decl.clone();
-        let return_type = namespace.resolve_type_with_self(return_type, self_type);
-        // insert parameters into namespace
+        // insert type parameters as Unknown types
+        let type_mapping = insert_type_parameters(&type_parameters);
+        let return_type =
+            if let Some(matching_id) = return_type.matches_type_parameter(&type_mapping) {
+                insert_type(TypeInfo::Ref(matching_id))
+            } else {
+                namespace
+                    .resolve_type_with_self(return_type, self_type)
+                    .unwrap_or_else(|_| {
+                        errors.push(CompileError::UnknownType {
+                            span: return_type_span.clone(),
+                        });
+                        insert_type(TypeInfo::ErrorRecovery)
+                    })
+            };
+
+        // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
-        for FunctionParameter { name, r#type, .. } in parameters.clone() {
-            let r#type = namespace.resolve_type_with_self(r#type, self_type);
+        type_parameters.iter().for_each(|param| {
+            namespace.insert(param.name_ident.clone(), param.into());
+        });
+        for FunctionParameter {
+            name,
+            r#type,
+            type_span,
+        } in parameters.clone()
+        {
+            let r#type = if let Some(matching_id) = r#type.matches_type_parameter(&type_mapping) {
+                insert_type(TypeInfo::Ref(matching_id))
+            } else {
+                namespace
+                    .resolve_type_with_self(r#type, self_type)
+                    .unwrap_or_else(|_| {
+                        errors.push(CompileError::UnknownType {
+                            span: type_span.clone(),
+                        });
+                        insert_type(TypeInfo::ErrorRecovery)
+                    })
+            };
             namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -608,6 +850,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         span: name.span.clone(),
                     },
                     is_mutable: false, // TODO allow mutable function params?
+                    type_ascription: r#type,
                 }),
             );
         }
@@ -645,7 +888,19 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                      type_span,
                  }| TypedFunctionParameter {
                     name,
-                    r#type: namespace.resolve_type_with_self(r#type, self_type),
+                    r#type: if let Some(matching_id) = r#type.matches_type_parameter(&type_mapping)
+                    {
+                        insert_type(TypeInfo::Ref(matching_id))
+                    } else {
+                        namespace
+                            .resolve_type_with_self(r#type, self_type)
+                            .unwrap_or_else(|_| {
+                                errors.push(CompileError::UnknownType {
+                                    span: type_span.clone(),
+                                });
+                                insert_type(TypeInfo::ErrorRecovery)
+                            })
+                    },
                     type_span,
                 },
             )
@@ -676,8 +931,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 self_type,
                 span,
             ) {
-                Ok(warning) => {
-                    if let Some(warning) = warning {
+                Ok(ws) => {
+                    for warning in ws {
                         warnings.push(CompileWarning {
                             warning_content: warning,
                             span: span.clone(),
@@ -751,6 +1006,15 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 }
 
 impl<'sc> TypedTraitFn<'sc> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        self.return_type = if let Some(matching_id) =
+            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
+        {
+            insert_type(TypeInfo::Ref(matching_id))
+        } else {
+            insert_type(look_up_type_id_raw(self.return_type))
+        };
+    }
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.

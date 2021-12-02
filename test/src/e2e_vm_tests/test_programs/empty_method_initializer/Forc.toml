@@ -1,7 +1,7 @@
 [project]
 author  = "Nick Furfaro"
 license = "MIT"
-name = "b512_test"
+name = "empty_method_initializer"
 entry = "main.sw"
 
 [dependencies]

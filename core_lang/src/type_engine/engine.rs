@@ -1,110 +1,45 @@
 use super::*;
-use crate::{types::ResolvedType, Span};
-
+use crate::concurrent_slab::ConcurrentSlab;
+use crate::Span;
 use lazy_static::lazy_static;
 
-use std::collections::HashMap;
-
-use std::sync::Mutex;
-
 lazy_static! {
-    pub(crate) static ref TYPE_ENGINE: Mutex<Engine> = Default::default();
+    static ref TYPE_ENGINE: Engine = Engine::default();
 }
 
-pub(crate) fn unify_with_self<'sc>(
-    ty1: TypeId,
-    ty2: TypeId,
-    self_type: TypeId,
-    span: &Span<'sc>,
-) -> Result<Option<Warning<'sc>>, TypeError<'sc>> {
-    let mut lock = TYPE_ENGINE.lock().unwrap();
-    let res = lock.unify_with_self(ty1, ty2, self_type, span);
-    drop(lock);
-    res
-}
-pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
-    let mut lock = TYPE_ENGINE.lock().unwrap();
-    let id = lock.insert(ty);
-    drop(lock);
-    id
-}
-
-pub(crate) fn resolve_type<'sc>(
-    id: TypeId,
-    error_span: &Span<'sc>,
-) -> Result<TypeInfo, TypeError<'sc>> {
-    let lock = TYPE_ENGINE.lock().unwrap();
-    let ty = match lock.resolve(id) {
-        Ok(TypeInfo::Unknown) => Err(TypeError::UnknownType {
-            span: error_span.clone(),
-        }),
-        o => o,
-    };
-    drop(lock);
-    ty
-}
-
-pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
-    let lock = TYPE_ENGINE.lock().unwrap();
-    let ty = lock
-        .resolve(id)
-        .expect("type engine did not contain type id: internal error");
-    drop(lock);
-    ty
-}
-
-#[derive(Default, Clone, Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct Engine {
-    id_counter: usize, // Used to generate unique IDs
-    vars: HashMap<TypeId, TypeInfo>,
+    slab: ConcurrentSlab<TypeInfo>,
 }
 
-impl<'sc> TypeEngine<'sc> for Engine {
-    type TypeId = usize;
-    type TypeInfo = TypeInfo;
-    type ResolvedType = ResolvedType<'sc>;
-    type Error = TypeError<'sc>;
-    /// Create a new type term with whatever we have about its type
-    fn insert(&mut self, info: TypeInfo) -> TypeId {
-        // Generate a new ID for our type term
-        self.id_counter += 1;
-        let id = self.id_counter;
-        self.vars.insert(id, info);
-        id
+impl Engine {
+    pub fn insert_type(&self, ty: TypeInfo) -> TypeId {
+        self.slab.insert(ty)
     }
 
-    fn unify_with_self(
-        &mut self,
-        a: Self::TypeId,
-        b: Self::TypeId,
-        self_type: Self::TypeId,
-        span: &Span<'sc>,
-    ) -> Result<Option<Warning<'sc>>, Self::Error> {
-        let a = if self.vars[&a] == TypeInfo::SelfType {
-            self_type
-        } else {
-            a
-        };
-        let b = if self.vars[&b] == TypeInfo::SelfType {
-            self_type
-        } else {
-            b
-        };
-
-        self.unify(a, b, span)
+    pub fn look_up_type_id_raw(&self, id: TypeId) -> TypeInfo {
+        self.slab.get(id)
     }
+
+    pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
+        match self.slab.get(id) {
+            TypeInfo::Ref(other) => self.look_up_type_id(other),
+            ty => ty,
+        }
+    }
+
     /// Make the types of two type terms equivalent (or produce an error if
     /// there is a conflict between them)
-    fn unify(
-        &mut self,
-        a: Self::TypeId,
-        b: Self::TypeId,
+    pub(crate) fn unify<'sc>(
+        &self,
+        a: TypeId,
+        b: TypeId,
         span: &Span<'sc>,
-    ) -> Result<Option<Warning<'sc>>, Self::Error> {
+    ) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
         use TypeInfo::*;
-        match (self.vars[&a].clone(), self.vars[&b].clone()) {
+        match (self.slab.get(a), self.slab.get(b)) {
             // If the types are exactly the same, we are done.
-            (a, b) if a == b => Ok(None),
+            (a, b) if a == b => Ok(vec![]),
 
             // Follow any references
             (Ref(a), _) => self.unify(a, b, span),
@@ -113,32 +48,95 @@ impl<'sc> TypeEngine<'sc> for Engine {
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about
-            (Unknown, _) => {
-                self.vars.insert(a, TypeInfo::Ref(b));
-                Ok(None)
-            }
-            (_, Unknown) => {
-                self.vars.insert(b, TypeInfo::Ref(a));
-                Ok(None)
-            }
+            (Unknown, _) => match self.slab.replace(a, &Unknown, TypeInfo::Ref(b)) {
+                None => Ok(vec![]),
+                Some(_) => self.unify(a, b, span),
+            },
+            (_, Unknown) => match self.slab.replace(b, &Unknown, TypeInfo::Ref(a)) {
+                None => Ok(vec![]),
+                Some(_) => self.unify(a, b, span),
+            },
 
             (UnsignedInteger(x), UnsignedInteger(y)) => match numeric_cast_compat(x, y) {
                 NumericCastCompatResult::CastableWithWarning(warn) => {
                     // cast the one on the right to the one on the left
-                    self.vars.insert(a, UnsignedInteger(x));
-                    Ok(Some(warn))
+                    Ok(vec![warn])
                 }
                 // do nothing if compatible
-                NumericCastCompatResult::Compatible => Ok(None),
+                NumericCastCompatResult::Compatible => Ok(vec![]),
             },
-            (Numeric, b @ UnsignedInteger(_)) => {
-                self.vars.insert(a, b);
-                Ok(None)
+
+            (ref a_info @ UnknownGeneric { .. }, _) => {
+                self.slab.replace(a, a_info, TypeInfo::Ref(b));
+                Ok(vec![])
             }
-            (a @ UnsignedInteger(_), Numeric) => {
-                self.vars.insert(b, a);
-                Ok(None)
+
+            (_, ref b_info @ UnknownGeneric { .. }) => {
+                self.slab.replace(b, b_info, TypeInfo::Ref(a));
+                Ok(vec![])
             }
+
+            // if the types, once their ids have been looked up, are the same, we are done
+            (
+                Struct {
+                    fields: a_fields, ..
+                },
+                Struct {
+                    fields: b_fields, ..
+                },
+            ) if {
+                let a_fields = a_fields.iter().map(|x| x.r#type);
+                let b_fields = b_fields.iter().map(|x| x.r#type);
+
+                let mut zipped = a_fields.zip(b_fields);
+                zipped.all(|(a, b)| self.unify(a, b, span).is_ok())
+            } =>
+            {
+                Ok(vec![])
+            }
+            (
+                Enum {
+                    variant_types: a_variants,
+                    ..
+                },
+                Enum {
+                    variant_types: b_variants,
+                    ..
+                },
+            ) if {
+                let a_variants = a_variants.iter().map(|x| x.r#type);
+                let b_variants = b_variants.iter().map(|x| x.r#type);
+
+                let mut zipped = a_variants.zip(b_variants);
+                zipped.all(|(a, b)| self.unify(a, b, span).is_ok())
+            } =>
+            {
+                Ok(vec![])
+            }
+
+            (Numeric, b_info @ UnsignedInteger(_)) => {
+                match self.slab.replace(a, &Numeric, b_info) {
+                    None => Ok(vec![]),
+                    Some(_) => self.unify(a, b, span),
+                }
+            }
+            (a_info @ UnsignedInteger(_), Numeric) => {
+                match self.slab.replace(b, &Numeric, a_info) {
+                    None => Ok(vec![]),
+                    Some(_) => self.unify(a, b, span),
+                }
+            }
+
+            (Array(a_elem, a_count), Array(b_elem, b_count)) if a_count == b_count => self
+                .unify(a_elem, b_elem, span)
+                // If there was an error then we want to report the array types as mismatching, not
+                // the elem types.
+                .map_err(|_| TypeError::MismatchedType {
+                    expected: b,
+                    received: a,
+                    help_text: Default::default(),
+                    span: span.clone(),
+                }),
 
             // When unifying complex types, we must check their sub-types. This
             // can be trivially implemented for tuples, sum types, etc.
@@ -149,26 +147,75 @@ impl<'sc> TypeEngine<'sc> for Engine {
             // }
 
             // If no previous attempts to unify were successful, raise an error
-            (a, b) => Err(TypeError::MismatchedType {
-                expected: b.friendly_type_str(),
-                received: a.friendly_type_str(),
+            (_, _) => Err(TypeError::MismatchedType {
+                expected: b,
+                received: a,
                 help_text: Default::default(),
                 span: span.clone(),
             }),
         }
     }
 
-    fn resolve(&self, id: Self::TypeId) -> Result<Self::TypeInfo, Self::Error> {
-        match &self.vars[&id] {
-            TypeInfo::Ref(id) => self.resolve(*id),
-            otherwise => Ok(otherwise.clone()),
+    pub fn unify_with_self<'sc>(
+        &self,
+        a: TypeId,
+        b: TypeId,
+        self_type: TypeId,
+        span: &Span<'sc>,
+    ) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
+        let a = if self.look_up_type_id(a) == TypeInfo::SelfType {
+            self_type
+        } else {
+            a
+        };
+        let b = if self.look_up_type_id(b) == TypeInfo::SelfType {
+            self_type
+        } else {
+            b
+        };
+
+        self.unify(a, b, span)
+    }
+
+    pub fn resolve_type<'sc>(
+        &self,
+        id: TypeId,
+        error_span: &Span<'sc>,
+    ) -> Result<TypeInfo, TypeError<'sc>> {
+        match self.look_up_type_id(id) {
+            TypeInfo::Unknown => Err(TypeError::UnknownType {
+                span: error_span.clone(),
+            }),
+            ty => Ok(ty),
         }
     }
-    fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
-        self.resolve(id)
-            .expect("Internal error: type ID did not exist in type engine")
-    }
 }
+
+pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
+    TYPE_ENGINE.insert_type(ty)
+}
+
+pub(crate) fn look_up_type_id(id: TypeId) -> TypeInfo {
+    TYPE_ENGINE.look_up_type_id(id)
+}
+
+pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
+    TYPE_ENGINE.look_up_type_id_raw(id)
+}
+
+pub fn unify_with_self<'sc>(
+    a: TypeId,
+    b: TypeId,
+    self_type: TypeId,
+    span: &Span<'sc>,
+) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
+    TYPE_ENGINE.unify_with_self(a, b, self_type, span)
+}
+
+pub fn resolve_type<'sc>(id: TypeId, error_span: &Span<'sc>) -> Result<TypeInfo, TypeError<'sc>> {
+    TYPE_ENGINE.resolve_type(id, error_span)
+}
+
 fn numeric_cast_compat<'sc>(a: IntegerBits, b: IntegerBits) -> NumericCastCompatResult<'sc> {
     // if this is a downcast, warn for loss of precision. if upcast, then no warning.
     use IntegerBits::*;

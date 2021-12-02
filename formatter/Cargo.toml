@@ -5,5 +5,5 @@ name = "formatter"
 version = "0.1.0"
 
 [dependencies]
-core_lang = {path = "../core_lang"}
+core_lang = { path = "../core_lang" }
 ropey = "1.2"

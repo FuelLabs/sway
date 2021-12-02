@@ -1,6 +1,7 @@
 use super::*;
 use crate::parse_tree::AsmOp;
 use crate::semantic_analysis::ast_node::*;
+use crate::type_engine::*;
 use crate::Ident;
 
 #[derive(Clone, Debug)]
@@ -29,9 +30,12 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         name: Ident<'sc>,
     },
     Unit,
-    #[allow(dead_code)]
     Array {
         contents: Vec<TypedExpression<'sc>>,
+    },
+    ArrayIndex {
+        prefix: Box<TypedExpression<'sc>>,
+        index: Box<TypedExpression<'sc>>,
     },
     #[allow(dead_code)]
     MatchExpression {
@@ -88,6 +92,13 @@ pub(crate) struct TypedAsmRegisterDeclaration<'sc> {
     pub(crate) name_span: Span<'sc>,
 }
 
+impl TypedAsmRegisterDeclaration<'_> {
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        if let Some(ref mut initializer) = self.initializer {
+            initializer.copy_types(type_mapping)
+        }
+    }
+}
 impl<'sc> TypedExpressionVariant<'sc> {
     pub(crate) fn pretty_print(&self) -> String {
         match self {
@@ -117,6 +128,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
             },
             TypedExpressionVariant::Unit => "unit".into(),
             TypedExpressionVariant::Array { .. } => "array".into(),
+            TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
             TypedExpressionVariant::MatchExpression { .. } => "match exp".into(),
             TypedExpressionVariant::StructExpression { struct_name, .. } => {
                 format!("\"{}\" struct init", struct_name.primary_name)
@@ -153,6 +165,92 @@ impl<'sc> TypedExpressionVariant<'sc> {
                     enum_decl.name.primary_name, variant_name.primary_name, tag
                 )
             }
+        }
+    }
+    /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
+    pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
+        use TypedExpressionVariant::*;
+        match self {
+            Literal(..) => (),
+            FunctionApplication {
+                arguments,
+                function_body,
+                ..
+            } => {
+                arguments
+                    .iter_mut()
+                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping));
+                function_body.copy_types(type_mapping);
+            }
+            LazyOperator { lhs, rhs, .. } => {
+                (*lhs).copy_types(type_mapping);
+                (*rhs).copy_types(type_mapping);
+            }
+            VariableExpression { .. } => (),
+            Unit => (),
+            Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
+            ArrayIndex { prefix, index } => {
+                (*prefix).copy_types(type_mapping);
+                (*index).copy_types(type_mapping);
+            }
+            #[allow(dead_code)]
+            MatchExpression { .. } => (),
+            StructExpression { fields, .. } => {
+                fields.iter_mut().for_each(|x| x.copy_types(type_mapping))
+            }
+            CodeBlock(block) => {
+                block.copy_types(type_mapping);
+            }
+            FunctionParameter => (),
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.copy_types(type_mapping);
+                then.copy_types(type_mapping);
+                if let Some(ref mut r#else) = r#else {
+                    r#else.copy_types(type_mapping);
+                }
+            }
+            AsmExpression {
+                registers, //: Vec<TypedAsmRegisterDeclaration<'sc>>,
+                ..
+            } => {
+                registers
+                    .iter_mut()
+                    .for_each(|x| x.copy_types(type_mapping));
+            }
+            // like a variable expression but it has multiple parts,
+            // like looking up a field in a struct
+            StructFieldAccess {
+                prefix,
+                field_to_access,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                *resolved_type_of_parent = if let Some(matching_id) =
+                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(&type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id))
+                } else {
+                    insert_type(look_up_type_id_raw(*resolved_type_of_parent))
+                };
+
+                field_to_access.copy_types(type_mapping);
+                prefix.copy_types(type_mapping);
+            }
+            EnumInstantiation {
+                enum_decl,
+                contents,
+                ..
+            } => {
+                enum_decl.copy_types(type_mapping);
+                if let Some(ref mut contents) = contents {
+                    contents.copy_types(type_mapping)
+                };
+            }
+            AbiCast { address, .. } => address.copy_types(type_mapping),
         }
     }
 }
