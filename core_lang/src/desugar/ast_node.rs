@@ -1,5 +1,5 @@
 use crate::error::{err, ok, CompileResult};
-use crate::{AstNode, AstNodeContent};
+use crate::{AstNode, AstNodeContent, ReturnStatement, WhileLoop};
 use super::expression::desugar_expression;
 use super::declaration::desugar_declaration;
 
@@ -23,34 +23,56 @@ fn desugar_ast_node_content<'sc>(
 ) -> CompileResult<'sc, AstNodeContent<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    match node_content {
+    let node_content = match node_content {
         AstNodeContent::Expression(exp) => {
-            let node_content = AstNodeContent::Expression(check!(
+            AstNodeContent::Expression(check!(
                 desugar_expression(exp),
                 return err(warnings, errors),
                 warnings,
                 errors
-            ));
-            ok(node_content, warnings, errors)
+            ))
         },
         AstNodeContent::Declaration(decl) => {
-            let node_content = AstNodeContent::Declaration(check!(
+            AstNodeContent::Declaration(check!(
                 desugar_declaration(decl),
                 return err(warnings, errors),
                 warnings,
                 errors
-            ));
-            ok(node_content, warnings, errors)
+            ))
         },
         AstNodeContent::ImplicitReturnExpression(exp) => {
-            let node_content = AstNodeContent::ImplicitReturnExpression(check!(
+            AstNodeContent::ImplicitReturnExpression(check!(
                 desugar_expression(exp),
                 return err(warnings, errors),
                 warnings,
                 errors
-            ));
-            ok(node_content, warnings, errors)
+            ))
         },
-        node => unimplemented!("{:?}", node)
-    }
+        AstNodeContent::ReturnStatement(stmt) => {
+            AstNodeContent::ReturnStatement(check!(
+                desugar_return_stmt(stmt),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ))
+        },
+        AstNodeContent::WhileLoop(while_loop) => {
+            AstNodeContent::WhileLoop(check!(
+                desugar_while_loop(while_loop),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ))
+        },
+        node_content => node_content.clone()
+    };
+    ok(node_content, warnings, errors)
+}
+
+fn desugar_return_stmt<'sc>(stmt: ReturnStatement<'sc>) -> CompileResult<'sc, ReturnStatement<'sc>> {
+    unimplemented!()
+}
+
+fn desugar_while_loop<'sc>(while_loop: WhileLoop<'sc>) -> CompileResult<'sc, WhileLoop<'sc>> {
+    unimplemented!()
 }
