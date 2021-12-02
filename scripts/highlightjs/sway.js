@@ -58,7 +58,7 @@ export default function(hljs) {
     
   ];
   const TYPES = [
-    "bool", "char", "u8", "u16", "u32", "u64", "u128", "b256", "b512", "str", "Self"
+    "bool", "char", "u8", "u16", "u32", "u64", "b256", "str", "Self"
   ];
   return {
     name: 'Sway',
