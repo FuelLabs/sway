@@ -13,20 +13,24 @@ fn main() -> Result<()> {
     let secret_key = secp256k1_test::key::ONE_KEY; // the number 1 as a secret key
     let public_key = secp256k1_test::key::PublicKey::from_secret_key(&secp256k1, &secret_key);
     let message = SecpMessage::from_slice(&message_arr).unwrap();
-    let signature = secp256k1.sign_recoverable(&message, &secret_key);
+    let signature = secp256k1.sign(&message, &secret_key);
 
-    let pubkey_a = public_key.serialize_uncompressed();
-    let address = digest_bytes(&pubkey_a);
-    assert_eq!(pubkey_a.len(), 65);
+    let pubkey = public_key.serialize_uncompressed();
+    let addr_hash = digest_bytes(&pubkey);
+    let address = "0x".to_owned() + &addr_hash;
+    assert_eq!(pubkey.len(), 65);
 
-    let (_rec_id, signature_a) = signature.serialize_compact();
-    let hex_sig = hex::encode(signature_a);
-    assert_eq!(signature_a.len(), 64);
+    let sig = signature.serialize_compact();
+    let hex_sig = hex::encode(sig);
+    assert_eq!(sig.len(), 64);
 
-    println!("privkey: {}", secret_key);
-    println!("pubkey: {}", public_key);
+    println!("private key: {}", secret_key);
+    println!("public key: {} \n", public_key);
+    println!("pubkey: {:?} \n", pubkey);
     println!("message: {:?}", message);
-    println!("Address: {:?}", address);
+    println!("Address: {:?} \n", address);
+    println!("Full Signature: {:?}", signature);
+    println!("Serialized Signature: {:?} \n", sig);
     println!("64-byte Hex Signature: {:?}", hex_sig);
     assert_eq!(hex_sig.len(), 128);
 

@@ -10,6 +10,7 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Address {
     // the ERC OpCode descriptions states:
     // "The 64-byte public key (x, y) recovered from 64-byte signature starting at $rB on 32-byte message hash starting at $rC"
     // Store the first 32 bytes of the public key in pub_key_initial_bytes:
+    // @todo optimize. roll these 2 asm blocks into 1 and remove local variables.
     let pub_key_initial_bytes = asm(buffer, hi: signature.hi, hash: msg_hash) {
         move buffer sp; // Result buffer.
         cfei i32;
