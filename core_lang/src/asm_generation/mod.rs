@@ -11,8 +11,8 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
-        TypedParseTree,
+        NamespaceInner, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+        TypedFunctionDeclaration, TypedParseTree,
     },
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
@@ -617,8 +617,8 @@ impl<'sc> AsmNamespace<'sc> {
     }
 }
 
-pub(crate) fn compile_ast_to_asm<'sc>(
-    ast: TypedParseTree<'sc>,
+pub(crate) fn compile_ast_to_asm<'n, 'sc>(
+    ast: TypedParseTree<'n, 'sc>,
     build_config: &BuildConfig,
 ) -> CompileResult<'sc, FinalizedAsm<'sc>> {
     let mut register_sequencer = RegisterSequencer::new();
@@ -639,7 +639,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace,
+                    &ast_namespace.inner,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -694,7 +694,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace,
+                    &ast_namespace.inner,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -736,7 +736,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace,
+                    &ast_namespace.inner,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -1199,7 +1199,7 @@ fn add_all_constant_decls<'sc>(
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op<'sc>>,
     declarations: &[TypedDeclaration<'sc>],
-    ast_namespace: &Namespace<'sc>,
+    ast_namespace: &NamespaceInner<'sc>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1244,7 +1244,7 @@ fn add_module_constant_decls<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op<'sc>>,
-    ast_namespace: &Namespace<'sc>,
+    ast_namespace: &NamespaceInner<'sc>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1253,8 +1253,8 @@ fn add_module_constant_decls<'sc>(
     // it we need to support hierarchical names (or at least absolute normalised names) to
     // AsmNamespace.  This can be done in the new ASM generator which translates from IR, coming
     // soon.
-    for ns in ast_namespace.modules.values() {
-        for decl in ns.symbols.values() {
+    for ns in ast_namespace.get_all_imported_modules() {
+        for decl in ns.get_all_declared_symbols() {
             if let TypedDeclaration::ConstantDeclaration(decl) = decl {
                 let mut ops = check!(
                     convert_constant_decl_to_asm(decl, namespace, register_sequencer),
