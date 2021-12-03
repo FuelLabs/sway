@@ -3,7 +3,7 @@ use super::ast_node::{
     TypedStructField,
 };
 use crate::error::*;
-use crate::parse_tree::{MethodName, Visibility};
+use crate::parse_tree::Visibility;
 use crate::semantic_analysis::TypedExpression;
 use crate::span::Span;
 use crate::type_engine::*;
@@ -72,39 +72,20 @@ impl<'n, 'sc> Namespace<'n, 'sc> {
     pub(crate) fn find_method_for_type(
         &self,
         r#type: TypeId,
-        method_name: &MethodName<'sc>,
+        method_name: &Ident<'sc>,
+        method_path: &[Ident<'sc>],
+        is_absolute: bool,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression<'sc>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let (namespace, method_name, r#type) = match method_name {
-            // something like a.b(c)
-            MethodName::FromModule { ref method_name } => (&self.inner, method_name, r#type),
-            // something like blah::blah::~Type::foo()
-            MethodName::FromType {
-                ref call_path,
-                ref type_name,
-                ref is_absolute,
-            } => {
-                let module = check!(
-                    self.find_module(&call_path.prefixes[..], *is_absolute),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let r#type = if let Some(type_name) = type_name {
-                    if *type_name == TypeInfo::SelfType {
-                        self_type
-                    } else {
-                        insert_type(type_name.clone())
-                    }
-                } else {
-                    args_buf[0].return_type
-                };
-                (module, &call_path.suffix, r#type)
-            }
-        };
+        let namespace = check!(
+            self.find_module(method_path, is_absolute),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // This is a hack and I don't think it should be used.  We check the local namespace first,
         // but if nothing turns up then we try the namespace where the type itself is declared.

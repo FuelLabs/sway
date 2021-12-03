@@ -38,28 +38,45 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
         ));
     }
 
-    let ty = match method_name {
-        MethodName::FromType { ref type_name, .. } => type_name
-            .as_ref()
-            .map(|x| insert_type(x.clone()))
-            .unwrap_or_else(|| {
-                args_buf
-                    .get(0)
-                    .map(|x| x.return_type)
-                    .unwrap_or_else(|| insert_type(TypeInfo::Unknown))
-            }),
-        _ => args_buf
-            .get(0)
-            .map(|x| x.return_type)
-            .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
+    let method = match method_name {
+        MethodName::FromType { ref type_name, ref call_path, is_absolute } => {
+            let ty = match type_name {
+                Some(name) => {
+                    if *name == TypeInfo::SelfType {
+                        self_type
+                    } else {
+                        insert_type(name.clone())
+                    }
+                },
+                None => {
+                    args_buf
+                        .get(0)
+                        .map(|x| x.return_type)
+                        .unwrap_or_else(|| insert_type(TypeInfo::Unknown))
+                },
+            };
+            check!(
+                namespace.find_method_for_type(
+                    ty, &call_path.suffix, &call_path.prefixes[..], is_absolute, self_type, &args_buf,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        },
+        MethodName::FromModule { ref method_name } => {
+            let ty = args_buf
+                .get(0)
+                .map(|x| x.return_type)
+                .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+            check!(
+                namespace.find_method_for_type(ty, method_name, &[], false, self_type, &args_buf),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        },
     };
-
-    let method = check!(
-        namespace.find_method_for_type(ty, &method_name, self_type, &args_buf),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
     let contract_caller = if method.is_contract_call {
         args_buf.pop_front()
     } else {
