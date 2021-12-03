@@ -6,14 +6,14 @@ use std::address::Address;
 pub struct ParamsTransferToOutput {
     coins: u64,
     token_id: b256,
-    recipient: Address
+    recipient: Address,
 }
 
 /// Parameters for `force_transfer` function.
 pub struct ParamsForceTransfer {
     coins: u64,
     token_id: b256,
-    contract_id: b256
+    contract_id: b256,
 }
 
 abi TokenOps {

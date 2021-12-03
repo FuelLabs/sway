@@ -4,8 +4,6 @@ use std::token::*;
 use token_ops_abi::*;
 
 impl TokenOps for Contract {
-
-
     fn mint(gas: u64, coins: u64, token_id: b256, mint_amount: u64) {
         mint(coins);
     }

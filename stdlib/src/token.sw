@@ -1,6 +1,6 @@
 library token;
 
-use ::address:: Address;
+use ::address::Address;
 
 // @todo add mint func
 // @todo add burn func

@@ -8,7 +8,7 @@ fn main() -> bool {
     // @todo fix import after new constans merged.
     let ETH_ID = ETH_COLOR;
     let test_recipient = ~Address::from(0x3333333333333333333333333333333333333333333333333333333333333333);
-    let test_constract_id = ~Address::from(0x2222222222222222222222222222222222222222222222222222222222222222);
+    let test_contract_id = 0x2222222222222222222222222222222222222222222222222222222222222222;
 
     let transfer_to_output_args = ParamsTransferToOutput {
         coins: 5,
@@ -19,10 +19,10 @@ fn main() -> bool {
     let force_transfer_args = ParamsForceTransfer {
         coins: 5,
         token_id: ETH_ID,
-        contract_id: test_constract_id,
+        contract_id: test_contract_id,
     };
 
-    let id = 0x69653340d655b4144ac0282e137e3907d5c4807803aacc3e66054fafb85d64d3;
+    let id = 0x314143b15215da1248f0c09eba442764f1324a44c3bfcca022ddd1fc2008c542;
     let gas = 1000;
     let coins = 0;
     let token_id = ETH_ID;
