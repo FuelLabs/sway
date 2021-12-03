@@ -1,5 +1,7 @@
 library token;
 
+use ::address:: Address;
+
 // @todo add mint func
 // @todo add burn func
 // @todo add transfer_to_output func
@@ -22,7 +24,8 @@ pub fn burn(n: u64) {
     }
 }
 
-pub fn transfer_to_output() {}
+pub fn transfer_to_output(coins: u64, color: b256, recipient: Address) {
+    // unimplemented
+}
 
-// pub fn transfer() {} ? needed or built-in?
 // pub fn balance() {}  // does it belong here?
