@@ -106,6 +106,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("increment_contract", "call_increment_contract"),
         ("auth_testing_contract", "caller_auth_test"),
         ("token_ops_contract", "token_ops_test"),
+        ("context_testing_contract", "caller_context_test"),
     ];
 
     // Filter them first.
