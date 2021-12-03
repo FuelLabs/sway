@@ -22,7 +22,7 @@ pub fn burn(n: u64) {
     }
 }
 
-
 pub fn transfer_to_output() {}
 
-// pub fn transfer() {}
+// pub fn transfer() {} ? needed or built-in?
+// pub fn balance() {}  // does it belong here?
