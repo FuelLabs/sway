@@ -36,7 +36,9 @@ pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
-pub use semantic_analysis::{Namespace, NamespaceInner, TypedDeclaration, TypedFunctionDeclaration};
+pub use semantic_analysis::{
+    Namespace, NamespaceInner, TypedDeclaration, TypedFunctionDeclaration,
+};
 pub use type_engine::TypeInfo;
 
 // todo rename to language name

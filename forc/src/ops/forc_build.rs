@@ -231,7 +231,9 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         silent_mode,
     )?;
 
-    namespace.inner.insert_dependency_module(dependency_name.to_string(), compiled.namespace.inner);
+    namespace
+        .inner
+        .insert_dependency_module(dependency_name.to_string(), compiled.namespace.inner);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())

@@ -11,8 +11,8 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        NamespaceInner, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
-        TypedParseTree,
+        NamespaceInner, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+        TypedFunctionDeclaration, TypedParseTree,
     },
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,

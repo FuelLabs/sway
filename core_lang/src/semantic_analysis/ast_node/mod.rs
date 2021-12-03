@@ -269,7 +269,9 @@ impl<'sc> TypedAstNode<'sc> {
                                 e.to_typed_decl(&mut namespace.inner, self_type),
                             );
 
-                            namespace.inner.insert(Ident { primary_name, span }, decl.clone());
+                            namespace
+                                .inner
+                                .insert(Ident { primary_name, span }, decl.clone());
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
@@ -385,8 +387,9 @@ impl<'sc> TypedAstNode<'sc> {
                             block_span,
                             ..
                         }) => {
-                            let implementing_for_type_id =
-                                namespace.inner.resolve_type_without_self(&type_implementing_for);
+                            let implementing_for_type_id = namespace
+                                .inner
+                                .resolve_type_without_self(&type_implementing_for);
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             if !type_arguments.is_empty() {
@@ -726,9 +729,7 @@ fn import_new_file<'n, 'sc>(
     };
     dep_config.file_name = file_name;
     dep_config.dir_of_code = Arc::new(dep_path);
-    let crate::InnerDependencyCompileResult {
-        library_exports,
-    } = check!(
+    let crate::InnerDependencyCompileResult { library_exports } = check!(
         crate::compile_inner_dependency(
             static_file_string,
             &dep_namespace,

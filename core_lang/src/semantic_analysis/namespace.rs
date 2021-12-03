@@ -19,14 +19,13 @@ type TraitName<'a> = CallPath<'a>;
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'n, 'sc> {
     crate_namespace: Option<&'n NamespaceInner<'sc>>,
-    pub inner: NamespaceInner<'sc>
+    pub inner: NamespaceInner<'sc>,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct NamespaceInner<'sc> {
     symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    implemented_traits:
-        HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
+    implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
     modules: HashMap<ModuleName, NamespaceInner<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
@@ -146,13 +145,17 @@ impl<'n, 'sc> Namespace<'n, 'sc> {
             warnings,
             errors
         );
-        let symbols = namespace.symbols.iter().filter_map(|(symbol, decl)| {
-            if decl.visibility() == Visibility::Public {
-                Some(symbol.clone())
-            } else {
-                None
-            }
-        }).collect::<Vec<_>>();
+        let symbols = namespace
+            .symbols
+            .iter()
+            .filter_map(|(symbol, decl)| {
+                if decl.visibility() == Visibility::Public {
+                    Some(symbol.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
         for symbol in symbols {
             self.inner.use_synonyms.insert(symbol, path.clone());
         }
@@ -259,7 +262,7 @@ impl<'sc> NamespaceInner<'sc> {
             Some((name, module)) => {
                 assert!(modules.next().is_none());
                 Some((name, module))
-            },
+            }
             None => None,
         }
     }
