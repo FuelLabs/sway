@@ -66,10 +66,9 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    pub(crate) fn type_check<'n>(
+    pub(crate) fn type_check(
         parsed: ParseTree<'sc>,
         initial_namespace_inner: NamespaceInner<'sc>,
-        crate_namespace: Option<&'n NamespaceInner<'sc>>,
         tree_type: TreeType,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -89,7 +88,6 @@ impl<'sc> TypedParseTree<'sc> {
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
                 &mut new_namespace_inner,
-                crate_namespace,
                 build_config,
                 dead_code_graph,
                 dependency_graph
@@ -112,7 +110,6 @@ impl<'sc> TypedParseTree<'sc> {
     fn type_check_nodes<'n>(
         nodes: Vec<AstNode<'sc>>,
         namespace_inner: &mut NamespaceInner<'sc>,
-        crate_namespace: Option<&'n NamespaceInner<'sc>>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -125,7 +122,7 @@ impl<'sc> TypedParseTree<'sc> {
                 TypedAstNode::type_check(
                     node.clone(),
                     namespace_inner,
-                    crate_namespace,
+                    None,
                     crate::type_engine::insert_type(TypeInfo::Unknown),
                     "",
                     // TODO only allow impl traits on contract trees, do something else

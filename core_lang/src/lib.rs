@@ -233,7 +233,6 @@ pub(crate) fn compile_inner_dependency<'sc>(
                 TypedParseTree::type_check(
                     tree,
                     initial_namespace_inner.clone(),
-                    None,
                     TreeType::Library,
                     &build_config.clone(),
                     dead_code_graph,
@@ -304,7 +303,6 @@ pub fn compile_to_asm<'sc>(
             TypedParseTree::type_check(
                 tree,
                 initial_namespace_inner.clone(),
-                None,
                 tree_type,
                 &build_config.clone(),
                 &mut dead_code_graph,
@@ -327,7 +325,6 @@ pub fn compile_to_asm<'sc>(
                 TypedParseTree::type_check(
                     tree,
                     initial_namespace_inner.clone(),
-                    None,
                     TreeType::Library,
                     &build_config.clone(),
                     &mut dead_code_graph,
