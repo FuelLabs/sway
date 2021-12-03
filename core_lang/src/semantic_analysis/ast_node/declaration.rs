@@ -774,9 +774,9 @@ impl TypedReassignment<'_> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub fn type_check(
+    pub fn type_check<'n>(
         fn_decl: FunctionDeclaration<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         _return_type_annotation: TypeId,
         _help_text: impl Into<String>,
         // If there are any `Self` types in this declaration,
@@ -807,6 +807,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
                 namespace
+                    .inner
                     .resolve_type_with_self(return_type, self_type)
                     .unwrap_or_else(|_| {
                         errors.push(CompileError::UnknownType {
@@ -819,7 +820,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
         type_parameters.iter().for_each(|param| {
-            namespace.insert(param.name_ident.clone(), param.into());
+            namespace
+                .inner
+                .insert(param.name_ident.clone(), param.into());
         });
         for FunctionParameter {
             name,
@@ -831,6 +834,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
                 namespace
+                    .inner
                     .resolve_type_with_self(r#type, self_type)
                     .unwrap_or_else(|_| {
                         errors.push(CompileError::UnknownType {
@@ -839,7 +843,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         insert_type(TypeInfo::ErrorRecovery)
                     })
             };
-            namespace.insert(
+            namespace.inner.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     name: name.clone(),
@@ -893,6 +897,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         insert_type(TypeInfo::Ref(matching_id))
                     } else {
                         namespace
+                            .inner
                             .resolve_type_with_self(r#type, self_type)
                             .unwrap_or_else(|_| {
                                 errors.push(CompileError::UnknownType {
