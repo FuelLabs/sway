@@ -18,8 +18,11 @@ pub fn burn(n: u64) {
 }
 
 /// Transfer amount `coins` of type `token_id` to address `recipient`.
-pub fn transfer_to_output(coins: u64, color: b256, recipient: Address) {
-    // unimplemented
+pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
+    // let output =
+    asm(coins, token_id, recipient, output) {
+        tro recipient output coins token_id;
+    }
 }
 
 /// !!! UNCONDITIONAL transfer of amount `coins` of type `token_id` to contract at `contract_id`.
