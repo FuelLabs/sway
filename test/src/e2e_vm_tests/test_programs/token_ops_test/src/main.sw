@@ -18,11 +18,12 @@ fn main() -> bool {
     let coins = 0;
     let color = ETH_COLOR;
 
-    let token_ops_contract = abi(TokenOps, id);
+    let caller = abi(TokenOps, id);
+
     // @todo add total supply modification checks once balance opcode lands.
-    token_ops_contract.mint(gas, coins, color, 11);
-    token_ops_contract.burn(gas, coins, color, 7);
-    token_ops_contract.transfer_to_output(gas, coins, color, transfer_args);
+    caller.mint(gas, coins, color, 11);
+    caller.burn(gas, coins, color, 7);
+    caller.transfer_to_output(gas, coins, color, transfer_args);
 
     true
 }
