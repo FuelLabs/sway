@@ -461,11 +461,10 @@ pub fn compile_to_asm<'n, 'sc>(
 pub fn compile_to_bytecode<'n, 'sc>(
     input: &'sc str,
     initial_namespace_inner: &NamespaceInner<'sc>,
-    crate_namespace: Option<&'n NamespaceInner<'sc>>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> BytecodeCompilationResult<'sc> {
-    match compile_to_asm(input, initial_namespace_inner, crate_namespace, build_config, dependency_graph) {
+    match compile_to_asm(input, initial_namespace_inner, None, build_config, dependency_graph) {
         CompilationResult::Success {
             mut asm,
             mut warnings,

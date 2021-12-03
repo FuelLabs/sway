@@ -307,7 +307,7 @@ fn compile<'n, 'source>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(source, namespace_inner, None, build_config, dependency_graph);
+    let res = core_lang::compile_to_bytecode(source, namespace_inner, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             if !silent_mode {
