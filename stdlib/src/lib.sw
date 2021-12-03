@@ -8,3 +8,4 @@ dep b512;
 dep chain;
 dep address;
 dep token;
+dep block;
