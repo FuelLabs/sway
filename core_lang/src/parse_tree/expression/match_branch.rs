@@ -44,24 +44,57 @@ impl<'sc> MatchBranch<'sc> {
                 return err(warnings, errors);
             }
         };
-        let what = condition.into_inner().next();
-        let condition = match what {
+        let condition = match condition.into_inner().next() {
             Some(e) => {
-                let scrutinee = check!(
-                    Scrutinee::parse_from_pair(e.clone(), config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                MatchCondition::Scrutinee(scrutinee)
+                match e.as_rule() {
+                    Rule::catch_all => MatchCondition::CatchAll(CatchAll {
+                        span: span::Span {
+                            span: e.as_span(),
+                            path: path.clone(),
+                        }
+                    }),
+                    Rule::scrutinee => {
+                        let scrutinee = check!(
+                            Scrutinee::parse_from_pair(e.clone(), config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        MatchCondition::Scrutinee(scrutinee)
+                    },
+                    a => {
+                        eprintln!(
+                            "Unimplemented condition: {:?} ({:?}) ({:?})",
+                            a,
+                            e.as_str(),
+                            e.as_rule()
+                        );
+                        errors.push(CompileError::UnimplementedRule(
+                            a,
+                            span::Span {
+                                span: e.as_span(),
+                                path: path.clone(),
+                            },
+                        ));
+                        // construct unit expression for error recovery
+                        MatchCondition::CatchAll(CatchAll {
+                            span: span::Span {
+                                span: e.as_span(),
+                                path: path.clone(),
+                            }
+                        })
+                    }
+                }
             }
             None => {
-                MatchCondition::CatchAll(CatchAll {
-                    span: span::Span {
+                errors.push(CompileError::Internal(
+                    "Unexpected empty iterator in match condition parsing.",
+                    span::Span {
                         span: pair.as_span(),
-                        path: path.clone(),
-                    }
-                })
+                        path,
+                    },
+                ));
+                return err(warnings, errors);
             }
         };
         let result = match branch.next() {
