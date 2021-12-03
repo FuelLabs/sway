@@ -12,9 +12,9 @@ pub(crate) struct TypedCodeBlock<'sc> {
 }
 
 impl<'sc> TypedCodeBlock<'sc> {
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'n>(
         other: CodeBlock<'sc>,
-        namespace: &Namespace<'sc>,
+        namespace: &Namespace<'n, 'sc>,
         // this is for the return or implicit return
         type_annotation: TypeId,
         help_text: impl Into<String> + Clone,

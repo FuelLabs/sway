@@ -69,6 +69,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("array_basics", ProgramState::Return(1)),             // true
         ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
+        ("block_height", ProgramState::Return(1)),   // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
@@ -106,6 +107,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("basic_storage", "call_basic_storage"),
         ("increment_contract", "call_increment_contract"),
         ("auth_testing_contract", "caller_auth_test"),
+        ("context_testing_contract", "caller_context_test"),
     ];
 
     // Filter them first.
