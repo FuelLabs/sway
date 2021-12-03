@@ -17,12 +17,6 @@ type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
-pub struct Namespace<'n, 'sc> {
-    pub crate_namespace: Option<&'n NamespaceInner<'sc>>,
-    pub inner: NamespaceInner<'sc>,
-}
-
-#[derive(Clone, Debug, Default)]
 pub struct NamespaceInner<'sc> {
     symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
     implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
@@ -32,16 +26,6 @@ pub struct NamespaceInner<'sc> {
     /// namespace _is_ the root namespace.
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
     use_aliases: HashMap<String, Ident<'sc>>,
-}
-
-impl<'n, 'sc> Namespace<'n, 'sc> {
-    pub fn clone_inherit_crate_namespace<'a>(&'a self) -> Namespace<'a, 'sc> {
-        let mut ret = self.clone();
-        if ret.crate_namespace.is_none() {
-            ret.crate_namespace = Some(&self.inner);
-        }
-        ret
-    }
 }
 
 impl<'sc> NamespaceInner<'sc> {

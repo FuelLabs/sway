@@ -627,7 +627,7 @@ pub(crate) fn compile_ast_to_asm<'n, 'sc>(
     let (asm, asm_namespace) = match ast {
         TypedParseTree::Script {
             main_function,
-            namespace: ast_namespace,
+            namespace_inner: ast_namespace,
             declarations,
             ..
         } => {
@@ -639,7 +639,7 @@ pub(crate) fn compile_ast_to_asm<'n, 'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace.inner,
+                    &ast_namespace,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -682,7 +682,7 @@ pub(crate) fn compile_ast_to_asm<'n, 'sc>(
         }
         TypedParseTree::Predicate {
             main_function,
-            namespace: ast_namespace,
+            namespace_inner: ast_namespace,
             declarations,
             ..
         } => {
@@ -694,7 +694,7 @@ pub(crate) fn compile_ast_to_asm<'n, 'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace.inner,
+                    &ast_namespace,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -724,7 +724,7 @@ pub(crate) fn compile_ast_to_asm<'n, 'sc>(
         }
         TypedParseTree::Contract {
             abi_entries,
-            namespace: ast_namespace,
+            namespace_inner: ast_namespace,
             declarations,
             ..
         } => {
@@ -736,7 +736,7 @@ pub(crate) fn compile_ast_to_asm<'n, 'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace.inner,
+                    &ast_namespace,
                 ),
                 return err(warnings, errors),
                 warnings,

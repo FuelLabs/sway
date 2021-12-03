@@ -4,7 +4,7 @@ use super::{
 };
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
-use crate::semantic_analysis::Namespace;
+use crate::semantic_analysis::NamespaceInner;
 use crate::span::Span;
 use crate::type_engine::*;
 use crate::{build_config::BuildConfig, error::*, Ident};
@@ -776,7 +776,8 @@ impl TypedReassignment<'_> {
 impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn type_check<'n>(
         fn_decl: FunctionDeclaration<'sc>,
-        namespace: &mut Namespace<'n, 'sc>,
+        namespace_inner: &mut NamespaceInner<'sc>,
+        crate_namespace: Option<&NamespaceInner<'sc>>,
         _return_type_annotation: TypeId,
         _help_text: impl Into<String>,
         // If there are any `Self` types in this declaration,
@@ -806,8 +807,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             if let Some(matching_id) = return_type.matches_type_parameter(&type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
-                namespace
-                    .inner
+                namespace_inner
                     .resolve_type_with_self(return_type, self_type)
                     .unwrap_or_else(|_| {
                         errors.push(CompileError::UnknownType {
@@ -818,10 +818,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             };
 
         // insert parameters and generic type declarations into namespace
-        let mut namespace = namespace.clone();
+        let mut namespace_inner = namespace_inner.clone();
         type_parameters.iter().for_each(|param| {
-            namespace
-                .inner
+            namespace_inner
                 .insert(param.name_ident.clone(), param.into());
         });
         for FunctionParameter {
@@ -833,8 +832,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             let r#type = if let Some(matching_id) = r#type.matches_type_parameter(&type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
-                namespace
-                    .inner
+                namespace_inner
                     .resolve_type_with_self(r#type, self_type)
                     .unwrap_or_else(|_| {
                         errors.push(CompileError::UnknownType {
@@ -843,7 +841,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         insert_type(TypeInfo::ErrorRecovery)
                     })
             };
-            namespace.inner.insert(
+            namespace_inner.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     name: name.clone(),
@@ -864,7 +862,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         let (body, _implicit_block_return) = check!(
             TypedCodeBlock::type_check(
                 body.clone(),
-                &namespace,
+                &namespace_inner,
+                crate_namespace,
                 return_type,
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
@@ -896,8 +895,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     {
                         insert_type(TypeInfo::Ref(matching_id))
                     } else {
-                        namespace
-                            .inner
+                        namespace_inner
                             .resolve_type_with_self(r#type, self_type)
                             .unwrap_or_else(|_| {
                                 errors.push(CompileError::UnknownType {
