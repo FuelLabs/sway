@@ -1,0 +1,8 @@
+[project]
+author  = "Nick Furfaro"
+license = "MIT"
+name = "block_height"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../stdlib" }
