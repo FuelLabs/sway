@@ -1,14 +1,7 @@
 library token;
+//! Functionality for performing common operatiojns on tokens.
 
 use ::address::Address;
-
-// @todo add mint func
-// @todo add burn func
-// @todo add transfer_to_output func
-// need transfer func?
-// available spec opcodes
-// MINT, BURN, TR, TRO
-// @todo understand variable outputs
 
 /// Mint `n` coins of the current contract's token_id.
 pub fn mint(n: u64) {
