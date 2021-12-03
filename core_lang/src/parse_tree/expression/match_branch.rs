@@ -1,3 +1,4 @@
+use crate::CatchAll;
 use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
@@ -5,6 +6,7 @@ use crate::span;
 use crate::CodeBlock;
 use pest::iterators::Pair;
 
+use super::scrutinee::Scrutinee;
 use super::{Expression, MatchCondition};
 
 #[derive(Debug, Clone)]
@@ -42,23 +44,25 @@ impl<'sc> MatchBranch<'sc> {
                 return err(warnings, errors);
             }
         };
-        let condition = match condition.into_inner().next() {
+        let what = condition.into_inner().next();
+        let condition = match what {
             Some(e) => {
-                let expr = check!(
-                    Expression::parse_from_pair(e.clone(), config),
-                    Expression::Unit {
-                        span: span::Span {
-                            span: e.as_span(),
-                            path: path.clone()
-                        }
-                    },
+                let scrutinee = check!(
+                    Scrutinee::parse_from_pair(e.clone(), config),
+                    return err(warnings, errors),
                     warnings,
                     errors
                 );
-                MatchCondition::Expression(expr)
+                MatchCondition::Scrutinee(scrutinee)
             }
-            // the "_" case
-            None => MatchCondition::CatchAll,
+            None => {
+                MatchCondition::CatchAll(CatchAll {
+                    span: span::Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    }
+                })
+            }
         };
         let result = match branch.next() {
             Some(o) => o,

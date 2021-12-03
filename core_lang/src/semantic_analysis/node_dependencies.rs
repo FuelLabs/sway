@@ -4,6 +4,7 @@ use std::iter::FromIterator;
 use crate::{
     error::*, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode, AstNodeContent,
     CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
+    parse_tree::Scrutinee
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -387,8 +388,8 @@ impl<'sc> Dependencies<'sc> {
                 branches.iter(),
                 |deps, branch| {
                     match &branch.condition {
-                        MatchCondition::CatchAll => deps,
-                        MatchCondition::Expression(expr) => deps.gather_from_expr(expr),
+                        MatchCondition::CatchAll(_) => deps,
+                        MatchCondition::Scrutinee(scrutinee) => deps.gather_from_scrutinee(scrutinee),
                     }
                     .gather_from_expr(&branch.result)
                 },
@@ -400,6 +401,10 @@ impl<'sc> Dependencies<'sc> {
             Expression::Literal { .. } => self,
             Expression::Unit { .. } => self,
         }
+    }
+
+    fn gather_from_scrutinee(self, opt_expr: &Scrutinee<'sc>) -> Self {
+        unimplemented!()
     }
 
     fn gather_from_opt_expr(self, opt_expr: &Option<Expression<'sc>>) -> Self {

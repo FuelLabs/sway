@@ -91,8 +91,9 @@ hex_byte         = @{"0x" ~ hex_digit*}
 hex_digit        =  {"a"|"b"|"c"|"d"|"e"|"f"|"A"|"B"|"C"|"D"|"E"|"F"|"_"|ASCII_DIGIT}
 
 match_expression =  {"match" ~ expr ~ "{" ~ match_branch+ ~ "}"}
-match_branch     =  {match_condition ~ "=>" ~ (code_block|expr) ~ ","}
-match_condition  =  {expr|"_"}
+match_branch     =  {match_scrutinee ~ "=>" ~ (code_block|expr) ~ ","}
+match_scrutinee  =  {scrutinee|"_"}
+scrutinee        =  {literal_value}
 
 // TODO this doesn't support pattern matching
 
