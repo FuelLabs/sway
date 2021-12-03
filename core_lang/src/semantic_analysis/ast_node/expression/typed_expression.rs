@@ -1210,10 +1210,10 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_array(
+    fn type_check_array<'n>(
         contents: Vec<Expression<'sc>>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -1302,11 +1302,11 @@ impl<'sc> TypedExpression<'sc> {
         )
     }
 
-    fn type_check_array_index(
+    fn type_check_array_index<'n>(
         prefix: Expression<'sc>,
         index: Expression<'sc>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace<'n, 'sc>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
