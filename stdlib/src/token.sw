@@ -24,8 +24,17 @@ pub fn burn(n: u64) {
     }
 }
 
+/// Transfer amount `coins` of type `token_id` to address `recipient`.
 pub fn transfer_to_output(coins: u64, color: b256, recipient: Address) {
     // unimplemented
 }
 
-// pub fn balance() {}  // does it belong here?
+/// !!! UNCONDITIONAL transfer of amount `coins` of type `token_id` to contract at `contract_id`.
+/// This will allow the transfer of coins even if there is no way to retrieve them !!!
+/// Use of this function can lead to irretrievable loss of coins if not used with caution.
+// @todo use type `ContractId` if implemented.
+pub fn force_transfer(coins: u64, token_id: b256, contract_id: b256) {
+    asm(coins, token_id, contract_id) {
+        tr contract_id coins token_id;
+    }
+}

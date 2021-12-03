@@ -14,7 +14,10 @@ impl TokenOps for Contract {
         burn(coins);
     }
 
-    fn transfer_to_output(gas: u64, coins: u64, color: b256, params: ParamsTRO) {
+    fn transfer_to_output(gas: u64, coins: u64, color: b256, params: ParamsTransferToOutput) {
         transfer_to_output(params.coins, params.color, params.recipient);
+    }
+    fn force_transfer(gas: u64, coins: u64, color: b256, params: ParamsForceTransfer) {
+        force_transfer(params.coins, params.token_id, params.contract_id)
     }
 }
