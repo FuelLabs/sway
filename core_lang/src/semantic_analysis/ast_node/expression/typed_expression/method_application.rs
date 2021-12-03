@@ -7,11 +7,11 @@ use crate::parser::{HllParser, Rule};
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
-pub(crate) fn type_check_method_application<'sc>(
+pub(crate) fn type_check_method_application<'n, 'sc>(
     method_name: MethodName<'sc>,
     arguments: Vec<Expression<'sc>>,
     span: Span<'sc>,
-    namespace: &mut Namespace<'sc>,
+    namespace: &mut Namespace<'n, 'sc>,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -251,10 +251,10 @@ pub(crate) fn type_check_method_application<'sc>(
 
 // TODO(static span): this whole method can go away and the address can go back in the contract
 // caller type.
-fn re_parse_expression<'a>(
+fn re_parse_expression<'n, 'a>(
     contract_string: String,
     build_config: &BuildConfig,
-    namespace: &mut Namespace<'a>,
+    namespace: &mut Namespace<'n, 'a>,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph<'a>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,

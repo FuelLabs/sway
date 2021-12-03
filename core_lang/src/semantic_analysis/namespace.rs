@@ -17,20 +17,256 @@ type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
-pub struct Namespace<'sc> {
-    pub(crate) symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    pub(crate) implemented_traits:
-        HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
+pub struct Namespace<'n, 'sc> {
+    crate_namespace: Option<&'n NamespaceInner<'sc>>,
+    pub inner: NamespaceInner<'sc>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct NamespaceInner<'sc> {
+    symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
+    implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
-    pub(crate) modules: HashMap<ModuleName, Namespace<'sc>>,
+    modules: HashMap<ModuleName, NamespaceInner<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
     /// namespace _is_ the root namespace.
-    pub(crate) crate_namespace: Box<Option<Namespace<'sc>>>,
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
     use_aliases: HashMap<String, Ident<'sc>>,
 }
 
-impl<'sc> Namespace<'sc> {
+impl<'n, 'sc> Namespace<'n, 'sc> {
+    pub fn clone_inherit_crate_namespace<'a>(&'a self) -> Namespace<'a, 'sc> {
+        let mut ret = self.clone();
+        if ret.crate_namespace.is_none() {
+            ret.crate_namespace = Some(&self.inner);
+        }
+        ret
+    }
+
+    fn find_module(
+        &self,
+        path: &[Ident<'sc>],
+        is_absolute: bool,
+    ) -> CompileResult<'sc, &NamespaceInner<'sc>> {
+        let namespace = if is_absolute {
+            if let Some(ns) = &self.crate_namespace {
+                // this is an absolute import and this is a submodule, so we want the
+                // crate global namespace here
+                ns
+            } else {
+                // this is an absolute import and we are in the root module, so we want
+                // this namespace
+                &self.inner
+            }
+        } else {
+            &self.inner
+        };
+        namespace.find_module_relative(path)
+    }
+
+    /// Pull a single item from a module and import it into this namespace.
+    pub(crate) fn item_import(
+        &mut self,
+        path: Vec<Ident<'sc>>,
+        item: &Ident<'sc>,
+        is_absolute: bool,
+        alias: Option<Ident<'sc>>,
+    ) -> CompileResult<'sc, ()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let namespace = check!(
+            self.find_module(&path, is_absolute),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let mut impls_to_insert = vec![];
+
+        match namespace.symbols.get(item) {
+            Some(decl) => {
+                //  if this is an enum or struct, import its implementations
+                if decl.visibility() != Visibility::Public {
+                    errors.push(CompileError::ImportPrivateSymbol {
+                        name: item.primary_name.to_string(),
+                        span: item.span.clone(),
+                    });
+                }
+                let a = decl.return_type().value;
+                namespace
+                    .implemented_traits
+                    .iter()
+                    .filter(|((_trait_name, type_info), _impl)| {
+                        a.map(look_up_type_id).as_ref() == Some(type_info)
+                    })
+                    .for_each(|(a, b)| {
+                        impls_to_insert.push((a.clone(), b.to_vec()));
+                    });
+                // no matter what, import it this way though.
+                match alias {
+                    Some(alias) => {
+                        self.inner.use_synonyms.insert(alias.clone(), path);
+                        self.inner
+                            .use_aliases
+                            .insert(alias.primary_name.to_string(), item.clone());
+                    }
+                    None => {
+                        self.inner.use_synonyms.insert(item.clone(), path);
+                    }
+                };
+            }
+            None => {
+                errors.push(CompileError::SymbolNotFound {
+                    name: item.primary_name.to_string(),
+                    span: item.span.clone(),
+                });
+                return err(warnings, errors);
+            }
+        };
+
+        impls_to_insert.into_iter().for_each(|(a, b)| {
+            self.inner.implemented_traits.insert(a, b);
+        });
+
+        ok((), warnings, errors)
+    }
+
+    /// Given a path to a module, create synonyms to every symbol in that module.
+    /// This is used when an import path contains an asterisk.
+    pub(crate) fn star_import(
+        &mut self,
+        path: Vec<Ident<'sc>>,
+        is_absolute: bool,
+    ) -> CompileResult<'sc, ()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let namespace = check!(
+            self.find_module(&path, is_absolute),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let symbols = namespace
+            .symbols
+            .iter()
+            .filter_map(|(symbol, decl)| {
+                if decl.visibility() == Visibility::Public {
+                    Some(symbol.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        for symbol in symbols {
+            self.inner.use_synonyms.insert(symbol, path.clone());
+        }
+        ok((), warnings, errors)
+    }
+
+    /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
+    /// method in the namespace. Requires `args_buf` because of some special casing for the
+    /// standard library where we pull the type from the arguments buffer.
+    ///
+    /// This function will generate a missing method error if the method is not found.
+    pub(crate) fn find_method_for_type(
+        &self,
+        r#type: TypeId,
+        method_name: &MethodName<'sc>,
+        self_type: TypeId,
+        args_buf: &VecDeque<TypedExpression<'sc>>,
+    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let (namespace, method_name, r#type) = match method_name {
+            // something like a.b(c)
+            MethodName::FromModule { ref method_name } => (&self.inner, method_name, r#type),
+            // something like blah::blah::~Type::foo()
+            MethodName::FromType {
+                ref call_path,
+                ref type_name,
+                ref is_absolute,
+            } => {
+                let module = check!(
+                    self.find_module(&call_path.prefixes[..], *is_absolute),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let r#type = if let Some(type_name) = type_name {
+                    if *type_name == TypeInfo::SelfType {
+                        self_type
+                    } else {
+                        insert_type(type_name.clone())
+                    }
+                } else {
+                    args_buf[0].return_type
+                };
+                (module, &call_path.suffix, r#type)
+            }
+        };
+
+        // This is a hack and I don't think it should be used.  We check the local namespace first,
+        // but if nothing turns up then we try the namespace where the type itself is declared.
+        let r#type = namespace
+            .resolve_type_with_self(look_up_type_id(r#type), self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType {
+                    span: method_name.span.clone(),
+                });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
+        let methods = self.inner.get_methods_for_type(r#type);
+        let methods = match methods[..] {
+            [] => namespace.get_methods_for_type(r#type),
+            _ => methods,
+        };
+
+        match methods
+            .into_iter()
+            .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
+        {
+            Some(o) => ok(o, warnings, errors),
+            None => {
+                if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
+                    != Some(TypeInfo::ErrorRecovery)
+                {
+                    errors.push(CompileError::MethodNotFound {
+                        method_name: method_name.primary_name.to_string(),
+                        type_name: r#type.friendly_type_str(),
+                        span: method_name.span.clone(),
+                    });
+                }
+                err(warnings, errors)
+            }
+        }
+    }
+}
+
+impl<'sc> NamespaceInner<'sc> {
+    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration<'sc>> {
+        self.symbols.values()
+    }
+
+    pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &NamespaceInner<'sc>> {
+        self.modules.values()
+    }
+
+    // TODO: compile_inner_dependency returns a namespace that contains at most one module and
+    // nothing else. This is confusing and should be fixed.
+    pub fn take_the_only_module(self) -> Option<(String, NamespaceInner<'sc>)> {
+        assert!(self.symbols.is_empty());
+        assert!(self.implemented_traits.is_empty());
+        assert!(self.use_synonyms.is_empty());
+        assert!(self.use_aliases.is_empty());
+        let mut modules = self.modules.into_iter();
+        match modules.next() {
+            Some((name, module)) => {
+                assert!(modules.next().is_none());
+                Some((name, module))
+            }
+            None => None,
+        }
+    }
+
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
     ///
@@ -113,107 +349,6 @@ impl<'sc> Namespace<'sc> {
             o => insert_type(o),
         }
     }
-    /// Given a path to a module, create synonyms to every symbol in that module.
-    /// This is used when an import path contains an asterisk.
-    pub(crate) fn star_import(
-        &mut self,
-        path: Vec<Ident<'sc>>,
-        is_absolute: bool,
-    ) -> CompileResult<'sc, ()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let namespace = check!(
-            self.find_module(&path, is_absolute),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        for (symbol, decl) in namespace.symbols.clone() {
-            if decl.visibility() == Visibility::Public {
-                self.use_synonyms.insert(symbol.clone(), path.clone());
-            }
-        }
-        ok((), warnings, errors)
-    }
-
-    /// Pull a single item from a module and import it into this namespace.
-    pub(crate) fn item_import(
-        &mut self,
-        path: Vec<Ident<'sc>>,
-        item: &Ident<'sc>,
-        is_absolute: bool,
-        alias: Option<Ident<'sc>>,
-    ) -> CompileResult<'sc, ()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let namespace = check!(
-            self.find_module(&path, is_absolute),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let mut impls_to_insert = vec![];
-
-        match namespace.symbols.get(item) {
-            Some(decl) => {
-                //  if this is an enum or struct, import its implementations
-                if decl.visibility() != Visibility::Public {
-                    errors.push(CompileError::ImportPrivateSymbol {
-                        name: item.primary_name.to_string(),
-                        span: item.span.clone(),
-                    });
-                }
-                let a = decl.return_type().value;
-                namespace
-                    .implemented_traits
-                    .iter()
-                    .filter(|((_trait_name, type_info), _impl)| {
-                        a.map(look_up_type_id).as_ref() == Some(type_info)
-                    })
-                    .for_each(|(a, b)| {
-                        impls_to_insert.push((a.clone(), b.to_vec()));
-                    });
-                // no matter what, import it this way though.
-                match alias {
-                    Some(alias) => {
-                        self.use_synonyms.insert(alias.clone(), path);
-                        self.use_aliases
-                            .insert(alias.primary_name.to_string(), item.clone());
-                    }
-                    None => {
-                        self.use_synonyms.insert(item.clone(), path);
-                    }
-                };
-            }
-            None => {
-                errors.push(CompileError::SymbolNotFound {
-                    name: item.primary_name.to_string(),
-                    span: item.span.clone(),
-                });
-                return err(warnings, errors);
-            }
-        };
-
-        impls_to_insert.into_iter().for_each(|(a, b)| {
-            self.implemented_traits.insert(a, b);
-        });
-
-        ok((), warnings, errors)
-    }
-
-    pub(crate) fn merge_namespaces(&mut self, other: &Namespace<'sc>) {
-        for (name, symbol) in &other.symbols {
-            self.symbols.insert(name.clone(), symbol.clone());
-        }
-        for ((name, typ), trait_impl) in &other.implemented_traits {
-            self.implemented_traits
-                .insert((name.clone(), typ.clone()), trait_impl.clone());
-        }
-
-        for (mod_name, namespace) in &other.modules {
-            self.modules.insert(mod_name.clone(), namespace.clone());
-        }
-    }
 
     pub(crate) fn insert(
         &mut self,
@@ -290,7 +425,7 @@ impl<'sc> Namespace<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
-            self.find_module(path, false),
+            self.find_module_relative(path),
             return err(warnings, errors),
             warnings,
             errors
@@ -317,7 +452,7 @@ impl<'sc> Namespace<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
-            self.find_module(path, false),
+            self.find_module_relative(path),
             return err(warnings, errors),
             warnings,
             errors
@@ -353,24 +488,11 @@ impl<'sc> Namespace<'sc> {
         }
     }
 
-    pub(crate) fn find_module(
+    pub(crate) fn find_module_relative(
         &self,
         path: &[Ident<'sc>],
-        is_absolute: bool,
-    ) -> CompileResult<'sc, &Namespace<'sc>> {
-        let mut namespace = if is_absolute {
-            if let Some(ns) = &*self.crate_namespace {
-                // this is an absolute import and this is a submodule, so we want the
-                // crate global namespace here
-                ns
-            } else {
-                // this is an absolute import and we are in the root module, so we want
-                // this namespace
-                self
-            }
-        } else {
-            self
-        };
+    ) -> CompileResult<'sc, &NamespaceInner<'sc>> {
+        let mut namespace = self;
         let mut errors = vec![];
         let warnings = vec![];
         for ident in path {
@@ -427,19 +549,21 @@ impl<'sc> Namespace<'sc> {
         ok((), warnings, errors)
     }
 
-    pub fn insert_module(&mut self, module_name: String, module_contents: Namespace<'sc>) {
+    pub fn insert_module(&mut self, module_name: String, module_contents: NamespaceInner<'sc>) {
         self.modules.insert(module_name, module_contents);
     }
+
     pub fn insert_dependency_module(
         &mut self,
         module_name: String,
-        module_contents: Namespace<'sc>,
+        module_contents: NamespaceInner<'sc>,
     ) {
         self.modules.insert(
             module_name,
             module_contents.modules.into_iter().next().unwrap().1,
         );
     }
+
     pub(crate) fn find_enum(&self, enum_name: &Ident<'sc>) -> Option<TypedEnumDeclaration<'sc>> {
         match self.get_symbol(enum_name) {
             CompileResult {
@@ -551,83 +675,6 @@ impl<'sc> Namespace<'sc> {
         methods
     }
 
-    /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
-    /// method in the namespace. Requires `args_buf` because of some special casing for the
-    /// standard library where we pull the type from the arguments buffer.
-    ///
-    /// This function will generate a missing method error if the method is not found.
-    pub(crate) fn find_method_for_type(
-        &self,
-        r#type: TypeId,
-        method_name: &MethodName<'sc>,
-        self_type: TypeId,
-        args_buf: &VecDeque<TypedExpression<'sc>>,
-    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let (namespace, method_name, r#type) = match method_name {
-            // something like a.b(c)
-            MethodName::FromModule { ref method_name } => (self, method_name, r#type),
-            // something like blah::blah::~Type::foo()
-            MethodName::FromType {
-                ref call_path,
-                ref type_name,
-                ref is_absolute,
-            } => {
-                let module = check!(
-                    self.find_module(&call_path.prefixes[..], *is_absolute),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let r#type = if let Some(type_name) = type_name {
-                    if *type_name == TypeInfo::SelfType {
-                        self_type
-                    } else {
-                        insert_type(type_name.clone())
-                    }
-                } else {
-                    args_buf[0].return_type
-                };
-                (module, &call_path.suffix, r#type)
-            }
-        };
-
-        // This is a hack and I don't think it should be used.  We check the local namespace first,
-        // but if nothing turns up then we try the namespace where the type itself is declared.
-        let r#type = namespace
-            .resolve_type_with_self(look_up_type_id(r#type), self_type)
-            .unwrap_or_else(|_| {
-                errors.push(CompileError::UnknownType {
-                    span: method_name.span.clone(),
-                });
-                insert_type(TypeInfo::ErrorRecovery)
-            });
-        let methods = self.get_methods_for_type(r#type);
-        let methods = match methods[..] {
-            [] => namespace.get_methods_for_type(r#type),
-            _ => methods,
-        };
-
-        match methods
-            .into_iter()
-            .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
-        {
-            Some(o) => ok(o, warnings, errors),
-            None => {
-                if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
-                    != Some(TypeInfo::ErrorRecovery)
-                {
-                    errors.push(CompileError::MethodNotFound {
-                        method_name: method_name.primary_name.to_string(),
-                        type_name: r#type.friendly_type_str(),
-                        span: method_name.span.clone(),
-                    });
-                }
-                err(warnings, errors)
-            }
-        }
-    }
     /// given a declaration that may refer to a variable which contains a struct,
     /// find that struct's fields and name for use in determining if a subfield expression is valid
     /// e.g. foo.bar.baz
