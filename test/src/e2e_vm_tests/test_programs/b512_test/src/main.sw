@@ -1,7 +1,6 @@
 script;
 
 use std::b512::B512;
-use std::constants::ETH_COLOR;
 use std::chain::assert;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.
