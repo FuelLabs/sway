@@ -55,9 +55,14 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                         .unwrap_or_else(|| insert_type(TypeInfo::Unknown))
                 },
             };
+            let from_module = if is_absolute {
+                namespace.crate_namespace
+            } else {
+                None
+            };
             check!(
                 namespace.find_method_for_type(
-                    ty, &call_path.suffix, &call_path.prefixes[..], is_absolute, self_type, &args_buf,
+                    ty, &call_path.suffix, &call_path.prefixes[..], from_module, self_type, &args_buf,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -70,7 +75,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
             check!(
-                namespace.find_method_for_type(ty, method_name, &[], false, self_type, &args_buf),
+                namespace.find_method_for_type(ty, method_name, &[], None, self_type, &args_buf),
                 return err(warnings, errors),
                 warnings,
                 errors

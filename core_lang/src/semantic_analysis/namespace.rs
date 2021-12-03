@@ -43,27 +43,6 @@ impl<'n, 'sc> Namespace<'n, 'sc> {
         ret
     }
 
-    fn find_module(
-        &self,
-        path: &[Ident<'sc>],
-        is_absolute: bool,
-    ) -> CompileResult<'sc, &NamespaceInner<'sc>> {
-        let namespace = if is_absolute {
-            if let Some(ns) = &self.crate_namespace {
-                // this is an absolute import and this is a submodule, so we want the
-                // crate global namespace here
-                ns
-            } else {
-                // this is an absolute import and we are in the root module, so we want
-                // this namespace
-                &self.inner
-            }
-        } else {
-            &self.inner
-        };
-        namespace.find_module_relative(path)
-    }
-
     /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
     /// method in the namespace. Requires `args_buf` because of some special casing for the
     /// standard library where we pull the type from the arguments buffer.
@@ -74,14 +53,18 @@ impl<'n, 'sc> Namespace<'n, 'sc> {
         r#type: TypeId,
         method_name: &Ident<'sc>,
         method_path: &[Ident<'sc>],
-        is_absolute: bool,
+        from_module: Option<&NamespaceInner<'sc>>,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression<'sc>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let base_module = match from_module {
+            Some(base_module) => base_module,
+            None => &self.inner,
+        };
         let namespace = check!(
-            self.find_module(method_path, is_absolute),
+            base_module.find_module_relative(method_path),
             return err(warnings, errors),
             warnings,
             errors
