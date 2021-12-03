@@ -1,12 +1,10 @@
 script;
-use std::constants::ETH_COLOR;
+use std::constants::ETH_ID;
 use std::chain::assert;
 use std::address::Address;
 use token_ops_abi::*;
 
 fn main() -> bool {
-    // @todo fix import after new constans merged.
-    let ETH_ID = ETH_COLOR;
     let test_recipient = ~Address::from(0x3333333333333333333333333333333333333333333333333333333333333333);
     let test_contract_id = 0x2222222222222222222222222222222222222222222222222222222222222222;
 

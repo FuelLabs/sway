@@ -1,5 +1,5 @@
 library token;
-//! Functionality for performing common operatiojns on tokens.
+//! Functionality for performing common operations on tokens.
 
 use ::address::Address;
 
