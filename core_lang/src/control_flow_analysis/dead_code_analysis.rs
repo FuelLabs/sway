@@ -92,8 +92,8 @@ impl<'sc> ControlFlowGraph<'sc> {
             .collect()
     }
 
-    pub(crate) fn append_to_dead_code_graph<'n>(
-        ast: &TypedParseTree<'n, 'sc>,
+    pub(crate) fn append_to_dead_code_graph(
+        ast: &TypedParseTree<'sc>,
         tree_type: TreeType,
         graph: &mut ControlFlowGraph<'sc>,
         // the `Result` return is just to handle `Unimplemented` errors

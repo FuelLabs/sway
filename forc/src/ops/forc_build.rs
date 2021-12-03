@@ -243,15 +243,15 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
     Ok(())
 }
 
-fn compile_library<'n, 'source>(
+fn compile_library<'source>(
     source: &'source str,
     proj_name: &str,
     namespace_inner: &NamespaceInner<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<LibraryExports<'n, 'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace_inner, None, build_config, dependency_graph);
+) -> Result<LibraryExports<'source>, String> {
+    let res = core_lang::compile_to_asm(source, namespace_inner, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
             if !silent_mode {
@@ -449,7 +449,7 @@ fn compile_to_asm<'n, 'source>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> Result<FinalizedAsm<'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace_inner, None, build_config, dependency_graph);
+    let res = core_lang::compile_to_asm(source, namespace_inner, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));

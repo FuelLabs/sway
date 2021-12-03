@@ -17,36 +17,32 @@ pub(crate) enum TreeType {
 }
 
 #[derive(Debug)]
-pub(crate) enum TypedParseTree<'n, 'sc> {
+pub(crate) enum TypedParseTree<'sc> {
     Script {
         main_function: TypedFunctionDeclaration<'sc>,
         namespace_inner: NamespaceInner<'sc>,
-        crate_namespace: Option<&'n NamespaceInner<'sc>>,
         declarations: Vec<TypedDeclaration<'sc>>,
         all_nodes: Vec<TypedAstNode<'sc>>,
     },
     Predicate {
         main_function: TypedFunctionDeclaration<'sc>,
         namespace_inner: NamespaceInner<'sc>,
-        crate_namespace: Option<&'n NamespaceInner<'sc>>,
         declarations: Vec<TypedDeclaration<'sc>>,
         all_nodes: Vec<TypedAstNode<'sc>>,
     },
     Contract {
         abi_entries: Vec<TypedFunctionDeclaration<'sc>>,
         namespace_inner: NamespaceInner<'sc>,
-        crate_namespace: Option<&'n NamespaceInner<'sc>>,
         declarations: Vec<TypedDeclaration<'sc>>,
         all_nodes: Vec<TypedAstNode<'sc>>,
     },
     Library {
         namespace_inner: NamespaceInner<'sc>,
-        crate_namespace: Option<&'n NamespaceInner<'sc>>,
         all_nodes: Vec<TypedAstNode<'sc>>,
     },
 }
 
-impl<'n, 'sc> TypedParseTree<'n, 'sc> {
+impl<'sc> TypedParseTree<'sc> {
     /// The `all_nodes` field in the AST variants is used to perform control flow and return flow
     /// analysis, while the direct copies of the declarations and main functions are used to create
     /// the ASM.
@@ -70,7 +66,7 @@ impl<'n, 'sc> TypedParseTree<'n, 'sc> {
         }
     }
 
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'n>(
         parsed: ParseTree<'sc>,
         initial_namespace_inner: NamespaceInner<'sc>,
         crate_namespace: Option<&'n NamespaceInner<'sc>>,
@@ -107,14 +103,13 @@ impl<'n, 'sc> TypedParseTree<'n, 'sc> {
             typed_nodes,
             parsed.span,
             new_namespace_inner,
-            crate_namespace,
             tree_type,
             warnings,
             errors,
         )
     }
 
-    fn type_check_nodes(
+    fn type_check_nodes<'n>(
         nodes: Vec<AstNode<'sc>>,
         namespace_inner: &mut NamespaceInner<'sc>,
         crate_namespace: Option<&'n NamespaceInner<'sc>>,
@@ -151,11 +146,10 @@ impl<'n, 'sc> TypedParseTree<'n, 'sc> {
         }
     }
 
-    fn validate_typed_nodes(
+    fn validate_typed_nodes<'n>(
         typed_tree_nodes: Vec<TypedAstNode<'sc>>,
         span: Span<'sc>,
         namespace_inner: NamespaceInner<'sc>,
-        crate_namespace: Option<&'n NamespaceInner<'sc>>,
         tree_type: TreeType,
         warnings: Vec<CompileWarning<'sc>>,
         mut errors: Vec<CompileError<'sc>>,
@@ -211,7 +205,6 @@ impl<'n, 'sc> TypedParseTree<'n, 'sc> {
                     main_function: main_func.clone(),
                     all_nodes,
                     namespace_inner,
-                    crate_namespace,
                     declarations,
                 }
             }
@@ -230,19 +223,16 @@ impl<'n, 'sc> TypedParseTree<'n, 'sc> {
                     main_function: mains[0].clone(),
                     all_nodes,
                     namespace_inner,
-                    crate_namespace,
                     declarations,
                 }
             }
             TreeType::Library => TypedParseTree::Library {
                 all_nodes,
                 namespace_inner,
-                crate_namespace,
             },
             TreeType::Contract => TypedParseTree::Contract {
                 abi_entries,
                 namespace_inner,
-                crate_namespace,
                 declarations,
                 all_nodes,
             },

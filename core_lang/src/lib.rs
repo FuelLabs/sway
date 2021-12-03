@@ -51,15 +51,14 @@ pub struct HllParseTree<'sc> {
 }
 
 #[derive(Debug)]
-pub struct HllTypedParseTree<'n, 'sc> {
-    pub library_exports: LibraryExports<'n, 'sc>,
+pub struct HllTypedParseTree<'sc> {
+    pub library_exports: LibraryExports<'sc>,
 }
 
 #[derive(Debug)]
-pub struct LibraryExports<'n, 'sc> {
+pub struct LibraryExports<'sc> {
     pub namespace_inner: NamespaceInner<'sc>,
-    pub crate_namespace: Option<&'n NamespaceInner<'sc>>,
-    trees: Vec<TypedParseTree<'n, 'sc>>,
+    trees: Vec<TypedParseTree<'sc>>,
 }
 
 #[derive(Debug)]
@@ -133,13 +132,13 @@ pub fn parse<'sc>(
     ok(res, warnings, errors)
 }
 
-pub enum CompilationResult<'n, 'sc> {
+pub enum CompilationResult<'sc> {
     Success {
         asm: FinalizedAsm<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Library {
-        exports: LibraryExports<'n, 'sc>,
+        exports: LibraryExports<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -185,8 +184,8 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
 
 /// This struct represents the compilation of an internal dependency
 /// defined through an include statement (the `dep` keyword).
-pub(crate) struct InnerDependencyCompileResult<'n, 'sc> {
-    library_exports: LibraryExports<'n, 'sc>,
+pub(crate) struct InnerDependencyCompileResult<'sc> {
+    library_exports: LibraryExports<'sc>,
 }
 /// For internal compiler use.
 /// Compiles an included file and returns its control flow and dead code graphs.
@@ -195,14 +194,13 @@ pub(crate) struct InnerDependencyCompileResult<'n, 'sc> {
 /// TODO -- there is _so_ much duplicated code and messiness in this file around the
 /// different types of compilation and stuff. After we get to a good state with the MVP,
 /// clean up the types here with the power of hindsight
-pub(crate) fn compile_inner_dependency<'n, 'sc>(
+pub(crate) fn compile_inner_dependency<'sc>(
     input: &'sc str,
     initial_namespace_inner: &NamespaceInner<'sc>,
-    crate_namespace: Option<&'n NamespaceInner<'sc>>,
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompileResult<'sc, InnerDependencyCompileResult<'n, 'sc>> {
+) -> CompileResult<'sc, InnerDependencyCompileResult<'sc>> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
@@ -235,7 +233,7 @@ pub(crate) fn compile_inner_dependency<'n, 'sc>(
                 TypedParseTree::type_check(
                     tree,
                     initial_namespace_inner.clone(),
-                    crate_namespace,
+                    None,
                     TreeType::Library,
                     &build_config.clone(),
                     dead_code_graph,
@@ -247,7 +245,6 @@ pub(crate) fn compile_inner_dependency<'n, 'sc>(
             .collect();
         let mut exports = LibraryExports {
             namespace_inner: Default::default(),
-            crate_namespace: None,
             trees: vec![],
         };
         for (ref name, parse_tree) in res {
@@ -282,13 +279,12 @@ pub(crate) fn compile_inner_dependency<'n, 'sc>(
     )
 }
 
-pub fn compile_to_asm<'n, 'sc>(
+pub fn compile_to_asm<'sc>(
     input: &'sc str,
     initial_namespace_inner: &NamespaceInner<'sc>,
-    crate_namespace: Option<&'n NamespaceInner<'sc>>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompilationResult<'n, 'sc> {
+) -> CompilationResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
@@ -308,7 +304,7 @@ pub fn compile_to_asm<'n, 'sc>(
             TypedParseTree::type_check(
                 tree,
                 initial_namespace_inner.clone(),
-                crate_namespace,
+                None,
                 tree_type,
                 &build_config.clone(),
                 &mut dead_code_graph,
@@ -331,7 +327,7 @@ pub fn compile_to_asm<'n, 'sc>(
                 TypedParseTree::type_check(
                     tree,
                     initial_namespace_inner.clone(),
-                    crate_namespace,
+                    None,
                     TreeType::Library,
                     &build_config.clone(),
                     &mut dead_code_graph,
@@ -343,7 +339,6 @@ pub fn compile_to_asm<'n, 'sc>(
             .collect();
         let mut exports = LibraryExports {
             namespace_inner: Default::default(),
-            crate_namespace: None,
             trees: vec![],
         };
         for (ref name, parse_tree) in res {
@@ -464,7 +459,7 @@ pub fn compile_to_bytecode<'n, 'sc>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> BytecodeCompilationResult<'sc> {
-    match compile_to_asm(input, initial_namespace_inner, None, build_config, dependency_graph) {
+    match compile_to_asm(input, initial_namespace_inner, build_config, dependency_graph) {
         CompilationResult::Success {
             mut asm,
             mut warnings,
@@ -494,8 +489,8 @@ pub fn compile_to_bytecode<'n, 'sc>(
     }
 }
 
-fn perform_control_flow_analysis<'n, 'sc>(
-    tree: &Option<TypedParseTree<'n, 'sc>>,
+fn perform_control_flow_analysis<'sc>(
+    tree: &Option<TypedParseTree<'sc>>,
     tree_type: TreeType,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
@@ -515,8 +510,8 @@ fn perform_control_flow_analysis<'n, 'sc>(
         None => (vec![], vec![]),
     }
 }
-fn perform_control_flow_analysis_on_library_exports<'n, 'sc>(
-    lib: &LibraryExports<'n, 'sc>,
+fn perform_control_flow_analysis_on_library_exports<'sc>(
+    lib: &LibraryExports<'sc>,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     let mut warnings = vec![];

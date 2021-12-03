@@ -182,7 +182,6 @@ impl<'sc> TypedAstNode<'sc> {
                         import_new_file(
                             a,
                             namespace_inner,
-                            crate_namespace,
                             build_config,
                             dead_code_graph,
                             dependency_graph
@@ -705,7 +704,6 @@ impl<'sc> TypedAstNode<'sc> {
 fn import_new_file<'n, 'sc>(
     statement: &IncludeStatement<'sc>,
     namespace_inner: &mut NamespaceInner<'sc>,
-    crate_namespace: Option<&NamespaceInner<'sc>>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -746,10 +744,6 @@ fn import_new_file<'n, 'sc>(
     };
 
     let dep_namespace_inner = namespace_inner.clone();
-    let dep_crate_namespace = match crate_namespace {
-        Some(crate_namespace) => Some(crate_namespace),
-        None => Some(&*namespace_inner),
-    };
     // :)
     let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
     let mut dep_config = build_config.clone();
@@ -763,7 +757,6 @@ fn import_new_file<'n, 'sc>(
         crate::compile_inner_dependency(
             static_file_string,
             &dep_namespace_inner,
-            dep_crate_namespace,
             dep_config,
             dead_code_graph,
             dependency_graph
