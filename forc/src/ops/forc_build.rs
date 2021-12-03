@@ -114,7 +114,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 dependency_name,
                 dependency_details,
                 &mut namespace_inner,
-                None,
                 &mut dependency_graph,
                 silent_mode,
             )?;
@@ -128,7 +127,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         main_file,
         &manifest.project.name,
         &namespace_inner,
-        None,
         build_config,
         &mut dependency_graph,
         silent_mode,
@@ -150,7 +148,6 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
     namespace_inner: &mut NamespaceInner<'source>,
-    crate_namespace: Option<&NamespaceInner<'source>>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<(), String> {
@@ -222,7 +219,6 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
                 dependency_lib,
                 // give it a cloned namespace, which we then merge with this namespace
                 &mut dep_namespace_inner,
-                crate_namespace,
                 dependency_graph,
                 silent_mode,
             )?;
@@ -235,7 +231,6 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         main_file,
         &manifest_of_dep.project.name,
         &dep_namespace_inner,
-        crate_namespace,
         build_config,
         dependency_graph,
         silent_mode,
@@ -252,12 +247,11 @@ fn compile_library<'n, 'source>(
     source: &'source str,
     proj_name: &str,
     namespace_inner: &NamespaceInner<'source>,
-    crate_namespace: Option<&'n NamespaceInner<'source>>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<LibraryExports<'n, 'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace_inner, crate_namespace, build_config, dependency_graph);
+    let res = core_lang::compile_to_asm(source, namespace_inner, None, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
             if !silent_mode {
@@ -309,12 +303,11 @@ fn compile<'n, 'source>(
     source: &'source str,
     proj_name: &str,
     namespace_inner: &NamespaceInner<'source>,
-    crate_namespace: Option<&NamespaceInner<'source>>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(source, namespace_inner, crate_namespace, build_config, dependency_graph);
+    let res = core_lang::compile_to_bytecode(source, namespace_inner, None, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             if !silent_mode {
@@ -453,11 +446,10 @@ fn compile_to_asm<'n, 'source>(
     source: &'source str,
     proj_name: &str,
     namespace_inner: &NamespaceInner<'source>,
-    crate_namespace: Option<&NamespaceInner<'source>>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> Result<FinalizedAsm<'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace_inner, crate_namespace, build_config, dependency_graph);
+    let res = core_lang::compile_to_asm(source, namespace_inner, None, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));
