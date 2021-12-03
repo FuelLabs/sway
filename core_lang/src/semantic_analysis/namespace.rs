@@ -247,10 +247,20 @@ impl<'sc> NamespaceInner<'sc> {
         self.modules.values()
     }
 
-    pub fn overwrite_modules_with_alias(&mut self, alias: &str) {
-        let modules = std::mem::replace(&mut self.modules, HashMap::new());
-        if let Some(value) = modules.into_values().next() {
-            self.modules.insert(alias.to_string(), value);
+    // TODO: compile_inner_dependency returns a namespace that contains at most one module and
+    // nothing else. This is confusing and should be fixed.
+    pub fn take_the_only_module(self) -> Option<(String, NamespaceInner<'sc>)> {
+        assert!(self.symbols.is_empty());
+        assert!(self.implemented_traits.is_empty());
+        assert!(self.use_synonyms.is_empty());
+        assert!(self.use_aliases.is_empty());
+        let mut modules = self.modules.into_iter();
+        match modules.next() {
+            Some((name, module)) => {
+                assert!(modules.next().is_none());
+                Some((name, module))
+            },
+            None => None,
         }
     }
 
@@ -334,20 +344,6 @@ impl<'sc> NamespaceInner<'sc> {
             },
             TypeInfo::Ref(id) => id,
             o => insert_type(o),
-        }
-    }
-
-    pub(crate) fn merge_namespaces(&mut self, other: &NamespaceInner<'sc>) {
-        for (name, symbol) in &other.symbols {
-            self.symbols.insert(name.clone(), symbol.clone());
-        }
-        for ((name, typ), trait_impl) in &other.implemented_traits {
-            self.implemented_traits
-                .insert((name.clone(), typ.clone()), trait_impl.clone());
-        }
-
-        for (mod_name, namespace) in &other.modules {
-            self.modules.insert(mod_name.clone(), namespace.clone());
         }
     }
 

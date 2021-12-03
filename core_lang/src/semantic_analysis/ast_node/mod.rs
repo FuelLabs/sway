@@ -716,38 +716,38 @@ fn import_new_file<'n, 'sc>(
         }
     };
 
-    let dep_inner = {
-        let dep_namespace = namespace.clone_inherit_crate_namespace();
-        // :)
-        let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
-        let mut dep_config = build_config.clone();
-        let dep_path = {
-            canonical_path.pop();
-            canonical_path
-        };
-        dep_config.file_name = file_name;
-        dep_config.dir_of_code = Arc::new(dep_path);
-        let crate::InnerDependencyCompileResult {
-            mut library_exports,
-        } = check!(
-            crate::compile_inner_dependency(
-                static_file_string,
-                &dep_namespace,
-                dep_config,
-                dead_code_graph,
-                dependency_graph
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        if let Some(ref alias) = statement.alias {
-            library_exports.namespace.inner.overwrite_modules_with_alias(alias.primary_name);
-        }
-        library_exports.namespace.inner
+    let dep_namespace = namespace.clone_inherit_crate_namespace();
+    // :)
+    let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
+    let mut dep_config = build_config.clone();
+    let dep_path = {
+        canonical_path.pop();
+        canonical_path
     };
-    namespace.inner.merge_namespaces(&dep_inner);
+    dep_config.file_name = file_name;
+    dep_config.dir_of_code = Arc::new(dep_path);
+    let crate::InnerDependencyCompileResult {
+        library_exports,
+    } = check!(
+        crate::compile_inner_dependency(
+            static_file_string,
+            &dep_namespace,
+            dep_config,
+            dead_code_graph,
+            dependency_graph
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    if let Some((name, module)) = library_exports.namespace.inner.take_the_only_module() {
+        let name = match statement.alias {
+            Some(ref alias) => alias.primary_name.to_string(),
+            None => name,
+        };
+        namespace.inner.insert_module(name, module);
+    }
 
     ok((), warnings, errors)
 }
