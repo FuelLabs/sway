@@ -61,7 +61,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                 None
             };
             check!(
-                namespace.find_method_for_type(
+                namespace.inner.find_method_for_type(
                     ty, &call_path.suffix, &call_path.prefixes[..], from_module, self_type, &args_buf,
                 ),
                 return err(warnings, errors),
@@ -75,7 +75,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
             check!(
-                namespace.find_method_for_type(ty, method_name, &[], None, self_type, &args_buf),
+                namespace.inner.find_method_for_type(ty, method_name, &[], None, self_type, &args_buf),
                 return err(warnings, errors),
                 warnings,
                 errors

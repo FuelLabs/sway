@@ -42,69 +42,6 @@ impl<'n, 'sc> Namespace<'n, 'sc> {
         }
         ret
     }
-
-    /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
-    /// method in the namespace. Requires `args_buf` because of some special casing for the
-    /// standard library where we pull the type from the arguments buffer.
-    ///
-    /// This function will generate a missing method error if the method is not found.
-    pub(crate) fn find_method_for_type(
-        &self,
-        r#type: TypeId,
-        method_name: &Ident<'sc>,
-        method_path: &[Ident<'sc>],
-        from_module: Option<&NamespaceInner<'sc>>,
-        self_type: TypeId,
-        args_buf: &VecDeque<TypedExpression<'sc>>,
-    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let base_module = match from_module {
-            Some(base_module) => base_module,
-            None => &self.inner,
-        };
-        let namespace = check!(
-            base_module.find_module_relative(method_path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // This is a hack and I don't think it should be used.  We check the local namespace first,
-        // but if nothing turns up then we try the namespace where the type itself is declared.
-        let r#type = namespace
-            .resolve_type_with_self(look_up_type_id(r#type), self_type)
-            .unwrap_or_else(|_| {
-                errors.push(CompileError::UnknownType {
-                    span: method_name.span.clone(),
-                });
-                insert_type(TypeInfo::ErrorRecovery)
-            });
-        let methods = self.inner.get_methods_for_type(r#type);
-        let methods = match methods[..] {
-            [] => namespace.get_methods_for_type(r#type),
-            _ => methods,
-        };
-
-        match methods
-            .into_iter()
-            .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
-        {
-            Some(o) => ok(o, warnings, errors),
-            None => {
-                if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
-                    != Some(TypeInfo::ErrorRecovery)
-                {
-                    errors.push(CompileError::MethodNotFound {
-                        method_name: method_name.primary_name.to_string(),
-                        type_name: r#type.friendly_type_str(),
-                        span: method_name.span.clone(),
-                    });
-                }
-                err(warnings, errors)
-            }
-        }
-    }
 }
 
 impl<'sc> NamespaceInner<'sc> {
@@ -672,5 +609,68 @@ impl<'sc> NamespaceInner<'sc> {
         });
 
         ok((), warnings, errors)
+    }
+
+    /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
+    /// method in the namespace. Requires `args_buf` because of some special casing for the
+    /// standard library where we pull the type from the arguments buffer.
+    ///
+    /// This function will generate a missing method error if the method is not found.
+    pub(crate) fn find_method_for_type(
+        &self,
+        r#type: TypeId,
+        method_name: &Ident<'sc>,
+        method_path: &[Ident<'sc>],
+        from_module: Option<&NamespaceInner<'sc>>,
+        self_type: TypeId,
+        args_buf: &VecDeque<TypedExpression<'sc>>,
+    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let base_module = match from_module {
+            Some(base_module) => base_module,
+            None => self,
+        };
+        let namespace = check!(
+            base_module.find_module_relative(method_path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        // This is a hack and I don't think it should be used.  We check the local namespace first,
+        // but if nothing turns up then we try the namespace where the type itself is declared.
+        let r#type = namespace
+            .resolve_type_with_self(look_up_type_id(r#type), self_type)
+            .unwrap_or_else(|_| {
+                errors.push(CompileError::UnknownType {
+                    span: method_name.span.clone(),
+                });
+                insert_type(TypeInfo::ErrorRecovery)
+            });
+        let methods = self.get_methods_for_type(r#type);
+        let methods = match methods[..] {
+            [] => namespace.get_methods_for_type(r#type),
+            _ => methods,
+        };
+
+        match methods
+            .into_iter()
+            .find(|TypedFunctionDeclaration { name, .. }| name == method_name)
+        {
+            Some(o) => ok(o, warnings, errors),
+            None => {
+                if args_buf.get(0).map(|x| look_up_type_id(x.return_type))
+                    != Some(TypeInfo::ErrorRecovery)
+                {
+                    errors.push(CompileError::MethodNotFound {
+                        method_name: method_name.primary_name.to_string(),
+                        type_name: r#type.friendly_type_str(),
+                        span: method_name.span.clone(),
+                    });
+                }
+                err(warnings, errors)
+            }
+        }
     }
 }
