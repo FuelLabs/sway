@@ -18,7 +18,7 @@ type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'n, 'sc> {
-    crate_namespace: Option<&'n NamespaceInner<'sc>>,
+    pub crate_namespace: Option<&'n NamespaceInner<'sc>>,
     pub inner: NamespaceInner<'sc>,
 }
 
@@ -62,104 +62,6 @@ impl<'n, 'sc> Namespace<'n, 'sc> {
             &self.inner
         };
         namespace.find_module_relative(path)
-    }
-
-    /// Pull a single item from a module and import it into this namespace.
-    pub(crate) fn item_import(
-        &mut self,
-        path: Vec<Ident<'sc>>,
-        item: &Ident<'sc>,
-        is_absolute: bool,
-        alias: Option<Ident<'sc>>,
-    ) -> CompileResult<'sc, ()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let namespace = check!(
-            self.find_module(&path, is_absolute),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let mut impls_to_insert = vec![];
-
-        match namespace.symbols.get(item) {
-            Some(decl) => {
-                //  if this is an enum or struct, import its implementations
-                if decl.visibility() != Visibility::Public {
-                    errors.push(CompileError::ImportPrivateSymbol {
-                        name: item.primary_name.to_string(),
-                        span: item.span.clone(),
-                    });
-                }
-                let a = decl.return_type().value;
-                namespace
-                    .implemented_traits
-                    .iter()
-                    .filter(|((_trait_name, type_info), _impl)| {
-                        a.map(look_up_type_id).as_ref() == Some(type_info)
-                    })
-                    .for_each(|(a, b)| {
-                        impls_to_insert.push((a.clone(), b.to_vec()));
-                    });
-                // no matter what, import it this way though.
-                match alias {
-                    Some(alias) => {
-                        self.inner.use_synonyms.insert(alias.clone(), path);
-                        self.inner
-                            .use_aliases
-                            .insert(alias.primary_name.to_string(), item.clone());
-                    }
-                    None => {
-                        self.inner.use_synonyms.insert(item.clone(), path);
-                    }
-                };
-            }
-            None => {
-                errors.push(CompileError::SymbolNotFound {
-                    name: item.primary_name.to_string(),
-                    span: item.span.clone(),
-                });
-                return err(warnings, errors);
-            }
-        };
-
-        impls_to_insert.into_iter().for_each(|(a, b)| {
-            self.inner.implemented_traits.insert(a, b);
-        });
-
-        ok((), warnings, errors)
-    }
-
-    /// Given a path to a module, create synonyms to every symbol in that module.
-    /// This is used when an import path contains an asterisk.
-    pub(crate) fn star_import(
-        &mut self,
-        path: Vec<Ident<'sc>>,
-        is_absolute: bool,
-    ) -> CompileResult<'sc, ()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let namespace = check!(
-            self.find_module(&path, is_absolute),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let symbols = namespace
-            .symbols
-            .iter()
-            .filter_map(|(symbol, decl)| {
-                if decl.visibility() == Visibility::Public {
-                    Some(symbol.clone())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        for symbol in symbols {
-            self.inner.use_synonyms.insert(symbol, path.clone());
-        }
-        ok((), warnings, errors)
     }
 
     /// Given a method and a type (plus a `self_type` to potentially resolve it), find that
@@ -701,5 +603,110 @@ impl<'sc> NamespaceInner<'sc> {
                 }],
             ),
         }
+    }
+
+    /// Given a path to a module, create synonyms to every symbol in that module.
+    /// This is used when an import path contains an asterisk.
+    pub(crate) fn star_import(
+        &mut self,
+        from_module: Option<&NamespaceInner<'sc>>,
+        path: Vec<Ident<'sc>>,
+    ) -> CompileResult<'sc, ()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let base_namespace = match from_module {
+            Some(base_namespace) => base_namespace,
+            None => self,
+        };
+        let namespace = check!(
+            base_namespace.find_module_relative(&path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let symbols = namespace
+            .symbols
+            .iter()
+            .filter_map(|(symbol, decl)| {
+                if decl.visibility() == Visibility::Public {
+                    Some(symbol.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        for symbol in symbols {
+            self.use_synonyms.insert(symbol, path.clone());
+        }
+        ok((), warnings, errors)
+    }
+
+    /// Pull a single item from a module and import it into this namespace.
+    pub(crate) fn item_import(
+        &mut self,
+        from_namespace: Option<&NamespaceInner<'sc>>,
+        path: Vec<Ident<'sc>>,
+        item: &Ident<'sc>,
+        alias: Option<Ident<'sc>>,
+    ) -> CompileResult<'sc, ()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let base_namespace = match from_namespace {
+            Some(base_namespace) => base_namespace,
+            None => self,
+        };
+        let namespace = check!(
+            base_namespace.find_module_relative(&path),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let mut impls_to_insert = vec![];
+
+        match namespace.symbols.get(item) {
+            Some(decl) => {
+                //  if this is an enum or struct, import its implementations
+                if decl.visibility() != Visibility::Public {
+                    errors.push(CompileError::ImportPrivateSymbol {
+                        name: item.primary_name.to_string(),
+                        span: item.span.clone(),
+                    });
+                }
+                let a = decl.return_type().value;
+                namespace
+                    .implemented_traits
+                    .iter()
+                    .filter(|((_trait_name, type_info), _impl)| {
+                        a.map(look_up_type_id).as_ref() == Some(type_info)
+                    })
+                    .for_each(|(a, b)| {
+                        impls_to_insert.push((a.clone(), b.to_vec()));
+                    });
+                // no matter what, import it this way though.
+                match alias {
+                    Some(alias) => {
+                        self.use_synonyms.insert(alias.clone(), path);
+                        self.use_aliases
+                            .insert(alias.primary_name.to_string(), item.clone());
+                    }
+                    None => {
+                        self.use_synonyms.insert(item.clone(), path);
+                    }
+                };
+            }
+            None => {
+                errors.push(CompileError::SymbolNotFound {
+                    name: item.primary_name.to_string(),
+                    span: item.span.clone(),
+                });
+                return err(warnings, errors);
+            }
+        };
+
+        impls_to_insert.into_iter().for_each(|(a, b)| {
+            self.implemented_traits.insert(a, b);
+        });
+
+        ok((), warnings, errors)
     }
 }

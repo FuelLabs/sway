@@ -157,10 +157,17 @@ impl<'sc> TypedAstNode<'sc> {
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
+                    let from_module = if a.is_absolute {
+                        namespace.crate_namespace
+                    } else {
+                        None
+                    };
                     let mut res = match a.import_type {
-                        ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
+                        ImportType::Star => {
+                            namespace.inner.star_import(from_module, a.call_path)
+                        },
                         ImportType::Item(s) => {
-                            namespace.item_import(a.call_path, &s, a.is_absolute, a.alias)
+                            namespace.inner.item_import(from_module, a.call_path, &s, a.alias)
                         }
                     };
                     warnings.append(&mut res.warnings);
