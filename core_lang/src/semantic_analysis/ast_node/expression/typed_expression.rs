@@ -1416,7 +1416,7 @@ mod tests {
         expr: Expression<'sc>,
         type_annotation: TypeId,
     ) -> CompileResult<'sc, TypedExpression> {
-        let mut namespace: Namespace<'sc> = Default::default();
+        let mut namespace: Namespace<'sc, 'sc> = Default::default();
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),
