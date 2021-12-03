@@ -10,7 +10,7 @@ fn main() -> bool {
     let transfer_args = ParamsTRO {
         coins: 5,
         color: ETH_COLOR,
-        recipient: test_recipient
+        recipient: test_recipient,
     };
 
     let id = 0x69653340d655b4144ac0282e137e3907d5c4807803aacc3e66054fafb85d64d3;
