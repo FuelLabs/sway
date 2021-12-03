@@ -13,7 +13,7 @@ fn main() -> bool {
         recipient: test_recipient
     };
 
-    let id = 0xb425088803674c94ca9df119c8ac429905ab45d69285534cfbc4e7ffab9bbd5f;
+    let id = 0x69653340d655b4144ac0282e137e3907d5c4807803aacc3e66054fafb85d64d3;
     let gas = 1000;
     let coins = 0;
     let color = ETH_COLOR;

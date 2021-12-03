@@ -10,7 +10,7 @@ token_ops_abi = { path = "../token_ops_abi"}
 
 [[tx-input]]
 type = "Contract"
-contract-id = "0xb425088803674c94ca9df119c8ac429905ab45d69285534cfbc4e7ffab9bbd5f"
+contract-id = "0x69653340d655b4144ac0282e137e3907d5c4807803aacc3e66054fafb85d64d3"
 utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
