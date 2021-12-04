@@ -2,7 +2,7 @@ use crate::utils::{constants, defaults};
 use std::fs;
 
 pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::error::Error>> {
-    // Make an new directory for the project
+    // Make a new directory for the project
     fs::create_dir_all(format!("{}/src", project_name))?;
 
     // Make directory for tests
