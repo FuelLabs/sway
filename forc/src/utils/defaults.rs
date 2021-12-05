@@ -39,7 +39,7 @@ rand = "0.8"
 
 [[test]]
 name = "integration_tests"
-path = "harness.rs"
+path = "tests/harness.rs"
 harness = true
 "#,
         real_name, project_name,

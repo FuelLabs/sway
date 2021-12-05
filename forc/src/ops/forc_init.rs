@@ -16,11 +16,7 @@ pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::
 
     // Insert default test manifest file
     fs::write(
-        format!(
-            "{}/tests/{}",
-            project_name,
-            constants::TEST_MANIFEST_FILE_NAME
-        ),
+        format!("{}/{}", project_name, constants::TEST_MANIFEST_FILE_NAME),
         defaults::default_tests_manifest(&project_name),
     )?;
 

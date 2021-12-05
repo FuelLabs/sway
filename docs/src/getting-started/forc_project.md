@@ -12,10 +12,10 @@ Here is the project that Forc has initialized:
 $ cd hello_world
 $ tree .
 ├── Forc.toml
+├── Cargo.toml
 ├── src
 │   └── main.sw
 └── tests
-    ├── Cargo.toml
     └── harness.rs
 ```
 
@@ -77,14 +77,14 @@ $ cd my-fuel-project
 $ tree
 .
 ├── Forc.toml
+├── Cargo.toml
 ├── src
 │   └── main.sw
 └── tests
-    ├── Cargo.toml
     └── harness.rs
 ```
 
-Note that this is a Rust package, that's why inside it you can see a `Cargo.toml`, which is a Rust project manifest file. This manifest contains necessary Rust dependencies to enable you to write Rust-based tests using our [Rust SDK](https://github.com/FuelLabs/fuels-rs/).
+Note that this is a Rust package, that's why inside it you can see a `Cargo.toml`, which is a Rust project manifest file. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our Rust SDK (`fuels-rs`).
 
 These tests can be run using either the Rust compiler / Cargo, or you can opt to use `forc test`, which will look for Rust tests under the `tests/` directory (which is created automatically with `forc init`).
 

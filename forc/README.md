@@ -28,18 +28,18 @@ $ cd my-fuel-project
 $ tree
 .
 ├── Forc.toml
+├── Cargo.toml
 ├── src
 │   └── main.sw
 └── tests
-    ├── Cargo.toml
     └── harness.rs
 ```
 
-`Forc.toml` is the Forc manifest file, containing information about the project and dependencies.
+`Forc.toml` is the Forc manifest file, containing information about the project and dependencies. `Cargo.toml` is the Rust project manifest file, used by the Rust-based tests package.
 
 A `src/` directory is created, with a single `main.sw` Sway file in it.
 
-A `tests/` directory is also created, however, this is a Rust package, that's why under it you can see a `Cargo.toml`, which is a Rust project manifest file. This manifest contains necessary Rust dependencies to enable you to write Rust-based tests using our Rust SDK (`fuels-rs`). More on this in the `Test` section down below.
+A `tests/` directory is also created. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our Rust SDK (`fuels-rs`). More on this in the `Test` section down below.
 
 ## Build (`forc build`)
 
@@ -163,7 +163,7 @@ test harness ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
 ```
 
-Alternatively, you could `cd` into `test/` and run `cargo test`.
+Alternatively, you could run `cargo test`.
 
 Alternatively, you could opt to write these tests in Typescript, using our [Typescript SDK](https://github.com/FuelLabs/fuels-ts/).
 

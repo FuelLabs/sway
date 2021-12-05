@@ -1,7 +1,4 @@
-use crate::utils::constants;
-use std::env;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
 use std::process::Command as ProcessCommand;
 use std::process::Stdio;
 use std::thread;
@@ -21,13 +18,6 @@ pub(crate) struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> Result<(), String> {
-    let test_path = env::current_dir()
-        .unwrap()
-        .join(Path::new(constants::TEST_DIRECTORY));
-
-    // Change current directory to this project's test directory
-    env::set_current_dir(&test_path).unwrap();
-
     // Cargo args setup
     let mut args: Vec<String> = vec!["test".into()];
     match command.test_name.to_owned() {
