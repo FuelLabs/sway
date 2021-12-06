@@ -1,4 +1,4 @@
-use crate::{Expression, MatchBranch, Span, MatchCondition, VariableDeclaration, Declaration, Ident, TypeInfo, AstNode, AstNodeContent, CodeBlock};
+use crate::{Expression, MatchBranch, Span, MatchCondition, VariableDeclaration, Declaration, Ident, TypeInfo, AstNode, AstNodeContent, CodeBlock, Literal};
 use crate::error::{err, ok, CompileResult};
 use super::matcher::matcher;
 
@@ -33,7 +33,7 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
                     result: result.to_owned(),
                     match_req_map,
                     match_impl_map,
-                    span: branch_span.to_owned()
+                    span: todo!()
                 });
             }
             None => unimplemented!("implement proper error handling"),
@@ -50,7 +50,7 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
                 op: crate::LazyOp::And,
                 lhs: Box::new(left_req.clone()),
                 rhs: Box::new(right_req.clone()),
-                span: branch_span.to_owned(),
+                span: todo!()
             };
             match conditional {
                 None => {
@@ -61,12 +61,12 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
                         op: crate::LazyOp::And,
                         lhs: Box::new(the_conditional),
                         rhs: Box::new(condition),
-                        span: branch_span.to_owned()
+                        span: todo!()
                     });
                 }
             }
         }
-        println!("{:?}", conditional);
+        //println!("{:?}", conditional);
 
         // 2b. Assemble the statements that go inside of the body of the if expression
         let mut code_block_stmts = vec![];
@@ -80,33 +80,101 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
             });
             code_block_stmts.push(AstNode {
                 content: AstNodeContent::Declaration(decl),
-                span: branch_span.clone()
+                span: todo!()
             });
         }
         code_block_stmts.push(AstNode {
             content: AstNodeContent::Expression(result.to_owned()),
-            span: branch_span.clone()
+            span: todo!()
         });
-        println!("{:#?}", code_block_stmts);
+        //println!("{:#?}", code_block_stmts);
 
         // 2c. Assemble the giant if statement.
         match if_statement {
-            None => unimplemented!(),
+            None => {
+                let block = Expression::CodeBlock {
+                    contents: CodeBlock {
+                        contents: code_block_stmts,
+                        whole_block_span: todo!()
+                    },
+                    span: todo!()
+                };
+                if_statement = match conditional {
+                    None => Some(block),
+                    Some(conditional) => Some(Expression::IfExp {
+                        condition: Box::new(conditional),
+                        then: Box::new(block),
+                        r#else: None,
+                        span: todo!()
+                    })
+                };
+            },
             Some(Expression::CodeBlock {
                 contents: CodeBlock {
-                    contents,
+                    contents: right_contents,
                     whole_block_span
                 },
                 span: exp_span
-            }) => unimplemented!(),
+            }) => {
+                let left = Expression::CodeBlock {
+                    contents: CodeBlock {
+                        contents: code_block_stmts,
+                        whole_block_span: todo!()
+                    },
+                    span: todo!()
+                };
+                let right = Expression::CodeBlock {
+                    contents: CodeBlock {
+                        contents: right_contents,
+                        whole_block_span: todo!()
+                    },
+                    span: todo!()
+                };
+                if_statement = match conditional {
+                    None => Some(Expression::IfExp {
+                        condition: Box::new(Expression::Literal {
+                            value: Literal::Boolean(true),
+                            span: todo!()
+                        }),
+                        then: Box::new(left),
+                        r#else: Some(Box::new(right)),
+                        span: todo!()
+                    }),
+                    Some(the_conditional) => Some(Expression::IfExp {
+                        condition: Box::new(the_conditional),
+                        then: Box::new(left),
+                        r#else: Some(Box::new(right)),
+                        span: todo!()
+                    })
+                };
+            },
             Some(Expression::IfExp {
                 condition,
                 then,
                 r#else,
                 span: exp_span
-            }) => unimplemented!(),
+            }) => {
+                if_statement = Some(Expression::IfExp {
+                    condition: Box::new(conditional.unwrap()),
+                    then: Box::new(Expression::CodeBlock {
+                        contents: CodeBlock {
+                            contents: code_block_stmts,
+                            whole_block_span: todo!()
+                        },
+                        span: todo!()
+                    }),
+                    r#else: Some(Box::new(Expression::IfExp {
+                        condition,
+                        then,
+                        r#else,
+                        span: todo!()
+                    })),
+                    span: todo!()
+                });
+            }
             _ => unimplemented!(),
         }
+        println!("{:#?}", if_statement);
     }
     
     // 3. Return!
