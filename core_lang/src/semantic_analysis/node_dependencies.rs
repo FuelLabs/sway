@@ -403,8 +403,11 @@ impl<'sc> Dependencies<'sc> {
         }
     }
 
-    fn gather_from_scrutinee(self, opt_expr: &Scrutinee<'sc>) -> Self {
-        unimplemented!()
+    fn gather_from_scrutinee(self, scrutinee: &Scrutinee<'sc>) -> Self {
+        match scrutinee {
+            Scrutinee::Literal { .. } => self,
+            scrutinee => unimplemented!("{:?}", scrutinee)
+        }
     }
 
     fn gather_from_opt_expr(self, opt_expr: &Option<Expression<'sc>>) -> Self {

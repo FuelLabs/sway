@@ -5,8 +5,18 @@ use crate::error::{err, ok, CompileResult};
 use super::matcher::matcher;
 
 pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expression<'sc>> {
+    let mut warnings = vec!();
+    let mut errors = vec!();
     match exp {
         Expression::MatchExpression { primary_expression, branches, span } => desugar_match_expression(&*primary_expression, branches, span),
+        Expression::VariableExpression { name, span } => {
+            let exp = Expression::VariableExpression { name, span };
+            ok(exp, warnings, errors)
+        },
+        Expression::Literal { value, span } => {
+            let exp = Expression::Literal { value, span };
+            ok(exp, warnings, errors)
+        }
         exp => unimplemented!("{:?}", exp)
     }
 }
