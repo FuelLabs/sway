@@ -171,9 +171,12 @@
 <p>If you have used Rust, the structure of a Sway project will feel very familiar to you. It looks like this:</p>
 <!-- markdownlint-disable-next-line fenced-code-language -->
 <pre><code>my-project/
-├─ src/
-│  ├─main.sw
-├─ Forc.toml
+├── Forc.toml
+├── src
+│   └── main.sw
+└── tests
+    ├── Cargo.toml
+    └── harness.rs
 </code></pre>
 <p>When initializing a new project via <code>forc init</code>, this is the structure that it will default to.</p>
 
