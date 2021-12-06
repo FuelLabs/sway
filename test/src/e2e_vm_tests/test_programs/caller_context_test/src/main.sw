@@ -1,5 +1,5 @@
 script;
-use std::constants::ETH_COLOR;
+use std::constants::ETH_ID;
 use std::chain::assert;
 use context_testing_abi::ContextTesting;
 
@@ -12,11 +12,11 @@ fn main() -> bool {
     let test_contract = abi(ContextTesting, deployed_contract_id);
 
     // test Context::this_id():
-    let returned_contract_id = test_contract.get_id(gas, 0, ETH_COLOR, ());
+    let returned_contract_id = test_contract.get_id(gas, 0, ETH_ID, ());
     assert(returned_contract_id == deployed_contract_id);
 
     // test Context::msg_value():
-    let returned_amount = test_contract.get_amount(gas, amount, ETH_COLOR, ());
+    let returned_amount = test_contract.get_amount(gas, amount, ETH_ID, ());
     assert(returned_amount == amount);
 
     // test Context::msg_color():
