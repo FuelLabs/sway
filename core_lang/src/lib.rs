@@ -37,7 +37,7 @@ pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
 pub use semantic_analysis::{
-    NamespaceInner, TypedDeclaration, TypedFunctionDeclaration,
+    Namespace, TypedDeclaration, TypedFunctionDeclaration,
 };
 pub use type_engine::TypeInfo;
 
@@ -57,7 +57,7 @@ pub struct HllTypedParseTree<'sc> {
 
 #[derive(Debug)]
 pub struct LibraryExports<'sc> {
-    pub namespace_inner: NamespaceInner<'sc>,
+    pub namespace: Namespace<'sc>,
     trees: Vec<TypedParseTree<'sc>>,
 }
 
@@ -196,7 +196,7 @@ pub(crate) struct InnerDependencyCompileResult<'sc> {
 /// clean up the types here with the power of hindsight
 pub(crate) fn compile_inner_dependency<'sc>(
     input: &'sc str,
-    initial_namespace_inner: &NamespaceInner<'sc>,
+    initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -232,7 +232,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
             .filter_map(|(name, tree)| {
                 TypedParseTree::type_check(
                     tree,
-                    initial_namespace_inner.clone(),
+                    initial_namespace.clone(),
                     TreeType::Library,
                     &build_config.clone(),
                     dead_code_graph,
@@ -243,13 +243,13 @@ pub(crate) fn compile_inner_dependency<'sc>(
             })
             .collect();
         let mut exports = LibraryExports {
-            namespace_inner: Default::default(),
+            namespace: Default::default(),
             trees: vec![],
         };
         for (ref name, parse_tree) in res {
-            exports.namespace_inner.insert_module(
+            exports.namespace.insert_module(
                 name.primary_name.to_string(),
-                parse_tree.namespace_inner().clone(),
+                parse_tree.namespace().clone(),
             );
             exports.trees.push(parse_tree);
         }
@@ -280,7 +280,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
 
 pub fn compile_to_asm<'sc>(
     input: &'sc str,
-    initial_namespace_inner: &NamespaceInner<'sc>,
+    initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompilationResult<'sc> {
@@ -302,7 +302,7 @@ pub fn compile_to_asm<'sc>(
         ast.map(|tree| {
             TypedParseTree::type_check(
                 tree,
-                initial_namespace_inner.clone(),
+                initial_namespace.clone(),
                 tree_type,
                 &build_config.clone(),
                 &mut dead_code_graph,
@@ -324,7 +324,7 @@ pub fn compile_to_asm<'sc>(
             .filter_map(|(name, tree)| {
                 TypedParseTree::type_check(
                     tree,
-                    initial_namespace_inner.clone(),
+                    initial_namespace.clone(),
                     TreeType::Library,
                     &build_config.clone(),
                     &mut dead_code_graph,
@@ -335,13 +335,13 @@ pub fn compile_to_asm<'sc>(
             })
             .collect();
         let mut exports = LibraryExports {
-            namespace_inner: Default::default(),
+            namespace: Default::default(),
             trees: vec![],
         };
         for (ref name, parse_tree) in res {
-            exports.namespace_inner.insert_module(
+            exports.namespace.insert_module(
                 name.primary_name.to_string(),
-                parse_tree.namespace_inner().clone(),
+                parse_tree.namespace().clone(),
             );
             exports.trees.push(parse_tree);
         }
@@ -452,11 +452,11 @@ pub fn compile_to_asm<'sc>(
 }
 pub fn compile_to_bytecode<'n, 'sc>(
     input: &'sc str,
-    initial_namespace_inner: &NamespaceInner<'sc>,
+    initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> BytecodeCompilationResult<'sc> {
-    match compile_to_asm(input, initial_namespace_inner, build_config, dependency_graph) {
+    match compile_to_asm(input, initial_namespace, build_config, dependency_graph) {
         CompilationResult::Success {
             mut asm,
             mut warnings,

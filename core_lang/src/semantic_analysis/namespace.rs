@@ -17,29 +17,29 @@ type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
-pub struct NamespaceInner<'sc> {
+pub struct Namespace<'sc> {
     symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
     implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
-    modules: HashMap<ModuleName, NamespaceInner<'sc>>,
+    modules: HashMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
     /// namespace _is_ the root namespace.
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
     use_aliases: HashMap<String, Ident<'sc>>,
 }
 
-impl<'sc> NamespaceInner<'sc> {
+impl<'sc> Namespace<'sc> {
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration<'sc>> {
         self.symbols.values()
     }
 
-    pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &NamespaceInner<'sc>> {
+    pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &Namespace<'sc>> {
         self.modules.values()
     }
 
     // TODO: compile_inner_dependency returns a namespace that contains at most one module and
     // nothing else. This is confusing and should be fixed.
-    pub fn take_the_only_module(self) -> Option<(String, NamespaceInner<'sc>)> {
+    pub fn take_the_only_module(self) -> Option<(String, Namespace<'sc>)> {
         assert!(self.symbols.is_empty());
         assert!(self.implemented_traits.is_empty());
         assert!(self.use_synonyms.is_empty());
@@ -278,7 +278,7 @@ impl<'sc> NamespaceInner<'sc> {
     pub(crate) fn find_module_relative(
         &self,
         path: &[Ident<'sc>],
-    ) -> CompileResult<'sc, &NamespaceInner<'sc>> {
+    ) -> CompileResult<'sc, &Namespace<'sc>> {
         let mut namespace = self;
         let mut errors = vec![];
         let warnings = vec![];
@@ -336,14 +336,14 @@ impl<'sc> NamespaceInner<'sc> {
         ok((), warnings, errors)
     }
 
-    pub fn insert_module(&mut self, module_name: String, module_contents: NamespaceInner<'sc>) {
+    pub fn insert_module(&mut self, module_name: String, module_contents: Namespace<'sc>) {
         self.modules.insert(module_name, module_contents);
     }
 
     pub fn insert_dependency_module(
         &mut self,
         module_name: String,
-        module_contents: NamespaceInner<'sc>,
+        module_contents: Namespace<'sc>,
     ) {
         self.modules.insert(
             module_name,
@@ -494,7 +494,7 @@ impl<'sc> NamespaceInner<'sc> {
     /// This is used when an import path contains an asterisk.
     pub(crate) fn star_import(
         &mut self,
-        from_module: Option<&NamespaceInner<'sc>>,
+        from_module: Option<&Namespace<'sc>>,
         path: Vec<Ident<'sc>>,
     ) -> CompileResult<'sc, ()> {
         let mut warnings = vec![];
@@ -529,7 +529,7 @@ impl<'sc> NamespaceInner<'sc> {
     /// Pull a single item from a module and import it into this namespace.
     pub(crate) fn item_import(
         &mut self,
-        from_namespace: Option<&NamespaceInner<'sc>>,
+        from_namespace: Option<&Namespace<'sc>>,
         path: Vec<Ident<'sc>>,
         item: &Ident<'sc>,
         alias: Option<Ident<'sc>>,
@@ -605,7 +605,7 @@ impl<'sc> NamespaceInner<'sc> {
         r#type: TypeId,
         method_name: &Ident<'sc>,
         method_path: &[Ident<'sc>],
-        from_module: Option<&NamespaceInner<'sc>>,
+        from_module: Option<&Namespace<'sc>>,
         self_type: TypeId,
         args_buf: &VecDeque<TypedExpression<'sc>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {

@@ -18,7 +18,7 @@ use std::io::Write;
 
 use anyhow::Result;
 use core_lang::{
-    BuildConfig, BytecodeCompilationResult, CompilationResult, LibraryExports, NamespaceInner,
+    BuildConfig, BytecodeCompilationResult, CompilationResult, LibraryExports, Namespace,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -73,7 +73,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     let mut dependency_graph = HashMap::new();
 
-    let mut namespace_inner: NamespaceInner = Default::default();
+    let mut namespace: Namespace = Default::default();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
             // Check if dependency is a git-based dependency.
@@ -113,7 +113,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 &this_dir,
                 dependency_name,
                 dependency_details,
-                &mut namespace_inner,
+                &mut namespace,
                 &mut dependency_graph,
                 silent_mode,
             )?;
@@ -126,7 +126,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let main = compile(
         main_file,
         &manifest.project.name,
-        &namespace_inner,
+        &namespace,
         build_config,
         &mut dependency_graph,
         silent_mode,
@@ -147,7 +147,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
-    namespace_inner: &mut NamespaceInner<'source>,
+    namespace: &mut Namespace<'source>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<(), String> {
@@ -205,7 +205,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         file_name.to_path_buf(),
         manifest_dir.clone(),
     );
-    let mut dep_namespace_inner = namespace_inner.clone();
+    let mut dep_namespace = namespace.clone();
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {
@@ -218,7 +218,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
                 dependency_name,
                 dependency_lib,
                 // give it a cloned namespace, which we then merge with this namespace
-                &mut dep_namespace_inner,
+                &mut dep_namespace,
                 dependency_graph,
                 silent_mode,
             )?;
@@ -230,14 +230,14 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
     let compiled = compile_library(
         main_file,
         &manifest_of_dep.project.name,
-        &dep_namespace_inner,
+        &dep_namespace,
         build_config,
         dependency_graph,
         silent_mode,
     )?;
 
-    namespace_inner
-        .insert_dependency_module(dependency_name.to_string(), compiled.namespace_inner);
+    namespace
+        .insert_dependency_module(dependency_name.to_string(), compiled.namespace);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())
@@ -246,12 +246,12 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
 fn compile_library<'source>(
     source: &'source str,
     proj_name: &str,
-    namespace_inner: &NamespaceInner<'source>,
+    namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<LibraryExports<'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace_inner, build_config, dependency_graph);
+    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
             if !silent_mode {
@@ -302,12 +302,12 @@ fn compile_library<'source>(
 fn compile<'n, 'source>(
     source: &'source str,
     proj_name: &str,
-    namespace_inner: &NamespaceInner<'source>,
+    namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(source, namespace_inner, build_config, dependency_graph);
+    let res = core_lang::compile_to_bytecode(source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             if !silent_mode {
@@ -445,11 +445,11 @@ fn format_err(err: &core_lang::CompileError) {
 fn compile_to_asm<'n, 'source>(
     source: &'source str,
     proj_name: &str,
-    namespace_inner: &NamespaceInner<'source>,
+    namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> Result<FinalizedAsm<'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace_inner, build_config, dependency_graph);
+    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {
             warnings.iter().for_each(|warning| format_warning(warning));

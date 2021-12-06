@@ -11,7 +11,7 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        NamespaceInner, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+        Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
         TypedFunctionDeclaration, TypedParseTree,
     },
     types::ResolvedType,
@@ -627,7 +627,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
     let (asm, asm_namespace) = match ast {
         TypedParseTree::Script {
             main_function,
-            namespace_inner: ast_namespace,
+            namespace: ast_namespace,
             declarations,
             ..
         } => {
@@ -682,7 +682,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
         }
         TypedParseTree::Predicate {
             main_function,
-            namespace_inner: ast_namespace,
+            namespace: ast_namespace,
             declarations,
             ..
         } => {
@@ -724,7 +724,7 @@ pub(crate) fn compile_ast_to_asm<'sc>(
         }
         TypedParseTree::Contract {
             abi_entries,
-            namespace_inner: ast_namespace,
+            namespace: ast_namespace,
             declarations,
             ..
         } => {
@@ -1199,7 +1199,7 @@ fn add_all_constant_decls<'sc>(
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op<'sc>>,
     declarations: &[TypedDeclaration<'sc>],
-    ast_namespace: &NamespaceInner<'sc>,
+    ast_namespace: &Namespace<'sc>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1244,7 +1244,7 @@ fn add_module_constant_decls<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op<'sc>>,
-    ast_namespace: &NamespaceInner<'sc>,
+    ast_namespace: &Namespace<'sc>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];

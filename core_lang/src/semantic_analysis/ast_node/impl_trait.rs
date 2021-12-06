@@ -1,6 +1,6 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
-use crate::semantic_analysis::{NamespaceInner, TypedDeclaration, TypedFunctionDeclaration};
+use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 use crate::span::Span;
 use crate::type_engine::{
     insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeInfo,
@@ -13,8 +13,8 @@ use std::collections::{HashMap, HashSet};
 
 pub(crate) fn implementation_of_trait<'n, 'sc>(
     impl_trait: ImplTrait<'sc>,
-    namespace_inner: &mut NamespaceInner<'sc>,
-    crate_namespace: Option<&NamespaceInner<'sc>>,
+    namespace: &mut Namespace<'sc>,
+    crate_namespace: Option<&Namespace<'sc>>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -30,7 +30,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
-    let type_implementing_for = namespace_inner
+    let type_implementing_for = namespace
         .resolve_type_without_self(&type_implementing_for);
     let type_implementing_for = look_up_type_id(type_implementing_for);
     let type_implementing_for_id = insert_type(type_implementing_for.clone());
@@ -40,7 +40,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
             type_arguments[0].clone().name_ident.span,
         ));
     }
-    match namespace_inner
+    match namespace
         .get_call_path(&trait_name)
         .ok(&mut warnings, &mut errors)
     {
@@ -61,7 +61,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
                     &tr.methods,
                     &tr.name,
                     &tr.type_parameters,
-                    namespace_inner,
+                    namespace,
                     crate_namespace,
                     type_implementing_for_id,
                     build_config,
@@ -79,7 +79,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
             // type check all components of the impl trait functions
             // add the methods to the namespace
 
-            namespace_inner.insert_trait_implementation(
+            namespace.insert_trait_implementation(
                 trait_name.clone(),
                 match resolve_type(type_implementing_for_id, &type_implementing_for_span) {
                     Ok(o) => o,
@@ -121,7 +121,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
                     &abi.name,
                     // ABIs don't have type parameters
                     &[],
-                    namespace_inner,
+                    namespace,
                     crate_namespace,
                     type_implementing_for_id,
                     build_config,
@@ -139,7 +139,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
             // type check all components of the impl trait functions
             // add the methods to the namespace
 
-            namespace_inner.insert_trait_implementation(
+            namespace.insert_trait_implementation(
                 trait_name.clone(),
                 look_up_type_id(type_implementing_for_id),
                 functions_buf.clone(),
@@ -177,8 +177,8 @@ fn type_check_trait_implementation<'n, 'sc>(
     methods: &[FunctionDeclaration<'sc>],
     trait_name: &Ident<'sc>,
     type_arguments: &[TypeParameter<'sc>],
-    namespace_inner: &mut NamespaceInner<'sc>,
-    crate_namespace: Option<&NamespaceInner<'sc>>,
+    namespace: &mut Namespace<'sc>,
+    crate_namespace: Option<&Namespace<'sc>>,
     _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -207,7 +207,7 @@ fn type_check_trait_implementation<'n, 'sc>(
         let fn_decl = check!(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
-                namespace_inner,
+                namespace,
                 crate_namespace,
                 insert_type(TypeInfo::Unknown),
                 "",
@@ -348,7 +348,7 @@ fn type_check_trait_implementation<'n, 'sc>(
 
     // this name space is temporary! It is used only so that the below methods
     // can reference functions from the interface
-    let mut local_namespace = namespace_inner.clone();
+    let mut local_namespace = namespace.clone();
     local_namespace.insert_trait_implementation(
         CallPath {
             prefixes: vec![],

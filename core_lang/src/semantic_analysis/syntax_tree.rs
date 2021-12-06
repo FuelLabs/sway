@@ -2,7 +2,7 @@ use super::node_dependencies;
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::semantic_analysis::NamespaceInner;
+use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
 use crate::{AstNode, ParseTree};
@@ -20,24 +20,24 @@ pub(crate) enum TreeType {
 pub(crate) enum TypedParseTree<'sc> {
     Script {
         main_function: TypedFunctionDeclaration<'sc>,
-        namespace_inner: NamespaceInner<'sc>,
+        namespace: Namespace<'sc>,
         declarations: Vec<TypedDeclaration<'sc>>,
         all_nodes: Vec<TypedAstNode<'sc>>,
     },
     Predicate {
         main_function: TypedFunctionDeclaration<'sc>,
-        namespace_inner: NamespaceInner<'sc>,
+        namespace: Namespace<'sc>,
         declarations: Vec<TypedDeclaration<'sc>>,
         all_nodes: Vec<TypedAstNode<'sc>>,
     },
     Contract {
         abi_entries: Vec<TypedFunctionDeclaration<'sc>>,
-        namespace_inner: NamespaceInner<'sc>,
+        namespace: Namespace<'sc>,
         declarations: Vec<TypedDeclaration<'sc>>,
         all_nodes: Vec<TypedAstNode<'sc>>,
     },
     Library {
-        namespace_inner: NamespaceInner<'sc>,
+        namespace: Namespace<'sc>,
         all_nodes: Vec<TypedAstNode<'sc>>,
     },
 }
@@ -56,25 +56,25 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    pub(crate) fn namespace_inner(&self) -> &NamespaceInner<'sc> {
+    pub(crate) fn namespace(&self) -> &Namespace<'sc> {
         use TypedParseTree::*;
         match self {
-            Library { namespace_inner, .. } => namespace_inner,
-            Script { namespace_inner, .. } => namespace_inner,
-            Contract { namespace_inner, .. } => namespace_inner,
-            Predicate { namespace_inner, .. } => namespace_inner,
+            Library { namespace, .. } => namespace,
+            Script { namespace, .. } => namespace,
+            Contract { namespace, .. } => namespace,
+            Predicate { namespace, .. } => namespace,
         }
     }
 
     pub(crate) fn type_check(
         parsed: ParseTree<'sc>,
-        initial_namespace_inner: NamespaceInner<'sc>,
+        initial_namespace: Namespace<'sc>,
         tree_type: TreeType,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, Self> {
-        let mut new_namespace_inner = initial_namespace_inner.clone();
+        let mut new_namespace = initial_namespace.clone();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -87,7 +87,7 @@ impl<'sc> TypedParseTree<'sc> {
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
-                &mut new_namespace_inner,
+                &mut new_namespace,
                 build_config,
                 dead_code_graph,
                 dependency_graph
@@ -100,7 +100,7 @@ impl<'sc> TypedParseTree<'sc> {
         TypedParseTree::validate_typed_nodes(
             typed_nodes,
             parsed.span,
-            new_namespace_inner,
+            new_namespace,
             tree_type,
             warnings,
             errors,
@@ -109,7 +109,7 @@ impl<'sc> TypedParseTree<'sc> {
 
     fn type_check_nodes<'n>(
         nodes: Vec<AstNode<'sc>>,
-        namespace_inner: &mut NamespaceInner<'sc>,
+        namespace: &mut Namespace<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -121,7 +121,7 @@ impl<'sc> TypedParseTree<'sc> {
             .map(|node| {
                 TypedAstNode::type_check(
                     node.clone(),
-                    namespace_inner,
+                    namespace,
                     None,
                     crate::type_engine::insert_type(TypeInfo::Unknown),
                     "",
@@ -146,7 +146,7 @@ impl<'sc> TypedParseTree<'sc> {
     fn validate_typed_nodes<'n>(
         typed_tree_nodes: Vec<TypedAstNode<'sc>>,
         span: Span<'sc>,
-        namespace_inner: NamespaceInner<'sc>,
+        namespace: Namespace<'sc>,
         tree_type: TreeType,
         warnings: Vec<CompileWarning<'sc>>,
         mut errors: Vec<CompileError<'sc>>,
@@ -201,7 +201,7 @@ impl<'sc> TypedParseTree<'sc> {
                 TypedParseTree::Predicate {
                     main_function: main_func.clone(),
                     all_nodes,
-                    namespace_inner,
+                    namespace,
                     declarations,
                 }
             }
@@ -219,17 +219,17 @@ impl<'sc> TypedParseTree<'sc> {
                 TypedParseTree::Script {
                     main_function: mains[0].clone(),
                     all_nodes,
-                    namespace_inner,
+                    namespace,
                     declarations,
                 }
             }
             TreeType::Library => TypedParseTree::Library {
                 all_nodes,
-                namespace_inner,
+                namespace,
             },
             TreeType::Contract => TypedParseTree::Contract {
                 abi_entries,
-                namespace_inner,
+                namespace,
                 declarations,
                 all_nodes,
             },

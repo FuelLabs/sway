@@ -14,8 +14,8 @@ pub(crate) struct TypedCodeBlock<'sc> {
 impl<'sc> TypedCodeBlock<'sc> {
     pub(crate) fn type_check<'n>(
         other: CodeBlock<'sc>,
-        namespace_inner: &NamespaceInner<'sc>,
-        crate_namespace: Option<&'n NamespaceInner<'sc>>,
+        namespace: &Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         // this is for the return or implicit return
         type_annotation: TypeId,
         help_text: impl Into<String> + Clone,
@@ -29,14 +29,14 @@ impl<'sc> TypedCodeBlock<'sc> {
 
         // Mutable clone, because the interior of a code block must not change the surrounding
         // namespace.
-        let mut local_namespace_inner = namespace_inner.clone();
+        let mut local_namespace = namespace.clone();
         let evaluated_contents = other
             .contents
             .iter()
             .filter_map(|node| {
                 TypedAstNode::type_check(
                     node.clone(),
-                    &mut local_namespace_inner,
+                    &mut local_namespace,
                     crate_namespace,
                     type_annotation,
                     help_text.clone(),
