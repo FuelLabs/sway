@@ -820,8 +820,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
         type_parameters.iter().for_each(|param| {
-            namespace
-                .insert(param.name_ident.clone(), param.into());
+            namespace.insert(param.name_ident.clone(), param.into());
         });
         for FunctionParameter {
             name,

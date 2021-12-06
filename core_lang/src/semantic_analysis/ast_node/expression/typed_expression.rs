@@ -45,9 +45,7 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, Self> {
         let expr_span = other.span();
         let res = match other {
-            Expression::Literal { value: lit, span } => {
-                Self::type_check_literal(lit, span)
-            }
+            Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
             Expression::VariableExpression { name, span, .. } => {
                 Self::type_check_variable_expression(name, span, namespace)
             }

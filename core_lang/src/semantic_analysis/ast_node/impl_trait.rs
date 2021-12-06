@@ -30,8 +30,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
         type_arguments_span,
         block_span,
     } = impl_trait;
-    let type_implementing_for = namespace
-        .resolve_type_without_self(&type_implementing_for);
+    let type_implementing_for = namespace.resolve_type_without_self(&type_implementing_for);
     let type_implementing_for = look_up_type_id(type_implementing_for);
     let type_implementing_for_id = insert_type(type_implementing_for.clone());
     if !type_arguments.is_empty() {

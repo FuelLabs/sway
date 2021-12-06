@@ -41,7 +41,11 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
     }
 
     let method = match method_name {
-        MethodName::FromType { ref type_name, ref call_path, is_absolute } => {
+        MethodName::FromType {
+            ref type_name,
+            ref call_path,
+            is_absolute,
+        } => {
             let ty = match type_name {
                 Some(name) => {
                     if *name == TypeInfo::SelfType {
@@ -49,28 +53,27 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                     } else {
                         insert_type(name.clone())
                     }
-                },
-                None => {
-                    args_buf
-                        .get(0)
-                        .map(|x| x.return_type)
-                        .unwrap_or_else(|| insert_type(TypeInfo::Unknown))
-                },
+                }
+                None => args_buf
+                    .get(0)
+                    .map(|x| x.return_type)
+                    .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
             };
-            let from_module = if is_absolute {
-                crate_namespace
-            } else {
-                None
-            };
+            let from_module = if is_absolute { crate_namespace } else { None };
             check!(
                 namespace.find_method_for_type(
-                    ty, &call_path.suffix, &call_path.prefixes[..], from_module, self_type, &args_buf,
+                    ty,
+                    &call_path.suffix,
+                    &call_path.prefixes[..],
+                    from_module,
+                    self_type,
+                    &args_buf,
                 ),
                 return err(warnings, errors),
                 warnings,
                 errors
             )
-        },
+        }
         MethodName::FromModule { ref method_name } => {
             let ty = args_buf
                 .get(0)
@@ -82,7 +85,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                 warnings,
                 errors
             )
-        },
+        }
     };
     let contract_caller = if method.is_contract_call {
         args_buf.pop_front()

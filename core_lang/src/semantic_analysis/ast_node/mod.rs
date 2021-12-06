@@ -127,46 +127,43 @@ impl<'sc> TypedAstNode<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr =
-            |namespace: &mut Namespace<'sc>, crate_namespace: Option<&Namespace<'sc>>, type_ascription: TypeInfo, value, decl_str| {
-                let type_id = namespace
-                    .resolve_type_with_self(type_ascription, self_type)
-                    .unwrap_or_else(|_| {
-                        errors.push(CompileError::UnknownType {
-                            span: node.span.clone(),
-                        });
-                        insert_type(TypeInfo::ErrorRecovery)
+        let mut type_check_ascribed_expr = |namespace: &mut Namespace<'sc>,
+                                            crate_namespace: Option<&Namespace<'sc>>,
+                                            type_ascription: TypeInfo,
+                                            value,
+                                            decl_str| {
+            let type_id = namespace
+                .resolve_type_with_self(type_ascription, self_type)
+                .unwrap_or_else(|_| {
+                    errors.push(CompileError::UnknownType {
+                        span: node.span.clone(),
                     });
-                TypedExpression::type_check(
-                    value,
-                    namespace,
-                    crate_namespace,
-                    Some(type_id),
-                    format!(
-                        "{} declaration's type annotation (type {}) does \
+                    insert_type(TypeInfo::ErrorRecovery)
+                });
+            TypedExpression::type_check(
+                value,
+                namespace,
+                crate_namespace,
+                Some(type_id),
+                format!(
+                    "{} declaration's type annotation (type {}) does \
                      not match up with the assigned expression's type.",
-                        decl_str,
-                        type_id.friendly_type_str()
-                    ),
-                    self_type,
-                    build_config,
-                    dead_code_graph,
-                    dependency_graph,
-                )
-            };
+                    decl_str,
+                    type_id.friendly_type_str()
+                ),
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+            )
+        };
 
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
-                    let from_module = if a.is_absolute {
-                        crate_namespace
-                    } else {
-                        None
-                    };
+                    let from_module = if a.is_absolute { crate_namespace } else { None };
                     let mut res = match a.import_type {
-                        ImportType::Star => {
-                            namespace.star_import(from_module, a.call_path)
-                        },
+                        ImportType::Star => namespace.star_import(from_module, a.call_path),
                         ImportType::Item(s) => {
                             namespace.item_import(from_module, a.call_path, &s, a.alias)
                         }
@@ -278,8 +275,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 e.to_typed_decl(namespace, self_type),
                             );
 
-                            namespace
-                                .insert(Ident { primary_name, span }, decl.clone());
+                            namespace.insert(Ident { primary_name, span }, decl.clone());
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
@@ -399,8 +395,8 @@ impl<'sc> TypedAstNode<'sc> {
                             block_span,
                             ..
                         }) => {
-                            let implementing_for_type_id = namespace
-                                .resolve_type_without_self(&type_implementing_for);
+                            let implementing_for_type_id =
+                                namespace.resolve_type_without_self(&type_implementing_for);
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             if !type_arguments.is_empty() {
