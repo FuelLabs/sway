@@ -15,11 +15,11 @@ pub fn matcher<'sc>(exp: &Expression<'sc>, scrutinee: &Scrutinee<'sc>) -> Option
 fn match_literal<'sc>(exp: &Expression<'sc>, scrutinee: &Literal<'sc>, scrutinee_span: &Span<'sc>) -> Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)> {
     match exp {
         Expression::VariableExpression { name, span } => {
-            let match_req_map = vec![];
-            let match_impl_map = vec![(
-                name.clone(),
+            let match_req_map = vec![(
+                Expression::VariableExpression { name: name.clone(), span: span.clone() },
                 Expression::Literal { value: scrutinee.clone(), span: scrutinee_span.clone() },
             )];
+            let match_impl_map = vec![];
             Some((match_req_map, match_impl_map))
         }
         Expression::Literal { value, span } => {

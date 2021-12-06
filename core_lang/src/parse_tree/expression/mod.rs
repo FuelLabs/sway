@@ -1076,13 +1076,13 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
 }
 
 #[derive(Debug)]
-struct Op<'sc> {
-    span: Span<'sc>,
-    op_variant: OpVariant,
+pub struct Op<'sc> {
+    pub span: Span<'sc>,
+    pub op_variant: OpVariant,
 }
 
 impl<'sc> Op<'sc> {
-    fn to_var_name(&self) -> Ident<'sc> {
+    pub fn to_var_name(&self) -> Ident<'sc> {
         Ident {
             primary_name: self.op_variant.as_str(),
             span: self.span.clone(),
@@ -1091,7 +1091,7 @@ impl<'sc> Op<'sc> {
     }
 }
 #[derive(Debug)]
-enum OpVariant {
+pub enum OpVariant {
     Add,
     Subtract,
     Divide,
