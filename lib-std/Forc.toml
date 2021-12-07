@@ -1,8 +1,9 @@
 [project]
 author  = "Alex Hansen"
 license = "MIT"
-name = "stdlib"
+name = "lib-std"
 entry = "lib.sw"
 
 
 [dependencies]
+"core" = { path = "../lib-core" }

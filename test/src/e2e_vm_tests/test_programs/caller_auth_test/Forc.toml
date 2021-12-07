@@ -5,7 +5,8 @@ name = "caller_auth_test"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../stdlib" }
+std = { path = "../../../../../lib-std" }
+core = { path = "../../../../../lib-core" }
 auth_testing_abi = { path = "../auth_testing_abi" }
 
 [[tx-input]]
