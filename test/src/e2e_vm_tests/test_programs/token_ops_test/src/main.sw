@@ -27,7 +27,7 @@ fn main() -> bool {
 
     let caller = abi(TokenOps, id);
 
-    // @todo add total supply modification checks once balance opcode lands.
+    // @todo add total supply modification checks for force_transfer. mint & burn once balance() is added to stdlib lands.
     caller.mint(gas, coins, token_id, 11);
     caller.burn(gas, coins, token_id, 7);
     caller.transfer_to_output(gas, coins, token_id, transfer_to_output_args);
