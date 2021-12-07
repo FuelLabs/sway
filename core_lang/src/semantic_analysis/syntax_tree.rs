@@ -5,7 +5,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
-use crate::{AstNode, AstNodeContent, ParseTree};
+use crate::{AstNode, ParseTree};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
