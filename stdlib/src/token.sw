@@ -11,6 +11,24 @@ const OUTPUT_LENGTH_LOCATION = 384;
 // output types: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/compressed_tx_format.md#output
 const OUTPUT_VARIABLE_TYPE = 4;
 
+// @temp ! remove soon
+    fn increment() {
+        index = asm(i: index, res) {
+                    add res i one;
+                    res: u8
+                };
+    }
+
+    // Helper function for `While` loop in transfer_to_output()
+    fn terminate_or_continue(i: u8, l: u8, t: u8) {
+        match i {
+            // if index has reached the point which will terminate the while loop, there are no available variable outputs so we revert. Otherwise we increment index and continue
+            t => panic(0),
+            //@todo fix this once issue #440 is fixed. remove asm block
+            _ => increment(),
+        }
+    }
+
 
 /// Mint `n` coins of the current contract's token_id.
 pub fn mint(n: u64) {
@@ -37,15 +55,11 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index: u8 = 0;
     let mut outputIndex = 0;
-
-
-    fn terminate_or_continue(i: u8, l: u8) {
-        // let terminal_length = l - 1;
-        match index {
-            // if index has reached the point which will terminate the while loop, there are no available variable outputs so we revert. Otherwise we increment index and continue
-            (l - 1) => panic(0);
-            _ => index ++
-        }
+    // let terminal_length = length - 1;
+    // @todo temp! remove
+    let terminal_length = asm(l: length, res) {
+        sub res l one;
+        res:u8
     }
 
     // @todo fix this once issue #440 is fixed. remove asm block
@@ -74,21 +88,10 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
             if amount_is_zero {
                 outputIndex = index;
             } else {
-                // terminate_or_continue(index, length);
-
-                //@todo fix this once issue #440 is fixed. remove asm block
-                index = asm(i: index, res) {
-                    add res i one;
-                    res: u8
-                };
+                terminate_or_continue(index, length, terminal_length);
             }
         } else {
-            // terminate_or_continue(index, length);
-            // @todo fix this once issue #440 is fixed. remove asm block
-                index = asm(i: index, res) {
-                    add res i one;
-                    res: u8
-                };
+            terminate_or_continue(index, length, terminal_length);
         }
     }
     asm(amount: coins, id: token_id, recipient, output: index) {
