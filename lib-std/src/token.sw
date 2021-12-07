@@ -1,7 +1,6 @@
 library token;
 //! Functionality for performing common operations on tokens.
 
-// use ::ops::*;
 use ::address::Address;
 use ::chain::panic;
 
@@ -20,13 +19,15 @@ const OUTPUT_VARIABLE_TYPE = 4;
     }
 
     // Helper function for `While` loop in transfer_to_output()
-    fn terminate_or_continue(i: u8, l: u8, t: u8) {
+    fn terminate_or_continue(i: u8, l: u8, t: u8) -> u8 {
+        let mut new_index: u8 = 0;
         match i {
             // if index has reached the point which will terminate the while loop, there are no available variable outputs so we revert. Otherwise we increment index and continue
             t => panic(0),
             //@todo fix this once issue #440 is fixed. remove asm block
-            _ => increment(),
+            _ => new_index = i + 1,
         }
+        new_index
     }
 
 
@@ -47,7 +48,6 @@ pub fn burn(n: u64) {
 /// Transfer amount `coins` of type `token_id` to address `recipient`.
 pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
     // get length of outputs from TransactionScript outputsCount:
-    // @todo make this a const.
     let length: u8 = asm(outputs_length, outputs_length_ptr: OUTPUT_LENGTH_LOCATION) {
         lw outputs_length outputs_length_ptr;
         outputs_length: u8
@@ -88,10 +88,10 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
             if amount_is_zero {
                 outputIndex = index;
             } else {
-                terminate_or_continue(index, length, terminal_length);
+                index = terminate_or_continue(index, length, terminal_length);
             }
         } else {
-            terminate_or_continue(index, length, terminal_length);
+            index = terminate_or_continue(index, length, terminal_length);
         }
     }
     asm(amount: coins, id: token_id, recipient, output: index) {
