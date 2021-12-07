@@ -10,6 +10,15 @@ pub fn contract_id() -> b256 {
     }
 }
 
+/// Get the current contracts balance of asset `id`
+// @todo consider setting `contract_id` to ZERO to signify this contract (in which case the id is at $fp), otherwise use the contract_id arg
+pub fn balance(asset_id: b256, contract_id: b256) -> u64 {
+    asm(balance) {
+        bal balance asset_id contract_id;
+        balance: u64
+    }
+}
+
 /// Get the amount of units of `msg_token_id()` being sent.
 pub fn msg_amount() -> u64 {
     asm() {
