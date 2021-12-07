@@ -93,9 +93,7 @@ impl<'sc> ParseTree<'sc> {
             span,
         }
     }
-}
 
-impl<'sc> ParseTree<'sc> {
     pub(crate) fn push(&mut self, new_node: AstNode<'sc>) {
         self.root_nodes.push(new_node);
     }
@@ -128,13 +126,7 @@ pub fn parse<'sc>(
         warnings,
         errors
     );
-    let desugared = check!(
-        desugar::desugar(parsed_root),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    ok(desugared, warnings, errors)
+    ok(parsed_root, warnings, errors)
 }
 
 pub enum CompilationResult<'sc> {
@@ -356,6 +348,35 @@ pub fn compile_to_asm<'sc>(
     // If there are errors, display them now before performing control flow analysis.
     // It is necessary that the syntax tree is well-formed for control flow analysis
     // to be correct.
+    if !errors.is_empty() {
+        return CompilationResult::Failure { errors, warnings };
+    }
+
+    let mut desugar_ast = |ast: Option<TypedParseTree<'sc>>| {
+        ast.map(|tree| tree.desugar().ok(&mut warnings, &mut errors))
+            .flatten()
+    };
+
+    println!("{:#?}", script_ast);
+
+    let contract_ast = desugar_ast(contract_ast);
+    let predicate_ast = desugar_ast(predicate_ast);
+    let script_ast = desugar_ast(script_ast);
+    /*
+    let library_exports_trees = library_exports
+        .trees
+        .into_iter()
+        .filter_map(|tree| {
+            tree.desugar()
+            .ok(&mut warnings, &mut errors)
+        })
+        .collect();
+    let library_exports = LibraryExports {
+        namespace: library_exports.namespace,
+        trees: library_exports_trees
+    };
+    */
+
     if !errors.is_empty() {
         return CompilationResult::Failure { errors, warnings };
     }

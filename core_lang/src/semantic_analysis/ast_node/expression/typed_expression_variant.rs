@@ -1,3 +1,4 @@
+use super::match_branch::TypedMatchBranch;
 use super::*;
 use crate::parse_tree::AsmOp;
 use crate::semantic_analysis::ast_node::*;
@@ -76,6 +77,11 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         address: Box<TypedExpression<'sc>>,
         #[allow(dead_code)]
         // this span may be used for errors in the future, although it is not right now.
+        span: Span<'sc>,
+    },
+    MatchExpression {
+        condition: TypedExpression<'sc>,
+        branches: Vec<TypedMatchBranch<'sc>>,
         span: Span<'sc>,
     },
 }
@@ -159,6 +165,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                     enum_decl.name.primary_name, variant_name.primary_name, tag
                 )
             }
+            TypedExpressionVariant::MatchExpression { .. } => "match exp".into(),
         }
     }
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
@@ -204,6 +211,14 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 if let Some(ref mut r#else) = r#else {
                     r#else.copy_types(type_mapping);
                 }
+            }
+            MatchExpression {
+                condition,
+                branches,
+                ..
+            } => {
+                condition.copy_types(type_mapping);
+                branches.iter_mut().for_each(|x| x.copy_types(type_mapping));
             }
             AsmExpression {
                 registers, //: Vec<TypedAsmRegisterDeclaration<'sc>>,

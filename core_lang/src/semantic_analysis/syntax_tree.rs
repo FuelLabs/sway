@@ -281,4 +281,8 @@ impl<'sc> TypedParseTree<'sc> {
 
         ok(typed_parse_tree, warnings, errors)
     }
+
+    pub fn desugar(&self) -> CompileResult<'sc, Self> {
+        unimplemented!()
+    }
 }

@@ -406,7 +406,9 @@ impl<'sc> Dependencies<'sc> {
 
     fn gather_from_scrutinee(self, scrutinee: &Scrutinee<'sc>) -> Self {
         match scrutinee {
+            Scrutinee::Unit { .. } => self,
             Scrutinee::Literal { .. } => self,
+            Scrutinee::Variable { .. } => self,
             scrutinee => unimplemented!("{:?}", scrutinee),
         }
     }
