@@ -8,5 +8,6 @@ dep chain;
 dep context;
 dep address;
 dep block;
+dep contract_id;
 
 use core::*;
