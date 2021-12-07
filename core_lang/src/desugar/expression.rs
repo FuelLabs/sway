@@ -1,4 +1,4 @@
-use crate::{Op, OpVariant};
+use crate::{Op, OpVariant, StructExpressionField};
 use crate::utils::join_spans;
 use crate::{Expression, MatchBranch, Span, MatchCondition, VariableDeclaration, Declaration, Ident, TypeInfo, AstNode, AstNodeContent, CodeBlock, Literal, MethodName, CallPath};
 use crate::error::{err, ok, CompileResult};
@@ -10,6 +10,149 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
     let mut errors = vec!();
     match exp {
         Expression::MatchExpression { primary_expression, branches, span } => desugar_match_expression(&*primary_expression, branches, span),
+        Expression::ArrayIndex { prefix, index, span } => {
+            let prefix = check!(
+                desugar_expression(*prefix),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let index = check!(
+                desugar_expression(*index),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let exp = Expression::ArrayIndex {
+                prefix: Box::new(prefix),
+                index: Box::new(index),
+                span
+            };
+            ok(exp, warnings, errors)
+        }
+        Expression::DelineatedPath { call_path, args, span, type_arguments } => {
+            let mut new_args = vec![];
+            for arg in args.into_iter() {
+                new_args.push(check!(
+                    desugar_expression(arg),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+            }
+            let exp = Expression::DelineatedPath {
+                call_path,
+                args: new_args,
+                span,
+                type_arguments
+            };
+            ok(exp, warnings, errors)
+        }
+        Expression::SubfieldExpression { prefix, span, field_to_access } => {
+            let prefix = check!(
+                desugar_expression(*prefix),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let exp = Expression::SubfieldExpression {
+                prefix: Box::new(prefix),
+                span,
+                field_to_access
+            };
+            ok(exp, warnings, errors)
+        }
+        Expression::AsmExpression { span, asm } => {
+            let exp = Expression::AsmExpression {
+                span,
+                asm
+            };
+            ok(exp, warnings, errors)
+        }
+        Expression::StructExpression { struct_name, fields, span } => {
+            let mut new_fields = vec![];
+            for field in fields.into_iter() {
+                new_fields.push(check!(
+                    desugar_struct_expression_field(field),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+            }
+            let exp = Expression::StructExpression {
+                struct_name,
+                fields: new_fields,
+                span
+            };
+            ok(exp, warnings, errors)
+        }
+        Expression::AbiCast { abi_name, address, span } => {
+            let exp = Expression::AbiCast {
+                abi_name,
+                address,
+                span
+            };
+            ok(exp, warnings, errors)
+        }
+        Expression::Array { contents, span } => {
+            let mut new_contents = vec![];
+            for content in contents.into_iter() {
+                new_contents.push(check!(
+                    desugar_expression(content),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+            }
+            let exp = Expression::Array {
+                contents: new_contents,
+                span
+            };
+            ok(exp, warnings, errors)
+        }
+        Expression::Unit { span } => {
+            let exp = Expression::Unit { span };
+            ok(exp, warnings, errors)
+        }
+        Expression::LazyOperator { op, lhs, rhs, span } => {
+            let lhs = check!(
+                desugar_expression(*lhs),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let rhs = check!(
+                desugar_expression(*rhs),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let exp = Expression::LazyOperator {
+                op,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span
+            };
+            ok(exp, warnings, errors)
+        }
+        Expression::FunctionApplication { name, arguments, type_arguments, span } => {
+            let mut new_arguments = vec![];
+            for argument in arguments.into_iter() {
+                new_arguments.push(check!(
+                    desugar_expression(argument),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+            }
+            let exp = Expression::FunctionApplication {
+                name,
+                arguments: new_arguments,
+                type_arguments,
+                span
+            };
+            ok(exp, warnings, errors)
+        }
         Expression::VariableExpression { name, span } => {
             let exp = Expression::VariableExpression { name, span };
             ok(exp, warnings, errors)
@@ -76,8 +219,7 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
                 span
             };
             ok(exp, warnings, errors)
-        }
-        exp => unimplemented!("{:?}", exp)
+        },
     }
 }
 
@@ -288,4 +430,20 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
         None => err(warnings, errors),
         Some(if_statement) => ok(if_statement, warnings, errors),
     }
+}
+
+fn desugar_struct_expression_field<'sc>(field: StructExpressionField<'sc>) -> CompileResult<'sc, StructExpressionField<'sc>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let field = StructExpressionField {
+        name: field.name,
+        value: check!(
+            desugar_expression(field.value),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ),
+        span: field.span
+    };
+    ok(field, warnings, errors)
 }
