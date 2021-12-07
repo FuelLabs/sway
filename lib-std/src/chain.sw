@@ -1,6 +1,5 @@
 library chain;
 dep chain/auth;
-use ::ops::*;
 
 // When generics land, these will be generic.
 pub fn log_u64(val: u64) {
@@ -71,7 +70,7 @@ pub fn get_script_data<T>() -> T{
 
 /// Assert that a value is true
 pub fn assert(a: bool) {
-    if not(a) {
+    if !a {
         panic(0);
     } else {
         ()
