@@ -71,8 +71,8 @@ fn desugar_ast_node_content<'sc>(
 }
 
 fn desugar_return_stmt<'sc>(stmt: ReturnStatement<'sc>) -> CompileResult<'sc, ReturnStatement<'sc>> {
-    let warnings = vec!();
-    let errors = vec!();
+    let mut warnings = vec!();
+    let mut errors = vec!();
     let stmt = ReturnStatement {
         expr: check!(
             desugar_expression(stmt.expr),
@@ -85,8 +85,8 @@ fn desugar_return_stmt<'sc>(stmt: ReturnStatement<'sc>) -> CompileResult<'sc, Re
 }
 
 fn desugar_while_loop<'sc>(while_loop: WhileLoop<'sc>) -> CompileResult<'sc, WhileLoop<'sc>> {
-    let warnings = vec![];
-    let errors = vec![];
+    let mut warnings = vec![];
+    let mut errors = vec![];
     let stmt = WhileLoop {
         condition: check!(
             desugar_expression(while_loop.condition),
