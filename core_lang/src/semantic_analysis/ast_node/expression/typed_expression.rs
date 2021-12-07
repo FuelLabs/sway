@@ -1370,7 +1370,7 @@ impl<'sc> TypedExpression<'sc> {
                 call_path: CallPath {
                     prefixes: vec![
                         Ident {
-                            primary_name: "std",
+                            primary_name: "core",
                             span: span.clone(),
                         },
                         Ident {

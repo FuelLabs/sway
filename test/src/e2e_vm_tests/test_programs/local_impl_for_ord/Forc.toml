@@ -5,4 +5,5 @@ name = "local_impl_for_ord"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../stdlib" }
+std = { path = "../../../../../lib-std" }
+core = { path = "../../../../../lib-core" }

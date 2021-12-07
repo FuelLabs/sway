@@ -5,7 +5,7 @@ name = "call_basic_storage"
 entry = "main.sw"
 
 [dependencies.std]
-path = "../../../../../stdlib"
+path = "../../../../../lib-std"
 
 [dependencies.basic_storage_abi]
 path = "../basic_storage_abi"

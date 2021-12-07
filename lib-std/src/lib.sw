@@ -8,3 +8,5 @@ dep chain;
 dep context;
 dep address;
 dep block;
+
+use core::*;

@@ -84,18 +84,6 @@ impl<'n, 'sc> TypedParseTree<'n, 'sc> {
             warnings,
             errors
         );
-
-        check!(
-            TypedParseTree::check_for_infinite_dependencies(
-                build_config.file_name.clone().to_str().unwrap().to_string(),
-                &ordered_nodes,
-                dependency_graph,
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
@@ -117,39 +105,6 @@ impl<'n, 'sc> TypedParseTree<'n, 'sc> {
             warnings,
             errors,
         )
-    }
-
-    fn check_for_infinite_dependencies(
-        file_path: String,
-        ordered_nodes: &[AstNode<'sc>],
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
-    ) -> CompileResult<'sc, ()> {
-        let warnings = vec![];
-        let mut errors = vec![];
-
-        for node in ordered_nodes.iter() {
-            if let AstNodeContent::IncludeStatement(include_statement) = &node.content {
-                let file_path2 = include_statement.file_path;
-                let orig_file_path = &(file_path.clone());
-                if let Some(value) = dependency_graph.get_mut(&file_path) {
-                    if value.contains(&file_path2.to_string()) {
-                        errors.push(CompileError::InfiniteDependencies {
-                            file_path,
-                            span: node.span.clone(),
-                        });
-                        return err(warnings, errors);
-                    } else {
-                        value.insert(file_path2.to_string());
-                    }
-                } else {
-                    let mut set = HashSet::new();
-                    set.insert(file_path2.to_string());
-                    dependency_graph.insert(orig_file_path.clone(), set);
-                }
-            }
-        }
-
-        ok((), warnings, errors)
     }
 
     fn type_check_nodes(

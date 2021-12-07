@@ -5,5 +5,6 @@ name = "basic_storage"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../stdlib" }
+std = { path = "../../../../../lib-std" }
+core = { path = "../../../../../lib-core" }
 basic_storage_abi = { path = "../basic_storage_abi" }
