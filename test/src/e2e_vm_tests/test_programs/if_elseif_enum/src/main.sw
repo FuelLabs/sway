@@ -1,6 +1,6 @@
 script;
-use std::*;
-use std::ops::Ord;
+use core::*;
+use core::ops::Ord;
 
 struct Rgb {
     red: u64,
@@ -18,7 +18,7 @@ enum PrimaryColor {
     Blue: (),
 }
 
-impl std::ops::Ord for PrimaryColor {
+impl core::ops::Ord for PrimaryColor {
     fn lt(self, other: Self) -> bool {
         asm(r1: self, r2: other, r3) {
             lt r3 r1 r2;
