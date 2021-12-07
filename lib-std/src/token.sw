@@ -4,29 +4,22 @@ library token;
 use ::address::Address;
 use ::chain::panic;
 
-// @todo tx format may change, in which case the magic number "384" must be changed.
+// @todo if tx format changes, the magic number "384" must be changed !
 // TransactionScript outputsCount has a 6 word/384-bit offset
 const OUTPUT_LENGTH_LOCATION = 384;
 // output types: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/compressed_tx_format.md#output
 const OUTPUT_VARIABLE_TYPE = 4;
 
-// @temp ! remove soon
-    fn increment() {
-        index = asm(i: index, res) {
-                    add res i one;
-                    res: u8
-                };
-    }
-
     // Helper function for `While` loop in transfer_to_output()
-    fn terminate_or_continue(i: u8, l: u8, t: u8) -> u8 {
+    fn terminate_or_increment(i: u8, l: u8, t: u8) -> u8 {
         let mut new_index: u8 = 0;
-        match i {
-            // if index has reached the point which will terminate the while loop, there are no available variable outputs so we revert. Otherwise we increment index and continue
-            t => panic(0),
-            //@todo fix this once issue #440 is fixed. remove asm block
-            _ => new_index = i + 1,
-        }
+        // if index has not reached the point which will terminate the while loop we increment the index and return it. Else, there are no available variable outputs so we revert.
+        //
+        if i != t {
+            new_index = i + 1;
+        } else {
+            panic(0)
+        };
         new_index
     }
 
@@ -55,20 +48,10 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index: u8 = 0;
     let mut outputIndex = 0;
-    // let terminal_length = length - 1;
-    // @todo temp! remove
-    let terminal_length = asm(l: length, res) {
-        sub res l one;
-        res:u8
-    }
+    let terminal_length = length - 1;
 
-    // @todo fix this once issue #440 is fixed. remove asm block
-    // loop through all available outputs scanning for the first unused output of type "OutputVariable"
-    // while index < length
-    while asm(i: index, l: length, res) {
-        lt res i l;
-        res: bool
-    } {
+    while index < length {
+        index = index + 1;
         // check if `type` matches target type:
         let type_match = asm(slot: index, type, target: OUTPUT_VARIABLE_TYPE, bytes: 8, res) {
             xos t slot;
@@ -88,16 +71,15 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
             if amount_is_zero {
                 outputIndex = index;
             } else {
-                index = terminate_or_continue(index, length, terminal_length);
+                index = terminate_or_increment(index, length, terminal_length);
             }
         } else {
-            index = terminate_or_continue(index, length, terminal_length);
+            index = terminate_or_increment(index, length, terminal_length);
         }
     }
     asm(amount: coins, id: token_id, recipient, output: index) {
         tro recipient output amount id;
     }
-    // @todo should revert if there are no free outputs.
 }
 
 /// !!! UNCONDITIONAL transfer of amount `coins` of type `token_id` to contract at `contract_id`.
