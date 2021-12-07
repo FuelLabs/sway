@@ -22,7 +22,7 @@ pub(crate) use match_branch::MatchBranch;
 pub(crate) use match_condition::CatchAll;
 pub(crate) use match_condition::MatchCondition;
 pub(crate) use method_name::MethodName;
-pub(crate) use scrutinee::Scrutinee;
+pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
 pub(crate) use unary_op::UnaryOp;
 
 #[derive(Debug, Clone)]

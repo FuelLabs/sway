@@ -1,4 +1,4 @@
-use crate::{Expression, Ident, Literal, Scrutinee, Span};
+use crate::{Expression, Ident, Literal, Scrutinee, Span, StructScrutineeField};
 
 // if (x == y)
 pub type MatchReqMap<'sc> = Vec<(Expression<'sc>, Expression<'sc>)>;
@@ -13,6 +13,11 @@ pub fn matcher<'sc>(
         Scrutinee::Unit { span: _ } => unimplemented!(),
         Scrutinee::Literal { value, span } => match_literal(exp, value, span),
         Scrutinee::Variable { name, span } => match_variable(exp, name, span),
+        Scrutinee::StructScrutinee {
+            struct_name,
+            fields,
+            span,
+        } => match_struct(exp, struct_name, fields, span),
     }
 }
 
@@ -40,4 +45,13 @@ fn match_variable<'sc>(
     let match_req_map = vec![];
     let match_impl_map = vec![(scrutinee_name.to_owned(), exp.to_owned())];
     Some((match_req_map, match_impl_map))
+}
+
+fn match_struct<'sc>(
+    exp: &Expression<'sc>,
+    struct_name: &Ident<'sc>,
+    fields: &Vec<StructScrutineeField>,
+    span: &Span<'sc>,
+) -> Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)> {
+    unimplemented!()
 }

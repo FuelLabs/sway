@@ -3,7 +3,7 @@ use super::expression::desugar_expression;
 use crate::error::{err, ok, CompileResult};
 use crate::{
     AbiDeclaration, ConstantDeclaration, Declaration, EnumDeclaration, FunctionDeclaration,
-    ImplSelf, ImplTrait, Reassignment, StructDeclaration, TraitDeclaration, VariableDeclaration,
+    ImplSelf, ImplTrait, Reassignment, TraitDeclaration, VariableDeclaration,
 };
 
 pub fn desugar_declaration<'sc>(decl: Declaration<'sc>) -> CompileResult<'sc, Declaration<'sc>> {
@@ -16,12 +16,7 @@ pub fn desugar_declaration<'sc>(decl: Declaration<'sc>) -> CompileResult<'sc, De
             warnings,
             errors
         )),
-        Declaration::StructDeclaration(struct_decl) => Declaration::StructDeclaration(check!(
-            desugar_struct_decl(struct_decl),
-            return err(warnings, errors),
-            warnings,
-            errors
-        )),
+        Declaration::StructDeclaration(struct_decl) => Declaration::StructDeclaration(struct_decl),
         Declaration::TraitDeclaration(trait_decl) => Declaration::TraitDeclaration(check!(
             desugar_trait_decl(trait_decl),
             return err(warnings, errors),
@@ -149,14 +144,25 @@ fn desugar_trait_decl<'sc>(
     unimplemented!()
 }
 
-fn desugar_struct_decl<'sc>(
-    struct_decl: StructDeclaration<'sc>,
-) -> CompileResult<'sc, StructDeclaration<'sc>> {
-    unimplemented!()
-}
-
 fn desugar_reassignment<'sc>(
     reassignment: Reassignment<'sc>,
 ) -> CompileResult<'sc, Reassignment<'sc>> {
-    unimplemented!()
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let reassignment = Reassignment {
+        lhs: Box::new(check!(
+            desugar_expression(*reassignment.lhs),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )),
+        rhs: check!(
+            desugar_expression(reassignment.rhs),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ),
+        span: reassignment.span,
+    };
+    ok(reassignment, warnings, errors)
 }

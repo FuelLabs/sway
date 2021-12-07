@@ -18,6 +18,16 @@ pub enum Scrutinee<'sc> {
         name: Ident<'sc>,
         span: Span<'sc>,
     },
+    StructScrutinee {
+        struct_name: Ident<'sc>,
+        fields: Vec<StructScrutineeField<'sc>>,
+        span: Span<'sc>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct StructScrutineeField<'sc> {
+    pub scrutinee: Scrutinee<'sc>,
 }
 
 impl<'sc> Scrutinee<'sc> {

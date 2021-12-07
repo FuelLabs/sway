@@ -93,8 +93,10 @@ hex_digit        =  {"a"|"b"|"c"|"d"|"e"|"f"|"A"|"B"|"C"|"D"|"E"|"F"|"_"|ASCII_D
 match_expression =  {"match" ~ expr ~ "{" ~ match_branch+ ~ "}"}
 match_branch     =  {match_scrutinee ~ "=>" ~ (code_block|expr) ~ ","}
 match_scrutinee  =  {scrutinee|catch_all}
-scrutinee        =  {literal_value|ident}
 catch_all        =  {"_"}
+scrutinee        =  {struct_scrutinee|literal_value|ident}
+struct_scrutinee =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
+struct_scrutinee_fields = {(scrutinee|struct_field_name) ~ ("," ~ (scrutinee|struct_field_name))* ~ ","?}
 
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
