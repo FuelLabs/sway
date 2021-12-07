@@ -5,4 +5,5 @@ name = "eq_4_test"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../stdlib" }
+std = { path = "../../../../../lib-std" }
+core = { path = "../../../../../lib-core" }

@@ -178,7 +178,12 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
     // this should detect circular dependencies
     let manifest_dir = match find_manifest_dir(&project_path) {
         Some(o) => o,
-        None => return Err("Manifest not found for dependency.".into()),
+        None => {
+            return Err(format!(
+                "Manifest not found for dependency {:?}.",
+                project_path
+            ))
+        }
     };
 
     let manifest_of_dep = read_manifest(&manifest_dir)?;
@@ -209,7 +214,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
             // circular dependencies
             //return Err("Unimplemented: dependencies that have dependencies".into());
             compile_dependency_lib(
-                project_file_path,
+                &manifest_dir,
                 dependency_name,
                 dependency_lib,
                 // give it a cloned namespace, which we then merge with this namespace

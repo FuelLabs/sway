@@ -1121,7 +1121,7 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        // TODO use stdlib's Address type instead of b256
+        // TODO use lib-std's Address type instead of b256
         // type check the address and make sure it is
         let err_span = address.span();
         // TODO(static span): the below String address should just be address_expr
@@ -1370,7 +1370,7 @@ impl<'sc> TypedExpression<'sc> {
                 call_path: CallPath {
                     prefixes: vec![
                         Ident {
-                            primary_name: "std",
+                            primary_name: "core",
                             span: span.clone(),
                         },
                         Ident {

@@ -546,6 +546,13 @@ impl<'sc> TypedAstNode<'sc> {
                             namespace.inner.insert(name, decl.clone());
                             decl
                         }
+                        Declaration::StorageDeclaration(StorageDeclaration { span, .. }) => {
+                            errors.push(CompileError::Unimplemented(
+                                "Storage declarations are not supported yet. Coming soon!",
+                                span.clone(),
+                            ));
+                            return err(warnings, errors);
+                        }
                     })
                 }
                 AstNodeContent::Expression(a) => {

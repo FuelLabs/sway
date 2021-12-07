@@ -6,7 +6,7 @@ fn main() -> u64 {
         Y: bool,
     }
 
-    impl std::ops::Ord for X {
+    impl core::ops::Ord for X {
         fn eq(self, other: Self) -> bool {
             asm(r1: self, r2: other, r3) {
                 eq r3 r2 r1;
