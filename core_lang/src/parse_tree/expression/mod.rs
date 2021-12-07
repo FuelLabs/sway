@@ -1208,7 +1208,7 @@ fn arrange_by_order_of_operations<'sc>(
                                 call_path: CallPath {
                                     prefixes: vec![
                                         Ident {
-                                            primary_name: "std",
+                                            primary_name: "core",
                                             span: new_op.span.clone(),
                                         },
                                         Ident {
@@ -1268,7 +1268,7 @@ fn arrange_by_order_of_operations<'sc>(
                     call_path: CallPath {
                         prefixes: vec![
                             Ident {
-                                primary_name: "std",
+                                primary_name: "core",
                                 span: op.span.clone(),
                             },
                             Ident {
