@@ -1,16 +1,27 @@
-use crate::{Op, OpVariant, StructExpressionField};
-use crate::utils::join_spans;
-use crate::{Expression, MatchBranch, Span, MatchCondition, VariableDeclaration, Declaration, Ident, TypeInfo, AstNode, AstNodeContent, CodeBlock, Literal, MethodName, CallPath};
-use crate::error::{err, ok, CompileResult};
 use super::code_block::desugar_code_block;
 use super::matcher::matcher;
+use crate::error::{err, ok, CompileResult};
+use crate::utils::join_spans;
+use crate::{
+    AstNode, AstNodeContent, CallPath, CodeBlock, Declaration, Expression, Ident, Literal,
+    MatchBranch, MatchCondition, MethodName, Span, TypeInfo, VariableDeclaration,
+};
+use crate::{Op, OpVariant, StructExpressionField};
 
 pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expression<'sc>> {
-    let mut warnings = vec!();
-    let mut errors = vec!();
+    let mut warnings = vec![];
+    let mut errors = vec![];
     match exp {
-        Expression::MatchExpression { primary_expression, branches, span } => desugar_match_expression(&*primary_expression, branches, span),
-        Expression::ArrayIndex { prefix, index, span } => {
+        Expression::MatchExpression {
+            primary_expression,
+            branches,
+            span,
+        } => desugar_match_expression(&*primary_expression, branches, span),
+        Expression::ArrayIndex {
+            prefix,
+            index,
+            span,
+        } => {
             let prefix = check!(
                 desugar_expression(*prefix),
                 return err(warnings, errors),
@@ -26,11 +37,16 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
             let exp = Expression::ArrayIndex {
                 prefix: Box::new(prefix),
                 index: Box::new(index),
-                span
+                span,
             };
             ok(exp, warnings, errors)
         }
-        Expression::DelineatedPath { call_path, args, span, type_arguments } => {
+        Expression::DelineatedPath {
+            call_path,
+            args,
+            span,
+            type_arguments,
+        } => {
             let mut new_args = vec![];
             for arg in args.into_iter() {
                 new_args.push(check!(
@@ -44,11 +60,15 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
                 call_path,
                 args: new_args,
                 span,
-                type_arguments
+                type_arguments,
             };
             ok(exp, warnings, errors)
         }
-        Expression::SubfieldExpression { prefix, span, field_to_access } => {
+        Expression::SubfieldExpression {
+            prefix,
+            span,
+            field_to_access,
+        } => {
             let prefix = check!(
                 desugar_expression(*prefix),
                 return err(warnings, errors),
@@ -58,18 +78,19 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
             let exp = Expression::SubfieldExpression {
                 prefix: Box::new(prefix),
                 span,
-                field_to_access
+                field_to_access,
             };
             ok(exp, warnings, errors)
         }
         Expression::AsmExpression { span, asm } => {
-            let exp = Expression::AsmExpression {
-                span,
-                asm
-            };
+            let exp = Expression::AsmExpression { span, asm };
             ok(exp, warnings, errors)
         }
-        Expression::StructExpression { struct_name, fields, span } => {
+        Expression::StructExpression {
+            struct_name,
+            fields,
+            span,
+        } => {
             let mut new_fields = vec![];
             for field in fields.into_iter() {
                 new_fields.push(check!(
@@ -82,15 +103,19 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
             let exp = Expression::StructExpression {
                 struct_name,
                 fields: new_fields,
-                span
+                span,
             };
             ok(exp, warnings, errors)
         }
-        Expression::AbiCast { abi_name, address, span } => {
+        Expression::AbiCast {
+            abi_name,
+            address,
+            span,
+        } => {
             let exp = Expression::AbiCast {
                 abi_name,
                 address,
-                span
+                span,
             };
             ok(exp, warnings, errors)
         }
@@ -106,7 +131,7 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
             }
             let exp = Expression::Array {
                 contents: new_contents,
-                span
+                span,
             };
             ok(exp, warnings, errors)
         }
@@ -131,11 +156,16 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
                 op,
                 lhs: Box::new(lhs),
                 rhs: Box::new(rhs),
-                span
+                span,
             };
             ok(exp, warnings, errors)
         }
-        Expression::FunctionApplication { name, arguments, type_arguments, span } => {
+        Expression::FunctionApplication {
+            name,
+            arguments,
+            type_arguments,
+            span,
+        } => {
             let mut new_arguments = vec![];
             for argument in arguments.into_iter() {
                 new_arguments.push(check!(
@@ -149,19 +179,24 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
                 name,
                 arguments: new_arguments,
                 type_arguments,
-                span
+                span,
             };
             ok(exp, warnings, errors)
         }
         Expression::VariableExpression { name, span } => {
             let exp = Expression::VariableExpression { name, span };
             ok(exp, warnings, errors)
-        },
+        }
         Expression::Literal { value, span } => {
             let exp = Expression::Literal { value, span };
             ok(exp, warnings, errors)
-        },
-        Expression::IfExp { condition, then, r#else , span } => {
+        }
+        Expression::IfExp {
+            condition,
+            then,
+            r#else,
+            span,
+        } => {
             let condition = check!(
                 desugar_expression(*condition),
                 return err(warnings, errors),
@@ -181,17 +216,21 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
                     return err(warnings, errors),
                     warnings,
                     errors
-                )))
+                ))),
             };
             let exp = Expression::IfExp {
                 condition: Box::new(condition),
                 then: Box::new(then),
                 r#else,
-                span
+                span,
             };
             ok(exp, warnings, errors)
-        },
-        Expression::MethodApplication { method_name, arguments, span } => {
+        }
+        Expression::MethodApplication {
+            method_name,
+            arguments,
+            span,
+        } => {
             let mut new_arguments = vec![];
             for argument in arguments.into_iter() {
                 new_arguments.push(check!(
@@ -204,10 +243,10 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
             let exp = Expression::MethodApplication {
                 method_name,
                 arguments: new_arguments,
-                span
+                span,
             };
             ok(exp, warnings, errors)
-        },
+        }
         Expression::CodeBlock { contents, span } => {
             let exp = Expression::CodeBlock {
                 contents: check!(
@@ -216,10 +255,10 @@ pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expre
                     warnings,
                     errors
                 ),
-                span
+                span,
             };
             ok(exp, warnings, errors)
-        },
+        }
     }
 }
 
@@ -227,19 +266,28 @@ struct MatchedBranch<'sc> {
     result: Expression<'sc>,
     match_req_map: Vec<(Expression<'sc>, Expression<'sc>)>,
     match_impl_map: Vec<(Ident<'sc>, Expression<'sc>)>,
-    branch_span: Span<'sc>
+    branch_span: Span<'sc>,
 }
 
-pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branches: Vec<MatchBranch<'sc>>, _span: Span<'sc>) -> CompileResult<'sc, Expression<'sc>> {
+pub fn desugar_match_expression<'sc>(
+    primary_expression: &Expression<'sc>,
+    branches: Vec<MatchBranch<'sc>>,
+    _span: Span<'sc>,
+) -> CompileResult<'sc, Expression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     // 1. Assemble the "matched branches."
     let mut matched_branches = vec![];
-    for MatchBranch { condition, result, span: branch_span } in branches.iter() {
+    for MatchBranch {
+        condition,
+        result,
+        span: branch_span,
+    } in branches.iter()
+    {
         let matches = match condition {
             MatchCondition::CatchAll(_) => Some((vec![], vec![])),
-            MatchCondition::Scrutinee(scrutinee) => matcher(primary_expression, scrutinee)
+            MatchCondition::Scrutinee(scrutinee) => matcher(primary_expression, scrutinee),
         };
         match matches {
             Some((match_req_map, match_impl_map)) => {
@@ -252,7 +300,7 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
                     ),
                     match_req_map,
                     match_impl_map,
-                    branch_span: branch_span.to_owned()
+                    branch_span: branch_span.to_owned(),
                 });
             }
             None => unimplemented!("implement proper error handling"),
@@ -261,7 +309,13 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
 
     // 2. Assemble the possibly nested giant if statement using the matched branches.
     let mut if_statement = None;
-    for MatchedBranch { result, match_req_map, match_impl_map, branch_span } in matched_branches.iter().rev() {
+    for MatchedBranch {
+        result,
+        match_req_map,
+        match_impl_map,
+        branch_span,
+    } in matched_branches.iter().rev()
+    {
         // 2a. Assemble the conditional that goes in the if primary expression.
         let mut conditional = None;
         for (left_req, right_req) in match_req_map.iter() {
@@ -281,8 +335,9 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
                         ],
                         suffix: Op {
                             op_variant: OpVariant::Equals,
-                            span: joined_span.clone()
-                        }.to_var_name(),
+                            span: joined_span.clone(),
+                        }
+                        .to_var_name(),
                     },
                     type_name: None,
                     is_absolute: true,
@@ -299,7 +354,7 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
                         op: crate::LazyOp::And,
                         lhs: Box::new(the_conditional.clone()),
                         rhs: Box::new(condition.clone()),
-                        span: join_spans(the_conditional.span(), condition.span())
+                        span: join_spans(the_conditional.span(), condition.span()),
                     });
                 }
             }
@@ -314,54 +369,55 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
                 is_mutable: false,
                 body: right_impl.clone(),
                 type_ascription: TypeInfo::Unknown,
-                type_ascription_span: None
+                type_ascription_span: None,
             });
             let new_span = join_spans(left_impl.span.clone(), right_impl.span());
             code_block_stmts.push(AstNode {
                 content: AstNodeContent::Declaration(decl),
-                span: new_span.clone()
+                span: new_span.clone(),
             });
             code_block_stmts_span = match code_block_stmts_span {
                 None => Some(new_span),
-                Some(old_span) => Some(join_spans(old_span, new_span))
+                Some(old_span) => Some(join_spans(old_span, new_span)),
             };
         }
         match result {
             Expression::CodeBlock {
-                contents: CodeBlock {
-                    contents,
-                    whole_block_span
-                },
-                span:_
+                contents:
+                    CodeBlock {
+                        contents,
+                        whole_block_span,
+                    },
+                span: _,
             } => {
                 let mut contents = contents.clone();
                 code_block_stmts.append(&mut contents);
                 code_block_stmts_span = match code_block_stmts_span {
                     None => Some(whole_block_span.clone()),
-                    Some(old_span) => Some(join_spans(old_span, whole_block_span.clone()))
+                    Some(old_span) => Some(join_spans(old_span, whole_block_span.clone())),
                 };
-            },
+            }
             result => {
                 code_block_stmts.push(AstNode {
                     content: AstNodeContent::Expression(result.clone()),
-                    span: result.span()
+                    span: result.span(),
                 });
                 code_block_stmts_span = match code_block_stmts_span {
                     None => Some(result.span()),
-                    Some(old_span) => Some(join_spans(old_span, result.span()))
+                    Some(old_span) => Some(join_spans(old_span, result.span())),
                 };
             }
         }
         let code_block_stmts_span = match code_block_stmts_span {
             None => branch_span.clone(),
-            Some(span) => span
+            Some(span) => span,
         };
         let code_block = Expression::CodeBlock {
             contents: CodeBlock {
                 contents: code_block_stmts.clone(),
-                whole_block_span: code_block_stmts_span.clone()
+                whole_block_span: code_block_stmts_span.clone(),
             },
-            span: code_block_stmts_span
+            span: code_block_stmts_span,
         };
 
         // 2c. Assemble the giant if statement.
@@ -373,41 +429,41 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
                         condition: Box::new(conditional.clone()),
                         then: Box::new(code_block.clone()),
                         r#else: None,
-                        span: join_spans(conditional.span(), code_block.span())
-                    })
+                        span: join_spans(conditional.span(), code_block.span()),
+                    }),
                 };
-            },
+            }
             Some(Expression::CodeBlock {
                 contents: right_block,
-                span: exp_span
+                span: exp_span,
             }) => {
                 let right = Expression::CodeBlock {
                     contents: right_block,
-                    span: exp_span
+                    span: exp_span,
                 };
                 if_statement = match conditional {
                     None => Some(Expression::IfExp {
                         condition: Box::new(Expression::Literal {
                             value: Literal::Boolean(true),
-                            span: branch_span.clone()
+                            span: branch_span.clone(),
                         }),
                         then: Box::new(code_block.clone()),
                         r#else: Some(Box::new(right.clone())),
-                        span: join_spans(code_block.clone().span(), right.clone().span())
+                        span: join_spans(code_block.clone().span(), right.clone().span()),
                     }),
                     Some(the_conditional) => Some(Expression::IfExp {
                         condition: Box::new(the_conditional),
                         then: Box::new(code_block.clone()),
                         r#else: Some(Box::new(right.clone())),
-                        span: join_spans(code_block.clone().span(), right.clone().span())
-                    })
+                        span: join_spans(code_block.clone().span(), right.clone().span()),
+                    }),
                 };
-            },
+            }
             Some(Expression::IfExp {
                 condition,
                 then,
                 r#else,
-                span: exp_span
+                span: exp_span,
             }) => {
                 if_statement = Some(Expression::IfExp {
                     condition: Box::new(conditional.unwrap()),
@@ -416,15 +472,15 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
                         condition,
                         then,
                         r#else,
-                        span: exp_span.clone()
+                        span: exp_span.clone(),
                     })),
-                    span: join_spans(code_block.clone().span(), exp_span)
+                    span: join_spans(code_block.clone().span(), exp_span),
                 });
             }
             _ => unimplemented!(),
         }
     }
-    
+
     // 3. Return!
     match if_statement {
         None => err(warnings, errors),
@@ -432,7 +488,9 @@ pub fn desugar_match_expression<'sc>(primary_expression: &Expression<'sc>, branc
     }
 }
 
-fn desugar_struct_expression_field<'sc>(field: StructExpressionField<'sc>) -> CompileResult<'sc, StructExpressionField<'sc>> {
+fn desugar_struct_expression_field<'sc>(
+    field: StructExpressionField<'sc>,
+) -> CompileResult<'sc, StructExpressionField<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let field = StructExpressionField {
@@ -443,7 +501,7 @@ fn desugar_struct_expression_field<'sc>(field: StructExpressionField<'sc>) -> Co
             warnings,
             errors
         ),
-        span: field.span
+        span: field.span,
     };
     ok(field, warnings, errors)
 }

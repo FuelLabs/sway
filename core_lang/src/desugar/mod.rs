@@ -1,7 +1,7 @@
 mod ast_node;
-mod expression;
-mod declaration;
 mod code_block;
+mod declaration;
+mod expression;
 mod matcher;
 
 use ast_node::desugar_ast_node;
@@ -13,16 +13,14 @@ pub fn desugar<'sc>(tree: HllParseTree<'sc>) -> CompileResult<'sc, HllParseTree<
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut desugar = |ast: Option<_>| {
-        ast.map(|tree| {
-            desugar_parse_tree(tree).ok(&mut warnings, &mut errors)
-        })
-        .flatten()
+        ast.map(|tree| desugar_parse_tree(tree).ok(&mut warnings, &mut errors))
+            .flatten()
     };
     let tree = HllParseTree {
         script_ast: desugar(tree.script_ast),
         predicate_ast: desugar(tree.predicate_ast),
         contract_ast: desugar(tree.contract_ast),
-        library_exports: tree.library_exports
+        library_exports: tree.library_exports,
     };
     ok(tree, warnings, errors)
 }
@@ -41,7 +39,7 @@ fn desugar_parse_tree<'sc>(parse_tree: ParseTree<'sc>) -> CompileResult<'sc, Par
     }
     let parse_tree = ParseTree {
         root_nodes: new_root_nodes,
-        span: parse_tree.span
+        span: parse_tree.span,
     };
     ok(parse_tree, warnings, errors)
 }

@@ -1,6 +1,6 @@
-use crate::CodeBlock;
-use crate::error::{err, ok, CompileResult};
 use super::ast_node::desugar_ast_node;
+use crate::error::{err, ok, CompileResult};
+use crate::CodeBlock;
 
 pub fn desugar_code_block<'sc>(block: CodeBlock<'sc>) -> CompileResult<'sc, CodeBlock<'sc>> {
     let mut warnings = vec![];
@@ -16,7 +16,7 @@ pub fn desugar_code_block<'sc>(block: CodeBlock<'sc>) -> CompileResult<'sc, Code
     }
     let block = CodeBlock {
         whole_block_span: block.whole_block_span,
-        contents: desugared_contents
+        contents: desugared_contents,
     };
     ok(block, warnings, errors)
 }

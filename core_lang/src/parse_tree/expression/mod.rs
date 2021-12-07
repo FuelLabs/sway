@@ -14,16 +14,16 @@ mod asm;
 mod match_branch;
 mod match_condition;
 mod method_name;
-mod unary_op;
 mod scrutinee;
+mod unary_op;
 use crate::utils::join_spans;
 pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
+pub(crate) use match_condition::CatchAll;
 pub(crate) use match_condition::MatchCondition;
 pub(crate) use method_name::MethodName;
-pub(crate) use unary_op::UnaryOp;
 pub(crate) use scrutinee::Scrutinee;
-pub(crate) use match_condition::CatchAll;
+pub(crate) use unary_op::UnaryOp;
 
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
@@ -402,9 +402,7 @@ impl<'sc> Expression<'sc> {
                     let res = check!(
                         MatchBranch::parse_from_pair(exp, config),
                         MatchBranch {
-                            condition: MatchCondition::CatchAll(CatchAll {
-                                span: span.clone()
-                            }),
+                            condition: MatchCondition::CatchAll(CatchAll { span: span.clone() }),
                             result: Expression::Unit { span: span.clone() },
                             span: span.clone()
                         },

@@ -1,8 +1,8 @@
-use crate::CatchAll;
 use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::span;
+use crate::CatchAll;
 use crate::CodeBlock;
 use pest::iterators::Pair;
 
@@ -51,7 +51,7 @@ impl<'sc> MatchBranch<'sc> {
                         span: span::Span {
                             span: e.as_span(),
                             path: path.clone(),
-                        }
+                        },
                     }),
                     Rule::scrutinee => {
                         let scrutinee = check!(
@@ -61,7 +61,7 @@ impl<'sc> MatchBranch<'sc> {
                             errors
                         );
                         MatchCondition::Scrutinee(scrutinee)
-                    },
+                    }
                     a => {
                         eprintln!(
                             "Unimplemented condition: {:?} ({:?}) ({:?})",
@@ -81,7 +81,7 @@ impl<'sc> MatchBranch<'sc> {
                             span: span::Span {
                                 span: e.as_span(),
                                 path: path.clone(),
-                            }
+                            },
                         })
                     }
                 }

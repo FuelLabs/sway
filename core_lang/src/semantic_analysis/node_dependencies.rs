@@ -2,9 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    error::*, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode, AstNodeContent,
-    CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
-    parse_tree::Scrutinee
+    error::*, parse_tree::Scrutinee, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode,
+    AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -389,7 +388,9 @@ impl<'sc> Dependencies<'sc> {
                 |deps, branch| {
                     match &branch.condition {
                         MatchCondition::CatchAll(_) => deps,
-                        MatchCondition::Scrutinee(scrutinee) => deps.gather_from_scrutinee(scrutinee),
+                        MatchCondition::Scrutinee(scrutinee) => {
+                            deps.gather_from_scrutinee(scrutinee)
+                        }
                     }
                     .gather_from_expr(&branch.result)
                 },
@@ -406,7 +407,7 @@ impl<'sc> Dependencies<'sc> {
     fn gather_from_scrutinee(self, scrutinee: &Scrutinee<'sc>) -> Self {
         match scrutinee {
             Scrutinee::Literal { .. } => self,
-            scrutinee => unimplemented!("{:?}", scrutinee)
+            scrutinee => unimplemented!("{:?}", scrutinee),
         }
     }
 

@@ -10,5 +10,5 @@ pub(crate) enum MatchCondition<'sc> {
 
 #[derive(Debug, Clone)]
 pub struct CatchAll<'sc> {
-    pub span: Span<'sc>
+    pub span: Span<'sc>,
 }

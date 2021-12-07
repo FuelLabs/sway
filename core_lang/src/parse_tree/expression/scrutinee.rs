@@ -1,11 +1,14 @@
-use crate::{Literal, Span, Rule, BuildConfig, CompileResult, error::{err, ok}, CompileError, Ident};
+use crate::{
+    error::{err, ok},
+    BuildConfig, CompileError, CompileResult, Ident, Literal, Rule, Span,
+};
 
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub enum Scrutinee<'sc> {
     Unit {
-        span: Span<'sc>
+        span: Span<'sc>,
     },
     Literal {
         value: Literal<'sc>,
@@ -13,8 +16,8 @@ pub enum Scrutinee<'sc> {
     },
     Variable {
         name: Ident<'sc>,
-        span: Span<'sc>
-    }
+        span: Span<'sc>,
+    },
 }
 
 impl<'sc> Scrutinee<'sc> {
@@ -49,10 +52,17 @@ impl<'sc> Scrutinee<'sc> {
         let parsed = match scrutinee.as_rule() {
             Rule::literal_value => Literal::parse_from_pair(scrutinee.clone(), config)
                 .map(|(value, span)| Scrutinee::Literal { value, span })
-                .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit { span: span.clone() }),
+                .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit {
+                    span: span.clone(),
+                }),
             Rule::ident => Ident::parse_from_pair(scrutinee.clone(), config)
-                .map(|name| Scrutinee::Variable { name, span: span.clone() })
-                .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit { span: span.clone() }),   
+                .map(|name| Scrutinee::Variable {
+                    name,
+                    span: span.clone(),
+                })
+                .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit {
+                    span: span.clone(),
+                }),
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
