@@ -5,4 +5,4 @@ name = "token_ops_abi"
 entry = "main.sw"
 
 [dependencies]
-std = {path = "../../../../../stdlib"}
+std = { path = "../../../../../lib-std" }
