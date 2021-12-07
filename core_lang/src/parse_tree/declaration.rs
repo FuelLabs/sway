@@ -1,24 +1,26 @@
-mod abi_declaration;
-mod constant_declaration;
-mod enum_declaration;
-pub mod function_declaration;
+mod abi;
+mod constant;
+mod r#enum;
+pub mod function;
 mod impl_trait;
 mod reassignment;
-mod struct_declaration;
-mod trait_declaration;
+mod storage;
+mod r#struct;
+mod r#trait;
 mod type_parameter;
-mod variable_declaration;
+mod variable;
 
-pub(crate) use abi_declaration::*;
-pub(crate) use constant_declaration::*;
-pub(crate) use enum_declaration::*;
-pub use function_declaration::*;
+pub(crate) use abi::*;
+pub(crate) use constant::*;
+pub use function::*;
 pub(crate) use impl_trait::*;
+pub(crate) use r#enum::*;
+pub use r#struct::*;
+pub use r#trait::*;
 pub(crate) use reassignment::*;
-pub use struct_declaration::*;
-pub use trait_declaration::*;
+pub use storage::*;
 pub(crate) use type_parameter::*;
-pub use variable_declaration::*;
+pub use variable::*;
 
 use crate::build_config::BuildConfig;
 use crate::error::*;
@@ -38,6 +40,7 @@ pub enum Declaration<'sc> {
     ImplSelf(ImplSelf<'sc>),
     AbiDeclaration(AbiDeclaration<'sc>),
     ConstantDeclaration(ConstantDeclaration<'sc>),
+    StorageDeclaration(StorageDeclaration<'sc>),
 }
 impl<'sc> Declaration<'sc> {
     pub(crate) fn parse_non_var_from_pair(
@@ -111,6 +114,12 @@ impl<'sc> Declaration<'sc> {
             }
             Rule::const_decl => Declaration::ConstantDeclaration(check!(
                 ConstantDeclaration::parse_from_pair(decl_inner, config,),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
+            Rule::storage_decl => Declaration::StorageDeclaration(check!(
+                StorageDeclaration::parse_from_pair(decl_inner, config),
                 return err(warnings, errors),
                 warnings,
                 errors
