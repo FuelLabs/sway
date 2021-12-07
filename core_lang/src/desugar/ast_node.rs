@@ -1,5 +1,6 @@
 use crate::error::{err, ok, CompileResult};
 use crate::{AstNode, AstNodeContent, ReturnStatement, WhileLoop};
+use super::code_block::desugar_code_block;
 use super::expression::desugar_expression;
 use super::declaration::desugar_declaration;
 
@@ -70,9 +71,35 @@ fn desugar_ast_node_content<'sc>(
 }
 
 fn desugar_return_stmt<'sc>(stmt: ReturnStatement<'sc>) -> CompileResult<'sc, ReturnStatement<'sc>> {
-    unimplemented!()
+    let warnings = vec!();
+    let errors = vec!();
+    let stmt = ReturnStatement {
+        expr: check!(
+            desugar_expression(stmt.expr),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
+    };
+    ok(stmt, warnings, errors)
 }
 
 fn desugar_while_loop<'sc>(while_loop: WhileLoop<'sc>) -> CompileResult<'sc, WhileLoop<'sc>> {
-    unimplemented!()
+    let warnings = vec![];
+    let errors = vec![];
+    let stmt = WhileLoop {
+        condition: check!(
+            desugar_expression(while_loop.condition),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ),
+        body: check!(
+            desugar_code_block(while_loop.body),
+            return err(warnings, errors),
+            warnings,
+            errors
+        )
+    };
+    ok(stmt, warnings, errors)
 }

@@ -1,4 +1,4 @@
-use crate::{Literal, Span, Rule, BuildConfig, CompileResult, error::{err, ok}, CompileError};
+use crate::{Literal, Span, Rule, BuildConfig, CompileResult, error::{err, ok}, CompileError, Ident};
 
 use pest::iterators::Pair;
 
@@ -10,6 +10,10 @@ pub enum Scrutinee<'sc> {
     Literal {
         value: Literal<'sc>,
         span: Span<'sc>,
+    },
+    Variable {
+        name: Ident<'sc>,
+        span: Span<'sc>
     }
 }
 
@@ -45,7 +49,10 @@ impl<'sc> Scrutinee<'sc> {
         let parsed = match scrutinee.as_rule() {
             Rule::literal_value => Literal::parse_from_pair(scrutinee.clone(), config)
                 .map(|(value, span)| Scrutinee::Literal { value, span })
-                .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit { span }),
+                .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit { span: span.clone() }),
+            Rule::ident => Ident::parse_from_pair(scrutinee.clone(), config)
+                .map(|name| Scrutinee::Variable { name, span: span.clone() })
+                .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit { span: span.clone() }),   
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
