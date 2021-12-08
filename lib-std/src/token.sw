@@ -37,32 +37,26 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
     let mut output_found = false;
 
     while index < length {
-        // check if `type` matches target type:
-        let type_match = asm(slot: index, type, target: OUTPUT_VARIABLE_TYPE, bytes: 8, res) {
+        // If an output of type "outputVariable" is found, check if its`amount` is zero.
+        // You can't transfer zero coins to an output without a panic, so a variable output with a zero value is by definition unused.
+        // if an ouput is found of type "OutputVariable" && the amount is zero:
+        if asm(slot: index, type, target: OUTPUT_VARIABLE_TYPE, bytes: 8, res) {
             xos t slot;
             meq res type target bytes;
             res: bool
-        };
-        // If an output of type "outputVariable" is found, check if its`amount` is zero.
-        // You can't transfer zero coins to an output without a panic, so a variable output with a zero value is by definition unused.
-        if type_match {
-            let amount_is_zero = asm(slot: index, a, amount_ptr, output, is_zero, bytes: 8) {
+        } && asm(slot: index, a, amount_ptr, output, is_zero, bytes: 8) {
                 xos output slot;
                 addi amount_ptr output i64;
                 lw a amount_ptr;
                 meq is_zero a zero bytes;
                 is_zero: bool
-            };
-            if amount_is_zero {
+            } {
                 outputIndex = index;
                 output_found = true;
                 return;
             } else {
                 index = index + 1;
             }
-        } else {
-            index = index + 1;
-        }
     }
     // If no suitable output was found, revert.
     if !output_found { panic(0) };
