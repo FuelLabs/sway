@@ -39,27 +39,32 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
     // If an output of type "outputVariable" is found, check if its`amount` is zero.
     // As one cannot transfer zero coins to an output without a panic, a variable output with a value of zero is by definition unused.
     while index < length {
-        // if an ouput is found of type "OutputVariable" && the amount is zero:
+        // if an ouput is found of type "OutputVariable":
         if asm(slot: index, type, target: OUTPUT_VARIABLE_TYPE, bytes: 8, res) {
             xos t slot;
             meq res type target bytes;
-            res: bool
-        } && asm(slot: index, a, amount_ptr, output, is_zero, bytes: 8) {
-                xos output slot;
-                addi amount_ptr output i64;
-                lw a amount_ptr;
-                meq is_zero a zero bytes;
-                is_zero: bool
-            } {
-                outputIndex = index;
-                output_found = true;
-                return;
-            } else {
-                index = index + 1;
-            }
+            res: bool // && the amount is zero:
+        }
+        && asm(slot: index, a, amount_ptr, output, is_zero, bytes: 8) {
+            xos output slot;
+            addi amount_ptr output i64;
+            lw a amount_ptr;
+            meq is_zero a zero bytes;
+            is_zero: bool
+        } // then store the index of the output and record the fact that we found a suitable output
+        {
+            outputIndex = index;
+            output_found = true;
+            return;
+            // otherwise, increment the index and continue the loop
+        } else {
+            index = index + 1;
+        }
     }
     // If no suitable output was found, revert.
-    if !output_found { panic(0) };
+    if !output_found {
+        panic(0)
+    };
 
     asm(amount: coins, id: token_id, recipient, output: index) {
         tro recipient output amount id;
