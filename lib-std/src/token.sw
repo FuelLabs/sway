@@ -10,20 +10,6 @@ const OUTPUT_LENGTH_LOCATION = 384;
 // output types: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/compressed_tx_format.md#output
 const OUTPUT_VARIABLE_TYPE = 4;
 
-    // Helper function for `While` loop in transfer_to_output()
-    fn terminate_or_increment(i: u8, l: u8, t: u8) -> u8 {
-        let mut new_index: u8 = 0;
-        // if index has not reached the point which will terminate the while loop we increment the index and return it. Else, there are no available variable outputs so we revert.
-        //
-        if i != t {
-            new_index = i + 1;
-        } else {
-            panic(0)
-        };
-        new_index
-    }
-
-
 /// Mint `n` coins of the current contract's token_id.
 pub fn mint(n: u64) {
     asm(r1: n) {
@@ -48,7 +34,7 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index: u8 = 0;
     let mut outputIndex = 0;
-    let terminal_length = length - 1;
+    let mut output_found = false;
 
     while index < length {
         index = index + 1;
@@ -70,13 +56,17 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
             };
             if amount_is_zero {
                 outputIndex = index;
+                output_found = true;
+                return;
             } else {
-                index = terminate_or_increment(index, length, terminal_length);
+                index = index + 1;
             }
         } else {
-            index = terminate_or_increment(index, length, terminal_length);
+            index = index + 1;
         }
     }
+    if !output_found { panic(0) };
+
     asm(amount: coins, id: token_id, recipient, output: index) {
         tro recipient output amount id;
     }
