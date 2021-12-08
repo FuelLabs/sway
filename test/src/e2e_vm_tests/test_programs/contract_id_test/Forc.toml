@@ -1,0 +1,9 @@
+[project]
+author  = "Nick Furfaro"
+license = "MIT"
+name = "contract_id_test"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../lib-std" }
+core = { path = "../../../../../lib-core" }
