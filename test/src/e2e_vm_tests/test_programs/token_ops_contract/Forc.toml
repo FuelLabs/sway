@@ -1,9 +1,0 @@
-[project]
-author  = "Nick Furfaro"
-license = "MIT"
-name = "token_ops_contract"
-entry = "main.sw"
-
-[dependencies]
-std = { path = "../../../../../lib-std" }
-token_ops_abi = { path = "../token_ops_abi"}
