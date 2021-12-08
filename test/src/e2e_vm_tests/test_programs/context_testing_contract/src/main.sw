@@ -1,21 +1,20 @@
 contract;
 
 use std::context::*;
-use context_testing_abi::ContextTesting;
+use context_testing_abi::*;
 
 impl ContextTesting for Contract {
-
 
     fn get_id(gas: u64, coins: u64, color: b256, input: ()) -> b256 {
         contract_id()
     }
 
-    fn get_this_balance(gas: u64, coins: u64, color: b256, token_id: b256) -> b256 {
-        this_balance()
+    fn get_this_balance(gas: u64, coins: u64, color: b256, token_id: b256) -> u64 {
+        this_balance(token_id)
     }
 
-    fn get_balance_of_contract(gas: u64, coins: u64, color: b256, token_id: b256, contract_id: ContractId) -> b256 {
-        balance_of_contract()
+    fn get_balance_of_contract(gas: u64, coins: u64, color: b256, params: ParamsContractBalance) -> u64 {
+        balance_of_contract(params.token_id, params.contract_id)
     }
 
     fn get_amount(gas: u64, coins: u64, color: b256, input: ()) -> u64 {
