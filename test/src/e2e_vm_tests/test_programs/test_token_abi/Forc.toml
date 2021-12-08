@@ -1,0 +1,8 @@
+[project]
+author  = "Nick Furfaro"
+license = "MIT"
+name = "test_token_abi"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../lib-std" }
