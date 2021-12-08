@@ -4,7 +4,7 @@ library context;
 /// Get the current contract's id when called in an internal context.
 /// **Note !** If called in an external context, this will **not** return a contract ID.
 // @dev If called externally, will actually return a pointer to the transaction ID.
-pub fn this_id() -> b256 {
+pub fn contract_id() -> b256 {
     asm() {
         fp: b256
     }
@@ -19,7 +19,7 @@ pub fn this_balance(token_id: b256) -> u64 {
 }
 
 /// Get the balance of token `token_id` for any contract `contract_id`
-pub fn contract_balance(asset_id: b256, contract_id: b256) -> u64 {
+pub fn balance_of_contract(asset_id: b256, contract_id: b256) -> u64 {
     asm(balance) {
         bal balance token_id contract_id;
         balance: u64
