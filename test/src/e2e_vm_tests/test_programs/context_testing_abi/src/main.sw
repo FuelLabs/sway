@@ -1,4 +1,5 @@
 library context_testing_abi;
+use std::contract_id::ContractId;
 
 abi ContextTesting {
   fn get_id(gas: u64, coins: u64, color: b256, input: ()) -> b256;
