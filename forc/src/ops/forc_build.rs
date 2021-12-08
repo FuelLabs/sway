@@ -205,7 +205,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         file_name.to_path_buf(),
         manifest_dir.clone(),
     );
-    let mut dep_namespace = namespace.clone();
+    let mut dep_namespace: Namespace = Default::default();
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {
