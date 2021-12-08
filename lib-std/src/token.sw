@@ -37,7 +37,6 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
     let mut output_found = false;
 
     while index < length {
-        index = index + 1;
         // check if `type` matches target type:
         let type_match = asm(slot: index, type, target: OUTPUT_VARIABLE_TYPE, bytes: 8, res) {
             xos t slot;
@@ -65,6 +64,7 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
             index = index + 1;
         }
     }
+    // If no suitable output was found, revert.
     if !output_found { panic(0) };
 
     asm(amount: coins, id: token_id, recipient, output: index) {
