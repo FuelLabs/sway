@@ -1,4 +1,4 @@
-use core_lang::parse;
+use core_lang::{parse, HllParseTreeKind};
 use fuel_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
@@ -32,67 +32,74 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
             let parsed_result = parse(main_file, None);
             match parsed_result.value {
                 Some(parse_tree) => {
-                    if parse_tree.script_ast.is_some() {
-                        let input_data = &command.data.unwrap_or_else(|| "".into());
-                        let data = format_hex_data(input_data);
-                        let script_data = hex::decode(data).expect("Invalid hex");
+                    match parse_tree.kind {
+                        HllParseTreeKind::Script => {
+                            let input_data = &command.data.unwrap_or_else(|| "".into());
+                            let data = format_hex_data(input_data);
+                            let script_data = hex::decode(data).expect("Invalid hex");
 
-                        let build_command = BuildCommand {
-                            path: command.path,
-                            print_finalized_asm: command.print_finalized_asm,
-                            print_intermediate_asm: command.print_intermediate_asm,
-                            binary_outfile: command.binary_outfile,
-                            offline_mode: false,
-                            silent_mode: command.silent_mode,
-                        };
-
-                        let compiled_script = forc_build::build(build_command)?;
-                        let (inputs, outputs) = manifest
-                            .get_tx_inputs_and_outputs()
-                            .map_err(|message| CliError { message })?;
-
-                        let tx = create_tx_with_script_and_data(
-                            compiled_script,
-                            script_data,
-                            inputs,
-                            outputs,
-                        );
-
-                        if command.dry_run {
-                            println!("{:?}", tx);
-                            Ok(())
-                        } else {
-                            let node_url = match &manifest.network {
-                                Some(network) => &network.url,
-                                _ => &command.node_url,
+                            let build_command = BuildCommand {
+                                path: command.path,
+                                print_finalized_asm: command.print_finalized_asm,
+                                print_intermediate_asm: command.print_intermediate_asm,
+                                binary_outfile: command.binary_outfile,
+                                offline_mode: false,
+                                silent_mode: command.silent_mode,
                             };
 
-                            let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
+                            let compiled_script = forc_build::build(build_command)?;
+                            let (inputs, outputs) = manifest
+                                .get_tx_inputs_and_outputs()
+                                .map_err(|message| CliError { message })?;
 
-                            if command.kill_node {
-                                if let Some(mut child) = child {
-                                    child.kill().await.expect("Node should be killed");
-                                }
-                            }
+                            let tx = create_tx_with_script_and_data(
+                                compiled_script,
+                                script_data,
+                                inputs,
+                                outputs,
+                            );
 
-                            Ok(())
-                        }
-                    } else {
-                        let parse_type = {
-                            if parse_tree.contract_ast.is_some() {
-                                SWAY_CONTRACT
-                            } else if parse_tree.predicate_ast.is_some() {
-                                SWAY_PREDICATE
+                            if command.dry_run {
+                                println!("{:?}", tx);
+                                Ok(())
                             } else {
-                                SWAY_LIBRARY
-                            }
-                        };
+                                let node_url = match &manifest.network {
+                                    Some(network) => &network.url,
+                                    _ => &command.node_url,
+                                };
 
-                        Err(CliError::wrong_sway_type(
-                            project_name,
-                            SWAY_SCRIPT,
-                            parse_type,
-                        ))
+                                let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
+
+                                if command.kill_node {
+                                    if let Some(mut child) = child {
+                                        child.kill().await.expect("Node should be killed");
+                                    }
+                                }
+
+                                Ok(())
+                            }
+                        },
+                        HllParseTreeKind::Contract => {
+                            Err(CliError::wrong_sway_type(
+                                project_name,
+                                SWAY_SCRIPT,
+                                SWAY_CONTRACT,
+                            ))
+                        },
+                        HllParseTreeKind::Predicate => {
+                            Err(CliError::wrong_sway_type(
+                                project_name,
+                                SWAY_SCRIPT,
+                                SWAY_PREDICATE,
+                            ))
+                        },
+                        HllParseTreeKind::Library { .. } => {
+                            Err(CliError::wrong_sway_type(
+                                project_name,
+                                SWAY_SCRIPT,
+                                SWAY_LIBRARY,
+                            ))
+                        },
                     }
                 }
                 None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
