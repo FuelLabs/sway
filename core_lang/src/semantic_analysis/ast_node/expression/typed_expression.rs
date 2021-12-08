@@ -595,7 +595,7 @@ impl<'sc> TypedExpression<'sc> {
         let first_branch = check!(
             TypedMatchBranch::type_check(
                 branches[0].clone(),
-                typed_primary_expression.clone(),
+                typed_primary_expression.return_type,
                 namespace,
                 type_annotation,
                 "",
@@ -605,99 +605,69 @@ impl<'sc> TypedExpression<'sc> {
                 dependency_graph
             ),
             TypedMatchBranch {
-                condition: TypedMatchCondition::CatchAll,
+                condition: TypedMatchCondition::CatchAll(TypedCatchAll {
+                    span: branches[0].span.clone()
+                }),
                 result: TypedExpression {
                     expression: TypedExpressionVariant::Unit,
                     return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
                     is_constant: IsConstant::No,
-                    span: span.clone(),
-                }
+                    span: branches[0].span.clone(),
+                },
+                span: branches[0].span.clone()
             },
             warnings,
             errors
         );
         let first_branch = vec![first_branch];
-        /*
-        let first_branch_condition = check!(
-            TypedMatchCondition::type_check(
-                branches[0].condition.clone(),
-                namespace,
-                Some(typed_primary_expression.return_type),
-                "",
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph),
-            TypedMatchCondition::CatchAll,
-            warnings,
-            errors
-        );
-        let first_branch_result = check!(
-            TypedExpression::type_check(
-                branches[0].result.clone(),
-                namespace,
-                type_annotation,
-                "",
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph),
-            error_recovery_expr(branches[0].span.clone()),
-            warnings,
-            errors
-        );
-        let first_branch_condition = vec![first_branch_condition];
-        let first_branch_result = vec![first_branch_result];
-        */
+        let return_type = first_branch[0].result.return_type;
         let mut rest_of_branches = branches
             .into_iter()
             .skip(1)
             .map(|branch| {
-                unimplemented!()
-                /*
                 check!(
                     TypedMatchBranch::type_check(
-                        branch,
-                        typed_primary_expression.clone(),
+                        branch.clone(),
+                        typed_primary_expression.return_type,
                         namespace,
-                        Some(first_branch[0].result.return_type),
-                        "all branches must be the same type",
+                        Some(return_type),
+                        "",
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph),
+                        dependency_graph
+                    ),
                     TypedMatchBranch {
-                        condition: TypedMatchCondition::CatchAll,
+                        condition: TypedMatchCondition::CatchAll(TypedCatchAll {
+                            span: branch.span.clone()
+                        }),
                         result: TypedExpression {
                             expression: TypedExpressionVariant::Unit,
                             return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
                             is_constant: IsConstant::No,
-                            span: span.clone(),
-                        }
+                            span: branch.span.clone(),
+                        },
+                        span: branch.span.clone()
                     },
                     warnings,
                     errors
                 )
-                */
             })
             .collect::<Vec<_>>();
 
         let mut all_branches = first_branch;
         all_branches.append(&mut rest_of_branches);
-        unimplemented!()
-
-        /*
         let exp = TypedExpression {
             expression: TypedExpressionVariant::MatchExpression {
-                condition: typed_primary_expression,
+                condition: Box::new(typed_primary_expression),
                 branches: all_branches,
-                span: span.clone()
+                span: span.clone(),
             },
             span: span.clone(),
             return_type,
-            is_constant: IsConstant::No
+            is_constant: IsConstant::No,
         };
-        */
+        ok(exp, warnings, errors)
     }
 
     fn type_check_code_block(

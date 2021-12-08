@@ -80,7 +80,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         span: Span<'sc>,
     },
     MatchExpression {
-        condition: TypedExpression<'sc>,
+        condition: Box<TypedExpression<'sc>>,
         branches: Vec<TypedMatchBranch<'sc>>,
         span: Span<'sc>,
     },

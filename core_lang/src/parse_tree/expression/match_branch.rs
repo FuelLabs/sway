@@ -13,8 +13,6 @@ use super::{Expression, MatchCondition};
 pub struct MatchBranch<'sc> {
     pub(crate) condition: MatchCondition<'sc>,
     pub(crate) result: Expression<'sc>,
-    #[allow(dead_code)]
-    // this span may be used for errors in the future, although it is not right now.
     pub(crate) span: span::Span<'sc>,
 }
 

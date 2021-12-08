@@ -98,4 +98,13 @@ impl<'sc> Scrutinee<'sc> {
         };
         ok(parsed, warnings, errors)
     }
+
+    pub fn span(&self) -> Span<'sc> {
+        match self {
+            Scrutinee::Unit { span } => span.clone(),
+            Scrutinee::Variable { span, .. } => span.clone(),
+            Scrutinee::Literal { span, .. } => span.clone(),
+            Scrutinee::StructScrutinee { span, .. } => span.clone(),
+        }
+    }
 }
