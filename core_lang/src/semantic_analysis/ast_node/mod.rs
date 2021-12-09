@@ -699,6 +699,15 @@ impl<'sc> TypedAstNodeContent<'sc> {
                 );
                 TypedAstNodeContent::Declaration(decl)
             }
+            TypedAstNodeContent::ImplicitReturnExpression(exp) => {
+                let exp = check!(
+                    exp.desugar(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedAstNodeContent::ImplicitReturnExpression(exp)
+            }
             content => unimplemented!("{:?}", content),
         };
         ok(content, warnings, errors)

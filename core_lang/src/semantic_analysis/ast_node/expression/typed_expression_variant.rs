@@ -295,6 +295,15 @@ impl<'sc> TypedExpressionVariant<'sc> {
                     errors
                 )
             }
+            TypedExpressionVariant::CodeBlock(code_block) => {
+                let code_block = check!(
+                    code_block.desugar(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedExpressionVariant::CodeBlock(code_block)
+            }
             variant => unimplemented!("{:?}", variant),
         };
         ok(variant, warnings, errors)
@@ -354,7 +363,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
             for (left_req, right_req) in match_req_map.iter() {
                 let joined_span = join_spans(left_req.span.clone(), right_req.span.clone());
                 /*
-                let condition = TypedExpression::MethodApplication {
+                let condition = Expression::MethodApplication {
                     method_name: MethodName::FromType {
                         call_path: CallPath {
                             prefixes: vec![
