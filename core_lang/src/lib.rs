@@ -76,7 +76,7 @@ pub struct ParseTree<'sc> {
 }
 
 /// A single [AstNode] represents a node in the parse tree. Note that [AstNode]
-/// is a recursive type and can contain other [AstNodes], thus populating the tree.
+/// is a recursive type and can contain other [AstNode], thus populating the tree.
 #[derive(Debug, Clone)]
 pub struct AstNode<'sc> {
     /// The content of this ast node, which could be any control flow structure or other
