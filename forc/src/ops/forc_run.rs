@@ -1,4 +1,4 @@
-use core_lang::{parse, HllParseTreeKind};
+use core_lang::{parse, TreeType};
 use fuel_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
@@ -32,8 +32,8 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
             let parsed_result = parse(main_file, None);
             match parsed_result.value {
                 Some(parse_tree) => {
-                    match parse_tree.kind {
-                        HllParseTreeKind::Script => {
+                    match parse_tree.tree_type {
+                        TreeType::Script => {
                             let input_data = &command.data.unwrap_or_else(|| "".into());
                             let data = format_hex_data(input_data);
                             let script_data = hex::decode(data).expect("Invalid hex");
@@ -79,21 +79,21 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
                                 Ok(())
                             }
                         },
-                        HllParseTreeKind::Contract => {
+                        TreeType::Contract => {
                             Err(CliError::wrong_sway_type(
                                 project_name,
                                 SWAY_SCRIPT,
                                 SWAY_CONTRACT,
                             ))
                         },
-                        HllParseTreeKind::Predicate => {
+                        TreeType::Predicate => {
                             Err(CliError::wrong_sway_type(
                                 project_name,
                                 SWAY_SCRIPT,
                                 SWAY_PREDICATE,
                             ))
                         },
-                        HllParseTreeKind::Library { .. } => {
+                        TreeType::Library { .. } => {
                             Err(CliError::wrong_sway_type(
                                 project_name,
                                 SWAY_SCRIPT,

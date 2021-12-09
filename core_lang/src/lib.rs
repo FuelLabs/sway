@@ -28,7 +28,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use std::collections::{HashMap, HashSet};
 
-use semantic_analysis::{TreeType, TypedParseTree};
+pub use semantic_analysis::TreeType;
+use semantic_analysis::TypedParseTree;
 pub mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
@@ -39,31 +40,10 @@ pub use ident::Ident;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 pub use type_engine::TypeInfo;
 
-#[derive(Debug)]
-pub enum HllParseTreeKind<'sc> {
-    Contract,
-    Script,
-    Predicate,
-    Library {
-        name: Ident<'sc>,
-    },
-}
-
-impl<'sc> HllParseTreeKind<'sc> {
-    fn to_tree_type(&self) -> TreeType<'sc> {
-        match self {
-            HllParseTreeKind::Contract => TreeType::Contract,
-            HllParseTreeKind::Script => TreeType::Script,
-            HllParseTreeKind::Predicate => TreeType::Predicate,
-            HllParseTreeKind::Library { name } => TreeType::Library { name: name.clone() },
-        }
-    }
-}
-
 // todo rename to language name
 #[derive(Debug)]
 pub struct HllParseTree<'sc> {
-    pub kind: HllParseTreeKind<'sc>,
+    pub tree_type: TreeType<'sc>,
     pub tree: ParseTree<'sc>,
 }
 
@@ -226,11 +206,11 @@ pub(crate) fn compile_inner_dependency<'sc>(
         warnings,
         errors
     );
-    let library_name = match parse_tree.kind {
-        HllParseTreeKind::Library { name } => name,
-        HllParseTreeKind::Contract |
-        HllParseTreeKind::Script |
-        HllParseTreeKind::Predicate => {
+    let library_name = match &parse_tree.tree_type {
+        TreeType::Library { name } => name,
+        TreeType::Contract |
+        TreeType::Script |
+        TreeType::Predicate => {
             errors.push(CompileError::ImportMustBeLibrary {
                 span: span::Span {
                     span: pest::Span::new(input, 0, 0).unwrap(),
@@ -244,7 +224,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
         TypedParseTree::type_check(
             parse_tree.tree,
             initial_namespace.clone(),
-            &TreeType::Library { name: library_name.clone() },
+            &parse_tree.tree_type,
             &build_config.clone(),
             dead_code_graph,
             dependency_graph,
@@ -261,7 +241,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
     // The dead code will be analyzed later wholistically with the rest of the program
     // since we can't tell what is dead and what isn't just from looking at this file
     if let Err(e) =
-        ControlFlowGraph::append_to_dead_code_graph(&typed_parse_tree, &TreeType::Library { name: library_name.clone() }, dead_code_graph)
+        ControlFlowGraph::append_to_dead_code_graph(&typed_parse_tree, &parse_tree.tree_type, dead_code_graph)
     {
         errors.push(e)
     };
@@ -307,7 +287,7 @@ pub fn compile_to_asm<'sc>(
         TypedParseTree::type_check(
             parse_tree.tree,
             initial_namespace.clone(),
-            &parse_tree.kind.to_tree_type(),
+            &parse_tree.tree_type,
             &build_config.clone(),
             &mut dead_code_graph,
             dependency_graph,
@@ -318,7 +298,7 @@ pub fn compile_to_asm<'sc>(
     );
 
     let (mut l_warnings, mut l_errors) =
-        perform_control_flow_analysis(&typed_parse_tree, &parse_tree.kind.to_tree_type(), &mut dead_code_graph);
+        perform_control_flow_analysis(&typed_parse_tree, &parse_tree.tree_type, &mut dead_code_graph);
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
@@ -328,8 +308,8 @@ pub fn compile_to_asm<'sc>(
     if !errors.is_empty() {
         return CompilationResult::Failure { errors, warnings };
     }
-    match parse_tree.kind {
-        HllParseTreeKind::Contract | HllParseTreeKind::Script | HllParseTreeKind::Predicate => {
+    match parse_tree.tree_type {
+        TreeType::Contract | TreeType::Script | TreeType::Predicate => {
             let asm = check!(
                 compile_ast_to_asm(typed_parse_tree, &build_config),
                 return CompilationResult::Failure { errors, warnings },
@@ -341,7 +321,7 @@ pub fn compile_to_asm<'sc>(
             }
             CompilationResult::Success { asm, warnings }
         },
-        HllParseTreeKind::Library { name } => {
+        TreeType::Library { name } => {
             let mut exports = LibraryExports {
                 namespace: Default::default(),
                 trees: vec![],
@@ -490,25 +470,25 @@ fn parse_root_from_pairs<'sc>(
         match rule {
             Rule::contract => {
                 fuel_ast_opt = Some(HllParseTree {
-                    kind: HllParseTreeKind::Contract,
+                    tree_type: TreeType::Contract,
                     tree: parse_tree,
                 });
             }
             Rule::script => {
                 fuel_ast_opt = Some(HllParseTree {
-                    kind: HllParseTreeKind::Script,
+                    tree_type: TreeType::Script,
                     tree: parse_tree,
                 });
             }
             Rule::predicate => {
                 fuel_ast_opt = Some(HllParseTree {
-                    kind: HllParseTreeKind::Predicate,
+                    tree_type: TreeType::Predicate,
                     tree: parse_tree,
                 });
             }
             Rule::library => {
                 fuel_ast_opt = Some(HllParseTree {
-                    kind: HllParseTreeKind::Library {
+                    tree_type: TreeType::Library {
                         name: library_name.expect(
                             "Safe unwrap, because the core_lang enforces the library keyword is \
                              followed by a name. This is an invariant",

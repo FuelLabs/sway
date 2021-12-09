@@ -1,4 +1,4 @@
-use core_lang::{parse, HllParseTreeKind};
+use core_lang::{parse, TreeType};
 use fuel_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
 use fuel_vm::prelude::*;
@@ -38,8 +38,8 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
             let parsed_result = parse(main_file, None);
             match parsed_result.value {
                 Some(parse_tree) => {
-                    match parse_tree.kind {
-                        HllParseTreeKind::Contract => {
+                    match parse_tree.tree_type {
+                        TreeType::Contract => {
                             let build_command = BuildCommand {
                                 path,
                                 print_finalized_asm,
@@ -70,21 +70,21 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                                 Err(e) => Err(e.to_string().into()),
                             }
                         },
-                        HllParseTreeKind::Script => {
+                        TreeType::Script => {
                             Err(CliError::wrong_sway_type(
                                 project_name,
                                 SWAY_CONTRACT,
                                 SWAY_SCRIPT,
                             ))
                         },
-                        HllParseTreeKind::Predicate => {
+                        TreeType::Predicate => {
                             Err(CliError::wrong_sway_type(
                                 project_name,
                                 SWAY_CONTRACT,
                                 SWAY_PREDICATE,
                             ))
                         },
-                        HllParseTreeKind::Library { .. } => {
+                        TreeType::Library { .. } => {
                             Err(CliError::wrong_sway_type(
                                 project_name,
                                 SWAY_CONTRACT,

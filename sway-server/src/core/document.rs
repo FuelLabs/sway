@@ -1,7 +1,7 @@
 use super::token::Token;
 use super::token_type::TokenType;
 use crate::{capabilities, core::token::traverse_node};
-use core_lang::{parse, HllParseTreeKind};
+use core_lang::{parse, TreeType};
 use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 use ropey::Rope;
 use std::collections::HashMap;
@@ -117,7 +117,7 @@ impl TextDocument {
             Some(value) => {
                 let mut tokens = vec![];
 
-                if let HllParseTreeKind::Library { name } = value.kind {
+                if let TreeType::Library { name } = value.tree_type {
                     // TODO
                     // Is library name necessary to store for the LSP?
                     let token = Token::from_ident(&name, TokenType::Library);

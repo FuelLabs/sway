@@ -9,8 +9,8 @@ use crate::{AstNode, ParseTree};
 use crate::ident::Ident;
 use std::collections::{HashMap, HashSet};
 
-#[derive(Clone, PartialEq, Eq)]
-pub(crate) enum TreeType<'sc> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TreeType<'sc> {
     Predicate,
     Script,
     Contract,
