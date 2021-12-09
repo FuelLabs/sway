@@ -50,12 +50,12 @@ pub enum HllParseTreeKind<'sc> {
 }
 
 impl<'sc> HllParseTreeKind<'sc> {
-    fn to_tree_type(&self) -> TreeType {
+    fn to_tree_type(&self) -> TreeType<'sc> {
         match self {
             HllParseTreeKind::Contract => TreeType::Contract,
             HllParseTreeKind::Script => TreeType::Script,
             HllParseTreeKind::Predicate => TreeType::Predicate,
-            HllParseTreeKind::Library { .. } => TreeType::Library,
+            HllParseTreeKind::Library { name } => TreeType::Library { name: name.clone() },
         }
     }
 }
@@ -244,7 +244,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
         TypedParseTree::type_check(
             parse_tree.tree,
             initial_namespace.clone(),
-            TreeType::Library,
+            &TreeType::Library { name: library_name.clone() },
             &build_config.clone(),
             dead_code_graph,
             dependency_graph,
@@ -261,7 +261,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
     // The dead code will be analyzed later wholistically with the rest of the program
     // since we can't tell what is dead and what isn't just from looking at this file
     if let Err(e) =
-        ControlFlowGraph::append_to_dead_code_graph(&typed_parse_tree, TreeType::Library, dead_code_graph)
+        ControlFlowGraph::append_to_dead_code_graph(&typed_parse_tree, &TreeType::Library { name: library_name.clone() }, dead_code_graph)
     {
         errors.push(e)
     };
@@ -307,7 +307,7 @@ pub fn compile_to_asm<'sc>(
         TypedParseTree::type_check(
             parse_tree.tree,
             initial_namespace.clone(),
-            parse_tree.kind.to_tree_type(),
+            &parse_tree.kind.to_tree_type(),
             &build_config.clone(),
             &mut dead_code_graph,
             dependency_graph,
@@ -318,7 +318,7 @@ pub fn compile_to_asm<'sc>(
     );
 
     let (mut l_warnings, mut l_errors) =
-        perform_control_flow_analysis(&typed_parse_tree, parse_tree.kind.to_tree_type(), &mut dead_code_graph);
+        perform_control_flow_analysis(&typed_parse_tree, &parse_tree.kind.to_tree_type(), &mut dead_code_graph);
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
@@ -393,7 +393,7 @@ pub fn compile_to_bytecode<'n, 'sc>(
 
 fn perform_control_flow_analysis<'sc>(
     tree: &TypedParseTree<'sc>,
-    tree_type: TreeType,
+    tree_type: &TreeType<'sc>,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     match ControlFlowGraph::append_to_dead_code_graph(tree, tree_type, dead_code_graph) {

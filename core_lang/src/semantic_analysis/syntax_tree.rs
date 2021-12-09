@@ -6,14 +6,17 @@ use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
 use crate::{AstNode, ParseTree};
+use crate::ident::Ident;
 use std::collections::{HashMap, HashSet};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TreeType {
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) enum TreeType<'sc> {
     Predicate,
     Script,
     Contract,
-    Library,
+    Library {
+        name: Ident<'sc>,
+    },
 }
 
 #[derive(Debug)]
@@ -69,7 +72,7 @@ impl<'sc> TypedParseTree<'sc> {
     pub(crate) fn type_check(
         parsed: ParseTree<'sc>,
         initial_namespace: Namespace<'sc>,
-        tree_type: TreeType,
+        tree_type: &TreeType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -147,7 +150,7 @@ impl<'sc> TypedParseTree<'sc> {
         typed_tree_nodes: Vec<TypedAstNode<'sc>>,
         span: Span<'sc>,
         namespace: Namespace<'sc>,
-        tree_type: TreeType,
+        tree_type: &TreeType<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
         mut errors: Vec<CompileError<'sc>>,
     ) -> CompileResult<'sc, Self> {
@@ -223,7 +226,7 @@ impl<'sc> TypedParseTree<'sc> {
                     declarations,
                 }
             }
-            TreeType::Library => TypedParseTree::Library {
+            TreeType::Library { .. } => TypedParseTree::Library {
                 all_nodes,
                 namespace,
             },

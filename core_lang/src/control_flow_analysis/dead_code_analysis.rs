@@ -94,7 +94,7 @@ impl<'sc> ControlFlowGraph<'sc> {
 
     pub(crate) fn append_to_dead_code_graph(
         ast: &TypedParseTree<'sc>,
-        tree_type: TreeType,
+        tree_type: &TreeType<'sc>,
         graph: &mut ControlFlowGraph<'sc>,
         // the `Result` return is just to handle `Unimplemented` errors
     ) -> Result<(), CompileError<'sc>> {
@@ -132,7 +132,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                         .unwrap(),
                 ]
             }
-            TreeType::Contract | TreeType::Library => graph
+            TreeType::Contract | TreeType::Library { .. } => graph
                 .graph
                 .node_indices()
                 .filter(|i| match graph.graph[*i] {
@@ -184,7 +184,7 @@ fn connect_node<'sc>(
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
-    tree_type: TreeType,
+    tree_type: &TreeType<'sc>,
 ) -> Result<(Vec<NodeIndex>, Option<NodeIndex>), CompileError<'sc>> {
     //    let mut graph = graph.clone();
     let span = node.span.clone();
@@ -319,7 +319,7 @@ fn connect_declaration<'sc>(
     entry_node: NodeIndex,
     span: Span<'sc>,
     exit_node: Option<NodeIndex>,
-    tree_type: TreeType,
+    tree_type: &TreeType<'sc>,
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError<'sc>> {
     use TypedDeclaration::*;
@@ -384,7 +384,7 @@ fn connect_struct_declaration<'sc>(
     struct_decl: &TypedStructDeclaration<'sc>,
     graph: &mut ControlFlowGraph<'sc>,
     entry_node: NodeIndex,
-    tree_type: TreeType,
+    tree_type: &TreeType<'sc>,
 ) {
     let TypedStructDeclaration {
         name,
@@ -401,9 +401,7 @@ fn connect_struct_declaration<'sc>(
     //
     // this is important because if the struct is public, you want to be able to signal that all
     // fields are accessible by just adding an edge to the struct declaration node
-    if [TreeType::Contract, TreeType::Library].contains(&tree_type)
-        && *visibility == Visibility::Public
-    {
+    if matches!(tree_type, TreeType::Contract | TreeType::Library { .. }) && *visibility == Visibility::Public {
         for (_name, node) in &field_nodes {
             graph.add_edge(entry_node, *node, "".into());
         }
@@ -426,7 +424,7 @@ fn connect_impl_trait<'sc>(
     graph: &mut ControlFlowGraph<'sc>,
     methods: &[TypedFunctionDeclaration<'sc>],
     entry_node: NodeIndex,
-    tree_type: TreeType,
+    tree_type: &TreeType<'sc>,
 ) -> Result<(), CompileError<'sc>> {
     let graph_c = graph.clone();
     let trait_decl_node = graph_c.namespace.find_trait(trait_name);
@@ -542,7 +540,7 @@ fn connect_typed_fn_decl<'sc>(
     entry_node: NodeIndex,
     span: Span<'sc>,
     exit_node: Option<NodeIndex>,
-    tree_type: TreeType,
+    tree_type: &TreeType<'sc>,
 ) -> Result<(), CompileError<'sc>> {
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.primary_name).into());
     let (_exit_nodes, _exit_node) = depth_first_insertion_code_block(
@@ -577,7 +575,7 @@ fn depth_first_insertion_code_block<'sc>(
     graph: &mut ControlFlowGraph<'sc>,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
-    tree_type: TreeType,
+    tree_type: &TreeType<'sc>,
 ) -> Result<(Vec<NodeIndex>, Option<NodeIndex>), CompileError<'sc>> {
     let mut leaves = leaves.to_vec();
     let mut exit_node = exit_node;
@@ -597,7 +595,7 @@ fn connect_expression<'sc>(
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     label: &'static str,
-    tree_type: TreeType,
+    tree_type: &TreeType<'sc>,
     expression_span: Span<'sc>,
 ) -> Result<Vec<NodeIndex>, CompileError<'sc>> {
     use TypedExpressionVariant::*;
