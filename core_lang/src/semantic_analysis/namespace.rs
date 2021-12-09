@@ -37,23 +37,6 @@ impl<'sc> Namespace<'sc> {
         self.modules.values()
     }
 
-    // TODO: compile_inner_dependency returns a namespace that contains at most one module and
-    // nothing else. This is confusing and should be fixed.
-    pub fn take_the_only_module(self) -> Option<(String, Namespace<'sc>)> {
-        assert!(self.symbols.is_empty());
-        assert!(self.implemented_traits.is_empty());
-        assert!(self.use_synonyms.is_empty());
-        assert!(self.use_aliases.is_empty());
-        let mut modules = self.modules.into_iter();
-        match modules.next() {
-            Some((name, module)) => {
-                assert!(modules.next().is_none());
-                Some((name, module))
-            }
-            None => None,
-        }
-    }
-
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
     /// being looked for is actually a generic, not-yet-resolved type.
     ///

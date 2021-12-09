@@ -235,7 +235,8 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
 /// This struct represents the compilation of an internal dependency
 /// defined through an include statement (the `dep` keyword).
 pub(crate) struct InnerDependencyCompileResult<'sc> {
-    library_exports: LibraryExports<'sc>,
+    name: Ident<'sc>,
+    namespace: Namespace<'sc>,
 }
 /// For internal compiler use.
 /// Compiles an included file and returns its control flow and dead code graphs.
@@ -299,18 +300,11 @@ pub(crate) fn compile_inner_dependency<'sc>(
         errors.push(e)
     };
 
-    let mut library_exports = LibraryExports {
-        namespace: Default::default(),
-        trees: vec![],
-    };
-    library_exports.namespace.insert_module(
-        library_name.primary_name.to_string(),
-        typed_parse_tree.namespace().clone(),
-    );
-    library_exports.trees.push(typed_parse_tree);
-
     ok(
-        InnerDependencyCompileResult { library_exports },
+        InnerDependencyCompileResult {
+            name: library_name.clone(),
+            namespace: typed_parse_tree.into_namespace(),
+        },
         warnings,
         errors,
     )
