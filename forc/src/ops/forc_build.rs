@@ -147,7 +147,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
-    namespace: &mut Namespace<'n, 'source>,
+    namespace: &mut Namespace<'source>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<(), String> {
@@ -205,7 +205,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         file_name.to_path_buf(),
         manifest_dir.clone(),
     );
-    let mut dep_namespace = namespace.clone();
+    let mut dep_namespace: Namespace = Default::default();
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {
@@ -236,22 +236,20 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         silent_mode,
     )?;
 
-    namespace
-        .inner
-        .insert_dependency_module(dependency_name.to_string(), compiled.namespace.inner);
+    namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())
 }
 
-fn compile_library<'n, 'source>(
+fn compile_library<'source>(
     source: &'source str,
     proj_name: &str,
-    namespace: &Namespace<'n, 'source>,
+    namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<LibraryExports<'n, 'source>, String> {
+) -> Result<LibraryExports<'source>, String> {
     let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library { exports, warnings } => {
@@ -303,7 +301,7 @@ fn compile_library<'n, 'source>(
 fn compile<'n, 'source>(
     source: &'source str,
     proj_name: &str,
-    namespace: &Namespace<'n, 'source>,
+    namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
@@ -446,7 +444,7 @@ fn format_err(err: &core_lang::CompileError) {
 fn compile_to_asm<'n, 'source>(
     source: &'source str,
     proj_name: &str,
-    namespace: &Namespace<'n, 'source>,
+    namespace: &Namespace<'source>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> Result<FinalizedAsm<'source>, String> {

@@ -10,7 +10,8 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
     enum_decl: TypedEnumDeclaration<'sc>,
     enum_field_name: Ident<'sc>,
     args: Vec<Expression<'sc>>,
-    namespace: &mut Namespace<'n, 'sc>,
+    namespace: &mut Namespace<'sc>,
+    crate_namespace: Option<&'n Namespace<'sc>>,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -66,6 +67,7 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
                 TypedExpression::type_check(
                     single_expr.clone(),
                     namespace,
+                    crate_namespace,
                     Some(enum_field_type),
                     "Enum instantiator must match its declared variant type.",
                     self_type,

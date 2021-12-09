@@ -100,7 +100,7 @@ match_condition  =  {expr|"_"}
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
 struct_expression  =  {struct_name ~ "{" ~ struct_expr_fields ~ "}"}
-struct_expr_fields =  {struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?}
+struct_expr_fields =  {(struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?)?}
 array_exp          =  {"[" ~ array_elems?  ~ "]"}
 // Strictly speaking the [val; count] initialiser for a static array can have any constant expression
 // for the value and the count, but Sway doesn't yet have constant expression resolution, so for now
@@ -127,11 +127,11 @@ storage_decl      =  {storage_keyword ~ "{" ~ storage_fields ~ "}"}
 storage_fields    =  {storage_field ~ ("," ~ storage_field)* ~ ","?}
 storage_field     =  {ident ~ ":" ~ type_name ~ assign ~ expr}
 struct_name       =  {ident}
-struct_fields     =  {struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","?}
+struct_fields     =  {(struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","?)?}
 struct_field_name =  {ident}
 // // enum declaration
 enum_decl         =  {visibility ~ enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}"}
-enum_fields       =  {enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","?}
+enum_fields       =  {(enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","?)?}
 enum_name         =  {ident}
 enum_field_name   =  {ident}
 
