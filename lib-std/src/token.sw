@@ -4,10 +4,11 @@ library token;
 use ::address::Address;
 use ::chain::panic;
 
-// @todo if tx format changes, the magic number "384" must be changed !
-// TransactionScript outputsCount has a 6 word/384-bit offset
-const OUTPUT_LENGTH_LOCATION = 384;
-// output types: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/compressed_tx_format.md#output
+// @todo if tx format changes, the magic number "48" must be changed !
+// TransactionScript outputsCount has a 48 byte(6 words * 8) offset
+// Transaction Script: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transactionscript
+const OUTPUT_LENGTH_LOCATION = 48;
+// Output types: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#output
 const OUTPUT_VARIABLE_TYPE = 4;
 
 /// Mint `n` coins of the current contract's token_id.
