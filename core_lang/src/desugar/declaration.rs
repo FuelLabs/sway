@@ -4,7 +4,9 @@ use crate::{
     ImplSelf, ImplTrait, Reassignment, TraitDeclaration, VariableDeclaration,
 };
 
-/*
+use super::code_block::desugar_code_block;
+use super::expression::desugar_expression;
+
 pub fn desugar_declaration<'sc>(decl: Declaration<'sc>) -> CompileResult<'sc, Declaration<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -165,5 +167,3 @@ fn desugar_reassignment<'sc>(
     };
     ok(reassignment, warnings, errors)
 }
-
-*/

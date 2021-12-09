@@ -13,6 +13,6 @@ fn main() -> u64 {
 
     match p {
         Point { 3, y } => { y },
-        Point { 3, 4 } => { 24 }
+        Point { 3, 4 } => { 24 },
     }
 }

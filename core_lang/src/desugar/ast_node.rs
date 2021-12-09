@@ -1,7 +1,11 @@
 use crate::error::{err, ok, CompileResult};
 use crate::semantic_analysis::TypedAstNode;
+use crate::{AstNode, AstNodeContent, ReturnStatement, WhileLoop};
 
-/*
+use super::code_block::desugar_code_block;
+use super::declaration::desugar_declaration;
+use super::expression::desugar_expression;
+
 pub fn desugar_ast_node<'sc>(node: AstNode<'sc>) -> CompileResult<'sc, AstNode<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -16,7 +20,6 @@ pub fn desugar_ast_node<'sc>(node: AstNode<'sc>) -> CompileResult<'sc, AstNode<'
     };
     ok(node, warnings, errors)
 }
-
 
 fn desugar_ast_node_content<'sc>(
     node_content: AstNodeContent<'sc>,
@@ -96,5 +99,3 @@ fn desugar_while_loop<'sc>(while_loop: WhileLoop<'sc>) -> CompileResult<'sc, Whi
     };
     ok(stmt, warnings, errors)
 }
-
-*/

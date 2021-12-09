@@ -4,10 +4,12 @@ mod declaration;
 mod expression;
 mod matcher;
 
+use ast_node::desugar_ast_node;
+
 use crate::error::{err, ok, CompileResult};
 use crate::semantic_analysis::{TreeType, TypedParseTree};
+use crate::{HllParseTree, ParseTree};
 
-/*
 pub fn desugar<'sc>(tree: HllParseTree<'sc>) -> CompileResult<'sc, HllParseTree<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -42,4 +44,3 @@ fn desugar_parse_tree<'sc>(parse_tree: ParseTree<'sc>) -> CompileResult<'sc, Par
     };
     ok(parse_tree, warnings, errors)
 }
-*/

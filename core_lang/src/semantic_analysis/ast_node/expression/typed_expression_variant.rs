@@ -362,35 +362,50 @@ impl<'sc> TypedExpressionVariant<'sc> {
             let mut conditional = None;
             for (left_req, right_req) in match_req_map.iter() {
                 let joined_span = join_spans(left_req.span.clone(), right_req.span.clone());
-                /*
-                let condition = Expression::MethodApplication {
-                    method_name: MethodName::FromType {
-                        call_path: CallPath {
-                            prefixes: vec![
-                                Ident {
-                                    primary_name: "std",
-                                    span: joined_span.clone(),
-                                },
-                                Ident {
-                                    primary_name: "ops",
-                                    span: joined_span.clone(),
-                                },
-                            ],
-                            suffix: Op {
-                                op_variant: OpVariant::Equals,
-                                span: joined_span.clone(),
-                            }
-                            .to_var_name(),
+                let name = CallPath {
+                    prefixes: vec![
+                        Ident {
+                            primary_name: "std",
+                            span: joined_span.clone(),
                         },
-                        type_name: None,
-                        is_absolute: true,
-                    },
-                    arguments: vec![left_req.to_owned(), right_req.to_owned()],
-                    span: joined_span,
+                        Ident {
+                            primary_name: "ops",
+                            span: joined_span.clone(),
+                        },
+                    ],
+                    suffix: Op {
+                        op_variant: OpVariant::Equals,
+                        span: joined_span.clone(),
+                    }
+                    .to_var_name(),
                 };
-                */
+                let arg1 = (
+                    Ident {
+                        primary_name: "self",
+                        span: left_req.span.clone(),
+                    },
+                    left_req.to_owned(),
+                );
+                let arg2 = (
+                    Ident {
+                        primary_name: "other",
+                        span: right_req.span.clone(),
+                    },
+                    right_req.to_owned(),
+                );
+                // THIS IS A HORRIBLE HACK AGH
+                let function_body = TypedCodeBlock {
+                    contents: todo!(),
+                    whole_block_span: joined_span,
+                };
+                let variant = TypedExpressionVariant::FunctionApplication {
+                    name,
+                    arguments: vec![arg1, arg2],
+                    selector: None,
+                    function_body,
+                };
                 let condition = TypedExpression {
-                    expression: todo!(),
+                    expression: variant,
                     span: joined_span,
                     return_type: crate::type_engine::insert_type(TypeInfo::Boolean),
                     is_constant: IsConstant::No,
