@@ -208,9 +208,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
     );
     let library_name = match &parse_tree.tree_type {
         TreeType::Library { name } => name,
-        TreeType::Contract |
-        TreeType::Script |
-        TreeType::Predicate => {
+        TreeType::Contract | TreeType::Script | TreeType::Predicate => {
             errors.push(CompileError::ImportMustBeLibrary {
                 span: span::Span {
                     span: pest::Span::new(input, 0, 0).unwrap(),
@@ -218,7 +216,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
                 },
             });
             return err(warnings, errors);
-        },
+        }
     };
     let typed_parse_tree = check!(
         TypedParseTree::type_check(
@@ -240,9 +238,11 @@ pub(crate) fn compile_inner_dependency<'sc>(
 
     // The dead code will be analyzed later wholistically with the rest of the program
     // since we can't tell what is dead and what isn't just from looking at this file
-    if let Err(e) =
-        ControlFlowGraph::append_to_dead_code_graph(&typed_parse_tree, &parse_tree.tree_type, dead_code_graph)
-    {
+    if let Err(e) = ControlFlowGraph::append_to_dead_code_graph(
+        &typed_parse_tree,
+        &parse_tree.tree_type,
+        dead_code_graph,
+    ) {
         errors.push(e)
     };
 
@@ -297,8 +297,11 @@ pub fn compile_to_asm<'sc>(
         errors
     );
 
-    let (mut l_warnings, mut l_errors) =
-        perform_control_flow_analysis(&typed_parse_tree, &parse_tree.tree_type, &mut dead_code_graph);
+    let (mut l_warnings, mut l_errors) = perform_control_flow_analysis(
+        &typed_parse_tree,
+        &parse_tree.tree_type,
+        &mut dead_code_graph,
+    );
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
@@ -320,7 +323,7 @@ pub fn compile_to_asm<'sc>(
                 return CompilationResult::Failure { errors, warnings };
             }
             CompilationResult::Success { asm, warnings }
-        },
+        }
         TreeType::Library { name } => {
             let mut exports = LibraryExports {
                 namespace: Default::default(),
@@ -332,7 +335,7 @@ pub fn compile_to_asm<'sc>(
             );
             exports.trees.push(typed_parse_tree);
             CompilationResult::Library { warnings, exports }
-        },
+        }
     }
 }
 pub fn compile_to_bytecode<'n, 'sc>(

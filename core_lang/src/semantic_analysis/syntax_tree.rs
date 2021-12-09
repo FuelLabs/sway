@@ -2,11 +2,11 @@ use super::node_dependencies;
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
+use crate::ident::Ident;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
 use crate::{AstNode, ParseTree};
-use crate::ident::Ident;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -14,9 +14,7 @@ pub enum TreeType<'sc> {
     Predicate,
     Script,
     Contract,
-    Library {
-        name: Ident<'sc>,
-    },
+    Library { name: Ident<'sc> },
 }
 
 #[derive(Debug)]

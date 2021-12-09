@@ -37,62 +37,54 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
             // parse the main file and check is it a contract
             let parsed_result = parse(main_file, None);
             match parsed_result.value {
-                Some(parse_tree) => {
-                    match parse_tree.tree_type {
-                        TreeType::Contract => {
-                            let build_command = BuildCommand {
-                                path,
-                                print_finalized_asm,
-                                print_intermediate_asm,
-                                binary_outfile,
-                                offline_mode,
-                                silent_mode,
-                            };
+                Some(parse_tree) => match parse_tree.tree_type {
+                    TreeType::Contract => {
+                        let build_command = BuildCommand {
+                            path,
+                            print_finalized_asm,
+                            print_intermediate_asm,
+                            binary_outfile,
+                            offline_mode,
+                            silent_mode,
+                        };
 
-                            let compiled_contract = forc_build::build(build_command)?;
-                            let (inputs, outputs) = manifest
-                                .get_tx_inputs_and_outputs()
-                                .map_err(|message| CliError { message })?;
-                            let tx = create_contract_tx(compiled_contract, inputs, outputs);
+                        let compiled_contract = forc_build::build(build_command)?;
+                        let (inputs, outputs) = manifest
+                            .get_tx_inputs_and_outputs()
+                            .map_err(|message| CliError { message })?;
+                        let tx = create_contract_tx(compiled_contract, inputs, outputs);
 
-                            let node_url = match &manifest.network {
-                                Some(network) => &network.url,
-                                _ => DEFAULT_NODE_URL,
-                            };
+                        let node_url = match &manifest.network {
+                            Some(network) => &network.url,
+                            _ => DEFAULT_NODE_URL,
+                        };
 
-                            let client = FuelClient::new(node_url)?;
+                        let client = FuelClient::new(node_url)?;
 
-                            match client.submit(&tx).await {
-                                Ok(logs) => {
-                                    println!("Logs:\n{:?}", logs);
-                                    Ok(())
-                                }
-                                Err(e) => Err(e.to_string().into()),
+                        match client.submit(&tx).await {
+                            Ok(logs) => {
+                                println!("Logs:\n{:?}", logs);
+                                Ok(())
                             }
-                        },
-                        TreeType::Script => {
-                            Err(CliError::wrong_sway_type(
-                                project_name,
-                                SWAY_CONTRACT,
-                                SWAY_SCRIPT,
-                            ))
-                        },
-                        TreeType::Predicate => {
-                            Err(CliError::wrong_sway_type(
-                                project_name,
-                                SWAY_CONTRACT,
-                                SWAY_PREDICATE,
-                            ))
-                        },
-                        TreeType::Library { .. } => {
-                            Err(CliError::wrong_sway_type(
-                                project_name,
-                                SWAY_CONTRACT,
-                                SWAY_LIBRARY,
-                            ))
-                        },
+                            Err(e) => Err(e.to_string().into()),
+                        }
                     }
-                }
+                    TreeType::Script => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_CONTRACT,
+                        SWAY_SCRIPT,
+                    )),
+                    TreeType::Predicate => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_CONTRACT,
+                        SWAY_PREDICATE,
+                    )),
+                    TreeType::Library { .. } => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_CONTRACT,
+                        SWAY_LIBRARY,
+                    )),
+                },
                 None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
             }
         }

@@ -31,77 +31,69 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
             // parse the main file and check is it a script
             let parsed_result = parse(main_file, None);
             match parsed_result.value {
-                Some(parse_tree) => {
-                    match parse_tree.tree_type {
-                        TreeType::Script => {
-                            let input_data = &command.data.unwrap_or_else(|| "".into());
-                            let data = format_hex_data(input_data);
-                            let script_data = hex::decode(data).expect("Invalid hex");
+                Some(parse_tree) => match parse_tree.tree_type {
+                    TreeType::Script => {
+                        let input_data = &command.data.unwrap_or_else(|| "".into());
+                        let data = format_hex_data(input_data);
+                        let script_data = hex::decode(data).expect("Invalid hex");
 
-                            let build_command = BuildCommand {
-                                path: command.path,
-                                print_finalized_asm: command.print_finalized_asm,
-                                print_intermediate_asm: command.print_intermediate_asm,
-                                binary_outfile: command.binary_outfile,
-                                offline_mode: false,
-                                silent_mode: command.silent_mode,
+                        let build_command = BuildCommand {
+                            path: command.path,
+                            print_finalized_asm: command.print_finalized_asm,
+                            print_intermediate_asm: command.print_intermediate_asm,
+                            binary_outfile: command.binary_outfile,
+                            offline_mode: false,
+                            silent_mode: command.silent_mode,
+                        };
+
+                        let compiled_script = forc_build::build(build_command)?;
+                        let (inputs, outputs) = manifest
+                            .get_tx_inputs_and_outputs()
+                            .map_err(|message| CliError { message })?;
+
+                        let tx = create_tx_with_script_and_data(
+                            compiled_script,
+                            script_data,
+                            inputs,
+                            outputs,
+                        );
+
+                        if command.dry_run {
+                            println!("{:?}", tx);
+                            Ok(())
+                        } else {
+                            let node_url = match &manifest.network {
+                                Some(network) => &network.url,
+                                _ => &command.node_url,
                             };
 
-                            let compiled_script = forc_build::build(build_command)?;
-                            let (inputs, outputs) = manifest
-                                .get_tx_inputs_and_outputs()
-                                .map_err(|message| CliError { message })?;
+                            let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
 
-                            let tx = create_tx_with_script_and_data(
-                                compiled_script,
-                                script_data,
-                                inputs,
-                                outputs,
-                            );
-
-                            if command.dry_run {
-                                println!("{:?}", tx);
-                                Ok(())
-                            } else {
-                                let node_url = match &manifest.network {
-                                    Some(network) => &network.url,
-                                    _ => &command.node_url,
-                                };
-
-                                let child = try_send_tx(node_url, &tx, command.pretty_print).await?;
-
-                                if command.kill_node {
-                                    if let Some(mut child) = child {
-                                        child.kill().await.expect("Node should be killed");
-                                    }
+                            if command.kill_node {
+                                if let Some(mut child) = child {
+                                    child.kill().await.expect("Node should be killed");
                                 }
-
-                                Ok(())
                             }
-                        },
-                        TreeType::Contract => {
-                            Err(CliError::wrong_sway_type(
-                                project_name,
-                                SWAY_SCRIPT,
-                                SWAY_CONTRACT,
-                            ))
-                        },
-                        TreeType::Predicate => {
-                            Err(CliError::wrong_sway_type(
-                                project_name,
-                                SWAY_SCRIPT,
-                                SWAY_PREDICATE,
-                            ))
-                        },
-                        TreeType::Library { .. } => {
-                            Err(CliError::wrong_sway_type(
-                                project_name,
-                                SWAY_SCRIPT,
-                                SWAY_LIBRARY,
-                            ))
-                        },
+
+                            Ok(())
+                        }
                     }
-                }
+                    TreeType::Contract => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_SCRIPT,
+                        SWAY_CONTRACT,
+                    )),
+                    TreeType::Predicate => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_SCRIPT,
+                        SWAY_PREDICATE,
+                    )),
+                    TreeType::Library { .. } => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_SCRIPT,
+                        SWAY_LIBRARY,
+                    )),
+                },
                 None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
             }
         }

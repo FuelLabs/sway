@@ -401,7 +401,9 @@ fn connect_struct_declaration<'sc>(
     //
     // this is important because if the struct is public, you want to be able to signal that all
     // fields are accessible by just adding an edge to the struct declaration node
-    if matches!(tree_type, TreeType::Contract | TreeType::Library { .. }) && *visibility == Visibility::Public {
+    if matches!(tree_type, TreeType::Contract | TreeType::Library { .. })
+        && *visibility == Visibility::Public
+    {
         for (_name, node) in &field_nodes {
             graph.add_edge(entry_node, *node, "".into());
         }
