@@ -1,3 +1,4 @@
+//! Type checking for Sway.
 pub mod ast_node;
 mod namespace;
 mod node_dependencies;
