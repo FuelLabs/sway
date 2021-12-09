@@ -63,24 +63,6 @@ impl<'sc> TypedDeclaration<'sc> {
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
         }
     }
-
-    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let decl = match self {
-            TypedDeclaration::VariableDeclaration(var_decl) => {
-                let var_decl = check!(
-                    var_decl.desugar(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                TypedDeclaration::VariableDeclaration(var_decl)
-            }
-            decl => unimplemented!("{:?}", decl),
-        };
-        ok(decl, warnings, errors)
-    }
 }
 
 impl<'sc> TypedDeclaration<'sc> {
@@ -597,39 +579,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             errors,
         )
     }
-
-    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let mut new_params = vec![];
-        for param in self.parameters.iter() {
-            new_params.push(check!(
-                param.desugar(),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
-        let new_body = check!(
-            self.body.desugar(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        let decl = TypedFunctionDeclaration {
-            name: self.name.clone(),
-            body: new_body,
-            span: self.span.clone(),
-            return_type: self.return_type,
-            parameters: new_params,
-            type_parameters: self.type_parameters.clone(),
-            return_type_span: self.return_type_span.clone(),
-            visibility: self.visibility,
-            is_contract_call: self.is_contract_call,
-        };
-        ok(decl, warnings, errors)
-    }
 }
 
 #[test]
@@ -755,10 +704,6 @@ impl<'sc> TypedFunctionParameter<'sc> {
         } else {
             insert_type(look_up_type_id_raw(self.r#type))
         }
-    }
-
-    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
-        unimplemented!()
     }
 }
 

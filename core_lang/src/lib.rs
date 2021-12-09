@@ -9,7 +9,6 @@ mod build_config;
 mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
-mod desugar;
 mod ident;
 pub mod parse_tree;
 mod parser;
@@ -25,7 +24,6 @@ use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
-use desugar::desugar;
 use pest::iterators::Pair;
 use pest::Parser;
 use std::collections::{HashMap, HashSet};
@@ -127,13 +125,7 @@ pub fn parse<'sc>(
         warnings,
         errors
     );
-    let desugared = check!(
-        desugar(parsed_root),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    ok(desugared, warnings, errors)
+    ok(parsed_root, warnings, errors)
 }
 
 pub enum CompilationResult<'sc> {

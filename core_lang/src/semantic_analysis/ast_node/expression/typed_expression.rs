@@ -1,7 +1,6 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::semantic_analysis::ast_node::expression::match_branch::TypedMatchBranch;
 use crate::semantic_analysis::ast_node::*;
 use crate::type_engine::{insert_type, IntegerBits};
 
@@ -74,22 +73,6 @@ impl<'sc> TypedExpression<'sc> {
                 *rhs,
                 span,
                 namespace,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
-            ),
-            Expression::MatchExpression {
-                primary_expression,
-                branches,
-                span,
-            } => Self::type_check_match_expression(
-                *primary_expression,
-                branches,
-                span,
-                namespace,
-                type_annotation,
-                help_text,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -238,7 +221,7 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
             ),
-            /* a => {
+            a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented expression",
                     a.span(),
@@ -246,7 +229,7 @@ impl<'sc> TypedExpression<'sc> {
 
                 let exp = error_recovery_expr(a.span());
                 ok(exp, vec![], errors)
-            } */
+            }
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -561,113 +544,6 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors,
         )
-    }
-
-    fn type_check_match_expression(
-        primary_expression: Expression<'sc>,
-        branches: Vec<MatchBranch<'sc>>,
-        span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        type_annotation: Option<TypeId>,
-        help_text: impl Into<String> + Clone,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let typed_primary_expression = check!(
-            TypedExpression::type_check(
-                primary_expression,
-                namespace,
-                type_annotation,
-                "",
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph
-            ),
-            error_recovery_expr(span.clone()),
-            warnings,
-            errors
-        );
-        let first_branch = check!(
-            TypedMatchBranch::type_check(
-                branches[0].clone(),
-                typed_primary_expression.return_type,
-                namespace,
-                type_annotation,
-                "",
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph
-            ),
-            TypedMatchBranch {
-                condition: TypedMatchCondition::CatchAll(TypedCatchAll {
-                    span: branches[0].span.clone()
-                }),
-                result: TypedExpression {
-                    expression: TypedExpressionVariant::Unit,
-                    return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
-                    is_constant: IsConstant::No,
-                    span: branches[0].span.clone(),
-                },
-                span: branches[0].span.clone()
-            },
-            warnings,
-            errors
-        );
-        let first_branch = vec![first_branch];
-        let return_type = first_branch[0].result.return_type;
-        let mut rest_of_branches = branches
-            .into_iter()
-            .skip(1)
-            .map(|branch| {
-                check!(
-                    TypedMatchBranch::type_check(
-                        branch.clone(),
-                        typed_primary_expression.return_type,
-                        namespace,
-                        Some(return_type),
-                        "",
-                        self_type,
-                        build_config,
-                        dead_code_graph,
-                        dependency_graph
-                    ),
-                    TypedMatchBranch {
-                        condition: TypedMatchCondition::CatchAll(TypedCatchAll {
-                            span: branch.span.clone()
-                        }),
-                        result: TypedExpression {
-                            expression: TypedExpressionVariant::Unit,
-                            return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
-                            is_constant: IsConstant::No,
-                            span: branch.span.clone(),
-                        },
-                        span: branch.span.clone()
-                    },
-                    warnings,
-                    errors
-                )
-            })
-            .collect::<Vec<_>>();
-
-        let mut all_branches = first_branch;
-        all_branches.append(&mut rest_of_branches);
-        let exp = TypedExpression {
-            expression: TypedExpressionVariant::MatchExpression {
-                condition: Box::new(typed_primary_expression),
-                branches: all_branches,
-                span: span.clone(),
-            },
-            span: span.clone(),
-            return_type,
-            is_constant: IsConstant::No,
-        };
-        ok(exp, warnings, errors)
     }
 
     fn type_check_code_block(
@@ -1462,24 +1338,6 @@ impl<'sc> TypedExpression<'sc> {
             self.expression.pretty_print(),
             look_up_type_id(self.return_type).friendly_type_str()
         )
-    }
-
-    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let variant = check!(
-            self.expression.desugar(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let exp = TypedExpression {
-            expression: variant,
-            return_type: self.return_type,
-            is_constant: self.is_constant,
-            span: self.span.clone(),
-        };
-        ok(exp, warnings, errors)
     }
 }
 

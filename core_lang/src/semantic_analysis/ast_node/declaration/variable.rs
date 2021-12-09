@@ -1,8 +1,5 @@
-use crate::error::err;
-use crate::error::ok;
 use crate::semantic_analysis::TypedExpression;
 use crate::type_engine::*;
-use crate::CompileResult;
 use crate::Ident;
 use crate::{type_engine::TypeId, TypeParameter};
 
@@ -25,23 +22,5 @@ impl<'sc> TypedVariableDeclaration<'sc> {
         };
 
         self.body.copy_types(type_mapping)
-    }
-
-    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let new_body = check!(
-            self.body.desugar(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let decl = TypedVariableDeclaration {
-            name: self.name.clone(),
-            body: new_body,
-            is_mutable: self.is_mutable,
-            type_ascription: self.type_ascription,
-        };
-        ok(decl, warnings, errors)
     }
 }

@@ -667,51 +667,6 @@ impl<'sc> TypedAstNode<'sc> {
 
         ok(node, warnings, errors)
     }
-
-    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let inner = check!(
-            self.content.desugar(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let node = TypedAstNode {
-            content: inner,
-            span: self.span.clone(),
-        };
-        ok(node, warnings, errors)
-    }
-}
-
-impl<'sc> TypedAstNodeContent<'sc> {
-    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let content = match self {
-            TypedAstNodeContent::Declaration(decl) => {
-                let decl = check!(
-                    decl.desugar(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                TypedAstNodeContent::Declaration(decl)
-            }
-            TypedAstNodeContent::ImplicitReturnExpression(exp) => {
-                let exp = check!(
-                    exp.desugar(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                TypedAstNodeContent::ImplicitReturnExpression(exp)
-            }
-            content => unimplemented!("{:?}", content),
-        };
-        ok(content, warnings, errors)
-    }
 }
 
 /// Imports a new file, populates the given [Namespace] with its content,
