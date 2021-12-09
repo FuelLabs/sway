@@ -220,7 +220,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             MCPI(a, b, c)   => format!("mcpi {} {} {}", a, b, c),
             SB(a, b, c)     => format!("sb   {} {} {}", a, b, c),
             SW(a, b, c)     => format!("sw   {} {} {}", a, b, c),
-            BAL(a, b, c)     => format!("bal   {} {} {}", a, b, c),
+            BAL(a, b, c)    => format!("bal   {} {} {}", a, b, c),
             BHSH(a, b)      => format!("bhsh {} {}", a, b),
             BHEI(a)         => format!("bhei {}", a),
             BURN(a)         => format!("burn {}", a),
