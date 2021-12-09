@@ -12,9 +12,10 @@ pub(crate) struct TypedCodeBlock<'sc> {
 }
 
 impl<'sc> TypedCodeBlock<'sc> {
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'n>(
         other: CodeBlock<'sc>,
         namespace: &Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         // this is for the return or implicit return
         type_annotation: TypeId,
         help_text: impl Into<String> + Clone,
@@ -36,6 +37,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 TypedAstNode::type_check(
                     node.clone(),
                     &mut local_namespace,
+                    crate_namespace,
                     type_annotation,
                     help_text.clone(),
                     self_type,

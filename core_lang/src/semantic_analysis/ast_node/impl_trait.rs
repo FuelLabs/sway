@@ -11,9 +11,10 @@ use crate::{
 };
 use std::collections::{HashMap, HashSet};
 
-pub(crate) fn implementation_of_trait<'sc>(
+pub(crate) fn implementation_of_trait<'n, 'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
+    crate_namespace: Option<&Namespace<'sc>>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -60,6 +61,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     &tr.name,
                     &tr.type_parameters,
                     namespace,
+                    crate_namespace,
                     type_implementing_for_id,
                     build_config,
                     dead_code_graph,
@@ -119,6 +121,7 @@ pub(crate) fn implementation_of_trait<'sc>(
                     // ABIs don't have type parameters
                     &[],
                     namespace,
+                    crate_namespace,
                     type_implementing_for_id,
                     build_config,
                     dead_code_graph,
@@ -167,13 +170,14 @@ pub enum Mode {
     NonAbi,
 }
 
-fn type_check_trait_implementation<'sc>(
+fn type_check_trait_implementation<'n, 'sc>(
     interface_surface: &[TypedTraitFn<'sc>],
     functions: &[FunctionDeclaration<'sc>],
     methods: &[FunctionDeclaration<'sc>],
     trait_name: &Ident<'sc>,
     type_arguments: &[TypeParameter<'sc>],
     namespace: &mut Namespace<'sc>,
+    crate_namespace: Option<&Namespace<'sc>>,
     _self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -203,6 +207,7 @@ fn type_check_trait_implementation<'sc>(
             TypedFunctionDeclaration::type_check(
                 fn_decl.clone(),
                 namespace,
+                crate_namespace,
                 insert_type(TypeInfo::Unknown),
                 "",
                 type_implementing_for,
@@ -367,6 +372,7 @@ fn type_check_trait_implementation<'sc>(
             TypedFunctionDeclaration::type_check(
                 method.clone(),
                 &mut local_namespace,
+                crate_namespace,
                 crate::type_engine::insert_type(TypeInfo::Unknown),
                 "",
                 type_implementing_for,

@@ -1,6 +1,6 @@
 script;
 
-use std::ops::Ord;
+use core::ops::Ord;
 
 enum X {
     Y: (),

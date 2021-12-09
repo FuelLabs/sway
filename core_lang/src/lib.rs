@@ -464,8 +464,7 @@ pub fn compile_to_asm<'sc>(
         CompilationResult::Failure { errors, warnings }
     }
 }
-
-pub fn compile_to_bytecode<'sc>(
+pub fn compile_to_bytecode<'n, 'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,

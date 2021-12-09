@@ -1,5 +1,4 @@
 library auth;
-use ::ops::*;
 
 // this can be a generic option when options land
 enum Caller {
@@ -17,7 +16,7 @@ pub fn caller_is_external() -> bool {
 
 pub fn caller() -> Caller {
     // if parent is not external
-    if not(caller_is_external()) {
+    if !caller_is_external() {
         // get the caller
         Caller::Some(asm(r1) {
             gmr1i2;

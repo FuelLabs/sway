@@ -1,5 +1,5 @@
 script;
-use std::ops::Ord;
+use core::ops::Ord;
 
 struct Rgb {
   red: u64,

@@ -304,6 +304,19 @@ impl<'sc> Dependencies<'sc> {
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
+            Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
+                .gather_from_iter(
+                    fields.iter(),
+                    |deps,
+                     StorageField {
+                         r#type,
+                         initializer,
+                         ..
+                     }| {
+                        deps.gather_from_typeinfo(r#type)
+                            .gather_from_expr(initializer)
+                    },
+                ),
         }
     }
 
@@ -349,6 +362,9 @@ impl<'sc> Dependencies<'sc> {
             Expression::CodeBlock { contents, .. } => self.gather_from_block(contents),
             Expression::Array { contents, .. } => {
                 self.gather_from_iter(contents.iter(), |deps, expr| deps.gather_from_expr(expr))
+            }
+            Expression::ArrayIndex { prefix, index, .. } => {
+                self.gather_from_expr(prefix).gather_from_expr(index)
             }
             Expression::StructExpression {
                 struct_name,
@@ -556,6 +572,8 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
         // These don't have declaration dependencies.
         Declaration::VariableDeclaration(_) => None,
         Declaration::Reassignment(_) => None,
+        // Storage cannot be depended upon or exported
+        Declaration::StorageDeclaration(_) => None,
     }
 }
 
@@ -585,6 +603,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::ContractCaller { .. } => "contract caller",
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",
+        TypeInfo::Array(..) => "array",
     }
     .to_string()
 }
