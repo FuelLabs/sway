@@ -1,4 +1,3 @@
-use super::code_block::desugar_code_block;
 use super::matcher::matcher;
 use crate::error::{err, ok, CompileResult};
 use crate::utils::join_spans;
@@ -8,6 +7,7 @@ use crate::{
 };
 use crate::{Op, OpVariant, StructExpressionField};
 
+/*
 pub fn desugar_expression<'sc>(exp: Expression<'sc>) -> CompileResult<'sc, Expression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -505,3 +505,5 @@ fn desugar_struct_expression_field<'sc>(
     };
     ok(field, warnings, errors)
 }
+
+*/

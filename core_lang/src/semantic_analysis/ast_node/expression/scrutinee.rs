@@ -3,12 +3,13 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     control_flow_analysis::ControlFlowGraph,
     error::ok,
+    semantic_analysis::ast_node::{IsConstant, TypedVariableDeclaration},
     type_engine::{insert_type, look_up_type_id, IntegerBits, TypeId},
     BuildConfig, CompileError, CompileResult, CompileWarning, Ident, Literal, Namespace, Scrutinee,
-    Span, StructScrutineeField, TypeInfo,
+    Span, StructScrutineeField, TypeInfo, TypedDeclaration,
 };
 
-use super::TypedScrutineeVariant;
+use super::{TypedExpression, TypedExpressionVariant, TypedScrutineeVariant};
 
 #[derive(Debug, Clone)]
 pub(crate) struct TypedScrutinee<'sc> {
@@ -35,17 +36,9 @@ impl<'sc> TypedScrutinee<'sc> {
         let res = match other {
             Scrutinee::Unit { span } => Self::type_check_unit(span),
             Scrutinee::Literal { value, span } => Self::type_check_literal(value, span),
-            Scrutinee::Variable { name, span } => Self::type_check_variable(
-                name,
-                span,
-                namespace,
-                primary_expression_type,
-                help_text,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
-            ),
+            Scrutinee::Variable { name, span } => {
+                Self::type_check_variable(name, span, namespace, primary_expression_type)
+            }
             Scrutinee::StructScrutinee {
                 struct_name,
                 fields,
@@ -140,12 +133,21 @@ impl<'sc> TypedScrutinee<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         primary_expression_type: TypeId,
-        help_text: impl Into<String> + Clone,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, Self> {
+        namespace.insert(
+            name.clone(),
+            TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
+                name: name.clone(),
+                body: TypedExpression {
+                    expression: TypedExpressionVariant::ScrutineeParameter,
+                    return_type: primary_expression_type,
+                    is_constant: IsConstant::No,
+                    span: name.span.clone(),
+                },
+                is_mutable: false, // TODO allow mutable function params?
+                type_ascription: primary_expression_type,
+            }),
+        );
         let scrutinee = TypedScrutinee {
             scrutinee: TypedScrutineeVariant::Variable {
                 name,

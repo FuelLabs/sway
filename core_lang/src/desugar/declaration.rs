@@ -1,11 +1,10 @@
-use super::code_block::desugar_code_block;
-use super::expression::desugar_expression;
 use crate::error::{err, ok, CompileResult};
 use crate::{
     AbiDeclaration, ConstantDeclaration, Declaration, EnumDeclaration, FunctionDeclaration,
     ImplSelf, ImplTrait, Reassignment, TraitDeclaration, VariableDeclaration,
 };
 
+/*
 pub fn desugar_declaration<'sc>(decl: Declaration<'sc>) -> CompileResult<'sc, Declaration<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -166,3 +165,5 @@ fn desugar_reassignment<'sc>(
     };
     ok(reassignment, warnings, errors)
 }
+
+*/

@@ -114,4 +114,23 @@ impl<'sc> TypedCodeBlock<'sc> {
             .iter_mut()
             .for_each(|x| x.copy_types(type_mapping));
     }
+
+    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut new_contents = vec![];
+        for node in self.contents.iter() {
+            new_contents.push(check!(
+                node.desugar(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        let block = TypedCodeBlock {
+            contents: new_contents,
+            whole_block_span: self.whole_block_span.clone(),
+        };
+        ok(block, warnings, errors)
+    }
 }

@@ -1,6 +1,7 @@
 mod enum_instantiation;
 mod match_branch;
 mod match_condition;
+mod matcher;
 mod scrutinee;
 mod scrutinee_variant;
 mod struct_expr_field;

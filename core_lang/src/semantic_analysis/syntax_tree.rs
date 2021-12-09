@@ -282,7 +282,40 @@ impl<'sc> TypedParseTree<'sc> {
         ok(typed_parse_tree, warnings, errors)
     }
 
-    pub fn desugar(&self) -> CompileResult<'sc, Self> {
-        unimplemented!()
+    pub(crate) fn desugar(&self, tree_type: TreeType) -> CompileResult<'sc, Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let tree = match self {
+            TypedParseTree::Script {
+                main_function,
+                all_nodes,
+                namespace,
+                declarations,
+            } => {
+                let new_main_function = check!(
+                    main_function.desugar(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut new_nodes = vec![];
+                for node in all_nodes.into_iter() {
+                    new_nodes.push(check!(
+                        node.desugar(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+                TypedParseTree::Script {
+                    main_function: new_main_function,
+                    all_nodes: new_nodes,
+                    namespace: namespace.to_owned(),
+                    declarations: declarations.to_owned(),
+                }
+            }
+            tree => unimplemented!("{:?}", tree),
+        };
+        ok(tree, warnings, errors)
     }
 }

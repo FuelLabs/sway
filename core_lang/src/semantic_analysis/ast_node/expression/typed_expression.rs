@@ -1463,6 +1463,24 @@ impl<'sc> TypedExpression<'sc> {
             look_up_type_id(self.return_type).friendly_type_str()
         )
     }
+
+    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let variant = check!(
+            self.expression.desugar(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let exp = TypedExpression {
+            expression: variant,
+            return_type: self.return_type,
+            is_constant: self.is_constant,
+            span: self.span.clone(),
+        };
+        ok(exp, warnings, errors)
+    }
 }
 
 #[cfg(test)]

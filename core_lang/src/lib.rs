@@ -352,16 +352,14 @@ pub fn compile_to_asm<'sc>(
         return CompilationResult::Failure { errors, warnings };
     }
 
-    let mut desugar_ast = |ast: Option<TypedParseTree<'sc>>| {
-        ast.map(|tree| tree.desugar().ok(&mut warnings, &mut errors))
+    let mut desugar_ast = |ast: Option<TypedParseTree<'sc>>, tree_type| {
+        ast.map(|tree| tree.desugar(tree_type).ok(&mut warnings, &mut errors))
             .flatten()
     };
 
-    println!("{:#?}", script_ast);
-
-    let contract_ast = desugar_ast(contract_ast);
-    let predicate_ast = desugar_ast(predicate_ast);
-    let script_ast = desugar_ast(script_ast);
+    let contract_ast = desugar_ast(contract_ast, TreeType::Contract);
+    let predicate_ast = desugar_ast(predicate_ast, TreeType::Predicate);
+    let script_ast = desugar_ast(script_ast, TreeType::Script);
     /*
     let library_exports_trees = library_exports
         .trees

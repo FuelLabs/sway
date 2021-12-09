@@ -40,7 +40,7 @@ pub enum TypedDeclaration<'sc> {
     ErrorRecovery,
 }
 
-impl TypedDeclaration<'_> {
+impl<'sc> TypedDeclaration<'sc> {
     /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
     /// assuming `self` has already been copied.
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
@@ -62,6 +62,24 @@ impl TypedDeclaration<'_> {
             AbiDeclaration(..) => (),
             GenericTypeForFunctionScope { .. } | ErrorRecovery => (),
         }
+    }
+
+    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let decl = match self {
+            TypedDeclaration::VariableDeclaration(var_decl) => {
+                let var_decl = check!(
+                    var_decl.desugar(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                TypedDeclaration::VariableDeclaration(var_decl)
+            }
+            decl => unimplemented!("{:?}", decl),
+        };
+        ok(decl, warnings, errors)
     }
 }
 
@@ -579,6 +597,39 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             errors,
         )
     }
+
+    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut new_params = vec![];
+        for param in self.parameters.iter() {
+            new_params.push(check!(
+                param.desugar(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        let new_body = check!(
+            self.body.desugar(),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let decl = TypedFunctionDeclaration {
+            name: self.name.clone(),
+            body: new_body,
+            span: self.span.clone(),
+            return_type: self.return_type,
+            parameters: new_params,
+            type_parameters: self.type_parameters.clone(),
+            return_type_span: self.return_type_span.clone(),
+            visibility: self.visibility,
+            is_contract_call: self.is_contract_call,
+        };
+        ok(decl, warnings, errors)
+    }
 }
 
 #[test]
@@ -695,7 +746,7 @@ pub struct TypedFunctionParameter<'sc> {
     pub(crate) type_span: Span<'sc>,
 }
 
-impl TypedFunctionParameter<'_> {
+impl<'sc> TypedFunctionParameter<'sc> {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
@@ -704,6 +755,10 @@ impl TypedFunctionParameter<'_> {
         } else {
             insert_type(look_up_type_id_raw(self.r#type))
         }
+    }
+
+    pub(crate) fn desugar(&self) -> CompileResult<'sc, Self> {
+        unimplemented!()
     }
 }
 
