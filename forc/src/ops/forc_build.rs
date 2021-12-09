@@ -17,9 +17,7 @@ use std::fs::File;
 use std::io::Write;
 
 use anyhow::Result;
-use core_lang::{
-    BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace,
-};
+use core_lang::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -252,7 +250,11 @@ fn compile_library<'source>(
 ) -> Result<Namespace<'source>, String> {
     let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
-        CompilationResult::Library { namespace, warnings, .. } => {
+        CompilationResult::Library {
+            namespace,
+            warnings,
+            ..
+        } => {
             if !silent_mode {
                 warnings.iter().for_each(format_warning);
             }

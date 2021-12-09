@@ -328,10 +328,7 @@ impl<'sc> Namespace<'sc> {
         module_name: String,
         module_contents: Namespace<'sc>,
     ) {
-        self.modules.insert(
-            module_name,
-            module_contents,
-        );
+        self.modules.insert(module_name, module_contents);
     }
 
     pub(crate) fn find_enum(&self, enum_name: &Ident<'sc>) -> Option<TypedEnumDeclaration<'sc>> {

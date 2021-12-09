@@ -360,13 +360,11 @@ pub fn compile_to_asm<'sc>(
             }
             CompilationResult::Success { asm, warnings }
         }
-        TreeType::Library { name } => {
-            CompilationResult::Library {
-                warnings,
-                name,
-                namespace: typed_parse_tree.into_namespace(),
-            }
-        }
+        TreeType::Library { name } => CompilationResult::Library {
+            warnings,
+            name,
+            namespace: typed_parse_tree.into_namespace(),
+        },
     }
 }
 
@@ -401,10 +399,9 @@ pub fn compile_to_bytecode<'n, 'sc>(
         CompilationResult::Failure { warnings, errors } => {
             BytecodeCompilationResult::Failure { warnings, errors }
         }
-        CompilationResult::Library {
-            warnings,
-            ..
-        } => BytecodeCompilationResult::Library { warnings },
+        CompilationResult::Library { warnings, .. } => {
+            BytecodeCompilationResult::Library { warnings }
+        }
     }
 }
 
