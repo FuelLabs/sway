@@ -57,16 +57,6 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    pub(crate) fn namespace(&self) -> &Namespace<'sc> {
-        use TypedParseTree::*;
-        match self {
-            Library { namespace, .. } => namespace,
-            Script { namespace, .. } => namespace,
-            Contract { namespace, .. } => namespace,
-            Predicate { namespace, .. } => namespace,
-        }
-    }
-
     pub(crate) fn into_namespace(self) -> Namespace<'sc> {
         use TypedParseTree::*;
         match self {

@@ -330,7 +330,7 @@ impl<'sc> Namespace<'sc> {
     ) {
         self.modules.insert(
             module_name,
-            module_contents.modules.into_iter().next().unwrap().1,
+            module_contents,
         );
     }
 

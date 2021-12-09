@@ -18,7 +18,7 @@ use std::io::Write;
 
 use anyhow::Result;
 use core_lang::{
-    BuildConfig, BytecodeCompilationResult, CompilationResult, LibraryExports, Namespace,
+    BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -236,7 +236,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         silent_mode,
     )?;
 
-    namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
+    namespace.insert_dependency_module(dependency_name.to_string(), compiled);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())
@@ -249,10 +249,10 @@ fn compile_library<'source>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<LibraryExports<'source>, String> {
+) -> Result<Namespace<'source>, String> {
     let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
-        CompilationResult::Library { exports, warnings } => {
+        CompilationResult::Library { namespace, warnings, .. } => {
             if !silent_mode {
                 warnings.iter().for_each(format_warning);
             }
@@ -271,7 +271,7 @@ fn compile_library<'source>(
                     }
                 ));
             }
-            Ok(exports)
+            Ok(namespace)
         }
         CompilationResult::Failure { errors, warnings } => {
             let e_len = errors.len();

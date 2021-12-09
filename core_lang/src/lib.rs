@@ -181,7 +181,8 @@ pub enum CompilationResult<'sc> {
         warnings: Vec<CompileWarning<'sc>>,
     },
     Library {
-        exports: LibraryExports<'sc>,
+        name: Ident<'sc>,
+        namespace: Namespace<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -374,16 +375,11 @@ pub fn compile_to_asm<'sc>(
             CompilationResult::Success { asm, warnings }
         }
         TreeType::Library { name } => {
-            let mut exports = LibraryExports {
-                namespace: Default::default(),
-                trees: vec![],
-            };
-            exports.namespace.insert_module(
-                name.primary_name.to_string(),
-                typed_parse_tree.namespace().clone(),
-            );
-            exports.trees.push(typed_parse_tree);
-            CompilationResult::Library { warnings, exports }
+            CompilationResult::Library {
+                warnings,
+                name,
+                namespace: typed_parse_tree.into_namespace(),
+            }
         }
     }
 }
@@ -421,7 +417,7 @@ pub fn compile_to_bytecode<'n, 'sc>(
         }
         CompilationResult::Library {
             warnings,
-            exports: _exports,
+            ..
         } => BytecodeCompilationResult::Library { warnings },
     }
 }
