@@ -53,20 +53,6 @@ pub struct HllParseTree<'sc> {
 /// Represents some exportable information that results from compiling some
 /// Sway source code.
 #[derive(Debug)]
-pub struct HllTypedParseTree<'sc> {
-    pub library_exports: LibraryExports<'sc>,
-}
-
-/// Represents some exportable information that results from compiling some
-/// Sway source code.
-#[derive(Debug)]
-pub struct LibraryExports<'sc> {
-    pub namespace: Namespace<'sc>,
-    trees: Vec<TypedParseTree<'sc>>,
-}
-
-/// Represents a parsed (but not yet type checked) Sway syntax tree.
-#[derive(Debug)]
 pub struct ParseTree<'sc> {
     /// The untyped AST nodes that constitute this tree's root nodes.
     pub root_nodes: Vec<AstNode<'sc>>,
