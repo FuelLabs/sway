@@ -50,8 +50,34 @@ fn match_variable<'sc>(
 fn match_struct<'sc>(
     exp: &Expression<'sc>,
     struct_name: &Ident<'sc>,
-    fields: &Vec<StructScrutineeField>,
+    fields: &Vec<StructScrutineeField<'sc>>,
     span: &Span<'sc>,
 ) -> Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)> {
-    unimplemented!()
+    let mut match_req_map = vec![];
+    let mut match_impl_map = vec![];
+    for field in fields.into_iter() {
+        let field_name = field.field.clone();
+        let scrutinee = field.scrutinee.clone();
+        let delayed_resolution_exp = Expression::DelayedStructFieldResolution {
+            exp: Box::new(exp.clone()),
+            struct_name: struct_name.to_owned(),
+            field: field_name.primary_name,
+            span: span.clone(),
+        };
+        match scrutinee {
+            // if the scrutinee is simply naming the struct field ...
+            None => {
+                match_impl_map.push((field_name.clone(), delayed_resolution_exp));
+            }
+            // or if the scrutinee has a more complex agenda
+            Some(scrutinee) => match matcher(&delayed_resolution_exp, &scrutinee) {
+                Some((mut new_match_req_map, mut new_match_impl_map)) => {
+                    match_req_map.append(&mut new_match_req_map);
+                    match_impl_map.append(&mut new_match_impl_map);
+                }
+                None => return None,
+            },
+        }
+    }
+    Some((match_req_map, match_impl_map))
 }

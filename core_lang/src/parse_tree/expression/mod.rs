@@ -8,6 +8,7 @@ use crate::{CodeBlock, Ident};
 use either::Either;
 use pest;
 use pest::iterators::Pair;
+use sha2::digest::generic_array::typenum::Exp;
 use std::collections::VecDeque;
 
 mod asm;
@@ -134,6 +135,12 @@ pub enum Expression<'sc> {
         index: Box<Expression<'sc>>,
         span: Span<'sc>,
     },
+    DelayedStructFieldResolution {
+        exp: Box<Expression<'sc>>,
+        struct_name: Ident<'sc>,
+        field: &'sc str,
+        span: Span<'sc>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -179,6 +186,7 @@ impl<'sc> Expression<'sc> {
             DelineatedPath { span, .. } => span,
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
+            DelayedStructFieldResolution { span, .. } => span,
         })
         .clone()
     }

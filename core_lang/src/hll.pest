@@ -97,7 +97,9 @@ match_scrutinee  =  {scrutinee|catch_all}
 catch_all        =  {"_"}
 scrutinee        =  {struct_scrutinee|literal_value|ident}
 struct_scrutinee =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
-struct_scrutinee_fields = {(scrutinee|struct_field_name) ~ ("," ~ (scrutinee|struct_field_name))* ~ ","?}
+struct_scrutinee_fields = {struct_scrutinee_field ~ ("," ~ struct_scrutinee_field)* ~ ","?}
+struct_scrutinee_field = {ident ~ field_scrutinee?}
+field_scrutinee  =  {":" ~ scrutinee}
 
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
