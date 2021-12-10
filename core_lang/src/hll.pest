@@ -3,6 +3,7 @@ var_decl_keyword    =  {"let"}
 fn_decl_keyword     =  {"fn"}
 trait_decl_keyword  =  {"trait"}
 return_keyword      =  {"return"}
+storage_keyword     =  {"storage"}
 use_keyword         =  {"use"}
 as_keyword          =  {"as"}
 enum_keyword        = @{"enum"}
@@ -101,7 +102,7 @@ struct_scrutinee_fields = {(scrutinee|struct_field_name) ~ ("," ~ (scrutinee|str
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
 struct_expression  =  {struct_name ~ "{" ~ struct_expr_fields ~ "}"}
-struct_expr_fields =  {struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?}
+struct_expr_fields =  {(struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?)?}
 array_exp          =  {"[" ~ array_elems?  ~ "]"}
 // Strictly speaking the [val; count] initialiser for a static array can have any constant expression
 // for the value and the count, but Sway doesn't yet have constant expression resolution, so for now
@@ -110,7 +111,7 @@ array_elems        =  {literal_value ~ ";" ~ u64_integer|expr ~ ("," ~ expr)*}
 
 // declarations
 declaration               =  {(non_var_decl|var_decl|reassignment)}
-non_var_decl              =  {(enum_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self|const_decl)}
+non_var_decl              =  {(enum_decl|storage_decl|fn_decl|trait_decl|abi_decl|struct_decl|impl_trait|impl_self|const_decl)}
 var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
 fn_decl                   =  {visibility ~ fn_signature ~ code_block}
@@ -124,12 +125,15 @@ const_decl                =  {visibility ~ const_decl_keyword ~ var_name ~ type_
 visibility =  {"pub"?}
 
 struct_decl       =  {visibility ~ struct_keyword ~ struct_name ~ type_params? ~ trait_bounds? ~ "{" ~ struct_fields ~ "}"}
+storage_decl      =  {storage_keyword ~ "{" ~ storage_fields ~ "}"}
+storage_fields    =  {storage_field ~ ("," ~ storage_field)* ~ ","?}
+storage_field     =  {ident ~ ":" ~ type_name ~ assign ~ expr}
 struct_name       =  {ident}
-struct_fields     =  {struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","?}
+struct_fields     =  {(struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","?)?}
 struct_field_name =  {ident}
 // // enum declaration
 enum_decl         =  {visibility ~ enum_keyword ~ enum_name ~ type_params? ~ trait_bounds? ~ "{" ~ enum_fields ~ "}"}
-enum_fields       =  {enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","?}
+enum_fields       =  {(enum_field_name ~ ":" ~ type_name ~ ("," ~ enum_field_name ~ ":" ~ type_name)* ~ ","?)?}
 enum_name         =  {ident}
 enum_field_name   =  {ident}
 

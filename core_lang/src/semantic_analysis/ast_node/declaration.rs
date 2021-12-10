@@ -774,9 +774,10 @@ impl TypedReassignment<'_> {
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub fn type_check(
+    pub fn type_check<'n>(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&Namespace<'sc>>,
         _return_type_annotation: TypeId,
         _help_text: impl Into<String>,
         // If there are any `Self` types in this declaration,
@@ -861,6 +862,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,
+                crate_namespace,
                 return_type,
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,

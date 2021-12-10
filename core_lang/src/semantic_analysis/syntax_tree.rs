@@ -2,18 +2,19 @@ use super::node_dependencies;
 use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
+use crate::ident::Ident;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
-use crate::{AstNode, AstNodeContent, ParseTree};
+use crate::{AstNode, ParseTree};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TreeType {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TreeType<'sc> {
     Predicate,
     Script,
     Contract,
-    Library,
+    Library { name: Ident<'sc> },
 }
 
 #[derive(Debug)]
@@ -69,7 +70,7 @@ impl<'sc> TypedParseTree<'sc> {
     pub(crate) fn type_check(
         parsed: ParseTree<'sc>,
         initial_namespace: Namespace<'sc>,
-        tree_type: TreeType,
+        tree_type: &TreeType<'sc>,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -84,18 +85,6 @@ impl<'sc> TypedParseTree<'sc> {
             warnings,
             errors
         );
-
-        check!(
-            TypedParseTree::check_for_infinite_dependencies(
-                build_config.file_name.clone().to_str().unwrap().to_string(),
-                &ordered_nodes,
-                dependency_graph,
-            ),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
         let typed_nodes = check!(
             TypedParseTree::type_check_nodes(
                 ordered_nodes,
@@ -119,40 +108,7 @@ impl<'sc> TypedParseTree<'sc> {
         )
     }
 
-    fn check_for_infinite_dependencies(
-        file_path: String,
-        ordered_nodes: &[AstNode<'sc>],
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
-    ) -> CompileResult<'sc, ()> {
-        let warnings = vec![];
-        let mut errors = vec![];
-
-        for node in ordered_nodes.iter() {
-            if let AstNodeContent::IncludeStatement(include_statement) = &node.content {
-                let file_path2 = include_statement.file_path;
-                let orig_file_path = &(file_path.clone());
-                if let Some(value) = dependency_graph.get_mut(&file_path) {
-                    if value.contains(&file_path2.to_string()) {
-                        errors.push(CompileError::InfiniteDependencies {
-                            file_path,
-                            span: node.span.clone(),
-                        });
-                        return err(warnings, errors);
-                    } else {
-                        value.insert(file_path2.to_string());
-                    }
-                } else {
-                    let mut set = HashSet::new();
-                    set.insert(file_path2.to_string());
-                    dependency_graph.insert(orig_file_path.clone(), set);
-                }
-            }
-        }
-
-        ok((), warnings, errors)
-    }
-
-    fn type_check_nodes(
+    fn type_check_nodes<'n>(
         nodes: Vec<AstNode<'sc>>,
         namespace: &mut Namespace<'sc>,
         build_config: &BuildConfig,
@@ -167,6 +123,7 @@ impl<'sc> TypedParseTree<'sc> {
                 TypedAstNode::type_check(
                     node.clone(),
                     namespace,
+                    None,
                     crate::type_engine::insert_type(TypeInfo::Unknown),
                     "",
                     // TODO only allow impl traits on contract trees, do something else
@@ -187,11 +144,11 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    fn validate_typed_nodes(
+    fn validate_typed_nodes<'n>(
         typed_tree_nodes: Vec<TypedAstNode<'sc>>,
         span: Span<'sc>,
         namespace: Namespace<'sc>,
-        tree_type: TreeType,
+        tree_type: &TreeType<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
         mut errors: Vec<CompileError<'sc>>,
     ) -> CompileResult<'sc, Self> {
@@ -267,7 +224,7 @@ impl<'sc> TypedParseTree<'sc> {
                     declarations,
                 }
             }
-            TreeType::Library => TypedParseTree::Library {
+            TreeType::Library { .. } => TypedParseTree::Library {
                 all_nodes,
                 namespace,
             },

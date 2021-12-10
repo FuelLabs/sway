@@ -304,6 +304,19 @@ impl<'sc> Dependencies<'sc> {
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(fn_decl)
                 }),
+            Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
+                .gather_from_iter(
+                    fields.iter(),
+                    |deps,
+                     StorageField {
+                         r#type,
+                         initializer,
+                         ..
+                     }| {
+                        deps.gather_from_typeinfo(r#type)
+                            .gather_from_expr(initializer)
+                    },
+                ),
         }
     }
 
@@ -570,6 +583,8 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
         // These don't have declaration dependencies.
         Declaration::VariableDeclaration(_) => None,
         Declaration::Reassignment(_) => None,
+        // Storage cannot be depended upon or exported
+        Declaration::StorageDeclaration(_) => None,
     }
 }
 

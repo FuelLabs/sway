@@ -1,4 +1,4 @@
-use core_lang::parse;
+use core_lang::{parse, TreeType};
 use fuel_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
 use fuel_vm::prelude::*;
@@ -37,8 +37,8 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
             // parse the main file and check is it a contract
             let parsed_result = parse(main_file, None);
             match parsed_result.value {
-                Some(parse_tree) => {
-                    if parse_tree.contract_ast.is_some() {
+                Some(parse_tree) => match parse_tree.tree_type {
+                    TreeType::Contract => {
                         let build_command = BuildCommand {
                             path,
                             print_finalized_asm,
@@ -68,24 +68,23 @@ pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
                             }
                             Err(e) => Err(e.to_string().into()),
                         }
-                    } else {
-                        let parse_type = {
-                            if parse_tree.script_ast.is_some() {
-                                SWAY_SCRIPT
-                            } else if parse_tree.predicate_ast.is_some() {
-                                SWAY_PREDICATE
-                            } else {
-                                SWAY_LIBRARY
-                            }
-                        };
-
-                        Err(CliError::wrong_sway_type(
-                            project_name,
-                            SWAY_CONTRACT,
-                            parse_type,
-                        ))
                     }
-                }
+                    TreeType::Script => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_CONTRACT,
+                        SWAY_SCRIPT,
+                    )),
+                    TreeType::Predicate => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_CONTRACT,
+                        SWAY_PREDICATE,
+                    )),
+                    TreeType::Library { .. } => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_CONTRACT,
+                        SWAY_LIBRARY,
+                    )),
+                },
                 None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
             }
         }

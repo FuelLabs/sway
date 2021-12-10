@@ -143,7 +143,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib<'source, 'manifest>(
+fn compile_dependency_lib<'n, 'source, 'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
@@ -178,7 +178,12 @@ fn compile_dependency_lib<'source, 'manifest>(
     // this should detect circular dependencies
     let manifest_dir = match find_manifest_dir(&project_path) {
         Some(o) => o,
-        None => return Err("Manifest not found for dependency.".into()),
+        None => {
+            return Err(format!(
+                "Manifest not found for dependency {:?}.",
+                project_path
+            ))
+        }
     };
 
     let manifest_of_dep = read_manifest(&manifest_dir)?;
@@ -200,7 +205,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         file_name.to_path_buf(),
         manifest_dir.clone(),
     );
-    let mut dep_namespace = namespace.clone();
+    let mut dep_namespace: Namespace = Default::default();
 
     // The part below here is just a massive shortcut to get the standard library working
     if let Some(ref deps) = manifest_of_dep.dependencies {
@@ -209,7 +214,7 @@ fn compile_dependency_lib<'source, 'manifest>(
             // circular dependencies
             //return Err("Unimplemented: dependencies that have dependencies".into());
             compile_dependency_lib(
-                project_file_path,
+                &manifest_dir,
                 dependency_name,
                 dependency_lib,
                 // give it a cloned namespace, which we then merge with this namespace
@@ -293,7 +298,7 @@ fn compile_library<'source>(
     }
 }
 
-fn compile<'source>(
+fn compile<'n, 'source>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
@@ -436,7 +441,7 @@ fn format_err(err: &core_lang::CompileError) {
     eprintln!("{}", DisplayList::from(snippet))
 }
 
-fn compile_to_asm<'source>(
+fn compile_to_asm<'n, 'source>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,

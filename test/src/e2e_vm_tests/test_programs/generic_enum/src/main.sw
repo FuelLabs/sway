@@ -1,5 +1,5 @@
 script;
-use std::ops::Ord;
+use core::ops::Ord;
 
 fn main() -> bool {
     let x = Option::Some(10); 
