@@ -24,18 +24,21 @@ impl FriendlyTypeString for TypeId {
 }
 
 pub(crate) trait ToJsonAbi {
-    fn parse_json_abi(&self) -> Option<Vec<Property>>;
+    fn generate_json_abi(&self) -> Option<Vec<Property>>;
 }
 
 impl ToJsonAbi for TypeId {
-    fn parse_json_abi(&self) -> Option<Vec<Property>> {
+    fn generate_json_abi(&self) -> Option<Vec<Property>> {
         match look_up_type_id(*self) {
             TypeInfo::Struct { fields, .. } => {
-                Some(fields.iter().map(|x| x.parse_json_abi()).collect())
+                Some(fields.iter().map(|x| x.generate_json_abi()).collect())
             }
-            TypeInfo::Enum { variant_types, .. } => {
-                Some(variant_types.iter().map(|x| x.parse_json_abi()).collect())
-            }
+            TypeInfo::Enum { variant_types, .. } => Some(
+                variant_types
+                    .iter()
+                    .map(|x| x.generate_json_abi())
+                    .collect(),
+            ),
             _ => None,
         }
     }

@@ -281,11 +281,11 @@ impl OwnedTypedStructField {
         }
     }
 
-    pub fn parse_json_abi(&self) -> Property {
+    pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.clone(),
             type_field: self.r#type.friendly_type_str(),
-            components: self.r#type.parse_json_abi(),
+            components: self.r#type.generate_json_abi(),
         }
     }
 }
@@ -376,11 +376,11 @@ pub struct OwnedTypedEnumVariant {
 }
 
 impl OwnedTypedEnumVariant {
-    pub fn parse_json_abi(&self) -> Property {
+    pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.clone(),
             type_field: self.r#type.friendly_type_str(),
-            components: self.r#type.parse_json_abi(),
+            components: self.r#type.generate_json_abi(),
         }
     }
 }
@@ -600,7 +600,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         )
     }
 
-    pub fn parse_json_abi(&self) -> Function {
+    pub fn generate_json_abi(&self) -> Function {
         Function {
             name: self.name.primary_name.to_string(),
             type_field: "function".to_string(),
@@ -610,13 +610,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 .map(|x| Property {
                     name: x.name.primary_name.to_string(),
                     type_field: x.r#type.friendly_type_str(),
-                    components: x.r#type.parse_json_abi(),
+                    components: x.r#type.generate_json_abi(),
                 })
                 .collect(),
             outputs: vec![Property {
                 name: "".to_string(),
                 type_field: self.return_type.friendly_type_str(),
-                components: self.return_type.parse_json_abi(),
+                components: self.return_type.generate_json_abi(),
             }],
         }
     }

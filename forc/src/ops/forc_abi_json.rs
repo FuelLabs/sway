@@ -229,7 +229,7 @@ fn compile_library<'source, 'manifest>(
             match tree_type {
                 TreeType::Library { name } => {
                     print_on_success_library(silent_mode, proj_name, warnings);
-                    let json_abi = parse_json_abi(&Some(parse_tree.clone()));
+                    let json_abi = generate_json_abi(&Some(parse_tree.clone()));
                     let mut exports = LibraryExports {
                         namespace: Default::default(),
                         trees: vec![],
@@ -273,7 +273,7 @@ fn compile<'source, 'manifest>(
             match tree_type {
                 TreeType::Contract {} => {
                     print_on_success_script(silent_mode, proj_name, warnings);
-                    let json_abi = parse_json_abi(&Some(parse_tree));
+                    let json_abi = generate_json_abi(&Some(parse_tree));
                     Ok(json_abi)
                 }
                 _ => {
@@ -289,10 +289,10 @@ fn compile<'source, 'manifest>(
     }
 }
 
-fn parse_json_abi(ast: &Option<TypedParseTree>) -> JsonABI {
+fn generate_json_abi(ast: &Option<TypedParseTree>) -> JsonABI {
     match ast {
         Some(TypedParseTree::Contract { abi_entries, .. }) => {
-            abi_entries.iter().map(|x| x.parse_json_abi()).collect()
+            abi_entries.iter().map(|x| x.generate_json_abi()).collect()
         }
         _ => vec![],
     }
