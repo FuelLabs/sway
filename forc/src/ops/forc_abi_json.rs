@@ -4,7 +4,7 @@ use crate::{
     utils::dependency,
     utils::helpers::{
         find_file_name, find_main_path, find_manifest_dir, get_main_file, print_on_failure,
-        print_on_success_library, print_on_success_script, read_manifest,
+        print_on_success, read_manifest,
     },
 };
 
@@ -218,7 +218,7 @@ fn compile_library<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<(LibraryExports<'source>, Vec<Function>), String> {
-    let res = core_lang::compile_to_ast(&source, namespace, &build_config, dependency_graph);
+    let res = core_lang::compile_to_ast(source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
             parse_tree,
@@ -228,7 +228,12 @@ fn compile_library<'source, 'manifest>(
             let errors = vec![];
             match tree_type {
                 TreeType::Library { name } => {
-                    print_on_success_library(silent_mode, proj_name, warnings);
+                    print_on_success(
+                        silent_mode,
+                        proj_name,
+                        warnings,
+                        TreeType::Library { name: name.clone() },
+                    );
                     let json_abi = generate_json_abi(&Some(parse_tree.clone()));
                     let mut exports = LibraryExports {
                         namespace: Default::default(),
@@ -271,14 +276,14 @@ fn compile<'source, 'manifest>(
         } => {
             let errors = vec![];
             match tree_type {
-                TreeType::Contract {} => {
-                    print_on_success_script(silent_mode, proj_name, warnings);
-                    let json_abi = generate_json_abi(&Some(parse_tree));
-                    Ok(json_abi)
-                }
-                _ => {
+                TreeType::Library { .. } => {
                     print_on_failure(silent_mode, warnings, errors);
                     Err(format!("Failed to compile {}", proj_name))
+                }
+                typ => {
+                    print_on_success(silent_mode, proj_name, warnings, typ);
+                    let json_abi = generate_json_abi(&Some(parse_tree));
+                    Ok(json_abi)
                 }
             }
         }

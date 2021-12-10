@@ -4,7 +4,7 @@ use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
-use core_lang::{CompileError, CompileWarning};
+use core_lang::{CompileError, CompileWarning, TreeType};
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -114,16 +114,29 @@ pub fn get_main_file(
     Ok(main_file)
 }
 
-pub fn print_on_success_script(silent_mode: bool, proj_name: &str, warnings: Vec<CompileWarning>) {
+pub fn print_on_success<'sc>(
+    silent_mode: bool,
+    proj_name: &str,
+    warnings: Vec<CompileWarning>,
+    tree_type: TreeType<'sc>,
+) {
+    let type_str = match tree_type {
+        TreeType::Script {} => "script",
+        TreeType::Contract {} => "contract",
+        TreeType::Predicate {} => "predicate",
+        TreeType::Library { .. } => "library",
+    };
+
     if !silent_mode {
         warnings.iter().for_each(|warning| format_warning(warning));
     }
 
     if warnings.is_empty() {
-        let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
+        let _ = println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
     } else {
         let _ = println_yellow_err(&format!(
-            "  Compiled script {:?} with {} {}.",
+            "  Compiled {} {:?} with {} {}.",
+            type_str,
             proj_name,
             warnings.len(),
             if warnings.len() > 1 {
@@ -135,13 +148,17 @@ pub fn print_on_success_script(silent_mode: bool, proj_name: &str, warnings: Vec
     }
 }
 
-pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: Vec<CompileWarning>) {
+pub fn print_on_success_library<'sc>(
+    silent_mode: bool,
+    proj_name: &str,
+    warnings: Vec<CompileWarning>,
+) {
     if !silent_mode {
         warnings.iter().for_each(|warning| format_warning(warning));
     }
 
     if warnings.is_empty() {
-        let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
+        let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
     } else {
         let _ = println_yellow_err(&format!(
             "  Compiled library {:?} with {} {}.",

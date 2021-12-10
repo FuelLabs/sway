@@ -3,11 +3,11 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_main_file, print_on_failure, print_on_success_library,
-        print_on_success_script, read_manifest,
+        find_manifest_dir, get_main_file, print_on_failure, print_on_success,
+        print_on_success_library, read_manifest,
     },
 };
-use core_lang::FinalizedAsm;
+use core_lang::{FinalizedAsm, TreeType};
 
 use std::fs::File;
 use std::io::Write;
@@ -279,7 +279,7 @@ fn compile<'n, 'source>(
     let res = core_lang::compile_to_bytecode(source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
-            print_on_success_script(silent_mode, proj_name, warnings);
+            print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
             return Ok(bytes);
         }
         BytecodeCompilationResult::Library { warnings } => {
@@ -304,7 +304,7 @@ fn compile_to_asm<'sc>(
     let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {
-            print_on_success_script(silent_mode, proj_name, warnings);
+            print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
             Ok(asm)
         }
         CompilationResult::Library { warnings, .. } => {
