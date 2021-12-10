@@ -56,7 +56,7 @@ impl UnaryOp {
             name: CallPath {
                 prefixes: vec![
                     Ident {
-                        primary_name: "std",
+                        primary_name: "core",
                         span: op_span.clone(),
                     },
                     Ident {

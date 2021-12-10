@@ -5,7 +5,8 @@ name = "call_increment_contract"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../stdlib" }
+std = { path = "../../../../../lib-std" }
+core = { path = "../../../../../lib-core" }
 increment_abi = { path = "../increment_abi" }
 
 [[tx-input]]

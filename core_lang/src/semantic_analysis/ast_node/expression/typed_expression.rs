@@ -1,7 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::semantic_analysis::ast_node::*;
+use crate::semantic_analysis::{ast_node::*, Namespace};
 use crate::type_engine::{insert_type, IntegerBits};
 
 use either::Either;
@@ -32,9 +32,10 @@ pub(crate) fn error_recovery_expr(span: Span<'_>) -> TypedExpression<'_> {
 }
 
 impl<'sc> TypedExpression<'sc> {
-    pub(crate) fn type_check(
+    pub(crate) fn type_check<'n>(
         other: Expression<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         type_annotation: Option<TypeId>,
         help_text: impl Into<String> + Clone,
         self_type: TypeId,
@@ -44,9 +45,7 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, Self> {
         let expr_span = other.span();
         let res = match other {
-            Expression::Literal { value: lit, span } => {
-                Self::type_check_literal(lit, span, namespace)
-            }
+            Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
             Expression::VariableExpression { name, span, .. } => {
                 Self::type_check_variable_expression(name, span, namespace)
             }
@@ -62,6 +61,7 @@ impl<'sc> TypedExpression<'sc> {
                 type_arguments,
                 span,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -73,6 +73,7 @@ impl<'sc> TypedExpression<'sc> {
                 *rhs,
                 span,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -89,6 +90,7 @@ impl<'sc> TypedExpression<'sc> {
                 contents,
                 span,
                 namespace,
+                crate_namespace,
                 type_annotation,
                 help_text,
                 self_type,
@@ -109,6 +111,7 @@ impl<'sc> TypedExpression<'sc> {
                 r#else,
                 span,
                 namespace,
+                crate_namespace,
                 type_annotation,
                 self_type,
                 build_config,
@@ -119,6 +122,7 @@ impl<'sc> TypedExpression<'sc> {
                 asm,
                 span,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -133,6 +137,7 @@ impl<'sc> TypedExpression<'sc> {
                 struct_name,
                 fields,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -147,6 +152,7 @@ impl<'sc> TypedExpression<'sc> {
                 span,
                 field_to_access,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -161,6 +167,7 @@ impl<'sc> TypedExpression<'sc> {
                 arguments,
                 span.clone(),
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -186,6 +193,7 @@ impl<'sc> TypedExpression<'sc> {
                 args,
                 type_arguments,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -200,6 +208,7 @@ impl<'sc> TypedExpression<'sc> {
                 address,
                 span,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -209,6 +218,7 @@ impl<'sc> TypedExpression<'sc> {
                 contents,
                 span,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -223,6 +233,7 @@ impl<'sc> TypedExpression<'sc> {
                 *index,
                 span,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -290,10 +301,9 @@ impl<'sc> TypedExpression<'sc> {
         self.expression.copy_types(type_mapping);
     }
 
-    fn type_check_literal(
+    fn type_check_literal<'n>(
         lit: Literal<'sc>,
         span: Span<'sc>,
-        _namespace: &mut Namespace<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let return_type = match lit {
             Literal::String(s) => TypeInfo::Str(s.len() as u64),
@@ -319,7 +329,7 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_variable_expression(
         name: Ident<'sc>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
+        namespace: &Namespace<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut errors = vec![];
         let exp = match namespace.get_symbol(&name).value {
@@ -360,12 +370,13 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, vec![], errors)
     }
 
-    fn type_check_function_application(
+    fn type_check_function_application<'n>(
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
         type_arguments: Vec<(TypeInfo, Span<'sc>)>,
         _span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -453,6 +464,7 @@ impl<'sc> TypedExpression<'sc> {
                     TypedExpression::type_check(
                         arg.clone(),
                         namespace,
+                        crate_namespace,
                         Some(param.r#type.clone()),
                         "The argument that has been provided to this function's type does \
                             not match the declared type of the parameter in the function \
@@ -491,12 +503,13 @@ impl<'sc> TypedExpression<'sc> {
         )
     }
 
-    fn type_check_lazy_operator(
+    fn type_check_lazy_operator<'n>(
         op: LazyOp,
         lhs: Expression<'sc>,
         rhs: Expression<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -509,6 +522,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 lhs.clone(),
                 namespace,
+                crate_namespace,
                 Some(bool_type_id),
                 "",
                 self_type,
@@ -525,6 +539,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 rhs.clone(),
                 namespace,
+                crate_namespace,
                 Some(bool_type_id),
                 "",
                 self_type,
@@ -610,10 +625,11 @@ impl<'sc> TypedExpression<'sc> {
         unimplemented!()
     }
 
-    fn type_check_code_block(
+    fn type_check_code_block<'n>(
         contents: CodeBlock<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         type_annotation: Option<TypeId>,
         help_text: impl Into<String> + Clone,
         self_type: TypeId,
@@ -627,6 +643,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedCodeBlock::type_check(
                 contents.clone(),
                 namespace,
+                crate_namespace,
                 type_annotation
                     .unwrap_or_else(|| crate::type_engine::insert_type(TypeInfo::Unknown)),
                 help_text,
@@ -671,12 +688,13 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_if_expression(
+    fn type_check_if_expression<'n>(
         condition: Box<Expression<'sc>>,
         then: Box<Expression<'sc>>,
         r#else: Option<Box<Expression<'sc>>>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         type_annotation: Option<TypeId>,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -689,6 +707,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 *condition.clone(),
                 namespace,
+                crate_namespace,
                 Some(crate::type_engine::insert_type(TypeInfo::Boolean)),
                 "The condition of an if expression must be a boolean expression.",
                 self_type,
@@ -704,6 +723,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 *then.clone(),
                 namespace,
+                crate_namespace,
                 type_annotation,
                 "",
                 self_type,
@@ -720,6 +740,7 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression::type_check(
                     *expr.clone(),
                     namespace,
+                    crate_namespace,
                     Some(then.return_type),
                     "",
                     self_type,
@@ -756,10 +777,11 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_asm_expression(
+    fn type_check_asm_expression<'n>(
         asm: AsmExpression<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -797,6 +819,7 @@ impl<'sc> TypedExpression<'sc> {
                                 TypedExpression::type_check(
                                     initializer.clone(),
                                     namespace,
+                                    crate_namespace,
                                     None,
                                     "",
                                     self_type,
@@ -827,11 +850,12 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_struct_expression(
+    fn type_check_struct_expression<'n>(
         span: Span<'sc>,
         struct_name: Ident<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -896,6 +920,7 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression::type_check(
                     expr_field.value,
                     namespace,
+                    crate_namespace,
                     Some(def_field.r#type),
                     "Struct field's type must match up with the type specified in its \
                      declaration.",
@@ -945,11 +970,12 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_subfield_expression(
+    fn type_check_subfield_expression<'n>(
         prefix: Box<Expression<'sc>>,
         span: Span<'sc>,
         field_to_access: Ident<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -961,6 +987,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 *prefix,
                 namespace,
+                crate_namespace,
                 None,
                 "",
                 self_type,
@@ -1015,13 +1042,14 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_delineated_path(
+    fn type_check_delineated_path<'n>(
         call_path: CallPath<'sc>,
         span: Span<'sc>,
         args: Vec<Expression<'sc>>,
         // TODO these will be needed for enum instantiation
         _type_arguments: Vec<TypeInfo>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -1038,14 +1066,14 @@ impl<'sc> TypedExpression<'sc> {
         let mut probe_warnings = Vec::new();
         let mut probe_errors = Vec::new();
         let module_result = namespace
-            .find_module(&call_path.prefixes, false)
+            .find_module_relative(&call_path.prefixes)
             .ok(&mut probe_warnings, &mut probe_errors);
         let enum_module_combined_result = {
             // also, check if this is an enum _in_ another module.
             let (module_path, enum_name) =
                 call_path.prefixes.split_at(call_path.prefixes.len() - 1);
             let enum_name = enum_name[0].clone();
-            let namespace = namespace.find_module(module_path, false);
+            let namespace = namespace.find_module_relative(module_path);
             let namespace = namespace.ok(&mut warnings, &mut errors);
             namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
         };
@@ -1074,6 +1102,7 @@ impl<'sc> TypedExpression<'sc> {
                         call_path.suffix,
                         args,
                         namespace,
+                        crate_namespace,
                         self_type,
                         build_config,
                         dead_code_graph,
@@ -1106,11 +1135,12 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_abi_cast(
+    fn type_check_abi_cast<'n>(
         abi_name: CallPath<'sc>,
         address: Box<Expression<'sc>>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -1118,7 +1148,7 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        // TODO use stdlib's Address type instead of b256
+        // TODO use lib-std's Address type instead of b256
         // type check the address and make sure it is
         let err_span = address.span();
         // TODO(static span): the below String address should just be address_expr
@@ -1128,6 +1158,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 *address,
                 namespace,
+                crate_namespace,
                 Some(crate::type_engine::insert_type(TypeInfo::B256)),
                 "An address that is being ABI cast must be of type b256",
                 self_type,
@@ -1174,6 +1205,7 @@ impl<'sc> TypedExpression<'sc> {
                 TypedFunctionDeclaration::type_check(
                     method.clone(),
                     namespace,
+                    crate_namespace,
                     crate::type_engine::insert_type(TypeInfo::Unknown),
                     "",
                     crate::type_engine::insert_type(TypeInfo::Contract),
@@ -1207,10 +1239,11 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
-    fn type_check_array(
+    fn type_check_array<'n>(
         contents: Vec<Expression<'sc>>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -1241,6 +1274,7 @@ impl<'sc> TypedExpression<'sc> {
                     Self::type_check(
                         expr,
                         namespace,
+                        crate_namespace,
                         None,
                         "",
                         self_type,
@@ -1299,11 +1333,12 @@ impl<'sc> TypedExpression<'sc> {
         )
     }
 
-    fn type_check_array_index(
+    fn type_check_array_index<'n>(
         prefix: Expression<'sc>,
         index: Expression<'sc>,
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -1316,6 +1351,7 @@ impl<'sc> TypedExpression<'sc> {
             TypedExpression::type_check(
                 prefix.clone(),
                 namespace,
+                crate_namespace,
                 None,
                 "",
                 self_type,
@@ -1334,6 +1370,7 @@ impl<'sc> TypedExpression<'sc> {
                 TypedExpression::type_check(
                     index,
                     namespace,
+                    crate_namespace,
                     Some(insert_type(TypeInfo::UnsignedInteger(
                         IntegerBits::SixtyFour
                     ))),
@@ -1367,7 +1404,7 @@ impl<'sc> TypedExpression<'sc> {
                 call_path: CallPath {
                     prefixes: vec![
                         Ident {
-                            primary_name: "std",
+                            primary_name: "core",
                             span: span.clone(),
                         },
                         Ident {
@@ -1388,6 +1425,7 @@ impl<'sc> TypedExpression<'sc> {
                 vec![prefix, index],
                 span,
                 namespace,
+                crate_namespace,
                 self_type,
                 build_config,
                 dead_code_graph,
@@ -1428,6 +1466,7 @@ mod tests {
         TypedExpression::type_check(
             expr,
             &mut namespace,
+            None,
             Some(type_annotation),
             "",
             self_type,

@@ -11,7 +11,7 @@ use crate::{
 use core_types::{Function, JsonABI};
 
 use anyhow::Result;
-use core_lang::{BuildConfig, CompileAstResult, LibraryExports, Namespace, TypedParseTree};
+use core_lang::{BuildConfig, CompileAstResult, LibraryExports, Namespace, TypedParseTree, TreeType};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -219,14 +219,31 @@ fn compile_library<'source, 'manifest>(
     let res = core_lang::compile_to_ast(&source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
+            parse_tree,
+            tree_type,
             warnings,
-            contract_ast,
-            library_exports: exports,
-            ..
         } => {
-            print_on_success_library(silent_mode, proj_name, warnings);
-            let json_abi = parse_json_abi(&contract_ast);
-            Ok((exports, json_abi))
+            let errors = vec![];
+            match tree_type {
+                TreeType::Library { name } => {
+                    print_on_success_library(silent_mode, proj_name, warnings);
+                    let json_abi = parse_json_abi(&Some(parse_tree.clone()));
+                    let mut exports = LibraryExports {
+                        namespace: Default::default(),
+                        trees: vec![],
+                    };
+                    exports.namespace.insert_module(
+                        name.primary_name.to_string(),
+                        parse_tree.namespace().clone(),
+                    );
+                    exports.trees.push(parse_tree);
+                    Ok((exports, json_abi))
+                },
+                _ => {
+                    print_on_failure(silent_mode, warnings, errors);
+                    Err(format!("Failed to compile {}", proj_name))
+                }
+            }
         }
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);
@@ -246,13 +263,22 @@ fn compile<'source, 'manifest>(
     let res = core_lang::compile_to_ast(&source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
+            parse_tree,
+            tree_type,
             warnings,
-            contract_ast,
-            ..
         } => {
-            print_on_success_script(silent_mode, proj_name, warnings);
-            let json_abi = parse_json_abi(&contract_ast);
-            Ok(json_abi)
+            let errors = vec![];
+            match tree_type {
+                TreeType::Contract {} => {
+                    print_on_success_script(silent_mode, proj_name, warnings);
+                    let json_abi = parse_json_abi(&Some(parse_tree));
+                    Ok(json_abi)
+                },
+                _ => {
+                    print_on_failure(silent_mode, warnings, errors);
+                    Err(format!("Failed to compile {}", proj_name))
+                }
+            }
         }
         CompileAstResult::Failure { warnings, errors } => {
             print_on_failure(silent_mode, warnings, errors);

@@ -22,17 +22,21 @@ export default function(hljs) {
   const NUMBER_SUFFIX = '([u](8|16|32|64))\?';
 
   const KEYWORDS = [
+    "abi",
     "as",
     "asm",
+    "const",
     "contract",
     "deref",
     "enum",
     "fn",
+    "if",
     "impl",
     "let",
     "library",
     "match",
     "mut",
+    "else",
     "predicate",
     "ref",
     "return",
@@ -54,20 +58,16 @@ export default function(hljs) {
     
   ];
   const TYPES = [
-    "u8",
-    "u16",
-    "u32",
-    "u64",
+    "bool", "char", "u8", "u16", "u32", "u64", "b256", "str", "Self"
   ];
   return {
     name: 'Sway',
     aliases: [ 'sw' ],
     keywords: {
       $pattern: hljs.IDENT_RE + '!?',
-      type: TYPES,
       keyword: KEYWORDS,
       literal: LITERALS,
-      built_in: BUILTINS
+      built_in: TYPES
     },
     illegal: '</',
     contains: [
@@ -126,7 +126,7 @@ export default function(hljs) {
       },
       {
         begin: [
-          /let/, /\s+/,
+          /(let|const)/, /\s+/,
           /(?:mut\s+)?/,
           hljs.UNDERSCORE_IDENT_RE
         ],
@@ -149,7 +149,7 @@ export default function(hljs) {
       },
       {
         begin: [
-          /(?:trait|enum|struct|impl|for|library)/,
+          /(?:trait|enum|struct|impl|for|library|abi)/,
           /\s+/,
           hljs.UNDERSCORE_IDENT_RE
         ],

@@ -6,4 +6,5 @@ entry = "main.sw"
 
 [dependencies]
 increment_abi = { path = "../increment_abi" }
-std = { path = "../../../../../stdlib" }
+std = { path = "../../../../../lib-std" }
+core = { path = "../../../../../lib-core" }
