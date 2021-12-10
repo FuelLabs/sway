@@ -1,4 +1,4 @@
-use core_lang::parse;
+use core_lang::{parse, TreeType};
 use fuel_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
@@ -31,8 +31,8 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
             // parse the main file and check is it a script
             let parsed_result = parse(main_file, None);
             match parsed_result.value {
-                Some(parse_tree) => {
-                    if parse_tree.script_ast.is_some() {
+                Some(parse_tree) => match parse_tree.tree_type {
+                    TreeType::Script => {
                         let input_data = &command.data.unwrap_or_else(|| "".into());
                         let data = format_hex_data(input_data);
                         let script_data = hex::decode(data).expect("Invalid hex");
@@ -77,24 +77,23 @@ pub async fn run(command: RunCommand) -> Result<(), CliError> {
 
                             Ok(())
                         }
-                    } else {
-                        let parse_type = {
-                            if parse_tree.contract_ast.is_some() {
-                                SWAY_CONTRACT
-                            } else if parse_tree.predicate_ast.is_some() {
-                                SWAY_PREDICATE
-                            } else {
-                                SWAY_LIBRARY
-                            }
-                        };
-
-                        Err(CliError::wrong_sway_type(
-                            project_name,
-                            SWAY_SCRIPT,
-                            parse_type,
-                        ))
                     }
-                }
+                    TreeType::Contract => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_SCRIPT,
+                        SWAY_CONTRACT,
+                    )),
+                    TreeType::Predicate => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_SCRIPT,
+                        SWAY_PREDICATE,
+                    )),
+                    TreeType::Library { .. } => Err(CliError::wrong_sway_type(
+                        project_name,
+                        SWAY_SCRIPT,
+                        SWAY_LIBRARY,
+                    )),
+                },
                 None => Err(CliError::parsing_failed(project_name, parsed_result.errors)),
             }
         }
