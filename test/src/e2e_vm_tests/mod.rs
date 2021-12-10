@@ -69,7 +69,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
         ("match_expressions_structs", ProgramState::Return(4)),
-        ("block_height", ProgramState::Return(1)),   // true
+        ("block_height", ProgramState::Return(1)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {

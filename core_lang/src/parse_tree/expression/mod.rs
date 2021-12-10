@@ -1359,7 +1359,7 @@ pub fn desugar_match_expression<'sc>(
                     call_path: CallPath {
                         prefixes: vec![
                             Ident {
-                                primary_name: "std",
+                                primary_name: "core",
                                 span: joined_span.clone(),
                             },
                             Ident {
