@@ -328,7 +328,7 @@ pub fn compile_to_ast<'sc>(
     CompileAstResult::Success {
         parse_tree: typed_parse_tree,
         tree_type: parse_tree.tree_type,
-        warnings
+        warnings,
     }
 }
 
@@ -339,8 +339,14 @@ pub fn compile_to_asm<'sc>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompilationResult<'sc> {
     match compile_to_ast(input, initial_namespace, &build_config, dependency_graph) {
-        CompileAstResult::Failure { warnings, errors } => CompilationResult::Failure { warnings, errors },
-        CompileAstResult::Success { parse_tree, tree_type, mut warnings } => {
+        CompileAstResult::Failure { warnings, errors } => {
+            CompilationResult::Failure { warnings, errors }
+        }
+        CompileAstResult::Success {
+            parse_tree,
+            tree_type,
+            mut warnings,
+        } => {
             let mut errors = vec![];
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {

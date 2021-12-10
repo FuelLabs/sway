@@ -11,7 +11,9 @@ use crate::{
 use core_types::{Function, JsonABI};
 
 use anyhow::Result;
-use core_lang::{BuildConfig, CompileAstResult, LibraryExports, Namespace, TypedParseTree, TreeType};
+use core_lang::{
+    BuildConfig, CompileAstResult, LibraryExports, Namespace, TreeType, TypedParseTree,
+};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -238,7 +240,7 @@ fn compile_library<'source, 'manifest>(
                     );
                     exports.trees.push(parse_tree);
                     Ok((exports, json_abi))
-                },
+                }
                 _ => {
                     print_on_failure(silent_mode, warnings, errors);
                     Err(format!("Failed to compile {}", proj_name))
@@ -273,7 +275,7 @@ fn compile<'source, 'manifest>(
                     print_on_success_script(silent_mode, proj_name, warnings);
                     let json_abi = parse_json_abi(&Some(parse_tree));
                     Ok(json_abi)
-                },
+                }
                 _ => {
                     print_on_failure(silent_mode, warnings, errors);
                     Err(format!("Failed to compile {}", proj_name))
