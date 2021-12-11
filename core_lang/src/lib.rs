@@ -134,6 +134,7 @@ impl<'sc> ParseTree<'sc> {
 ///
 /// # Example
 /// ```
+/// # use core_lang::parse;
 /// # fn main() {
 ///     let input = "script; fn main() -> bool { true }";
 ///     let result = parse(input, Default::default());
