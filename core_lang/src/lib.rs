@@ -442,15 +442,6 @@ fn perform_control_flow_analysis<'sc>(
         Ok(_) => (),
         Err(e) => return (vec![], vec![e]),
     }
-<<<<<<< HEAD
-}
-/// Given some [LibraryExports], construct a graph to analyze control flow and determine if it is valid.
-fn perform_control_flow_analysis_on_library_exports<'sc>(
-    lib: &LibraryExports<'sc>,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
-) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
-=======
->>>>>>> e77027e9b0e41c255c494f7ab5046b34e7ab8d21
     let mut warnings = vec![];
     let mut errors = vec![];
     warnings.append(&mut dead_code_graph.find_dead_code());
