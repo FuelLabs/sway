@@ -11,8 +11,8 @@ use crate::{
     error::*,
     parse_tree::Literal,
     semantic_analysis::{
-        NamespaceInner, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
-        TypedFunctionDeclaration, TypedParseTree,
+        Namespace, TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration,
+        TypedParseTree,
     },
     types::ResolvedType,
     BuildConfig, Ident, TypeInfo,
@@ -617,8 +617,8 @@ impl<'sc> AsmNamespace<'sc> {
     }
 }
 
-pub(crate) fn compile_ast_to_asm<'n, 'sc>(
-    ast: TypedParseTree<'n, 'sc>,
+pub(crate) fn compile_ast_to_asm<'sc>(
+    ast: TypedParseTree<'sc>,
     build_config: &BuildConfig,
 ) -> CompileResult<'sc, FinalizedAsm<'sc>> {
     let mut register_sequencer = RegisterSequencer::new();
@@ -639,7 +639,7 @@ pub(crate) fn compile_ast_to_asm<'n, 'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace.inner,
+                    &ast_namespace,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -694,7 +694,7 @@ pub(crate) fn compile_ast_to_asm<'n, 'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace.inner,
+                    &ast_namespace,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -736,7 +736,7 @@ pub(crate) fn compile_ast_to_asm<'n, 'sc>(
                     &mut register_sequencer,
                     &mut asm_buf,
                     &declarations,
-                    &ast_namespace.inner,
+                    &ast_namespace,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -1199,7 +1199,7 @@ fn add_all_constant_decls<'sc>(
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op<'sc>>,
     declarations: &[TypedDeclaration<'sc>],
-    ast_namespace: &NamespaceInner<'sc>,
+    ast_namespace: &Namespace<'sc>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1244,7 +1244,7 @@ fn add_module_constant_decls<'sc>(
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op<'sc>>,
-    ast_namespace: &NamespaceInner<'sc>,
+    ast_namespace: &Namespace<'sc>,
 ) -> CompileResult<'sc, ()> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1276,12 +1276,19 @@ fn add_module_constant_decls<'sc>(
     ok((), warnings, errors)
 }
 
+/// The function selector value and corresponding label.
+type JumpDestination = Vec<([u8; 4], Label)>;
+/// A vector of opcodes representing the body of a contract ABI function.
+type AbiFunctionOpcodeBuffer<'sc> = Vec<Op<'sc>>;
+/// The function selector information and compiled body of a contract ABI function.
+type SerializedAbiFunction<'sc> = (JumpDestination, AbiFunctionOpcodeBuffer<'sc>);
+
 /// Given a contract's abi entries, compile them to jump destinations and an opcode buffer.
 fn compile_contract_to_selectors<'sc>(
     abi_entries: Vec<TypedFunctionDeclaration<'sc>>,
     namespace: &mut AsmNamespace<'sc>,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, (Vec<([u8; 4], Label)>, Vec<Op<'sc>>)> {
+) -> CompileResult<'sc, SerializedAbiFunction<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     // for every ABI function, we need:

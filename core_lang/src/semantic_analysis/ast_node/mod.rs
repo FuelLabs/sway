@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::semantic_analysis::ast_node::declaration::insert_type_parameters;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
-use crate::semantic_analysis::{Namespace, NamespaceInner};
+use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
@@ -115,7 +115,8 @@ impl<'sc> TypedAstNode<'sc> {
     }
     pub(crate) fn type_check<'n>(
         node: AstNode<'sc>,
-        namespace: &mut Namespace<'n, 'sc>,
+        namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&Namespace<'sc>>,
         return_type_annotation: TypeId,
         help_text: impl Into<String>,
         self_type: TypeId,
@@ -126,41 +127,45 @@ impl<'sc> TypedAstNode<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr =
-            |namespace: &mut Namespace<'n, 'sc>, type_ascription: TypeInfo, value, decl_str| {
-                let type_id = namespace
-                    .inner
-                    .resolve_type_with_self(type_ascription, self_type)
-                    .unwrap_or_else(|_| {
-                        errors.push(CompileError::UnknownType {
-                            span: node.span.clone(),
-                        });
-                        insert_type(TypeInfo::ErrorRecovery)
+        let mut type_check_ascribed_expr = |namespace: &mut Namespace<'sc>,
+                                            crate_namespace: Option<&Namespace<'sc>>,
+                                            type_ascription: TypeInfo,
+                                            value,
+                                            decl_str| {
+            let type_id = namespace
+                .resolve_type_with_self(type_ascription, self_type)
+                .unwrap_or_else(|_| {
+                    errors.push(CompileError::UnknownType {
+                        span: node.span.clone(),
                     });
-                TypedExpression::type_check(
-                    value,
-                    namespace,
-                    Some(type_id),
-                    format!(
-                        "{} declaration's type annotation (type {}) does \
+                    insert_type(TypeInfo::ErrorRecovery)
+                });
+            TypedExpression::type_check(
+                value,
+                namespace,
+                crate_namespace,
+                Some(type_id),
+                format!(
+                    "{} declaration's type annotation (type {}) does \
                      not match up with the assigned expression's type.",
-                        decl_str,
-                        type_id.friendly_type_str()
-                    ),
-                    self_type,
-                    build_config,
-                    dead_code_graph,
-                    dependency_graph,
-                )
-            };
+                    decl_str,
+                    type_id.friendly_type_str()
+                ),
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+            )
+        };
 
         let node = TypedAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
+                    let from_module = if a.is_absolute { crate_namespace } else { None };
                     let mut res = match a.import_type {
-                        ImportType::Star => namespace.star_import(a.call_path, a.is_absolute),
+                        ImportType::Star => namespace.star_import(from_module, a.call_path),
                         ImportType::Item(s) => {
-                            namespace.item_import(a.call_path, &s, a.is_absolute, a.alias)
+                            namespace.item_import(from_module, a.call_path, &s, a.alias)
                         }
                     };
                     warnings.append(&mut res.warnings);
@@ -194,7 +199,6 @@ impl<'sc> TypedAstNode<'sc> {
                             is_mutable,
                         }) => {
                             let type_ascription = namespace
-                                .inner
                                 .resolve_type_with_self(type_ascription, self_type)
                                 .unwrap_or_else(|_| {
                                     errors.push(CompileError::UnknownType {
@@ -207,6 +211,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 TypedExpression::type_check(
                                     body,
                                     namespace,
+                                    crate_namespace,
                                     Some(type_ascription),
                                     format!(
                                         "Variable declaration's type annotation (type {}) does \
@@ -232,7 +237,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     is_mutable,
                                     type_ascription,
                                 });
-                            namespace.inner.insert(name, typed_var_decl.clone());
+                            namespace.insert(name, typed_var_decl.clone());
                             typed_var_decl
                         }
                         Declaration::ConstantDeclaration(ConstantDeclaration {
@@ -243,6 +248,7 @@ impl<'sc> TypedAstNode<'sc> {
                         }) => {
                             let result = type_check_ascribed_expr(
                                 namespace,
+                                crate_namespace,
                                 type_ascription,
                                 value,
                                 "Constant",
@@ -259,19 +265,17 @@ impl<'sc> TypedAstNode<'sc> {
                                     value,
                                     visibility,
                                 });
-                            namespace.inner.insert(name, typed_const_decl.clone());
+                            namespace.insert(name, typed_const_decl.clone());
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
                             let span = e.span.clone();
                             let primary_name = e.name.primary_name;
                             let decl = TypedDeclaration::EnumDeclaration(
-                                e.to_typed_decl(&mut namespace.inner, self_type),
+                                e.to_typed_decl(namespace, self_type),
                             );
 
-                            namespace
-                                .inner
-                                .insert(Ident { primary_name, span }, decl.clone());
+                            namespace.insert(Ident { primary_name, span }, decl.clone());
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
@@ -279,6 +283,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 TypedFunctionDeclaration::type_check(
                                     fn_decl.clone(),
                                     namespace,
+                                    crate_namespace,
                                     crate::type_engine::insert_type(TypeInfo::Unknown),
                                     "",
                                     self_type,
@@ -291,7 +296,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 warnings,
                                 errors
                             );
-                            namespace.inner.insert(
+                            namespace.insert(
                                 decl.name.clone(),
                                 TypedDeclaration::FunctionDeclaration(decl.clone()),
                             );
@@ -306,7 +311,7 @@ impl<'sc> TypedAstNode<'sc> {
                         }) => {
                             // type check the interface surface
                             let interface_surface = check!(
-                                type_check_interface_surface(interface_surface, &namespace.inner),
+                                type_check_interface_surface(interface_surface, namespace),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -314,7 +319,7 @@ impl<'sc> TypedAstNode<'sc> {
                             let mut trait_namespace = namespace.clone();
                             // insert placeholder functions representing the interface surface
                             // to allow methods to use those functions
-                            trait_namespace.inner.insert_trait_implementation(
+                            trait_namespace.insert_trait_implementation(
                                 CallPath {
                                     prefixes: vec![],
                                     suffix: name.clone(),
@@ -329,7 +334,8 @@ impl<'sc> TypedAstNode<'sc> {
                             let _methods = check!(
                                 type_check_trait_methods(
                                     methods.clone(),
-                                    &trait_namespace,
+                                    &mut trait_namespace,
+                                    crate_namespace,
                                     insert_type(TypeInfo::SelfType),
                                     build_config,
                                     dead_code_graph,
@@ -347,7 +353,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     type_parameters,
                                     visibility,
                                 });
-                            namespace.inner.insert(name, trait_decl.clone());
+                            namespace.insert(name, trait_decl.clone());
                             trait_decl
                         }
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
@@ -357,6 +363,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     rhs,
                                     span,
                                     namespace,
+                                    crate_namespace,
                                     self_type,
                                     build_config,
                                     dead_code_graph,
@@ -371,6 +378,7 @@ impl<'sc> TypedAstNode<'sc> {
                             implementation_of_trait(
                                 impl_trait,
                                 namespace,
+                                crate_namespace,
                                 build_config,
                                 dead_code_graph,
                                 dependency_graph
@@ -387,9 +395,8 @@ impl<'sc> TypedAstNode<'sc> {
                             block_span,
                             ..
                         }) => {
-                            let implementing_for_type_id = namespace
-                                .inner
-                                .resolve_type_without_self(&type_implementing_for);
+                            let implementing_for_type_id =
+                                namespace.resolve_type_without_self(&type_implementing_for);
                             // check, if this is a custom type, if it is in scope or a generic.
                             let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
                             if !type_arguments.is_empty() {
@@ -423,6 +430,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     TypedFunctionDeclaration::type_check(
                                         fn_decl,
                                         namespace,
+                                        crate_namespace,
                                         crate::type_engine::insert_type(TypeInfo::Unknown),
                                         "",
                                         implementing_for_type_id,
@@ -443,7 +451,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     span: block_span.clone(),
                                 },
                             };
-                            namespace.inner.insert_trait_implementation(
+                            namespace.insert_trait_implementation(
                                 trait_name.clone(),
                                 look_up_type_id(implementing_for_type_id),
                                 functions_buf.clone(),
@@ -476,7 +484,6 @@ impl<'sc> TypedAstNode<'sc> {
                                             insert_type(TypeInfo::Ref(matching_id))
                                         } else {
                                             namespace
-                                                .inner
                                                 .resolve_type_with_self(r#type, self_type)
                                                 .unwrap_or_else(|_| {
                                                     errors.push(CompileError::UnknownType {
@@ -497,7 +504,7 @@ impl<'sc> TypedAstNode<'sc> {
                             };
 
                             // insert struct into namespace
-                            namespace.inner.insert(
+                            namespace.insert(
                                 decl.name.clone(),
                                 TypedDeclaration::StructDeclaration(decl.clone()),
                             );
@@ -516,7 +523,7 @@ impl<'sc> TypedAstNode<'sc> {
                             // so we don't support the case of calling a contract's own interface
                             // from itself. This is by design.
                             let interface_surface = check!(
-                                type_check_interface_surface(interface_surface, &namespace.inner),
+                                type_check_interface_surface(interface_surface, namespace),
                                 return err(warnings, errors),
                                 warnings,
                                 errors
@@ -527,6 +534,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 type_check_trait_methods(
                                     methods.clone(),
                                     namespace,
+                                    crate_namespace,
                                     self_type,
                                     build_config,
                                     dead_code_graph,
@@ -543,7 +551,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 name: name.clone(),
                                 span,
                             });
-                            namespace.inner.insert(name, decl.clone());
+                            namespace.insert(name, decl.clone());
                             decl
                         }
                         Declaration::StorageDeclaration(StorageDeclaration { span, .. }) => {
@@ -560,6 +568,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             a.clone(),
                             namespace,
+                            crate_namespace,
                             None,
                             "",
                             self_type,
@@ -579,6 +588,7 @@ impl<'sc> TypedAstNode<'sc> {
                             TypedExpression::type_check(
                                 expr.clone(),
                                 namespace,
+                                crate_namespace,
                                 Some(return_type_annotation),
                                 "Returned value must match up with the function return type \
                                  annotation.",
@@ -598,6 +608,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             expr.clone(),
                             namespace,
+                            crate_namespace,
                             Some(return_type_annotation),
                             format!(
                                 "Implicit return must match up with block's type. {}",
@@ -619,6 +630,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedExpression::type_check(
                             condition,
                             namespace,
+                            crate_namespace,
                             Some(crate::type_engine::insert_type(TypeInfo::Boolean)),
                             "A while loop's loop condition must be a boolean expression.",
                             self_type,
@@ -634,6 +646,7 @@ impl<'sc> TypedAstNode<'sc> {
                         TypedCodeBlock::type_check(
                             body.clone(),
                             namespace,
+                            crate_namespace,
                             crate::type_engine::insert_type(TypeInfo::Unit),
                             "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
@@ -686,7 +699,7 @@ impl<'sc> TypedAstNode<'sc> {
 /// and appends the module's content to the control flow graph for later analysis.
 fn import_new_file<'n, 'sc>(
     statement: &IncludeStatement<'sc>,
-    namespace: &mut Namespace<'n, 'sc>,
+    namespace: &mut Namespace<'sc>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -726,7 +739,7 @@ fn import_new_file<'n, 'sc>(
         }
     };
 
-    let dep_namespace = namespace.clone_inherit_crate_namespace();
+    let dep_namespace = namespace.clone();
     // :)
     let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
     let mut dep_config = build_config.clone();
@@ -736,7 +749,11 @@ fn import_new_file<'n, 'sc>(
     };
     dep_config.file_name = file_name;
     dep_config.dir_of_code = Arc::new(dep_path);
-    let crate::InnerDependencyCompileResult { library_exports } = check!(
+    let crate::InnerDependencyCompileResult {
+        name,
+        namespace: module,
+        ..
+    } = check!(
         crate::compile_inner_dependency(
             static_file_string,
             &dep_namespace,
@@ -749,14 +766,12 @@ fn import_new_file<'n, 'sc>(
         errors
     );
 
-    if let Some((name, module)) = library_exports.namespace.inner.take_the_only_module() {
-        let name = match statement.alias {
-            Some(ref alias) => alias.primary_name.to_string(),
-            None => name,
-        };
-        namespace.inner.insert_module(name, module);
-    }
-
+    let name = match statement.alias {
+        Some(ref alias) => alias,
+        None => &name,
+    };
+    let name = name.primary_name.to_string();
+    namespace.insert_module(name, module);
     ok((), warnings, errors)
 }
 
@@ -764,7 +779,8 @@ fn reassignment<'n, 'sc>(
     lhs: Box<Expression<'sc>>,
     rhs: Expression<'sc>,
     span: Span<'sc>,
-    namespace: &mut Namespace<'n, 'sc>,
+    namespace: &mut Namespace<'sc>,
+    crate_namespace: Option<&Namespace<'sc>>,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -776,7 +792,7 @@ fn reassignment<'n, 'sc>(
     match *lhs {
         Expression::VariableExpression { name, span } => {
             // check that the reassigned name exists
-            let thing_to_reassign = match namespace.inner.clone().get_symbol(&name).value {
+            let thing_to_reassign = match namespace.clone().get_symbol(&name).value {
                 Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     body,
                     is_mutable,
@@ -819,6 +835,7 @@ fn reassignment<'n, 'sc>(
                 TypedExpression::type_check(
                     rhs,
                     namespace,
+                    crate_namespace,
                     Some(rhs_type_id),
                     "You can only reassign a value of the same type to a variable.",
                     self_type,
@@ -855,6 +872,7 @@ fn reassignment<'n, 'sc>(
                     TypedExpression::type_check(
                         expr.clone(),
                         namespace,
+                        crate_namespace,
                         None,
                         "",
                         self_type,
@@ -900,7 +918,7 @@ fn reassignment<'n, 'sc>(
             });
 
             let (ty_of_field, _ty_of_parent) = check!(
-                namespace.inner.find_subfield_type(
+                namespace.find_subfield_type(
                     names_vec
                         .iter()
                         .map(|ReassignmentLhs { name, .. }| name.clone())
@@ -916,6 +934,7 @@ fn reassignment<'n, 'sc>(
                 TypedExpression::type_check(
                     rhs,
                     namespace,
+                    crate_namespace,
                     Some(ty_of_field),
                     format!(
                         "This struct field has type \"{}\"",
@@ -949,7 +968,7 @@ fn reassignment<'n, 'sc>(
 
 fn type_check_interface_surface<'sc>(
     interface_surface: Vec<TraitFn<'sc>>,
-    namespace: &NamespaceInner<'sc>,
+    namespace: &Namespace<'sc>,
 ) -> CompileResult<'sc, Vec<TypedTraitFn<'sc>>> {
     let mut errors = vec![];
     ok(
@@ -1009,7 +1028,8 @@ fn type_check_interface_surface<'sc>(
 
 fn type_check_trait_methods<'n, 'sc>(
     methods: Vec<FunctionDeclaration<'sc>>,
-    namespace: &Namespace<'n, 'sc>,
+    namespace: &mut Namespace<'sc>,
+    crate_namespace: Option<&Namespace<'sc>>,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -1035,7 +1055,6 @@ fn type_check_trait_methods<'n, 'sc>(
                  name, ref r#type, ..
              }| {
                 let r#type = function_namespace
-                    .inner
                     .resolve_type_with_self(
                         r#type.clone(),
                         crate::type_engine::insert_type(TypeInfo::SelfType),
@@ -1046,7 +1065,7 @@ fn type_check_trait_methods<'n, 'sc>(
                         });
                         insert_type(TypeInfo::ErrorRecovery)
                     });
-                function_namespace.inner.insert(
+                function_namespace.insert(
                     name.clone(),
                     TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                         name: name.clone(),
@@ -1118,7 +1137,6 @@ fn type_check_trait_methods<'n, 'sc>(
                     TypedFunctionParameter {
                         name,
                         r#type: function_namespace
-                            .inner
                             .resolve_type_with_self(
                                 r#type,
                                 crate::type_engine::insert_type(TypeInfo::SelfType),
@@ -1137,7 +1155,6 @@ fn type_check_trait_methods<'n, 'sc>(
 
         // TODO check code block implicit return
         let return_type = function_namespace
-            .inner
             .resolve_type_with_self(return_type, self_type)
             .unwrap_or_else(|_| {
                 errors.push(CompileError::UnknownType {
@@ -1149,6 +1166,7 @@ fn type_check_trait_methods<'n, 'sc>(
             TypedCodeBlock::type_check(
                 body,
                 &function_namespace,
+                crate_namespace,
                 return_type,
                 "Trait method body's return type does not match up with \
                                          its return type annotation.",
