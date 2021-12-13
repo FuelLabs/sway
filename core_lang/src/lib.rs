@@ -159,11 +159,7 @@ pub fn parse<'sc>(
     ok(res, warnings, errors)
 }
 
-<<<<<<< HEAD
-/// Represents the result of compiling Sway code via [compile_to_asm].
-=======
 /// Represents the result of compiling Sway code via `compile_to_asm`.
->>>>>>> 64ab3679bda3fdaaafd435efe8924e286b857fc9
 /// Contains the compiled assets or resulting errors, and any warnings generated.
 pub enum CompilationResult<'sc> {
     Success {
@@ -181,11 +177,7 @@ pub enum CompilationResult<'sc> {
     },
 }
 
-<<<<<<< HEAD
-/// Represents the result of compiling Sway code via [compile_to_bytecode].
-=======
 /// Represents the result of compiling Sway code via `compile_to_bytecode`.
->>>>>>> 64ab3679bda3fdaaafd435efe8924e286b857fc9
 /// Contains the compiled bytecode in byte form, or, resulting errors, and any warnings generated.
 pub enum BytecodeCompilationResult<'sc> {
     Success {
