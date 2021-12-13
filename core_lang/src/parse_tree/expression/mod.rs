@@ -21,6 +21,7 @@ pub(crate) use match_condition::MatchCondition;
 pub(crate) use method_name::MethodName;
 pub(crate) use unary_op::UnaryOp;
 
+/// Represents the different kinds of expressions that can be parsed from Sway source code.
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
     Literal {
@@ -80,7 +81,7 @@ pub enum Expression<'sc> {
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
-    /// A subfield expression is anything of the form:
+    /// A _subfield expression_ is anything of the form:
     /// ```ignore
     /// <ident>.<ident>
     /// ```
@@ -90,7 +91,7 @@ pub enum Expression<'sc> {
         span: Span<'sc>,
         field_to_access: Ident<'sc>,
     },
-    /// A [DelineatedPath] is anything of the form:
+    /// A _delineated path_ is anything of the form:
     /// ```ignore
     /// <ident>::<ident>
     /// ```

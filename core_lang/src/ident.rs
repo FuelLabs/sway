@@ -5,6 +5,7 @@ use crate::span::Span;
 use pest::iterators::Pair;
 use std::hash::{Hash, Hasher};
 
+/// Represents the primary name, and sub-names of some Sway source code.
 #[derive(Debug, Clone)]
 pub struct Ident<'sc> {
     pub primary_name: &'sc str,

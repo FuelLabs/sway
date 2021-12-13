@@ -65,7 +65,7 @@ pub struct LibraryExports<'sc> {
     trees: Vec<TypedParseTree<'sc>>,
 }
 
-/// Represents a parsed (but not yet type checked) Sway syntax tree.
+/// Represents a parsed, but not yet type checked, Sway syntax tree.
 #[derive(Debug)]
 pub struct ParseTree<'sc> {
     /// The untyped AST nodes that constitute this tree's root nodes.
@@ -173,7 +173,7 @@ pub fn parse<'sc>(
     ok(res, warnings, errors)
 }
 
-/// Represents the result of compiling Sway code via `compile_to_asm`.
+/// Represents the result of compiling Sway code via [compile_to_asm].
 /// Contains the compiled assets or resulting errors, and any warnings generated.
 pub enum CompilationResult<'sc> {
     Success {
@@ -190,7 +190,7 @@ pub enum CompilationResult<'sc> {
     },
 }
 
-/// Represents the result of compiling Sway code via `compile_to_bytecode`.
+/// Represents the result of compiling Sway code via [compile_to_bytecode].
 /// Contains the compiled bytecode in byte form, or, resulting errors, and any warnings generated.
 pub enum BytecodeCompilationResult<'sc> {
     Success {

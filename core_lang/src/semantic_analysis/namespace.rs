@@ -20,7 +20,7 @@ type TraitName<'a> = CallPath<'a>;
 pub struct Namespace<'sc> {
     symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
     implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
-    /// any imported namespaces associated with an ident which is a  library name
+    /// any imported namespaces associated with an ident which is a library name
     modules: HashMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
     /// namespace _is_ the root namespace.
