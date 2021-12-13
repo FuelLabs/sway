@@ -232,6 +232,76 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
             ),
+            Expression::DelayedStructFieldResolution {
+                exp,
+                struct_name,
+                field,
+                span,
+            } => {
+                let mut warnings = vec![];
+                let mut errors = vec![];
+                let parent = check!(
+                    TypedExpression::type_check(
+                        *exp,
+                        namespace,
+                        crate_namespace,
+                        None,
+                        help_text,
+                        self_type,
+                        build_config,
+                        dead_code_graph,
+                        dependency_graph
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let (struct_fields, other_struct_name) = check!(
+                    namespace.get_struct_type_fields(
+                        parent.return_type,
+                        parent.span.as_str(),
+                        &parent.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if struct_name.primary_name != other_struct_name {
+                    errors.push(CompileError::MatchWrongType {
+                        span: struct_name.span,
+                    });
+                    let exp = error_recovery_expr(span);
+                    return ok(exp, warnings, errors);
+                }
+                let mut field_to_access = None;
+                for struct_field in struct_fields.iter() {
+                    if struct_field.name == field.primary_name.to_string() {
+                        field_to_access = Some(struct_field.clone())
+                    }
+                }
+                let field_to_access = match field_to_access {
+                    None => {
+                        errors.push(CompileError::MatchWrongType {
+                            span: struct_name.span,
+                        });
+                        let exp = error_recovery_expr(span);
+                        return ok(exp, warnings, errors);
+                    }
+                    Some(field_to_access) => field_to_access,
+                };
+                let exp = TypedExpression {
+                    expression: TypedExpressionVariant::StructFieldAccess {
+                        resolved_type_of_parent: parent.return_type,
+                        prefix: Box::new(parent),
+                        field_to_access: field_to_access.clone(),
+                        field_to_access_span: field.span.clone(),
+                    },
+                    return_type: field_to_access.r#type,
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(exp, warnings, errors)
+            }
             a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented expression",

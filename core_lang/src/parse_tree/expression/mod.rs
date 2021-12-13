@@ -8,7 +8,6 @@ use crate::{CodeBlock, Ident};
 use either::Either;
 use pest;
 use pest::iterators::Pair;
-use sha2::digest::generic_array::typenum::Exp;
 use std::collections::VecDeque;
 
 mod asm;
@@ -138,7 +137,7 @@ pub enum Expression<'sc> {
     DelayedStructFieldResolution {
         exp: Box<Expression<'sc>>,
         struct_name: Ident<'sc>,
-        field: &'sc str,
+        field: Ident<'sc>,
         span: Span<'sc>,
     },
 }
@@ -420,12 +419,13 @@ impl<'sc> Expression<'sc> {
                     );
                     branches.push(res);
                 }
-                check!(
+                let exp = check!(
                     desugar_match_expression(primary_expression, branches, span),
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                );
+                exp
             }
             Rule::struct_expression => {
                 let mut expr_iter = expr.into_inner();

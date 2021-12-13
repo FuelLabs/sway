@@ -55,13 +55,13 @@ fn match_struct<'sc>(
 ) -> Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)> {
     let mut match_req_map = vec![];
     let mut match_impl_map = vec![];
-    for field in fields.into_iter() {
+    for field in fields.iter() {
         let field_name = field.field.clone();
         let scrutinee = field.scrutinee.clone();
         let delayed_resolution_exp = Expression::DelayedStructFieldResolution {
             exp: Box::new(exp.clone()),
             struct_name: struct_name.to_owned(),
-            field: field_name.primary_name,
+            field: field_name.clone(),
             span: span.clone(),
         };
         match scrutinee {

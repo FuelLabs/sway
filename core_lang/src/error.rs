@@ -777,6 +777,8 @@ pub enum CompileError<'sc> {
         count: u64,
         span: Span<'sc>,
     },
+    #[error("Mismatched types in the match statement.")]
+    MatchWrongType { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -965,6 +967,7 @@ impl<'sc> CompileError<'sc> {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
+            MatchWrongType { span } => span,
         }
     }
 
