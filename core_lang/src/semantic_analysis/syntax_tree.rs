@@ -58,7 +58,7 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    pub fn namespace(&self) -> &Namespace<'sc> {
+    pub fn into_namespace(self) -> Namespace<'sc> {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,

@@ -12,9 +12,7 @@ use core_lang::{FinalizedAsm, TreeType};
 use std::fs::File;
 use std::io::Write;
 
-use core_lang::{
-    BuildConfig, BytecodeCompilationResult, CompilationResult, LibraryExports, Namespace,
-};
+use core_lang::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
@@ -233,7 +231,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         silent_mode,
     )?;
 
-    namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
+    namespace.insert_dependency_module(dependency_name.to_string(), compiled);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(())
@@ -246,14 +244,16 @@ fn compile_library<'source>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<LibraryExports<'source>, String> {
+) -> Result<Namespace<'source>, String> {
     let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
-            exports, warnings, ..
+            namespace,
+            warnings,
+            ..
         } => {
             print_on_success_library(silent_mode, proj_name, warnings);
-            Ok(exports)
+            Ok(namespace)
         }
         CompilationResult::Failure { errors, warnings } => {
             print_on_failure(silent_mode, warnings, errors);

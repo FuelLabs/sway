@@ -11,9 +11,7 @@ use crate::{
 use core_types::{Function, JsonABI};
 
 use anyhow::Result;
-use core_lang::{
-    BuildConfig, CompileAstResult, LibraryExports, Namespace, TreeType, TypedParseTree,
-};
+use core_lang::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -209,7 +207,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         silent_mode,
     )?;
 
-    namespace.insert_dependency_module(dependency_name.to_string(), compiled.namespace);
+    namespace.insert_dependency_module(dependency_name.to_string(), compiled);
 
     // nothing is returned from this method since it mutates the hashmaps it was given
     Ok(json_abi)
@@ -222,7 +220,7 @@ fn compile_library<'source, 'manifest>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<(LibraryExports<'source>, Vec<Function>), String> {
+) -> Result<(Namespace<'source>, Vec<Function>), String> {
     let res = core_lang::compile_to_ast(source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
@@ -240,16 +238,7 @@ fn compile_library<'source, 'manifest>(
                         TreeType::Library { name: name.clone() },
                     );
                     let json_abi = generate_json_abi(&Some(parse_tree.clone()));
-                    let mut exports = LibraryExports {
-                        namespace: Default::default(),
-                        trees: vec![],
-                    };
-                    exports.namespace.insert_module(
-                        name.primary_name.to_string(),
-                        parse_tree.namespace().clone(),
-                    );
-                    exports.trees.push(parse_tree);
-                    Ok((exports, json_abi))
+                    Ok((parse_tree.into_namespace(), json_abi))
                 }
                 _ => {
                     print_on_failure(silent_mode, warnings, errors);

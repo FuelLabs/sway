@@ -1,3 +1,4 @@
+//! Contains all the code related to parsing Sway source code.
 mod call_path;
 mod code_block;
 pub mod declaration;
