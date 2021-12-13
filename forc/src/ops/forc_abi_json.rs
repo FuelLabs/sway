@@ -17,7 +17,7 @@ use core_lang::{
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // find manifest directory, even if in subdirectory
@@ -129,7 +129,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
 fn compile_dependency_lib<'source, 'manifest>(
-    project_file_path: &PathBuf,
+    project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &Dependency,
     namespace: &mut Namespace<'source>,
@@ -156,14 +156,19 @@ fn compile_dependency_lib<'source, 'manifest>(
         };
 
     // dependency paths are relative to the path of the project being compiled
-    let mut project_path = project_file_path.clone();
+    let mut project_path = PathBuf::from(project_file_path);
     project_path.push(dep_path);
 
     // compile the dependencies of this dependency
     // this should detect circular dependencies
     let manifest_dir = match find_manifest_dir(&project_path) {
         Some(o) => o,
-        None => return Err("Manifest not found for dependency.".into()),
+        None => {
+            return Err(format!(
+                "Manifest not found for dependency {:?}.",
+                project_path
+            ))
+        }
     };
     let manifest_of_dep = read_manifest(&manifest_dir)?;
     let main_path = find_main_path(&manifest_dir, &manifest_of_dep);
@@ -182,7 +187,7 @@ fn compile_dependency_lib<'source, 'manifest>(
             // circular dependencies
             //return Err("Unimplemented: dependencies that have dependencies".into());
             compile_dependency_lib(
-                project_file_path,
+                &manifest_dir,
                 dep.0,
                 dep.1,
                 // give it a cloned namespace, which we then merge with this namespace
