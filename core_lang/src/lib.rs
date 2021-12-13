@@ -53,20 +53,6 @@ pub struct HllParseTree<'sc> {
 /// Represents some exportable information that results from compiling some
 /// Sway source code.
 #[derive(Debug)]
-pub struct HllTypedParseTree<'sc> {
-    pub library_exports: LibraryExports<'sc>,
-}
-
-/// Represents some exportable information that results from compiling some
-/// Sway source code.
-#[derive(Debug)]
-pub struct LibraryExports<'sc> {
-    pub namespace: Namespace<'sc>,
-    trees: Vec<TypedParseTree<'sc>>,
-}
-
-/// Represents a parsed, but not yet type checked, Sway syntax tree.
-#[derive(Debug)]
 pub struct ParseTree<'sc> {
     /// The untyped AST nodes that constitute this tree's root nodes.
     pub root_nodes: Vec<AstNode<'sc>>,
@@ -173,7 +159,11 @@ pub fn parse<'sc>(
     ok(res, warnings, errors)
 }
 
+<<<<<<< HEAD
 /// Represents the result of compiling Sway code via [compile_to_asm].
+=======
+/// Represents the result of compiling Sway code via `compile_to_asm`.
+>>>>>>> 64ab3679bda3fdaaafd435efe8924e286b857fc9
 /// Contains the compiled assets or resulting errors, and any warnings generated.
 pub enum CompilationResult<'sc> {
     Success {
@@ -181,7 +171,8 @@ pub enum CompilationResult<'sc> {
         warnings: Vec<CompileWarning<'sc>>,
     },
     Library {
-        exports: LibraryExports<'sc>,
+        name: Ident<'sc>,
+        namespace: Namespace<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -190,7 +181,11 @@ pub enum CompilationResult<'sc> {
     },
 }
 
+<<<<<<< HEAD
 /// Represents the result of compiling Sway code via [compile_to_bytecode].
+=======
+/// Represents the result of compiling Sway code via `compile_to_bytecode`.
+>>>>>>> 64ab3679bda3fdaaafd435efe8924e286b857fc9
 /// Contains the compiled bytecode in byte form, or, resulting errors, and any warnings generated.
 pub enum BytecodeCompilationResult<'sc> {
     Success {
@@ -235,7 +230,8 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
 /// This struct represents the compilation of an internal dependency
 /// defined through an include statement (the `dep` keyword).
 pub(crate) struct InnerDependencyCompileResult<'sc> {
-    library_exports: LibraryExports<'sc>,
+    name: Ident<'sc>,
+    namespace: Namespace<'sc>,
 }
 /// For internal compiler use.
 /// Compiles an included file and returns its control flow and dead code graphs.
@@ -299,18 +295,11 @@ pub(crate) fn compile_inner_dependency<'sc>(
         errors.push(e)
     };
 
-    let mut library_exports = LibraryExports {
-        namespace: Default::default(),
-        trees: vec![],
-    };
-    library_exports.namespace.insert_module(
-        library_name.primary_name.to_string(),
-        typed_parse_tree.namespace().clone(),
-    );
-    library_exports.trees.push(typed_parse_tree);
-
     ok(
-        InnerDependencyCompileResult { library_exports },
+        InnerDependencyCompileResult {
+            name: library_name.clone(),
+            namespace: typed_parse_tree.into_namespace(),
+        },
         warnings,
         errors,
     )
@@ -379,18 +368,11 @@ pub fn compile_to_asm<'sc>(
             }
             CompilationResult::Success { asm, warnings }
         }
-        TreeType::Library { name } => {
-            let mut exports = LibraryExports {
-                namespace: Default::default(),
-                trees: vec![],
-            };
-            exports.namespace.insert_module(
-                name.primary_name.to_string(),
-                typed_parse_tree.namespace().clone(),
-            );
-            exports.trees.push(typed_parse_tree);
-            CompilationResult::Library { warnings, exports }
-        }
+        TreeType::Library { name } => CompilationResult::Library {
+            warnings,
+            name,
+            namespace: typed_parse_tree.into_namespace(),
+        },
     }
 }
 
@@ -425,10 +407,9 @@ pub fn compile_to_bytecode<'n, 'sc>(
         CompilationResult::Failure { warnings, errors } => {
             BytecodeCompilationResult::Failure { warnings, errors }
         }
-        CompilationResult::Library {
-            warnings,
-            exports: _exports,
-        } => BytecodeCompilationResult::Library { warnings },
+        CompilationResult::Library { warnings, .. } => {
+            BytecodeCompilationResult::Library { warnings }
+        }
     }
 }
 
