@@ -5,7 +5,8 @@ use crate::span::Span;
 use pest::iterators::Pair;
 use std::hash::{Hash, Hasher};
 
-/// Represents the name and span of a symbol.
+/// Represents the name and span of a symbol. Note that a symbol is not 
+/// equivalent to a token, where a token is just a literal character.
 #[derive(Debug, Clone)]
 pub struct Ident<'sc> {
     pub primary_name: &'sc str,
