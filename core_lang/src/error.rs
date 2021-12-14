@@ -9,7 +9,7 @@ use std::fmt;
 use thiserror::Error;
 
 macro_rules! check {
-    ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident) => {{
+    ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident $(,)?) => {{
         let mut res = $fn_expr;
         $warnings.append(&mut res.warnings);
         $errors.append(&mut res.errors);
@@ -21,7 +21,7 @@ macro_rules! check {
 }
 
 macro_rules! check_std_result {
-    ($result_expr: expr, $warnings: ident, $errors: ident) => {{
+    ($result_expr: expr, $warnings: ident, $errors: ident $(,)?) => {{
         match $result_expr {
             Ok(res) => res,
             Err(e) => {
@@ -33,7 +33,7 @@ macro_rules! check_std_result {
 }
 
 macro_rules! assert_or_warn {
-    ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr) => {
+    ($bool_expr: expr, $warnings: ident, $span: expr, $warning: expr $(,)?) => {
         if !$bool_expr {
             use crate::error::CompileWarning;
             $warnings.push(CompileWarning {
