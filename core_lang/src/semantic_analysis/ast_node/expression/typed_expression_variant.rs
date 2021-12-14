@@ -65,7 +65,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     },
     EnumArgAccess {
         prefix: Box<TypedExpression<'sc>>,
-        variant_to_access: TypedEnumVariant<'sc>,
+        //variant_to_access: TypedEnumVariant<'sc>,
         arg_num_to_access: usize,
         resolved_type_of_parent: TypeId,
     },

@@ -1457,7 +1457,7 @@ impl<'sc> TypedExpression<'sc> {
                         }
                     }
                 }
-                let (return_type, owned_enum_variant) = match (return_type, owned_enum_variant) {
+                let (return_type, _owned_enum_variant) = match (return_type, owned_enum_variant) {
                     (Some(return_type), Some(owned_enum_variant)) => {
                         (return_type, owned_enum_variant)
                     }
@@ -1474,7 +1474,7 @@ impl<'sc> TypedExpression<'sc> {
                     expression: TypedExpressionVariant::EnumArgAccess {
                         resolved_type_of_parent: parent.return_type,
                         prefix: Box::new(parent),
-                        variant_to_access: owned_enum_variant.to_owned(),
+                        //variant_to_access: owned_enum_variant.to_owned(),
                         arg_num_to_access: arg_num,
                     },
                     return_type,
