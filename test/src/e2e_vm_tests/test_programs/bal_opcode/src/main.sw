@@ -8,7 +8,7 @@ use balance_test_abi::BalanceTest;
 
 fn main() -> bool{
     // @todo switch to using ContractId when abi signature changes.
-    let balance_test_contract_id = 0xb5f02e62ef31328feb3208e58b32f5a5a9ee1eefd3d90ad98a4e564080c29ce3;
+    let balance_test_contract_id = 0x99c656acab368e78e4014dd5b7d4501d32a0511e5f18ce908c64a217ba3b0d02;
 
     let balance_test_contract = abi(BalanceTest, balance_test_contract_id);
     let number = balance_test_contract.get_42(1000, 0, ETH_ID, ());

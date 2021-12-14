@@ -11,7 +11,7 @@ balance_test_abi = { path = "../balance_test_abi"}
 
 [[tx-input]]
 type = "Contract"
-contract-id = "0xdc24d9659655d190ba7f14bb126d995a2bcd67089926feea14993fc888cc1f3c"
+contract-id = "0x99c656acab368e78e4014dd5b7d4501d32a0511e5f18ce908c64a217ba3b0d02"
 utxo-id = ""
 balance-root = ""
 state-root = ""
