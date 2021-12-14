@@ -192,6 +192,62 @@ pub struct StructExpressionField<'sc> {
 }
 
 impl<'sc> Expression<'sc> {
+    pub(crate) fn core_ops_eq(arguments: Vec<Expression<'sc>>, span: Span<'sc>) -> Expression<'sc> {
+        Expression::MethodApplication {
+            method_name: MethodName::FromType {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident {
+                            primary_name: "core",
+                            span: span.clone(),
+                        },
+                        Ident {
+                            primary_name: "ops",
+                            span: span.clone(),
+                        },
+                    ],
+                    suffix: Op {
+                        op_variant: OpVariant::Equals,
+                        span: span.clone(),
+                    }
+                    .to_var_name(),
+                },
+                type_name: None,
+                is_absolute: true,
+            },
+            arguments,
+            span,
+        }
+    }
+
+    pub(crate) fn core_ops(
+        op: Op<'sc>,
+        arguments: Vec<Expression<'sc>>,
+        span: Span<'sc>,
+    ) -> Expression<'sc> {
+        Expression::MethodApplication {
+            method_name: MethodName::FromType {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident {
+                            primary_name: "core",
+                            span: span.clone(),
+                        },
+                        Ident {
+                            primary_name: "ops",
+                            span: span.clone(),
+                        },
+                    ],
+                    suffix: op.to_var_name(),
+                },
+                type_name: None,
+                is_absolute: true,
+            },
+            arguments,
+            span,
+        }
+    }
+
     pub(crate) fn span(&self) -> Span<'sc> {
         use Expression::*;
         (match self {
@@ -1110,7 +1166,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
 }
 
 #[derive(Debug)]
-struct Op<'sc> {
+pub(crate) struct Op<'sc> {
     pub span: Span<'sc>,
     pub op_variant: OpVariant,
 }
@@ -1243,28 +1299,8 @@ fn arrange_by_order_of_operations<'sc>(
                             rhs: Box::new(rhs),
                             span: debug_span.clone(),
                         },
-                        _ => Expression::MethodApplication {
-                            method_name: MethodName::FromType {
-                                call_path: CallPath {
-                                    prefixes: vec![
-                                        Ident {
-                                            primary_name: "core",
-                                            span: new_op.span.clone(),
-                                        },
-                                        Ident {
-                                            primary_name: "ops",
-                                            span: new_op.span.clone(),
-                                        },
-                                    ],
-                                    suffix: new_op.to_var_name(),
-                                },
-                                type_name: None,
-                                is_absolute: true,
-                            },
-                            arguments: vec![lhs, rhs],
-                            span: debug_span.clone(),
-                        },
-                    });
+                        _ => Expression::core_ops(new_op, vec![lhs, rhs], debug_span.clone()),
+                    })
                 }
                 op_stack.push(op)
             }
@@ -1303,27 +1339,7 @@ fn arrange_by_order_of_operations<'sc>(
                 rhs: Box::new(rhs),
                 span,
             },
-            _ => Expression::MethodApplication {
-                method_name: MethodName::FromType {
-                    call_path: CallPath {
-                        prefixes: vec![
-                            Ident {
-                                primary_name: "core",
-                                span: op.span.clone(),
-                            },
-                            Ident {
-                                primary_name: "ops",
-                                span: op.span.clone(),
-                            },
-                        ],
-                        suffix: op.to_var_name(),
-                    },
-                    type_name: None,
-                    is_absolute: true,
-                },
-                arguments: vec![lhs.clone(), rhs.clone()],
-                span,
-            },
+            _ => Expression::core_ops(op, vec![lhs.clone(), rhs.clone()], span),
         });
     }
 
@@ -1449,31 +1465,10 @@ pub fn desugar_match_expression<'sc>(
         let mut conditional = None;
         for (left_req, right_req) in match_req_map.iter() {
             let joined_span = join_spans(left_req.clone().span(), right_req.clone().span());
-            let condition = Expression::MethodApplication {
-                method_name: MethodName::FromType {
-                    call_path: CallPath {
-                        prefixes: vec![
-                            Ident {
-                                primary_name: "core",
-                                span: joined_span.clone(),
-                            },
-                            Ident {
-                                primary_name: "ops",
-                                span: joined_span.clone(),
-                            },
-                        ],
-                        suffix: Op {
-                            op_variant: OpVariant::Equals,
-                            span: joined_span.clone(),
-                        }
-                        .to_var_name(),
-                    },
-                    type_name: None,
-                    is_absolute: true,
-                },
-                arguments: vec![left_req.to_owned(), right_req.to_owned()],
-                span: joined_span,
-            };
+            let condition = Expression::core_ops_eq(
+                vec![left_req.to_owned(), right_req.to_owned()],
+                joined_span,
+            );
             match conditional {
                 None => {
                     conditional = Some(condition);
