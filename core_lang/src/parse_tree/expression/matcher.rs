@@ -5,12 +5,53 @@ use crate::{
     StructScrutineeField,
 };
 
-// if (x == y)
+/// List of requirements that a desugared if expression must include in the conditional.
 pub type MatchReqMap<'sc> = Vec<(Expression<'sc>, Expression<'sc>)>;
-// let z = 4;
+/// List of variable declarations that must be placed inside of the body of the if expression.
 pub type MatchImplMap<'sc> = Vec<(Ident<'sc>, Expression<'sc>)>;
+/// This is the result type given back by the matcher.
 pub type MatcherResult<'sc> = Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)>;
 
+/// This algorithm desugars pattern matching into a [MatcherResult], by creating two lists,
+/// the [MatchReqMap] which is a list of requirements that a desugared if expression
+/// must inlcude in the conditional, and the [MatchImplMap] which is a list of variable
+/// declarations that must be placed inside the bofy of the if expression.
+///
+/// Given the following example
+///
+/// ```rust
+/// struct Point {
+///     x: u64,
+///     y: y64
+/// }
+///
+/// let p = Point {
+///     x: 42,
+///     y: 24
+/// };
+///
+/// match p {
+///     Point { x, y: 5 } => { x },
+///     Point { x, y: 24 } => { x },
+///     _ => 0
+/// }
+/// ```
+///
+/// The first match arm would create a [MatchReqMap] of roughly:
+///
+/// ```rust
+/// [
+///     (y, 5) // y must equal 5 to trigger this case
+/// ]
+/// ```
+///
+/// The first match arm would create a [MatchImplMap] of roughly:
+///
+/// ```rust
+/// [
+///     (x, 42) // add `let x = 42 in the body of the desugared if expression
+/// ]
+/// ```
 pub fn matcher<'sc>(
     exp: &Expression<'sc>,
     scrutinee: &Scrutinee<'sc>,

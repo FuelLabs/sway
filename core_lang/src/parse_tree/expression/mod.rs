@@ -134,6 +134,12 @@ pub enum Expression<'sc> {
         index: Box<Expression<'sc>>,
         span: Span<'sc>,
     },
+    /// This variant serves as a stand-in for parsing-level match expression desugaring.
+    /// Because types cannot be known at parsing-time, a desugared struct or enum gets
+    /// special cased into this variant. During type checking, this variant is removed
+    /// as is replaced with the corresponding field or argument access (given that the
+    /// expression inside of the delayed resolution has the appropriate struct or enum
+    /// type)
     DelayedMatchTypeResolution {
         variant: DelayedResolutionVariant<'sc>,
         span: Span<'sc>,
@@ -146,6 +152,7 @@ pub enum DelayedResolutionVariant<'sc> {
     EnumVariant(DelayedEnumVariantResolution<'sc>),
 }
 
+/// During type checking, this gets replaced with struct field access.
 #[derive(Debug, Clone)]
 pub struct DelayedStructFieldResolution<'sc> {
     pub exp: Box<Expression<'sc>>,
@@ -153,6 +160,7 @@ pub struct DelayedStructFieldResolution<'sc> {
     pub field: Ident<'sc>,
 }
 
+/// During type checking, this gets replaced with enum arg access.
 #[derive(Debug, Clone)]
 pub struct DelayedEnumVariantResolution<'sc> {
     pub exp: Box<Expression<'sc>>,
@@ -1337,6 +1345,50 @@ struct MatchedBranch<'sc> {
     branch_span: Span<'sc>,
 }
 
+/// This algorithm desugars match expressions to if statements.
+///
+/// Given the following example:
+///
+/// ```rust
+/// struct Point {
+///     x: u64,
+///     y: y64
+/// }
+///
+/// let p = Point {
+///     x: 42,
+///     y: 24
+/// };
+///
+/// match p {
+///     Point { x, y: 5 } => { x },
+///     Point { x, y: 24 } => { x },
+///     _ => 0
+/// }
+/// ```
+///
+/// The resulting if statement would look roughly like this:
+///
+/// ```rust
+/// if y==5 {
+///     let x = 42;
+///     x
+/// } else if y==42 {
+///     let x = 42;
+///     x
+/// } else {
+///     0
+/// }
+/// ```
+///
+/// The steps of the algorithm can roughly be broken down into:
+///
+/// 1. Assemble the "matched branches."
+/// 2. Assemble the possibly nested giant if statement using the matched branches.
+///     2a. Assemble the conditional that goes in the if primary expression.
+///     2b. Assemble the statements that go inside of the body of the if expression
+///     2c. Assemble the giant if statement.
+/// 3. Return!
 pub fn desugar_match_expression<'sc>(
     primary_expression: Expression<'sc>,
     branches: Vec<MatchBranch<'sc>>,

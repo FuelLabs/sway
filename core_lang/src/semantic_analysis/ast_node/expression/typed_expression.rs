@@ -1382,6 +1382,15 @@ impl<'sc> TypedExpression<'sc> {
         }
     }
 
+    /// This function takes a [DelayedResolutionVariant] and returns either a
+    /// [TypedExpressionVariant::EnumArgAccess] (given the case of enum arg
+    /// access) or returns a [TypedExpressionVariant::StructFieldAccess] (given
+    /// the case of struct field access). This function does several things, it
+    /// 1) checks to ensure that the expression inside of the
+    /// [DelayedResolutionVariant] is of the appropriate type (either an enum
+    /// or a struct), 2) determines the return type of the corresponding
+    /// struct field or enum arg, and 3) constructs the respective typed
+    /// expression.
     fn type_check_delayed_resolution<'n>(
         variant: DelayedResolutionVariant<'sc>,
         span: Span<'sc>,

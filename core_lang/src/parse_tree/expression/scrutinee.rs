@@ -7,6 +7,9 @@ use crate::{
 
 use pest::iterators::Pair;
 
+/// A [Scrutinee] is on the left-hand-side of a pattern, and dictates whether or
+/// not a pattern will succeed at pattern matching and what, if any, elements will
+/// need to be implemented in a desugared if expression.
 #[derive(Debug, Clone)]
 pub enum Scrutinee<'sc> {
     Unit {
