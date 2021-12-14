@@ -2,12 +2,14 @@ use super::impl_trait::Mode;
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
-use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::type_engine::*;
+use crate::ControlFlowGraph;
 use crate::{build_config::BuildConfig, error::*, Ident};
+
+use core_types::{Function, Property};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -278,6 +280,14 @@ impl OwnedTypedStructField {
             span: span.clone(),
         }
     }
+
+    pub fn generate_json_abi(&self) -> Property {
+        Property {
+            name: self.name.clone(),
+            type_field: self.r#type.friendly_type_str(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
 }
 
 impl TypedStructField<'_> {
@@ -363,6 +373,16 @@ pub struct OwnedTypedEnumVariant {
     pub(crate) name: String,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
+}
+
+impl OwnedTypedEnumVariant {
+    pub fn generate_json_abi(&self) -> Property {
+        Property {
+            name: self.name.clone(),
+            type_field: self.r#type.friendly_type_str(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -578,6 +598,27 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             warnings,
             errors,
         )
+    }
+
+    pub fn generate_json_abi(&self) -> Function {
+        Function {
+            name: self.name.primary_name.to_string(),
+            type_field: "function".to_string(),
+            inputs: self
+                .parameters
+                .iter()
+                .map(|x| Property {
+                    name: x.name.primary_name.to_string(),
+                    type_field: x.r#type.friendly_type_str(),
+                    components: x.r#type.generate_json_abi(),
+                })
+                .collect(),
+            outputs: vec![Property {
+                name: "".to_string(),
+                type_field: self.return_type.friendly_type_str(),
+                components: self.return_type.generate_json_abi(),
+            }],
+        }
     }
 }
 
@@ -868,7 +909,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
             ),
             (
                 TypedCodeBlock {

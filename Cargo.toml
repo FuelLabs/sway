@@ -6,8 +6,7 @@ members = [
     "docstrings",
     "forc",
     "formatter",
-    "parser"
-,
+    "parser",
     "sway-server",
     "test"]
 
