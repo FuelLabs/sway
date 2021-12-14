@@ -29,50 +29,73 @@ impl Engine {
     }
 
     /// Make the types of two type terms equivalent (or produce an error if
-    /// there is a conflict between them)
+    /// there is a conflict between them).
+    //
+    // When reporting type errors we will report 'received' and 'expected' as such.
     pub(crate) fn unify<'sc>(
         &self,
-        a: TypeId,
-        b: TypeId,
+        received: TypeId,
+        expected: TypeId,
         span: &Span<'sc>,
     ) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
         use TypeInfo::*;
-        match (self.slab.get(a), self.slab.get(b)) {
+        match (self.slab.get(received), self.slab.get(expected)) {
             // If the types are exactly the same, we are done.
-            (a, b) if a == b => Ok(vec![]),
+            (received_info, expected_info) if received_info == expected_info => Ok(vec![]),
 
             // Follow any references
-            (Ref(a), _) => self.unify(a, b, span),
-            (_, Ref(b)) => self.unify(a, b, span),
+            (Ref(received), _) => self.unify(received, expected, span),
+            (_, Ref(expected)) => self.unify(received, expected, span),
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about
-            (Unknown, _) => match self.slab.replace(a, &Unknown, TypeInfo::Ref(b)) {
+            (Unknown, _) => match self
+                .slab
+                .replace(received, &Unknown, TypeInfo::Ref(expected))
+            {
                 None => Ok(vec![]),
-                Some(_) => self.unify(a, b, span),
+                Some(_) => self.unify(received, expected, span),
             },
-            (_, Unknown) => match self.slab.replace(b, &Unknown, TypeInfo::Ref(a)) {
+            (_, Unknown) => match self
+                .slab
+                .replace(expected, &Unknown, TypeInfo::Ref(received))
+            {
                 None => Ok(vec![]),
-                Some(_) => self.unify(a, b, span),
+                Some(_) => self.unify(received, expected, span),
             },
 
-            (UnsignedInteger(x), UnsignedInteger(y)) => match numeric_cast_compat(x, y) {
-                NumericCastCompatResult::CastableWithWarning(warn) => {
-                    // cast the one on the right to the one on the left
-                    Ok(vec![warn])
-                }
-                // do nothing if compatible
-                NumericCastCompatResult::Compatible => Ok(vec![]),
-            },
+            (
+                ref received_info @ UnsignedInteger(recieved_width),
+                ref expected_info @ UnsignedInteger(expected_width),
+            ) => {
+                // E.g., in a variable declaration `let a: u32 = 10u64` the 'expected' type will be
+                // the annotation `u32`, and the 'received' type is 'self' of the initialiser, or
+                // `u64`.  So we're casting received TO expected.
+                let warn = match numeric_cast_compat(expected_width, recieved_width) {
+                    NumericCastCompatResult::CastableWithWarning(warn) => {
+                        vec![warn]
+                    }
+                    NumericCastCompatResult::Compatible => {
+                        vec![]
+                    }
+                };
 
-            (ref a_info @ UnknownGeneric { .. }, _) => {
-                self.slab.replace(a, a_info, TypeInfo::Ref(b));
+                // Cast the expected type to the recieved type.
+                self.slab
+                    .replace(received, received_info, expected_info.clone());
+                Ok(warn)
+            }
+
+            (ref received_info @ UnknownGeneric { .. }, _) => {
+                self.slab
+                    .replace(received, received_info, TypeInfo::Ref(expected));
                 Ok(vec![])
             }
 
-            (_, ref b_info @ UnknownGeneric { .. }) => {
-                self.slab.replace(b, b_info, TypeInfo::Ref(a));
+            (_, ref expected_info @ UnknownGeneric { .. }) => {
+                self.slab
+                    .replace(expected, expected_info, TypeInfo::Ref(received));
                 Ok(vec![])
             }
 
@@ -114,16 +137,16 @@ impl Engine {
                 Ok(vec![])
             }
 
-            (Numeric, b_info @ UnsignedInteger(_)) => {
-                match self.slab.replace(a, &Numeric, b_info) {
+            (Numeric, expected_info @ UnsignedInteger(_)) => {
+                match self.slab.replace(received, &Numeric, expected_info) {
                     None => Ok(vec![]),
-                    Some(_) => self.unify(a, b, span),
+                    Some(_) => self.unify(received, expected, span),
                 }
             }
-            (a_info @ UnsignedInteger(_), Numeric) => {
-                match self.slab.replace(b, &Numeric, a_info) {
+            (received_info @ UnsignedInteger(_), Numeric) => {
+                match self.slab.replace(expected, &Numeric, received_info) {
                     None => Ok(vec![]),
-                    Some(_) => self.unify(a, b, span),
+                    Some(_) => self.unify(received, expected, span),
                 }
             }
 
@@ -132,8 +155,8 @@ impl Engine {
                 // If there was an error then we want to report the array types as mismatching, not
                 // the elem types.
                 .map_err(|_| TypeError::MismatchedType {
-                    expected: b,
-                    received: a,
+                    expected,
+                    received,
                     help_text: Default::default(),
                     span: span.clone(),
                 }),
@@ -148,8 +171,8 @@ impl Engine {
 
             // If no previous attempts to unify were successful, raise an error
             (_, _) => Err(TypeError::MismatchedType {
-                expected: b,
-                received: a,
+                expected,
+                received,
                 help_text: Default::default(),
                 span: span.clone(),
             }),
@@ -216,11 +239,14 @@ pub fn resolve_type<'sc>(id: TypeId, error_span: &Span<'sc>) -> Result<TypeInfo,
     TYPE_ENGINE.resolve_type(id, error_span)
 }
 
-fn numeric_cast_compat<'sc>(a: IntegerBits, b: IntegerBits) -> NumericCastCompatResult<'sc> {
-    // if this is a downcast, warn for loss of precision. if upcast, then no warning.
+fn numeric_cast_compat<'sc>(
+    new_size: IntegerBits,
+    old_size: IntegerBits,
+) -> NumericCastCompatResult<'sc> {
+    // If this is a downcast, warn for loss of precision. If upcast, then no warning.
     use IntegerBits::*;
-    match (a, b) {
-        // these should generate a downcast warning
+    match (new_size, old_size) {
+        // These should generate a downcast warning.
         (Eight, Sixteen)
         | (Eight, ThirtyTwo)
         | (Eight, SixtyFour)
@@ -228,11 +254,11 @@ fn numeric_cast_compat<'sc>(a: IntegerBits, b: IntegerBits) -> NumericCastCompat
         | (Sixteen, SixtyFour)
         | (ThirtyTwo, SixtyFour) => {
             NumericCastCompatResult::CastableWithWarning(Warning::LossOfPrecision {
-                initial_type: a,
-                cast_to: b,
+                initial_type: old_size,
+                cast_to: new_size,
             })
         }
-        // upcasting is ok, so everything else is ok
+        // Upcasting is ok, so everything else is ok.
         _ => NumericCastCompatResult::Compatible,
     }
 }
