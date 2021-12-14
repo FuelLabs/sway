@@ -134,12 +134,30 @@ pub enum Expression<'sc> {
         index: Box<Expression<'sc>>,
         span: Span<'sc>,
     },
-    DelayedStructFieldResolution {
-        exp: Box<Expression<'sc>>,
-        struct_name: Ident<'sc>,
-        field: Ident<'sc>,
+    DelayedResolution {
+        variant: DelayedResolutionVariant<'sc>,
         span: Span<'sc>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum DelayedResolutionVariant<'sc> {
+    StructField(DelayedStructFieldResolution<'sc>),
+    EnumVariant(DelayedEnumVariantResolution<'sc>),
+}
+
+#[derive(Debug, Clone)]
+pub struct DelayedStructFieldResolution<'sc> {
+    pub exp: Box<Expression<'sc>>,
+    pub struct_name: Ident<'sc>,
+    pub field: Ident<'sc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DelayedEnumVariantResolution<'sc> {
+    pub exp: Box<Expression<'sc>>,
+    pub call_path: CallPath<'sc>,
+    pub arg_num: usize,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -185,7 +203,7 @@ impl<'sc> Expression<'sc> {
             DelineatedPath { span, .. } => span,
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
-            DelayedStructFieldResolution { span, .. } => span,
+            DelayedResolution { span, .. } => span,
         })
         .clone()
     }

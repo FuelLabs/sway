@@ -1,4 +1,7 @@
-use crate::{Expression, Ident, Literal, Scrutinee, Span, StructScrutineeField};
+use crate::{
+    CallPath, DelayedEnumVariantResolution, DelayedResolutionVariant, DelayedStructFieldResolution,
+    Expression, Ident, Literal, Scrutinee, Span, StructScrutineeField,
+};
 
 // if (x == y)
 pub type MatchReqMap<'sc> = Vec<(Expression<'sc>, Expression<'sc>)>;
@@ -18,6 +21,11 @@ pub fn matcher<'sc>(
             fields,
             span,
         } => match_struct(exp, struct_name, fields, span),
+        Scrutinee::EnumScrutinee {
+            call_path,
+            args,
+            span,
+        } => match_enum(exp, call_path, args, span),
     }
 }
 
@@ -58,10 +66,12 @@ fn match_struct<'sc>(
     for field in fields.iter() {
         let field_name = field.field.clone();
         let scrutinee = field.scrutinee.clone();
-        let delayed_resolution_exp = Expression::DelayedStructFieldResolution {
-            exp: Box::new(exp.clone()),
-            struct_name: struct_name.to_owned(),
-            field: field_name.clone(),
+        let delayed_resolution_exp = Expression::DelayedResolution {
+            variant: DelayedResolutionVariant::StructField(DelayedStructFieldResolution {
+                exp: Box::new(exp.clone()),
+                struct_name: struct_name.to_owned(),
+                field: field_name.clone(),
+            }),
             span: span.clone(),
         };
         match scrutinee {
@@ -79,5 +89,34 @@ fn match_struct<'sc>(
             },
         }
     }
+    Some((match_req_map, match_impl_map))
+}
+
+fn match_enum<'sc>(
+    exp: &Expression<'sc>,
+    call_path: &CallPath<'sc>,
+    args: &Vec<Scrutinee<'sc>>,
+    span: &Span<'sc>,
+) -> Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)> {
+    let mut match_req_map = vec![];
+    let mut match_impl_map = vec![];
+    for (pos, arg) in args.iter().enumerate() {
+        let delayed_resolution_exp = Expression::DelayedResolution {
+            variant: DelayedResolutionVariant::EnumVariant(DelayedEnumVariantResolution {
+                exp: Box::new(exp.clone()),
+                call_path: call_path.to_owned(),
+                arg_num: pos,
+            }),
+            span: span.clone(),
+        };
+        match matcher(&delayed_resolution_exp, arg) {
+            Some((mut new_match_req_map, mut new_match_impl_map)) => {
+                match_req_map.append(&mut new_match_req_map);
+                match_impl_map.append(&mut new_match_impl_map);
+            }
+            None => return None,
+        }
+    }
+
     Some((match_req_map, match_impl_map))
 }

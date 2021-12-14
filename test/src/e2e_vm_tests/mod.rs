@@ -70,7 +70,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("array_generics", ProgramState::Return(1)), // true
         ("match_expressions_structs", ProgramState::Return(4)),
         ("block_height", ProgramState::Return(1)), // true
-        ("match_expressions_enums", ProgramState::Return(42)),
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
@@ -96,6 +95,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "array_oob",
         "array_bad_index",
         "match_expressions_wrong_struct",
+        "match_expressions_enums",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {

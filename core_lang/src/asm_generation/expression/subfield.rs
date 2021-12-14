@@ -1,6 +1,8 @@
 #![allow(warnings)]
 
 use super::*;
+use crate::asm_generation::expression::enums::get_enum_memory_layout;
+use crate::semantic_analysis::ast_node::{OwnedTypedEnumVariant, TypedEnumVariant};
 use crate::span::Span;
 use crate::{
     asm_lang::*,
@@ -151,4 +153,79 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     });
 
     return ok(asm_buf, warnings, errors);
+}
+
+pub(crate) fn convert_enum_arg_expression_to_asm<'sc>(
+    span: &Span<'sc>,
+    parent: &TypedExpression<'sc>,
+    variant_to_access: &TypedEnumVariant<'sc>,
+    arg_num_to_access: usize,
+    resolved_type_of_parent: TypeId,
+    namespace: &mut AsmNamespace<'sc>,
+    register_sequencer: &mut RegisterSequencer,
+    return_register: &VirtualRegister,
+) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    // step 0. find the type and register of the prefix
+    // step 1. get the memory layout of the enum
+    // step 2. calculate the offset to the spot we are accessing
+    // step 3. write a pointer to that word into the return register
+
+    // step 0
+    let mut asm_buf = vec![];
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let prefix_reg = register_sequencer.next();
+    let mut prefix_ops = check!(
+        convert_expression_to_asm(parent, namespace, &prefix_reg, register_sequencer),
+        vec![],
+        warnings,
+        errors
+    );
+    asm_buf.append(&mut prefix_ops);
+
+    // step 1
+    let variant_types = match look_up_type_id(resolved_type_of_parent) {
+        TypeInfo::Enum { variant_types, .. } => variant_types,
+        _ => {
+            unreachable!("Accessing a field on a non-enum should be caught during type checking.")
+        }
+    };
+    let variants_for_layout: Vec<(TypeId, &str)> = variant_types
+        .iter()
+        .map(|OwnedTypedEnumVariant { name, r#type, .. }| (*r#type, name.as_str()))
+        .collect::<Vec<_>>();
+    let descriptor = check!(
+        get_enum_memory_layout(&variants_for_layout[..]),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // step 2
+    let offset_in_words = check!(
+        descriptor.offset_to_variant_name(&variant_to_access.name),
+        0,
+        warnings,
+        errors
+    );
+
+    // step 3
+    let (type_of_this_field, name_for_this_field) = variants_for_layout
+        .into_iter()
+        .find_map(|(ty, name)| {
+            if name == variant_to_access.name.primary_name {
+                Some((ty, name))
+            } else {
+                None
+            }
+        })
+        .expect(
+            "Accessing a subfield that is not no the struct would be caught during type checking",
+        );
+    let span = crate::Span {
+        span: pest::Span::new("TODO(static span): use span_for_this_field", 0, 0).unwrap(),
+        path: None,
+    };
+
+    unimplemented!()
 }

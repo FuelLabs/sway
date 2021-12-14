@@ -232,76 +232,16 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
             ),
-            Expression::DelayedStructFieldResolution {
-                exp,
-                struct_name,
-                field,
+            Expression::DelayedResolution { variant, span } => Self::type_check_delayed_resolution(
+                variant,
                 span,
-            } => {
-                let mut warnings = vec![];
-                let mut errors = vec![];
-                let parent = check!(
-                    TypedExpression::type_check(
-                        *exp,
-                        namespace,
-                        crate_namespace,
-                        None,
-                        help_text,
-                        self_type,
-                        build_config,
-                        dead_code_graph,
-                        dependency_graph
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let (struct_fields, other_struct_name) = check!(
-                    namespace.get_struct_type_fields(
-                        parent.return_type,
-                        parent.span.as_str(),
-                        &parent.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                if struct_name.primary_name != other_struct_name {
-                    errors.push(CompileError::MatchWrongType {
-                        span: struct_name.span,
-                    });
-                    let exp = error_recovery_expr(span);
-                    return ok(exp, warnings, errors);
-                }
-                let mut field_to_access = None;
-                for struct_field in struct_fields.iter() {
-                    if struct_field.name == field.primary_name.to_string() {
-                        field_to_access = Some(struct_field.clone())
-                    }
-                }
-                let field_to_access = match field_to_access {
-                    None => {
-                        errors.push(CompileError::MatchWrongType {
-                            span: struct_name.span,
-                        });
-                        let exp = error_recovery_expr(span);
-                        return ok(exp, warnings, errors);
-                    }
-                    Some(field_to_access) => field_to_access,
-                };
-                let exp = TypedExpression {
-                    expression: TypedExpressionVariant::StructFieldAccess {
-                        resolved_type_of_parent: parent.return_type,
-                        prefix: Box::new(parent),
-                        field_to_access: field_to_access.clone(),
-                        field_to_access_span: field.span.clone(),
-                    },
-                    return_type: field_to_access.r#type,
-                    is_constant: IsConstant::No,
-                    span,
-                };
-                ok(exp, warnings, errors)
-            }
+                namespace,
+                crate_namespace,
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+            ),
             a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented expression",
@@ -1437,6 +1377,179 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
             )
+        }
+    }
+
+    fn type_check_delayed_resolution<'n>(
+        variant: DelayedResolutionVariant<'sc>,
+        span: Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
+        self_type: TypeId,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
+    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match variant {
+            DelayedResolutionVariant::EnumVariant(DelayedEnumVariantResolution {
+                exp,
+                call_path,
+                arg_num,
+            }) => {
+                let parent = check!(
+                    TypedExpression::type_check(
+                        *exp,
+                        namespace,
+                        crate_namespace,
+                        None,
+                        "",
+                        self_type,
+                        build_config,
+                        dead_code_graph,
+                        dependency_graph
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let enum_name = call_path.prefixes.first().unwrap().clone();
+                let variant_name = call_path.suffix.clone();
+                let enum_module_combined_result = {
+                    let (module_path, enum_name) =
+                        call_path.prefixes.split_at(call_path.prefixes.len() - 1);
+                    let enum_name = enum_name[0].clone();
+                    let namespace = namespace.find_module_relative(module_path);
+                    let namespace = namespace.ok(&mut warnings, &mut errors);
+                    namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+                };
+                let mut return_type = None;
+                let mut owned_enum_variant = None;
+                match enum_module_combined_result {
+                    None => todo!(),
+                    Some(enum_decl) => {
+                        if enum_name.primary_name != enum_decl.name.primary_name {
+                            errors.push(CompileError::MatchWrongType {
+                                span: enum_name.span,
+                            });
+                            let exp = error_recovery_expr(span);
+                            return ok(exp, warnings, errors);
+                        }
+                        for (pos, variant) in enum_decl.variants.into_iter().enumerate() {
+                            match (
+                                pos == arg_num,
+                                variant.name.primary_name == variant_name.primary_name,
+                            ) {
+                                (true, true) => {
+                                    return_type = Some(variant.r#type);
+                                    owned_enum_variant = Some(variant);
+                                }
+                                (true, false) => {
+                                    errors.push(CompileError::MatchWrongType {
+                                        span: variant_name.span,
+                                    });
+                                    let exp = error_recovery_expr(span);
+                                    return ok(exp, warnings, errors);
+                                }
+                                _ => (),
+                            }
+                        }
+                    }
+                }
+                let (return_type, owned_enum_variant) = match (return_type, owned_enum_variant) {
+                    (Some(return_type), Some(owned_enum_variant)) => {
+                        (return_type, owned_enum_variant)
+                    }
+                    _ => {
+                        errors.push(CompileError::MatchWrongType {
+                            span: enum_name.span,
+                        });
+                        let exp = error_recovery_expr(span);
+                        return ok(exp, warnings, errors);
+                    }
+                };
+
+                let exp = TypedExpression {
+                    expression: TypedExpressionVariant::EnumArgAccess {
+                        resolved_type_of_parent: parent.return_type,
+                        prefix: Box::new(parent),
+                        variant_to_access: owned_enum_variant.to_owned(),
+                        arg_num_to_access: arg_num,
+                    },
+                    return_type,
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(exp, warnings, errors)
+            }
+            DelayedResolutionVariant::StructField(DelayedStructFieldResolution {
+                exp,
+                struct_name,
+                field,
+            }) => {
+                let parent = check!(
+                    TypedExpression::type_check(
+                        *exp,
+                        namespace,
+                        crate_namespace,
+                        None,
+                        "",
+                        self_type,
+                        build_config,
+                        dead_code_graph,
+                        dependency_graph
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let (struct_fields, other_struct_name) = check!(
+                    namespace.get_struct_type_fields(
+                        parent.return_type,
+                        parent.span.as_str(),
+                        &parent.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if struct_name.primary_name != other_struct_name {
+                    errors.push(CompileError::MatchWrongType {
+                        span: struct_name.span,
+                    });
+                    let exp = error_recovery_expr(span);
+                    return ok(exp, warnings, errors);
+                }
+                let mut field_to_access = None;
+                for struct_field in struct_fields.iter() {
+                    if struct_field.name == *field.primary_name {
+                        field_to_access = Some(struct_field.clone())
+                    }
+                }
+                let field_to_access = match field_to_access {
+                    None => {
+                        errors.push(CompileError::MatchWrongType {
+                            span: struct_name.span,
+                        });
+                        let exp = error_recovery_expr(span);
+                        return ok(exp, warnings, errors);
+                    }
+                    Some(field_to_access) => field_to_access,
+                };
+                let exp = TypedExpression {
+                    expression: TypedExpressionVariant::StructFieldAccess {
+                        resolved_type_of_parent: parent.return_type,
+                        prefix: Box::new(parent),
+                        field_to_access: field_to_access.clone(),
+                        field_to_access_span: field.span.clone(),
+                    },
+                    return_type: field_to_access.r#type,
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(exp, warnings, errors)
+            }
         }
     }
 

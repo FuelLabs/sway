@@ -571,6 +571,12 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
         actually: String,
     },
+    #[error("\"{name}\" is a {actually}, not an enum.")]
+    NotAnEnum {
+        name: String,
+        span: Span<'sc>,
+        actually: String,
+    },
     #[error(
         "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
          {available_fields}"
@@ -970,6 +976,7 @@ impl<'sc> CompileError<'sc> {
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
             MatchWrongType { span } => span,
+            NotAnEnum { span, .. } => span,
         }
     }
 

@@ -12,13 +12,13 @@ use crate::{
 
 mod array;
 mod contract_call;
-mod enum_instantiation;
+mod enums;
 mod if_exp;
 mod lazy_op;
 mod structs;
 mod subfield;
 use contract_call::convert_contract_call_to_asm;
-use enum_instantiation::convert_enum_instantiation_to_asm;
+use enums::convert_enum_instantiation_to_asm;
 use if_exp::convert_if_exp_to_asm;
 pub(crate) use structs::{convert_struct_expression_to_asm, get_struct_memory_layout};
 use subfield::convert_subfield_expression_to_asm;
@@ -263,6 +263,23 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             register_sequencer,
             return_register,
         ),
+        /*
+        TypedExpressionVariant::EnumArgAccess {
+            prefix,
+            variant_to_access,
+            arg_num_to_access,
+            resolved_type_of_parent,
+        } => convert_enum_arg_expression_to_asm(
+            &exp.span,
+            prefix,
+            variant_to_access,
+            arg_num_to_access.to_owned(),
+            *resolved_type_of_parent,
+            namespace,
+            register_sequencer,
+            return_register,
+        ),
+        */
         TypedExpressionVariant::EnumInstantiation {
             enum_decl,
             variant_name,

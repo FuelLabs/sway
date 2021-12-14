@@ -414,7 +414,7 @@ impl<'sc> Dependencies<'sc> {
 
             Expression::Literal { .. } => self,
             Expression::Unit { .. } => self,
-            Expression::DelayedStructFieldResolution { .. } => self,
+            Expression::DelayedResolution { .. } => self,
         }
     }
 
