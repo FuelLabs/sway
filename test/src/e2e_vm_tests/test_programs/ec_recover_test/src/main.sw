@@ -12,10 +12,11 @@ fn main() -> bool {
 
     let msg_hash = 0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a;
 
-    // full sig: 74a6b203feee506ab5c39ecb33a32769f79cbf765db4578d15f7e196fb6863a96e4b0679559655534b1c575b9857f1f2604eaf21edd0e703cf723042992c2cb4
+    // full sig: a96368fb96e1f7158d57b45d76bf9cf76927a333cb9ec3b56a50eefe03b2a674
+    //           b42c2c99423072cf03e7d0ed21af4e60f2f157985b571c4b5355965579064b6e
 
-    let sig_hi = 0x74a6b203feee506ab5c39ecb33a32769f79cbf765db4578d15f7e196fb6863a9;
-    let sig_lo = 0x6e4b0679559655534b1c575b9857f1f2604eaf21edd0e703cf723042992c2cb4;
+    let sig_hi = 0xa96368fb96e1f7158d57b45d76bf9cf76927a333cb9ec3b56a50eefe03b2a674;
+    let sig_lo = 0xb42c2c99423072cf03e7d0ed21af4e60f2f157985b571c4b5355965579064b6e;
 
     // // create a signature
     let signature: B512 = ~B512::from(sig_hi, sig_lo);
