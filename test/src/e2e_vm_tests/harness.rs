@@ -1,9 +1,7 @@
 use forc::test::{forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, RunCommand};
-use fuel_tx::{Input, Output, Transaction};
+use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
 
 pub(crate) fn deploy_contract(file_name: &str) {
     // build the contract
@@ -56,58 +54,14 @@ pub(crate) fn runs_on_node(file_name: &str) {
 /// `true` if it does, `false` if not.
 pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     let mut storage = MemoryStorage::default();
-    let program = vec![Opcode::NOOP, Opcode::RET(1)];
-
-    let program: Witness = program.into_iter().collect::<Vec<u8>>().into();
-
-    let contract = Contract::from(program.as_ref());
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    let salt: Salt = rng.gen();
-
-    let contract_root = contract.root();
-    let contract_id = contract.id(&salt, &contract_root);
-
-    let output = Output::contract_created(contract_id);
-
-    let bytecode_witness = 0;
-    let gas_price = 10;
-    let gas_limit = 10000;
-    let maturity = 0;
-    let tx = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    );
-
-    // Deploy the contract into the blockchain
-    Interpreter::transition(&mut storage, tx).expect("Failed to transact");
-    // evaluate the test case
-    let input_contract = Input::Contract {
-        utxo_id: rng.gen(),
-        balance_root: rng.gen(),
-        state_root: rng.gen(),
-        contract_id,
-    };
-    let output_contract = Output::Contract {
-        input_index: 0,
-        balance_root: rng.gen(),
-        state_root: rng.gen(),
-    };
 
     let script = compile_to_bytes(file_name).unwrap();
     let gas_price = 10;
     let gas_limit = 100000;
     let maturity = 0;
     let script_data = vec![];
-    let inputs = vec![input_contract];
-    let outputs = vec![output_contract];
+    let inputs = vec![];
+    let outputs = vec![];
     let witness = vec![];
     let tx_to_test = Transaction::script(
         gas_price,

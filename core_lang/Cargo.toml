@@ -8,7 +8,6 @@ edition = "2018"
 selector-debug = ["structopt", "hex"]
 
 [dependencies]
-Inflector = { git = "https://github.com/sezna/Inflector.git" }
 #pest = "2.0"
 derivative = "2.2.0"
 either = "1.6"
@@ -23,7 +22,6 @@ sha2 = "0.9"
 smallvec = "1.7"
 structopt = { version = "0.3", default-features = false, optional = true }
 thiserror = "1.0"
-uuid-b64 = "0.1"
 
 [[bin]]
 name = "selector-debug"

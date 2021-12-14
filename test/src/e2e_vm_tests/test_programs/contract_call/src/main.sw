@@ -13,8 +13,7 @@ abi MyContract {
 }
 
 fn main() -> u64 {
-    let x = abi(MyContract, 0x8f0f0806a879ec62f5afd12a76e5f3afbb1e5b27651ca8a633963ea981a08219);
-    // commenting this out for now since contract call asm generation is not yet implemented
+    let x = abi(MyContract, 0x6c626fddd128e24e6805fe1779779f14097d34086c571dd8df1c78ac4bb9a78b);
     let color = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     let input = InputStruct {
         field_1: true,

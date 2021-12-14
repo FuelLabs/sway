@@ -19,7 +19,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("if_elseif_enum", ProgramState::Return(10)),
         ("out_of_order_decl", ProgramState::Return(1)),
         ("struct_field_reassignment", ProgramState::Return(0)),
-        ("contract_call", ProgramState::Return(0)),
         ("enum_in_fn_decl", ProgramState::Return(255)),
         ("empty_impl", ProgramState::Return(0)),
         ("main_returns_unit", ProgramState::Return(0)),
@@ -108,6 +107,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("increment_contract", "call_increment_contract"),
         ("auth_testing_contract", "caller_auth_test"),
         ("context_testing_contract", "caller_context_test"),
+        ("contract_abi_impl", "contract_call"),
     ];
 
     // Filter them first.
