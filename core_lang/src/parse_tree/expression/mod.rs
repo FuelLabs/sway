@@ -134,7 +134,7 @@ pub enum Expression<'sc> {
         index: Box<Expression<'sc>>,
         span: Span<'sc>,
     },
-    DelayedResolution {
+    DelayedMatchTypeResolution {
         variant: DelayedResolutionVariant<'sc>,
         span: Span<'sc>,
     },
@@ -203,7 +203,7 @@ impl<'sc> Expression<'sc> {
             DelineatedPath { span, .. } => span,
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
-            DelayedResolution { span, .. } => span,
+            DelayedMatchTypeResolution { span, .. } => span,
         })
         .clone()
     }
@@ -1102,7 +1102,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
 }
 
 #[derive(Debug)]
-pub struct Op<'sc> {
+struct Op<'sc> {
     pub span: Span<'sc>,
     pub op_variant: OpVariant,
 }
@@ -1342,6 +1342,9 @@ pub fn desugar_match_expression<'sc>(
     branches: Vec<MatchBranch<'sc>>,
     _span: Span<'sc>,
 ) -> CompileResult<'sc, Expression<'sc>> {
+    let mut errors = vec![];
+    let mut warnings = vec![];
+
     // 1. Assemble the "matched branches."
     let mut matched_branches = vec![];
     for MatchBranch {
@@ -1352,7 +1355,12 @@ pub fn desugar_match_expression<'sc>(
     {
         let matches = match condition {
             MatchCondition::CatchAll(_) => Some((vec![], vec![])),
-            MatchCondition::Scrutinee(scrutinee) => matcher(&primary_expression, scrutinee),
+            MatchCondition::Scrutinee(scrutinee) => check!(
+                matcher(&primary_expression, scrutinee),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
         };
         match matches {
             Some((match_req_map, match_impl_map)) => {
@@ -1363,7 +1371,16 @@ pub fn desugar_match_expression<'sc>(
                     branch_span: branch_span.to_owned(),
                 });
             }
-            None => unimplemented!("implement proper error handling"),
+            None => {
+                let errors = vec![CompileError::PatternMatchingAlgorithmFailure(
+                    "found None",
+                    branch_span.clone(),
+                )];
+                let exp = Expression::Unit {
+                    span: branch_span.clone(),
+                };
+                return ok(exp, vec![], errors);
+            }
         }
     }
 
@@ -1537,13 +1554,24 @@ pub fn desugar_match_expression<'sc>(
                     span: join_spans(code_block.clone().span(), exp_span),
                 });
             }
-            _ => unimplemented!(),
+            Some(if_statement) => {
+                eprintln!("Unimplemented if_statement_pattern: {:?}", if_statement,);
+                errors.push(CompileError::Unimplemented(
+                    "this desugared if expression pattern is not implemented",
+                    if_statement.span(),
+                ));
+                // construct unit expression for error recovery
+                let exp = Expression::Unit {
+                    span: if_statement.span(),
+                };
+                return ok(exp, warnings, errors);
+            }
         }
     }
 
     // 3. Return!
     match if_statement {
         None => err(vec![], vec![]),
-        Some(if_statement) => ok(if_statement, vec![], vec![]),
+        Some(if_statement) => ok(if_statement, warnings, errors),
     }
 }

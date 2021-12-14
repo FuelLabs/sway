@@ -42,7 +42,7 @@ pub enum TypedDeclaration<'sc> {
     ErrorRecovery,
 }
 
-impl<'sc> TypedDeclaration<'sc> {
+impl TypedDeclaration<'_> {
     /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
     /// assuming `self` has already been copied.
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {

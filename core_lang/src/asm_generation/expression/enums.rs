@@ -5,7 +5,6 @@ use crate::asm_lang::{
     ConstantRegister, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     VirtualRegister,
 };
-use crate::type_engine::{look_up_type_id, TypeId};
 use crate::{
     error::*,
     semantic_analysis::{ast_node::TypedEnumDeclaration, TypedExpression},
@@ -129,83 +128,4 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     ));
 
     ok(asm_buf, warnings, errors)
-}
-
-#[derive(Debug)]
-pub(crate) struct EnumMemoryLayoutDescriptor {
-    fields: Vec<EnumArgMemoryLayoutDescriptor>,
-}
-
-#[derive(Debug)]
-pub(crate) struct EnumArgMemoryLayoutDescriptor {
-    // TODO(static span) this should be an ident
-    variant_name: String,
-    size: u64,
-}
-
-impl EnumMemoryLayoutDescriptor {
-    /// Calculates the offset in words from the start of a struct to a specific field.
-    pub(crate) fn offset_to_variant_name<'sc>(&self, name: &Ident<'sc>) -> CompileResult<'sc, u64> {
-        let field_ix = if let Some(ix) =
-            self.fields
-                .iter()
-                .position(|EnumArgMemoryLayoutDescriptor { variant_name, .. }| {
-                    variant_name.as_str() == name.primary_name
-                }) {
-            ix
-        } else {
-            return err(vec![],
-                vec![
-                CompileError::Internal(
-                    "Attempted to calculate enum memory offset on variant that did not exist in struct.",
-                    name.span.clone()
-                    )
-                ]);
-        };
-
-        ok(
-            self.fields
-                .iter()
-                .take(field_ix)
-                .fold(0, |acc, EnumArgMemoryLayoutDescriptor { size, .. }| {
-                    acc + *size
-                }),
-            vec![],
-            vec![],
-        )
-    }
-}
-
-pub(crate) fn get_enum_memory_layout<'sc>(
-    fields_with_ids: &[(TypeId, &str)],
-) -> CompileResult<'sc, EnumMemoryLayoutDescriptor> {
-    let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
-        path: None,
-    };
-    let mut fields_with_sizes = vec![];
-    let warnings = vec![];
-    let mut errors = vec![];
-    for (field, name) in fields_with_ids {
-        let ty = look_up_type_id(*field);
-        let stack_size = match ty.size_in_words(&span) {
-            Ok(o) => o,
-            Err(e) => {
-                errors.push(e);
-                return err(warnings, errors);
-            }
-        };
-
-        fields_with_sizes.push(EnumArgMemoryLayoutDescriptor {
-            variant_name: name.to_string(),
-            size: stack_size,
-        });
-    }
-    ok(
-        EnumMemoryLayoutDescriptor {
-            fields: fields_with_sizes,
-        },
-        warnings,
-        errors,
-    )
 }

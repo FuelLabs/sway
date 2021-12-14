@@ -40,6 +40,16 @@ pub struct StructScrutineeField<'sc> {
 }
 
 impl<'sc> Scrutinee<'sc> {
+    pub fn span(&self) -> Span<'sc> {
+        match self {
+            Scrutinee::Literal { span, .. } => span.clone(),
+            Scrutinee::Unit { span } => span.clone(),
+            Scrutinee::Variable { span, .. } => span.clone(),
+            Scrutinee::StructScrutinee { span, .. } => span.clone(),
+            Scrutinee::EnumScrutinee { span, .. } => span.clone(),
+        }
+    }
+
     pub fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,

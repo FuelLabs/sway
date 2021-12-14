@@ -232,16 +232,18 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
             ),
-            Expression::DelayedResolution { variant, span } => Self::type_check_delayed_resolution(
-                variant,
-                span,
-                namespace,
-                crate_namespace,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
-            ),
+            Expression::DelayedMatchTypeResolution { variant, span } => {
+                Self::type_check_delayed_resolution(
+                    variant,
+                    span,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                )
+            }
             a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented expression",
@@ -1431,6 +1433,7 @@ impl<'sc> TypedExpression<'sc> {
                     Some(enum_decl) => {
                         if enum_name.primary_name != enum_decl.name.primary_name {
                             errors.push(CompileError::MatchWrongType {
+                                expected: parent.return_type,
                                 span: enum_name.span,
                             });
                             let exp = error_recovery_expr(span);
@@ -1447,6 +1450,7 @@ impl<'sc> TypedExpression<'sc> {
                                 }
                                 (true, false) => {
                                     errors.push(CompileError::MatchWrongType {
+                                        expected: parent.return_type,
                                         span: variant_name.span,
                                     });
                                     let exp = error_recovery_expr(span);
@@ -1463,6 +1467,7 @@ impl<'sc> TypedExpression<'sc> {
                     }
                     _ => {
                         errors.push(CompileError::MatchWrongType {
+                            expected: parent.return_type,
                             span: enum_name.span,
                         });
                         let exp = error_recovery_expr(span);
@@ -1516,6 +1521,7 @@ impl<'sc> TypedExpression<'sc> {
                 );
                 if struct_name.primary_name != other_struct_name {
                     errors.push(CompileError::MatchWrongType {
+                        expected: parent.return_type,
                         span: struct_name.span,
                     });
                     let exp = error_recovery_expr(span);
@@ -1530,6 +1536,7 @@ impl<'sc> TypedExpression<'sc> {
                 let field_to_access = match field_to_access {
                     None => {
                         errors.push(CompileError::MatchWrongType {
+                            expected: parent.return_type,
                             span: struct_name.span,
                         });
                         let exp = error_recovery_expr(span);

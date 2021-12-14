@@ -406,6 +406,8 @@ pub enum CompileError<'sc> {
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span<'sc>),
+    #[error("pattern matching algorithm failure on: {0}")]
+    PatternMatchingAlgorithmFailure(&'static str, Span<'sc>),
     #[error("{0}")]
     TypeError(TypeError<'sc>),
     #[error("Error parsing input: expected {err:?}")]
@@ -818,8 +820,12 @@ pub enum CompileError<'sc> {
         count: u64,
         span: Span<'sc>,
     },
-    #[error("Mismatched types in the match statement.")]
-    MatchWrongType { span: Span<'sc> },
+    #[error(
+        "Match expression arm has mismatched types.\n\
+         expected: {expected}\n\
+         "
+    )]
+    MatchWrongType { expected: TypeId, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -1008,8 +1014,9 @@ impl<'sc> CompileError<'sc> {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
-            MatchWrongType { span } => span,
+            MatchWrongType { span, .. } => span,
             NotAnEnum { span, .. } => span,
+            PatternMatchingAlgorithmFailure(_, span) => span,
         }
     }
 

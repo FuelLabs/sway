@@ -414,7 +414,7 @@ impl<'sc> Dependencies<'sc> {
 
             Expression::Literal { .. } => self,
             Expression::Unit { .. } => self,
-            Expression::DelayedResolution { .. } => self,
+            Expression::DelayedMatchTypeResolution { .. } => self,
         }
     }
 
@@ -423,7 +423,8 @@ impl<'sc> Dependencies<'sc> {
             Scrutinee::Unit { .. } => self,
             Scrutinee::Literal { .. } => self,
             Scrutinee::Variable { .. } => self,
-            scrutinee => unimplemented!("{:?}", scrutinee),
+            Scrutinee::StructScrutinee { .. } => self,
+            Scrutinee::EnumScrutinee { .. } => self,
         }
     }
 
