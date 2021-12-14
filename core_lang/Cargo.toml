@@ -24,6 +24,10 @@ smallvec = "1.7"
 structopt = { version = "0.3", default-features = false, optional = true }
 thiserror = "1.0"
 uuid-b64 = "0.1"
+line-col = "0.2"
+source-span = "2.4"
+core-types = { path = "../core-types" }
+
 
 [[bin]]
 name = "selector-debug"

@@ -7,6 +7,7 @@ use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
 use crate::{AstNode, ParseTree};
+
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -17,8 +18,8 @@ pub enum TreeType<'sc> {
     Library { name: Ident<'sc> },
 }
 
-#[derive(Debug)]
-pub(crate) enum TypedParseTree<'sc> {
+#[derive(Debug, Clone)]
+pub enum TypedParseTree<'sc> {
     Script {
         main_function: TypedFunctionDeclaration<'sc>,
         namespace: Namespace<'sc>,
@@ -57,7 +58,7 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    pub(crate) fn into_namespace(self) -> Namespace<'sc> {
+    pub fn into_namespace(self) -> Namespace<'sc> {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,
@@ -91,7 +92,7 @@ impl<'sc> TypedParseTree<'sc> {
                 &mut new_namespace,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
             ),
             return err(warnings, errors),
             warnings,

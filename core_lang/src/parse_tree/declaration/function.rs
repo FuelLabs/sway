@@ -5,6 +5,7 @@ use crate::span::Span;
 use crate::style::is_snake_case;
 use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
+use core_types::{Function, Property};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -186,6 +187,27 @@ impl<'sc> FunctionDeclaration<'sc> {
             warnings,
             errors,
         )
+    }
+
+    pub fn parse_json_abi(&self) -> Function {
+        Function {
+            name: self.name.primary_name.to_string(),
+            type_field: "function".to_string(),
+            inputs: self
+                .parameters
+                .iter()
+                .map(|x| Property {
+                    name: x.name.primary_name.to_string(),
+                    type_field: x.r#type.friendly_type_str(),
+                    components: None,
+                })
+                .collect(),
+            outputs: vec![Property {
+                name: "".to_string(),
+                type_field: self.return_type.friendly_type_str(),
+                components: None,
+            }],
+        }
     }
 }
 

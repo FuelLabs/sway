@@ -73,7 +73,7 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
+                    dependency_graph,
                 ),
                 return err(warnings, errors),
                 warnings,
