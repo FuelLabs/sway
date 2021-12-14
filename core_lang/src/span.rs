@@ -3,7 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 /// Represents a span of the source code in a specific file.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Span<'sc> {
-    ///  A span of the source code checked for grammar.
+    ///  A [pest::Span] returned directly from the generated parser.
     pub span: pest::Span<'sc>,
     // The path to the file containing the source code, or a reference counting pointer on the heap.
     pub(crate) path: Option<Arc<PathBuf>>,
