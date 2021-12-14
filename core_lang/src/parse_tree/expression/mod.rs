@@ -21,7 +21,7 @@ pub(crate) use match_condition::MatchCondition;
 pub(crate) use method_name::MethodName;
 pub(crate) use unary_op::UnaryOp;
 
-/// Represents the different kinds of expressions that can be parsed from Sway source code.
+/// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
     Literal {
