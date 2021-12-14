@@ -168,7 +168,7 @@ pub enum CompilationResult<'sc> {
     },
     Library {
         name: Ident<'sc>,
-        namespace: Namespace<'sc>,
+        namespace: Box<Namespace<'sc>>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -363,14 +363,14 @@ pub fn compile_to_asm<'sc>(
         TreeType::Library { name } => CompilationResult::Library {
             warnings,
             name,
-            namespace: typed_parse_tree.into_namespace(),
+            namespace: Box::new(typed_parse_tree.into_namespace()),
         },
     }
 }
 
 /// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
 /// bytecode form.
-pub fn compile_to_bytecode<'n, 'sc>(
+pub fn compile_to_bytecode<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
@@ -381,7 +381,7 @@ pub fn compile_to_bytecode<'n, 'sc>(
             mut asm,
             mut warnings,
         } => {
-            let mut asm_res = asm.to_bytecode();
+            let mut asm_res = asm.to_bytecode_mut();
             warnings.append(&mut asm_res.warnings);
             if asm_res.value.is_none() || !asm_res.errors.is_empty() {
                 BytecodeCompilationResult::Failure {

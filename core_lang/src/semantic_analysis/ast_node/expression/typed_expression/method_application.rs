@@ -7,6 +7,7 @@ use crate::parser::{HllParser, Rule};
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application<'n, 'sc>(
     method_name: MethodName<'sc>,
     arguments: Vec<Expression<'sc>>,
