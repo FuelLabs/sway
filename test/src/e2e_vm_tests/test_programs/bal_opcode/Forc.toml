@@ -7,3 +7,11 @@ entry = "main.sw"
 [dependencies]
 std = { path = "../../../../../lib-std" }
 core = { path = "../../../../../lib-core" }
+balance_test_abi = { path = "../balance_test_abi"}
+
+[[tx-input]]
+type = "Contract"
+contract-id = "0xdc24d9659655d190ba7f14bb126d995a2bcd67089926feea14993fc888cc1f3c"
+utxo-id = ""
+balance-root = ""
+state-root = ""
