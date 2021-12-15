@@ -23,17 +23,18 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
     let mut args_buf = VecDeque::new();
     for arg in arguments {
         args_buf.push_back(check!(
-            TypedExpression::type_check(
-                arg,
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: arg,
                 namespace,
                 crate_namespace,
-                None,
-                "",
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-            ),
+                mode: Mode::NonAbi,
+            }),
             error_recovery_expr(span.clone()),
             warnings,
             errors
@@ -102,13 +103,8 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
             self_type,
             &arg.span,
         ) {
-            Ok(ws) => {
-                for warning in ws {
-                    warnings.push(CompileWarning {
-                        warning_content: warning,
-                        span: arg.span.clone(),
-                    });
-                }
+            Ok(mut ws) => {
+                warnings.append(&mut ws);
             }
             Err(_e) => {
                 errors.push(CompileError::ArgumentParameterTypeMismatch {
@@ -325,17 +321,18 @@ fn re_parse_expression<'n, 'a>(
         errors
     );
     let contract_address = check!(
-        TypedExpression::type_check(
-            contract_address,
+        TypedExpression::type_check(TypeCheckArguments {
+            checkee: contract_address,
             namespace,
             crate_namespace,
-            None,
-            "",
+            return_type_annotation: insert_type(TypeInfo::Unknown),
+            help_text: Default::default(),
             self_type,
             build_config,
             dead_code_graph,
             dependency_graph,
-        ),
+            mode: Mode::NonAbi,
+        }),
         return err(warnings, errors),
         warnings,
         errors

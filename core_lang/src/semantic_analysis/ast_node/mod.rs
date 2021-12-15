@@ -143,18 +143,19 @@ impl<'sc> TypedAstNode<'sc> {
                     });
                     insert_type(TypeInfo::ErrorRecovery)
                 });
-            TypedExpression::type_check(
-                value,
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: value,
                 namespace,
                 crate_namespace,
-                Some(type_id),
-                "This declaration's type annotation  does \
+                return_type_annotation: type_id,
+                help_text: "This declaration's type annotation  does \
                      not match up with the assigned expression's type.",
                 self_type,
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-            )
+                mode: Mode::NonAbi,
+            })
         };
 
         let node = TypedAstNode {
@@ -207,18 +208,19 @@ impl<'sc> TypedAstNode<'sc> {
                                 });
 
                             let result = {
-                                TypedExpression::type_check(
-                                    body,
+                                TypedExpression::type_check(TypeCheckArguments {
+                                    checkee: body,
                                     namespace,
                                     crate_namespace,
-                                    Some(type_ascription),
-                                    "Variable declaration's type annotation does \
+                                    return_type_annotation: type_ascription,
+                                    help_text: "Variable declaration's type annotation does \
                      not match up with the assigned expression's type.",
                                     self_type,
                                     build_config,
                                     dead_code_graph,
                                     dependency_graph,
-                                )
+                                    mode: Mode::NonAbi,
+                                })
                             };
                             let body = check!(
                                 result,
@@ -560,17 +562,18 @@ impl<'sc> TypedAstNode<'sc> {
                 }
                 AstNodeContent::Expression(a) => {
                     let inner = check!(
-                        TypedExpression::type_check(
-                            a.clone(),
+                        TypedExpression::type_check(TypeCheckArguments {
+                            checkee: a.clone(),
                             namespace,
                             crate_namespace,
-                            None,
-                            "",
+                            return_type_annotation: insert_type(TypeInfo::Unknown),
+                            help_text: Default::default(),
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph
-                        ),
+                            dependency_graph,
+                            mode: Mode::NonAbi,
+                        }),
                         error_recovery_expr(a.span()),
                         warnings,
                         errors
@@ -580,18 +583,20 @@ impl<'sc> TypedAstNode<'sc> {
                 AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
                     TypedAstNodeContent::ReturnStatement(TypedReturnStatement {
                         expr: check!(
-                            TypedExpression::type_check(
-                                expr.clone(),
+                            TypedExpression::type_check(TypeCheckArguments {
+                                checkee: expr.clone(),
                                 namespace,
                                 crate_namespace,
-                                Some(return_type_annotation),
-                                "Returned value must match up with the function return type \
+                                return_type_annotation,
+                                help_text:
+                                    "Returned value must match up with the function return type \
                                  annotation.",
                                 self_type,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph
-                            ),
+                                dependency_graph,
+                                mode: Mode::NonAbi,
+                            }),
                             error_recovery_expr(expr.span()),
                             warnings,
                             errors
@@ -600,17 +605,18 @@ impl<'sc> TypedAstNode<'sc> {
                 }
                 AstNodeContent::ImplicitReturnExpression(expr) => {
                     let typed_expr = check!(
-                        TypedExpression::type_check(
-                            expr.clone(),
+                        TypedExpression::type_check(TypeCheckArguments {
+                            checkee: expr.clone(),
                             namespace,
                             crate_namespace,
-                            Some(return_type_annotation),
-                            "Implicit return must match up with block's type.",
+                            return_type_annotation,
+                            help_text: "Implicit return must match up with block's type.",
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph
-                        ),
+                            dependency_graph,
+                            mode: Mode::NonAbi,
+                        }),
                         error_recovery_expr(expr.span()),
                         warnings,
                         errors
@@ -619,17 +625,19 @@ impl<'sc> TypedAstNode<'sc> {
                 }
                 AstNodeContent::WhileLoop(WhileLoop { condition, body }) => {
                     let typed_condition = check!(
-                        TypedExpression::type_check(
-                            condition,
+                        TypedExpression::type_check(TypeCheckArguments {
+                            checkee: condition,
                             namespace,
                             crate_namespace,
-                            Some(crate::type_engine::insert_type(TypeInfo::Boolean)),
-                            "A while loop's loop condition must be a boolean expression.",
+                            return_type_annotation: insert_type(TypeInfo::Boolean),
+                            help_text:
+                                "A while loop's loop condition must be a boolean expression.",
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph
-                        ),
+                            dependency_graph,
+                            mode: Mode::NonAbi
+                        }),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -824,17 +832,18 @@ fn reassignment<'n, 'sc>(
             let rhs_type_id = insert_type(TypeInfo::Ref(thing_to_reassign.return_type));
             // type check the reassignment
             let rhs = check!(
-                TypedExpression::type_check(
-                    rhs,
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: rhs,
                     namespace,
                     crate_namespace,
-                    Some(rhs_type_id),
-                    "You can only reassign a value of the same type to a variable.",
+                    return_type_annotation: rhs_type_id,
+                    help_text: "You can only reassign a value of the same type to a variable.",
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
-                ),
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                }),
                 error_recovery_expr(span),
                 warnings,
                 errors
@@ -861,17 +870,18 @@ fn reassignment<'n, 'sc>(
             let mut names_vec = vec![];
             let final_return_type = loop {
                 let type_checked = check!(
-                    TypedExpression::type_check(
-                        expr.clone(),
+                    TypedExpression::type_check(TypeCheckArguments {
+                        checkee: expr.clone(),
                         namespace,
                         crate_namespace,
-                        None,
-                        "",
+                        return_type_annotation: insert_type(TypeInfo::Unknown),
+                        help_text: Default::default(),
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph
-                    ),
+                        dependency_graph,
+                        mode: Mode::NonAbi,
+                    }),
                     error_recovery_expr(expr.span()),
                     warnings,
                     errors
@@ -923,17 +933,18 @@ fn reassignment<'n, 'sc>(
             );
             // type check the reassignment
             let rhs = check!(
-                TypedExpression::type_check(
-                    rhs,
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: rhs,
                     namespace,
                     crate_namespace,
-                    Some(ty_of_field),
-                    Default::default(),
+                    return_type_annotation: ty_of_field,
+                    help_text: Default::default(),
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
-                ),
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                }),
                 error_recovery_expr(span),
                 warnings,
                 errors

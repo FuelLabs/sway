@@ -1,7 +1,7 @@
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::error::*;
-use crate::semantic_analysis::ast_node::*;
+use crate::semantic_analysis::{ast_node::*, TypeCheckArguments};
 use crate::type_engine::{look_up_type_id, TypeId};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
@@ -64,17 +64,18 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
         ),
         ([single_expr], _type) => {
             let typed_expr = check!(
-                TypedExpression::type_check(
-                    single_expr.clone(),
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: single_expr.clone(),
                     namespace,
                     crate_namespace,
-                    Some(enum_field_type),
-                    "Enum instantiator must match its declared variant type.",
+                    return_type_annotation: enum_field_type,
+                    help_text: "Enum instantiator must match its declared variant type.",
                     self_type,
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                ),
+                    mode: Mode::NonAbi,
+                }),
                 return err(warnings, errors),
                 warnings,
                 errors

@@ -260,27 +260,20 @@ impl<'sc> TypedExpression<'sc> {
         let mut warnings = res.warnings;
         let mut errors = res.errors;
         // if the return type cannot be cast into the annotation type then it is a type error
-        if let Some(type_annotation) = type_annotation {
-            match crate::type_engine::unify_with_self(
-                typed_expression.return_type,
-                type_annotation,
-                self_type,
-                &expr_span,
-            ) {
-                Ok(ws) => {
-                    for warning in ws {
-                        warnings.push(CompileWarning {
-                            warning_content: warning,
-                            span: expr_span.clone(),
-                        });
-                    }
-                }
-                Err(e) => {
-                    errors.push(CompileError::TypeError(e));
-                }
-            };
-            // The annotation may result in a cast, which is handled in the type engine.
-        }
+        match unify_with_self(
+            typed_expression.return_type,
+            type_annotation,
+            self_type,
+            &expr_span,
+        ) {
+            Ok(mut ws) => {
+                warnings.append(&mut ws);
+            }
+            Err(e) => {
+                errors.push(CompileError::TypeError(e));
+            }
+        };
+        // The annotation may result in a cast, which is handled in the type engine.
 
         typed_expression.return_type = namespace
             .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
@@ -465,19 +458,21 @@ impl<'sc> TypedExpression<'sc> {
             .map(|(arg, param)| {
                 (
                     param.name.clone(),
-                    TypedExpression::type_check(
-                        arg.clone(),
+                    TypedExpression::type_check(TypeCheckArguments {
+                        checkee: arg.clone(),
                         namespace,
                         crate_namespace,
-                        Some(param.r#type.clone()),
-                        "The argument that has been provided to this function's type does \
+                        return_type_annotation: param.r#type,
+                        help_text:
+                            "The argument that has been provided to this function's type does \
                             not match the declared type of the parameter in the function \
                             declaration.",
                         self_type,
                         build_config,
                         dead_code_graph,
                         dependency_graph,
-                    )
+                        mode: Mode::NonAbi,
+                    })
                     .unwrap_or_else(&mut warnings, &mut errors, || {
                         error_recovery_expr(arg.span())
                     }),
@@ -523,34 +518,36 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = vec![];
         let bool_type_id = crate::type_engine::insert_type(TypeInfo::Boolean);
         let typed_lhs = check!(
-            TypedExpression::type_check(
-                lhs.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: lhs.clone(),
                 namespace,
                 crate_namespace,
-                Some(bool_type_id),
-                "",
+                return_type_annotation: bool_type_id,
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+            }),
             error_recovery_expr(lhs.span()),
             warnings,
             errors
         );
 
         let typed_rhs = check!(
-            TypedExpression::type_check(
-                rhs.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: rhs.clone(),
                 namespace,
                 crate_namespace,
-                Some(bool_type_id),
-                "",
+                return_type_annotation: bool_type_id,
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+            }),
             error_recovery_expr(rhs.span()),
             warnings,
             errors
@@ -634,7 +631,7 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         crate_namespace: Option<&'n Namespace<'sc>>,
-        type_annotation: Option<TypeId>,
+        type_annotation: TypeId,
         help_text: &'static str,
         self_type: TypeId,
         build_config: &BuildConfig,
@@ -648,8 +645,7 @@ impl<'sc> TypedExpression<'sc> {
                 contents.clone(),
                 namespace,
                 crate_namespace,
-                type_annotation
-                    .unwrap_or_else(|| crate::type_engine::insert_type(TypeInfo::Unknown)),
+                type_annotation,
                 help_text,
                 self_type,
                 build_config,
@@ -666,17 +662,17 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         );
+
+        // this could probably be cleaned up with unification instead of comparing types
+        let type_annotation = look_up_type_id(type_annotation);
         let block_return_type: TypeId = match look_up_type_id(block_return_type) {
-            TypeInfo::Unit => match type_annotation {
-                Some(ref ty) if crate::type_engine::look_up_type_id(*ty) != TypeInfo::Unit => {
-                    errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
-                        span: span.clone(),
-                        ty: look_up_type_id(*ty).friendly_type_str(),
-                    });
-                    crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
-                }
-                _ => crate::type_engine::insert_type(TypeInfo::Unit),
-            },
+            TypeInfo::Unit if type_annotation != TypeInfo::Unit => {
+                errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
+                    span: span.clone(),
+                    ty: type_annotation.friendly_type_str(),
+                });
+                insert_type(TypeInfo::ErrorRecovery)
+            }
             _otherwise => block_return_type,
         };
         let exp = TypedExpression {
@@ -699,7 +695,7 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         crate_namespace: Option<&'n Namespace<'sc>>,
-        type_annotation: Option<TypeId>,
+        type_annotation: TypeId,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -708,63 +704,76 @@ impl<'sc> TypedExpression<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let condition = Box::new(check!(
-            TypedExpression::type_check(
-                *condition.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: *condition.clone(),
                 namespace,
                 crate_namespace,
-                Some(crate::type_engine::insert_type(TypeInfo::Boolean)),
-                "The condition of an if expression must be a boolean expression.",
+                return_type_annotation: insert_type(TypeInfo::Boolean),
+                help_text: "The condition of an if expression must be a boolean expression.",
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+            }),
             error_recovery_expr(condition.span()),
             warnings,
             errors
         ));
         let then = Box::new(check!(
-            TypedExpression::type_check(
-                *then.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: *then.clone(),
                 namespace,
                 crate_namespace,
-                type_annotation,
-                "",
+                return_type_annotation: type_annotation,
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+            }),
             error_recovery_expr(then.span()),
             warnings,
             errors
         ));
         let r#else = r#else.map(|expr| {
             Box::new(check!(
-                TypedExpression::type_check(
-                    *expr.clone(),
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: *expr.clone(),
                     namespace,
                     crate_namespace,
-                    Some(then.return_type),
-                    "",
+                    return_type_annotation: then.return_type,
+                    help_text: Default::default(),
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
-                ),
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                }),
                 error_recovery_expr(expr.span()),
                 warnings,
                 errors
             ))
         });
 
+        let r#else_ret_ty = r#else
+            .as_ref()
+            .map(|ref x| x.return_type)
+            .unwrap_or_else(|| insert_type(TypeInfo::Unit));
         // if there is a type annotation, then the else branch must exist
-        if let Some(ref annotation) = type_annotation {
-            if r#else.is_none() {
-                errors.push(CompileError::NoElseBranch {
-                    span: span.clone(),
-                    r#type: look_up_type_id(*annotation).friendly_type_str(),
-                });
+        match unify_with_self(then.return_type, r#else_ret_ty, self_type, &span) {
+            Ok(mut warn) => {
+                warnings.append(&mut warn);
+                if look_up_type_id(r#else_ret_ty) != TypeInfo::Unit && r#else.is_none() {
+                    errors.push(CompileError::NoElseBranch {
+                        span: span.clone(),
+                        r#type: look_up_type_id(type_annotation).friendly_type_str(),
+                    });
+                }
+            }
+            Err(e) => {
+                errors.push(e.into());
             }
         }
 
@@ -820,17 +829,18 @@ impl<'sc> TypedExpression<'sc> {
                         name,
                         initializer: initializer.map(|initializer| {
                             check!(
-                                TypedExpression::type_check(
-                                    initializer.clone(),
+                                TypedExpression::type_check(TypeCheckArguments {
+                                    checkee: initializer.clone(),
                                     namespace,
                                     crate_namespace,
-                                    None,
-                                    "",
+                                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                                    help_text: Default::default(),
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph
-                                ),
+                                    dependency_graph,
+                                    mode: Mode::NonAbi,
+                                }),
                                 error_recovery_expr(initializer.span()),
                                 warnings,
                                 errors
@@ -921,18 +931,19 @@ impl<'sc> TypedExpression<'sc> {
                 };
 
             let typed_field = check!(
-                TypedExpression::type_check(
-                    expr_field.value,
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: expr_field.value,
                     namespace,
                     crate_namespace,
-                    Some(def_field.r#type),
-                    "Struct field's type must match up with the type specified in its \
+                    return_type_annotation: def_field.r#type,
+                    help_text: "Struct field's type must match up with the type specified in its \
                      declaration.",
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
-                ),
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                }),
                 continue,
                 warnings,
                 errors
@@ -988,17 +999,18 @@ impl<'sc> TypedExpression<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let parent = check!(
-            TypedExpression::type_check(
-                *prefix,
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: *prefix,
                 namespace,
                 crate_namespace,
-                None,
-                "",
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+            }),
             return err(warnings, errors),
             warnings,
             errors
@@ -1159,17 +1171,18 @@ impl<'sc> TypedExpression<'sc> {
         // basically delete the bottom line and replace references to it with address_expr
         let address_str = address.span().as_str().to_string();
         let address_expr = check!(
-            TypedExpression::type_check(
-                *address,
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: *address,
                 namespace,
                 crate_namespace,
-                Some(crate::type_engine::insert_type(TypeInfo::B256)),
-                "An address that is being ABI cast must be of type b256",
+                return_type_annotation: insert_type(TypeInfo::B256),
+                help_text: "An address that is being ABI cast must be of type b256",
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+            }),
             error_recovery_expr(err_span),
             warnings,
             errors
@@ -1275,17 +1288,18 @@ impl<'sc> TypedExpression<'sc> {
             .map(|expr| {
                 let span = expr.span();
                 check!(
-                    Self::type_check(
-                        expr,
+                    Self::type_check(TypeCheckArguments {
+                        checkee: expr,
                         namespace,
                         crate_namespace,
-                        None,
-                        "",
+                        return_type_annotation: insert_type(TypeInfo::Unknown),
+                        help_text: Default::default(),
                         self_type,
                         build_config,
                         dead_code_graph,
                         dependency_graph,
-                    ),
+                        mode: Mode::NonAbi,
+                    }),
                     error_recovery_expr(span),
                     warnings,
                     errors
@@ -1303,14 +1317,9 @@ impl<'sc> TypedExpression<'sc> {
             ) {
                 // In both cases, if there are warnings or errors then break here, since we don't
                 // need to spam type errors for every element once we have one.
-                Ok(ws) => {
+                Ok(mut ws) => {
                     let no_warnings = ws.is_empty();
-                    for warn in ws {
-                        warnings.push(CompileWarning {
-                            warning_content: warn,
-                            span: typed_elem.span.clone(),
-                        });
-                    }
+                    warnings.append(&mut ws);
                     if !no_warnings {
                         break;
                     }
@@ -1352,17 +1361,18 @@ impl<'sc> TypedExpression<'sc> {
         let mut errors = Vec::new();
 
         let prefix_te = check!(
-            TypedExpression::type_check(
-                prefix.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: prefix.clone(),
                 namespace,
                 crate_namespace,
-                None,
-                "",
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-            ),
+                mode: Mode::NonAbi,
+            }),
             return err(warnings, errors),
             warnings,
             errors
@@ -1371,19 +1381,20 @@ impl<'sc> TypedExpression<'sc> {
         // If the return type is a static array then create a TypedArrayIndex.
         if let TypeInfo::Array(elem_type_id, _) = look_up_type_id(prefix_te.return_type) {
             let index_te = check!(
-                TypedExpression::type_check(
-                    index,
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: index,
                     namespace,
                     crate_namespace,
-                    Some(insert_type(TypeInfo::UnsignedInteger(
+                    return_type_annotation: insert_type(TypeInfo::UnsignedInteger(
                         IntegerBits::SixtyFour
-                    ))),
-                    "",
+                    )),
+                    help_text: Default::default(),
                     self_type,
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                ),
+                    mode: Mode::NonAbi,
+                }),
                 return err(warnings, errors),
                 warnings,
                 errors

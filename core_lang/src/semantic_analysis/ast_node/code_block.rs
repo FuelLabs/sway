@@ -83,15 +83,8 @@ impl<'sc> TypedCodeBlock<'sc> {
                     .clone()
                     .unwrap_or_else(|| other.whole_block_span.clone()),
             ) {
-                Ok(ws) => {
-                    for warning in ws {
-                        warnings.push(CompileWarning {
-                            warning_content: warning,
-                            span: implicit_return_span
-                                .clone()
-                                .unwrap_or_else(|| other.whole_block_span.clone()),
-                        });
-                    }
+                Ok(mut ws) => {
+                    warnings.append(&mut ws);
                 }
                 Err(e) => {
                     errors.push(CompileError::TypeError(e));

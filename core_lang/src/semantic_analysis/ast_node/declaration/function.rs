@@ -195,13 +195,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 self_type,
                 span,
             ) {
-                Ok(ws) => {
-                    for warning in ws {
-                        warnings.push(CompileWarning {
-                            warning_content: warning,
-                            span: span.clone(),
-                        });
-                    }
+                Ok(mut ws) => {
+                    warnings.append(&mut ws);
                 }
                 Err(e) => {
                     errors.push(CompileError::TypeError(e));
@@ -314,13 +309,8 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     self_type,
                     type_argument_span,
                 ) {
-                    Ok(ws) => {
-                        for warning in ws {
-                            warnings.push(CompileWarning {
-                                warning_content: warning,
-                                span: type_argument_span.clone(),
-                            });
-                        }
+                    Ok(mut ws) => {
+                        warnings.append(&mut ws);
                     }
                     Err(e) => {
                         errors.push(e.into());
