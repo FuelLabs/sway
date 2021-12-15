@@ -19,10 +19,10 @@ pub type MatcherResult<'sc> = Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)>;
 ///
 /// Given the following example
 ///
-/// ```rust
+/// ```ignore
 /// struct Point {
 ///     x: u64,
-///     y: y64
+///     y: u64
 /// }
 ///
 /// let p = Point {
@@ -39,7 +39,7 @@ pub type MatcherResult<'sc> = Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)>;
 ///
 /// The first match arm would create a [MatchReqMap] of roughly:
 ///
-/// ```rust
+/// ```ignore
 /// [
 ///     (y, 5) // y must equal 5 to trigger this case
 /// ]
@@ -47,7 +47,7 @@ pub type MatcherResult<'sc> = Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)>;
 ///
 /// The first match arm would create a [MatchImplMap] of roughly:
 ///
-/// ```rust
+/// ```ignore
 /// [
 ///     (x, 42) // add `let x = 42 in the body of the desugared if expression
 /// ]

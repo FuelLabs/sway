@@ -1365,10 +1365,10 @@ struct MatchedBranch<'sc> {
 ///
 /// Given the following example:
 ///
-/// ```rust
+/// ```ignore
 /// struct Point {
 ///     x: u64,
-///     y: y64
+///     y: u64
 /// }
 ///
 /// let p = Point {
@@ -1385,7 +1385,7 @@ struct MatchedBranch<'sc> {
 ///
 /// The resulting if statement would look roughly like this:
 ///
-/// ```rust
+/// ```ignore
 /// if y==5 {
 ///     let x = 42;
 ///     x
