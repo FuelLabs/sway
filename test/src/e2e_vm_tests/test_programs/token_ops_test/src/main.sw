@@ -3,7 +3,7 @@ use std::constants::ETH_ID;
 use std::chain::assert;
 use std::address::Address;
 use std::contract_id::ContractId;
-use test_token_abi::*;
+use test_fuel_coin_abi::*;
 
 fn main() -> bool {
     let test_recipient = ~Address::from(0x3333333333333333333333333333333333333333333333333333333333333333);
@@ -15,8 +15,8 @@ fn main() -> bool {
         recipient: test_recipient,
     };
 
-    let test_token_id = ~ContractId::from(<id>);
-    let test_token_caller = abi(TestToken, test_token_id);
+    let test_fuel_coin_id = ~ContractId::from(<id>);
+    let fuel_coin = abi(TestFuelCoin, test_fuel_coin_id);
     let gas = 1000;
     let coins = 0;
     let token_id = ETH_ID;
@@ -26,12 +26,12 @@ fn main() -> bool {
     let mut balance = balance_of_contract(test_contract_id)
     assert(starting_balance == ZERO);
 
-    test_token_caller.mint(gas, coins, token_id, 11);
+    fuel_coin.mint(gas, coins, token_id, 11);
 
     balance = balance_of_contract(test_contract_id)
     assert(balance == 11);
 
-    test_token_caller.burn(gas, coins, token_id, 7);
+    fuel_coin.burn(gas, coins, token_id, 7);
 
     balance = balance_of_contract(test_contract_id)
     assert(balance == 4);
@@ -44,14 +44,14 @@ fn main() -> bool {
     let mut balance2 = balance_of_contract(test_token_id)
     assert(balance == ZERO);
 
-    test_token_caller.force_transfer(gas, coins, token_id, force_transfer_args);
+    fuel_coin.force_transfer(gas, coins, token_id, force_transfer_args);
 
     balance = balance_of_contract(test_contract_id)
     balance2 = balance_of_contract(test_token_id)
     assert(balance == 1);
     assert(balance2 == 3);
 
-    test_token_caller.transfer_to_output(gas, coins, token_id, transfer_to_output_args);
+    fuel_coin.transfer_to_output(gas, coins, token_id, transfer_to_output_args);
 
     true
 }
