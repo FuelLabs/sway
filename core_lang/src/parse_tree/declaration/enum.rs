@@ -4,7 +4,7 @@ use crate::span::Span;
 use crate::type_engine::*;
 
 use crate::Ident;
-use crate::NamespaceInner;
+use crate::Namespace;
 use crate::{
     error::*,
     semantic_analysis::ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration},
@@ -38,7 +38,7 @@ impl<'sc> EnumDeclaration<'sc> {
     /// something.
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &mut NamespaceInner<'sc>,
+        namespace: &mut Namespace<'sc>,
         self_type: TypeId,
     ) -> TypedEnumDeclaration<'sc> {
         let mut variants_buf = vec![];
@@ -153,7 +153,7 @@ impl<'sc> EnumDeclaration<'sc> {
 impl<'sc> EnumVariant<'sc> {
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &mut NamespaceInner<'sc>,
+        namespace: &mut Namespace<'sc>,
         self_type: TypeId,
         span: Span<'sc>,
         type_mapping: &[(TypeParameter, TypeId)],

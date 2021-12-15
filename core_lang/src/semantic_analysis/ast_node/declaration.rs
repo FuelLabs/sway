@@ -2,12 +2,14 @@ use super::impl_trait::Mode;
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
-use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::type_engine::*;
+use crate::ControlFlowGraph;
 use crate::{build_config::BuildConfig, error::*, Ident};
+
+use core_types::{Function, Property};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -278,6 +280,14 @@ impl OwnedTypedStructField {
             span: span.clone(),
         }
     }
+
+    pub fn generate_json_abi(&self) -> Property {
+        Property {
+            name: self.name.clone(),
+            type_field: self.r#type.friendly_type_str(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
 }
 
 impl TypedStructField<'_> {
@@ -363,6 +373,16 @@ pub struct OwnedTypedEnumVariant {
     pub(crate) name: String,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
+}
+
+impl OwnedTypedEnumVariant {
+    pub fn generate_json_abi(&self) -> Property {
+        Property {
+            name: self.name.clone(),
+            type_field: self.r#type.friendly_type_str(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -579,6 +599,27 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             errors,
         )
     }
+
+    pub fn generate_json_abi(&self) -> Function {
+        Function {
+            name: self.name.primary_name.to_string(),
+            type_field: "function".to_string(),
+            inputs: self
+                .parameters
+                .iter()
+                .map(|x| Property {
+                    name: x.name.primary_name.to_string(),
+                    type_field: x.r#type.friendly_type_str(),
+                    components: x.r#type.generate_json_abi(),
+                })
+                .collect(),
+            outputs: vec![Property {
+                name: "".to_string(),
+                type_field: self.return_type.friendly_type_str(),
+                components: self.return_type.generate_json_abi(),
+            }],
+        }
+    }
 }
 
 #[test]
@@ -776,7 +817,8 @@ impl TypedReassignment<'_> {
 impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn type_check<'n>(
         fn_decl: FunctionDeclaration<'sc>,
-        namespace: &mut Namespace<'n, 'sc>,
+        namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&Namespace<'sc>>,
         _return_type_annotation: TypeId,
         _help_text: impl Into<String>,
         // If there are any `Self` types in this declaration,
@@ -807,7 +849,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
                 namespace
-                    .inner
                     .resolve_type_with_self(return_type, self_type)
                     .unwrap_or_else(|_| {
                         errors.push(CompileError::UnknownType {
@@ -820,9 +861,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // insert parameters and generic type declarations into namespace
         let mut namespace = namespace.clone();
         type_parameters.iter().for_each(|param| {
-            namespace
-                .inner
-                .insert(param.name_ident.clone(), param.into());
+            namespace.insert(param.name_ident.clone(), param.into());
         });
         for FunctionParameter {
             name,
@@ -834,7 +873,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
                 namespace
-                    .inner
                     .resolve_type_with_self(r#type, self_type)
                     .unwrap_or_else(|_| {
                         errors.push(CompileError::UnknownType {
@@ -843,7 +881,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         insert_type(TypeInfo::ErrorRecovery)
                     })
             };
-            namespace.inner.insert(
+            namespace.insert(
                 name.clone(),
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
                     name: name.clone(),
@@ -865,12 +903,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             TypedCodeBlock::type_check(
                 body.clone(),
                 &namespace,
+                crate_namespace,
                 return_type,
                 "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
             ),
             (
                 TypedCodeBlock {
@@ -897,7 +936,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         insert_type(TypeInfo::Ref(matching_id))
                     } else {
                         namespace
-                            .inner
                             .resolve_type_with_self(r#type, self_type)
                             .unwrap_or_else(|_| {
                                 errors.push(CompileError::UnknownType {

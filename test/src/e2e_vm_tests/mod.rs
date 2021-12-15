@@ -19,7 +19,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("if_elseif_enum", ProgramState::Return(10)),
         ("out_of_order_decl", ProgramState::Return(1)),
         ("struct_field_reassignment", ProgramState::Return(0)),
-        ("contract_call", ProgramState::Return(0)),
         ("enum_in_fn_decl", ProgramState::Return(255)),
         ("empty_impl", ProgramState::Return(0)),
         ("main_returns_unit", ProgramState::Return(0)),
@@ -61,6 +60,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("import_method_from_other_file", ProgramState::Return(10)), // true
         ("address_test", ProgramState::Return(1)),             // true
         ("generic_struct", ProgramState::Return(1)),           // true
+        ("zero_field_types", ProgramState::Return(10)),        // true
         ("assert_test", ProgramState::Return(1)),              // true
         ("b512_test", ProgramState::Return(1)),                // true
         ("assert_test", ProgramState::Return(1)),              // true
@@ -73,6 +73,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
             assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
+            assert_eq!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(()));
         }
     });
 
@@ -106,6 +107,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("increment_contract", "call_increment_contract"),
         ("auth_testing_contract", "caller_auth_test"),
         ("context_testing_contract", "caller_context_test"),
+        ("contract_abi_impl", "contract_call"),
+        ("balance_test_contract", "bal_opcode"),
     ];
 
     // Filter them first.

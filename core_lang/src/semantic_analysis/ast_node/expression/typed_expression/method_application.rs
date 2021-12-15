@@ -11,7 +11,8 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
     method_name: MethodName<'sc>,
     arguments: Vec<Expression<'sc>>,
     span: Span<'sc>,
-    namespace: &mut Namespace<'n, 'sc>,
+    namespace: &mut Namespace<'sc>,
+    crate_namespace: Option<&'n Namespace<'sc>>,
     self_type: TypeId,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -25,12 +26,13 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
             TypedExpression::type_check(
                 arg,
                 namespace,
+                crate_namespace,
                 None,
                 "",
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
             ),
             error_recovery_expr(span.clone()),
             warnings,
@@ -38,28 +40,53 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
         ));
     }
 
-    let ty = match method_name {
-        MethodName::FromType { ref type_name, .. } => type_name
-            .as_ref()
-            .map(|x| insert_type(x.clone()))
-            .unwrap_or_else(|| {
-                args_buf
+    let method = match method_name {
+        MethodName::FromType {
+            ref type_name,
+            ref call_path,
+            is_absolute,
+        } => {
+            let ty = match type_name {
+                Some(name) => {
+                    if *name == TypeInfo::SelfType {
+                        self_type
+                    } else {
+                        insert_type(name.clone())
+                    }
+                }
+                None => args_buf
                     .get(0)
                     .map(|x| x.return_type)
-                    .unwrap_or_else(|| insert_type(TypeInfo::Unknown))
-            }),
-        _ => args_buf
-            .get(0)
-            .map(|x| x.return_type)
-            .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
+                    .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
+            };
+            let from_module = if is_absolute { crate_namespace } else { None };
+            check!(
+                namespace.find_method_for_type(
+                    ty,
+                    &call_path.suffix,
+                    &call_path.prefixes[..],
+                    from_module,
+                    self_type,
+                    &args_buf,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        }
+        MethodName::FromModule { ref method_name } => {
+            let ty = args_buf
+                .get(0)
+                .map(|x| x.return_type)
+                .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+            check!(
+                namespace.find_method_for_type(ty, method_name, &[], None, self_type, &args_buf),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        }
     };
-
-    let method = check!(
-        namespace.find_method_for_type(ty, &method_name, self_type, &args_buf),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
     let contract_caller = if method.is_contract_call {
         args_buf.pop_front()
     } else {
@@ -149,6 +176,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                                 contract_address,
                                 build_config,
                                 namespace,
+                                crate_namespace,
                                 self_type,
                                 dead_code_graph,
                                 dependency_graph,
@@ -222,9 +250,10 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                                 contract_address,
                                 build_config,
                                 namespace,
+                                crate_namespace,
                                 self_type,
                                 dead_code_graph,
-                                dependency_graph
+                                dependency_graph,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -254,7 +283,8 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
 fn re_parse_expression<'n, 'a>(
     contract_string: String,
     build_config: &BuildConfig,
-    namespace: &mut Namespace<'n, 'a>,
+    namespace: &mut Namespace<'a>,
+    crate_namespace: Option<&'n Namespace<'a>>,
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph<'a>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
@@ -298,6 +328,7 @@ fn re_parse_expression<'n, 'a>(
         TypedExpression::type_check(
             contract_address,
             namespace,
+            crate_namespace,
             None,
             "",
             self_type,
