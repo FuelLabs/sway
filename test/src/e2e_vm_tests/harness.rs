@@ -2,7 +2,7 @@ use forc::test::{
     forc_abi_json, forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, JsonAbiCommand,
     RunCommand,
 };
-use fuel_tx::{Transaction};
+use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use serde_json::Value;
