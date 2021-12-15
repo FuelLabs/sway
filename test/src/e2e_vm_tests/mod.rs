@@ -15,7 +15,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("asm_expr_basic", ProgramState::Return(6)),
         ("basic_func_decl", ProgramState::Return(1)), // 1 == true
         ("contract_abi_impl", ProgramState::Return(0)),
-        // TEMPORARILY DISABLED DUE TO OOM ("dependencies", ProgramState::Return(0)), // 0 == false
+        ("dependencies", ProgramState::Return(0)), // 0 == false
         ("if_elseif_enum", ProgramState::Return(10)),
         ("out_of_order_decl", ProgramState::Return(1)),
         ("struct_field_reassignment", ProgramState::Return(0)),
@@ -86,7 +86,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "excess_fn_arguments",
         // TEMPORARILY DISABLED DUE TO OOM "infinite_dependencies",
         "top_level_vars",
-        "dependencies_parsing_error",
+        "dependency_parsing_error",
         "disallowed_gm",
         "bad_generic_annotation",
         "bad_generic_var_annotation",

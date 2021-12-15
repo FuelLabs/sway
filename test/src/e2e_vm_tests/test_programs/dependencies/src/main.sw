@@ -6,13 +6,12 @@ dep nested_dependency/bar/bar;
 
 use foo::Foo;
 use ::foo::bar::Bar;
-use ::foo::bar::double_bar::DoubleBar;
 
 fn main() -> bool {
     let foo = Foo {
         foo: "foo",
     };
-    let db = DoubleBar {
+    let db = ::foo::bar::double_bar::DoubleBar {
         a: 5u32,
     };
     let bar = Bar {

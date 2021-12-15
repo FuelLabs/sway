@@ -1,7 +1,7 @@
 [project]
 author  = "Emily Herbert <emily.herbert@fuel.sh>"
 license = "MIT"
-name = "dependencies_parsing_error"
+name = "dependency_parsing_error"
 entry = "main.sw"
 
 
