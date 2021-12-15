@@ -130,18 +130,31 @@ impl<'sc> Namespace<'sc> {
         &mut self,
         name: Ident<'sc>,
         item: TypedDeclaration<'sc>,
-    ) -> CompileResult<()> {
+    ) -> CompileResult<'sc, ()> {
         let mut warnings = vec![];
+        let mut errors = vec![];
         if self.symbols.get(&name).is_some() {
-            warnings.push(CompileWarning {
-                span: name.span.clone(),
-                warning_content: Warning::OverridesOtherSymbol {
-                    name: name.clone().span.str(),
-                },
-            });
+            match item {
+                TypedDeclaration::EnumDeclaration { .. }
+                | TypedDeclaration::StructDeclaration { .. } => {
+                    errors.push(CompileError::OverridesOtherSymbol {
+                        span: name.span.clone(),
+                        name: name.primary_name.to_string(),
+                    });
+                    return err(warnings, errors);
+                }
+                _ => {
+                    warnings.push(CompileWarning {
+                        span: name.span.clone(),
+                        warning_content: Warning::OverridesOtherSymbol {
+                            name: name.clone().span.str(),
+                        },
+                    });
+                }
+            }
         }
         self.symbols.insert(name.clone(), item.clone());
-        ok((), warnings, vec![])
+        ok((), warnings, errors)
     }
 
     // TODO(static span) remove this and switch to spans when we have arena spans

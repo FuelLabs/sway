@@ -354,7 +354,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
             ),
             OverridesOtherSymbol { name } => write!(
                 f,
-                "This import would override another symbol with the same name \"{}\" in this \
+                "This would override another symbol with the same name \"{}\" in this \
                  namespace.",
                 name
             ),
@@ -812,6 +812,8 @@ pub enum CompileError<'sc> {
         count: u64,
         span: Span<'sc>,
     },
+    #[error("The name {name} overrides another symbol.")]
+    OverridesOtherSymbol { name: String, span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -1000,6 +1002,7 @@ impl<'sc> CompileError<'sc> {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
+            OverridesOtherSymbol { span, .. } => span,
         }
     }
 

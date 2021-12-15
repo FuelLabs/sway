@@ -93,6 +93,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "unify_identical_unknowns",
         "array_oob",
         "array_bad_index",
+        "name_shadowing",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
