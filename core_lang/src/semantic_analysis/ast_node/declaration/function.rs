@@ -10,7 +10,7 @@ use crate::span::Span;
 use crate::type_engine::*;
 use crate::ControlFlowGraph;
 use crate::{build_config::BuildConfig, error::*, Ident};
-use crate::{type_engine::*, TypeParameter};
+use crate::{TypeParameter};
 
 use core_types::{Function, Property};
 use sha2::{Digest, Sha256};

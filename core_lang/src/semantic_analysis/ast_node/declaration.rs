@@ -1,17 +1,10 @@
 use super::impl_trait::Mode;
-use super::{
-    IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
-};
+use super::{TypedCodeBlock, TypedExpression};
 use crate::parse_tree::*;
-use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::type_engine::*;
-use crate::ControlFlowGraph;
-use crate::{build_config::BuildConfig, error::*, Ident};
-
-use core_types::{Function, Property};
-use sha2::{Digest, Sha256};
-use std::collections::{HashMap, HashSet};
+use crate::{error::*, Ident};
+use core_types::Property;
 
 mod function;
 mod variable;
