@@ -8,19 +8,21 @@ edition = "2018"
 selector-debug = ["structopt", "hex"]
 
 [dependencies]
-Inflector = { git = "https://github.com/sezna/Inflector.git" }
-#pest = "2.0"
+core-types = { path = "../core-types" }
 derivative = "2.2.0"
 either = "1.6"
 fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
 fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
 hex = { version = "0.4", optional = true }
 lazy_static = "1.4"
+line-col = "0.2"
+#pest = "2.0"
 pest = { git = "https://github.com/sezna/pest.git", rev = "0ee8d107923f8979897efbd12e16a0eb99ea98b3" }
 pest_derive = "2.0"
 petgraph = "0.5"
 sha2 = "0.9"
 smallvec = "1.7"
+source-span = "2.4"
 structopt = { version = "0.3", default-features = false, optional = true }
 thiserror = "1.0"
 uuid-b64 = "0.1"

@@ -28,7 +28,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use std::collections::{HashMap, HashSet};
 
-use semantic_analysis::{TreeType, TypedParseTree};
+pub use semantic_analysis::TreeType;
+pub use semantic_analysis::TypedParseTree;
 pub mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
@@ -39,67 +40,95 @@ pub use ident::Ident;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 pub use type_engine::TypeInfo;
 
-// todo rename to language name
+/// Represents a parsed, but not yet type-checked, Sway program.
+/// A Sway program can be either a contract, script, predicate, or
+/// it can be a library to be imported into one of the aforementioned
+/// program types.
 #[derive(Debug)]
 pub struct HllParseTree<'sc> {
-    pub contract_ast: Option<ParseTree<'sc>>,
-    pub script_ast: Option<ParseTree<'sc>>,
-    pub predicate_ast: Option<ParseTree<'sc>>,
-    pub library_exports: Vec<(Ident<'sc>, ParseTree<'sc>)>,
+    pub tree_type: TreeType<'sc>,
+    pub tree: ParseTree<'sc>,
 }
 
-#[derive(Debug)]
-pub struct HllTypedParseTree<'sc> {
-    pub library_exports: LibraryExports<'sc>,
-}
-
-#[derive(Debug)]
-pub struct LibraryExports<'sc> {
-    pub namespace: Namespace<'sc>,
-    trees: Vec<TypedParseTree<'sc>>,
-}
-
+/// Represents some exportable information that results from compiling some
+/// Sway source code.
 #[derive(Debug)]
 pub struct ParseTree<'sc> {
-    /// In a typical programming language, you might have a single root node for your syntax tree.
-    /// In this language however, we want to expose multiple public functions at the root
-    /// level so the tree is multi-root.
+    /// The untyped AST nodes that constitute this tree's root nodes.
     pub root_nodes: Vec<AstNode<'sc>>,
+    /// The [span::Span] of the entire tree.
     pub span: span::Span<'sc>,
 }
 
+/// A single [AstNode] represents a node in the parse tree. Note that [AstNode]
+/// is a recursive type and can contain other [AstNode], thus populating the tree.
 #[derive(Debug, Clone)]
 pub struct AstNode<'sc> {
+    /// The content of this ast node, which could be any control flow structure or other
+    /// basic organizational component.
     pub content: AstNodeContent<'sc>,
+    /// The [span::Span] representing this entire [AstNode].
     pub span: span::Span<'sc>,
 }
 
+/// Represents the various structures that constitute a Sway program.
 #[derive(Debug, Clone)]
 pub enum AstNodeContent<'sc> {
+    /// A statement of the form `use foo::bar;` or `use ::foo::bar;`
     UseStatement(UseStatement<'sc>),
+    /// A statement of the form `return foo;`
     ReturnStatement(ReturnStatement<'sc>),
+    /// Any type of declaration, of which there are quite a few. See [Declaration] for more details
+    /// on the possible variants.
     Declaration(Declaration<'sc>),
+    /// Any type of expression, of which there are quite a few. See [Expression] for more details.
     Expression(Expression<'sc>),
+    /// An implicit return expression is different from a [AstNodeContent::ReturnStatement] because
+    /// it is not a control flow item. Therefore it is a different variant.
+    ///
+    /// An implicit return expression is an [Expression] at the end of a code block which has no
+    /// semicolon, denoting that it is the [Expression] to be returned from that block.
     ImplicitReturnExpression(Expression<'sc>),
+    /// A control flow element which loops continually until some boolean expression evaluates as
+    /// `false`.
     WhileLoop(WhileLoop<'sc>),
+    /// A statement of the form `dep foo::bar;` which imports/includes another source file.
     IncludeStatement(IncludeStatement<'sc>),
 }
 
 impl<'sc> ParseTree<'sc> {
+    /// Create a new, empty, [ParseTree] from a span which represents the source code that it will
+    /// cover.
     pub(crate) fn new(span: span::Span<'sc>) -> Self {
         ParseTree {
             root_nodes: Vec::new(),
             span,
         }
     }
-}
 
-impl<'sc> ParseTree<'sc> {
+    /// Push a new [AstNode] on to the end of a [ParseTree]'s root nodes.
     pub(crate) fn push(&mut self, new_node: AstNode<'sc>) {
         self.root_nodes.push(new_node);
     }
 }
 
+/// Given an input `str` and an optional [BuildConfig], parse the input into a [HllParseTree].
+///
+/// Here, the `'sc` lifetime is introduced to the compilation process. It stands for _source code_,
+/// and all references to `'sc` in the compiler refer to the lifetime of the original source input
+/// `str`.
+///
+/// # Example
+/// ```
+/// # use core_lang::parse;
+/// # fn main() {
+///     let input = "script; fn main() -> bool { true }";
+///     let result = parse(input, Default::default());
+/// # }
+/// ```
+///
+/// # Panics
+/// Panics if the generated parser from Pest panics.
 pub fn parse<'sc>(
     input: &'sc str,
     config: Option<&BuildConfig>,
@@ -130,13 +159,16 @@ pub fn parse<'sc>(
     ok(res, warnings, errors)
 }
 
+/// Represents the result of compiling Sway code via `compile_to_asm`.
+/// Contains the compiled assets or resulting errors, and any warnings generated.
 pub enum CompilationResult<'sc> {
     Success {
         asm: FinalizedAsm<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Library {
-        exports: LibraryExports<'sc>,
+        name: Ident<'sc>,
+        namespace: Namespace<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -144,6 +176,21 @@ pub enum CompilationResult<'sc> {
         errors: Vec<CompileError<'sc>>,
     },
 }
+
+pub enum CompileAstResult<'sc> {
+    Success {
+        parse_tree: TypedParseTree<'sc>,
+        tree_type: TreeType<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Failure {
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+    },
+}
+
+/// Represents the result of compiling Sway code via `compile_to_bytecode`.
+/// Contains the compiled bytecode in byte form, or, resulting errors, and any warnings generated.
 pub enum BytecodeCompilationResult<'sc> {
     Success {
         bytes: Vec<u8>,
@@ -158,6 +205,8 @@ pub enum BytecodeCompilationResult<'sc> {
     },
 }
 
+/// If a given [Rule] exists in the input text, return
+/// that string trimmed. Otherwise, return `None`. This is typically used to find keywords.
 pub fn extract_keyword(line: &str, rule: Rule) -> Option<&str> {
     if let Ok(pair) = HllParser::parse(rule, line) {
         Some(pair.as_str().trim())
@@ -166,6 +215,7 @@ pub fn extract_keyword(line: &str, rule: Rule) -> Option<&str> {
     }
 }
 
+/// Takes a parse failure as input and returns either the index of the positional pest parse error, or the start position of the span of text that the error occurs.
 fn get_start(err: &pest::error::Error<Rule>) -> usize {
     match err.location {
         pest::error::InputLocation::Pos(num) => num,
@@ -173,6 +223,7 @@ fn get_start(err: &pest::error::Error<Rule>) -> usize {
     }
 }
 
+/// Takes a parse failure as input and returns either the index of the positional pest parse error, or the end position of the span of text that the error occurs.
 fn get_end(err: &pest::error::Error<Rule>) -> usize {
     match err.location {
         pest::error::InputLocation::Pos(num) => num,
@@ -183,7 +234,8 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
 /// This struct represents the compilation of an internal dependency
 /// defined through an include statement (the `dep` keyword).
 pub(crate) struct InnerDependencyCompileResult<'sc> {
-    library_exports: LibraryExports<'sc>,
+    name: Ident<'sc>,
+    namespace: Namespace<'sc>,
 }
 /// For internal compiler use.
 /// Compiles an included file and returns its control flow and dead code graphs.
@@ -207,13 +259,9 @@ pub(crate) fn compile_inner_dependency<'sc>(
         warnings,
         errors
     );
-    match (
-        parse_tree.script_ast,
-        parse_tree.predicate_ast,
-        parse_tree.contract_ast,
-    ) {
-        (None, None, None) => (),
-        _ => {
+    let library_name = match &parse_tree.tree_type {
+        TreeType::Library { name } => name,
+        TreeType::Contract | TreeType::Script | TreeType::Predicate => {
             errors.push(CompileError::ImportMustBeLibrary {
                 span: span::Span {
                     span: pest::Span::new(input, 0, 0).unwrap(),
@@ -222,71 +270,56 @@ pub(crate) fn compile_inner_dependency<'sc>(
             });
             return err(warnings, errors);
         }
-    }
-    let library_exports: LibraryExports = {
-        let res: Vec<_> = parse_tree
-            .library_exports
-            .into_iter()
-            .filter_map(|(name, tree)| {
-                TypedParseTree::type_check(
-                    tree,
-                    initial_namespace.clone(),
-                    TreeType::Library,
-                    &build_config.clone(),
-                    dead_code_graph,
-                    dependency_graph,
-                )
-                .ok(&mut warnings, &mut errors)
-                .map(|value| (name, value))
-            })
-            .collect();
-        let mut exports = LibraryExports {
-            namespace: Default::default(),
-            trees: vec![],
-        };
-        for (ref name, parse_tree) in res {
-            exports.namespace.insert_module(
-                name.primary_name.to_string(),
-                parse_tree.namespace().clone(),
-            );
-            exports.trees.push(parse_tree);
-        }
-        exports
     };
-    // look for return path errors
-    for tree in &library_exports.trees {
-        let graph = ControlFlowGraph::construct_return_path_graph(tree);
-        errors.append(&mut graph.analyze_return_paths());
-    }
+    let typed_parse_tree = check!(
+        TypedParseTree::type_check(
+            parse_tree.tree,
+            initial_namespace.clone(),
+            &parse_tree.tree_type,
+            &build_config.clone(),
+            dead_code_graph,
+            dependency_graph,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-    for tree in &library_exports.trees {
-        // The dead code will be analyzed later wholistically with the rest of the program
-        // since we can't tell what is dead and what isn't just from looking at this file
-        if let Err(e) =
-            ControlFlowGraph::append_to_dead_code_graph(tree, TreeType::Library, dead_code_graph)
-        {
-            errors.push(e)
-        };
-    }
+    // look for return path errors
+    let graph = ControlFlowGraph::construct_return_path_graph(&typed_parse_tree);
+    errors.append(&mut graph.analyze_return_paths());
+
+    // The dead code will be analyzed later wholistically with the rest of the program
+    // since we can't tell what is dead and what isn't just from looking at this file
+    if let Err(e) = ControlFlowGraph::append_to_dead_code_graph(
+        &typed_parse_tree,
+        &parse_tree.tree_type,
+        dead_code_graph,
+    ) {
+        errors.push(e)
+    };
 
     ok(
-        InnerDependencyCompileResult { library_exports },
+        InnerDependencyCompileResult {
+            name: library_name.clone(),
+            namespace: typed_parse_tree.into_namespace(),
+        },
         warnings,
         errors,
     )
 }
 
-pub fn compile_to_asm<'sc>(
+pub fn compile_to_ast<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
-    build_config: BuildConfig,
+    build_config: &BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompilationResult<'sc> {
+) -> CompileAstResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
-        parse(input, Some(&build_config)),
-        return CompilationResult::Failure { errors, warnings },
+        parse(input, Some(build_config)),
+        return CompileAstResult::Failure { errors, warnings },
         warnings,
         errors
     );
@@ -296,158 +329,85 @@ pub fn compile_to_asm<'sc>(
         namespace: Default::default(),
     };
 
-    let mut type_check_ast = |ast: Option<_>, tree_type| {
-        ast.map(|tree| {
-            TypedParseTree::type_check(
-                tree,
-                initial_namespace.clone(),
-                tree_type,
-                &build_config.clone(),
-                &mut dead_code_graph,
-                dependency_graph,
-            )
-            .ok(&mut warnings, &mut errors)
-        })
-        .flatten()
-    };
+    let typed_parse_tree = check!(
+        TypedParseTree::type_check(
+            parse_tree.tree,
+            initial_namespace.clone(),
+            &parse_tree.tree_type,
+            &build_config.clone(),
+            &mut dead_code_graph,
+            dependency_graph,
+        ),
+        return CompileAstResult::Failure { errors, warnings },
+        warnings,
+        errors
+    );
 
-    let contract_ast = type_check_ast(parse_tree.contract_ast, TreeType::Contract);
-    let predicate_ast = type_check_ast(parse_tree.predicate_ast, TreeType::Predicate);
-    let script_ast = type_check_ast(parse_tree.script_ast, TreeType::Script);
-
-    let library_exports: LibraryExports = {
-        let res: Vec<_> = parse_tree
-            .library_exports
-            .into_iter()
-            .filter_map(|(name, tree)| {
-                TypedParseTree::type_check(
-                    tree,
-                    initial_namespace.clone(),
-                    TreeType::Library,
-                    &build_config.clone(),
-                    &mut dead_code_graph,
-                    dependency_graph,
-                )
-                .ok(&mut warnings, &mut errors)
-                .map(|value| (name, value))
-            })
-            .collect();
-        let mut exports = LibraryExports {
-            namespace: Default::default(),
-            trees: vec![],
-        };
-        for (ref name, parse_tree) in res {
-            exports.namespace.insert_module(
-                name.primary_name.to_string(),
-                parse_tree.namespace().clone(),
-            );
-            exports.trees.push(parse_tree);
-        }
-        exports
-    };
-
-    // If there are errors, display them now before performing control flow analysis.
-    // It is necessary that the syntax tree is well-formed for control flow analysis
-    // to be correct.
-    if !errors.is_empty() {
-        return CompilationResult::Failure { errors, warnings };
-    }
-
-    // perform control flow analysis on each branch
-    let (script_warnings, script_errors) =
-        perform_control_flow_analysis(&script_ast, TreeType::Script, &mut dead_code_graph);
-    let (contract_warnings, contract_errors) =
-        perform_control_flow_analysis(&contract_ast, TreeType::Contract, &mut dead_code_graph);
-    let (predicate_warnings, predicate_errors) =
-        perform_control_flow_analysis(&predicate_ast, TreeType::Predicate, &mut dead_code_graph);
-    let (library_warnings, library_errors) =
-        perform_control_flow_analysis_on_library_exports(&library_exports, &mut dead_code_graph);
-
-    let mut l_warnings = [
-        script_warnings,
-        contract_warnings,
-        predicate_warnings,
-        library_warnings,
-    ]
-    .concat();
-    let mut l_errors = [
-        script_errors,
-        contract_errors,
-        predicate_errors,
-        library_errors,
-    ]
-    .concat();
+    let (mut l_warnings, mut l_errors) = perform_control_flow_analysis(
+        &typed_parse_tree,
+        &parse_tree.tree_type,
+        &mut dead_code_graph,
+    );
 
     errors.append(&mut l_errors);
     warnings.append(&mut l_warnings);
     errors = dedup_unsorted(errors);
     warnings = dedup_unsorted(warnings);
-    // for each syntax tree, generate assembly.
-    let predicate_asm = if let Some(tree) = predicate_ast {
-        Some(check!(
-            compile_ast_to_asm(tree, &build_config),
-            return CompilationResult::Failure { errors, warnings },
-            warnings,
-            errors
-        ))
-    } else {
-        None
-    };
 
-    let contract_asm = if let Some(tree) = contract_ast {
-        Some(check!(
-            compile_ast_to_asm(tree, &build_config),
-            return CompilationResult::Failure { errors, warnings },
-            warnings,
-            errors
-        ))
-    } else {
-        None
-    };
+    if !errors.is_empty() {
+        return CompileAstResult::Failure { errors, warnings };
+    }
 
-    let script_asm = if let Some(tree) = script_ast {
-        Some(check!(
-            compile_ast_to_asm(tree, &build_config),
-            return CompilationResult::Failure { errors, warnings },
-            warnings,
-            errors
-        ))
-    } else {
-        None
-    };
-
-    if errors.is_empty() {
-        // TODO move this check earlier and don't compile all of them if there is only one
-        match (predicate_asm, contract_asm, script_asm, library_exports) {
-            (Some(pred), None, None, o) if o.trees.is_empty() => CompilationResult::Success {
-                asm: pred,
-                warnings,
-            },
-            (None, Some(contract), None, o) if o.trees.is_empty() => CompilationResult::Success {
-                asm: contract,
-                warnings,
-            },
-            (None, None, Some(script), o) if o.trees.is_empty() => CompilationResult::Success {
-                asm: script,
-                warnings,
-            },
-            (None, None, None, o) if !o.trees.is_empty() => CompilationResult::Library {
-                warnings,
-                exports: o,
-            },
-            (None, None, None, o) if o.trees.is_empty() => {
-                todo!("do we want empty files to be valid programs?")
-            }
-            // Default to compiling an empty library if there is no code or invalid state
-            _ => unimplemented!(
-                "Multiple contracts, libraries, scripts, or predicates in a single file are \
-                 unsupported."
-            ),
-        }
-    } else {
-        CompilationResult::Failure { errors, warnings }
+    CompileAstResult::Success {
+        parse_tree: typed_parse_tree,
+        tree_type: parse_tree.tree_type,
+        warnings,
     }
 }
+
+/// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
+/// form (not raw bytes/bytecode).
+pub fn compile_to_asm<'sc>(
+    input: &'sc str,
+    initial_namespace: &Namespace<'sc>,
+    build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
+) -> CompilationResult<'sc> {
+    match compile_to_ast(input, initial_namespace, &build_config, dependency_graph) {
+        CompileAstResult::Failure { warnings, errors } => {
+            CompilationResult::Failure { warnings, errors }
+        }
+        CompileAstResult::Success {
+            parse_tree,
+            tree_type,
+            mut warnings,
+        } => {
+            let mut errors = vec![];
+            match tree_type {
+                TreeType::Contract | TreeType::Script | TreeType::Predicate => {
+                    let asm = check!(
+                        compile_ast_to_asm(parse_tree, &build_config),
+                        return CompilationResult::Failure { errors, warnings },
+                        warnings,
+                        errors
+                    );
+                    if !errors.is_empty() {
+                        return CompilationResult::Failure { errors, warnings };
+                    }
+                    CompilationResult::Success { asm, warnings }
+                }
+                TreeType::Library { name } => CompilationResult::Library {
+                    warnings,
+                    name,
+                    namespace: parse_tree.into_namespace(),
+                },
+            }
+        }
+    }
+}
+
+/// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
+/// bytecode form.
 pub fn compile_to_bytecode<'n, 'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
@@ -477,56 +437,33 @@ pub fn compile_to_bytecode<'n, 'sc>(
         CompilationResult::Failure { warnings, errors } => {
             BytecodeCompilationResult::Failure { warnings, errors }
         }
-        CompilationResult::Library {
-            warnings,
-            exports: _exports,
-        } => BytecodeCompilationResult::Library { warnings },
+        CompilationResult::Library { warnings, .. } => {
+            BytecodeCompilationResult::Library { warnings }
+        }
     }
 }
 
+/// Given a [TypedParseTree], which is type-checked Sway source, construct a graph to analyze
+/// control flow and determine if it is valid.
 fn perform_control_flow_analysis<'sc>(
-    tree: &Option<TypedParseTree<'sc>>,
-    tree_type: TreeType,
+    tree: &TypedParseTree<'sc>,
+    tree_type: &TreeType<'sc>,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
 ) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
-    match tree {
-        Some(tree) => {
-            match ControlFlowGraph::append_to_dead_code_graph(tree, tree_type, dead_code_graph) {
-                Ok(_) => (),
-                Err(e) => return (vec![], vec![e]),
-            }
-            let mut warnings = vec![];
-            let mut errors = vec![];
-            warnings.append(&mut dead_code_graph.find_dead_code());
-            let graph = ControlFlowGraph::construct_return_path_graph(tree);
-            errors.append(&mut graph.analyze_return_paths());
-            (warnings, errors)
-        }
-        None => (vec![], vec![]),
+    match ControlFlowGraph::append_to_dead_code_graph(tree, tree_type, dead_code_graph) {
+        Ok(_) => (),
+        Err(e) => return (vec![], vec![e]),
     }
-}
-fn perform_control_flow_analysis_on_library_exports<'sc>(
-    lib: &LibraryExports<'sc>,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
-) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
     let mut warnings = vec![];
     let mut errors = vec![];
-    for tree in &lib.trees {
-        match ControlFlowGraph::append_to_dead_code_graph(tree, TreeType::Library, dead_code_graph)
-        {
-            Ok(_) => (),
-            Err(e) => return (vec![], vec![e]),
-        }
-        warnings.append(&mut dead_code_graph.find_dead_code());
-        let graph = ControlFlowGraph::construct_return_path_graph(tree);
-        errors.append(&mut graph.analyze_return_paths());
-    }
+    warnings.append(&mut dead_code_graph.find_dead_code());
+    let graph = ControlFlowGraph::construct_return_path_graph(tree);
+    errors.append(&mut graph.analyze_return_paths());
     (warnings, errors)
 }
 
-// strategy: parse top level things
-// and if we encounter a function body or block, recursively call this function and build
-// sub-nodes
+/// The basic recursive parser which handles the top-level parsing given the output of the
+/// pest-generated parser.
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
     config: Option<&BuildConfig>,
@@ -534,12 +471,7 @@ fn parse_root_from_pairs<'sc>(
     let path = config.map(|config| config.dir_of_code.clone());
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    let mut fuel_ast = HllParseTree {
-        contract_ast: None,
-        script_ast: None,
-        predicate_ast: None,
-        library_exports: vec![],
-    };
+    let mut fuel_ast_opt = None;
     for block in input {
         let mut parse_tree = ParseTree::new(span::Span {
             span: block.as_span(),
@@ -610,43 +542,33 @@ fn parse_root_from_pairs<'sc>(
         }
         match rule {
             Rule::contract => {
-                if fuel_ast.contract_ast.is_some() {
-                    errors.push(CompileError::MultipleContracts(span::Span {
-                        span: block.as_span(),
-                        path: path.clone(),
-                    }));
-                } else {
-                    fuel_ast.contract_ast = Some(parse_tree);
-                }
+                fuel_ast_opt = Some(HllParseTree {
+                    tree_type: TreeType::Contract,
+                    tree: parse_tree,
+                });
             }
             Rule::script => {
-                if fuel_ast.script_ast.is_some() {
-                    errors.push(CompileError::MultipleScripts(span::Span {
-                        span: block.as_span(),
-                        path: path.clone(),
-                    }));
-                } else {
-                    fuel_ast.script_ast = Some(parse_tree);
-                }
+                fuel_ast_opt = Some(HllParseTree {
+                    tree_type: TreeType::Script,
+                    tree: parse_tree,
+                });
             }
             Rule::predicate => {
-                if fuel_ast.predicate_ast.is_some() {
-                    errors.push(CompileError::MultiplePredicates(span::Span {
-                        span: block.as_span(),
-                        path: path.clone(),
-                    }));
-                } else {
-                    fuel_ast.predicate_ast = Some(parse_tree);
-                }
+                fuel_ast_opt = Some(HllParseTree {
+                    tree_type: TreeType::Predicate,
+                    tree: parse_tree,
+                });
             }
             Rule::library => {
-                fuel_ast.library_exports.push((
-                    library_name.expect(
-                        "Safe unwrap, because the core_lang enforces the library keyword is \
-                         followed by a name. This is an invariant",
-                    ),
-                    parse_tree,
-                ));
+                fuel_ast_opt = Some(HllParseTree {
+                    tree_type: TreeType::Library {
+                        name: library_name.expect(
+                            "Safe unwrap, because the core_lang enforces the library keyword is \
+                             followed by a name. This is an invariant",
+                        ),
+                    },
+                    tree: parse_tree,
+                });
             }
             Rule::EOI => (),
             a => errors.push(CompileError::InvalidTopLevelItem(
@@ -659,6 +581,7 @@ fn parse_root_from_pairs<'sc>(
         }
     }
 
+    let fuel_ast = fuel_ast_opt.unwrap();
     ok(fuel_ast, warnings, errors)
 }
 
@@ -794,7 +717,7 @@ fn test_unary_ordering() {
                 ..
             })),
         ..
-    } = &prog.script_ast.unwrap().root_nodes[0]
+    } = &prog.tree.root_nodes[0]
     {
         if let AstNode {
             content: AstNodeContent::Expression(Expression::LazyOperator { op, .. }),

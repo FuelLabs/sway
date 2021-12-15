@@ -1,7 +1,7 @@
 use super::token::Token;
 use super::token_type::TokenType;
 use crate::{capabilities, core::token::traverse_node};
-use core_lang::parse;
+use core_lang::{parse, TreeType};
 use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 use ropey::Rope;
 use std::collections::HashMap;
@@ -117,32 +117,14 @@ impl TextDocument {
             Some(value) => {
                 let mut tokens = vec![];
 
-                for (ident, parse_tree) in value.library_exports {
+                if let TreeType::Library { name } = value.tree_type {
                     // TODO
                     // Is library name necessary to store for the LSP?
-                    let token = Token::from_ident(&ident, TokenType::Library);
+                    let token = Token::from_ident(&name, TokenType::Library);
                     tokens.push(token);
-                    for node in parse_tree.root_nodes {
-                        traverse_node(node, &mut tokens);
-                    }
-                }
-
-                if let Some(script) = value.script_ast {
-                    for node in script.root_nodes {
-                        traverse_node(node, &mut tokens);
-                    }
-                }
-
-                if let Some(contract) = value.contract_ast {
-                    for node in contract.root_nodes {
-                        traverse_node(node, &mut tokens);
-                    }
-                }
-
-                if let Some(predicate) = value.predicate_ast {
-                    for node in predicate.root_nodes {
-                        traverse_node(node, &mut tokens);
-                    }
+                };
+                for node in value.tree.root_nodes {
+                    traverse_node(node, &mut tokens);
                 }
 
                 Ok((

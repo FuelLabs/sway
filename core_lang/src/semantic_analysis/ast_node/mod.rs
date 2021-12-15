@@ -749,7 +749,11 @@ fn import_new_file<'n, 'sc>(
     };
     dep_config.file_name = file_name;
     dep_config.dir_of_code = Arc::new(dep_path);
-    let crate::InnerDependencyCompileResult { library_exports } = check!(
+    let crate::InnerDependencyCompileResult {
+        name,
+        namespace: module,
+        ..
+    } = check!(
         crate::compile_inner_dependency(
             static_file_string,
             &dep_namespace,
@@ -762,14 +766,12 @@ fn import_new_file<'n, 'sc>(
         errors
     );
 
-    if let Some((name, module)) = library_exports.namespace.take_the_only_module() {
-        let name = match statement.alias {
-            Some(ref alias) => alias.primary_name.to_string(),
-            None => name,
-        };
-        namespace.insert_module(name, module);
-    }
-
+    let name = match statement.alias {
+        Some(ref alias) => alias,
+        None => &name,
+    };
+    let name = name.primary_name.to_string();
+    namespace.insert_module(name, module);
     ok((), warnings, errors)
 }
 
