@@ -6,7 +6,7 @@ entry = "main.sw"
 
 [dependencies]
 std = { path = "../../../../../lib-std" }
-test_token_abi = { path = "../token_ops_abi"}
+test_fuel_coin_abi = { path = "../test_fuel_coin_abi"}
 
 [[tx-input]]
 type = "Contract"
