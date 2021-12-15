@@ -14,7 +14,7 @@ pub struct ParamsTransferToOutput {
 pub struct ParamsForceTransfer {
     coins: u64,
     token_id: b256,
-    contract_id: ContractId,
+    c_id: ContractId,
 }
 
 abi TestFuelCoin {
@@ -22,6 +22,6 @@ abi TestFuelCoin {
     fn burn(gas: u64, coins: u64, token_id: b256, burn_amount: u64);
     fn transfer_to_output(gas: u64, coins: u64, token_id: b256, params: ParamsTransferToOutput);
     fn force_transfer(gas: u64, coins: u64, token_id: b256, params: ParamsForceTransfer);
-    fn name(gas: u64, coins: u64, token_id: b256, input: ()) -> string;
+    fn name(gas: u64, coins: u64, token_id: b256, input: ()) -> str[14];
 
 }
