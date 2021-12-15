@@ -830,17 +830,35 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors
                 );
-                let index = check!(
-                    Expression::parse_from_pair(inner_iter.next().unwrap(), config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                Expression::ArrayIndex {
-                    prefix: Box::new(prefix),
-                    index: Box::new(index),
-                    span: Span { span, path },
+                let mut index_buf = vec![];
+                for index in inner_iter {
+                    index_buf.push(check!(
+                        Expression::parse_from_pair(index, config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
                 }
+                let first_index = index_buf.first().expect("guarenteed by grammer");
+                let mut exp = Expression::ArrayIndex {
+                    prefix: Box::new(prefix),
+                    index: Box::new(first_index.to_owned()),
+                    span: Span {
+                        span,
+                        path: path.clone(),
+                    },
+                };
+                for index in index_buf.into_iter().skip(1) {
+                    exp = Expression::ArrayIndex {
+                        prefix: Box::new(exp),
+                        index: Box::new(index),
+                        span: Span {
+                            span,
+                            path: path.clone(),
+                        },
+                    };
+                }
+                exp
             }
             a => {
                 eprintln!(
