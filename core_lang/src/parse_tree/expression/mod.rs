@@ -894,7 +894,7 @@ fn convert_unary_to_fn_calls<'sc>(
     ok(expr, warnings, errors)
 }
 
-fn parse_array_index<'sc>(
+pub(crate) fn parse_array_index<'sc>(
     item: Pair<'sc, Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<'sc, Expression<'sc>> {

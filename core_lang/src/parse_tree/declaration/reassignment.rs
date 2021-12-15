@@ -3,7 +3,7 @@ use crate::error::{err, ok, CompileError, CompileResult};
 use crate::parse_tree::Expression;
 use crate::parser::Rule;
 use crate::span::Span;
-use crate::Ident;
+use crate::{parse_array_index, Ident};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -87,7 +87,7 @@ impl<'sc> Reassignment<'sc> {
                 // a field
                 let mut name_parts = inner.into_inner();
                 let mut expr = check!(
-                    parse_call_item_ensure_only_var(
+                    parse_subfield_path_ensure_only_var(
                         name_parts.next().expect("guaranteed by grammar"),
                         config
                     ),
@@ -126,6 +126,44 @@ impl<'sc> Reassignment<'sc> {
         }
     }
 }
+
+fn parse_subfield_path_ensure_only_var<'sc>(
+    item: Pair<'sc, Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<'sc, Expression<'sc>> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    let path = config.map(|c| c.path());
+    let item = item.into_inner().next().expect("guarenteed by grammar");
+    match item.as_rule() {
+        Rule::call_item => parse_call_item_ensure_only_var(item, config),
+        Rule::array_index => parse_array_index(item, config),
+        a => {
+            eprintln!(
+                "Unimplemented subfield path: {:?} ({:?}) ({:?})",
+                a,
+                item.as_str(),
+                item.as_rule()
+            );
+            errors.push(CompileError::UnimplementedRule(
+                a,
+                Span {
+                    span: item.as_span(),
+                    path: path.clone(),
+                },
+            ));
+            // construct unit expression for error recovery
+            let exp = Expression::Unit {
+                span: Span {
+                    span: item.as_span(),
+                    path,
+                },
+            };
+            ok(exp, warnings, errors)
+        }
+    }
+}
+
 /// Parses a `call_item` rule but ensures that it is only a variable expression, since generic
 /// expressions on the LHS of a reassignment are invalid.
 /// valid:
