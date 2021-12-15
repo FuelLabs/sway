@@ -63,7 +63,7 @@ call_item                =  {ident | "(" ~ expr ~ ")" }
 delineated_path          =  {path_component ~ fn_args?}
 path_component           =  {path_ident ~ (path_separator ~ path_ident)+}
 path_ident               =  {ident}
-array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}      // This isn't going to work for array[a][b].
+array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}
 
 // abi blocks and abi casting
 abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ expr ~ ")"}
