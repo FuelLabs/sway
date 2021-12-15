@@ -19,7 +19,6 @@ fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
 fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
 futures = "0.3"
 hex = "0.4.3"
-line-col = "0.2"
 pest = { git = "https://github.com/sezna/pest.git", rev = "8aa58791f759daf4caee26e8560e862df5a6afb7" }
 prettydiff = "0.4.0"
 reqwest = { version = "0.11.4", features = ["json"] }
