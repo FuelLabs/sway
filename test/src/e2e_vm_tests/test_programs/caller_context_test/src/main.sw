@@ -7,7 +7,7 @@ fn main() -> bool {
     let gas: u64 = 1000;
     let amount: u64 = 11;
     let test_token_id: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
-    let deployed_contract_id = 0x27b323db2cfa318890a8be57b223f40fb364419ba1999cb59eda061aea40730c;
+    let deployed_contract_id = 0x9f03de8ad53cfcdc5b58e7630c78076a132f434fe74e6b355ac86cd4d0c75e2f;
 
     let test_contract = abi(ContextTesting, deployed_contract_id);
 
