@@ -5,7 +5,7 @@ use std::constants::ETH_ID;
 
 // should be false in the case of a script
 fn main() -> bool {
-  let caller = abi(AuthTesting, 0x573a352216d15ffc712e048b640a3d1ad1b0c16a674adfb4dee0c2fcacf0298b);
+  let caller = abi(AuthTesting, 0x27829e78404b18c037b15bfba5110c613a83ea22c718c8b51596e17c9cb1cd6f);
 
   caller.returns_gm_one(1000, 0, ETH_ID, ())
 }

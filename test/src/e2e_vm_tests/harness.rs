@@ -1,7 +1,14 @@
-use forc::test::{forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, RunCommand};
-use fuel_tx::Transaction;
+use forc::test::{
+    forc_abi_json, forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, JsonAbiCommand,
+    RunCommand,
+};
+use fuel_tx::{Input, Output, Transaction};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+use serde_json::Value;
+use std::fs;
 
 pub(crate) fn deploy_contract(file_name: &str) {
     // build the contract
@@ -105,5 +112,49 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
         binary_outfile: None,
         offline_mode: false,
         silent_mode: true,
+    })
+}
+
+pub(crate) fn test_json_abi(file_name: &str) -> Result<(), String> {
+    let _script = compile_to_json_abi(file_name)?;
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let oracle_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_abi_oracle.json"
+    );
+    let output_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_abi_output.json"
+    );
+    if fs::metadata(oracle_path.clone()).is_err() {
+        return Err("JSON ABI oracle file does not exist for this test.".to_string());
+    }
+    if fs::metadata(output_path.clone()).is_err() {
+        return Err("JSON ABI output file does not exist for this test.".to_string());
+    }
+    let oracle_contents =
+        fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
+    let output_contents =
+        fs::read_to_string(output_path).expect("Something went wrong reading the file.");
+    if oracle_contents != output_contents {
+        return Err("Mismatched ABI JSON output.".to_string());
+    }
+    Ok(())
+}
+
+fn compile_to_json_abi(file_name: &str) -> Result<Value, String> {
+    println!("   ABI gen {}", file_name);
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    forc_abi_json::build(JsonAbiCommand {
+        path: Some(format!(
+            "{}/src/e2e_vm_tests/test_programs/{}",
+            manifest_dir, file_name
+        )),
+        json_outfile: Some(format!(
+            "{}/src/e2e_vm_tests/test_programs/{}/{}",
+            manifest_dir, file_name, "json_abi_output.json"
+        )),
+        offline_mode: false,
+        silent_mode: false,
     })
 }

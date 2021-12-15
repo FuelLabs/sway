@@ -11,17 +11,23 @@ use crate::type_engine::*;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
-    symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
+    // This is a BTreeMap because we rely on its ordering being consistent. See
+    // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
+    // order.
+    symbols: BTreeMap<Ident<'sc>, TypedDeclaration<'sc>>,
     implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
-    modules: HashMap<ModuleName, Namespace<'sc>>,
+    // This is a BTreeMap because we rely on its ordering being consistent. See
+    // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
+    // order.
+    modules: BTreeMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
     /// namespace _is_ the root namespace.
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
@@ -35,23 +41,6 @@ impl<'sc> Namespace<'sc> {
 
     pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &Namespace<'sc>> {
         self.modules.values()
-    }
-
-    // TODO: compile_inner_dependency returns a namespace that contains at most one module and
-    // nothing else. This is confusing and should be fixed.
-    pub fn take_the_only_module(self) -> Option<(String, Namespace<'sc>)> {
-        assert!(self.symbols.is_empty());
-        assert!(self.implemented_traits.is_empty());
-        assert!(self.use_synonyms.is_empty());
-        assert!(self.use_aliases.is_empty());
-        let mut modules = self.modules.into_iter();
-        match modules.next() {
-            Some((name, module)) => {
-                assert!(modules.next().is_none());
-                Some((name, module))
-            }
-            None => None,
-        }
     }
 
     /// this function either returns a struct (i.e. custom type), `None`, denoting the type that is
@@ -345,10 +334,7 @@ impl<'sc> Namespace<'sc> {
         module_name: String,
         module_contents: Namespace<'sc>,
     ) {
-        self.modules.insert(
-            module_name,
-            module_contents.modules.into_iter().next().unwrap().1,
-        );
+        self.modules.insert(module_name, module_contents);
     }
 
     pub(crate) fn find_enum(&self, enum_name: &Ident<'sc>) -> Option<TypedEnumDeclaration<'sc>> {

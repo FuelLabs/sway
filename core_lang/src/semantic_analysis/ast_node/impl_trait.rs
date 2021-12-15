@@ -69,7 +69,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
                     type_implementing_for_id,
                     &type_implementing_for_span,
                     Mode::NonAbi,
-                    dependency_graph
+                    dependency_graph,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -129,7 +129,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
                     type_implementing_for_id,
                     &type_implementing_for_span,
                     Mode::ImplAbiFn,
-                    dependency_graph
+                    dependency_graph,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -214,7 +214,7 @@ fn type_check_trait_implementation<'n, 'sc>(
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph
+                dependency_graph,
             ),
             continue,
             warnings,
@@ -379,7 +379,7 @@ fn type_check_trait_implementation<'n, 'sc>(
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph
+                dependency_graph,
             ),
             continue,
             warnings,

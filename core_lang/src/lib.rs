@@ -29,7 +29,7 @@ use pest::Parser;
 use std::collections::{HashMap, HashSet};
 
 pub use semantic_analysis::TreeType;
-use semantic_analysis::TypedParseTree;
+pub use semantic_analysis::TypedParseTree;
 pub mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
@@ -40,65 +40,95 @@ pub use ident::Ident;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
 pub use type_engine::TypeInfo;
 
-// todo rename to language name
+/// Represents a parsed, but not yet type-checked, Sway program.
+/// A Sway program can be either a contract, script, predicate, or
+/// it can be a library to be imported into one of the aforementioned
+/// program types.
 #[derive(Debug)]
 pub struct HllParseTree<'sc> {
     pub tree_type: TreeType<'sc>,
     pub tree: ParseTree<'sc>,
 }
 
-#[derive(Debug)]
-pub struct HllTypedParseTree<'sc> {
-    pub library_exports: LibraryExports<'sc>,
-}
-
-#[derive(Debug)]
-pub struct LibraryExports<'sc> {
-    pub namespace: Namespace<'sc>,
-    trees: Vec<TypedParseTree<'sc>>,
-}
-
+/// Represents some exportable information that results from compiling some
+/// Sway source code.
 #[derive(Debug)]
 pub struct ParseTree<'sc> {
-    /// In a typical programming language, you might have a single root node for your syntax tree.
-    /// In this language however, we want to expose multiple public functions at the root
-    /// level so the tree is multi-root.
+    /// The untyped AST nodes that constitute this tree's root nodes.
     pub root_nodes: Vec<AstNode<'sc>>,
+    /// The [span::Span] of the entire tree.
     pub span: span::Span<'sc>,
 }
 
+/// A single [AstNode] represents a node in the parse tree. Note that [AstNode]
+/// is a recursive type and can contain other [AstNode], thus populating the tree.
 #[derive(Debug, Clone)]
 pub struct AstNode<'sc> {
+    /// The content of this ast node, which could be any control flow structure or other
+    /// basic organizational component.
     pub content: AstNodeContent<'sc>,
+    /// The [span::Span] representing this entire [AstNode].
     pub span: span::Span<'sc>,
 }
 
+/// Represents the various structures that constitute a Sway program.
 #[derive(Debug, Clone)]
 pub enum AstNodeContent<'sc> {
+    /// A statement of the form `use foo::bar;` or `use ::foo::bar;`
     UseStatement(UseStatement<'sc>),
+    /// A statement of the form `return foo;`
     ReturnStatement(ReturnStatement<'sc>),
+    /// Any type of declaration, of which there are quite a few. See [Declaration] for more details
+    /// on the possible variants.
     Declaration(Declaration<'sc>),
+    /// Any type of expression, of which there are quite a few. See [Expression] for more details.
     Expression(Expression<'sc>),
+    /// An implicit return expression is different from a [AstNodeContent::ReturnStatement] because
+    /// it is not a control flow item. Therefore it is a different variant.
+    ///
+    /// An implicit return expression is an [Expression] at the end of a code block which has no
+    /// semicolon, denoting that it is the [Expression] to be returned from that block.
     ImplicitReturnExpression(Expression<'sc>),
+    /// A control flow element which loops continually until some boolean expression evaluates as
+    /// `false`.
     WhileLoop(WhileLoop<'sc>),
+    /// A statement of the form `dep foo::bar;` which imports/includes another source file.
     IncludeStatement(IncludeStatement<'sc>),
 }
 
 impl<'sc> ParseTree<'sc> {
+    /// Create a new, empty, [ParseTree] from a span which represents the source code that it will
+    /// cover.
     pub(crate) fn new(span: span::Span<'sc>) -> Self {
         ParseTree {
             root_nodes: Vec::new(),
             span,
         }
     }
-}
 
-impl<'sc> ParseTree<'sc> {
+    /// Push a new [AstNode] on to the end of a [ParseTree]'s root nodes.
     pub(crate) fn push(&mut self, new_node: AstNode<'sc>) {
         self.root_nodes.push(new_node);
     }
 }
 
+/// Given an input `str` and an optional [BuildConfig], parse the input into a [HllParseTree].
+///
+/// Here, the `'sc` lifetime is introduced to the compilation process. It stands for _source code_,
+/// and all references to `'sc` in the compiler refer to the lifetime of the original source input
+/// `str`.
+///
+/// # Example
+/// ```
+/// # use core_lang::parse;
+/// # fn main() {
+///     let input = "script; fn main() -> bool { true }";
+///     let result = parse(input, Default::default());
+/// # }
+/// ```
+///
+/// # Panics
+/// Panics if the generated parser from Pest panics.
 pub fn parse<'sc>(
     input: &'sc str,
     config: Option<&BuildConfig>,
@@ -129,13 +159,16 @@ pub fn parse<'sc>(
     ok(res, warnings, errors)
 }
 
+/// Represents the result of compiling Sway code via `compile_to_asm`.
+/// Contains the compiled assets or resulting errors, and any warnings generated.
 pub enum CompilationResult<'sc> {
     Success {
         asm: FinalizedAsm<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Library {
-        exports: LibraryExports<'sc>,
+        name: Ident<'sc>,
+        namespace: Namespace<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -143,6 +176,21 @@ pub enum CompilationResult<'sc> {
         errors: Vec<CompileError<'sc>>,
     },
 }
+
+pub enum CompileAstResult<'sc> {
+    Success {
+        parse_tree: TypedParseTree<'sc>,
+        tree_type: TreeType<'sc>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Failure {
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+    },
+}
+
+/// Represents the result of compiling Sway code via `compile_to_bytecode`.
+/// Contains the compiled bytecode in byte form, or, resulting errors, and any warnings generated.
 pub enum BytecodeCompilationResult<'sc> {
     Success {
         bytes: Vec<u8>,
@@ -157,6 +205,8 @@ pub enum BytecodeCompilationResult<'sc> {
     },
 }
 
+/// If a given [Rule] exists in the input text, return
+/// that string trimmed. Otherwise, return `None`. This is typically used to find keywords.
 pub fn extract_keyword(line: &str, rule: Rule) -> Option<&str> {
     if let Ok(pair) = HllParser::parse(rule, line) {
         Some(pair.as_str().trim())
@@ -165,6 +215,7 @@ pub fn extract_keyword(line: &str, rule: Rule) -> Option<&str> {
     }
 }
 
+/// Takes a parse failure as input and returns either the index of the positional pest parse error, or the start position of the span of text that the error occurs.
 fn get_start(err: &pest::error::Error<Rule>) -> usize {
     match err.location {
         pest::error::InputLocation::Pos(num) => num,
@@ -172,6 +223,7 @@ fn get_start(err: &pest::error::Error<Rule>) -> usize {
     }
 }
 
+/// Takes a parse failure as input and returns either the index of the positional pest parse error, or the end position of the span of text that the error occurs.
 fn get_end(err: &pest::error::Error<Rule>) -> usize {
     match err.location {
         pest::error::InputLocation::Pos(num) => num,
@@ -182,7 +234,8 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
 /// This struct represents the compilation of an internal dependency
 /// defined through an include statement (the `dep` keyword).
 pub(crate) struct InnerDependencyCompileResult<'sc> {
-    library_exports: LibraryExports<'sc>,
+    name: Ident<'sc>,
+    namespace: Namespace<'sc>,
 }
 /// For internal compiler use.
 /// Compiles an included file and returns its control flow and dead code graphs.
@@ -246,34 +299,27 @@ pub(crate) fn compile_inner_dependency<'sc>(
         errors.push(e)
     };
 
-    let mut library_exports = LibraryExports {
-        namespace: Default::default(),
-        trees: vec![],
-    };
-    library_exports.namespace.insert_module(
-        library_name.primary_name.to_string(),
-        typed_parse_tree.namespace().clone(),
-    );
-    library_exports.trees.push(typed_parse_tree);
-
     ok(
-        InnerDependencyCompileResult { library_exports },
+        InnerDependencyCompileResult {
+            name: library_name.clone(),
+            namespace: typed_parse_tree.into_namespace(),
+        },
         warnings,
         errors,
     )
 }
 
-pub fn compile_to_asm<'sc>(
+pub fn compile_to_ast<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
-    build_config: BuildConfig,
+    build_config: &BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompilationResult<'sc> {
+) -> CompileAstResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
-        parse(input, Some(&build_config)),
-        return CompilationResult::Failure { errors, warnings },
+        parse(input, Some(build_config)),
+        return CompileAstResult::Failure { errors, warnings },
         warnings,
         errors
     );
@@ -292,7 +338,7 @@ pub fn compile_to_asm<'sc>(
             &mut dead_code_graph,
             dependency_graph,
         ),
-        return CompilationResult::Failure { errors, warnings },
+        return CompileAstResult::Failure { errors, warnings },
         warnings,
         errors
     );
@@ -309,35 +355,59 @@ pub fn compile_to_asm<'sc>(
     warnings = dedup_unsorted(warnings);
 
     if !errors.is_empty() {
-        return CompilationResult::Failure { errors, warnings };
+        return CompileAstResult::Failure { errors, warnings };
     }
-    match parse_tree.tree_type {
-        TreeType::Contract | TreeType::Script | TreeType::Predicate => {
-            let asm = check!(
-                compile_ast_to_asm(typed_parse_tree, &build_config),
-                return CompilationResult::Failure { errors, warnings },
-                warnings,
-                errors
-            );
-            if !errors.is_empty() {
-                return CompilationResult::Failure { errors, warnings };
-            }
-            CompilationResult::Success { asm, warnings }
+
+    CompileAstResult::Success {
+        parse_tree: typed_parse_tree,
+        tree_type: parse_tree.tree_type,
+        warnings,
+    }
+}
+
+/// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
+/// form (not raw bytes/bytecode).
+pub fn compile_to_asm<'sc>(
+    input: &'sc str,
+    initial_namespace: &Namespace<'sc>,
+    build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
+) -> CompilationResult<'sc> {
+    match compile_to_ast(input, initial_namespace, &build_config, dependency_graph) {
+        CompileAstResult::Failure { warnings, errors } => {
+            CompilationResult::Failure { warnings, errors }
         }
-        TreeType::Library { name } => {
-            let mut exports = LibraryExports {
-                namespace: Default::default(),
-                trees: vec![],
-            };
-            exports.namespace.insert_module(
-                name.primary_name.to_string(),
-                typed_parse_tree.namespace().clone(),
-            );
-            exports.trees.push(typed_parse_tree);
-            CompilationResult::Library { warnings, exports }
+        CompileAstResult::Success {
+            parse_tree,
+            tree_type,
+            mut warnings,
+        } => {
+            let mut errors = vec![];
+            match tree_type {
+                TreeType::Contract | TreeType::Script | TreeType::Predicate => {
+                    let asm = check!(
+                        compile_ast_to_asm(parse_tree, &build_config),
+                        return CompilationResult::Failure { errors, warnings },
+                        warnings,
+                        errors
+                    );
+                    if !errors.is_empty() {
+                        return CompilationResult::Failure { errors, warnings };
+                    }
+                    CompilationResult::Success { asm, warnings }
+                }
+                TreeType::Library { name } => CompilationResult::Library {
+                    warnings,
+                    name,
+                    namespace: parse_tree.into_namespace(),
+                },
+            }
         }
     }
 }
+
+/// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
+/// bytecode form.
 pub fn compile_to_bytecode<'n, 'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
@@ -367,13 +437,14 @@ pub fn compile_to_bytecode<'n, 'sc>(
         CompilationResult::Failure { warnings, errors } => {
             BytecodeCompilationResult::Failure { warnings, errors }
         }
-        CompilationResult::Library {
-            warnings,
-            exports: _exports,
-        } => BytecodeCompilationResult::Library { warnings },
+        CompilationResult::Library { warnings, .. } => {
+            BytecodeCompilationResult::Library { warnings }
+        }
     }
 }
 
+/// Given a [TypedParseTree], which is type-checked Sway source, construct a graph to analyze
+/// control flow and determine if it is valid.
 fn perform_control_flow_analysis<'sc>(
     tree: &TypedParseTree<'sc>,
     tree_type: &TreeType<'sc>,
@@ -391,9 +462,8 @@ fn perform_control_flow_analysis<'sc>(
     (warnings, errors)
 }
 
-// strategy: parse top level things
-// and if we encounter a function body or block, recursively call this function and build
-// sub-nodes
+/// The basic recursive parser which handles the top-level parsing given the output of the
+/// pest-generated parser.
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
     config: Option<&BuildConfig>,
