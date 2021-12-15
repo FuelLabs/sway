@@ -1,9 +1,9 @@
 [project]
 author  = "Nick Furfaro"
 license = "MIT"
-name = "test_token_contract"
+name = "test_fuel_coin_contract"
 entry = "main.sw"
 
 [dependencies]
 std = { path = "../../../../../lib-std" }
-test_token_abi = { path = "../test_token_abi"}
+test_fuel_coin_abi = { path = "../test_fuel_coin_abi"}

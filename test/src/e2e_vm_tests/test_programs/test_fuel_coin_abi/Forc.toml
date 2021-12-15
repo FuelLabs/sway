@@ -1,7 +1,7 @@
 [project]
 author  = "Nick Furfaro"
 license = "MIT"
-name = "test_token_abi"
+name = "test_fuel_coin_abi"
 entry = "main.sw"
 
 [dependencies]

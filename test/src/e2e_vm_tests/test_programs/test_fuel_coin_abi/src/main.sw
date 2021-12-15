@@ -1,4 +1,4 @@
-library test_token_abi;
+library test_fuel_coin_abi;
 
 use std::address::Address;
 use std::contract_id::ContractId;
@@ -17,9 +17,11 @@ pub struct ParamsForceTransfer {
     contract_id: ContractId,
 }
 
-abi TestToken {
+abi TestFuelCoin {
     fn mint(gas: u64, coins: u64, token_id: b256, mint_amount: u64);
     fn burn(gas: u64, coins: u64, token_id: b256, burn_amount: u64);
     fn transfer_to_output(gas: u64, coins: u64, token_id: b256, params: ParamsTransferToOutput);
     fn force_transfer(gas: u64, coins: u64, token_id: b256, params: ParamsForceTransfer);
+    fn name(gas: u64, coins: u64, token_id: b256, input: ()) -> string;
+
 }
