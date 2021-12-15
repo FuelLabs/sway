@@ -584,7 +584,7 @@ impl<'sc> Expression<'sc> {
                         // a field
                         let mut name_parts = name_parts.into_iter();
                         let mut expr = check!(
-                            parse_call_item(
+                            parse_subfield_path(
                                 name_parts.next().expect("guaranteed by grammar"),
                                 config
                             ),
@@ -754,15 +754,9 @@ impl<'sc> Expression<'sc> {
                 let inner = expr.into_inner().next().expect("guaranteed by grammar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
 
-                // treat parent as one expr, final name as the field to be accessed
-                // if there are multiple fields, this is a nested expression
-                // i.e. `a.b.c` is a lookup of field `c` on `a.b` which is a lookup
-                // of field `b` on `a`
-                // the first thing is either an exp or a var, everything subsequent must be
-                // a field
                 let mut name_parts = inner.into_inner();
                 let mut expr = check!(
-                    parse_call_item(name_parts.next().expect("guaranteed by grammar"), config),
+                    parse_subfield_path(name_parts.next().expect("guaranteed by grammar"), config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -821,45 +815,12 @@ impl<'sc> Expression<'sc> {
                     errors
                 )
             }
-            Rule::array_index => {
-                let span = expr.as_span();
-                let mut inner_iter = expr.into_inner();
-                let prefix = check!(
-                    parse_call_item(inner_iter.next().unwrap(), config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                let mut index_buf = vec![];
-                for index in inner_iter {
-                    index_buf.push(check!(
-                        Expression::parse_from_pair(index, config),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                let first_index = index_buf.first().expect("guarenteed by grammer");
-                let mut exp = Expression::ArrayIndex {
-                    prefix: Box::new(prefix),
-                    index: Box::new(first_index.to_owned()),
-                    span: Span {
-                        span,
-                        path: path.clone(),
-                    },
-                };
-                for index in index_buf.into_iter().skip(1) {
-                    exp = Expression::ArrayIndex {
-                        prefix: Box::new(exp),
-                        index: Box::new(index),
-                        span: Span {
-                            span,
-                            path: path.clone(),
-                        },
-                    };
-                }
-                exp
-            }
+            Rule::array_index => check!(
+                parse_array_index(expr, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
             a => {
                 eprintln!(
                     "Unimplemented expr: {:?} ({:?}) ({:?})",
@@ -931,6 +892,89 @@ fn convert_unary_to_fn_calls<'sc>(
         );
     }
     ok(expr, warnings, errors)
+}
+
+fn parse_array_index<'sc>(
+    item: Pair<'sc, Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<'sc, Expression<'sc>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let path = config.map(|c| c.path());
+    let span = item.as_span();
+    let mut inner_iter = item.into_inner();
+    let prefix = check!(
+        parse_call_item(inner_iter.next().unwrap(), config),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    let mut index_buf = vec![];
+    for index in inner_iter {
+        index_buf.push(check!(
+            Expression::parse_from_pair(index, config),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ));
+    }
+    let first_index = index_buf.first().expect("guarenteed by grammer");
+    let mut exp = Expression::ArrayIndex {
+        prefix: Box::new(prefix),
+        index: Box::new(first_index.to_owned()),
+        span: Span {
+            span,
+            path: path.clone(),
+        },
+    };
+    for index in index_buf.into_iter().skip(1) {
+        exp = Expression::ArrayIndex {
+            prefix: Box::new(exp),
+            index: Box::new(index),
+            span: Span {
+                span,
+                path: path.clone(),
+            },
+        };
+    }
+    ok(exp, warnings, errors)
+}
+
+fn parse_subfield_path<'sc>(
+    item: Pair<'sc, Rule>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<'sc, Expression<'sc>> {
+    let warnings = vec![];
+    let mut errors = vec![];
+    let path = config.map(|c| c.path());
+    let item = item.into_inner().next().expect("guarenteed by grammar");
+    match item.as_rule() {
+        Rule::call_item => parse_call_item(item, config),
+        Rule::array_index => parse_array_index(item, config),
+        a => {
+            eprintln!(
+                "Unimplemented subfield path: {:?} ({:?}) ({:?})",
+                a,
+                item.as_str(),
+                item.as_rule()
+            );
+            errors.push(CompileError::UnimplementedRule(
+                a,
+                Span {
+                    span: item.as_span(),
+                    path: path.clone(),
+                },
+            ));
+            // construct unit expression for error recovery
+            let exp = Expression::Unit {
+                span: Span {
+                    span: item.as_span(),
+                    path,
+                },
+            };
+            ok(exp, warnings, errors)
+        }
+    }
 }
 
 // A call item is parsed as either an `ident` or a parenthesized `expr`. This method's job is to
