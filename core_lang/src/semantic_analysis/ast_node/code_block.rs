@@ -1,6 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
+use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 
 use crate::CodeBlock;
 use std::collections::{HashMap, HashSet};
@@ -18,7 +19,7 @@ impl<'sc> TypedCodeBlock<'sc> {
         crate_namespace: Option<&'n Namespace<'sc>>,
         // this is for the return or implicit return
         type_annotation: TypeId,
-        help_text: impl Into<String> + Clone,
+        help_text: &'static str,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -34,17 +35,18 @@ impl<'sc> TypedCodeBlock<'sc> {
             .contents
             .iter()
             .filter_map(|node| {
-                TypedAstNode::type_check(
-                    node.clone(),
-                    &mut local_namespace,
+                TypedAstNode::type_check(TypeCheckArguments {
+                    checkee: node.clone(),
+                    namespace: &mut local_namespace,
                     crate_namespace,
-                    type_annotation,
-                    help_text.clone(),
+                    return_type_annotation: type_annotation,
+                    help_text: help_text,
                     self_type,
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                )
+                    mode: Mode::NonAbi,
+                })
                 .ok(&mut warnings, &mut errors)
             })
             .collect::<Vec<TypedAstNode<'sc>>>();

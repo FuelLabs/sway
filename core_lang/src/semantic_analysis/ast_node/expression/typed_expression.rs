@@ -1,7 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::semantic_analysis::{ast_node::*, Namespace};
+use crate::semantic_analysis::{ast_node::*, Namespace, TypeCheckArguments};
 use crate::type_engine::{insert_type, IntegerBits};
 
 use either::Either;
@@ -33,16 +33,20 @@ pub(crate) fn error_recovery_expr(span: Span<'_>) -> TypedExpression<'_> {
 
 impl<'sc> TypedExpression<'sc> {
     pub(crate) fn type_check<'n>(
-        other: Expression<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        type_annotation: Option<TypeId>,
-        help_text: impl Into<String> + Clone,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
+        arguments: TypeCheckArguments<'n, 'sc, Expression<'sc>>,
     ) -> CompileResult<'sc, Self> {
+        let TypeCheckArguments {
+            checkee: other,
+            namespace,
+            crate_namespace,
+            return_type_annotation: type_annotation,
+            help_text,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            ..
+        } = arguments;
         let expr_span = other.span();
         let res = match other {
             Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
@@ -631,7 +635,7 @@ impl<'sc> TypedExpression<'sc> {
         namespace: &mut Namespace<'sc>,
         crate_namespace: Option<&'n Namespace<'sc>>,
         type_annotation: Option<TypeId>,
-        help_text: impl Into<String> + Clone,
+        help_text: &'static str,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
@@ -1202,18 +1206,18 @@ impl<'sc> TypedExpression<'sc> {
         let mut type_checked_fn_buf = Vec::with_capacity(abi.methods.len());
         for method in &abi.methods {
             type_checked_fn_buf.push(check!(
-                TypedFunctionDeclaration::type_check(
-                    method.clone(),
+                TypedFunctionDeclaration::type_check(TypeCheckArguments {
+                    checkee: method.clone(),
                     namespace,
                     crate_namespace,
-                    crate::type_engine::insert_type(TypeInfo::Unknown),
-                    "",
-                    crate::type_engine::insert_type(TypeInfo::Contract),
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: Default::default(),
+                    self_type: insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
-                    Mode::ImplAbiFn,
+                    mode: Mode::ImplAbiFn,
                     dependency_graph
-                ),
+                }),
                 return err(warnings, errors),
                 warnings,
                 errors

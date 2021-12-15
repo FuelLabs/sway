@@ -4,13 +4,13 @@ use crate::semantic_analysis::{
         IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
         TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
     },
-    Namespace,
+    Namespace, TypeCheckArguments,
 };
 use crate::span::Span;
 use crate::type_engine::*;
 use crate::ControlFlowGraph;
+use crate::TypeParameter;
 use crate::{build_config::BuildConfig, error::*, Ident};
-use crate::{TypeParameter};
 
 use core_types::{Function, Property};
 use sha2::{Digest, Sha256};
@@ -37,19 +37,19 @@ pub struct TypedFunctionDeclaration<'sc> {
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
     pub fn type_check<'n>(
-        fn_decl: FunctionDeclaration<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&Namespace<'sc>>,
-        _return_type_annotation: TypeId,
-        _help_text: impl Into<String>,
-        // If there are any `Self` types in this declaration,
-        // resolve them to this type.
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        mode: Mode,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
+        arguments: TypeCheckArguments<'n, 'sc, FunctionDeclaration<'sc>>,
     ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
+        let TypeCheckArguments {
+            checkee: fn_decl,
+            namespace,
+            crate_namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            mode,
+            dependency_graph,
+            ..
+        } = arguments;
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let FunctionDeclaration {

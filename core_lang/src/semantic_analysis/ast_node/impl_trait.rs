@@ -1,6 +1,8 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
-use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+use crate::semantic_analysis::{
+    Namespace, TypeCheckArguments, TypedDeclaration, TypedFunctionDeclaration,
+};
 use crate::span::Span;
 use crate::type_engine::{
     insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeInfo,
@@ -204,18 +206,18 @@ fn type_check_trait_implementation<'n, 'sc>(
         // add(self: u64, other: u64) -> u64
 
         let fn_decl = check!(
-            TypedFunctionDeclaration::type_check(
-                fn_decl.clone(),
+            TypedFunctionDeclaration::type_check(TypeCheckArguments {
+                checkee: fn_decl.clone(),
                 namespace,
                 crate_namespace,
-                insert_type(TypeInfo::Unknown),
-                "",
-                type_implementing_for,
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: Default::default(),
+                self_type: type_implementing_for,
                 build_config,
                 dead_code_graph,
                 mode,
                 dependency_graph,
-            ),
+            }),
             continue,
             warnings,
             errors
@@ -369,18 +371,18 @@ fn type_check_trait_implementation<'n, 'sc>(
         // use a local namespace which has the above interface inserted
         // into it as a trait implementation for this
         let method = check!(
-            TypedFunctionDeclaration::type_check(
-                method.clone(),
-                &mut local_namespace,
+            TypedFunctionDeclaration::type_check(TypeCheckArguments {
+                checkee: method.clone(),
+                namespace: &mut local_namespace,
                 crate_namespace,
-                crate::type_engine::insert_type(TypeInfo::Unknown),
-                "",
-                type_implementing_for,
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: "",
+                self_type: type_implementing_for,
                 build_config,
                 dead_code_graph,
                 mode,
                 dependency_graph,
-            ),
+            }),
             continue,
             warnings,
             errors

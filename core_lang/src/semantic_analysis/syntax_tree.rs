@@ -3,7 +3,7 @@ use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDe
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::ident::Ident;
-use crate::semantic_analysis::Namespace;
+use crate::semantic_analysis::{ast_node::Mode, Namespace, TypeCheckArguments};
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
 use crate::{AstNode, ParseTree};
@@ -121,19 +121,18 @@ impl<'sc> TypedParseTree<'sc> {
         let typed_nodes = nodes
             .into_iter()
             .map(|node| {
-                TypedAstNode::type_check(
-                    node.clone(),
+                TypedAstNode::type_check(TypeCheckArguments {
+                    checkee: node.clone(),
                     namespace,
-                    None,
-                    crate::type_engine::insert_type(TypeInfo::Unknown),
-                    "",
-                    // TODO only allow impl traits on contract trees, do something else
-                    // for other tree types
-                    crate::type_engine::insert_type(TypeInfo::Contract),
+                    crate_namespace: None,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: "",
+                    self_type: insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                )
+                    mode: Mode::NonAbi,
+                })
             })
             .filter_map(|res| res.ok(&mut warnings, &mut errors))
             .collect();
