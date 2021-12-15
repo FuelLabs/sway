@@ -1,11 +1,13 @@
 contract;
 
 use std::token::*;
-use test_token_abi::*;
+use test_fuel_coin_abi::*;
 
-impl TestToken for Contract {
+// Name of the coin managed by this contract
+const name: str[14] = "Test Fuel Coin";
 
-    const name: string = 'Test Fuel Coin';
+impl TestFuelCoin for Contract {
+
 
     // @todo add event logging
     fn mint(gas: u64, coins: u64, token_id: b256, mint_amount: u64) {
@@ -21,10 +23,10 @@ impl TestToken for Contract {
     }
 
     fn force_transfer(gas: u64, coins: u64, token_id: b256, params: ParamsForceTransfer) {
-        force_transfer(params.coins, params.token_id, params.contract_id)
+        force_transfer(params.coins, params.token_id, params.c_id.value)
     }
 
-    fn name(gas: u64, coins: u64, token_id: b256, input: ()) -> string {
+    fn name(gas: u64, coins: u64, token_id: b256, input: ()) -> str[14] {
         name
     }
 }
