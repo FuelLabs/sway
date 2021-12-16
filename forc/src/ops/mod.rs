@@ -1,3 +1,4 @@
+pub mod forc_abi_json;
 pub mod forc_build;
 pub mod forc_dep_check;
 pub mod forc_deploy;

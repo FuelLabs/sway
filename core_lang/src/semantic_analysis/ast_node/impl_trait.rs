@@ -11,7 +11,7 @@ use crate::{
 };
 use std::collections::{HashMap, HashSet};
 
-pub(crate) fn implementation_of_trait<'n, 'sc>(
+pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
     crate_namespace: Option<&Namespace<'sc>>,
@@ -69,7 +69,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
                     type_implementing_for_id,
                     &type_implementing_for_span,
                     Mode::NonAbi,
-                    dependency_graph
+                    dependency_graph,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -129,7 +129,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
                     type_implementing_for_id,
                     &type_implementing_for_span,
                     Mode::ImplAbiFn,
-                    dependency_graph
+                    dependency_graph,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -170,7 +170,8 @@ pub enum Mode {
     NonAbi,
 }
 
-fn type_check_trait_implementation<'n, 'sc>(
+#[allow(clippy::too_many_arguments)]
+fn type_check_trait_implementation<'sc>(
     interface_surface: &[TypedTraitFn<'sc>],
     functions: &[FunctionDeclaration<'sc>],
     methods: &[FunctionDeclaration<'sc>],
@@ -214,7 +215,7 @@ fn type_check_trait_implementation<'n, 'sc>(
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph
+                dependency_graph,
             ),
             continue,
             warnings,
@@ -379,7 +380,7 @@ fn type_check_trait_implementation<'n, 'sc>(
                 build_config,
                 dead_code_graph,
                 mode,
-                dependency_graph
+                dependency_graph,
             ),
             continue,
             warnings,

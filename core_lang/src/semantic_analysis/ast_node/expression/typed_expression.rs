@@ -31,6 +31,7 @@ pub(crate) fn error_recovery_expr(span: Span<'_>) -> TypedExpression<'_> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 impl<'sc> TypedExpression<'sc> {
     pub(crate) fn type_check<'n>(
         other: Expression<'sc>,
@@ -291,7 +292,7 @@ impl<'sc> TypedExpression<'sc> {
     /// Makes a fresh copy of all type ids in this expression. Used when monomorphizing.
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.return_type = if let Some(matching_id) =
-            look_up_type_id(self.return_type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {
@@ -301,7 +302,7 @@ impl<'sc> TypedExpression<'sc> {
         self.expression.copy_types(type_mapping);
     }
 
-    fn type_check_literal<'n>(
+    fn type_check_literal(
         lit: Literal<'sc>,
         span: Span<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
@@ -370,6 +371,7 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, vec![], errors)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_function_application<'n>(
         name: CallPath<'sc>,
         arguments: Vec<Expression<'sc>>,
@@ -465,7 +467,7 @@ impl<'sc> TypedExpression<'sc> {
                         arg.clone(),
                         namespace,
                         crate_namespace,
-                        Some(param.r#type.clone()),
+                        Some(param.r#type),
                         "The argument that has been provided to this function's type does \
                             not match the declared type of the parameter in the function \
                             declaration.",
@@ -483,7 +485,7 @@ impl<'sc> TypedExpression<'sc> {
 
         ok(
             TypedExpression {
-                return_type: return_type.clone(),
+                return_type,
                 // now check the function call return type
                 // FEATURE this IsConstant can be true if the function itself is
                 // constant-able const functions would be an
@@ -503,6 +505,7 @@ impl<'sc> TypedExpression<'sc> {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_lazy_operator<'n>(
         op: LazyOp,
         lhs: Expression<'sc>,
@@ -625,6 +628,7 @@ impl<'sc> TypedExpression<'sc> {
         unimplemented!()
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_code_block<'n>(
         contents: CodeBlock<'sc>,
         span: Span<'sc>,
@@ -688,6 +692,7 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_if_expression<'n>(
         condition: Box<Expression<'sc>>,
         then: Box<Expression<'sc>>,
@@ -777,6 +782,7 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_asm_expression<'n>(
         asm: AsmExpression<'sc>,
         span: Span<'sc>,
@@ -797,7 +803,7 @@ impl<'sc> TypedExpression<'sc> {
                         .returns
                         .clone()
                         .map(|x| x.1)
-                        .unwrap_or(asm.whole_block_span.clone()),
+                        .unwrap_or_else(|| asm.whole_block_span.clone()),
                 });
                 insert_type(TypeInfo::ErrorRecovery)
             });
@@ -850,6 +856,7 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression<'n>(
         span: Span<'sc>,
         struct_name: Ident<'sc>,
@@ -970,6 +977,7 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_subfield_expression<'n>(
         prefix: Box<Expression<'sc>>,
         span: Span<'sc>,
@@ -1042,6 +1050,7 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_delineated_path<'n>(
         call_path: CallPath<'sc>,
         span: Span<'sc>,
@@ -1135,6 +1144,7 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_abi_cast<'n>(
         abi_name: CallPath<'sc>,
         address: Box<Expression<'sc>>,
@@ -1239,6 +1249,7 @@ impl<'sc> TypedExpression<'sc> {
         ok(exp, warnings, errors)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_array<'n>(
         contents: Vec<Expression<'sc>>,
         span: Span<'sc>,
@@ -1333,6 +1344,7 @@ impl<'sc> TypedExpression<'sc> {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn type_check_array_index<'n>(
         prefix: Expression<'sc>,
         index: Expression<'sc>,
@@ -1385,7 +1397,7 @@ impl<'sc> TypedExpression<'sc> {
                 errors
             );
 
-            return ok(
+            ok(
                 TypedExpression {
                     expression: TypedExpressionVariant::ArrayIndex {
                         prefix: Box::new(prefix_te),
@@ -1397,7 +1409,7 @@ impl<'sc> TypedExpression<'sc> {
                 },
                 warnings,
                 errors,
-            );
+            )
         } else {
             // Otherwise convert into a method call 'index(self, index)' via the std::ops::Index trait.
             let method_name = MethodName::FromType {

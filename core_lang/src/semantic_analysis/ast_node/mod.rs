@@ -113,7 +113,9 @@ impl<'sc> TypedAstNode<'sc> {
             WhileLoop(_) | SideEffect => TypeInfo::Unit,
         }
     }
-    pub(crate) fn type_check<'n>(
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn type_check(
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
         crate_namespace: Option<&Namespace<'sc>>,
@@ -697,7 +699,7 @@ impl<'sc> TypedAstNode<'sc> {
 
 /// Imports a new file, populates the given [Namespace] with its content,
 /// and appends the module's content to the control flow graph for later analysis.
-fn import_new_file<'n, 'sc>(
+fn import_new_file<'sc>(
     statement: &IncludeStatement<'sc>,
     namespace: &mut Namespace<'sc>,
     build_config: &BuildConfig,
@@ -775,7 +777,8 @@ fn import_new_file<'n, 'sc>(
     ok((), warnings, errors)
 }
 
-fn reassignment<'n, 'sc>(
+#[allow(clippy::too_many_arguments)]
+fn reassignment<'sc>(
     lhs: Box<Expression<'sc>>,
     rhs: Expression<'sc>,
     span: Span<'sc>,
@@ -1026,7 +1029,7 @@ fn type_check_interface_surface<'sc>(
     )
 }
 
-fn type_check_trait_methods<'n, 'sc>(
+fn type_check_trait_methods<'sc>(
     methods: Vec<FunctionDeclaration<'sc>>,
     namespace: &mut Namespace<'sc>,
     crate_namespace: Option<&Namespace<'sc>>,

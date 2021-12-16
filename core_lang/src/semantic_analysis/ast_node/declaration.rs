@@ -2,12 +2,14 @@ use super::impl_trait::Mode;
 use super::{
     IsConstant, TypedCodeBlock, TypedExpression, TypedExpressionVariant, TypedReturnStatement,
 };
-use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::*;
 use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::type_engine::*;
+use crate::ControlFlowGraph;
 use crate::{build_config::BuildConfig, error::*, Ident};
+
+use core_types::{Function, Property};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -109,9 +111,7 @@ impl<'sc> TypedDeclaration<'sc> {
                         .map(TypedStructField::as_owned_typed_struct_field)
                         .collect(),
                 }),
-                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
-                    rhs.return_type.clone()
-                }
+                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
                     insert_type(TypeInfo::UnknownGeneric {
                         name: name.primary_name.to_string(),
@@ -260,7 +260,7 @@ pub struct OwnedTypedStructField {
 impl OwnedTypedStructField {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {
@@ -278,12 +278,20 @@ impl OwnedTypedStructField {
             span: span.clone(),
         }
     }
+
+    pub fn generate_json_abi(&self) -> Property {
+        Property {
+            name: self.name.clone(),
+            type_field: self.r#type.friendly_type_str(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
 }
 
 impl TypedStructField<'_> {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {
@@ -341,7 +349,7 @@ pub struct TypedEnumVariant<'sc> {
 impl TypedEnumVariant<'_> {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {
@@ -363,6 +371,16 @@ pub struct OwnedTypedEnumVariant {
     pub(crate) name: String,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
+}
+
+impl OwnedTypedEnumVariant {
+    pub fn generate_json_abi(&self) -> Property {
+        Property {
+            name: self.name.clone(),
+            type_field: self.r#type.friendly_type_str(),
+            components: self.r#type.generate_json_abi(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -403,7 +421,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .for_each(|x| x.copy_types(type_mapping));
 
         self.return_type = if let Some(matching_id) =
-            look_up_type_id(self.return_type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {
@@ -579,6 +597,27 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             errors,
         )
     }
+
+    pub fn generate_json_abi(&self) -> Function {
+        Function {
+            name: self.name.primary_name.to_string(),
+            type_field: "function".to_string(),
+            inputs: self
+                .parameters
+                .iter()
+                .map(|x| Property {
+                    name: x.name.primary_name.to_string(),
+                    type_field: x.r#type.friendly_type_str(),
+                    components: x.r#type.generate_json_abi(),
+                })
+                .collect(),
+            outputs: vec![Property {
+                name: "".to_string(),
+                type_field: self.return_type.friendly_type_str(),
+                components: self.return_type.generate_json_abi(),
+            }],
+        }
+    }
 }
 
 #[test]
@@ -698,7 +737,7 @@ pub struct TypedFunctionParameter<'sc> {
 impl TypedFunctionParameter<'_> {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {
@@ -773,8 +812,9 @@ impl TypedReassignment<'_> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub fn type_check<'n>(
+    pub fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &mut Namespace<'sc>,
         crate_namespace: Option<&Namespace<'sc>>,
@@ -868,7 +908,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
             ),
             (
                 TypedCodeBlock {

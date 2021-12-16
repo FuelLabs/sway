@@ -673,6 +673,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::SW(r1, r2, imm)
                 }
+                "bal" => {
+                    let (r1, r2, r3) = check!(
+                        three_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::BAL(r1, r2, r3)
+                }
                 "bhsh" => {
                     let (r1, r2) = check!(
                         two_regs(args, immediate, whole_op_span),
@@ -1298,6 +1307,7 @@ impl fmt::Display for Op<'_> {
                 MEQ(a, b, c, d) => format!("meq {} {} {} {}", a, b, c, d),
                 SB(a, b, c) => format!("sb {} {} {}", a, b, c),
                 SW(a, b, c) => format!("sw {} {} {}", a, b, c),
+                BAL(a, b, c) => format!("bal {} {} {}", a, b, c),
                 BHSH(a, b) => format!("bhsh {} {}", a, b),
                 BHEI(a) => format!("bhei {}", a),
                 BURN(a) => format!("burn {}", a),

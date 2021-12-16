@@ -7,6 +7,7 @@ use crate::parser::{HllParser, Rule};
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application<'n, 'sc>(
     method_name: MethodName<'sc>,
     arguments: Vec<Expression<'sc>>,
@@ -32,7 +33,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
             ),
             error_recovery_expr(span.clone()),
             warnings,
@@ -253,7 +254,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                                 crate_namespace,
                                 self_type,
                                 dead_code_graph,
-                                dependency_graph
+                                dependency_graph,
                             ),
                             return err(warnings, errors),
                             warnings,

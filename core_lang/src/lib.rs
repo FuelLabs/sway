@@ -29,7 +29,7 @@ use pest::Parser;
 use std::collections::{HashMap, HashSet};
 
 pub use semantic_analysis::TreeType;
-use semantic_analysis::TypedParseTree;
+pub use semantic_analysis::TypedParseTree;
 pub mod types;
 pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
@@ -168,7 +168,19 @@ pub enum CompilationResult<'sc> {
     },
     Library {
         name: Ident<'sc>,
-        namespace: Namespace<'sc>,
+        namespace: Box<Namespace<'sc>>,
+        warnings: Vec<CompileWarning<'sc>>,
+    },
+    Failure {
+        warnings: Vec<CompileWarning<'sc>>,
+        errors: Vec<CompileError<'sc>>,
+    },
+}
+
+pub enum CompileAstResult<'sc> {
+    Success {
+        parse_tree: Box<TypedParseTree<'sc>>,
+        tree_type: TreeType<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -297,19 +309,17 @@ pub(crate) fn compile_inner_dependency<'sc>(
     )
 }
 
-/// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
-/// form (not raw bytes/bytecode).
-pub fn compile_to_asm<'sc>(
+pub fn compile_to_ast<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
-    build_config: BuildConfig,
+    build_config: &BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompilationResult<'sc> {
+) -> CompileAstResult<'sc> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
-        parse(input, Some(&build_config)),
-        return CompilationResult::Failure { errors, warnings },
+        parse(input, Some(build_config)),
+        return CompileAstResult::Failure { errors, warnings },
         warnings,
         errors
     );
@@ -328,7 +338,7 @@ pub fn compile_to_asm<'sc>(
             &mut dead_code_graph,
             dependency_graph,
         ),
-        return CompilationResult::Failure { errors, warnings },
+        return CompileAstResult::Failure { errors, warnings },
         warnings,
         errors
     );
@@ -345,32 +355,60 @@ pub fn compile_to_asm<'sc>(
     warnings = dedup_unsorted(warnings);
 
     if !errors.is_empty() {
-        return CompilationResult::Failure { errors, warnings };
+        return CompileAstResult::Failure { errors, warnings };
     }
-    match parse_tree.tree_type {
-        TreeType::Contract | TreeType::Script | TreeType::Predicate => {
-            let asm = check!(
-                compile_ast_to_asm(typed_parse_tree, &build_config),
-                return CompilationResult::Failure { errors, warnings },
-                warnings,
-                errors
-            );
-            if !errors.is_empty() {
-                return CompilationResult::Failure { errors, warnings };
-            }
-            CompilationResult::Success { asm, warnings }
+
+    CompileAstResult::Success {
+        parse_tree: Box::new(typed_parse_tree),
+        tree_type: parse_tree.tree_type,
+        warnings,
+    }
+}
+
+/// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
+/// form (not raw bytes/bytecode).
+pub fn compile_to_asm<'sc>(
+    input: &'sc str,
+    initial_namespace: &Namespace<'sc>,
+    build_config: BuildConfig,
+    dependency_graph: &mut HashMap<String, HashSet<String>>,
+) -> CompilationResult<'sc> {
+    match compile_to_ast(input, initial_namespace, &build_config, dependency_graph) {
+        CompileAstResult::Failure { warnings, errors } => {
+            CompilationResult::Failure { warnings, errors }
         }
-        TreeType::Library { name } => CompilationResult::Library {
-            warnings,
-            name,
-            namespace: typed_parse_tree.into_namespace(),
-        },
+        CompileAstResult::Success {
+            parse_tree,
+            tree_type,
+            mut warnings,
+        } => {
+            let mut errors = vec![];
+            match tree_type {
+                TreeType::Contract | TreeType::Script | TreeType::Predicate => {
+                    let asm = check!(
+                        compile_ast_to_asm(*parse_tree, &build_config),
+                        return CompilationResult::Failure { errors, warnings },
+                        warnings,
+                        errors
+                    );
+                    if !errors.is_empty() {
+                        return CompilationResult::Failure { errors, warnings };
+                    }
+                    CompilationResult::Success { asm, warnings }
+                }
+                TreeType::Library { name } => CompilationResult::Library {
+                    warnings,
+                    name,
+                    namespace: Box::new(parse_tree.into_namespace()),
+                },
+            }
+        }
     }
 }
 
 /// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
 /// bytecode form.
-pub fn compile_to_bytecode<'n, 'sc>(
+pub fn compile_to_bytecode<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
@@ -381,7 +419,7 @@ pub fn compile_to_bytecode<'n, 'sc>(
             mut asm,
             mut warnings,
         } => {
-            let mut asm_res = asm.to_bytecode();
+            let mut asm_res = asm.to_bytecode_mut();
             warnings.append(&mut asm_res.warnings);
             if asm_res.value.is_none() || !asm_res.errors.is_empty() {
                 BytecodeCompilationResult::Failure {

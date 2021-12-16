@@ -7,6 +7,7 @@ use crate::semantic_analysis::Namespace;
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
 use crate::{AstNode, ParseTree};
+
 use std::collections::{HashMap, HashSet};
 
 /// Represents the possible types of a parse tree.
@@ -18,8 +19,8 @@ pub enum TreeType<'sc> {
     Library { name: Ident<'sc> },
 }
 
-#[derive(Debug)]
-pub(crate) enum TypedParseTree<'sc> {
+#[derive(Debug, Clone)]
+pub enum TypedParseTree<'sc> {
     Script {
         main_function: TypedFunctionDeclaration<'sc>,
         namespace: Namespace<'sc>,
@@ -58,7 +59,7 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    pub(crate) fn into_namespace(self) -> Namespace<'sc> {
+    pub fn into_namespace(self) -> Namespace<'sc> {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,
@@ -92,7 +93,7 @@ impl<'sc> TypedParseTree<'sc> {
                 &mut new_namespace,
                 build_config,
                 dead_code_graph,
-                dependency_graph
+                dependency_graph,
             ),
             return err(warnings, errors),
             warnings,
@@ -109,7 +110,7 @@ impl<'sc> TypedParseTree<'sc> {
         )
     }
 
-    fn type_check_nodes<'n>(
+    fn type_check_nodes(
         nodes: Vec<AstNode<'sc>>,
         namespace: &mut Namespace<'sc>,
         build_config: &BuildConfig,
@@ -145,7 +146,7 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    fn validate_typed_nodes<'n>(
+    fn validate_typed_nodes(
         typed_tree_nodes: Vec<TypedAstNode<'sc>>,
         span: Span<'sc>,
         namespace: Namespace<'sc>,

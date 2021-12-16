@@ -6,6 +6,7 @@ use crate::type_engine::{look_up_type_id, TypeId};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [TypedExpression].
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum<'n, 'sc>(
     enum_decl: TypedEnumDeclaration<'sc>,
     enum_field_name: Ident<'sc>,
@@ -73,7 +74,7 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
+                    dependency_graph,
                 ),
                 return err(warnings, errors),
                 warnings,

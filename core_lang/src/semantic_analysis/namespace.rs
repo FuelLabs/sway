@@ -11,21 +11,29 @@ use crate::type_engine::*;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
-/// Contains the symbol, type, trait and other relevant naming information of some Sway source code, and ensures that 
+/// Contains the symbol, type, trait and other relevant naming information of some Sway source code, and ensures that
 /// all of a given set will have unique names so they can be easily identified.
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
     // A key/value set containing the name and span of a symbol, and its type, respectively.
-    symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
+    //
+    // This is a BTreeMap because we rely on its ordering being consistent. See
+    // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
+    // order.
+    symbols: BTreeMap<Ident<'sc>, TypedDeclaration<'sc>>,
     // A key/value set containing the [TraitName], [TypeInfo] of a trait, and a vector containing the function attributes, respectively.
     implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
-    // any imported namespaces associated with an ident which is a library name
-    modules: HashMap<ModuleName, Namespace<'sc>>,
+    // Any imported namespaces associated with an ident which is a  library name.
+    //
+    // This is a BTreeMap because we rely on its ordering being consistent. See
+    // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
+    // order.
+    modules: BTreeMap<ModuleName, Namespace<'sc>>,
     // The crate namespace, to be used in absolute importing. This is `None` if the current
     // namespace _is_ the root namespace.
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
@@ -52,9 +60,8 @@ impl<'sc> Namespace<'sc> {
         ty: TypeInfo,
         self_type: TypeId,
     ) -> Result<TypeId, ()> {
-        let ty = ty.clone();
         Ok(match ty {
-            TypeInfo::Custom { ref name } => match self.get_symbol_by_str(&name) {
+            TypeInfo::Custom { ref name } => match self.get_symbol_by_str(name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,

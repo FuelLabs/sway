@@ -13,3 +13,4 @@ fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git", features = ["rand
 rand = "0.8"
 regex = "1"
 tokio = "1.12"
+serde_json = "*"

@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::span::Span;
 use crate::{error::*, type_engine::*, CompileError, Ident, Rule, TypedDeclaration};
 use pest::iterators::Pair;
-use std::convert::Into;
+use std::convert::From;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct TypeParameter<'sc> {
@@ -11,10 +11,10 @@ pub(crate) struct TypeParameter<'sc> {
     pub(crate) trait_constraints: Vec<TraitConstraint<'sc>>,
 }
 
-impl<'sc> Into<TypedDeclaration<'sc>> for &TypeParameter<'sc> {
-    fn into(self) -> TypedDeclaration<'sc> {
+impl<'sc> From<&TypeParameter<'sc>> for TypedDeclaration<'sc> {
+    fn from(n: &TypeParameter<'sc>) -> Self {
         TypedDeclaration::GenericTypeForFunctionScope {
-            name: self.name_ident.clone(),
+            name: n.name_ident.clone(),
         }
     }
 }
