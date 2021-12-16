@@ -6,14 +6,14 @@ use std::contract_id::ContractId;
 /// Parameters for `transfer_to_output` function.
 pub struct ParamsTransferToOutput {
     coins: u64,
-    token_id: b256,
+    token_id: ContractId,
     recipient: Address,
 }
 
 /// Parameters for `force_transfer` function.
 pub struct ParamsForceTransfer {
     coins: u64,
-    token_id: b256,
+    token_id: ContractId,
     c_id: ContractId,
 }
 
