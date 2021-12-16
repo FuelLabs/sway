@@ -8,6 +8,7 @@ pub(crate) struct TypedCodeBlock<'sc> {
     pub(crate) whole_block_span: Span<'sc>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl<'sc> TypedCodeBlock<'sc> {
     pub(crate) fn type_check<'n>(
         arguments: TypeCheckArguments<'n, 'sc, CodeBlock<'sc>>,

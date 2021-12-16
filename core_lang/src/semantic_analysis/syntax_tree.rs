@@ -110,7 +110,7 @@ impl<'sc> TypedParseTree<'sc> {
         )
     }
 
-    fn type_check_nodes<'n>(
+    fn type_check_nodes(
         nodes: Vec<AstNode<'sc>>,
         namespace: &mut Namespace<'sc>,
         build_config: &BuildConfig,
@@ -146,7 +146,7 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    fn validate_typed_nodes<'n>(
+    fn validate_typed_nodes(
         typed_tree_nodes: Vec<TypedAstNode<'sc>>,
         span: Span<'sc>,
         namespace: Namespace<'sc>,

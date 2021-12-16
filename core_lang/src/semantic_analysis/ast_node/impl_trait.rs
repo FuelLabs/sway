@@ -13,7 +13,7 @@ use crate::{
 };
 use std::collections::{HashMap, HashSet};
 
-pub(crate) fn implementation_of_trait<'n, 'sc>(
+pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
     crate_namespace: Option<&Namespace<'sc>>,
@@ -181,7 +181,8 @@ impl Default for Mode {
     }
 }
 
-fn type_check_trait_implementation<'n, 'sc>(
+#[allow(clippy::too_many_arguments)]
+fn type_check_trait_implementation<'sc>(
     interface_surface: &[TypedTraitFn<'sc>],
     functions: &[FunctionDeclaration<'sc>],
     methods: &[FunctionDeclaration<'sc>],

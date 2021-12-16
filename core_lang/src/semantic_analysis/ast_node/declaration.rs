@@ -104,9 +104,7 @@ impl<'sc> TypedDeclaration<'sc> {
                         .map(TypedStructField::as_owned_typed_struct_field)
                         .collect(),
                 }),
-                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
-                    rhs.return_type.clone()
-                }
+                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
                     insert_type(TypeInfo::UnknownGeneric {
                         name: name.primary_name.to_string(),
@@ -255,7 +253,7 @@ pub struct OwnedTypedStructField {
 impl OwnedTypedStructField {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {
@@ -286,7 +284,7 @@ impl OwnedTypedStructField {
 impl TypedStructField<'_> {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {
@@ -344,7 +342,7 @@ pub struct TypedEnumVariant<'sc> {
 impl TypedEnumVariant<'_> {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {

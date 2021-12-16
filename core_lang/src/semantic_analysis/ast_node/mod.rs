@@ -716,7 +716,7 @@ impl<'sc> TypedAstNode<'sc> {
 
 /// Imports a new file, populates the given [Namespace] with its content,
 /// and appends the module's content to the control flow graph for later analysis.
-fn import_new_file<'n, 'sc>(
+fn import_new_file<'sc>(
     statement: &IncludeStatement<'sc>,
     namespace: &mut Namespace<'sc>,
     build_config: &BuildConfig,
@@ -796,7 +796,6 @@ fn import_new_file<'n, 'sc>(
 
 fn reassignment<'n, 'sc>(
     arguments: TypeCheckArguments<'n, 'sc, (Box<Expression<'sc>>, Expression<'sc>)>,
-
     span: Span<'sc>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let TypeCheckArguments {
@@ -1053,7 +1052,7 @@ fn type_check_interface_surface<'sc>(
     )
 }
 
-fn type_check_trait_methods<'n, 'sc>(
+fn type_check_trait_methods<'sc>(
     methods: Vec<FunctionDeclaration<'sc>>,
     namespace: &mut Namespace<'sc>,
     crate_namespace: Option<&Namespace<'sc>>,

@@ -11,17 +11,23 @@ use crate::type_engine::*;
 use crate::CallPath;
 use crate::{CompileResult, TypeInfo};
 use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
-    symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
+    // This is a BTreeMap because we rely on its ordering being consistent. See
+    // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
+    // order.
+    symbols: BTreeMap<Ident<'sc>, TypedDeclaration<'sc>>,
     implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
     /// any imported namespaces associated with an ident which is a  library name
-    modules: HashMap<ModuleName, Namespace<'sc>>,
+    // This is a BTreeMap because we rely on its ordering being consistent. See
+    // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
+    // order.
+    modules: BTreeMap<ModuleName, Namespace<'sc>>,
     /// The crate namespace, to be used in absolute importing. This is `None` if the current
     /// namespace _is_ the root namespace.
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
@@ -47,9 +53,8 @@ impl<'sc> Namespace<'sc> {
         ty: TypeInfo,
         self_type: TypeId,
     ) -> Result<TypeId, ()> {
-        let ty = ty.clone();
         Ok(match ty {
-            TypeInfo::Custom { ref name } => match self.get_symbol_by_str(&name) {
+            TypeInfo::Custom { ref name } => match self.get_symbol_by_str(name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,

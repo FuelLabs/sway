@@ -18,6 +18,7 @@ macro_rules! check {
         let mut res = $fn_expr;
         $warnings.append(&mut res.warnings);
         $errors.append(&mut res.errors);
+        #[allow(clippy::manual_unwrap_or)]
         match res.value {
             None => $error_recovery,
             Some(value) => value,

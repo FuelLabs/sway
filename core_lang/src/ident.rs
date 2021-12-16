@@ -3,6 +3,7 @@ use crate::error::*;
 use crate::parser::Rule;
 use crate::span::Span;
 use pest::iterators::Pair;
+use std::cmp::{Ord, Ordering};
 use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone)]
@@ -25,6 +26,17 @@ impl Hash for Ident<'_> {
 impl PartialEq for Ident<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.primary_name == other.primary_name
+    }
+}
+impl Ord for Ident<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.primary_name.cmp(other.primary_name)
+    }
+}
+
+impl PartialOrd for Ident<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
