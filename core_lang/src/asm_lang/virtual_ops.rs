@@ -82,6 +82,7 @@ pub(crate) enum VirtualOp {
     MCPI(VirtualRegister, VirtualRegister, VirtualImmediate12),
     SB(VirtualRegister, VirtualRegister, VirtualImmediate12),
     SW(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    BAL(VirtualRegister, VirtualRegister, VirtualRegister),
     BHSH(VirtualRegister, VirtualRegister),
     BHEI(VirtualRegister),
     BURN(VirtualRegister),
@@ -184,6 +185,7 @@ impl VirtualOp {
             MCPI(r1, r2, _imm) => vec![r1, r2],
             SB(r1, r2, _i) => vec![r1, r2],
             SW(r1, r2, _i) => vec![r1, r2],
+            BAL(r1, r2, r3) => vec![r1, r2, r3],
             BHSH(r1, r2) => vec![r1, r2],
             BHEI(r1) => vec![r1],
             BURN(r1) => vec![r1],
@@ -457,6 +459,11 @@ impl VirtualOp {
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 imm.clone(),
+            ),
+            BAL(reg1, reg2, reg3) => AllocatedOpcode::BAL(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
             ),
             BHSH(reg1, reg2) => {
                 AllocatedOpcode::BHSH(map_reg(&mapping, reg1), map_reg(&mapping, reg2))

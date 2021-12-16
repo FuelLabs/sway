@@ -240,7 +240,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 ..
             } => {
                 *resolved_type_of_parent = if let Some(matching_id) =
-                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(&type_mapping)
+                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
                 {
                     insert_type(TypeInfo::Ref(matching_id))
                 } else {

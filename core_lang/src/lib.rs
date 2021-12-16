@@ -168,7 +168,7 @@ pub enum CompilationResult<'sc> {
     },
     Library {
         name: Ident<'sc>,
-        namespace: Namespace<'sc>,
+        namespace: Box<Namespace<'sc>>,
         warnings: Vec<CompileWarning<'sc>>,
     },
     Failure {
@@ -179,7 +179,7 @@ pub enum CompilationResult<'sc> {
 
 pub enum CompileAstResult<'sc> {
     Success {
-        parse_tree: TypedParseTree<'sc>,
+        parse_tree: Box<TypedParseTree<'sc>>,
         tree_type: TreeType<'sc>,
         warnings: Vec<CompileWarning<'sc>>,
     },
@@ -359,7 +359,7 @@ pub fn compile_to_ast<'sc>(
     }
 
     CompileAstResult::Success {
-        parse_tree: typed_parse_tree,
+        parse_tree: Box::new(typed_parse_tree),
         tree_type: parse_tree.tree_type,
         warnings,
     }
@@ -386,7 +386,7 @@ pub fn compile_to_asm<'sc>(
             match tree_type {
                 TreeType::Contract | TreeType::Script | TreeType::Predicate => {
                     let asm = check!(
-                        compile_ast_to_asm(parse_tree, &build_config),
+                        compile_ast_to_asm(*parse_tree, &build_config),
                         return CompilationResult::Failure { errors, warnings },
                         warnings,
                         errors
@@ -399,7 +399,7 @@ pub fn compile_to_asm<'sc>(
                 TreeType::Library { name } => CompilationResult::Library {
                     warnings,
                     name,
-                    namespace: parse_tree.into_namespace(),
+                    namespace: Box::new(parse_tree.into_namespace()),
                 },
             }
         }
@@ -408,7 +408,7 @@ pub fn compile_to_asm<'sc>(
 
 /// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
 /// bytecode form.
-pub fn compile_to_bytecode<'n, 'sc>(
+pub fn compile_to_bytecode<'sc>(
     input: &'sc str,
     initial_namespace: &Namespace<'sc>,
     build_config: BuildConfig,
@@ -419,7 +419,7 @@ pub fn compile_to_bytecode<'n, 'sc>(
             mut asm,
             mut warnings,
         } => {
-            let mut asm_res = asm.to_bytecode();
+            let mut asm_res = asm.to_bytecode_mut();
             warnings.append(&mut asm_res.warnings);
             if asm_res.value.is_none() || !asm_res.errors.is_empty() {
                 BytecodeCompilationResult::Failure {

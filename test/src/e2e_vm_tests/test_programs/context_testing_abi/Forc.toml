@@ -3,3 +3,6 @@ author  = "Nick Furfaro"
 license = "MIT"
 name = "context_testing_abi"
 entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../lib-std" }
