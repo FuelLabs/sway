@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::semantic_analysis::ast_node::declaration::insert_type_parameters;
 pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
-use crate::semantic_analysis::{Namespace, TypeCheckArguments};
+use crate::semantic_analysis::{Namespace, TCOpts, TypeCheckArguments};
 use crate::span::Span;
 
 use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
@@ -126,6 +126,7 @@ impl<'sc> TypedAstNode<'sc> {
             build_config,
             dead_code_graph,
             dependency_graph,
+            opts,
             ..
         } = arguments;
         let mut warnings = Vec::new();
@@ -155,6 +156,7 @@ impl<'sc> TypedAstNode<'sc> {
                 dead_code_graph,
                 dependency_graph,
                 mode: Mode::NonAbi,
+                opts,
             })
         };
 
@@ -220,6 +222,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     dead_code_graph,
                                     dependency_graph,
                                     mode: Mode::NonAbi,
+                                    opts,
                                 })
                             };
                             let body = check!(
@@ -287,7 +290,8 @@ impl<'sc> TypedAstNode<'sc> {
                                     build_config,
                                     dead_code_graph,
                                     mode: Mode::NonAbi,
-                                    dependency_graph
+                                    dependency_graph,
+                                    opts
                                 }),
                                 error_recovery_function_declaration(fn_decl),
                                 warnings,
@@ -356,15 +360,21 @@ impl<'sc> TypedAstNode<'sc> {
                         Declaration::Reassignment(Reassignment { lhs, rhs, span }) => {
                             check!(
                                 reassignment(
-                                    lhs,
-                                    rhs,
+                                    TypeCheckArguments {
+                                        checkee: (lhs, rhs),
+                                        namespace,
+                                        crate_namespace,
+                                        self_type,
+                                        build_config,
+                                        dead_code_graph,
+                                        dependency_graph,
+                                        // this is unused by `reassignment`
+                                        return_type_annotation: insert_type(TypeInfo::Unknown),
+                                        help_text: Default::default(),
+                                        mode: Mode::NonAbi,
+                                        opts,
+                                    },
                                     span,
-                                    namespace,
-                                    crate_namespace,
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph,
-                                    dependency_graph
                                 ),
                                 return err(warnings, errors),
                                 warnings,
@@ -378,7 +388,8 @@ impl<'sc> TypedAstNode<'sc> {
                                 crate_namespace,
                                 build_config,
                                 dead_code_graph,
-                                dependency_graph
+                                dependency_graph,
+                                opts,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -434,7 +445,8 @@ impl<'sc> TypedAstNode<'sc> {
                                         build_config,
                                         dead_code_graph,
                                         mode: Mode::NonAbi,
-                                        dependency_graph
+                                        dependency_graph,
+                                        opts
                                     }),
                                     continue,
                                     warnings,
@@ -573,6 +585,7 @@ impl<'sc> TypedAstNode<'sc> {
                             dead_code_graph,
                             dependency_graph,
                             mode: Mode::NonAbi,
+                            opts
                         }),
                         error_recovery_expr(a.span()),
                         warnings,
@@ -596,6 +609,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 dead_code_graph,
                                 dependency_graph,
                                 mode: Mode::NonAbi,
+                                opts
                             }),
                             error_recovery_expr(expr.span()),
                             warnings,
@@ -616,6 +630,7 @@ impl<'sc> TypedAstNode<'sc> {
                             dead_code_graph,
                             dependency_graph,
                             mode: Mode::NonAbi,
+                            opts,
                         }),
                         error_recovery_expr(expr.span()),
                         warnings,
@@ -636,26 +651,30 @@ impl<'sc> TypedAstNode<'sc> {
                             build_config,
                             dead_code_graph,
                             dependency_graph,
-                            mode: Mode::NonAbi
+                            mode: Mode::NonAbi,
+                            opts
                         }),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     let (typed_body, _block_implicit_return) = check!(
-                        TypedCodeBlock::type_check(
-                            body.clone(),
+                        TypedCodeBlock::type_check(TypeCheckArguments {
+                            checkee: body.clone(),
                             namespace,
                             crate_namespace,
-                            crate::type_engine::insert_type(TypeInfo::Unit),
-                            "A while loop's loop body cannot implicitly return a value.Try \
+                            return_type_annotation: insert_type(TypeInfo::Unit),
+                            help_text:
+                                "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
                              instead.",
                             self_type,
                             build_config,
                             dead_code_graph,
-                            dependency_graph
-                        ),
+                            dependency_graph,
+                            mode: Mode::NonAbi,
+                            opts,
+                        }),
                         (
                             TypedCodeBlock {
                                 contents: vec![],
@@ -776,16 +795,21 @@ fn import_new_file<'n, 'sc>(
 }
 
 fn reassignment<'n, 'sc>(
-    lhs: Box<Expression<'sc>>,
-    rhs: Expression<'sc>,
+    arguments: TypeCheckArguments<'n, 'sc, (Box<Expression<'sc>>, Expression<'sc>)>,
+
     span: Span<'sc>,
-    namespace: &mut Namespace<'sc>,
-    crate_namespace: Option<&Namespace<'sc>>,
-    self_type: TypeId,
-    build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
-    dependency_graph: &mut HashMap<String, HashSet<String>>,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
+    let TypeCheckArguments {
+        checkee: (lhs, rhs),
+        namespace,
+        crate_namespace,
+        self_type,
+        build_config,
+        dead_code_graph,
+        dependency_graph,
+        opts,
+        ..
+    } = arguments;
     let mut errors = vec![];
     let mut warnings = vec![];
     // ensure that the lhs is a variable expression or struct field access
@@ -843,6 +867,7 @@ fn reassignment<'n, 'sc>(
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
+                    opts
                 }),
                 error_recovery_expr(span),
                 warnings,
@@ -881,6 +906,7 @@ fn reassignment<'n, 'sc>(
                         dead_code_graph,
                         dependency_graph,
                         mode: Mode::NonAbi,
+                        opts
                     }),
                     error_recovery_expr(expr.span()),
                     warnings,
@@ -944,6 +970,7 @@ fn reassignment<'n, 'sc>(
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
+                    opts,
                 }),
                 error_recovery_expr(span),
                 warnings,
@@ -1046,6 +1073,7 @@ fn type_check_trait_methods<'n, 'sc>(
         return_type,
         type_parameters,
         return_type_span,
+        purity,
         ..
     } in methods
     {
@@ -1163,18 +1191,20 @@ fn type_check_trait_methods<'n, 'sc>(
                 insert_type(TypeInfo::ErrorRecovery)
             });
         let (body, _code_block_implicit_return) = check!(
-            TypedCodeBlock::type_check(
-                body,
-                &function_namespace,
+            TypedCodeBlock::type_check(TypeCheckArguments {
+                checkee: body,
+                namespace: &mut function_namespace,
                 crate_namespace,
-                return_type,
-                "Trait method body's return type does not match up with \
+                return_type_annotation: return_type,
+                help_text: "Trait method body's return type does not match up with \
                                          its return type annotation.",
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts: TCOpts { purity }
+            }),
             continue,
             warnings,
             errors

@@ -14,19 +14,24 @@ pub(crate) struct TypedCodeBlock<'sc> {
 
 impl<'sc> TypedCodeBlock<'sc> {
     pub(crate) fn type_check<'n>(
-        other: CodeBlock<'sc>,
-        namespace: &Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        // this is for the return or implicit return
-        type_annotation: TypeId,
-        help_text: &'static str,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
+        arguments: TypeCheckArguments<'n, 'sc, CodeBlock<'sc>>,
     ) -> CompileResult<'sc, (Self, TypeId)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+
+        let TypeCheckArguments {
+            checkee: other,
+            namespace,
+            crate_namespace,
+            return_type_annotation: type_annotation,
+            help_text,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
 
         // Mutable clone, because the interior of a code block must not change the surrounding
         // namespace.
@@ -46,6 +51,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
+                    opts
                 })
                 .ok(&mut warnings, &mut errors)
             })

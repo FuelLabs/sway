@@ -45,6 +45,7 @@ impl<'sc> TypedExpression<'sc> {
             build_config,
             dead_code_graph,
             dependency_graph,
+            opts,
             ..
         } = arguments;
         let expr_span = other.span();
@@ -60,28 +61,36 @@ impl<'sc> TypedExpression<'sc> {
                 type_arguments,
                 ..
             } => Self::type_check_function_application(
-                name,
-                arguments,
-                type_arguments,
+                TypeCheckArguments {
+                    checkee: (name, arguments, type_arguments),
+                    namespace,
+                    crate_namespace,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: Default::default(),
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                },
                 span,
-                namespace,
-                crate_namespace,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
             ),
             Expression::LazyOperator { op, lhs, rhs, span } => Self::type_check_lazy_operator(
-                op,
-                *lhs,
-                *rhs,
+                TypeCheckArguments {
+                    checkee: (op, *lhs, *rhs),
+                    return_type_annotation: insert_type(TypeInfo::Boolean),
+                    namespace,
+                    crate_namespace,
+                    help_text: Default::default(),
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                },
                 span,
-                namespace,
-                crate_namespace,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
             ),
             Expression::MatchExpression { span, .. } => {
                 let errors = vec![CompileError::Unimplemented(
@@ -101,6 +110,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             // TODO if _condition_ is constant, evaluate it and compile this to an
             // expression with only one branch
@@ -110,17 +120,20 @@ impl<'sc> TypedExpression<'sc> {
                 r#else,
                 span,
             } => Self::type_check_if_expression(
-                condition,
-                then,
-                r#else,
+                TypeCheckArguments {
+                    checkee: (condition, then, r#else),
+                    return_type_annotation: type_annotation,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    help_text: Default::default(),
+                    opts,
+                },
                 span,
-                namespace,
-                crate_namespace,
-                type_annotation,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
             ),
             Expression::AsmExpression { asm, span, .. } => Self::type_check_asm_expression(
                 asm,
@@ -131,6 +144,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::StructExpression {
                 span,
@@ -146,6 +160,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::SubfieldExpression {
                 prefix,
@@ -161,6 +176,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::MethodApplication {
                 method_name,
@@ -176,6 +192,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::Unit { span } => {
                 let exp = TypedExpression {
@@ -202,6 +219,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::AbiCast {
                 abi_name,
@@ -217,6 +235,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::Array { contents, span } => Self::type_check_array(
                 contents,
@@ -227,21 +246,27 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::ArrayIndex {
                 prefix,
                 index,
                 span,
             } => Self::type_check_array_index(
-                *prefix,
-                *index,
+                TypeCheckArguments {
+                    checkee: (*prefix, *index),
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    opts,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    mode: Default::default(),
+                    help_text: Default::default(),
+                },
                 span,
-                namespace,
-                crate_namespace,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
             ),
             /* a => {
                 let errors = vec![CompileError::Unimplemented(
@@ -368,17 +393,28 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_function_application<'n>(
-        name: CallPath<'sc>,
-        arguments: Vec<Expression<'sc>>,
-        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
-        _span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
+        arguments: TypeCheckArguments<
+            'n,
+            'sc,
+            (
+                CallPath<'sc>,
+                Vec<Expression<'sc>>,
+                Vec<(TypeInfo, Span<'sc>)>,
+            ),
+        >,
+        span: Span<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let TypeCheckArguments {
+            checkee: (name, arguments, type_arguments),
+            namespace,
+            crate_namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
         let mut warnings = vec![];
         let mut errors = vec![];
         let function_declaration = check!(
@@ -472,6 +508,7 @@ impl<'sc> TypedExpression<'sc> {
                         dead_code_graph,
                         dependency_graph,
                         mode: Mode::NonAbi,
+                        opts,
                     })
                     .unwrap_or_else(&mut warnings, &mut errors, || {
                         error_recovery_expr(arg.span())
@@ -503,32 +540,37 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_lazy_operator<'n>(
-        op: LazyOp,
-        lhs: Expression<'sc>,
-        rhs: Expression<'sc>,
+        arguments: TypeCheckArguments<'n, 'sc, (LazyOp, Expression<'sc>, Expression<'sc>)>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let TypeCheckArguments {
+            checkee: (op, lhs, rhs),
+            namespace,
+            crate_namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            return_type_annotation,
+            opts,
+            ..
+        } = arguments;
+
         let mut warnings = vec![];
         let mut errors = vec![];
-        let bool_type_id = crate::type_engine::insert_type(TypeInfo::Boolean);
         let typed_lhs = check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: lhs.clone(),
+                help_text: Default::default(),
+                mode: Mode::NonAbi,
+                opts,
+                self_type,
                 namespace,
                 crate_namespace,
-                return_type_annotation: bool_type_id,
-                help_text: Default::default(),
-                self_type,
+                return_type_annotation,
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-                mode: Mode::NonAbi,
             }),
             error_recovery_expr(lhs.span()),
             warnings,
@@ -540,13 +582,14 @@ impl<'sc> TypedExpression<'sc> {
                 checkee: rhs.clone(),
                 namespace,
                 crate_namespace,
-                return_type_annotation: bool_type_id,
+                return_type_annotation,
                 help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
                 dependency_graph,
                 mode: Mode::NonAbi,
+                opts,
             }),
             error_recovery_expr(rhs.span()),
             warnings,
@@ -560,7 +603,7 @@ impl<'sc> TypedExpression<'sc> {
                     lhs: Box::new(typed_lhs),
                     rhs: Box::new(typed_rhs),
                 },
-                return_type: bool_type_id,
+                return_type: return_type_annotation,
                 is_constant: IsConstant::No, // Maybe.
                 span,
             },
@@ -637,21 +680,24 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
-            TypedCodeBlock::type_check(
-                contents.clone(),
+            TypedCodeBlock::type_check(TypeCheckArguments {
+                checkee: contents.clone(),
                 namespace,
                 crate_namespace,
-                type_annotation,
+                return_type_annotation: type_annotation,
                 help_text,
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            }),
             (
                 TypedCodeBlock {
                     contents: vec![],
@@ -689,18 +735,29 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_if_expression<'n>(
-        condition: Box<Expression<'sc>>,
-        then: Box<Expression<'sc>>,
-        r#else: Option<Box<Expression<'sc>>>,
+        arguments: TypeCheckArguments<
+            'n,
+            'sc,
+            (
+                Box<Expression<'sc>>,
+                Box<Expression<'sc>>,
+                Option<Box<Expression<'sc>>>,
+            ),
+        >,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        type_annotation: TypeId,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let TypeCheckArguments {
+            checkee: (condition, then, r#else),
+            namespace,
+            crate_namespace,
+            return_type_annotation: type_annotation,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
         let mut warnings = vec![];
         let mut errors = vec![];
         let condition = Box::new(check!(
@@ -715,6 +772,7 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
                 mode: Mode::NonAbi,
+                opts,
             }),
             error_recovery_expr(condition.span()),
             warnings,
@@ -732,6 +790,7 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
                 mode: Mode::NonAbi,
+                opts,
             }),
             error_recovery_expr(then.span()),
             warnings,
@@ -750,6 +809,7 @@ impl<'sc> TypedExpression<'sc> {
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
+                    opts,
                 }),
                 error_recovery_expr(expr.span()),
                 warnings,
@@ -799,6 +859,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -840,6 +901,7 @@ impl<'sc> TypedExpression<'sc> {
                                     dead_code_graph,
                                     dependency_graph,
                                     mode: Mode::NonAbi,
+                                    opts,
                                 }),
                                 error_recovery_expr(initializer.span()),
                                 warnings,
@@ -874,6 +936,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -943,6 +1006,7 @@ impl<'sc> TypedExpression<'sc> {
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
+                    opts,
                 }),
                 continue,
                 warnings,
@@ -995,6 +1059,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1010,6 +1075,7 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
                 mode: Mode::NonAbi,
+                opts,
             }),
             return err(warnings, errors),
             warnings,
@@ -1070,6 +1136,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1122,7 +1189,8 @@ impl<'sc> TypedExpression<'sc> {
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph
+                        dependency_graph,
+                        opts,
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -1161,6 +1229,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1182,6 +1251,7 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
                 mode: Mode::NonAbi,
+                opts,
             }),
             error_recovery_expr(err_span),
             warnings,
@@ -1229,7 +1299,8 @@ impl<'sc> TypedExpression<'sc> {
                     build_config,
                     dead_code_graph,
                     mode: Mode::ImplAbiFn,
-                    dependency_graph
+                    dependency_graph,
+                    opts,
                 }),
                 return err(warnings, errors),
                 warnings,
@@ -1265,6 +1336,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         if contents.is_empty() {
             return ok(
@@ -1299,6 +1371,7 @@ impl<'sc> TypedExpression<'sc> {
                         dead_code_graph,
                         dependency_graph,
                         mode: Mode::NonAbi,
+                        opts,
                     }),
                     error_recovery_expr(span),
                     warnings,
@@ -1347,16 +1420,20 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_array_index<'n>(
-        prefix: Expression<'sc>,
-        index: Expression<'sc>,
+        arguments: TypeCheckArguments<'n, 'sc, (Expression<'sc>, Expression<'sc>)>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let TypeCheckArguments {
+            checkee: (prefix, index),
+            namespace,
+            crate_namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -1372,6 +1449,7 @@ impl<'sc> TypedExpression<'sc> {
                 dead_code_graph,
                 dependency_graph,
                 mode: Mode::NonAbi,
+                opts,
             }),
             return err(warnings, errors),
             warnings,
@@ -1394,6 +1472,7 @@ impl<'sc> TypedExpression<'sc> {
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
+                    opts,
                 }),
                 return err(warnings, errors),
                 warnings,
@@ -1445,6 +1524,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             )
         }
     }
@@ -1489,6 +1569,7 @@ mod tests {
             dead_code_graph: &mut dead_code_graph,
             dependency_graph: &mut dependency_graph,
             mode: Mode::NonAbi,
+            opts,
         })
     }
 

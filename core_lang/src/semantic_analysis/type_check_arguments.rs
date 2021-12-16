@@ -1,13 +1,8 @@
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-
-
+use crate::parse_tree::declaration::Purity;
 use crate::semantic_analysis::{ast_node::Mode, Namespace};
-
-
 use crate::type_engine::*;
-
-
 
 use std::collections::{HashMap, HashSet};
 pub struct TypeCheckArguments<'a, 'sc, T> {
@@ -21,4 +16,10 @@ pub struct TypeCheckArguments<'a, 'sc, T> {
     pub(crate) dead_code_graph: &'a mut ControlFlowGraph<'sc>,
     pub(crate) mode: Mode,
     pub(crate) dependency_graph: &'a mut HashMap<String, HashSet<String>>,
+    pub(crate) opts: TCOpts,
+}
+
+#[derive(Default, Clone, Copy)]
+pub struct TCOpts {
+    pub(crate) purity: Purity,
 }

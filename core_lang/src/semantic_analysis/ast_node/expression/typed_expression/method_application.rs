@@ -3,7 +3,7 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::MethodName;
 use crate::parser::{HllParser, Rule};
-
+use crate::semantic_analysis::TCOpts;
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
@@ -17,6 +17,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    opts: TCOpts,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -34,6 +35,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                 dead_code_graph,
                 dependency_graph,
                 mode: Mode::NonAbi,
+                opts,
             }),
             error_recovery_expr(span.clone()),
             warnings,
@@ -176,6 +178,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                                 self_type,
                                 dead_code_graph,
                                 dependency_graph,
+                                opts,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -250,6 +253,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                                 self_type,
                                 dead_code_graph,
                                 dependency_graph,
+                                opts,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -284,6 +288,7 @@ fn re_parse_expression<'n, 'a>(
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph<'a>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    opts: TCOpts,
 ) -> CompileResult<'a, TypedExpression<'a>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -332,6 +337,7 @@ fn re_parse_expression<'n, 'a>(
             dead_code_graph,
             dependency_graph,
             mode: Mode::NonAbi,
+            opts,
         }),
         return err(warnings, errors),
         warnings,

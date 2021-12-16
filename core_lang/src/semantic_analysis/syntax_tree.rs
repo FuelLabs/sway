@@ -132,6 +132,7 @@ impl<'sc> TypedParseTree<'sc> {
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
+                    opts: Default::default()
                 })
             })
             .filter_map(|res| res.ok(&mut warnings, &mut errors))

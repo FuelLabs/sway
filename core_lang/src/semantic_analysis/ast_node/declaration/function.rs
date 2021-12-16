@@ -3,17 +3,15 @@ use crate::semantic_analysis::{
     ast_node::{
         IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
         TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
-    }, TypeCheckArguments,
+    },
+    TypeCheckArguments,
 };
 use crate::span::Span;
 use crate::type_engine::*;
-
 use crate::TypeParameter;
 use crate::{error::*, Ident};
-
 use core_types::{Function, Property};
 use sha2::{Digest, Sha256};
-
 
 mod function_parameter;
 pub use function_parameter::*;
@@ -47,6 +45,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             dead_code_graph,
             mode,
             dependency_graph,
+            opts,
             ..
         } = arguments;
         let mut warnings = Vec::new();
@@ -60,6 +59,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             type_parameters,
             return_type_span,
             visibility,
+            purity,
             ..
         } = fn_decl.clone();
         // insert type parameters as Unknown types
@@ -120,17 +120,20 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = check!(
-            TypedCodeBlock::type_check(
-                body.clone(),
-                &namespace,
+            TypedCodeBlock::type_check(TypeCheckArguments {
+                checkee: body.clone(),
+                namespace: &mut namespace,
                 crate_namespace,
-                return_type,
-                "Function body's return type does not match up with its return type annotation.",
+                return_type_annotation: return_type,
+                help_text:
+                    "Function body's return type does not match up with its return type annotation.",
                 self_type,
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-            ),
+                mode: Mode::NonAbi,
+                opts,
+            }),
             (
                 TypedCodeBlock {
                     contents: vec![],

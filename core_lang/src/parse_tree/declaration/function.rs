@@ -9,7 +9,7 @@ use core_types::{Function, Property};
 use pest::iterators::Pair;
 
 mod purity;
-use purity::Purity;
+pub use purity::Purity;
 
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration<'sc> {
