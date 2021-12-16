@@ -42,7 +42,7 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
     while index < length {
         // if an ouput is found of type "OutputVariable":
         if asm(slot: index, type, target: OUTPUT_VARIABLE_TYPE, bytes: 8, res) {
-            xos t slot;
+            xos type slot;
             meq res type target bytes;
             res: bool // && the amount is zero:
         }
