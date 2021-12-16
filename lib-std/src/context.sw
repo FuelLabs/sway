@@ -21,7 +21,8 @@ pub fn this_balance(token_id: b256) -> u64 {
 }
 
 /// Get the balance of token `token_id` for any contract `contract_id`
-pub fn balance_of_contract(asset_id: b256, contract_id: ContractId) -> u64 {
+// @todo consider making an alias for ContractId: AssetId
+pub fn balance_of_contract(asset_id: ContractId, contract_id: ContractId) -> u64 {
     asm(balance, token: asset_id, contract: contract_id.value) {
         bal balance token contract;
         balance: u64
