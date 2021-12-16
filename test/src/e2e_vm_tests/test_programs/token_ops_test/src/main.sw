@@ -5,53 +5,69 @@ use std::address::Address;
 use std::contract_id::ContractId;
 use test_fuel_coin_abi::*;
 
+struct Opts {
+        gas: u64,
+        coins: u64,
+        id: ContractId,
+    }
+
 fn main() -> bool {
+
+    let default = Opts {
+        gas: 1000,
+        coins: 0,
+        id: ~ContractId::from(ETH_ID),
+    }
+
     let test_recipient = ~Address::from(0x3333333333333333333333333333333333333333333333333333333333333333);
-    let test_contract_id = ~ContractId::from(0x2222222222222222222222222222222222222222222222222222222222222222);
+    // the already deployed balance_test contract
+    let balance_id = ~ContractId::from(0xa72b68c70be7e137de429840d67bce3b1e9a545fa05f77ec090091539d4fbf3c);
 
-    let transfer_to_output_args = ParamsTransferToOutput {
-        coins: 5,
-        token_id: ETH_ID,
-        recipient: test_recipient,
-    };
-
-    let test_fuel_coin_id = ~ContractId::from(<id>);
+    // the deployed fuel_coin contract
+    let fuelcoin_id = ~ContractId::from(0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586);
     let fuel_coin = abi(TestFuelCoin, test_fuel_coin_id);
-    let gas = 1000;
-    let coins = 0;
-    let token_id = ETH_ID;
 
     // @todo add total supply modification checks for force_transfer,  mint & burn once balance() is added to stdlib lands.
-    // use test_contract_id for balance checks
-    let mut balance = balance_of_contract(test_contract_id)
-    assert(starting_balance == ZERO);
 
-    fuel_coin.mint(gas, coins, token_id, 11);
+    let mut fuelcoin_balance = balance_of_contract(fuelcoin_id, balance_id)
+    assert(fuelcoin_balance == 0);
 
-    balance = balance_of_contract(test_contract_id)
-    assert(balance == 11);
+    fuel_coin.mint(default.gas, default.coins, default.id, 11);
 
-    fuel_coin.burn(gas, coins, token_id, 7);
+    // check that the mint was successful
+    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id)
+    assert(fuelcoin_balance == 11);
 
-    balance = balance_of_contract(test_contract_id)
-    assert(balance == 4);
+    fuel_coin.burn(default.gas, default.coins, default.id, 7);
+
+    // check that the burn was successful
+    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id)
+    assert(fuelcoin_balance == 4);
 
     let force_transfer_args = ParamsForceTransfer {
         coins: 3,
-        token_id: <id>,
-        contract_id: test_token_id,
+        token_id: fuelcoin_id,
+        contract_id: balance_id,
     };
-    let mut balance2 = balance_of_contract(test_token_id)
-    assert(balance == ZERO);
+    let mut balance2 = balance_of_contract(fuelcoin_id, balance_id)
+    assert(balance2 == 0);
 
-    fuel_coin.force_transfer(gas, coins, token_id, force_transfer_args);
+    fuel_coin.force_transfer(default.gas, default.coins, default.id, force_transfer_args);
 
-    balance = balance_of_contract(test_contract_id)
-    balance2 = balance_of_contract(test_token_id)
-    assert(balance == 1);
-    assert(balance2 == 3);
+    balance = balance_of_contract(fuelcoin_id, balance_id)
+    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id)
+    assert(balance == 3);
+    assert(fuelcoin_balance == 1);
 
-    fuel_coin.transfer_to_output(gas, coins, token_id, transfer_to_output_args);
+    let transfer_to_output_args = ParamsTransferToOutput {
+        coins: 1,
+        token_id: fuelcoin_id,
+        recipient: test_recipient,
+    };
+
+    fuel_coin.transfer_to_output(default.gas, default.coins, default.id, transfer_to_output_args);
+    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id)
+    assert(fuelcoin_balance == 0);
 
     true
 }
