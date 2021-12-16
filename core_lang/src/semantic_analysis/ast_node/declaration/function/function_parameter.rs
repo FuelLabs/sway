@@ -1,14 +1,8 @@
-
-
-
 use crate::span::Span;
 use crate::type_engine::*;
 
-use crate::{Ident};
-use crate::{TypeParameter};
-
-
-
+use crate::Ident;
+use crate::TypeParameter;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedFunctionParameter<'sc> {
