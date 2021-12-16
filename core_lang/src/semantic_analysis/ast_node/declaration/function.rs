@@ -6,7 +6,7 @@ pub(crate) fn insert_type_parameters<'sc>(
     params: &[TypeParameter<'sc>],
 ) -> Vec<(TypeParameter<'sc>, TypeId)> {
     params
-        .into_iter()
+        .iter()
         .map(|x| {
             (
                 x.clone(),

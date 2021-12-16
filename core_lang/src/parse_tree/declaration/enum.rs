@@ -160,7 +160,7 @@ impl<'sc> EnumVariant<'sc> {
     ) -> CompileResult<'sc, TypedEnumVariant<'sc>> {
         let mut errors = vec![];
         let enum_variant_type =
-            if let Some(matching_id) = self.r#type.matches_type_parameter(&type_mapping) {
+            if let Some(matching_id) = self.r#type.matches_type_parameter(type_mapping) {
                 insert_type(TypeInfo::Ref(matching_id))
             } else {
                 namespace
