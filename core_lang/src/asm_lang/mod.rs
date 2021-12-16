@@ -880,6 +880,15 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::S256(r1, r2, r3)
                 }
+                "xos" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XOS(r1, r2)
+                }
                 "noop" => VirtualOp::NOOP,
                 "flag" => {
                     let r1 = check!(
@@ -1330,6 +1339,7 @@ impl fmt::Display for Op<'_> {
                 ECR(a, b, c) => format!("ecr {} {} {}", a, b, c),
                 K256(a, b, c) => format!("k256 {} {} {}", a, b, c),
                 S256(a, b, c) => format!("s256 {} {} {}", a, b, c),
+                XOS(a, b) => format!("xos {} {}", a, b),
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 GM(a, b) => format!("gm {} {}", a, b),
