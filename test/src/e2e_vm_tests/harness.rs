@@ -109,7 +109,7 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
         print_intermediate_asm: false,
         binary_outfile: None,
         offline_mode: false,
-        silent_mode: false,
+        silent_mode: true,
     })
 }
 
