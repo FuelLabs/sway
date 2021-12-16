@@ -19,11 +19,11 @@ impl TestFuelCoin for Contract {
     }
 
     fn transfer_to_output(gas: u64, coins: u64, token_id: b256, params: ParamsTransferToOutput) {
-        transfer_to_output(params.coins, params.token_id, params.recipient);
+        transfer_to_output(params.coins, params.token_id.value, params.recipient);
     }
 
     fn force_transfer(gas: u64, coins: u64, token_id: b256, params: ParamsForceTransfer) {
-        force_transfer(params.coins, params.token_id, params.c_id.value)
+        force_transfer(params.coins, params.token_id.value, params.c_id.value)
     }
 
     fn name(gas: u64, coins: u64, token_id: b256, input: ()) -> str[14] {
