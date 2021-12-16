@@ -1126,7 +1126,7 @@ checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#64db5380bf1a8f0bd3c15d6b222fc5395438cc45"
+source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#5b3e85b921960101b981b2f0b977b58063c878b9"
 dependencies = [
  "fuel-types",
  "serde",
