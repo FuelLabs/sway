@@ -1,0 +1,5 @@
+[project]
+author  = "Nick Furfaro"
+license = "MIT"
+name = "balance_test_abi"
+entry = "main.sw"

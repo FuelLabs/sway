@@ -194,7 +194,7 @@ impl<'sc> Declaration<'sc> {
                     type_ascription,
                     type_ascription_span: type_ascription_span.map(|type_ascription_span| Span {
                         span: type_ascription_span,
-                        path: config.clone().map(|x| x.path()),
+                        path: config.map(|x| x.path()),
                     }),
                 })
             }

@@ -4,5 +4,5 @@ use crate::semantic_analysis::TypedExpression;
 #[derive(Clone, Debug)]
 pub(crate) enum TypedMatchCondition<'sc> {
     CatchAll,
-    Expression(TypedExpression<'sc>),
+    Expression(Box<TypedExpression<'sc>>),
 }

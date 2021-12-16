@@ -55,7 +55,7 @@ impl<'sc> MatchBranch<'sc> {
                     warnings,
                     errors
                 );
-                MatchCondition::Expression(expr)
+                MatchCondition::Expression(Box::new(expr))
             }
             // the "_" case
             None => MatchCondition::CatchAll,

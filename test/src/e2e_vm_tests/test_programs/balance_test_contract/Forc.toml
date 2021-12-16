@@ -1,9 +1,9 @@
 [project]
 author  = "Nick Furfaro"
 license = "MIT"
-name = "context_testing_contract"
+name = "balance_test_contract"
 entry = "main.sw"
 
 [dependencies]
 std = { path = "../../../../../lib-std" }
-context_testing_abi = { path = "../context_testing_abi"}
+balance_test_abi = { path = "../balance_test_abi"}
