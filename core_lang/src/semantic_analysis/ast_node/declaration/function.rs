@@ -3,18 +3,17 @@ use crate::semantic_analysis::{
     ast_node::{
         IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
         TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
-    },
-    Namespace, TypeCheckArguments,
+    }, TypeCheckArguments,
 };
 use crate::span::Span;
 use crate::type_engine::*;
-use crate::ControlFlowGraph;
+
 use crate::TypeParameter;
-use crate::{build_config::BuildConfig, error::*, Ident};
+use crate::{error::*, Ident};
 
 use core_types::{Function, Property};
 use sha2::{Digest, Sha256};
-use std::collections::{HashMap, HashSet};
+
 
 mod function_parameter;
 pub use function_parameter::*;

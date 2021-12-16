@@ -1478,17 +1478,18 @@ mod tests {
         let mut dead_code_graph: ControlFlowGraph = Default::default();
         let mut dependency_graph = HashMap::new();
 
-        TypedExpression::type_check(
-            expr,
-            &mut namespace,
-            None,
-            Some(type_annotation),
-            "",
+        TypedExpression::type_check(TypeCheckArguments {
+            checkee: expr,
+            namespace: &mut namespace,
+            crate_namespace: None,
+            return_type_annotation: type_annotation,
+            help_text: Default::default(),
             self_type,
-            &build_config,
-            &mut dead_code_graph,
-            &mut dependency_graph,
-        )
+            build_config: &build_config,
+            dead_code_graph: &mut dead_code_graph,
+            dependency_graph: &mut dependency_graph,
+            mode: Mode::NonAbi,
+        })
     }
 
     fn do_type_check_for_boolx2<'sc>(expr: Expression<'sc>) -> CompileResult<'sc, TypedExpression> {

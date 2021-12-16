@@ -1,14 +1,14 @@
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::error::*;
-use crate::parse_tree::{declaration::TypeParameter, Visibility};
+
+
 use crate::semantic_analysis::{ast_node::Mode, Namespace};
-use crate::span::Span;
-use crate::style::is_snake_case;
+
+
 use crate::type_engine::*;
-use crate::{CodeBlock, Ident, Rule};
-use core_types::{Function, Property};
-use pest::iterators::Pair;
+
+
+
 use std::collections::{HashMap, HashSet};
 pub struct TypeCheckArguments<'a, 'sc, T> {
     pub(crate) checkee: T,
