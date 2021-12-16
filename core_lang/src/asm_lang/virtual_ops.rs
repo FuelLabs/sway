@@ -547,10 +547,9 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            XOS(reg1, reg2) => AllocatedOpcode::XOS(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-            ),
+            XOS(reg1, reg2) => {
+                AllocatedOpcode::XOS(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             NOOP => AllocatedOpcode::NOOP,
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             GM(reg, imm) => AllocatedOpcode::GM(map_reg(&mapping, reg), imm.clone()),
