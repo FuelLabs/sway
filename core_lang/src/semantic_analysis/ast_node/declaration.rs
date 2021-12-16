@@ -111,9 +111,7 @@ impl<'sc> TypedDeclaration<'sc> {
                         .map(TypedStructField::as_owned_typed_struct_field)
                         .collect(),
                 }),
-                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => {
-                    rhs.return_type
-                }
+                TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
                     insert_type(TypeInfo::UnknownGeneric {
                         name: name.primary_name.to_string(),
@@ -816,7 +814,7 @@ impl TypedReassignment<'_> {
 
 #[allow(clippy::too_many_arguments)]
 impl<'sc> TypedFunctionDeclaration<'sc> {
-    pub fn type_check (
+    pub fn type_check(
         fn_decl: FunctionDeclaration<'sc>,
         namespace: &mut Namespace<'sc>,
         crate_namespace: Option<&Namespace<'sc>>,

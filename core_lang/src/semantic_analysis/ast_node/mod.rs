@@ -115,7 +115,7 @@ impl<'sc> TypedAstNode<'sc> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn type_check (
+    pub(crate) fn type_check(
         node: AstNode<'sc>,
         namespace: &mut Namespace<'sc>,
         crate_namespace: Option<&Namespace<'sc>>,

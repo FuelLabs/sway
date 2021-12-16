@@ -302,7 +302,7 @@ impl<'sc> TypedExpression<'sc> {
         self.expression.copy_types(type_mapping);
     }
 
-    fn type_check_literal (
+    fn type_check_literal(
         lit: Literal<'sc>,
         span: Span<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {

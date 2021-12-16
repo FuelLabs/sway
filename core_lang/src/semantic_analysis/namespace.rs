@@ -53,7 +53,6 @@ impl<'sc> Namespace<'sc> {
         ty: TypeInfo,
         self_type: TypeId,
     ) -> Result<TypeId, ()> {
-        let ty = ty;
         Ok(match ty {
             TypeInfo::Custom { ref name } => match self.get_symbol_by_str(name) {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
