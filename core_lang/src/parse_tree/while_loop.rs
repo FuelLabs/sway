@@ -7,6 +7,8 @@ use crate::{
 };
 use pest::iterators::Pair;
 
+/// Represents the information needed to build a [WhileLoop] with Sway source code. 
+/// Contains the `condition`, which is defined from an [Expression], and the `body` from a [CodeBlock].
 #[derive(Debug, Clone)]
 pub struct WhileLoop<'sc> {
     pub(crate) condition: Expression<'sc>,

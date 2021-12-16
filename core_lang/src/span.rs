@@ -5,7 +5,7 @@ use std::{path::PathBuf, sync::Arc};
 pub struct Span<'sc> {
     ///  A [pest::Span] returned directly from the generated parser.
     pub span: pest::Span<'sc>,
-    // The path to the file containing the source code, or a reference counting pointer on the heap.
+    // A reference counted pointer to the file from which this span originated.
     pub(crate) path: Option<Arc<PathBuf>>,
 }
 

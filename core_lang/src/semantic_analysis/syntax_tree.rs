@@ -9,6 +9,7 @@ use crate::{error::*, type_engine::*};
 use crate::{AstNode, ParseTree};
 use std::collections::{HashMap, HashSet};
 
+/// Represents the possible types of a parse tree.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TreeType<'sc> {
     Predicate,

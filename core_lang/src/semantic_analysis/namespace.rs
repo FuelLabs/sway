@@ -16,15 +16,20 @@ use std::collections::{HashMap, VecDeque};
 type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
+/// Contains the symbol, type, trait and other relevant naming information of some Sway source code, and ensures that 
+/// all of a given set will have unique names so they can be easily identified.
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
+    // A key/value set containing the name and span of a symbol, and its type, respectively.
     symbols: HashMap<Ident<'sc>, TypedDeclaration<'sc>>,
+    // A key/value set containing the [TraitName], [TypeInfo] of a trait, and a vector containing the function attributes, respectively.
     implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
-    /// any imported namespaces associated with an ident which is a library name
+    // any imported namespaces associated with an ident which is a library name
     modules: HashMap<ModuleName, Namespace<'sc>>,
-    /// The crate namespace, to be used in absolute importing. This is `None` if the current
-    /// namespace _is_ the root namespace.
+    // The crate namespace, to be used in absolute importing. This is `None` if the current
+    // namespace _is_ the root namespace.
     use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
+    // Represents an alternative name for a symbol.
     use_aliases: HashMap<String, Ident<'sc>>,
 }
 

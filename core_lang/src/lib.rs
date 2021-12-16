@@ -178,7 +178,7 @@ pub enum CompilationResult<'sc> {
 }
 
 /// Represents the result of compiling Sway code via [compile_to_bytecode].
-/// Contains the compiled bytecode in byte form, or, resulting errors, and any warnings generated.
+/// Contains the compiled bytecode in byte form, or resulting errors, and any warnings generated.
 pub enum BytecodeCompilationResult<'sc> {
     Success {
         bytes: Vec<u8>,
