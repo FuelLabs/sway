@@ -1586,7 +1586,7 @@ mod tests {
             dead_code_graph: &mut dead_code_graph,
             dependency_graph: &mut dependency_graph,
             mode: Mode::NonAbi,
-            opts,
+            opts: Default::default(),
         })
     }
 
