@@ -85,7 +85,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "asm_should_not_have_return",
         "missing_fn_arguments",
         "excess_fn_arguments",
-        "infinite_dependencies",
+        // the feature for the below test, detecting inf deps, was reverted
+        // when that is re-implemented we should reenable this test
+        //"infinite_dependencies",
         "top_level_vars",
         "dependencies_parsing_error",
         "disallowed_gm",
