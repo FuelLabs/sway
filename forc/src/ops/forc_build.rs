@@ -253,7 +253,7 @@ fn compile_library<'source>(
             ..
         } => {
             print_on_success_library(silent_mode, proj_name, warnings);
-            Ok(namespace)
+            Ok(*namespace)
         }
         CompilationResult::Failure { errors, warnings } => {
             print_on_failure(silent_mode, warnings, errors);
