@@ -8,9 +8,18 @@ entry = "main.sw"
 std = { path = "../../../../../lib-std" }
 test_fuel_coin_abi = { path = "../test_fuel_coin_abi"}
 
+# test_fuel_coin_contract
 [[tx-input]]
 type = "Contract"
-contract-id = "0x314143b15215da1248f0c09eba442764f1324a44c3bfcca022ddd1fc2008c542"
+contract-id = "<ID>"
+utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
+balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
+state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
+
+# balance_test_contract
+[[tx-input]]
+type = "Contract"
+contract-id = "0xa72b68c70be7e137de429840d67bce3b1e9a545fa05f77ec090091539d4fbf3c"
 utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
