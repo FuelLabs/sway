@@ -472,6 +472,7 @@ impl<'sc> TypedTraitFn<'sc> {
     /// interface surface.
     pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration<'sc> {
         TypedFunctionDeclaration {
+            purity: Default::default(),
             name: self.name.clone(),
             body: TypedCodeBlock {
                 contents: vec![],

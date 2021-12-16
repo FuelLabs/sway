@@ -1,10 +1,6 @@
 use super::*;
-use crate::build_config::BuildConfig;
-use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
-
 use crate::CodeBlock;
-use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedCodeBlock<'sc> {
@@ -51,7 +47,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
-                    opts
+                    opts,
                 })
                 .ok(&mut warnings, &mut errors)
             })

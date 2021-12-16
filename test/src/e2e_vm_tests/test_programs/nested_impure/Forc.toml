@@ -1,0 +1,5 @@
+[project]
+author  = "Alexander Hansen"
+license = "MIT"
+name = "nested_impure"
+entry = "main.sw"

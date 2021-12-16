@@ -3,6 +3,7 @@ use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDe
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::ident::Ident;
+use crate::parse_tree::Purity;
 use crate::semantic_analysis::{ast_node::Mode, Namespace, TypeCheckArguments};
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
@@ -132,7 +133,7 @@ impl<'sc> TypedParseTree<'sc> {
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
-                    opts: Default::default()
+                    opts: Default::default(),
                 })
             })
             .filter_map(|res| res.ok(&mut warnings, &mut errors))
@@ -180,7 +181,12 @@ impl<'sc> TypedParseTree<'sc> {
             };
         }
 
-        // Perform validation based on the tree type.
+        // impure functions are disallowed in non-contracts
+        if *tree_type != TreeType::Contract {
+            errors.append(&mut disallow_impure_functions(&declarations, &mains));
+        }
+
+        // Perform other validation based on the tree type.
         let typed_parse_tree = match tree_type {
             TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
@@ -239,4 +245,28 @@ impl<'sc> TypedParseTree<'sc> {
 
         ok(typed_parse_tree, warnings, errors)
     }
+}
+
+fn disallow_impure_functions<'sc>(
+    declarations: &[TypedDeclaration<'sc>],
+    mains: &[TypedFunctionDeclaration<'sc>],
+) -> Vec<CompileError<'sc>> {
+    let fn_decls = declarations
+        .iter()
+        .filter_map(|decl| match decl {
+            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
+            _ => None,
+        })
+        .chain(mains);
+    fn_decls
+        .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
+            if *purity == Purity::Impure {
+                Some(CompileError::ImpureInNonContract {
+                    span: name.span.clone(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect()
 }

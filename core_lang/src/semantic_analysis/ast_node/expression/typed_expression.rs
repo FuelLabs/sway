@@ -402,7 +402,7 @@ impl<'sc> TypedExpression<'sc> {
                 Vec<(TypeInfo, Span<'sc>)>,
             ),
         >,
-        span: Span<'sc>,
+        _span: Span<'sc>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let TypeCheckArguments {
             checkee: (name, arguments, type_arguments),
@@ -428,6 +428,7 @@ impl<'sc> TypedExpression<'sc> {
             return_type,
             body,
             span,
+            purity,
             ..
         } = if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
             // if this is a generic function, monomorphize its internal types and insert the resulting
@@ -450,6 +451,10 @@ impl<'sc> TypedExpression<'sc> {
             });
             return err(warnings, errors);
         };
+
+        if opts.purity != purity {
+            errors.push(CompileError::PureCalledImpure { span: name.span() });
+        }
 
         match arguments.len().cmp(&parameters.len()) {
             Ordering::Greater => {

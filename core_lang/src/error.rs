@@ -812,6 +812,10 @@ pub enum CompileError<'sc> {
         count: u64,
         span: Span<'sc>,
     },
+    #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
+    PureCalledImpure { span: Span<'sc> },
+    #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
+    ImpureInNonContract { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -1000,6 +1004,8 @@ impl<'sc> CompileError<'sc> {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
+            PureCalledImpure { span, .. } => span,
+            ImpureInNonContract { span, .. } => span,
         }
     }
 

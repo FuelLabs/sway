@@ -30,6 +30,7 @@ pub struct TypedFunctionDeclaration<'sc> {
     pub(crate) visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
+    pub(crate) purity: Purity,
 }
 
 impl<'sc> TypedFunctionDeclaration<'sc> {
@@ -45,7 +46,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             dead_code_graph,
             mode,
             dependency_graph,
-            opts,
+            mut opts,
             ..
         } = arguments;
         let mut warnings = Vec::new();
@@ -62,6 +63,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             purity,
             ..
         } = fn_decl.clone();
+        opts.purity = purity;
         // insert type parameters as Unknown types
         let type_mapping = insert_type_parameters(&type_parameters);
         let return_type =
@@ -259,6 +261,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 visibility,
                 // if this is for a contract, then it is a contract call
                 is_contract_call: mode == Mode::ImplAbiFn,
+                purity,
             },
             warnings,
             errors,
@@ -361,8 +364,6 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     }
     pub(crate) fn replace_self_types(self, self_type: TypeId) -> Self {
         TypedFunctionDeclaration {
-            name: self.name,
-            body: self.body,
             parameters: self
                 .parameters
                 .iter()
@@ -382,8 +383,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             },
             type_parameters: self.type_parameters.clone(),
             return_type_span: self.return_type_span.clone(),
-            visibility: self.visibility,
-            is_contract_call: self.is_contract_call,
+            ..self
         }
     }
     pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<'sc, Vec<u8>> {
@@ -469,6 +469,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 fn test_function_selector_behavior() {
     use crate::type_engine::IntegerBits;
     let decl = TypedFunctionDeclaration {
+        purity: Default::default(),
         name: Ident {
             primary_name: "foo",
             span: Span {
@@ -506,6 +507,7 @@ fn test_function_selector_behavior() {
     assert_eq!(selector_text, "foo()".to_string());
 
     let decl = TypedFunctionDeclaration {
+        purity: Default::default(),
         name: Ident {
             primary_name: "bar",
             span: Span {

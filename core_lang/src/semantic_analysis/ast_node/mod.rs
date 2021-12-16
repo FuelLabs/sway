@@ -1222,6 +1222,7 @@ fn type_check_trait_methods<'n, 'sc>(
             visibility: Visibility::Public,
             return_type_span,
             is_contract_call: false,
+            purity,
         });
     }
     ok(methods_buf, warnings, errors)
@@ -1241,6 +1242,7 @@ fn error_recovery_function_declaration(
         ..
     } = decl;
     TypedFunctionDeclaration {
+        purity: Default::default(),
         name,
         body: TypedCodeBlock {
             contents: Default::default(),
