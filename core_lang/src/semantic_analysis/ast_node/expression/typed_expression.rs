@@ -1,7 +1,7 @@
 use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
-use crate::semantic_analysis::{ast_node::*, Namespace};
+use crate::semantic_analysis::{ast_node::*, Namespace, TypeCheckArguments};
 use crate::type_engine::{insert_type, IntegerBits};
 
 use either::Either;
@@ -34,16 +34,21 @@ pub(crate) fn error_recovery_expr(span: Span<'_>) -> TypedExpression<'_> {
 #[allow(clippy::too_many_arguments)]
 impl<'sc> TypedExpression<'sc> {
     pub(crate) fn type_check<'n>(
-        other: Expression<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        type_annotation: Option<TypeId>,
-        help_text: impl Into<String> + Clone,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
+        arguments: TypeCheckArguments<'n, 'sc, Expression<'sc>>,
     ) -> CompileResult<'sc, Self> {
+        let TypeCheckArguments {
+            checkee: other,
+            namespace,
+            crate_namespace,
+            return_type_annotation: type_annotation,
+            help_text,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
         let expr_span = other.span();
         let res = match other {
             Expression::Literal { value: lit, span } => Self::type_check_literal(lit, span),
@@ -57,28 +62,36 @@ impl<'sc> TypedExpression<'sc> {
                 type_arguments,
                 ..
             } => Self::type_check_function_application(
-                name,
-                arguments,
-                type_arguments,
+                TypeCheckArguments {
+                    checkee: (name, arguments, type_arguments),
+                    namespace,
+                    crate_namespace,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: Default::default(),
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                },
                 span,
-                namespace,
-                crate_namespace,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
             ),
             Expression::LazyOperator { op, lhs, rhs, span } => Self::type_check_lazy_operator(
-                op,
-                *lhs,
-                *rhs,
+                TypeCheckArguments {
+                    checkee: (op, *lhs, *rhs),
+                    return_type_annotation: insert_type(TypeInfo::Boolean),
+                    namespace,
+                    crate_namespace,
+                    help_text: Default::default(),
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                },
                 span,
-                namespace,
-                crate_namespace,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
             ),
             Expression::MatchExpression { span, .. } => {
                 let errors = vec![CompileError::Unimplemented(
@@ -98,6 +111,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             // TODO if _condition_ is constant, evaluate it and compile this to an
             // expression with only one branch
@@ -107,17 +121,20 @@ impl<'sc> TypedExpression<'sc> {
                 r#else,
                 span,
             } => Self::type_check_if_expression(
-                condition,
-                then,
-                r#else,
+                TypeCheckArguments {
+                    checkee: (condition, then, r#else),
+                    return_type_annotation: type_annotation,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    help_text: Default::default(),
+                    opts,
+                },
                 span,
-                namespace,
-                crate_namespace,
-                type_annotation,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
             ),
             Expression::AsmExpression { asm, span, .. } => Self::type_check_asm_expression(
                 asm,
@@ -128,6 +145,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::StructExpression {
                 span,
@@ -143,6 +161,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::SubfieldExpression {
                 prefix,
@@ -158,6 +177,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::MethodApplication {
                 method_name,
@@ -173,6 +193,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::Unit { span } => {
                 let exp = TypedExpression {
@@ -199,6 +220,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::AbiCast {
                 abi_name,
@@ -214,6 +236,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::Array { contents, span } => Self::type_check_array(
                 contents,
@@ -224,21 +247,27 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             ),
             Expression::ArrayIndex {
                 prefix,
                 index,
                 span,
             } => Self::type_check_array_index(
-                *prefix,
-                *index,
+                TypeCheckArguments {
+                    checkee: (*prefix, *index),
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    opts,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    mode: Default::default(),
+                    help_text: Default::default(),
+                },
                 span,
-                namespace,
-                crate_namespace,
-                self_type,
-                build_config,
-                dead_code_graph,
-                dependency_graph,
             ),
             /* a => {
                 let errors = vec![CompileError::Unimplemented(
@@ -257,27 +286,20 @@ impl<'sc> TypedExpression<'sc> {
         let mut warnings = res.warnings;
         let mut errors = res.errors;
         // if the return type cannot be cast into the annotation type then it is a type error
-        if let Some(type_annotation) = type_annotation {
-            match crate::type_engine::unify_with_self(
-                typed_expression.return_type,
-                type_annotation,
-                self_type,
-                &expr_span,
-            ) {
-                Ok(ws) => {
-                    for warning in ws {
-                        warnings.push(CompileWarning {
-                            warning_content: warning,
-                            span: expr_span.clone(),
-                        });
-                    }
-                }
-                Err(e) => {
-                    errors.push(CompileError::TypeError(e));
-                }
-            };
-            // The annotation may result in a cast, which is handled in the type engine.
-        }
+        match unify_with_self(
+            typed_expression.return_type,
+            type_annotation,
+            self_type,
+            &expr_span,
+        ) {
+            Ok(mut ws) => {
+                warnings.append(&mut ws);
+            }
+            Err(e) => {
+                errors.push(CompileError::TypeError(e));
+            }
+        };
+        // The annotation may result in a cast, which is handled in the type engine.
 
         typed_expression.return_type = namespace
             .resolve_type_with_self(look_up_type_id(typed_expression.return_type), self_type)
@@ -373,17 +395,28 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_function_application<'n>(
-        name: CallPath<'sc>,
-        arguments: Vec<Expression<'sc>>,
-        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
+        arguments: TypeCheckArguments<
+            'n,
+            'sc,
+            (
+                CallPath<'sc>,
+                Vec<Expression<'sc>>,
+                Vec<(TypeInfo, Span<'sc>)>,
+            ),
+        >,
         _span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let TypeCheckArguments {
+            checkee: (name, arguments, type_arguments),
+            namespace,
+            crate_namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
         let mut warnings = vec![];
         let mut errors = vec![];
         let function_declaration = check!(
@@ -397,6 +430,7 @@ impl<'sc> TypedExpression<'sc> {
             return_type,
             body,
             span,
+            purity,
             ..
         } = if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
             // if this is a generic function, monomorphize its internal types and insert the resulting
@@ -419,6 +453,10 @@ impl<'sc> TypedExpression<'sc> {
             });
             return err(warnings, errors);
         };
+
+        if opts.purity != purity {
+            errors.push(CompileError::PureCalledImpure { span: name.span() });
+        }
 
         match arguments.len().cmp(&parameters.len()) {
             Ordering::Greater => {
@@ -463,19 +501,22 @@ impl<'sc> TypedExpression<'sc> {
             .map(|(arg, param)| {
                 (
                     param.name.clone(),
-                    TypedExpression::type_check(
-                        arg.clone(),
+                    TypedExpression::type_check(TypeCheckArguments {
+                        checkee: arg.clone(),
                         namespace,
                         crate_namespace,
-                        Some(param.r#type),
-                        "The argument that has been provided to this function's type does \
+                        return_type_annotation: param.r#type,
+                        help_text:
+                            "The argument that has been provided to this function's type does \
                             not match the declared type of the parameter in the function \
                             declaration.",
                         self_type,
                         build_config,
                         dead_code_graph,
                         dependency_graph,
-                    )
+                        mode: Mode::NonAbi,
+                        opts,
+                    })
                     .unwrap_or_else(&mut warnings, &mut errors, || {
                         error_recovery_expr(arg.span())
                     }),
@@ -507,49 +548,57 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_lazy_operator<'n>(
-        op: LazyOp,
-        lhs: Expression<'sc>,
-        rhs: Expression<'sc>,
+        arguments: TypeCheckArguments<'n, 'sc, (LazyOp, Expression<'sc>, Expression<'sc>)>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let TypeCheckArguments {
+            checkee: (op, lhs, rhs),
+            namespace,
+            crate_namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            return_type_annotation,
+            opts,
+            ..
+        } = arguments;
+
         let mut warnings = vec![];
         let mut errors = vec![];
-        let bool_type_id = crate::type_engine::insert_type(TypeInfo::Boolean);
         let typed_lhs = check!(
-            TypedExpression::type_check(
-                lhs.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: lhs.clone(),
+                help_text: Default::default(),
+                mode: Mode::NonAbi,
+                opts,
+                self_type,
                 namespace,
                 crate_namespace,
-                Some(bool_type_id),
-                "",
-                self_type,
+                return_type_annotation,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+            }),
             error_recovery_expr(lhs.span()),
             warnings,
             errors
         );
 
         let typed_rhs = check!(
-            TypedExpression::type_check(
-                rhs.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: rhs.clone(),
                 namespace,
                 crate_namespace,
-                Some(bool_type_id),
-                "",
+                return_type_annotation,
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            }),
             error_recovery_expr(rhs.span()),
             warnings,
             errors
@@ -562,7 +611,7 @@ impl<'sc> TypedExpression<'sc> {
                     lhs: Box::new(typed_lhs),
                     rhs: Box::new(typed_rhs),
                 },
-                return_type: bool_type_id,
+                return_type: return_type_annotation,
                 is_constant: IsConstant::No, // Maybe.
                 span,
             },
@@ -634,28 +683,30 @@ impl<'sc> TypedExpression<'sc> {
         span: Span<'sc>,
         namespace: &mut Namespace<'sc>,
         crate_namespace: Option<&'n Namespace<'sc>>,
-        type_annotation: Option<TypeId>,
-        help_text: impl Into<String> + Clone,
+        type_annotation: TypeId,
+        help_text: &'static str,
         self_type: TypeId,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
-            TypedCodeBlock::type_check(
-                contents.clone(),
+            TypedCodeBlock::type_check(TypeCheckArguments {
+                checkee: contents.clone(),
                 namespace,
                 crate_namespace,
-                type_annotation
-                    .unwrap_or_else(|| crate::type_engine::insert_type(TypeInfo::Unknown)),
+                return_type_annotation: type_annotation,
                 help_text,
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            }),
             (
                 TypedCodeBlock {
                     contents: vec![],
@@ -666,17 +717,17 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         );
+
+        // this could probably be cleaned up with unification instead of comparing types
+        let type_annotation = look_up_type_id(type_annotation);
         let block_return_type: TypeId = match look_up_type_id(block_return_type) {
-            TypeInfo::Unit => match type_annotation {
-                Some(ref ty) if crate::type_engine::look_up_type_id(*ty) != TypeInfo::Unit => {
-                    errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
-                        span: span.clone(),
-                        ty: look_up_type_id(*ty).friendly_type_str(),
-                    });
-                    crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
-                }
-                _ => crate::type_engine::insert_type(TypeInfo::Unit),
-            },
+            TypeInfo::Unit if type_annotation != TypeInfo::Unit => {
+                errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
+                    span: span.clone(),
+                    ty: type_annotation.friendly_type_str(),
+                });
+                insert_type(TypeInfo::ErrorRecovery)
+            }
             _otherwise => block_return_type,
         };
         let exp = TypedExpression {
@@ -694,78 +745,105 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_if_expression<'n>(
-        condition: Box<Expression<'sc>>,
-        then: Box<Expression<'sc>>,
-        r#else: Option<Box<Expression<'sc>>>,
+        arguments: TypeCheckArguments<
+            'n,
+            'sc,
+            (
+                Box<Expression<'sc>>,
+                Box<Expression<'sc>>,
+                Option<Box<Expression<'sc>>>,
+            ),
+        >,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        type_annotation: Option<TypeId>,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let TypeCheckArguments {
+            checkee: (condition, then, r#else),
+            namespace,
+            crate_namespace,
+            return_type_annotation: type_annotation,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
         let mut warnings = vec![];
         let mut errors = vec![];
         let condition = Box::new(check!(
-            TypedExpression::type_check(
-                *condition.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: *condition.clone(),
                 namespace,
                 crate_namespace,
-                Some(crate::type_engine::insert_type(TypeInfo::Boolean)),
-                "The condition of an if expression must be a boolean expression.",
+                return_type_annotation: insert_type(TypeInfo::Boolean),
+                help_text: "The condition of an if expression must be a boolean expression.",
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            }),
             error_recovery_expr(condition.span()),
             warnings,
             errors
         ));
         let then = Box::new(check!(
-            TypedExpression::type_check(
-                *then.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: *then.clone(),
                 namespace,
                 crate_namespace,
-                type_annotation,
-                "",
+                return_type_annotation: type_annotation,
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            }),
             error_recovery_expr(then.span()),
             warnings,
             errors
         ));
         let r#else = r#else.map(|expr| {
             Box::new(check!(
-                TypedExpression::type_check(
-                    *expr.clone(),
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: *expr.clone(),
                     namespace,
                     crate_namespace,
-                    Some(then.return_type),
-                    "",
+                    return_type_annotation: then.return_type,
+                    help_text: Default::default(),
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
-                ),
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                }),
                 error_recovery_expr(expr.span()),
                 warnings,
                 errors
             ))
         });
 
+        let r#else_ret_ty = r#else
+            .as_ref()
+            .map(|ref x| x.return_type)
+            .unwrap_or_else(|| insert_type(TypeInfo::Unit));
         // if there is a type annotation, then the else branch must exist
-        if let Some(ref annotation) = type_annotation {
-            if r#else.is_none() {
-                errors.push(CompileError::NoElseBranch {
-                    span: span.clone(),
-                    r#type: look_up_type_id(*annotation).friendly_type_str(),
-                });
+        match unify_with_self(then.return_type, r#else_ret_ty, self_type, &span) {
+            Ok(mut warn) => {
+                warnings.append(&mut warn);
+                if look_up_type_id(r#else_ret_ty) != TypeInfo::Unit && r#else.is_none() {
+                    errors.push(CompileError::NoElseBranch {
+                        span: span.clone(),
+                        r#type: look_up_type_id(type_annotation).friendly_type_str(),
+                    });
+                }
+            }
+            Err(e) => {
+                errors.push(e.into());
             }
         }
 
@@ -792,6 +870,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -822,17 +901,19 @@ impl<'sc> TypedExpression<'sc> {
                         name,
                         initializer: initializer.map(|initializer| {
                             check!(
-                                TypedExpression::type_check(
-                                    initializer.clone(),
+                                TypedExpression::type_check(TypeCheckArguments {
+                                    checkee: initializer.clone(),
                                     namespace,
                                     crate_namespace,
-                                    None,
-                                    "",
+                                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                                    help_text: Default::default(),
                                     self_type,
                                     build_config,
                                     dead_code_graph,
-                                    dependency_graph
-                                ),
+                                    dependency_graph,
+                                    mode: Mode::NonAbi,
+                                    opts,
+                                }),
                                 error_recovery_expr(initializer.span()),
                                 warnings,
                                 errors
@@ -867,6 +948,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -924,18 +1006,20 @@ impl<'sc> TypedExpression<'sc> {
                 };
 
             let typed_field = check!(
-                TypedExpression::type_check(
-                    expr_field.value,
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: expr_field.value,
                     namespace,
                     crate_namespace,
-                    Some(def_field.r#type),
-                    "Struct field's type must match up with the type specified in its \
+                    return_type_annotation: def_field.r#type,
+                    help_text: "Struct field's type must match up with the type specified in its \
                      declaration.",
                     self_type,
                     build_config,
                     dead_code_graph,
-                    dependency_graph
-                ),
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                }),
                 continue,
                 warnings,
                 errors
@@ -988,21 +1072,24 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let parent = check!(
-            TypedExpression::type_check(
-                *prefix,
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: *prefix,
                 namespace,
                 crate_namespace,
-                None,
-                "",
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            }),
             return err(warnings, errors),
             warnings,
             errors
@@ -1063,6 +1150,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1115,7 +1203,8 @@ impl<'sc> TypedExpression<'sc> {
                         self_type,
                         build_config,
                         dead_code_graph,
-                        dependency_graph
+                        dependency_graph,
+                        opts,
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -1155,6 +1244,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1165,17 +1255,19 @@ impl<'sc> TypedExpression<'sc> {
         // basically delete the bottom line and replace references to it with address_expr
         let address_str = address.span().as_str().to_string();
         let address_expr = check!(
-            TypedExpression::type_check(
-                *address,
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: *address,
                 namespace,
                 crate_namespace,
-                Some(crate::type_engine::insert_type(TypeInfo::B256)),
-                "An address that is being ABI cast must be of type b256",
+                return_type_annotation: insert_type(TypeInfo::B256),
+                help_text: "An address that is being ABI cast must be of type b256",
                 self_type,
                 build_config,
                 dead_code_graph,
-                dependency_graph
-            ),
+                dependency_graph,
+                mode: Mode::NonAbi,
+                opts,
+            }),
             error_recovery_expr(err_span),
             warnings,
             errors
@@ -1212,18 +1304,19 @@ impl<'sc> TypedExpression<'sc> {
         let mut type_checked_fn_buf = Vec::with_capacity(abi.methods.len());
         for method in &abi.methods {
             type_checked_fn_buf.push(check!(
-                TypedFunctionDeclaration::type_check(
-                    method.clone(),
+                TypedFunctionDeclaration::type_check(TypeCheckArguments {
+                    checkee: method.clone(),
                     namespace,
                     crate_namespace,
-                    crate::type_engine::insert_type(TypeInfo::Unknown),
-                    "",
-                    crate::type_engine::insert_type(TypeInfo::Contract),
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: Default::default(),
+                    self_type: insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
-                    Mode::ImplAbiFn,
-                    dependency_graph
-                ),
+                    mode: Mode::ImplAbiFn,
+                    dependency_graph,
+                    opts,
+                }),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1259,6 +1352,7 @@ impl<'sc> TypedExpression<'sc> {
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph<'sc>,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         if contents.is_empty() {
             return ok(
@@ -1282,17 +1376,19 @@ impl<'sc> TypedExpression<'sc> {
             .map(|expr| {
                 let span = expr.span();
                 check!(
-                    Self::type_check(
-                        expr,
+                    Self::type_check(TypeCheckArguments {
+                        checkee: expr,
                         namespace,
                         crate_namespace,
-                        None,
-                        "",
+                        return_type_annotation: insert_type(TypeInfo::Unknown),
+                        help_text: Default::default(),
                         self_type,
                         build_config,
                         dead_code_graph,
                         dependency_graph,
-                    ),
+                        mode: Mode::NonAbi,
+                        opts,
+                    }),
                     error_recovery_expr(span),
                     warnings,
                     errors
@@ -1310,14 +1406,9 @@ impl<'sc> TypedExpression<'sc> {
             ) {
                 // In both cases, if there are warnings or errors then break here, since we don't
                 // need to spam type errors for every element once we have one.
-                Ok(ws) => {
+                Ok(mut ws) => {
                     let no_warnings = ws.is_empty();
-                    for warn in ws {
-                        warnings.push(CompileWarning {
-                            warning_content: warn,
-                            span: typed_elem.span.clone(),
-                        });
-                    }
+                    warnings.append(&mut ws);
                     if !no_warnings {
                         break;
                     }
@@ -1346,31 +1437,37 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_array_index<'n>(
-        prefix: Expression<'sc>,
-        index: Expression<'sc>,
+        arguments: TypeCheckArguments<'n, 'sc, (Expression<'sc>, Expression<'sc>)>,
         span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let TypeCheckArguments {
+            checkee: (prefix, index),
+            namespace,
+            crate_namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
         let prefix_te = check!(
-            TypedExpression::type_check(
-                prefix.clone(),
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: prefix.clone(),
                 namespace,
                 crate_namespace,
-                None,
-                "",
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-            ),
+                mode: Mode::NonAbi,
+                opts,
+            }),
             return err(warnings, errors),
             warnings,
             errors
@@ -1379,19 +1476,21 @@ impl<'sc> TypedExpression<'sc> {
         // If the return type is a static array then create a TypedArrayIndex.
         if let TypeInfo::Array(elem_type_id, _) = look_up_type_id(prefix_te.return_type) {
             let index_te = check!(
-                TypedExpression::type_check(
-                    index,
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: index,
                     namespace,
                     crate_namespace,
-                    Some(insert_type(TypeInfo::UnsignedInteger(
+                    return_type_annotation: insert_type(TypeInfo::UnsignedInteger(
                         IntegerBits::SixtyFour
-                    ))),
-                    "",
+                    )),
+                    help_text: Default::default(),
                     self_type,
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                ),
+                    mode: Mode::NonAbi,
+                    opts,
+                }),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1442,6 +1541,7 @@ impl<'sc> TypedExpression<'sc> {
                 build_config,
                 dead_code_graph,
                 dependency_graph,
+                opts,
             )
         }
     }
@@ -1475,17 +1575,19 @@ mod tests {
         let mut dead_code_graph: ControlFlowGraph = Default::default();
         let mut dependency_graph = HashMap::new();
 
-        TypedExpression::type_check(
-            expr,
-            &mut namespace,
-            None,
-            Some(type_annotation),
-            "",
+        TypedExpression::type_check(TypeCheckArguments {
+            checkee: expr,
+            namespace: &mut namespace,
+            crate_namespace: None,
+            return_type_annotation: type_annotation,
+            help_text: Default::default(),
             self_type,
-            &build_config,
-            &mut dead_code_graph,
-            &mut dependency_graph,
-        )
+            build_config: &build_config,
+            dead_code_graph: &mut dead_code_graph,
+            dependency_graph: &mut dependency_graph,
+            mode: Mode::NonAbi,
+            opts: Default::default(),
+        })
     }
 
     fn do_type_check_for_boolx2<'sc>(expr: Expression<'sc>) -> CompileResult<'sc, TypedExpression> {
