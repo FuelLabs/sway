@@ -209,7 +209,7 @@ impl VirtualOp {
             ECR(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
-            XOS(r1, r2)      => vec![r1, r2],
+            XOS(r1, r2) => vec![r1, r2],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
             GM(r1, _imm) => vec![r1],
