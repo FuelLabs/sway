@@ -114,10 +114,10 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("basic_storage", "call_basic_storage"),
         ("increment_contract", "call_increment_contract"),
         ("auth_testing_contract", "caller_auth_test"),
-        ("token_ops_contract", "token_ops_test"),
         ("context_testing_contract", "caller_context_test"),
         ("contract_abi_impl", "contract_call"),
         ("balance_test_contract", "bal_opcode"),
+        ("test_fuel_coin_contract", "token_ops_test"),
     ];
 
     // Filter them first.

@@ -29,7 +29,7 @@ pub fn burn(n: u64) {
 pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
     // get length of outputs from TransactionScript outputsCount:
     let length: u8 = asm(outputs_length, outputs_length_ptr: OUTPUT_LENGTH_LOCATION) {
-        lw outputs_length outputs_length_ptr;
+        lw outputs_length outputs_length_ptr i0;
         outputs_length: u8
     };
     // maintain a manual index as we only have `while` loops in sway atm:
@@ -49,7 +49,7 @@ pub fn transfer_to_output(coins: u64, token_id: b256, recipient: Address) {
         && asm(slot: index, a, amount_ptr, output, is_zero, bytes: 8) {
             xos output slot;
             addi amount_ptr output i64;
-            lw a amount_ptr;
+            lw a amount_ptr i0;
             meq is_zero a zero bytes;
             is_zero: bool
         } // then store the index of the output and record the fact that we found a suitable output
