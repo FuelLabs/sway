@@ -26,6 +26,7 @@ deref_keyword       =  {"deref "}
 true_keyword        =  {"true"}
 false_keyword       =  {"false"}
 const_decl_keyword  =  {"const"}
+impurity_keyword    =  {"impure"}
 
 // top level
 program =  {SOI ~ (library|contract|script|predicate)?  ~ EOI}
@@ -113,7 +114,7 @@ non_var_decl              =  {(enum_decl|storage_decl|fn_decl|trait_decl|abi_dec
 var_decl                  =  {var_decl_keyword ~ mut_keyword? ~ var_name ~ type_ascription? ~ assign ~ expr ~ ";"}
 type_ascription           =  {":" ~ type_name}
 fn_decl                   =  {visibility ~ fn_signature ~ code_block}
-fn_signature              =  {fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ type_name)? ~ trait_bounds?}
+fn_signature              =  {impurity_keyword? ~ fn_decl_keyword ~ fn_decl_name ~ type_params? ~ fn_decl_params ~ (fn_returns ~ type_name)? ~ trait_bounds?}
 var_name                  =  {ident}
 reassignment              =  {variable_reassignment | struct_field_reassignment}
 variable_reassignment     =  {var_exp ~ assign ~ expr ~ ";"}

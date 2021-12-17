@@ -1,0 +1,5 @@
+[project]
+author  = "Alexander Hansen"
+license = "MIT"
+name = "valid_impurity"
+entry = "main.sw"
