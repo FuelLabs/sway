@@ -610,7 +610,7 @@ impl<'sc> AsmNamespace<'sc> {
                 vec![CompileError::Internal(
                     "Unknown variable in assembly generation. This should have been an error \
                      during type checking.",
-                    var_name.span.clone(),
+                    var_name.span().clone(),
                 )],
             ),
         }
@@ -1427,7 +1427,7 @@ fn ret_or_retd_value<'sc>(
                     ConstantRegister::Zero,
                 ))),
                 owning_span: Some(func.return_type_span.clone()),
-                comment: format!("fn {} returns unit", func.name.primary_name),
+                comment: format!("fn {} returns unit", func.name.primary_name()),
             }],
             warnings,
             errors,
@@ -1445,7 +1445,7 @@ fn ret_or_retd_value<'sc>(
         asm_buf.push(Op {
             owning_span: None,
             opcode: Either::Left(VirtualOp::RET(return_register)),
-            comment: format!("{} fn return value", func.name.primary_name),
+            comment: format!("{} fn return value", func.name.primary_name()),
         });
     } else {
         // if the type is larger than one word, then we use RETD to return data
@@ -1463,7 +1463,7 @@ fn ret_or_retd_value<'sc>(
         asm_buf.push(Op {
             owning_span: None,
             opcode: Either::Left(VirtualOp::RETD(return_register, rb_register)),
-            comment: format!("{} fn return value", func.name.primary_name),
+            comment: format!("{} fn return value", func.name.primary_name()),
         });
     }
     ok(asm_buf, warnings, errors)

@@ -111,7 +111,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                         expression: TypedExpressionVariant::FunctionParameter,
                         return_type: r#type,
                         is_constant: IsConstant::No,
-                        span: name.span.clone(),
+                        span: name.span().clone(),
                     },
                     is_mutable: false, // TODO allow mutable function params?
                     type_ascription: r#type,
@@ -244,7 +244,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                     span: parameters
                         .get(0)
                         .map(|x| x.type_span.clone())
-                        .unwrap_or_else(|| fn_decl.name.span.clone()),
+                        .unwrap_or_else(|| fn_decl.name.span().clone()),
                 });
             }
         }
@@ -353,13 +353,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     pub(crate) fn parameters_span(&self) -> Span<'sc> {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
-                self.parameters[0].name.span.clone(),
+                self.parameters[0].name.span().clone(),
                 |acc, TypedFunctionParameter { type_span, .. }| {
                     crate::utils::join_spans(acc, type_span.clone())
                 },
             )
         } else {
-            self.name.span.clone()
+            self.name.span().clone()
         }
     }
     pub(crate) fn replace_self_types(self, self_type: TypeId) -> Self {
@@ -437,7 +437,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .collect::<Vec<String>>();
 
         ok(
-            format!("{}({})", self.name.primary_name, named_params.join(","),),
+            format!("{}({})", self.name.primary_name(), named_params.join(","),),
             warnings,
             errors,
         )
@@ -445,13 +445,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
     pub fn generate_json_abi(&self) -> Function {
         Function {
-            name: self.name.primary_name.to_string(),
+            name: self.name.primary_name().to_string(),
             type_field: "function".to_string(),
             inputs: self
                 .parameters
                 .iter()
                 .map(|x| Property {
-                    name: x.name.primary_name.to_string(),
+                    name: x.name.primary_name().to_string(),
                     type_field: x.r#type.json_abi_str(),
                     components: x.r#type.generate_json_abi(),
                 })
@@ -470,13 +470,13 @@ fn test_function_selector_behavior() {
     use crate::type_engine::IntegerBits;
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
-        name: Ident {
-            primary_name: "foo",
-            span: Span {
+        name: Ident::new(
+            "foo",
+            Span {
                 span: pest::Span::new(" ", 0, 0).unwrap(),
                 path: None,
             },
-        },
+        ),
         body: TypedCodeBlock {
             contents: vec![],
             whole_block_span: Span {
@@ -508,13 +508,13 @@ fn test_function_selector_behavior() {
 
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
-        name: Ident {
-            primary_name: "bar",
-            span: Span {
+        name: Ident::new(
+            "bar",
+            Span {
                 span: pest::Span::new(" ", 0, 0).unwrap(),
                 path: None,
             },
-        },
+        ),
         body: TypedCodeBlock {
             contents: vec![],
             whole_block_span: Span {
@@ -524,13 +524,13 @@ fn test_function_selector_behavior() {
         },
         parameters: vec![
             TypedFunctionParameter {
-                name: Ident {
-                    primary_name: "foo",
-                    span: Span {
+                name: Ident::new(
+                    "foo",
+                    Span {
                         span: pest::Span::new(" ", 0, 0).unwrap(),
                         path: None,
                     },
-                },
+                ),
                 r#type: crate::type_engine::insert_type(TypeInfo::Str(5)),
                 type_span: Span {
                     span: pest::Span::new(" ", 0, 0).unwrap(),
@@ -538,13 +538,13 @@ fn test_function_selector_behavior() {
                 },
             },
             TypedFunctionParameter {
-                name: Ident {
-                    primary_name: "baz",
-                    span: Span {
+                name: Ident::new(
+                    "baz",
+                    Span {
                         span: pest::Span::new(" ", 0, 0).unwrap(),
                         path: None,
                     },
-                },
+                ),
                 r#type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span {
                     span: pest::Span::new(" ", 0, 0).unwrap(),
@@ -584,7 +584,7 @@ pub(crate) fn insert_type_parameters<'sc>(
             (
                 x.clone(),
                 insert_type(TypeInfo::UnknownGeneric {
-                    name: x.name_ident.primary_name.to_string(),
+                    name: x.name_ident.primary_name().to_string(),
                 }),
             )
         })

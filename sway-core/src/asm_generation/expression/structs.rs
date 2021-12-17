@@ -33,7 +33,7 @@ impl ContiguousMemoryLayoutDescriptor<String> {
             self.fields
                 .iter()
                 .position(|FieldMemoryLayoutDescriptor { name_of_field, .. }| {
-                    name_of_field.as_str() == name.primary_name
+                    name_of_field.as_str() == name.primary_name()
                 }) {
             ix
         } else {
@@ -41,7 +41,7 @@ impl ContiguousMemoryLayoutDescriptor<String> {
                 vec![
                 CompileError::Internal(
                     "Attempted to calculate struct memory offset on field that did not exist in struct.",
-                    name.span.clone()
+                    name.span().clone()
                     )
                 ]);
         };
@@ -71,29 +71,29 @@ impl<N> ContiguousMemoryLayoutDescriptor<N> {
 #[test]
 fn test_struct_memory_layout() {
     use crate::span::Span;
-    let first_field_name = Ident {
-        span: Span {
+    let first_field_name = Ident::new(
+        "foo",
+        Span {
             span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
-        primary_name: "foo",
-    };
-    let second_field_name = Ident {
-        span: Span {
+    );
+    let second_field_name = Ident::new(
+        "bar",
+        Span {
             span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
-        primary_name: "bar",
-    };
+    );
 
     let numbers = ContiguousMemoryLayoutDescriptor {
         fields: vec![
             FieldMemoryLayoutDescriptor {
-                name_of_field: first_field_name.primary_name.to_string(),
+                name_of_field: first_field_name.primary_name().to_string(),
                 size: 1,
             },
             FieldMemoryLayoutDescriptor {
-                name_of_field: second_field_name.primary_name.to_string(),
+                name_of_field: second_field_name.primary_name().to_string(),
                 size: 1,
             },
         ],
@@ -315,15 +315,15 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
         .map(|TypedStructExpressionField { name, value }| {
             (
                 value.clone(),
-                name.span.clone(),
-                name.primary_name.to_string(),
+                name.span().clone(),
+                name.primary_name().to_string(),
             )
         })
         .collect::<Vec<_>>();
 
     let asm_buf = vec![Op::new_comment(format!(
         "{} struct initialization",
-        struct_name.primary_name
+        struct_name.primary_name()
     ))];
 
     convert_fields_to_asm(

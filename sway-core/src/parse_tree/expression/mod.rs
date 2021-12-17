@@ -199,14 +199,8 @@ impl<'sc> Expression<'sc> {
             method_name: MethodName::FromType {
                 call_path: CallPath {
                     prefixes: vec![
-                        Ident {
-                            primary_name: "core",
-                            span: span.clone(),
-                        },
-                        Ident {
-                            primary_name: "ops",
-                            span: span.clone(),
-                        },
+                        Ident::new("core", span.clone()),
+                        Ident::new("ops", span.clone()),
                     ],
                     suffix: Op {
                         op_variant: OpVariant::Equals,
@@ -231,14 +225,8 @@ impl<'sc> Expression<'sc> {
             method_name: MethodName::FromType {
                 call_path: CallPath {
                     prefixes: vec![
-                        Ident {
-                            primary_name: "core",
-                            span: span.clone(),
-                        },
-                        Ident {
-                            primary_name: "ops",
-                            span: span.clone(),
-                        },
+                        Ident::new("core", span.clone()),
+                        Ident::new("ops", span.clone()),
                     ],
                     suffix: op.to_var_name(),
                 },
@@ -464,10 +452,7 @@ impl<'sc> Expression<'sc> {
                         Rule::var_name_ident => {
                             name = Some(check!(
                                 Ident::parse_from_pair(pair, config),
-                                Ident {
-                                    primary_name: "error parsing var name",
-                                    span: span.clone()
-                                },
+                                Ident::new("error parsing var name", span.clone()),
                                 warnings,
                                 errors
                             ));
@@ -1290,11 +1275,7 @@ pub(crate) struct Op<'sc> {
 
 impl<'sc> Op<'sc> {
     pub fn to_var_name(&self) -> Ident<'sc> {
-        Ident {
-            primary_name: self.op_variant.as_str(),
-            span: self.span.clone(),
-            // TODO this should be a method exp not a var name
-        }
+        Ident::new(self.op_variant.as_str(), self.span.clone())
     }
 }
 #[derive(Debug)]
@@ -1613,7 +1594,7 @@ pub fn desugar_match_expression<'sc>(
                 type_ascription: TypeInfo::Unknown,
                 type_ascription_span: None,
             });
-            let new_span = join_spans(left_impl.span.clone(), right_impl.span());
+            let new_span = join_spans(left_impl.span().clone(), right_impl.span());
             code_block_stmts.push(AstNode {
                 content: AstNodeContent::Declaration(decl),
                 span: new_span.clone(),

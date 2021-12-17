@@ -32,14 +32,14 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
     let (enum_field_type, tag, variant_name) = match enum_decl
         .variants
         .iter()
-        .find(|x| x.name.primary_name == enum_field_name.primary_name)
+        .find(|x| x.name.primary_name() == enum_field_name.primary_name())
     {
         Some(o) => (o.r#type, o.tag, o.name.clone()),
         None => {
             errors.push(CompileError::UnknownEnumVariant {
-                enum_name: enum_decl.name.primary_name,
-                variant_name: enum_field_name.primary_name,
-                span: enum_field_name.clone().span,
+                enum_name: enum_decl.name.primary_name(),
+                variant_name: enum_field_name.primary_name(),
+                span: enum_field_name.span().clone(),
             });
             return err(warnings, errors);
         }
@@ -59,7 +59,7 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
                     variant_name,
                 },
                 is_constant: IsConstant::No,
-                span: enum_field_name.span.clone(),
+                span: enum_field_name.span().clone(),
             },
             warnings,
             errors,
@@ -97,7 +97,7 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
                         variant_name,
                     },
                     is_constant: IsConstant::No,
-                    span: enum_field_name.span.clone(),
+                    span: enum_field_name.span().clone(),
                 },
                 warnings,
                 errors,
@@ -105,19 +105,19 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
         }
         ([], _) => {
             errors.push(CompileError::MissingEnumInstantiator {
-                span: enum_field_name.span.clone(),
+                span: enum_field_name.span().clone(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) if ty.is_unit() => {
             errors.push(CompileError::UnnecessaryEnumInstantiator {
-                span: enum_field_name.span.clone(),
+                span: enum_field_name.span().clone(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
-                span: enum_field_name.span.clone(),
+                span: enum_field_name.span().clone(),
                 ty: ty.friendly_type_str(),
             });
             err(warnings, errors)

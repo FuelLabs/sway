@@ -33,24 +33,24 @@ impl CallPath<'_> {
             prefixes: self
                 .prefixes
                 .iter()
-                .map(|x| x.primary_name.to_string())
+                .map(|x| x.primary_name().to_string())
                 .collect(),
-            suffix: self.suffix.primary_name.to_string(),
+            suffix: self.suffix.primary_name().to_string(),
         }
     }
 }
 impl<'sc> CallPath<'sc> {
     pub(crate) fn span(&self) -> Span<'sc> {
         if self.prefixes.is_empty() {
-            self.suffix.span.clone()
+            self.suffix.span().clone()
         } else {
             let prefixes_span = self
                 .prefixes
                 .iter()
-                .fold(self.prefixes[0].span.clone(), |acc, sp| {
-                    crate::utils::join_spans(acc, sp.span.clone())
+                .fold(self.prefixes[0].span().clone(), |acc, sp| {
+                    crate::utils::join_spans(acc, sp.span().clone())
                 });
-            crate::utils::join_spans(prefixes_span, self.suffix.span.clone())
+            crate::utils::join_spans(prefixes_span, self.suffix.span().clone())
         }
     }
     pub(crate) fn parse_from_pair(

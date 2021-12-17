@@ -165,7 +165,7 @@ impl<'sc> TypedParseTree<'sc> {
         for node in typed_tree_nodes {
             match node.content {
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
-                    if func.name.primary_name == "main" =>
+                    if func.name.primary_name() == "main" =>
                 {
                     mains.push(func)
                 }
@@ -263,7 +263,7 @@ fn disallow_impure_functions<'sc>(
         .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
             if *purity == Purity::Impure {
                 Some(CompileError::ImpureInNonContract {
-                    span: name.span.clone(),
+                    span: name.span().clone(),
                 })
             } else {
                 None

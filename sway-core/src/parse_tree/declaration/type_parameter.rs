@@ -75,7 +75,7 @@ impl<'sc> TypeParameter<'sc> {
                 // find associated type name
                 let param_to_edit =
                     match params.iter_mut().find(|TypeParameter { name_ident, .. }| {
-                        name_ident.primary_name == type_param.as_str()
+                        name_ident.primary_name() == type_param.as_str()
                     }) {
                         Some(o) => o,
                         None => {

@@ -70,14 +70,14 @@ impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {
                 format!("Enum variant {}", variant_name.to_string())
             }
             ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
-                format!("Method {}", method_name.primary_name.to_string())
+                format!("Method {}", method_name.primary_name().to_string())
             }
             ControlFlowGraphNode::StructField {
                 struct_field_name, ..
             } => {
                 format!(
                     "Struct field {}",
-                    struct_field_name.primary_name.to_string()
+                    struct_field_name.primary_name().to_string()
                 )
             }
         };
@@ -94,7 +94,7 @@ impl<'sc> std::convert::From<&TypedAstNode<'sc>> for ControlFlowGraphNode<'sc> {
 impl<'sc> std::convert::From<&TypedEnumVariant<'sc>> for ControlFlowGraphNode<'sc> {
     fn from(other: &TypedEnumVariant<'sc>) -> Self {
         ControlFlowGraphNode::EnumVariant {
-            variant_name: other.name.primary_name.to_string(),
+            variant_name: other.name.primary_name().to_string(),
             span: other.span.clone(),
         }
     }

@@ -66,7 +66,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     reassignment
                         .lhs
                         .iter()
-                        .map(|x| x.name.primary_name)
+                        .map(|x| x.name.primary_name())
                         .collect::<Vec<_>>()
                         .join(".")
                 ),
@@ -83,11 +83,11 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             let (mut fields, top_level_decl) = match iter
                 .next()
                 .map(|ReassignmentLhs { r#type, name }| -> Result<_, _> {
-                    match resolve_type(*r#type, &name.span) {
+                    match resolve_type(*r#type, name.span()) {
                         Ok(TypeInfo::Struct { ref fields, .. }) => Ok((fields.clone(), name)),
                         Ok(ref a) => Err(CompileError::NotAStruct {
-                            name: name.primary_name.to_string(),
-                            span: name.span.clone(),
+                            name: name.primary_name().to_string(),
+                            span: name.span().clone(),
                             actually: a.friendly_type_str(),
                         }),
                         Err(a) => Err(CompileError::TypeError(a)),
@@ -105,7 +105,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // delve into this potentially nested field access and figure out the location of this
             // subfield
             for ReassignmentLhs { r#type, name } in iter {
-                let r#type = match resolve_type(*r#type, &name.span) {
+                let r#type = match resolve_type(*r#type, name.span()) {
                     Ok(o) => o,
                     Err(e) => {
                         errors.push(CompileError::TypeError(e));
@@ -141,8 +141,8 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     TypeInfo::Struct { ref fields, .. } => fields.clone(),
                     a => {
                         errors.push(CompileError::NotAStruct {
-                            name: name.primary_name.to_string(),
-                            span: name.span.clone(),
+                            name: name.primary_name().to_string(),
+                            span: name.span().clone(),
                             actually: a.friendly_type_str(),
                         });
                         return err(warnings, errors);

@@ -125,7 +125,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
             if args_buf.len() > method.parameters.len() {
                 errors.push(CompileError::TooManyArgumentsForFunction {
                     span: span.clone(),
-                    method_name: method_name.primary_name,
+                    method_name: method_name.primary_name(),
                     expected: method.parameters.len(),
                     received: args_buf.len(),
                 });
@@ -134,7 +134,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
             if args_buf.len() < method.parameters.len() {
                 errors.push(CompileError::TooFewArgumentsForFunction {
                     span: span.clone(),
-                    method_name: method_name.primary_name,
+                    method_name: method_name.primary_name(),
                     expected: method.parameters.len(),
                     received: args_buf.len(),
                 });

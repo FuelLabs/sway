@@ -153,22 +153,22 @@ impl<'sc> AsmOp<'sc> {
         for pair in iter {
             match pair.as_rule() {
                 Rule::asm_register => {
-                    args.push(Ident {
-                        primary_name: pair.as_str(),
-                        span: Span {
+                    args.push(Ident::new(
+                        pair.as_str(),
+                        Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
-                    });
+                    ));
                 }
                 Rule::asm_immediate => {
-                    immediate_value = Some(Ident {
-                        primary_name: pair.as_str().trim(),
-                        span: Span {
+                    immediate_value = Some(Ident::new(
+                        pair.as_str().trim(),
+                        Span {
                             span: pair.as_span(),
                             path: path.clone(),
                         },
-                    });
+                    ));
                 }
                 _ => unreachable!(),
             }
@@ -235,15 +235,15 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
 fn disallow_opcode<'sc>(op: &Ident<'sc>) -> Vec<CompileError<'sc>> {
     let mut errors = vec![];
 
-    match op.primary_name.to_lowercase().as_str() {
+    match op.primary_name().to_lowercase().as_str() {
         "jnei" => {
             errors.push(CompileError::DisallowedJnei {
-                span: op.span.clone(),
+                span: op.span().clone(),
             });
         }
         "ji" => {
             errors.push(CompileError::DisallowedJi {
-                span: op.span.clone(),
+                span: op.span().clone(),
             });
         }
         _ => (),

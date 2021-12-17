@@ -123,7 +123,7 @@ impl<'sc> ControlFlowNamespace<'sc> {
             struct_decl_ix: declaration_node,
             fields: field_nodes
                 .into_iter()
-                .map(|(Ident { primary_name, .. }, ix)| (primary_name.to_string(), ix))
+                .map(|(ident, ix)| (ident.primary_name().to_string(), ix))
                 .collect(),
         };
         self.struct_namespace.insert(struct_name, entry);

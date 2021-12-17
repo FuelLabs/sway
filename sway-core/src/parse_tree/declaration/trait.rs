@@ -42,7 +42,7 @@ impl<'sc> TraitDeclaration<'sc> {
             warnings,
             errors
         );
-        let span = name.span.clone();
+        let span = name.span().clone();
         assert_or_warn!(
             is_upper_camel_case(name_pair.as_str().trim()),
             warnings,
@@ -146,11 +146,11 @@ impl<'sc> TraitFn<'sc> {
             errors
         );
         assert_or_warn!(
-            is_snake_case(name.primary_name),
+            is_snake_case(name.primary_name()),
             warnings,
             name_span,
             Warning::NonSnakeCaseFunctionName {
-                name: name.primary_name
+                name: name.primary_name()
             }
         );
         let parameters = signature.next().unwrap();

@@ -1,7 +1,7 @@
 use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
-use crate::span::Span;
+use crate::Span;
 use pest::iterators::Pair;
 use std::cmp::{Ord, Ordering};
 use std::hash::{Hash, Hasher};
@@ -9,12 +9,12 @@ use std::hash::{Hash, Hasher};
 /// An [Ident] is an _identifier_ with a corresponding `span` from which it was derived.
 #[derive(Debug, Clone)]
 pub struct Ident<'sc> {
-    pub primary_name: &'sc str,
+    primary_name: &'sc str,
     // sub-names are the stuff after periods
     // like x.test.thing.method()
     // `test`, `thing`, and `method` are sub-names
     // the primary name is `x`
-    pub span: Span<'sc>,
+    span: Span<'sc>,
 }
 
 // custom implementation of Hash so that namespacing isn't reliant on the span itself, which will
@@ -44,6 +44,18 @@ impl PartialOrd for Ident<'_> {
 impl Eq for Ident<'_> {}
 
 impl<'sc> Ident<'sc> {
+    pub fn primary_name(&self) -> &'sc str {
+        self.primary_name
+    }
+
+    pub fn span(&self) -> &Span<'sc> {
+        &self.span
+    }
+
+    pub fn new(primary_name: &'sc str, span: Span<'sc>) -> Ident<'sc> {
+        Ident { primary_name, span }
+    }
+
     pub(crate) fn parse_from_pair(
         pair: Pair<'sc, Rule>,
         config: Option<&BuildConfig>,
@@ -64,13 +76,6 @@ impl<'sc> Ident<'sc> {
             }
         };
         let name = pair.as_str().trim();
-        ok(
-            Ident {
-                primary_name: name,
-                span,
-            },
-            Vec::new(),
-            Vec::new(),
-        )
+        ok(Ident::new(name, span), Vec::new(), Vec::new())
     }
 }

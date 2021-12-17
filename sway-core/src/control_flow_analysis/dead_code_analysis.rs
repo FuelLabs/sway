@@ -126,7 +126,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                                         ),
                                     ),
                                 ..
-                            }) => name.primary_name == "main",
+                            }) => name.primary_name() == "main",
                             _ => false,
                         })
                         .unwrap(),
@@ -413,7 +413,7 @@ fn connect_struct_declaration<'sc>(
     // of the field names
     graph
         .namespace
-        .insert_struct(name.primary_name.to_string(), entry_node, field_nodes);
+        .insert_struct(name.primary_name().to_string(), entry_node, field_nodes);
 }
 
 /// Implementations of traits are top-level things that are not conditional, so
@@ -544,7 +544,8 @@ fn connect_typed_fn_decl<'sc>(
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType<'sc>,
 ) -> Result<(), CompileError<'sc>> {
-    let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.primary_name).into());
+    let fn_exit_node =
+        graph.add_node(format!("\"{}\" fn exit", fn_decl.name.primary_name()).into());
     let (_exit_nodes, _exit_node) = depth_first_insertion_code_block(
         &fn_decl.body,
         graph,
@@ -619,13 +620,13 @@ fn connect_expression<'sc>(
                      }| (entry_point, exit_point),
                 )
                 .unwrap_or_else(|| {
-                    let node_idx =
-                        graph.add_node(format!("extern fn {}()", name.suffix.primary_name).into());
+                    let node_idx = graph
+                        .add_node(format!("extern fn {}()", name.suffix.primary_name()).into());
                     is_external = true;
                     (
                         node_idx,
                         graph.add_node(
-                            format!("extern fn {} exit", name.suffix.primary_name).into(),
+                            format!("extern fn {} exit", name.suffix.primary_name()).into(),
                         ),
                     )
                 });
@@ -776,11 +777,10 @@ fn connect_expression<'sc>(
             struct_name,
             fields,
         } => {
-            let decl = match graph.namespace.find_struct_decl(struct_name.primary_name) {
+            let decl = match graph.namespace.find_struct_decl(struct_name.primary_name()) {
                 Some(ix) => *ix,
-                None => {
-                    graph.add_node(format!("External struct  {}", struct_name.primary_name).into())
-                }
+                None => graph
+                    .add_node(format!("External struct  {}", struct_name.primary_name()).into()),
             };
             let entry = graph.add_node("Struct declaration entry".into());
             let exit = graph.add_node("Struct declaration exit".into());
@@ -967,7 +967,8 @@ fn connect_enum_instantiation<'sc>(
             let node_idx = graph.add_node(
                 format!(
                     "extern enum {}::{}",
-                    enum_name.primary_name, variant_name.primary_name
+                    enum_name.primary_name(),
+                    variant_name.primary_name()
                 )
                 .into(),
             );
@@ -1025,7 +1026,7 @@ fn construct_dead_code_warning_from_node<'sc>(
                 )),
             ..
         } => CompileWarning {
-            span: name.span.clone(),
+            span: name.span().clone(),
             warning_content: Warning::DeadTrait,
         },
         TypedAstNode {

@@ -98,7 +98,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     fields,
                     ..
                 }) => crate::type_engine::insert_type(TypeInfo::Struct {
-                    name: name.primary_name.to_string(),
+                    name: name.primary_name().to_string(),
                     fields: fields
                         .iter()
                         .map(TypedStructField::as_owned_typed_struct_field)
@@ -107,7 +107,7 @@ impl<'sc> TypedDeclaration<'sc> {
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
                     insert_type(TypeInfo::UnknownGeneric {
-                        name: name.primary_name.to_string(),
+                        name: name.primary_name().to_string(),
                     })
                 }
                 decl => {
@@ -129,11 +129,11 @@ impl<'sc> TypedDeclaration<'sc> {
     pub(crate) fn span(&self) -> Span<'sc> {
         use TypedDeclaration::*;
         match self {
-            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span.clone(),
-            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span.clone(),
+            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span().clone(),
+            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span().clone(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
-            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span.clone(),
-            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span.clone(),
+            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span().clone(),
+            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span().clone(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
             Reassignment(TypedReassignment { lhs, .. }) => {
                 lhs.iter().fold(lhs[0].span(), |acc, this| {
@@ -160,22 +160,22 @@ impl<'sc> TypedDeclaration<'sc> {
                 }) => format!(
                     "{} {}",
                     if *is_mutable { "mut" } else { "" },
-                    name.primary_name
+                    name.primary_name()
                 ),
                 TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                     name, ..
                 }) => {
-                    name.primary_name.into()
+                    name.primary_name().into()
                 }
                 TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
-                    name.primary_name.into(),
+                    name.primary_name().into(),
                 TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
-                    name.primary_name.into(),
+                    name.primary_name().into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
-                    name.primary_name.into(),
+                    name.primary_name().into(),
                 TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
                     .iter()
-                    .map(|x| x.name.primary_name)
+                    .map(|x| x.name.primary_name())
                     .collect::<Vec<_>>()
                     .join("."),
                 _ => String::new(),
@@ -263,10 +263,10 @@ impl OwnedTypedStructField {
 
     pub(crate) fn as_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
         TypedStructField {
-            name: Ident {
-                span: span.clone(),
-                primary_name: Box::leak(span.clone().as_str().to_string().into_boxed_str()),
-            },
+            name: Ident::new(
+                Box::leak(span.clone().as_str().to_string().into_boxed_str()),
+                span.clone(),
+            ),
             r#type: self.r#type,
             span: span.clone(),
         }
@@ -293,7 +293,7 @@ impl TypedStructField<'_> {
     }
     pub(crate) fn as_owned_typed_struct_field(&self) -> OwnedTypedStructField {
         OwnedTypedStructField {
-            name: self.name.primary_name.to_string(),
+            name: self.name.primary_name().to_string(),
             r#type: self.r#type,
         }
     }
@@ -322,7 +322,7 @@ impl TypedEnumDeclaration<'_> {
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
         crate::type_engine::insert_type(TypeInfo::Enum {
-            name: self.name.primary_name.to_string(),
+            name: self.name.primary_name().to_string(),
             variant_types: self
                 .variants
                 .iter()
@@ -351,7 +351,7 @@ impl TypedEnumVariant<'_> {
     }
     pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
         OwnedTypedEnumVariant {
-            name: self.name.primary_name.to_string(),
+            name: self.name.primary_name().to_string(),
             r#type: self.r#type,
             tag: self.tag,
         }
@@ -426,7 +426,7 @@ pub struct ReassignmentLhs<'sc> {
 
 impl<'sc> ReassignmentLhs<'sc> {
     pub(crate) fn span(&self) -> Span<'sc> {
-        self.name.span.clone()
+        self.name.span().clone()
     }
 }
 
@@ -474,10 +474,10 @@ impl<'sc> TypedTraitFn<'sc> {
             name: self.name.clone(),
             body: TypedCodeBlock {
                 contents: vec![],
-                whole_block_span: self.name.span.clone(),
+                whole_block_span: self.name.span().clone(),
             },
             parameters: self.parameters.clone(),
-            span: self.name.span.clone(),
+            span: self.name.span().clone(),
             return_type: self.return_type,
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,

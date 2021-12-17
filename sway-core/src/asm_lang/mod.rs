@@ -258,7 +258,7 @@ impl<'sc> Op<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         ok(
-            match name.primary_name {
+            match name.primary_name() {
                 "add" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -921,7 +921,7 @@ impl<'sc> Op<'sc> {
                 other => {
                     errors.push(CompileError::UnrecognizedOp {
                         op_name: other,
-                        span: name.span.clone(),
+                        span: name.span().clone(),
                     });
                     return err(warnings, errors);
                 }
@@ -962,7 +962,7 @@ fn single_reg<'sc>(
         None => (),
         Some(i) => {
             errors.push(CompileError::UnnecessaryImmediate {
-                span: i.span.clone(),
+                span: i.span().clone(),
             });
         }
     };
@@ -999,7 +999,7 @@ fn two_regs<'sc>(
     match immediate {
         None => (),
         Some(i) => errors.push(CompileError::UnnecessaryImmediate {
-            span: i.span.clone(),
+            span: i.span().clone(),
         }),
     };
 
@@ -1044,7 +1044,7 @@ fn four_regs<'sc>(
         None => (),
         Some(i) => {
             errors.push(CompileError::MissingImmediate {
-                span: i.span.clone(),
+                span: i.span().clone(),
             });
         }
     };
@@ -1115,7 +1115,7 @@ fn three_regs<'sc>(
         None => (),
         Some(i) => {
             errors.push(CompileError::UnnecessaryImmediate {
-                span: i.span.clone(),
+                span: i.span().clone(),
             });
         }
     };
@@ -1143,11 +1143,11 @@ fn single_imm_24<'sc>(
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name[1..].parse() {
-            Ok(o) => (o, i.span.clone()),
+        Some(i) => match i.primary_name()[1..].parse() {
+            Ok(o) => (o, i.span().clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
-                    span: i.span.clone(),
+                    span: i.span().clone(),
                 });
                 return err(warnings, errors);
             }
@@ -1196,11 +1196,11 @@ fn single_reg_imm_18<'sc>(
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name[1..].parse() {
-            Ok(o) => (o, i.span.clone()),
+        Some(i) => match i.primary_name()[1..].parse() {
+            Ok(o) => (o, i.span().clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
-                    span: i.span.clone(),
+                    span: i.span().clone(),
                 });
                 return err(warnings, errors);
             }
@@ -1249,11 +1249,11 @@ fn two_regs_imm_12<'sc>(
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name[1..].parse() {
-            Ok(o) => (o, i.span.clone()),
+        Some(i) => match i.primary_name()[1..].parse() {
+            Ok(o) => (o, i.span().clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
-                    span: i.span.clone(),
+                    span: i.span().clone(),
                 });
                 return err(warnings, errors);
             }

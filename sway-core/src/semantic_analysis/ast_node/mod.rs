@@ -227,7 +227,7 @@ impl<'sc> TypedAstNode<'sc> {
                             };
                             let body = check!(
                                 result,
-                                error_recovery_expr(name.span.clone()),
+                                error_recovery_expr(name.span().clone()),
                                 warnings,
                                 errors
                             );
@@ -255,7 +255,7 @@ impl<'sc> TypedAstNode<'sc> {
                             );
                             let value = check!(
                                 result,
-                                error_recovery_expr(name.span.clone()),
+                                error_recovery_expr(name.span().clone()),
                                 warnings,
                                 errors
                             );
@@ -270,12 +270,12 @@ impl<'sc> TypedAstNode<'sc> {
                         }
                         Declaration::EnumDeclaration(e) => {
                             let span = e.span.clone();
-                            let primary_name = e.name.primary_name;
+                            let primary_name = e.name.primary_name();
                             let decl = TypedDeclaration::EnumDeclaration(
                                 e.to_typed_decl(namespace, self_type),
                             );
 
-                            namespace.insert(Ident { primary_name, span }, decl.clone());
+                            namespace.insert(Ident::new(primary_name, span), decl.clone());
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
@@ -410,7 +410,7 @@ impl<'sc> TypedAstNode<'sc> {
                             if !type_arguments.is_empty() {
                                 errors.push(CompileError::Internal(
                                     "Where clauses are not supported yet.",
-                                    type_arguments[0].clone().name_ident.span,
+                                    type_arguments[0].clone().name_ident.span().clone(),
                                 ));
                             }
                             for mut fn_decl in functions.into_iter() {
@@ -455,10 +455,7 @@ impl<'sc> TypedAstNode<'sc> {
                             }
                             let trait_name = CallPath {
                                 prefixes: vec![],
-                                suffix: Ident {
-                                    primary_name: "r#Self",
-                                    span: block_span.clone(),
-                                },
+                                suffix: Ident::new("r#Self", block_span.clone()),
                             };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),
@@ -789,7 +786,7 @@ fn import_new_file<'sc>(
         Some(ref alias) => alias,
         None => &name,
     };
-    let name = name.primary_name.to_string();
+    let name = name.primary_name().to_string();
     namespace.insert_module(name, module);
     ok((), warnings, errors)
 }
@@ -828,7 +825,7 @@ fn reassignment<'n, 'sc>(
                     // early-returning, for the sake of better error reporting
                     if !is_mutable {
                         errors.push(CompileError::AssignmentToNonMutable(
-                            name.primary_name.to_string(),
+                            name.primary_name().to_string(),
                             span.clone(),
                         ));
                     }
@@ -837,7 +834,7 @@ fn reassignment<'n, 'sc>(
                 }
                 Some(o) => {
                     errors.push(CompileError::ReassignmentToNonVariable {
-                        name: name.primary_name,
+                        name: name.primary_name(),
                         kind: o.friendly_name(),
                         span,
                     });
@@ -845,8 +842,8 @@ fn reassignment<'n, 'sc>(
                 }
                 None => {
                     errors.push(CompileError::UnknownVariable {
-                        var_name: name.primary_name.to_string(),
-                        span: name.span.clone(),
+                        var_name: name.primary_name().to_string(),
+                        span: name.span().clone(),
                     });
                     return err(warnings, errors);
                 }
@@ -1088,7 +1085,7 @@ fn type_check_trait_methods<'sc>(
                     )
                     .unwrap_or_else(|_| {
                         errors.push(CompileError::UnknownType {
-                            span: name.span.clone(),
+                            span: name.span().clone(),
                         });
                         insert_type(TypeInfo::ErrorRecovery)
                     });
@@ -1100,7 +1097,7 @@ fn type_check_trait_methods<'sc>(
                             expression: TypedExpressionVariant::FunctionParameter,
                             return_type: r#type,
                             is_constant: IsConstant::No,
-                            span: name.span.clone(),
+                            span: name.span().clone(),
                         },
                         // TODO allow mutable function params?
                         is_mutable: false,
@@ -1122,15 +1119,13 @@ fn type_check_trait_methods<'sc>(
             ref r#type, name, ..
         } in parameters.iter()
         {
-            let span = name.span.clone();
+            let span = name.span().clone();
             if let TypeInfo::Custom { name, .. } = r#type {
                 let args_span = parameters.iter().fold(
-                    parameters[0].name.span.clone(),
-                    |acc,
-                     FunctionParameter {
-                         name: Ident { span, .. },
-                         ..
-                     }| { crate::utils::join_spans(acc, span.clone()) },
+                    parameters[0].name.span().clone(),
+                    |acc, FunctionParameter { name, .. }| {
+                        crate::utils::join_spans(acc, name.span().clone())
+                    },
                 );
                 if type_parameters.iter().any(
                     |TypeParameter {
@@ -1147,7 +1142,7 @@ fn type_check_trait_methods<'sc>(
                         name: name.to_string(),
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: fn_name.primary_name,
+                        fn_name: fn_name.primary_name(),
                         args: args_span.as_str().to_string(),
                     });
                 }

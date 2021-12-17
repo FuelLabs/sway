@@ -86,7 +86,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     let (type_of_this_field, name_for_this_field) = fields_for_layout
         .into_iter()
         .find_map(|(ty, _span, name)| {
-            if name == field_to_access.name.primary_name {
+            if name == field_to_access.name.primary_name() {
                 Some((ty, name))
             } else {
                 None
