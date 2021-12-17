@@ -1528,10 +1528,10 @@ impl<'sc> TypedExpression<'sc> {
             let method_name = MethodName::FromType {
                 call_path: CallPath {
                     prefixes: vec![
-                        Ident::new("core", span.clone()),
-                        Ident::new("ops", span.clone()),
+                        Ident::new_with_override("core", span.clone()),
+                        Ident::new_with_override("ops", span.clone()),
                     ],
-                    suffix: Ident::new("index", span.clone()),
+                    suffix: Ident::new_with_override("index", span.clone()),
                 },
                 type_name: None,
                 is_absolute: true,

@@ -9,7 +9,7 @@ use std::hash::{Hash, Hasher};
 /// An [Ident] is an _identifier_ with a corresponding `span` from which it was derived.
 #[derive(Debug, Clone)]
 pub struct Ident<'sc> {
-    primary_name: &'sc str,
+    name_override_opt: Option<&'static str>,
     // sub-names are the stuff after periods
     // like x.test.thing.method()
     // `test`, `thing`, and `method` are sub-names
@@ -21,17 +21,17 @@ pub struct Ident<'sc> {
 // often be different.
 impl Hash for Ident<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.primary_name.hash(state);
+        self.primary_name().hash(state);
     }
 }
 impl PartialEq for Ident<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.primary_name == other.primary_name
+        self.primary_name() == other.primary_name()
     }
 }
 impl Ord for Ident<'_> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.primary_name.cmp(other.primary_name)
+        self.primary_name().cmp(other.primary_name())
     }
 }
 
@@ -45,15 +45,29 @@ impl Eq for Ident<'_> {}
 
 impl<'sc> Ident<'sc> {
     pub fn primary_name(&self) -> &'sc str {
-        self.primary_name
+        match self.name_override_opt {
+            Some(name_override) => name_override,
+            None => self.span.as_str(),
+        }
     }
 
     pub fn span(&self) -> &Span<'sc> {
         &self.span
     }
 
-    pub fn new(primary_name: &'sc str, span: Span<'sc>) -> Ident<'sc> {
-        Ident { primary_name, span }
+    pub fn new(span: Span<'sc>) -> Ident<'sc> {
+        let span = span.trim();
+        Ident {
+            name_override_opt: None,
+            span,
+        }
+    }
+
+    pub fn new_with_override(name_override: &'static str, span: Span<'sc>) -> Ident<'sc> {
+        Ident {
+            name_override_opt: Some(name_override),
+            span,
+        }
     }
 
     pub(crate) fn parse_from_pair(
@@ -75,7 +89,6 @@ impl<'sc> Ident<'sc> {
                 }
             }
         };
-        let name = pair.as_str().trim();
-        ok(Ident::new(name, span), Vec::new(), Vec::new())
+        ok(Ident::new(span), Vec::new(), Vec::new())
     }
 }

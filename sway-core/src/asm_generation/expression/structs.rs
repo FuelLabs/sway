@@ -71,14 +71,14 @@ impl<N> ContiguousMemoryLayoutDescriptor<N> {
 #[test]
 fn test_struct_memory_layout() {
     use crate::span::Span;
-    let first_field_name = Ident::new(
+    let first_field_name = Ident::new_with_override(
         "foo",
         Span {
             span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
     );
-    let second_field_name = Ident::new(
+    let second_field_name = Ident::new_with_override(
         "bar",
         Span {
             span: pest::Span::new(" ", 0, 0).unwrap(),

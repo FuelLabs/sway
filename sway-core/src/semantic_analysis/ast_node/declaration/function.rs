@@ -470,7 +470,7 @@ fn test_function_selector_behavior() {
     use crate::type_engine::IntegerBits;
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
-        name: Ident::new(
+        name: Ident::new_with_override(
             "foo",
             Span {
                 span: pest::Span::new(" ", 0, 0).unwrap(),
@@ -508,7 +508,7 @@ fn test_function_selector_behavior() {
 
     let decl = TypedFunctionDeclaration {
         purity: Default::default(),
-        name: Ident::new(
+        name: Ident::new_with_override(
             "bar",
             Span {
                 span: pest::Span::new(" ", 0, 0).unwrap(),
@@ -524,7 +524,7 @@ fn test_function_selector_behavior() {
         },
         parameters: vec![
             TypedFunctionParameter {
-                name: Ident::new(
+                name: Ident::new_with_override(
                     "foo",
                     Span {
                         span: pest::Span::new(" ", 0, 0).unwrap(),
@@ -538,7 +538,7 @@ fn test_function_selector_behavior() {
                 },
             },
             TypedFunctionParameter {
-                name: Ident::new(
+                name: Ident::new_with_override(
                     "baz",
                     Span {
                         span: pest::Span::new(" ", 0, 0).unwrap(),

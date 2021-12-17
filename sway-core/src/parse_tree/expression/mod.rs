@@ -199,8 +199,8 @@ impl<'sc> Expression<'sc> {
             method_name: MethodName::FromType {
                 call_path: CallPath {
                     prefixes: vec![
-                        Ident::new("core", span.clone()),
-                        Ident::new("ops", span.clone()),
+                        Ident::new_with_override("core", span.clone()),
+                        Ident::new_with_override("ops", span.clone()),
                     ],
                     suffix: Op {
                         op_variant: OpVariant::Equals,
@@ -225,8 +225,8 @@ impl<'sc> Expression<'sc> {
             method_name: MethodName::FromType {
                 call_path: CallPath {
                     prefixes: vec![
-                        Ident::new("core", span.clone()),
-                        Ident::new("ops", span.clone()),
+                        Ident::new_with_override("core", span.clone()),
+                        Ident::new_with_override("ops", span.clone()),
                     ],
                     suffix: op.to_var_name(),
                 },
@@ -452,7 +452,7 @@ impl<'sc> Expression<'sc> {
                         Rule::var_name_ident => {
                             name = Some(check!(
                                 Ident::parse_from_pair(pair, config),
-                                Ident::new("error parsing var name", span.clone()),
+                                Ident::new_with_override("error parsing var name", span.clone()),
                                 warnings,
                                 errors
                             ));
@@ -1275,7 +1275,7 @@ pub(crate) struct Op<'sc> {
 
 impl<'sc> Op<'sc> {
     pub fn to_var_name(&self) -> Ident<'sc> {
-        Ident::new(self.op_variant.as_str(), self.span.clone())
+        Ident::new_with_override(self.op_variant.as_str(), self.span.clone())
     }
 }
 #[derive(Debug)]

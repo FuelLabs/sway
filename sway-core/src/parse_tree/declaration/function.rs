@@ -250,7 +250,7 @@ impl<'sc> FunctionParameter<'sc> {
                     path: path.clone(),
                 };
                 let r#type = TypeInfo::SelfType;
-                let name = Ident::new(
+                let name = Ident::new_with_override(
                     "self",
                     Span {
                         span: pair.as_span(),

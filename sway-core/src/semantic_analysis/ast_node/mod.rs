@@ -269,13 +269,11 @@ impl<'sc> TypedAstNode<'sc> {
                             typed_const_decl
                         }
                         Declaration::EnumDeclaration(e) => {
-                            let span = e.span.clone();
-                            let primary_name = e.name.primary_name();
                             let decl = TypedDeclaration::EnumDeclaration(
                                 e.to_typed_decl(namespace, self_type),
                             );
 
-                            namespace.insert(Ident::new(primary_name, span), decl.clone());
+                            namespace.insert(e.name.clone(), decl.clone());
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
@@ -455,7 +453,7 @@ impl<'sc> TypedAstNode<'sc> {
                             }
                             let trait_name = CallPath {
                                 prefixes: vec![],
-                                suffix: Ident::new("r#Self", block_span.clone()),
+                                suffix: Ident::new_with_override("r#Self", block_span.clone()),
                             };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),

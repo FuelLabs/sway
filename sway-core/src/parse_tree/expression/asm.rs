@@ -154,7 +154,6 @@ impl<'sc> AsmOp<'sc> {
             match pair.as_rule() {
                 Rule::asm_register => {
                     args.push(Ident::new(
-                        pair.as_str(),
                         Span {
                             span: pair.as_span(),
                             path: path.clone(),
@@ -163,7 +162,6 @@ impl<'sc> AsmOp<'sc> {
                 }
                 Rule::asm_immediate => {
                     immediate_value = Some(Ident::new(
-                        pair.as_str().trim(),
                         Span {
                             span: pair.as_span(),
                             path: path.clone(),

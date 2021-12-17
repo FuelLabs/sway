@@ -55,10 +55,10 @@ impl UnaryOp {
             type_arguments: Default::default(),
             name: CallPath {
                 prefixes: vec![
-                    Ident::new("core", op_span.clone()),
-                    Ident::new("ops", op_span.clone()),
+                    Ident::new_with_override("core", op_span.clone()),
+                    Ident::new_with_override("ops", op_span.clone()),
                 ],
-                suffix: Ident::new(self.to_var_name(), op_span),
+                suffix: Ident::new_with_override(self.to_var_name(), op_span),
             },
             arguments: vec![arg],
             span,

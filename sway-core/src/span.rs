@@ -34,7 +34,7 @@ impl<'sc> Span<'sc> {
         self.span.as_str().to_string()
     }
 
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &'sc str {
         self.span.as_str()
     }
 
@@ -47,5 +47,19 @@ impl<'sc> Span<'sc> {
             .as_deref()
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_else(|| "".to_string())
+    }
+
+    pub fn trim(self) -> Span<'sc> {
+        let start_delta = self.as_str().len() - self.as_str().trim_start().len();
+        let end_delta = self.as_str().len() - self.as_str().trim_end().len();
+        let span = pest::Span::new(
+            self.span.input().clone(),
+            self.span.start() + start_delta,
+            self.span.end() - end_delta,
+        ).unwrap();
+        Span {
+            span,
+            path: self.path,
+        }
     }
 }

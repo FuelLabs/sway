@@ -264,7 +264,6 @@ impl OwnedTypedStructField {
     pub(crate) fn as_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
         TypedStructField {
             name: Ident::new(
-                Box::leak(span.clone().as_str().to_string().into_boxed_str()),
                 span.clone(),
             ),
             r#type: self.r#type,
