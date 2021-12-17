@@ -177,7 +177,7 @@ impl VirtualOp {
             LB(r1, r2, _i) => vec![r1, r2],
             LWDataId(r1, _i) => vec![r1],
             LW(r1, r2, _i) => vec![r1, r2],
-            ALOC(_imm) => vec![],
+            ALOC(r1) => vec![r1],
             MCL(r1, r2) => vec![r1, r2],
             MCLI(r1, _imm) => vec![r1],
             MCP(r1, r2, r3) => vec![r1, r2, r3],
