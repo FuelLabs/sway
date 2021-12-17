@@ -1,0 +1,12 @@
+[project]
+author  = "Alexander Hansen <alex.hansen@fuel.sh>"
+license = "MIT"
+name = "use_full_path_names"
+entry = "main.sw"
+
+
+[dependencies]
+std = { path = "../../../../../lib-std" }
+core = { path = "../../../../../lib-core" }
+
+
