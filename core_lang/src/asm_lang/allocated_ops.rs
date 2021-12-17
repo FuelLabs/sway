@@ -348,7 +348,7 @@ impl<'sc> AllocatedOp<'sc> {
             ECR (a, b, c)   => VmOp::ECR (a.to_register_id(), b.to_register_id(), c.to_register_id()),
             K256(a, b, c)   => VmOp::K256(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             S256(a, b, c)   => VmOp::S256(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            XOS(a, b)   => VmOp::XOS(a.to_register_id(), b.to_register_id()),
+            XOS(a, b)       => VmOp::XOS(a.to_register_id(), b.to_register_id()),
             NOOP            => VmOp::NOOP,
             FLAG(a)         => VmOp::FLAG(a.to_register_id()),
             GM(a, b)         => VmOp::GM(a.to_register_id(), b.value),
