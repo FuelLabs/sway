@@ -244,7 +244,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
             ECR(a, b, c)    => format!("ecr  {} {} {}", a, b, c),
             K256(a, b, c)   => format!("k256 {} {} {}", a, b, c),
             S256(a, b, c)   => format!("s256 {} {} {}", a, b, c),
-            XOS(a, b)   => format!("xos {} {}", a, b),
+            XOS(a, b)       => format!("xos {} {}", a, b),
             NOOP            => "noop".to_string(),
             FLAG(a)         => format!("flag {}", a),
             GM(a, b)         => format!("gm {} {}", a, b),
