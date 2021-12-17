@@ -539,16 +539,22 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CTMV(r1, r2)
                 }
                 "ji" => {
-                    errors.push(CompileError::DisallowedJi {
-                        span: name.span.clone(),
-                    });
-                    return err(warnings, errors);
+                    let imm = check!(
+                        single_imm_24(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::JI(imm)
                 }
                 "jnei" => {
-                    errors.push(CompileError::DisallowedJnei {
-                        span: name.span.clone(),
-                    });
-                    return err(warnings, errors);
+                    let (r1, r2, imm) = check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::JNEI(r1, r2, imm)
                 }
                 "ret" => {
                     let r1 = check!(
@@ -596,10 +602,13 @@ impl<'sc> Op<'sc> {
                     VirtualOp::LB(r1, r2, imm)
                 }
                 "lw" => {
-                    errors.push(CompileError::DisallowedLw {
-                        span: name.span.clone(),
-                    });
-                    return err(warnings, errors);
+                    let (r1, r2, imm) = check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LW(r1, r2, imm)
                 }
                 "aloc" => {
                     let r1 = check!(
