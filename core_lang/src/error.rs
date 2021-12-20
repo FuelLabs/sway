@@ -255,7 +255,7 @@ pub enum Warning<'sc> {
         module: &'sc str,
         name: &'sc str,
     },
-    OverridesOtherSymbol {
+    ShadowsOtherSymbol {
         name: String,
     },
     OverridingTraitImplementation,
@@ -353,9 +353,9 @@ impl<'sc> fmt::Display for Warning<'sc> {
                  Traits must be in scope in order to access their methods. ",
                 name, lib, module
             ),
-            OverridesOtherSymbol { name } => write!(
+            ShadowsOtherSymbol { name } => write!(
                 f,
-                "This would override another symbol with the same name \"{}\" in this \
+                "This shadows another symbol with the same name \"{}\" in this \
                  namespace.",
                 name
             ),
@@ -813,8 +813,8 @@ pub enum CompileError<'sc> {
         count: u64,
         span: Span<'sc>,
     },
-    #[error("The name {name} overrides another symbol.")]
-    OverridesOtherSymbol { name: String, span: Span<'sc> },
+    #[error("The name {name} shadows another symbol.")]
+    ShadowsOtherSymbol { name: String, span: Span<'sc> },
     #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
     PureCalledImpure { span: Span<'sc> },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
@@ -1007,7 +1007,7 @@ impl<'sc> CompileError<'sc> {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
-            OverridesOtherSymbol { span, .. } => span,
+            ShadowsOtherSymbol { span, .. } => span,
             PureCalledImpure { span, .. } => span,
             ImpureInNonContract { span, .. } => span,
         }

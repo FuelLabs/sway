@@ -136,7 +136,7 @@ impl<'sc> Namespace<'sc> {
             match item {
                 TypedDeclaration::EnumDeclaration { .. }
                 | TypedDeclaration::StructDeclaration { .. } => {
-                    errors.push(CompileError::OverridesOtherSymbol {
+                    errors.push(CompileError::ShadowsOtherSymbol {
                         span: name.span.clone(),
                         name: name.primary_name.to_string(),
                     });
@@ -145,7 +145,7 @@ impl<'sc> Namespace<'sc> {
                 _ => {
                     warnings.push(CompileWarning {
                         span: name.span.clone(),
-                        warning_content: Warning::OverridesOtherSymbol {
+                        warning_content: Warning::ShadowsOtherSymbol {
                             name: name.clone().span.str(),
                         },
                     });
