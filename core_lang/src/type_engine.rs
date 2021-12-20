@@ -13,6 +13,16 @@ pub use type_info::*;
 /// A identifier to uniquely refer to our type terms
 pub type TypeId = usize;
 
+pub(crate) trait JsonAbiString {
+    fn json_abi_str(&self) -> String;
+}
+
+impl JsonAbiString for TypeId {
+    fn json_abi_str(&self) -> String {
+        look_up_type_id(*self).json_abi_str()
+    }
+}
+
 pub(crate) trait FriendlyTypeString {
     fn friendly_type_str(&self) -> String;
 }

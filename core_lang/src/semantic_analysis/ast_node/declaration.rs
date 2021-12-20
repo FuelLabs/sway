@@ -275,7 +275,7 @@ impl OwnedTypedStructField {
     pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.clone(),
-            type_field: self.r#type.friendly_type_str(),
+            type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
     }
@@ -370,7 +370,7 @@ impl OwnedTypedEnumVariant {
     pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.clone(),
-            type_field: self.r#type.friendly_type_str(),
+            type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }
     }
