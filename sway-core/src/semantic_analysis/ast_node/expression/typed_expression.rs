@@ -844,10 +844,8 @@ impl<'sc> TypedExpression<'sc> {
                 |AsmRegisterDeclaration {
                      name,
                      initializer,
-                     name_span,
                  }| {
                     TypedAsmRegisterDeclaration {
-                        name_span: name_span.clone(),
                         name,
                         initializer: initializer.map(|initializer| {
                             check!(

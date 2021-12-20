@@ -128,18 +128,17 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             for TypedAsmRegisterDeclaration {
                 name,
                 initializer,
-                name_span,
             } in registers
             {
                 let register = register_sequencer.next();
                 assert_or_warn!(
-                    ConstantRegister::parse_register_name(name).is_none(),
+                    ConstantRegister::parse_register_name(name.as_str()).is_none(),
                     warnings,
-                    name_span.clone(),
-                    Warning::ShadowingReservedRegister { reg_name: name }
+                    name.span().clone(),
+                    Warning::ShadowingReservedRegister { reg_name: name.clone() }
                 );
 
-                mapping_of_real_registers_to_declared_names.insert(name, register.clone());
+                mapping_of_real_registers_to_declared_names.insert(name.as_str(), register.clone());
                 // evaluate each register's initializer
                 if let Some(initializer) = initializer {
                     asm_buf.append(&mut check!(

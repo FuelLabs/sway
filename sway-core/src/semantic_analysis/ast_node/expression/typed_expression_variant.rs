@@ -91,8 +91,7 @@ pub(crate) enum TypedExpressionVariant<'sc> {
 #[derive(Clone, Debug)]
 pub(crate) struct TypedAsmRegisterDeclaration<'sc> {
     pub(crate) initializer: Option<TypedExpression<'sc>>,
-    pub(crate) name: &'sc str,
-    pub(crate) name_span: Span<'sc>,
+    pub(crate) name: Ident<'sc>,
 }
 
 impl TypedAsmRegisterDeclaration<'_> {

@@ -1,5 +1,6 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
+use crate::ident::Ident;
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case};
@@ -223,25 +224,25 @@ impl<'sc> CompileWarning<'sc> {
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub enum Warning<'sc> {
     NonClassCaseStructName {
-        struct_name: &'sc str,
+        struct_name: Ident<'sc>,
     },
     NonClassCaseTraitName {
-        name: &'sc str,
+        name: Ident<'sc>,
     },
     NonClassCaseEnumName {
-        enum_name: &'sc str,
+        enum_name: Ident<'sc>,
     },
     NonClassCaseEnumVariantName {
-        variant_name: &'sc str,
+        variant_name: Ident<'sc>,
     },
     NonSnakeCaseStructFieldName {
-        field_name: &'sc str,
+        field_name: Ident<'sc>,
     },
     NonSnakeCaseFunctionName {
-        name: &'sc str,
+        name: Ident<'sc>,
     },
     NonScreamingSnakeCaseConstName {
-        name: &'sc str,
+        name: Ident<'sc>,
     },
     LossOfPrecision {
         initial_type: IntegerBits,
@@ -251,9 +252,9 @@ pub enum Warning<'sc> {
         r#type: TypeInfo,
     },
     SimilarMethodFound {
-        lib: &'sc str,
-        module: &'sc str,
-        name: &'sc str,
+        lib: Ident<'sc>,
+        module: Ident<'sc>,
+        name: Ident<'sc>,
     },
     OverridesOtherSymbol {
         name: String,
@@ -270,7 +271,7 @@ pub enum Warning<'sc> {
     DeadMethod,
     StructFieldNeverRead,
     ShadowingReservedRegister {
-        reg_name: &'sc str,
+        reg_name: Ident<'sc>,
     },
 }
 
@@ -284,7 +285,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \
                  \"{}\".",
                 struct_name,
-                to_upper_camel_case(struct_name)
+                to_upper_camel_case(struct_name.as_str())
             )
             }
             NonClassCaseTraitName { name } => {
@@ -292,7 +293,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \
                  \"{}\".",
                 name,
-                to_upper_camel_case(name)
+                to_upper_camel_case(name.as_str())
             )
             }
             NonClassCaseEnumName { enum_name } => write!(
@@ -300,28 +301,28 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase \
                  name, like \"{}\".",
                 enum_name,
-                to_upper_camel_case(enum_name)
+                to_upper_camel_case(enum_name.as_str())
             ),
             NonSnakeCaseStructFieldName { field_name } => write!(
                 f,
                 "Struct field name \"{}\" is not idiomatic. Struct field names should have a \
                  snake_case name, like \"{}\".",
                 field_name,
-                to_snake_case(field_name)
+                to_snake_case(field_name.as_str())
             ),
             NonClassCaseEnumVariantName { variant_name } => write!(
                 f,
                 "Enum variant name \"{}\" is not idiomatic. Enum variant names should be \
                  ClassCase, like \"{}\".",
                 variant_name,
-                to_upper_camel_case(variant_name)
+                to_upper_camel_case(variant_name.as_str())
             ),
             NonSnakeCaseFunctionName { name } => {
                 write!(f,
                 "Function name \"{}\" is not idiomatic. Function names should be snake_case, like \
                  \"{}\".",
                 name,
-                to_snake_case(name)
+                to_snake_case(name.as_str())
             )
             }
             NonScreamingSnakeCaseConstName { name } => {
@@ -330,7 +331,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                     "Constant name \"{}\" is not idiomatic. Constant names should be SCREAMING_SNAKE_CASE, like \
                     \"{}\".",
                     name,
-                    to_screaming_snake_case(name),
+                    to_screaming_snake_case(name.as_str()),
                 )
             },
             LossOfPrecision {

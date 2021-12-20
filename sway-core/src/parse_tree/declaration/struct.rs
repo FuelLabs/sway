@@ -93,7 +93,7 @@ impl<'sc> StructDeclaration<'sc> {
             warnings,
             span,
             Warning::NonClassCaseStructName {
-                struct_name: name.as_str()
+                struct_name: name.clone()
             }
         );
         ok(
@@ -135,7 +135,7 @@ impl<'sc> StructField<'sc> {
                 warnings,
                 span.clone(),
                 Warning::NonSnakeCaseStructFieldName {
-                    field_name: name.as_str(),
+                    field_name: name.clone(),
                 }
             );
             let type_pair = fields[i + 1].clone();

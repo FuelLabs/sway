@@ -74,7 +74,7 @@ impl<'sc> ConstantDeclaration<'sc> {
                 path,
             },
             Warning::NonScreamingSnakeCaseConstName {
-                name: name.as_str(),
+                name: name.clone(),
             }
         );
         ok(

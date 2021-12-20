@@ -70,7 +70,7 @@ impl<'sc> FunctionDeclaration<'sc> {
             warnings,
             name_span,
             Warning::NonSnakeCaseFunctionName {
-                name: name.as_str()
+                name: name.clone()
             }
         );
         let mut type_params_pair = None;

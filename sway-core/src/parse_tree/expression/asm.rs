@@ -186,9 +186,8 @@ impl<'sc> AsmOp<'sc> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct AsmRegisterDeclaration<'sc> {
-    pub(crate) name: &'sc str,
+    pub(crate) name: Ident<'sc>,
     pub(crate) initializer: Option<Expression<'sc>>,
-    pub(crate) name_span: Span<'sc>,
 }
 
 impl<'sc> AsmRegisterDeclaration<'sc> {
@@ -203,7 +202,12 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
         for pair in iter {
             assert_eq!(pair.as_rule(), Rule::asm_register_declaration);
             let mut iter = pair.into_inner();
-            let reg_name = iter.next().unwrap();
+            let reg_name = check!(
+                Ident::parse_from_pair(iter.next().unwrap(), config),
+                return err(warnings, errors),
+                warnings,
+                errors,
+            );
             // if there is still anything in the iterator, then it is a variable expression to be
             // assigned to that register
             let initializer = if let Some(pair) = iter.next() {
@@ -217,11 +221,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
                 None
             };
             reg_buf.push(AsmRegisterDeclaration {
-                name: reg_name.as_str(),
-                name_span: Span {
-                    span: reg_name.as_span(),
-                    path: config.map(|c| c.path()),
-                },
+                name: reg_name,
                 initializer,
             })
         }
