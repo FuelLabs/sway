@@ -1,0 +1,9 @@
+[project]
+author  = "Emily Herbert <emily.herbert@fuel.sh>"
+license = "MIT"
+name = "disallow_incorrect_type_unification"
+entry = "main.sw"
+
+[dependencies]
+std = { path = "../../../../../lib-std" }
+core = { path = "../../../../../lib-core" }

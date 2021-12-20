@@ -101,6 +101,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "predicate_calls_impure",
         "script_calls_impure",
         "contract_pure_calls_impure",
+        "disallow_incorrect_type_unification",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
