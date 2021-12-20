@@ -13,16 +13,16 @@ use crate::type_engine::TypeId;
 use method_application::type_check_method_application;
 
 #[derive(Clone, Debug)]
-pub struct TypedExpression<'sc> {
-    pub(crate) expression: TypedExpressionVariant<'sc>,
+pub struct TypedExpression {
+    pub(crate) expression: TypedExpressionVariant,
     pub(crate) return_type: TypeId,
     /// whether or not this expression is constantly evaluatable (if the result is known at compile
     /// time)
     pub(crate) is_constant: IsConstant,
-    pub(crate) span: Span<'sc>,
+    pub(crate) span: Span,
 }
 
-pub(crate) fn error_recovery_expr(span: Span<'_>) -> TypedExpression<'_> {
+pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
     TypedExpression {
         expression: TypedExpressionVariant::Tuple { fields: vec![] },
         return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
@@ -32,10 +32,10 @@ pub(crate) fn error_recovery_expr(span: Span<'_>) -> TypedExpression<'_> {
 }
 
 #[allow(clippy::too_many_arguments)]
-impl<'sc> TypedExpression<'sc> {
+impl<'sc> TypedExpression {
     pub(crate) fn type_check<'n>(
-        arguments: TypeCheckArguments<'n, 'sc, Expression<'sc>>,
-    ) -> CompileResult<'sc, Self> {
+        arguments: TypeCheckArguments<'n, Expression>,
+    ) -> CompileResult<Self> {
         let TypeCheckArguments {
             checkee: other,
             namespace,
@@ -334,11 +334,11 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_literal(
-        lit: Literal<'sc>,
-        span: Span<'sc>,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
-        let return_type = match lit {
-            Literal::String(s) => TypeInfo::Str(s.len() as u64),
+        lit: Literal,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
+        let return_type = match &lit {
+            Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
 
@@ -359,10 +359,10 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_variable_expression(
-        name: Ident<'sc>,
-        span: Span<'sc>,
-        namespace: &Namespace<'sc>,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        name: Ident,
+        span: Span,
+        namespace: &Namespace,
+    ) -> CompileResult<TypedExpression> {
         let mut errors = vec![];
         let exp = match namespace.get_symbol(&name).value {
             Some(TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -407,15 +407,14 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_function_application<'n>(
         arguments: TypeCheckArguments<
             'n,
-            'sc,
             (
-                CallPath<'sc>,
-                Vec<Expression<'sc>>,
-                Vec<(TypeInfo, Span<'sc>)>,
+                CallPath,
+                Vec<Expression>,
+                Vec<(TypeInfo, Span)>,
             ),
         >,
-        _span: Span<'sc>,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        _span: Span,
+    ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
             checkee: (name, arguments, type_arguments),
             namespace,
@@ -558,9 +557,9 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_lazy_operator<'n>(
-        arguments: TypeCheckArguments<'n, 'sc, (LazyOp, Expression<'sc>, Expression<'sc>)>,
-        span: Span<'sc>,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        arguments: TypeCheckArguments<'n, (LazyOp, Expression, Expression)>,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
             checkee: (op, lhs, rhs),
             namespace,
@@ -631,18 +630,18 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_code_block<'n>(
-        contents: CodeBlock<'sc>,
-        span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
+        contents: CodeBlock,
+        span: Span,
+        namespace: &mut Namespace,
+        crate_namespace: Option<&'n Namespace>,
         type_annotation: TypeId,
         help_text: &'static str,
         self_type: TypeId,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
@@ -697,15 +696,14 @@ impl<'sc> TypedExpression<'sc> {
     fn type_check_if_expression<'n>(
         arguments: TypeCheckArguments<
             'n,
-            'sc,
             (
-                Box<Expression<'sc>>,
-                Box<Expression<'sc>>,
-                Option<Box<Expression<'sc>>>,
+                Box<Expression>,
+                Box<Expression>,
+                Option<Box<Expression>>,
             ),
         >,
-        span: Span<'sc>,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
             checkee: (condition, then, r#else),
             namespace,
@@ -812,16 +810,16 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_asm_expression<'n>(
-        asm: AsmExpression<'sc>,
-        span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
+        asm: AsmExpression,
+        span: Span,
+        namespace: &mut Namespace,
+        crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let return_type = namespace
@@ -887,17 +885,17 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression<'n>(
-        span: Span<'sc>,
-        struct_name: Ident<'sc>,
-        fields: Vec<StructExpressionField<'sc>>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
+        span: Span,
+        struct_name: Ident,
+        fields: Vec<StructExpressionField>,
+        namespace: &mut Namespace,
+        crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut typed_fields_buf = vec![];
@@ -1011,17 +1009,17 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_subfield_expression<'n>(
-        prefix: Box<Expression<'sc>>,
-        span: Span<'sc>,
-        field_to_access: Ident<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
+        prefix: Box<Expression>,
+        span: Span,
+        field_to_access: Ident,
+        namespace: &mut Namespace,
+        crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let parent = check!(
@@ -1086,17 +1084,17 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     fn type_check_tuple<'n>(
-        fields: Vec<Expression<'sc>>,
-        span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
+        fields: Vec<Expression>,
+        span: Span,
+        namespace: &mut Namespace,
+        crate_namespace: Option<&'n Namespace>,
         type_annotation: TypeId,
         self_type: TypeId,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let field_type_ids_opt = match look_up_type_id(type_annotation) {
@@ -1151,19 +1149,19 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_delineated_path<'n>(
-        call_path: CallPath<'sc>,
-        span: Span<'sc>,
-        args: Vec<Expression<'sc>>,
+        call_path: CallPath,
+        span: Span,
+        args: Vec<Expression>,
         // TODO these will be needed for enum instantiation
         _type_arguments: Vec<TypeInfo>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
+        namespace: &mut Namespace,
+        crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         // The first step is to determine if the call path refers to a module or an enum.
@@ -1247,17 +1245,17 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_abi_cast<'n>(
-        abi_name: CallPath<'sc>,
-        address: Box<Expression<'sc>>,
-        span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
+        abi_name: CallPath,
+        address: Box<Expression>,
+        span: Span,
+        namespace: &mut Namespace,
+        crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         // TODO use lib-std's Address type instead of b256
@@ -1356,16 +1354,16 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_array<'n>(
-        contents: Vec<Expression<'sc>>,
-        span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
+        contents: Vec<Expression>,
+        span: Span,
+        namespace: &mut Namespace,
+        crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<TypedExpression> {
         if contents.is_empty() {
             return ok(
                 TypedExpression {
@@ -1449,9 +1447,9 @@ impl<'sc> TypedExpression<'sc> {
 
     #[allow(clippy::too_many_arguments)]
     fn type_check_array_index<'n>(
-        arguments: TypeCheckArguments<'n, 'sc, (Expression<'sc>, Expression<'sc>)>,
-        span: Span<'sc>,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        arguments: TypeCheckArguments<'n, (Expression, Expression)>,
+        span: Span,
+    ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
             checkee: (prefix, index),
             namespace,
@@ -1559,16 +1557,16 @@ impl<'sc> TypedExpression<'sc> {
     /// struct field or enum arg, and 3) constructs the respective typed
     /// expression.
     fn type_check_delayed_resolution<'n>(
-        variant: DelayedResolutionVariant<'sc>,
-        span: Span<'sc>,
-        namespace: &mut Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
+        variant: DelayedResolutionVariant,
+        span: Span,
+        namespace: &mut Namespace,
+        crate_namespace: Option<&'n Namespace>,
         self_type: TypeId,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
         opts: TCOpts,
-    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+    ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match variant {
@@ -1757,10 +1755,10 @@ mod tests {
     use super::*;
 
     fn do_type_check<'sc>(
-        expr: Expression<'sc>,
+        expr: Expression,
         type_annotation: TypeId,
-    ) -> CompileResult<'sc, TypedExpression> {
-        let mut namespace: Namespace<'sc> = Default::default();
+    ) -> CompileResult<TypedExpression> {
+        let mut namespace: Namespace = Default::default();
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {
             file_name: Arc::new("test.sw".into()),
@@ -1787,7 +1785,7 @@ mod tests {
         })
     }
 
-    fn do_type_check_for_boolx2<'sc>(expr: Expression<'sc>) -> CompileResult<'sc, TypedExpression> {
+    fn do_type_check_for_boolx2<'sc>(expr: Expression) -> CompileResult<TypedExpression> {
         do_type_check(
             expr,
             insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 2)),
@@ -1797,7 +1795,7 @@ mod tests {
     #[test]
     fn test_array_type_check_non_homogeneous_0<'sc>() {
         let empty_span = Span {
-            span: pest::Span::new_unchecked(" ", 0, 0),
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         };
 
@@ -1830,7 +1828,7 @@ mod tests {
     #[test]
     fn test_array_type_check_non_homogeneous_1<'sc>() {
         let empty_span = Span {
-            span: pest::Span::new_unchecked(" ", 0, 0),
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         };
 
@@ -1870,7 +1868,7 @@ mod tests {
     #[test]
     fn test_array_type_check_bad_count<'sc>() {
         let empty_span = Span {
-            span: pest::Span::new_unchecked(" ", 0, 0),
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         };
 
@@ -1907,7 +1905,7 @@ mod tests {
     #[test]
     fn test_array_type_check_empty<'sc>() {
         let empty_span = Span {
-            span: pest::Span::new_unchecked(" ", 0, 0),
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         };
 

@@ -17,26 +17,26 @@ mod function_parameter;
 pub use function_parameter::*;
 
 #[derive(Clone, Debug)]
-pub struct TypedFunctionDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) body: TypedCodeBlock<'sc>,
-    pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
-    pub(crate) span: Span<'sc>,
+pub struct TypedFunctionDeclaration {
+    pub(crate) name: Ident,
+    pub(crate) body: TypedCodeBlock,
+    pub(crate) parameters: Vec<TypedFunctionParameter>,
+    pub(crate) span: Span,
     pub(crate) return_type: TypeId,
-    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
     /// Used for error messages -- the span pointing to the return type
     /// annotation of the function
-    pub(crate) return_type_span: Span<'sc>,
+    pub(crate) return_type_span: Span,
     pub(crate) visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
     pub(crate) is_contract_call: bool,
     pub(crate) purity: Purity,
 }
 
-impl<'sc> TypedFunctionDeclaration<'sc> {
+impl<'sc> TypedFunctionDeclaration {
     pub fn type_check<'n>(
-        arguments: TypeCheckArguments<'n, 'sc, FunctionDeclaration<'sc>>,
-    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
+        arguments: TypeCheckArguments<'n, FunctionDeclaration>,
+    ) -> CompileResult<TypedFunctionDeclaration> {
         let TypeCheckArguments {
             checkee: fn_decl,
             namespace,
@@ -174,7 +174,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             )
             .collect::<Vec<_>>();
         // handle the return statement(s)
-        let return_statements: Vec<(&TypedExpression, &Span<'sc>)> = body
+        let return_statements: Vec<(&TypedExpression, &Span)> = body
             .contents
             .iter()
             .filter_map(|x| {
@@ -287,9 +287,9 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     /// generic type info.
     pub(crate) fn monomorphize(
         &self,
-        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
+        type_arguments: Vec<(TypeInfo, Span)>,
         self_type: TypeId,
-    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
+    ) -> CompileResult<TypedFunctionDeclaration> {
         let mut warnings: Vec<CompileWarning> = vec![];
         let mut errors: Vec<CompileError> = vec![];
         debug_assert!(
@@ -350,7 +350,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         ok(new_decl, warnings, errors)
     }
     /// If there are parameters, join their spans. Otherwise, use the fn name span.
-    pub(crate) fn parameters_span(&self) -> Span<'sc> {
+    pub(crate) fn parameters_span(&self) -> Span {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span().clone(),
@@ -386,7 +386,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             ..self
         }
     }
-    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<'sc, Vec<u8>> {
+    pub fn to_fn_selector_value_untruncated(&self) -> CompileResult<Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
@@ -403,7 +403,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
     /// Converts a [TypedFunctionDeclaration] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self) -> CompileResult<'sc, [u8; 4]> {
+    pub fn to_fn_selector_value(&self) -> CompileResult<[u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let hash = check!(
@@ -418,7 +418,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
         ok(buf, warnings, errors)
     }
 
-    pub fn to_selector_name(&self) -> CompileResult<'sc, String> {
+    pub fn to_selector_name(&self) -> CompileResult<String> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let named_params = self
@@ -473,26 +473,26 @@ fn test_function_selector_behavior() {
         name: Ident::new_with_override(
             "foo",
             Span {
-                span: pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                 path: None,
             },
         ),
         body: TypedCodeBlock {
             contents: vec![],
             whole_block_span: Span {
-                span: pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                 path: None,
             },
         },
         parameters: vec![],
         span: Span {
-            span: pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         },
         return_type: 0,
         type_parameters: vec![],
         return_type_span: Span {
-            span: pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         },
         visibility: Visibility::Public,
@@ -511,14 +511,14 @@ fn test_function_selector_behavior() {
         name: Ident::new_with_override(
             "bar",
             Span {
-                span: pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                 path: None,
             },
         ),
         body: TypedCodeBlock {
             contents: vec![],
             whole_block_span: Span {
-                span: pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                 path: None,
             },
         },
@@ -527,13 +527,13 @@ fn test_function_selector_behavior() {
                 name: Ident::new_with_override(
                     "foo",
                     Span {
-                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                         path: None,
                     },
                 ),
                 r#type: crate::type_engine::insert_type(TypeInfo::Str(5)),
                 type_span: Span {
-                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                     path: None,
                 },
             },
@@ -541,25 +541,25 @@ fn test_function_selector_behavior() {
                 name: Ident::new_with_override(
                     "baz",
                     Span {
-                        span: pest::Span::new(" ", 0, 0).unwrap(),
+                        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                         path: None,
                     },
                 ),
                 r#type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span {
-                    span: pest::Span::new(" ", 0, 0).unwrap(),
+                    span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                     path: None,
                 },
             },
         ],
         span: Span {
-            span: pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         },
         return_type: 0,
         type_parameters: vec![],
         return_type_span: Span {
-            span: pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         },
         visibility: Visibility::Public,
@@ -576,8 +576,8 @@ fn test_function_selector_behavior() {
 /// Insert all type parameters as unknown types. Return a mapping of type parameter to
 /// [TypeId]
 pub(crate) fn insert_type_parameters<'sc>(
-    params: &[TypeParameter<'sc>],
-) -> Vec<(TypeParameter<'sc>, TypeId)> {
+    params: &[TypeParameter],
+) -> Vec<(TypeParameter, TypeId)> {
     params
         .iter()
         .map(|x| {

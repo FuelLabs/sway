@@ -14,14 +14,14 @@ use crate::{
 use std::collections::{HashMap, HashSet};
 
 pub(crate) fn implementation_of_trait<'sc>(
-    impl_trait: ImplTrait<'sc>,
-    namespace: &mut Namespace<'sc>,
-    crate_namespace: Option<&Namespace<'sc>>,
+    impl_trait: ImplTrait,
+    namespace: &mut Namespace,
+    crate_namespace: Option<&Namespace>,
     build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
-) -> CompileResult<'sc, TypedDeclaration<'sc>> {
+) -> CompileResult<TypedDeclaration> {
     let mut errors = vec![];
     let mut warnings = vec![];
     let ImplTrait {
@@ -183,23 +183,23 @@ impl Default for Mode {
 
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation<'sc>(
-    interface_surface: &[TypedTraitFn<'sc>],
-    functions: &[FunctionDeclaration<'sc>],
-    methods: &[FunctionDeclaration<'sc>],
-    trait_name: &Ident<'sc>,
-    type_arguments: &[TypeParameter<'sc>],
-    namespace: &mut Namespace<'sc>,
-    crate_namespace: Option<&Namespace<'sc>>,
+    interface_surface: &[TypedTraitFn],
+    functions: &[FunctionDeclaration],
+    methods: &[FunctionDeclaration],
+    trait_name: &Ident,
+    type_arguments: &[TypeParameter],
+    namespace: &mut Namespace,
+    crate_namespace: Option<&Namespace>,
     _self_type: TypeId,
     build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
-    block_span: &Span<'sc>,
+    dead_code_graph: &mut ControlFlowGraph,
+    block_span: &Span,
     type_implementing_for: TypeId,
-    type_implementing_for_span: &Span<'sc>,
+    type_implementing_for_span: &Span,
     mode: Mode,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
-) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
+) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
     let mut warnings = vec![];

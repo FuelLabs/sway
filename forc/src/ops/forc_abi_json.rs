@@ -17,6 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use sway_core::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
+use std::sync::Arc;
 
 pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // find manifest directory, even if in subdirectory
@@ -132,7 +133,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
-    namespace: &mut Namespace<'source>,
+    namespace: &mut Namespace,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
     offline_mode: bool,
@@ -236,13 +237,13 @@ fn compile_dependency_lib<'source, 'manifest>(
 }
 
 fn compile_library<'source>(
-    source: &'source str,
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<(Namespace<'source>, Vec<Function>), String> {
+) -> Result<(Namespace, Vec<Function>), String> {
     let res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
@@ -276,9 +277,9 @@ fn compile_library<'source>(
 }
 
 fn compile<'source>(
-    source: &'source str,
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,

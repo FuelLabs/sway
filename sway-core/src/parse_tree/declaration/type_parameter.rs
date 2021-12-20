@@ -5,26 +5,26 @@ use pest::iterators::Pair;
 use std::convert::From;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct TypeParameter<'sc> {
+pub(crate) struct TypeParameter {
     pub(crate) name: TypeInfo,
-    pub(crate) name_ident: Ident<'sc>,
-    pub(crate) trait_constraints: Vec<TraitConstraint<'sc>>,
+    pub(crate) name_ident: Ident,
+    pub(crate) trait_constraints: Vec<TraitConstraint>,
 }
 
-impl<'sc> From<&TypeParameter<'sc>> for TypedDeclaration<'sc> {
-    fn from(n: &TypeParameter<'sc>) -> Self {
+impl<'sc> From<&TypeParameter> for TypedDeclaration {
+    fn from(n: &TypeParameter) -> Self {
         TypedDeclaration::GenericTypeForFunctionScope {
             name: n.name_ident.clone(),
         }
     }
 }
 
-impl<'sc> TypeParameter<'sc> {
+impl<'sc> TypeParameter {
     pub(crate) fn parse_from_type_params_and_where_clause(
-        type_params_pair: Option<Pair<'sc, Rule>>,
-        where_clause_pair: Option<Pair<'sc, Rule>>,
+        type_params_pair: Option<Pair<Rule>>,
+        where_clause_pair: Option<Pair<Rule>>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Vec<TypeParameter<'sc>>> {
+    ) -> CompileResult<Vec<TypeParameter>> {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = vec![];
@@ -96,6 +96,6 @@ impl<'sc> TypeParameter<'sc> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub(crate) struct TraitConstraint<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub(crate) struct TraitConstraint {
+    pub(crate) name: Ident,
 }

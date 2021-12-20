@@ -26,6 +26,7 @@ pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
+use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
 
 pub use semantic_analysis::TreeType;
@@ -45,61 +46,61 @@ pub use type_engine::TypeInfo;
 /// it can be a library to be imported into one of the aforementioned
 /// program types.
 #[derive(Debug)]
-pub struct HllParseTree<'sc> {
-    pub tree_type: TreeType<'sc>,
-    pub tree: ParseTree<'sc>,
+pub struct HllParseTree {
+    pub tree_type: TreeType,
+    pub tree: ParseTree,
 }
 
 /// Represents some exportable information that results from compiling some
 /// Sway source code.
 #[derive(Debug)]
-pub struct ParseTree<'sc> {
+pub struct ParseTree {
     /// The untyped AST nodes that constitute this tree's root nodes.
-    pub root_nodes: Vec<AstNode<'sc>>,
+    pub root_nodes: Vec<AstNode>,
     /// The [span::Span] of the entire tree.
-    pub span: span::Span<'sc>,
+    pub span: span::Span,
 }
 
 /// A single [AstNode] represents a node in the parse tree. Note that [AstNode]
 /// is a recursive type and can contain other [AstNode], thus populating the tree.
 #[derive(Debug, Clone)]
-pub struct AstNode<'sc> {
+pub struct AstNode {
     /// The content of this ast node, which could be any control flow structure or other
     /// basic organizational component.
-    pub content: AstNodeContent<'sc>,
+    pub content: AstNodeContent,
     /// The [span::Span] representing this entire [AstNode].
-    pub span: span::Span<'sc>,
+    pub span: span::Span,
 }
 
 /// Represents the various structures that constitute a Sway program.
 #[derive(Debug, Clone)]
-pub enum AstNodeContent<'sc> {
+pub enum AstNodeContent {
     /// A statement of the form `use foo::bar;` or `use ::foo::bar;`
-    UseStatement(UseStatement<'sc>),
+    UseStatement(UseStatement),
     /// A statement of the form `return foo;`
-    ReturnStatement(ReturnStatement<'sc>),
+    ReturnStatement(ReturnStatement),
     /// Any type of declaration, of which there are quite a few. See [Declaration] for more details
     /// on the possible variants.
-    Declaration(Declaration<'sc>),
+    Declaration(Declaration),
     /// Any type of expression, of which there are quite a few. See [Expression] for more details.
-    Expression(Expression<'sc>),
+    Expression(Expression),
     /// An implicit return expression is different from a [AstNodeContent::ReturnStatement] because
     /// it is not a control flow item. Therefore it is a different variant.
     ///
     /// An implicit return expression is an [Expression] at the end of a code block which has no
     /// semicolon, denoting that it is the [Expression] to be returned from that block.
-    ImplicitReturnExpression(Expression<'sc>),
+    ImplicitReturnExpression(Expression),
     /// A control flow element which loops continually until some boolean expression evaluates as
     /// `false`.
-    WhileLoop(WhileLoop<'sc>),
+    WhileLoop(WhileLoop),
     /// A statement of the form `dep foo::bar;` which imports/includes another source file.
-    IncludeStatement(IncludeStatement<'sc>),
+    IncludeStatement(IncludeStatement),
 }
 
-impl<'sc> ParseTree<'sc> {
+impl<'sc> ParseTree {
     /// Create a new, empty, [ParseTree] from a span which represents the source code that it will
     /// cover.
-    pub(crate) fn new(span: span::Span<'sc>) -> Self {
+    pub(crate) fn new(span: span::Span) -> Self {
         ParseTree {
             root_nodes: Vec::new(),
             span,
@@ -107,7 +108,7 @@ impl<'sc> ParseTree<'sc> {
     }
 
     /// Push a new [AstNode] on to the end of a [ParseTree]'s root nodes.
-    pub(crate) fn push(&mut self, new_node: AstNode<'sc>) {
+    pub(crate) fn push(&mut self, new_node: AstNode) {
         self.root_nodes.push(new_node);
     }
 }
@@ -123,19 +124,19 @@ impl<'sc> ParseTree<'sc> {
 /// # use sway_core::parse;
 /// # fn main() {
 ///     let input = "script; fn main() -> bool { true }";
-///     let result = parse(input, Default::default());
+///     let result = parse(input.into(), Default::default());
 /// # }
 /// ```
 ///
 /// # Panics
 /// Panics if the generated parser from Pest panics.
-pub fn parse<'sc>(
-    input: &'sc str,
+pub fn parse(
+    input: Arc<str>,
     config: Option<&BuildConfig>,
-) -> CompileResult<'sc, HllParseTree<'sc>> {
+) -> CompileResult<HllParseTree> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
-    let mut parsed = match HllParser::parse(Rule::program, input) {
+    let mut parsed = match HllParser::parse(Rule::program, input.clone()) {
         Ok(o) => o,
         Err(e) => {
             return err(
@@ -161,55 +162,55 @@ pub fn parse<'sc>(
 
 /// Represents the result of compiling Sway code via [compile_to_asm].
 /// Contains the compiled assets or resulting errors, and any warnings generated.
-pub enum CompilationResult<'sc> {
+pub enum CompilationResult {
     Success {
-        asm: FinalizedAsm<'sc>,
-        warnings: Vec<CompileWarning<'sc>>,
+        asm: FinalizedAsm,
+        warnings: Vec<CompileWarning>,
     },
     Library {
-        name: Ident<'sc>,
-        namespace: Box<Namespace<'sc>>,
-        warnings: Vec<CompileWarning<'sc>>,
+        name: Ident,
+        namespace: Box<Namespace>,
+        warnings: Vec<CompileWarning>,
     },
     Failure {
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
+        warnings: Vec<CompileWarning>,
+        errors: Vec<CompileError>,
     },
 }
 
-pub enum CompileAstResult<'sc> {
+pub enum CompileAstResult {
     Success {
-        parse_tree: Box<TypedParseTree<'sc>>,
-        tree_type: TreeType<'sc>,
-        warnings: Vec<CompileWarning<'sc>>,
+        parse_tree: Box<TypedParseTree>,
+        tree_type: TreeType,
+        warnings: Vec<CompileWarning>,
     },
     Failure {
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
+        warnings: Vec<CompileWarning>,
+        errors: Vec<CompileError>,
     },
 }
 
 /// Represents the result of compiling Sway code via [compile_to_bytecode].
 /// Contains the compiled bytecode in byte form, or resulting errors, and any warnings generated.
-pub enum BytecodeCompilationResult<'sc> {
+pub enum BytecodeCompilationResult {
     Success {
         bytes: Vec<u8>,
-        warnings: Vec<CompileWarning<'sc>>,
+        warnings: Vec<CompileWarning>,
     },
     Library {
-        warnings: Vec<CompileWarning<'sc>>,
+        warnings: Vec<CompileWarning>,
     },
     Failure {
-        warnings: Vec<CompileWarning<'sc>>,
-        errors: Vec<CompileError<'sc>>,
+        warnings: Vec<CompileWarning>,
+        errors: Vec<CompileError>,
     },
 }
 
 /// If a given [Rule] exists in the input text, return
 /// that string trimmed. Otherwise, return `None`. This is typically used to find keywords.
-pub fn extract_keyword(line: &str, rule: Rule) -> Option<&str> {
-    if let Ok(pair) = HllParser::parse(rule, line) {
-        Some(pair.as_str().trim())
+pub fn extract_keyword(line: &str, rule: Rule) -> Option<String> {
+    if let Ok(pair) = HllParser::parse(rule, Arc::from(line)) {
+        Some(pair.as_str().trim().to_string())
     } else {
         None
     }
@@ -233,9 +234,9 @@ fn get_end(err: &pest::error::Error<Rule>) -> usize {
 
 /// This struct represents the compilation of an internal dependency
 /// defined through an include statement (the `dep` keyword).
-pub(crate) struct InnerDependencyCompileResult<'sc> {
-    name: Ident<'sc>,
-    namespace: Namespace<'sc>,
+pub(crate) struct InnerDependencyCompileResult {
+    name: Ident,
+    namespace: Namespace,
 }
 /// For internal compiler use.
 /// Compiles an included file and returns its control flow and dead code graphs.
@@ -245,16 +246,16 @@ pub(crate) struct InnerDependencyCompileResult<'sc> {
 /// different types of compilation and stuff. After we get to a good state with the MVP,
 /// clean up the types here with the power of hindsight
 pub(crate) fn compile_inner_dependency<'sc>(
-    input: &'sc str,
-    initial_namespace: &Namespace<'sc>,
+    input: Arc<str>,
+    initial_namespace: &Namespace,
     build_config: BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompileResult<'sc, InnerDependencyCompileResult<'sc>> {
+) -> CompileResult<InnerDependencyCompileResult> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
-        parse(input, Some(&build_config)),
+        parse(input.clone(), Some(&build_config)),
         return err(warnings, errors),
         warnings,
         errors
@@ -310,11 +311,11 @@ pub(crate) fn compile_inner_dependency<'sc>(
 }
 
 pub fn compile_to_ast<'sc>(
-    input: &'sc str,
-    initial_namespace: &Namespace<'sc>,
+    input: Arc<str>,
+    initial_namespace: &Namespace,
     build_config: &BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompileAstResult<'sc> {
+) -> CompileAstResult {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let parse_tree = check!(
@@ -368,11 +369,11 @@ pub fn compile_to_ast<'sc>(
 /// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
 /// form (not raw bytes/bytecode).
 pub fn compile_to_asm<'sc>(
-    input: &'sc str,
-    initial_namespace: &Namespace<'sc>,
+    input: Arc<str>,
+    initial_namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompilationResult<'sc> {
+) -> CompilationResult {
     match compile_to_ast(input, initial_namespace, &build_config, dependency_graph) {
         CompileAstResult::Failure { warnings, errors } => {
             CompilationResult::Failure { warnings, errors }
@@ -409,11 +410,11 @@ pub fn compile_to_asm<'sc>(
 /// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
 /// bytecode form.
 pub fn compile_to_bytecode<'sc>(
-    input: &'sc str,
-    initial_namespace: &Namespace<'sc>,
+    input: Arc<str>,
+    initial_namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> BytecodeCompilationResult<'sc> {
+) -> BytecodeCompilationResult {
     match compile_to_asm(input, initial_namespace, build_config, dependency_graph) {
         CompilationResult::Success {
             mut asm,
@@ -446,10 +447,10 @@ pub fn compile_to_bytecode<'sc>(
 /// Given a [TypedParseTree], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
 fn perform_control_flow_analysis<'sc>(
-    tree: &TypedParseTree<'sc>,
-    tree_type: &TreeType<'sc>,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
-) -> (Vec<CompileWarning<'sc>>, Vec<CompileError<'sc>>) {
+    tree: &TypedParseTree,
+    tree_type: &TreeType,
+    dead_code_graph: &mut ControlFlowGraph,
+) -> (Vec<CompileWarning>, Vec<CompileError>) {
     match ControlFlowGraph::append_to_dead_code_graph(tree, tree_type, dead_code_graph) {
         Ok(_) => (),
         Err(e) => return (vec![], vec![e]),
@@ -465,9 +466,9 @@ fn perform_control_flow_analysis<'sc>(
 /// The basic recursive parser which handles the top-level parsing given the output of the
 /// pest-generated parser.
 fn parse_root_from_pairs<'sc>(
-    input: impl Iterator<Item = Pair<'sc, Rule>>,
+    input: impl Iterator<Item = Pair<Rule>>,
     config: Option<&BuildConfig>,
-) -> CompileResult<'sc, HllParseTree<'sc>> {
+) -> CompileResult<HllParseTree> {
     let path = config.map(|config| config.dir_of_code.clone());
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -668,7 +669,7 @@ fn test_basic_prog() {
          func_app(my_args, (so_many_args))];
         return 5;
     }
-    "#,
+    "#.into(),
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -684,7 +685,7 @@ fn test_parenthesized() {
             let x = (5 + 6 / (1 + (2 / 1) + 4));
             return;
         }
-    "#,
+    "#.into(),
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -702,7 +703,7 @@ fn test_unary_ordering() {
         let a = true;
         let b = true;
         !a && b;
-    }"#,
+    }"#.into(),
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();

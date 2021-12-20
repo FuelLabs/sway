@@ -10,16 +10,16 @@ use crate::{
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub struct CodeBlock<'sc> {
-    pub contents: Vec<AstNode<'sc>>,
-    pub(crate) whole_block_span: Span<'sc>,
+pub struct CodeBlock {
+    pub contents: Vec<AstNode>,
+    pub(crate) whole_block_span: Span,
 }
 
-impl<'sc> CodeBlock<'sc> {
+impl<'sc> CodeBlock {
     pub(crate) fn parse_from_pair(
-        block: Pair<'sc, Rule>,
+        block: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

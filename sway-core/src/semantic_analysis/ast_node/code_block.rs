@@ -3,16 +3,16 @@ use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 use crate::CodeBlock;
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypedCodeBlock<'sc> {
-    pub(crate) contents: Vec<TypedAstNode<'sc>>,
-    pub(crate) whole_block_span: Span<'sc>,
+pub(crate) struct TypedCodeBlock {
+    pub(crate) contents: Vec<TypedAstNode>,
+    pub(crate) whole_block_span: Span,
 }
 
 #[allow(clippy::too_many_arguments)]
-impl<'sc> TypedCodeBlock<'sc> {
+impl<'sc> TypedCodeBlock {
     pub(crate) fn type_check<'n>(
-        arguments: TypeCheckArguments<'n, 'sc, CodeBlock<'sc>>,
-    ) -> CompileResult<'sc, (Self, TypeId)> {
+        arguments: TypeCheckArguments<'n, CodeBlock>,
+    ) -> CompileResult<(Self, TypeId)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -52,7 +52,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 })
                 .ok(&mut warnings, &mut errors)
             })
-            .collect::<Vec<TypedAstNode<'sc>>>();
+            .collect::<Vec<TypedAstNode>>();
 
         let implicit_return_span = other
             .contents

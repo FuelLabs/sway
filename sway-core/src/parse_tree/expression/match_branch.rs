@@ -10,17 +10,17 @@ use super::scrutinee::Scrutinee;
 use super::{Expression, MatchCondition};
 
 #[derive(Debug, Clone)]
-pub struct MatchBranch<'sc> {
-    pub(crate) condition: MatchCondition<'sc>,
-    pub(crate) result: Expression<'sc>,
-    pub(crate) span: span::Span<'sc>,
+pub struct MatchBranch {
+    pub(crate) condition: MatchCondition,
+    pub(crate) result: Expression,
+    pub(crate) span: span::Span,
 }
 
-impl<'sc> MatchBranch<'sc> {
+impl<'sc> MatchBranch {
     pub fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

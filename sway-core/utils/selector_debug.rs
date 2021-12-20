@@ -2,7 +2,7 @@
 //! Given an input function declaration, return the selector for it in hexidecimal.
 use pest::Parser;
 use structopt::StructOpt;
-
+use std::sync::Arc;
 use sway_core::{
     parse_tree::declaration::FunctionDeclaration,
     semantic_analysis::{
@@ -25,7 +25,7 @@ fn main() {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let parsed_fn_decl = HllParser::parse(Rule::fn_decl, &fn_decl);
+    let parsed_fn_decl = HllParser::parse(Rule::fn_decl, Arc::from(fn_decl));
     let mut parsed_fn_decl = match parsed_fn_decl {
         Ok(o) => o,
         Err(e) => panic!("Failed to parse: {:?}", e),

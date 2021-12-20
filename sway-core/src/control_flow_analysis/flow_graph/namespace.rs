@@ -28,36 +28,36 @@ pub(crate) struct StructNamespaceEntry {
 /// Since control flow happens after type checking, we are not concerned about things being out
 /// of scope at this point, as that would have been caught earlier and aborted the compilation
 /// process.
-pub struct ControlFlowNamespace<'sc> {
-    pub(crate) function_namespace: HashMap<Ident<'sc>, FunctionNamespaceEntry>,
-    pub(crate) enum_namespace: HashMap<Ident<'sc>, (NodeIndex, HashMap<Ident<'sc>, NodeIndex>)>,
-    pub(crate) trait_namespace: HashMap<CallPath<'sc>, NodeIndex>,
+pub struct ControlFlowNamespace {
+    pub(crate) function_namespace: HashMap<Ident, FunctionNamespaceEntry>,
+    pub(crate) enum_namespace: HashMap<Ident, (NodeIndex, HashMap<Ident, NodeIndex>)>,
+    pub(crate) trait_namespace: HashMap<CallPath, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
-    pub(crate) trait_method_namespace: HashMap<CallPath<'sc>, HashMap<Ident<'sc>, NodeIndex>>,
+    pub(crate) trait_method_namespace: HashMap<CallPath, HashMap<Ident, NodeIndex>>,
     /// This is a mapping from struct name to field names and their node indexes
     /// TODO this should be an Ident and not a String, switch when static spans are implemented
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
-    pub(crate) const_namespace: HashMap<Ident<'sc>, NodeIndex>,
+    pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
 }
 
-impl<'sc> ControlFlowNamespace<'sc> {
-    pub(crate) fn get_function(&self, ident: &Ident<'sc>) -> Option<&FunctionNamespaceEntry> {
+impl<'sc> ControlFlowNamespace {
+    pub(crate) fn get_function(&self, ident: &Ident) -> Option<&FunctionNamespaceEntry> {
         self.function_namespace.get(ident)
     }
-    pub(crate) fn insert_function(&mut self, ident: Ident<'sc>, entry: FunctionNamespaceEntry) {
+    pub(crate) fn insert_function(&mut self, ident: Ident, entry: FunctionNamespaceEntry) {
         self.function_namespace.insert(ident, entry);
     }
-    pub(crate) fn get_constant(&self, ident: &Ident<'sc>) -> Option<&NodeIndex> {
+    pub(crate) fn get_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
         self.const_namespace.get(ident)
     }
-    pub(crate) fn insert_constant(&mut self, const_name: Ident<'sc>, declaration_node: NodeIndex) {
+    pub(crate) fn insert_constant(&mut self, const_name: Ident, declaration_node: NodeIndex) {
         self.const_namespace.insert(const_name, declaration_node);
     }
     pub(crate) fn insert_enum(
         &mut self,
-        enum_name: Ident<'sc>,
+        enum_name: Ident,
         enum_decl_index: NodeIndex,
-        variant_name: Ident<'sc>,
+        variant_name: Ident,
         variant_index: NodeIndex,
     ) {
         match self.enum_namespace.get_mut(&enum_name) {
@@ -77,25 +77,25 @@ impl<'sc> ControlFlowNamespace<'sc> {
     }
     pub(crate) fn find_enum_variant_index(
         &self,
-        enum_name: &Ident<'sc>,
-        variant_name: &Ident<'sc>,
+        enum_name: &Ident,
+        variant_name: &Ident,
     ) -> Option<(NodeIndex, NodeIndex)> {
         let (enum_ix, enum_decl) = self.enum_namespace.get(enum_name)?;
         Some((*enum_ix, *enum_decl.get(variant_name)?))
     }
 
-    pub(crate) fn add_trait(&mut self, trait_name: CallPath<'sc>, trait_idx: NodeIndex) {
+    pub(crate) fn add_trait(&mut self, trait_name: CallPath, trait_idx: NodeIndex) {
         self.trait_namespace.insert(trait_name, trait_idx);
     }
 
-    pub(crate) fn find_trait(&self, name: &CallPath<'sc>) -> Option<&NodeIndex> {
+    pub(crate) fn find_trait(&self, name: &CallPath) -> Option<&NodeIndex> {
         self.trait_namespace.get(name)
     }
 
     pub(crate) fn insert_trait_methods(
         &mut self,
-        trait_name: CallPath<'sc>,
-        methods: Vec<(Ident<'sc>, NodeIndex)>,
+        trait_name: CallPath,
+        methods: Vec<(Ident, NodeIndex)>,
     ) {
         match self.trait_method_namespace.get_mut(&trait_name) {
             Some(methods_ns) => {
@@ -117,7 +117,7 @@ impl<'sc> ControlFlowNamespace<'sc> {
         &mut self,
         struct_name: String,
         declaration_node: NodeIndex,
-        field_nodes: Vec<(Ident<'sc>, NodeIndex)>,
+        field_nodes: Vec<(Ident, NodeIndex)>,
     ) {
         let entry = StructNamespaceEntry {
             struct_decl_ix: declaration_node,

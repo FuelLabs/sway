@@ -8,26 +8,26 @@ use crate::{error::*, Ident};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub struct StructDeclaration<'sc> {
-    pub name: Ident<'sc>,
-    pub(crate) fields: Vec<StructField<'sc>>,
-    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+pub struct StructDeclaration {
+    pub name: Ident,
+    pub(crate) fields: Vec<StructField>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct StructField<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub(crate) struct StructField {
+    pub(crate) name: Ident,
     pub(crate) r#type: TypeInfo,
-    pub(crate) span: Span<'sc>,
-    pub(crate) type_span: Span<'sc>,
+    pub(crate) span: Span,
+    pub(crate) type_span: Span,
 }
 
-impl<'sc> StructDeclaration<'sc> {
+impl<'sc> StructDeclaration {
     pub(crate) fn parse_from_pair(
-        decl: Pair<'sc, Rule>,
+        decl: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -109,11 +109,11 @@ impl<'sc> StructDeclaration<'sc> {
     }
 }
 
-impl<'sc> StructField<'sc> {
+impl<'sc> StructField {
     pub(crate) fn parse_from_pairs(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Vec<Self>> {
+    ) -> CompileResult<Vec<Self>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

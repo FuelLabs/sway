@@ -6,38 +6,38 @@ use crate::{error::*, parser::Rule, type_engine::TypeInfo};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub struct ImplTrait<'sc> {
-    pub(crate) trait_name: CallPath<'sc>,
+pub struct ImplTrait {
+    pub(crate) trait_name: CallPath,
     pub(crate) type_implementing_for: TypeInfo,
-    pub(crate) type_implementing_for_span: Span<'sc>,
-    pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
-    pub functions: Vec<FunctionDeclaration<'sc>>,
+    pub(crate) type_implementing_for_span: Span,
+    pub(crate) type_arguments: Vec<TypeParameter>,
+    pub functions: Vec<FunctionDeclaration>,
     // the span of the whole impl trait and block
-    pub(crate) block_span: Span<'sc>,
-    pub(crate) type_arguments_span: Span<'sc>,
+    pub(crate) block_span: Span,
+    pub(crate) type_arguments_span: Span,
 }
 
 /// An impl of methods without a trait
 /// like `impl MyType { fn foo { .. } }`
 #[derive(Debug, Clone)]
-pub struct ImplSelf<'sc> {
+pub struct ImplSelf {
     pub(crate) type_implementing_for: TypeInfo,
-    pub(crate) type_arguments: Vec<TypeParameter<'sc>>,
-    pub functions: Vec<FunctionDeclaration<'sc>>,
+    pub(crate) type_arguments: Vec<TypeParameter>,
+    pub functions: Vec<FunctionDeclaration>,
     // the span of the whole impl trait and block
-    pub(crate) block_span: Span<'sc>,
+    pub(crate) block_span: Span,
     #[allow(dead_code)]
     // these spans may be used for errors in the future, although it is not right now.
-    pub(crate) type_arguments_span: Span<'sc>,
+    pub(crate) type_arguments_span: Span,
     #[allow(dead_code)]
-    pub(crate) type_name_span: Span<'sc>,
+    pub(crate) type_name_span: Span,
 }
 
-impl<'sc> ImplTrait<'sc> {
+impl<'sc> ImplTrait {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -121,11 +121,11 @@ impl<'sc> ImplTrait<'sc> {
     }
 }
 
-impl<'sc> ImplSelf<'sc> {
+impl<'sc> ImplSelf {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

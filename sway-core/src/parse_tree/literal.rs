@@ -14,36 +14,36 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Literal<'sc> {
+pub enum Literal {
     U8(u8),
     U16(u16),
     U32(u32),
     U64(u64),
-    String(&'sc str),
+    String(span::Span),
     Boolean(bool),
     Byte(u8),
     B256([u8; 32]),
 }
 
-impl<'sc> Literal<'sc> {
+impl<'sc> Literal {
     #[allow(dead_code)]
-    pub(crate) fn as_type(&self) -> ResolvedType<'sc> {
+    pub(crate) fn as_type(&self) -> ResolvedType {
         use Literal::*;
         match self {
             U8(_) => ResolvedType::UnsignedInteger(IntegerBits::Eight),
             U16(_) => ResolvedType::UnsignedInteger(IntegerBits::Sixteen),
             U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
             U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-            String(inner) => ResolvedType::Str(inner.len() as u64),
+            String(inner) => ResolvedType::Str(inner.as_str().len() as u64),
             Boolean(_) => ResolvedType::Boolean,
             Byte(_) => ResolvedType::Byte,
             B256(_) => ResolvedType::B256,
         }
     }
     pub(crate) fn parse_from_pair(
-        lit: Pair<'sc, Rule>,
+        lit: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, (Self, span::Span<'sc>)> {
+    ) -> CompileResult<(Self, span::Span)> {
         let path = config.map(|c| c.path());
         let lit_inner = lit.into_inner().next().unwrap();
         let (parsed, span): (Result<Literal, CompileError>, _) = match lit_inner.as_rule() {
@@ -122,12 +122,16 @@ impl<'sc> Literal<'sc> {
             }
             Rule::string => {
                 // remove opening and closing quotes
-                let lit_str = lit_inner.as_str();
-                let span = span::Span {
-                    span: lit_inner.as_span(),
+                let lit_span = lit_inner.as_span();
+                let lit = span::Span {
+                    span: pest::Span::new(lit_span.input().clone(), lit_span.start() + 1, lit_span.end() - 1).unwrap(),
                     path: path.clone(),
                 };
-                (Ok(Literal::String(&lit_str[1..lit_str.len() - 1])), span)
+                let span = span::Span {
+                    span: lit_span,
+                    path: path.clone(),
+                };
+                (Ok(Literal::String(lit)), span)
             }
             Rule::byte => {
                 let inner_byte = lit_inner.into_inner().next().unwrap();
@@ -213,7 +217,7 @@ impl<'sc> Literal<'sc> {
             }
             // assume utf8 for now
             String(st) => {
-                let mut buf = st.to_string().into_bytes();
+                let mut buf = st.as_str().to_string().into_bytes();
                 // pad to word alignment
                 while buf.len() % 8 != 0 {
                     buf.push(0);
@@ -227,15 +231,15 @@ impl<'sc> Literal<'sc> {
 
     /// Used when creating a pointer literal value, typically during code generation for
     /// values that wouldn't fit in a register.
-    pub(crate) fn new_pointer_literal(offset_bytes: u64) -> Literal<'static> {
+    pub(crate) fn new_pointer_literal(offset_bytes: u64) -> Literal {
         Literal::U64(offset_bytes)
     }
 }
 
 fn parse_hex_from_pair<'sc>(
-    pair: Pair<'sc, Rule>,
+    pair: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> Result<Literal<'sc>, CompileError<'sc>> {
+) -> Result<Literal, CompileError> {
     let path = config.map(|c| c.path());
     let hex = &pair.as_str()[2..]
         .chars()
@@ -295,9 +299,9 @@ fn parse_hex_from_pair<'sc>(
 }
 
 fn parse_binary_from_pair<'sc>(
-    pair: Pair<'sc, Rule>,
+    pair: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> Result<Literal<'sc>, CompileError<'sc>> {
+) -> Result<Literal, CompileError> {
     let path = config.map(|c| c.path());
     let bin = &pair.as_str()[2..]
         .chars()

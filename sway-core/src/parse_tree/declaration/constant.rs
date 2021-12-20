@@ -9,18 +9,18 @@ use crate::style::is_screaming_snake_case;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub struct ConstantDeclaration<'sc> {
-    pub name: Ident<'sc>,
+pub struct ConstantDeclaration {
+    pub name: Ident,
     pub type_ascription: TypeInfo,
-    pub value: Expression<'sc>,
+    pub value: Expression,
     pub visibility: Visibility,
 }
 
-impl<'sc> ConstantDeclaration<'sc> {
+impl<'sc> ConstantDeclaration {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, ConstantDeclaration<'sc>> {
+    ) -> CompileResult<ConstantDeclaration> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

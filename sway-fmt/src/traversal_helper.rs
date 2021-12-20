@@ -74,7 +74,7 @@ pub fn format_delineated_path(line: &str) -> String {
 
 pub fn format_use_statement(line: &str) -> String {
     let use_keyword = extract_keyword(line, Rule::use_keyword).unwrap();
-    let (_, right) = line.split_once(use_keyword).unwrap();
+    let (_, right) = line.split_once(&use_keyword).unwrap();
     let right: String = right.chars().filter(|c| !c.is_whitespace()).collect();
     format!(
         "{}{} {}",
@@ -84,7 +84,7 @@ pub fn format_use_statement(line: &str) -> String {
 
 pub fn format_include_statement(line: &str) -> String {
     let include_keyword = extract_keyword(line, Rule::include_keyword).unwrap();
-    let (_, right) = line.split_once(include_keyword).unwrap();
+    let (_, right) = line.split_once(&include_keyword).unwrap();
     let right: String = right.chars().filter(|c| !c.is_whitespace()).collect();
     format!(
         "{}{} {}",

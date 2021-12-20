@@ -8,17 +8,17 @@ use crate::type_engine::{look_up_type_id, TypeId};
 /// [TypedExpression].
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum<'n, 'sc>(
-    enum_decl: TypedEnumDeclaration<'sc>,
-    enum_field_name: Ident<'sc>,
-    args: Vec<Expression<'sc>>,
-    namespace: &mut Namespace<'sc>,
-    crate_namespace: Option<&'n Namespace<'sc>>,
+    enum_decl: TypedEnumDeclaration,
+    enum_field_name: Ident,
+    args: Vec<Expression>,
+    namespace: &mut Namespace,
+    crate_namespace: Option<&'n Namespace>,
     self_type: TypeId,
     build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
-) -> CompileResult<'sc, TypedExpression<'sc>> {
+) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
     // if this is a generic enum, i.e. it has some type

@@ -9,16 +9,16 @@ use pest::iterators::Pair;
 
 /// A parsed while loop. Contains the `condition`, which is defined from an [Expression], and the `body` from a [CodeBlock].
 #[derive(Debug, Clone)]
-pub struct WhileLoop<'sc> {
-    pub(crate) condition: Expression<'sc>,
-    pub(crate) body: CodeBlock<'sc>,
+pub struct WhileLoop {
+    pub(crate) condition: Expression,
+    pub(crate) body: CodeBlock,
 }
 
-impl<'sc> WhileLoop<'sc> {
+impl<'sc> WhileLoop {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

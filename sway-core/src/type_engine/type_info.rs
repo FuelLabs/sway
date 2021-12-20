@@ -40,7 +40,7 @@ pub enum TypeInfo {
         address: String,
         // TODO(static span): the above String should be a TypedExpression
         //        #[derivative(PartialEq = "ignore", Hash = "ignore")]
-        //        address: Box<TypedExpression<'sc>>,
+        //        address: Box<TypedExpression>,
     },
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.
@@ -70,9 +70,9 @@ impl Default for TypeInfo {
 
 impl TypeInfo {
     pub(crate) fn parse_from_pair<'sc>(
-        input: Pair<'sc, Rule>,
+        input: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         match input.as_rule() {
             Rule::type_name | Rule::generic_type_param => (),
             _ => {
@@ -91,9 +91,9 @@ impl TypeInfo {
     }
 
     fn parse_from_pair_inner<'sc>(
-        input: Pair<'sc, Rule>,
+        input: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let span = Span {
@@ -309,8 +309,8 @@ impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name<'sc>(
         &self,
-        error_msg_span: &Span<'sc>,
-    ) -> CompileResult<'sc, String> {
+        error_msg_span: &Span,
+    ) -> CompileResult<String> {
         use TypeInfo::*;
         let name = match self {
             Str(len) => format!("str[{}]", len),
@@ -410,8 +410,8 @@ impl TypeInfo {
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     pub(crate) fn size_in_words<'sc>(
         &self,
-        err_span: &Span<'sc>,
-    ) -> Result<u64, CompileError<'sc>> {
+        err_span: &Span,
+    ) -> Result<u64, CompileError> {
         match self {
             // Each char is a byte, so the size is the num of characters / 8
             // rounded up to the nearest word
@@ -551,7 +551,7 @@ impl TypeInfo {
 
     pub(crate) fn matches_type_parameter<'sc>(
         &self,
-        mapping: &[(TypeParameter<'sc>, TypeId)],
+        mapping: &[(TypeParameter, TypeId)],
     ) -> Option<TypeId> {
         use TypeInfo::*;
         match self {

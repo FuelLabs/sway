@@ -10,6 +10,7 @@ use std::fs::File;
 use std::io::Write;
 use sway_core::{FinalizedAsm, TreeType};
 use sway_utils::{constants, find_manifest_dir};
+use std::sync::Arc;
 
 use sway_core::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 
@@ -109,7 +110,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
-    namespace: &mut Namespace<'source>,
+    namespace: &mut Namespace,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
     offline_mode: bool,
@@ -233,13 +234,13 @@ fn compile_dependency_lib<'source, 'manifest>(
 }
 
 fn compile_library<'source>(
-    source: &'source str,
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<Namespace<'source>, String> {
+) -> Result<Namespace, String> {
     let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
@@ -264,9 +265,9 @@ fn compile_library<'source>(
 }
 
 fn compile<'source>(
-    source: &'source str,
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
@@ -289,13 +290,13 @@ fn compile<'source>(
 }
 
 fn compile_to_asm<'sc>(
-    source: &'sc str,
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'sc>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<FinalizedAsm<'sc>, String> {
+) -> Result<FinalizedAsm, String> {
     let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {

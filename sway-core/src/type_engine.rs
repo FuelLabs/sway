@@ -59,7 +59,7 @@ fn basic_numeric_unknown() {
     let engine = Engine::default();
 
     let sp = Span {
-        span: pest::Span::new(" ", 0, 0).unwrap(),
+        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
         path: None,
     };
     // numerics
@@ -78,7 +78,7 @@ fn basic_numeric_unknown() {
 fn chain_of_refs() {
     let engine = Engine::default();
     let sp = Span {
-        span: pest::Span::new(" ", 0, 0).unwrap(),
+        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
         path: None,
     };
     // numerics
@@ -99,7 +99,7 @@ fn chain_of_refs() {
 fn chain_of_refs_2() {
     let engine = Engine::default();
     let sp = Span {
-        span: pest::Span::new(" ", 0, 0).unwrap(),
+        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
         path: None,
     };
     // numerics
@@ -117,7 +117,7 @@ fn chain_of_refs_2() {
     );
 }
 
-fn parse_str_type<'sc>(raw: &'sc str, span: Span<'sc>) -> CompileResult<'sc, TypeInfo> {
+fn parse_str_type<'sc>(raw: &'sc str, span: Span) -> CompileResult<TypeInfo> {
     if raw.starts_with("str[") {
         let mut rest = raw.split_at("str[".len()).1.chars().collect::<Vec<_>>();
         if let Some(']') = rest.pop() {
@@ -141,7 +141,7 @@ fn test_str_parse() {
     match parse_str_type(
         "str[20]",
         Span {
-            span: pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("".into(), 0, 0).unwrap(),
             path: None,
         },
     )
@@ -153,7 +153,7 @@ fn test_str_parse() {
     match parse_str_type(
         "str[]",
         Span {
-            span: pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("".into(), 0, 0).unwrap(),
             path: None,
         },
     )
@@ -165,7 +165,7 @@ fn test_str_parse() {
     match parse_str_type(
         "str[ab]",
         Span {
-            span: pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("".into(), 0, 0).unwrap(),
             path: None,
         },
     )
@@ -177,7 +177,7 @@ fn test_str_parse() {
     match parse_str_type(
         "str [ab]",
         Span {
-            span: pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("".into(), 0, 0).unwrap(),
             path: None,
         },
     )
@@ -190,7 +190,7 @@ fn test_str_parse() {
     match parse_str_type(
         "not even a str[ type",
         Span {
-            span: pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("".into(), 0, 0).unwrap(),
             path: None,
         },
     )
@@ -202,7 +202,7 @@ fn test_str_parse() {
     match parse_str_type(
         "",
         Span {
-            span: pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("".into(), 0, 0).unwrap(),
             path: None,
         },
     )
@@ -214,7 +214,7 @@ fn test_str_parse() {
     match parse_str_type(
         "20",
         Span {
-            span: pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("".into(), 0, 0).unwrap(),
             path: None,
         },
     )
@@ -226,7 +226,7 @@ fn test_str_parse() {
     match parse_str_type(
         "[20]",
         Span {
-            span: pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("".into(), 0, 0).unwrap(),
             path: None,
         },
     )

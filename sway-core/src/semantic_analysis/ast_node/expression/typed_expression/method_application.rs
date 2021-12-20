@@ -9,17 +9,17 @@ use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application<'n, 'sc>(
-    method_name: MethodName<'sc>,
-    arguments: Vec<Expression<'sc>>,
-    span: Span<'sc>,
-    namespace: &mut Namespace<'sc>,
-    crate_namespace: Option<&'n Namespace<'sc>>,
+    method_name: MethodName,
+    arguments: Vec<Expression>,
+    span: Span,
+    namespace: &mut Namespace,
+    crate_namespace: Option<&'n Namespace>,
     self_type: TypeId,
     build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
-) -> CompileResult<'sc, TypedExpression<'sc>> {
+) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut args_buf = VecDeque::new();
@@ -172,7 +172,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                         // so we don't need to re-parse and re-compile
                         let contract_address = check!(
                             re_parse_expression(
-                                contract_address,
+                                contract_address.into(),
                                 build_config,
                                 namespace,
                                 crate_namespace,
@@ -247,7 +247,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                         };
                         let contract_address = check!(
                             re_parse_expression(
-                                contract_address,
+                                contract_address.into(),
                                 build_config,
                                 namespace,
                                 crate_namespace,
@@ -283,24 +283,23 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
 // caller type.
 #[allow(clippy::too_many_arguments)]
 fn re_parse_expression<'n, 'a>(
-    contract_string: String,
+    contract_string: Arc<str>,
     build_config: &BuildConfig,
-    namespace: &mut Namespace<'a>,
-    crate_namespace: Option<&'n Namespace<'a>>,
+    namespace: &mut Namespace,
+    crate_namespace: Option<&'n Namespace>,
     self_type: TypeId,
-    dead_code_graph: &mut ControlFlowGraph<'a>,
+    dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
-) -> CompileResult<'a, TypedExpression<'a>> {
+) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
+        span: pest::Span::new("TODO(static span): use Idents instead of Strings".into(), 0, 0).unwrap(),
         path: None,
     };
 
-    let leaked_contract_string = Box::leak(contract_string.into_boxed_str());
-    let mut contract_pairs = match HllParser::parse(Rule::expr, leaked_contract_string) {
+    let mut contract_pairs = match HllParser::parse(Rule::expr, contract_string) {
         Ok(o) => o,
         Err(_e) => {
             errors.push(CompileError::Internal(

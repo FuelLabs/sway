@@ -13,10 +13,10 @@ use crate::{
 use either::Either;
 
 pub(crate) fn convert_reassignment_to_asm<'sc>(
-    reassignment: &TypedReassignment<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+    reassignment: &TypedReassignment,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     // 0. evaluate the RHS of the reassignment
     // 1. Find the register that the previous var was stored in
     // 2. move the return register of the RHS into the register in the namespace
@@ -114,7 +114,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                 };
                 // TODO(static span) use spans instead of strings below
                 let span = crate::Span {
-                    span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0)
+                    span: pest::Span::new("TODO(static span): use Idents instead of Strings".into(), 0, 0)
                         .unwrap(),
                     path: None,
                 };

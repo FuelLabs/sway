@@ -14,34 +14,34 @@ use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 type ModuleName = String;
-type TraitName<'a> = CallPath<'a>;
+type TraitName = CallPath;
 
 /// A namespace represents all items that exist either via declaration or importing.
 #[derive(Clone, Debug, Default)]
-pub struct Namespace<'sc> {
+pub struct Namespace {
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
     // order.
-    symbols: BTreeMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
+    symbols: BTreeMap<Ident, TypedDeclaration>,
+    implemented_traits: HashMap<(TraitName, TypeInfo), Vec<TypedFunctionDeclaration>>,
     // Any other modules within this scope, where a module is a namespace associated with an identifier.
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
     // order.
-    modules: BTreeMap<ModuleName, Namespace<'sc>>,
+    modules: BTreeMap<ModuleName, Namespace>,
     // The crate namespace, to be used in absolute importing. This is `None` if the current
     // namespace _is_ the root namespace.
-    use_synonyms: HashMap<Ident<'sc>, Vec<Ident<'sc>>>,
+    use_synonyms: HashMap<Ident, Vec<Ident>>,
     // Represents an alternative name for a symbol.
-    use_aliases: HashMap<String, Ident<'sc>>,
+    use_aliases: HashMap<String, Ident>,
 }
 
-impl<'sc> Namespace<'sc> {
-    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration<'sc>> {
+impl<'sc> Namespace {
+    pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
         self.symbols.values()
     }
 
-    pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &Namespace<'sc>> {
+    pub fn get_all_imported_modules(&self) -> impl Iterator<Item = &Namespace> {
         self.modules.values()
     }
 
@@ -129,8 +129,8 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn insert(
         &mut self,
-        name: Ident<'sc>,
-        item: TypedDeclaration<'sc>,
+        name: Ident,
+        item: TypedDeclaration,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         if self.symbols.get(&name).is_some() {
@@ -146,7 +146,7 @@ impl<'sc> Namespace<'sc> {
     }
 
     // TODO(static span) remove this and switch to spans when we have arena spans
-    pub(crate) fn get_symbol_by_str(&self, symbol: &str) -> Option<&TypedDeclaration<'sc>> {
+    pub(crate) fn get_symbol_by_str(&self, symbol: &str) -> Option<&TypedDeclaration> {
         let empty = vec![];
         let path = self
             .use_synonyms
@@ -164,8 +164,8 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn get_symbol(
         &self,
-        symbol: &Ident<'sc>,
-    ) -> CompileResult<'sc, &TypedDeclaration<'sc>> {
+        symbol: &Ident,
+    ) -> CompileResult<&TypedDeclaration> {
         let empty = vec![];
         let path = self.use_synonyms.get(symbol).unwrap_or(&empty);
         let true_symbol = self
@@ -181,8 +181,8 @@ impl<'sc> Namespace<'sc> {
     /// and `function` is the suffix
     pub(crate) fn get_call_path(
         &self,
-        symbol: &CallPath<'sc>,
-    ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
+        symbol: &CallPath,
+    ) -> CompileResult<TypedDeclaration> {
         let path = if symbol.prefixes.is_empty() {
             self.use_synonyms
                 .get(&symbol.suffix)
@@ -196,9 +196,9 @@ impl<'sc> Namespace<'sc> {
 
     fn get_name_from_path(
         &self,
-        path: &[Ident<'sc>],
-        name: &Ident<'sc>,
-    ) -> CompileResult<'sc, &TypedDeclaration<'sc>> {
+        path: &[Ident],
+        name: &Ident,
+    ) -> CompileResult<&TypedDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
@@ -223,9 +223,9 @@ impl<'sc> Namespace<'sc> {
     // TODO(static span) remove this when typeinfo uses spans
     fn get_name_from_path_str(
         &self,
-        path: &[Ident<'sc>],
+        path: &[Ident],
         name: &str,
-    ) -> CompileResult<'sc, &TypedDeclaration<'sc>> {
+    ) -> CompileResult<&TypedDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
@@ -247,11 +247,11 @@ impl<'sc> Namespace<'sc> {
                 let span = match path.get(0) {
                     Some(ident) => ident.span().clone(),
                     None => {
-                        errors.push(CompileError::Internal("Unable to construct span. This is a temporary error and will be fixed in a future release. )", Span { span: pest::Span::new(" ", 0, 0).unwrap(),
+                        errors.push(CompileError::Internal("Unable to construct span. This is a temporary error and will be fixed in a future release. )", Span { span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                                 path: None
                             }));
                         Span {
-                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                             path: None,
                         }
                     }
@@ -267,8 +267,8 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn find_module_relative(
         &self,
-        path: &[Ident<'sc>],
-    ) -> CompileResult<'sc, &Namespace<'sc>> {
+        path: &[Ident],
+    ) -> CompileResult<&Namespace> {
         let mut namespace = self;
         let mut errors = vec![];
         let warnings = vec![];
@@ -295,9 +295,9 @@ impl<'sc> Namespace<'sc> {
 
     pub(crate) fn insert_trait_implementation(
         &mut self,
-        trait_name: CallPath<'sc>,
+        trait_name: CallPath,
         type_implementing_for: TypeInfo,
-        functions_buf: Vec<TypedFunctionDeclaration<'sc>>,
+        functions_buf: Vec<TypedFunctionDeclaration>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let errors = vec![];
@@ -326,19 +326,19 @@ impl<'sc> Namespace<'sc> {
         ok((), warnings, errors)
     }
 
-    pub fn insert_module(&mut self, module_name: String, module_contents: Namespace<'sc>) {
+    pub fn insert_module(&mut self, module_name: String, module_contents: Namespace) {
         self.modules.insert(module_name, module_contents);
     }
 
     pub fn insert_dependency_module(
         &mut self,
         module_name: String,
-        module_contents: Namespace<'sc>,
+        module_contents: Namespace,
     ) {
         self.modules.insert(module_name, module_contents);
     }
 
-    pub(crate) fn find_enum(&self, enum_name: &Ident<'sc>) -> Option<TypedEnumDeclaration<'sc>> {
+    pub(crate) fn find_enum(&self, enum_name: &Ident) -> Option<TypedEnumDeclaration> {
         match self.get_symbol(enum_name) {
             CompileResult {
                 value: Some(TypedDeclaration::EnumDeclaration(inner)),
@@ -351,8 +351,8 @@ impl<'sc> Namespace<'sc> {
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
         &mut self,
-        subfield_exp: &[Ident<'sc>],
-    ) -> CompileResult<'sc, (TypeId, TypeId)> {
+        subfield_exp: &[Ident],
+    ) -> CompileResult<(TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut ident_iter = subfield_exp.iter().peekable();
@@ -437,7 +437,7 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn get_methods_for_type(
         &self,
         r#type: TypeId,
-    ) -> Vec<TypedFunctionDeclaration<'sc>> {
+    ) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
         let r#type = crate::type_engine::look_up_type_id(r#type);
         for ((_trait_name, type_info), l_methods) in &self.implemented_traits {
@@ -457,8 +457,8 @@ impl<'sc> Namespace<'sc> {
         &self,
         ty: TypeId,
         debug_string: impl Into<String>,
-        debug_span: &Span<'sc>,
-    ) -> CompileResult<'sc, (Vec<OwnedTypedStructField>, String)> {
+        debug_span: &Span,
+    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)> {
         let ty = crate::type_engine::look_up_type_id(ty);
         match ty {
             TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),
@@ -480,9 +480,9 @@ impl<'sc> Namespace<'sc> {
     /// This is used when an import path contains an asterisk.
     pub(crate) fn star_import(
         &mut self,
-        from_module: Option<&Namespace<'sc>>,
-        path: Vec<Ident<'sc>>,
-    ) -> CompileResult<'sc, ()> {
+        from_module: Option<&Namespace>,
+        path: Vec<Ident>,
+    ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let base_namespace = match from_module {
@@ -515,11 +515,11 @@ impl<'sc> Namespace<'sc> {
     /// Pull a single item from a module and import it into this namespace.
     pub(crate) fn item_import(
         &mut self,
-        from_namespace: Option<&Namespace<'sc>>,
-        path: Vec<Ident<'sc>>,
-        item: &Ident<'sc>,
-        alias: Option<Ident<'sc>>,
-    ) -> CompileResult<'sc, ()> {
+        from_namespace: Option<&Namespace>,
+        path: Vec<Ident>,
+        item: &Ident,
+        alias: Option<Ident>,
+    ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let base_namespace = match from_namespace {
@@ -589,12 +589,12 @@ impl<'sc> Namespace<'sc> {
     pub(crate) fn find_method_for_type(
         &self,
         r#type: TypeId,
-        method_name: &Ident<'sc>,
-        method_path: &[Ident<'sc>],
-        from_module: Option<&Namespace<'sc>>,
+        method_name: &Ident,
+        method_path: &[Ident],
+        from_module: Option<&Namespace>,
         self_type: TypeId,
-        args_buf: &VecDeque<TypedExpression<'sc>>,
-    ) -> CompileResult<'sc, TypedFunctionDeclaration<'sc>> {
+        args_buf: &VecDeque<TypedExpression>,
+    ) -> CompileResult<TypedFunctionDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let base_module = match from_module {

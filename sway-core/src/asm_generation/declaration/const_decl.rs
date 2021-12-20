@@ -8,10 +8,10 @@ use crate::{
 /// Provisions a register to put a value in, and then adds the assembly used to initialize the
 /// value to the end of the buffer.
 pub(crate) fn convert_constant_decl_to_asm<'sc>(
-    const_decl: &TypedConstantDeclaration<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+    const_decl: &TypedConstantDeclaration,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let val_register = register_sequencer.next();
     let initialization = convert_expression_to_asm(
         &const_decl.value,

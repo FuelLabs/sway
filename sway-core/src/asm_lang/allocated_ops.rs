@@ -161,14 +161,14 @@ pub(crate) enum AllocatedOpcode {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct AllocatedOp<'sc> {
+pub(crate) struct AllocatedOp {
     pub(crate) opcode: AllocatedOpcode,
     /// A descriptive comment for ASM readability
     pub(crate) comment: String,
-    pub(crate) owning_span: Option<Span<'sc>>,
+    pub(crate) owning_span: Option<Span>,
 }
 
-impl<'sc> fmt::Display for AllocatedOp<'sc> {
+impl<'sc> fmt::Display for AllocatedOp {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use AllocatedOpcode::*;
         #[rustfmt::skip]
@@ -268,7 +268,7 @@ impl<'sc> fmt::Display for AllocatedOp<'sc> {
 
 type DoubleWideData = [u8; 8];
 
-impl<'sc> AllocatedOp<'sc> {
+impl<'sc> AllocatedOp {
     pub(crate) fn to_fuel_asm(
         &self,
         offset_to_data_section: u64,
@@ -374,7 +374,7 @@ fn realize_lw(
     let offset_bytes = data_section.offset_to_id(data_id) as u64;
     let offset_words = offset_bytes / 8;
     let offset = match VirtualImmediate12::new(offset_words, Span {
-        span: pest::Span::new(" ", 0, 0).unwrap(),
+        span: pest::Span::new(" ".into(), 0, 0).unwrap(),
         path: None
     }) {
         Ok(value) => value,

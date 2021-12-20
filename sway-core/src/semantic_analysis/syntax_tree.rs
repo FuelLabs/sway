@@ -13,44 +13,44 @@ use std::collections::{HashMap, HashSet};
 
 /// Represents the different variants of the AST.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum TreeType<'sc> {
+pub enum TreeType {
     Predicate,
     Script,
     Contract,
-    Library { name: Ident<'sc> },
+    Library { name: Ident },
 }
 
 #[derive(Debug, Clone)]
-pub enum TypedParseTree<'sc> {
+pub enum TypedParseTree {
     Script {
-        main_function: TypedFunctionDeclaration<'sc>,
-        namespace: Namespace<'sc>,
-        declarations: Vec<TypedDeclaration<'sc>>,
-        all_nodes: Vec<TypedAstNode<'sc>>,
+        main_function: TypedFunctionDeclaration,
+        namespace: Namespace,
+        declarations: Vec<TypedDeclaration>,
+        all_nodes: Vec<TypedAstNode>,
     },
     Predicate {
-        main_function: TypedFunctionDeclaration<'sc>,
-        namespace: Namespace<'sc>,
-        declarations: Vec<TypedDeclaration<'sc>>,
-        all_nodes: Vec<TypedAstNode<'sc>>,
+        main_function: TypedFunctionDeclaration,
+        namespace: Namespace,
+        declarations: Vec<TypedDeclaration>,
+        all_nodes: Vec<TypedAstNode>,
     },
     Contract {
-        abi_entries: Vec<TypedFunctionDeclaration<'sc>>,
-        namespace: Namespace<'sc>,
-        declarations: Vec<TypedDeclaration<'sc>>,
-        all_nodes: Vec<TypedAstNode<'sc>>,
+        abi_entries: Vec<TypedFunctionDeclaration>,
+        namespace: Namespace,
+        declarations: Vec<TypedDeclaration>,
+        all_nodes: Vec<TypedAstNode>,
     },
     Library {
-        namespace: Namespace<'sc>,
-        all_nodes: Vec<TypedAstNode<'sc>>,
+        namespace: Namespace,
+        all_nodes: Vec<TypedAstNode>,
     },
 }
 
-impl<'sc> TypedParseTree<'sc> {
+impl<'sc> TypedParseTree {
     /// The `all_nodes` field in the AST variants is used to perform control flow and return flow
     /// analysis, while the direct copies of the declarations and main functions are used to create
     /// the ASM.
-    pub(crate) fn all_nodes(&self) -> &[TypedAstNode<'sc>] {
+    pub(crate) fn all_nodes(&self) -> &[TypedAstNode] {
         use TypedParseTree::*;
         match self {
             Library { all_nodes, .. } => all_nodes,
@@ -60,7 +60,7 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    pub fn into_namespace(self) -> Namespace<'sc> {
+    pub fn into_namespace(self) -> Namespace {
         use TypedParseTree::*;
         match self {
             Library { namespace, .. } => namespace,
@@ -71,13 +71,13 @@ impl<'sc> TypedParseTree<'sc> {
     }
 
     pub(crate) fn type_check(
-        parsed: ParseTree<'sc>,
-        initial_namespace: Namespace<'sc>,
-        tree_type: &TreeType<'sc>,
+        parsed: ParseTree,
+        initial_namespace: Namespace,
+        tree_type: &TreeType,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut new_namespace = initial_namespace.clone();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -112,12 +112,12 @@ impl<'sc> TypedParseTree<'sc> {
     }
 
     fn type_check_nodes(
-        nodes: Vec<AstNode<'sc>>,
-        namespace: &mut Namespace<'sc>,
+        nodes: Vec<AstNode>,
+        namespace: &mut Namespace,
         build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
-    ) -> CompileResult<'sc, Vec<TypedAstNode<'sc>>> {
+    ) -> CompileResult<Vec<TypedAstNode>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let typed_nodes = nodes
@@ -148,13 +148,13 @@ impl<'sc> TypedParseTree<'sc> {
     }
 
     fn validate_typed_nodes(
-        typed_tree_nodes: Vec<TypedAstNode<'sc>>,
-        span: Span<'sc>,
-        namespace: Namespace<'sc>,
-        tree_type: &TreeType<'sc>,
-        warnings: Vec<CompileWarning<'sc>>,
-        mut errors: Vec<CompileError<'sc>>,
-    ) -> CompileResult<'sc, Self> {
+        typed_tree_nodes: Vec<TypedAstNode>,
+        span: Span,
+        namespace: Namespace,
+        tree_type: &TreeType,
+        warnings: Vec<CompileWarning>,
+        mut errors: Vec<CompileError>,
+    ) -> CompileResult<Self> {
         // Keep a copy of the nodes as they are.
         let all_nodes = typed_tree_nodes.clone();
 
@@ -249,9 +249,9 @@ impl<'sc> TypedParseTree<'sc> {
 }
 
 fn disallow_impure_functions<'sc>(
-    declarations: &[TypedDeclaration<'sc>],
-    mains: &[TypedFunctionDeclaration<'sc>],
-) -> Vec<CompileError<'sc>> {
+    declarations: &[TypedDeclaration],
+    mains: &[TypedFunctionDeclaration],
+) -> Vec<CompileError> {
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {

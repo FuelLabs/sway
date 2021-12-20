@@ -12,39 +12,39 @@ use pest::iterators::Pair;
 /// need to be implemented in a desugared if expression.
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
-pub enum Scrutinee<'sc> {
+pub enum Scrutinee {
     Unit {
-        span: Span<'sc>,
+        span: Span,
     },
     Literal {
-        value: Literal<'sc>,
-        span: Span<'sc>,
+        value: Literal,
+        span: Span,
     },
     Variable {
-        name: Ident<'sc>,
-        span: Span<'sc>,
+        name: Ident,
+        span: Span,
     },
     StructScrutinee {
-        struct_name: Ident<'sc>,
-        fields: Vec<StructScrutineeField<'sc>>,
-        span: Span<'sc>,
+        struct_name: Ident,
+        fields: Vec<StructScrutineeField>,
+        span: Span,
     },
     EnumScrutinee {
-        call_path: CallPath<'sc>,
-        args: Vec<Scrutinee<'sc>>,
-        span: Span<'sc>,
+        call_path: CallPath,
+        args: Vec<Scrutinee>,
+        span: Span,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct StructScrutineeField<'sc> {
-    pub field: Ident<'sc>,
-    pub scrutinee: Option<Scrutinee<'sc>>,
-    pub span: Span<'sc>,
+pub struct StructScrutineeField {
+    pub field: Ident,
+    pub scrutinee: Option<Scrutinee>,
+    pub span: Span,
 }
 
-impl<'sc> Scrutinee<'sc> {
-    pub fn span(&self) -> Span<'sc> {
+impl Scrutinee {
+    pub fn span(&self) -> Span {
         match self {
             Scrutinee::Literal { span, .. } => span.clone(),
             Scrutinee::Unit { span } => span.clone(),
@@ -55,9 +55,9 @@ impl<'sc> Scrutinee<'sc> {
     }
 
     pub fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut scrutinees = pair.into_inner();
@@ -72,9 +72,9 @@ impl<'sc> Scrutinee<'sc> {
     }
 
     pub fn parse_from_pair_inner(
-        scrutinee: Pair<'sc, Rule>,
+        scrutinee: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
@@ -134,10 +134,10 @@ impl<'sc> Scrutinee<'sc> {
     }
 
     fn parse_from_pair_literal(
-        scrutinee: Pair<'sc, Rule>,
+        scrutinee: Pair<Rule>,
         config: Option<&BuildConfig>,
-        span: Span<'sc>,
-    ) -> CompileResult<'sc, Self> {
+        span: Span,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let scrutinee = Literal::parse_from_pair(scrutinee.clone(), config)
@@ -149,10 +149,10 @@ impl<'sc> Scrutinee<'sc> {
     }
 
     fn parse_from_pair_ident(
-        scrutinee: Pair<'sc, Rule>,
+        scrutinee: Pair<Rule>,
         config: Option<&BuildConfig>,
-        span: Span<'sc>,
-    ) -> CompileResult<'sc, Self> {
+        span: Span,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let scrutinee = Ident::parse_from_pair(scrutinee.clone(), config)
@@ -167,11 +167,11 @@ impl<'sc> Scrutinee<'sc> {
     }
 
     fn parse_from_pair_struct(
-        scrutinee: Pair<'sc, Rule>,
+        scrutinee: Pair<Rule>,
         config: Option<&BuildConfig>,
-        span: Span<'sc>,
+        span: Span,
         path: Option<Arc<PathBuf>>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut it = scrutinee.into_inner();
@@ -230,10 +230,10 @@ impl<'sc> Scrutinee<'sc> {
     }
 
     fn parse_from_pair_enum(
-        scrutinee: Pair<'sc, Rule>,
+        scrutinee: Pair<Rule>,
         config: Option<&BuildConfig>,
-        span: Span<'sc>,
-    ) -> CompileResult<'sc, Self> {
+        span: Span,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut parts = scrutinee.into_inner();

@@ -45,23 +45,23 @@ pub(crate) enum IsConstant {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum TypedAstNodeContent<'sc> {
-    ReturnStatement(TypedReturnStatement<'sc>),
-    Declaration(TypedDeclaration<'sc>),
-    Expression(TypedExpression<'sc>),
-    ImplicitReturnExpression(TypedExpression<'sc>),
-    WhileLoop(TypedWhileLoop<'sc>),
+pub(crate) enum TypedAstNodeContent {
+    ReturnStatement(TypedReturnStatement),
+    Declaration(TypedDeclaration),
+    Expression(TypedExpression),
+    ImplicitReturnExpression(TypedExpression),
+    WhileLoop(TypedWhileLoop),
     // a no-op node used for something that just issues a side effect, like an import statement.
     SideEffect,
 }
 
 #[derive(Clone)]
-pub struct TypedAstNode<'sc> {
-    pub(crate) content: TypedAstNodeContent<'sc>,
-    pub(crate) span: Span<'sc>,
+pub struct TypedAstNode {
+    pub(crate) content: TypedAstNodeContent,
+    pub(crate) span: Span,
 }
 
-impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
+impl<'sc> std::fmt::Debug for TypedAstNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
@@ -78,7 +78,7 @@ impl<'sc> std::fmt::Debug for TypedAstNode<'sc> {
     }
 }
 
-impl<'sc> TypedAstNode<'sc> {
+impl<'sc> TypedAstNode {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {
@@ -114,8 +114,8 @@ impl<'sc> TypedAstNode<'sc> {
         }
     }
     pub(crate) fn type_check<'n>(
-        arguments: TypeCheckArguments<'n, 'sc, AstNode<'sc>>,
-    ) -> CompileResult<'sc, TypedAstNode<'sc>> {
+        arguments: TypeCheckArguments<'n, AstNode>,
+    ) -> CompileResult<TypedAstNode> {
         let TypeCheckArguments {
             checkee: node,
             namespace,
@@ -132,8 +132,8 @@ impl<'sc> TypedAstNode<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         // A little utility used to check an ascribed type matches its associated expression.
-        let mut type_check_ascribed_expr = |namespace: &mut Namespace<'sc>,
-                                            crate_namespace: Option<&Namespace<'sc>>,
+        let mut type_check_ascribed_expr = |namespace: &mut Namespace,
+                                            crate_namespace: Option<&Namespace>,
                                             type_ascription: TypeInfo,
                                             value| {
             let type_id = namespace
@@ -712,17 +712,17 @@ impl<'sc> TypedAstNode<'sc> {
 /// Imports a new file, populates the given [Namespace] with its content,
 /// and appends the module's content to the control flow graph for later analysis.
 fn import_new_file<'sc>(
-    statement: &IncludeStatement<'sc>,
-    namespace: &mut Namespace<'sc>,
+    statement: &IncludeStatement,
+    namespace: &mut Namespace,
     build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompileResult<'sc, ()> {
+) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let mut canonical_path = (*build_config.dir_of_code).clone();
-    canonical_path.push(statement.file_path);
+    canonical_path.push(statement.path_span.as_str());
     canonical_path.set_extension(crate::constants::DEFAULT_FILE_EXTENSION);
 
     let file_name = match canonical_path.strip_prefix(build_config.manifest_path.parent().unwrap())
@@ -742,7 +742,7 @@ fn import_new_file<'sc>(
     };
 
     let file_as_string = match res {
-        Ok(o) => o,
+        Ok(s) => Arc::from(s),
         Err(e) => {
             errors.push(CompileError::FileCouldNotBeRead {
                 span: statement.path_span.clone(),
@@ -754,8 +754,6 @@ fn import_new_file<'sc>(
     };
 
     let dep_namespace = namespace.clone();
-    // :)
-    let static_file_string: &'static String = Box::leak(Box::new(file_as_string));
     let mut dep_config = build_config.clone();
     let dep_path = {
         canonical_path.pop();
@@ -769,7 +767,7 @@ fn import_new_file<'sc>(
         ..
     } = check!(
         crate::compile_inner_dependency(
-            static_file_string,
+            file_as_string,
             &dep_namespace,
             dep_config,
             dead_code_graph,
@@ -790,9 +788,9 @@ fn import_new_file<'sc>(
 }
 
 fn reassignment<'n, 'sc>(
-    arguments: TypeCheckArguments<'n, 'sc, (Box<Expression<'sc>>, Expression<'sc>)>,
-    span: Span<'sc>,
-) -> CompileResult<'sc, TypedDeclaration<'sc>> {
+    arguments: TypeCheckArguments<'n, (Box<Expression>, Expression)>,
+    span: Span,
+) -> CompileResult<TypedDeclaration> {
     let TypeCheckArguments {
         checkee: (lhs, rhs),
         namespace,
@@ -988,9 +986,9 @@ fn reassignment<'n, 'sc>(
 }
 
 fn type_check_interface_surface<'sc>(
-    interface_surface: Vec<TraitFn<'sc>>,
-    namespace: &Namespace<'sc>,
-) -> CompileResult<'sc, Vec<TypedTraitFn<'sc>>> {
+    interface_surface: Vec<TraitFn>,
+    namespace: &Namespace,
+) -> CompileResult<Vec<TypedTraitFn>> {
     let mut errors = vec![];
     ok(
         interface_surface
@@ -1048,14 +1046,14 @@ fn type_check_interface_surface<'sc>(
 }
 
 fn type_check_trait_methods<'sc>(
-    methods: Vec<FunctionDeclaration<'sc>>,
-    namespace: &mut Namespace<'sc>,
-    crate_namespace: Option<&Namespace<'sc>>,
+    methods: Vec<FunctionDeclaration>,
+    namespace: &mut Namespace,
+    crate_namespace: Option<&Namespace>,
     self_type: TypeId,
     build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
+) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut methods_buf = Vec::new();
@@ -1223,8 +1221,8 @@ fn type_check_trait_methods<'sc>(
 /// Used to create a stubbed out function when the function fails to compile, preventing cascading
 /// namespace errors
 fn error_recovery_function_declaration(
-    decl: FunctionDeclaration<'_>,
-) -> TypedFunctionDeclaration<'_> {
+    decl: FunctionDeclaration,
+) -> TypedFunctionDeclaration {
     let FunctionDeclaration {
         name,
         return_type,

@@ -22,14 +22,14 @@ use crate::{
 };
 
 pub(crate) fn convert_subfield_expression_to_asm<'sc>(
-    span: &Span<'sc>,
-    parent: &TypedExpression<'sc>,
-    field_to_access: &TypedStructField<'sc>,
+    span: &Span,
+    parent: &TypedExpression,
+    field_to_access: &TypedStructField,
     resolved_type_of_parent: TypeId,
-    namespace: &mut AsmNamespace<'sc>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
     return_register: &VirtualRegister,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     // step 0. find the type and register of the prefix
     // step 1. get the memory layout of the struct
     // step 2. calculate the offset to the spot we are accessing
@@ -60,7 +60,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     };
     // TODO(static span): str should be ident below
     let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
+        span: pest::Span::new("TODO(static span): use Idents instead of Strings".into(), 0, 0).unwrap(),
         path: None,
     };
     let fields_for_layout = fields
@@ -97,7 +97,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         );
 
     let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use span_for_this_field", 0, 0).unwrap(),
+        span: pest::Span::new("TODO(static span): use span_for_this_field".into(), 0, 0).unwrap(),
         path: None,
     };
     // step 3

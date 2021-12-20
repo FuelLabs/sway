@@ -12,10 +12,10 @@ pub(crate) use reassignment::convert_reassignment_to_asm;
 pub(crate) use var_decl::convert_variable_decl_to_asm;
 
 pub(crate) fn convert_decl_to_asm<'sc>(
-    decl: &TypedDeclaration<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+    decl: &TypedDeclaration,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     match decl {
         // For an enum declaration, we don't generate any asm.
         TypedDeclaration::EnumDeclaration(_) => ok(vec![], vec![], vec![]),

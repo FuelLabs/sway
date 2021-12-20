@@ -9,19 +9,19 @@ use super::Expression;
 use crate::type_engine::IntegerBits;
 
 #[derive(Debug, Clone)]
-pub struct AsmExpression<'sc> {
-    pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
-    pub(crate) body: Vec<AsmOp<'sc>>,
-    pub(crate) returns: Option<(AsmRegister, Span<'sc>)>,
+pub struct AsmExpression {
+    pub(crate) registers: Vec<AsmRegisterDeclaration>,
+    pub(crate) body: Vec<AsmOp>,
+    pub(crate) returns: Option<(AsmRegister, Span)>,
     pub(crate) return_type: TypeInfo,
-    pub(crate) whole_block_span: Span<'sc>,
+    pub(crate) whole_block_span: Span,
 }
 
-impl<'sc> AsmExpression<'sc> {
+impl<'sc> AsmExpression {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let whole_block_span = Span {
             span: pair.as_span(),
@@ -98,11 +98,11 @@ impl<'sc> AsmExpression<'sc> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AsmOp<'sc> {
-    pub(crate) op_name: Ident<'sc>,
-    pub(crate) op_args: Vec<Ident<'sc>>,
-    pub(crate) span: Span<'sc>,
-    pub(crate) immediate: Option<Ident<'sc>>,
+pub(crate) struct AsmOp {
+    pub(crate) op_name: Ident,
+    pub(crate) op_args: Vec<Ident>,
+    pub(crate) span: Span,
+    pub(crate) immediate: Option<Ident>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -111,7 +111,7 @@ pub(crate) struct AsmRegister {
 }
 
 impl<'sc> AsmRegister {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+    fn parse_from_pair(pair: Pair<Rule>) -> CompileResult<Self> {
         ok(
             AsmRegister {
                 name: pair.as_str().to_string(),
@@ -128,11 +128,11 @@ impl From<AsmRegister> for String {
     }
 }
 
-impl<'sc> AsmOp<'sc> {
+impl<'sc> AsmOp {
     fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -185,16 +185,16 @@ impl<'sc> AsmOp<'sc> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AsmRegisterDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) initializer: Option<Expression<'sc>>,
+pub(crate) struct AsmRegisterDeclaration {
+    pub(crate) name: Ident,
+    pub(crate) initializer: Option<Expression>,
 }
 
-impl<'sc> AsmRegisterDeclaration<'sc> {
+impl<'sc> AsmRegisterDeclaration {
     fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Vec<Self>> {
+    ) -> CompileResult<Vec<Self>> {
         let iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -230,7 +230,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
     }
 }
 
-fn disallow_opcode<'sc>(op: &Ident<'sc>) -> Vec<CompileError<'sc>> {
+fn disallow_opcode(op: &Ident) -> Vec<CompileError> {
     let mut errors = vec![];
 
     match op.as_str().to_lowercase().as_str() {

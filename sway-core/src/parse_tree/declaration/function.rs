@@ -12,23 +12,23 @@ mod purity;
 pub use purity::Purity;
 
 #[derive(Debug, Clone)]
-pub struct FunctionDeclaration<'sc> {
+pub struct FunctionDeclaration {
     pub purity: Purity,
-    pub name: Ident<'sc>,
+    pub name: Ident,
     pub visibility: Visibility,
-    pub body: CodeBlock<'sc>,
-    pub(crate) parameters: Vec<FunctionParameter<'sc>>,
-    pub span: Span<'sc>,
+    pub body: CodeBlock,
+    pub(crate) parameters: Vec<FunctionParameter>,
+    pub span: Span,
     pub(crate) return_type: TypeInfo,
-    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
-    pub(crate) return_type_span: Span<'sc>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub(crate) return_type_span: Span,
 }
 
-impl<'sc> FunctionDeclaration<'sc> {
+impl<'sc> FunctionDeclaration {
     pub fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut parts = pair.clone().into_inner();
         let mut warnings = Vec::new();
@@ -228,17 +228,17 @@ impl<'sc> FunctionDeclaration<'sc> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FunctionParameter<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub(crate) struct FunctionParameter {
+    pub(crate) name: Ident,
     pub(crate) r#type: TypeInfo,
-    pub(crate) type_span: Span<'sc>,
+    pub(crate) type_span: Span,
 }
 
-impl<'sc> FunctionParameter<'sc> {
+impl<'sc> FunctionParameter {
     pub(crate) fn list_from_pairs(
-        pairs: impl Iterator<Item = Pair<'sc, Rule>>,
+        pairs: impl Iterator<Item = Pair<Rule>>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Vec<FunctionParameter<'sc>>> {
+    ) -> CompileResult<Vec<FunctionParameter>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

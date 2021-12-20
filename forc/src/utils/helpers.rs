@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::str;
 use sway_core::{CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
+use std::sync::Arc;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub fn is_sway_file(file: &Path) -> bool {
@@ -58,7 +59,7 @@ pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
 pub fn get_main_file(
     manifest_of_dep: &Manifest,
     manifest_dir: &Path,
-) -> Result<&'static mut String, String> {
+) -> Result<Arc<str>, String> {
     let main_path = {
         let mut code_dir = PathBuf::from(manifest_dir);
         code_dir.push(constants::SRC_DIR);
@@ -68,8 +69,7 @@ pub fn get_main_file(
 
     // some hackery to get around lifetimes for now, until the AST returns a non-lifetime-bound AST
     let main_file = std::fs::read_to_string(&main_path).map_err(|e| e.to_string())?;
-    let main_file = Box::new(main_file);
-    let main_file: &'static mut String = Box::leak(main_file);
+    let main_file = Arc::from(main_file);
     Ok(main_file)
 }
 
@@ -77,7 +77,7 @@ pub fn print_on_success<'sc>(
     silent_mode: bool,
     proj_name: &str,
     warnings: Vec<CompileWarning>,
-    tree_type: TreeType<'sc>,
+    tree_type: TreeType,
 ) {
     let type_str = match tree_type {
         TreeType::Script {} => "script",

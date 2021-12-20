@@ -9,12 +9,12 @@ use crate::{
 
 pub(crate) fn convert_lazy_operator_to_asm<'sc>(
     op: &LazyOp,
-    lhs: &TypedExpression<'sc>,
-    rhs: &TypedExpression<'sc>,
+    lhs: &TypedExpression,
+    rhs: &TypedExpression,
     return_register: &VirtualRegister,
-    namespace: &mut AsmNamespace<'sc>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     // Short circuiting operators need to evaluate the LHS first, and then only conditionally
     // evaluate the RHS.
     let mut warnings = vec![];
