@@ -125,6 +125,7 @@ pub(crate) enum VirtualOp {
     ECR(VirtualRegister, VirtualRegister, VirtualRegister),
     K256(VirtualRegister, VirtualRegister, VirtualRegister),
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
+    XOS(VirtualRegister, VirtualRegister),
     NOOP,
     FLAG(VirtualRegister),
     GM(VirtualRegister, VirtualImmediate18),
@@ -177,7 +178,7 @@ impl VirtualOp {
             LB(r1, r2, _i) => vec![r1, r2],
             LWDataId(r1, _i) => vec![r1],
             LW(r1, r2, _i) => vec![r1, r2],
-            ALOC(_imm) => vec![],
+            ALOC(r1) => vec![r1],
             MCL(r1, r2) => vec![r1, r2],
             MCLI(r1, _imm) => vec![r1],
             MCP(r1, r2, r3) => vec![r1, r2, r3],
@@ -208,6 +209,7 @@ impl VirtualOp {
             ECR(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
+            XOS(r1, r2) => vec![r1, r2],
             NOOP => vec![],
             FLAG(r1) => vec![r1],
             GM(r1, _imm) => vec![r1],
@@ -545,6 +547,9 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
+            XOS(reg1, reg2) => {
+                AllocatedOpcode::XOS(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             NOOP => AllocatedOpcode::NOOP,
             FLAG(reg) => AllocatedOpcode::FLAG(map_reg(&mapping, reg)),
             GM(reg, imm) => AllocatedOpcode::GM(map_reg(&mapping, reg), imm.clone()),

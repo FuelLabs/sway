@@ -147,6 +147,7 @@ impl<'sc> AsmOp<'sc> {
             warnings,
             errors
         );
+        errors.append(&mut disallow_opcode(&opcode));
         let mut args = vec![];
         let mut immediate_value = None;
         for pair in iter {
@@ -229,4 +230,23 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
 
         ok(reg_buf, warnings, errors)
     }
+}
+
+fn disallow_opcode<'sc>(op: &Ident<'sc>) -> Vec<CompileError<'sc>> {
+    let mut errors = vec![];
+
+    match op.primary_name.to_lowercase().as_str() {
+        "jnei" => {
+            errors.push(CompileError::DisallowedJnei {
+                span: op.span.clone(),
+            });
+        }
+        "ji" => {
+            errors.push(CompileError::DisallowedJi {
+                span: op.span.clone(),
+            });
+        }
+        _ => (),
+    };
+    errors
 }

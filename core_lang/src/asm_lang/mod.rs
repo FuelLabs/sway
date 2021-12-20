@@ -539,16 +539,22 @@ impl<'sc> Op<'sc> {
                     VirtualOp::CTMV(r1, r2)
                 }
                 "ji" => {
-                    errors.push(CompileError::DisallowedJi {
-                        span: name.span.clone(),
-                    });
-                    return err(warnings, errors);
+                    let imm = check!(
+                        single_imm_24(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::JI(imm)
                 }
                 "jnei" => {
-                    errors.push(CompileError::DisallowedJnei {
-                        span: name.span.clone(),
-                    });
-                    return err(warnings, errors);
+                    let (r1, r2, imm) = check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::JNEI(r1, r2, imm)
                 }
                 "ret" => {
                     let r1 = check!(
@@ -596,10 +602,13 @@ impl<'sc> Op<'sc> {
                     VirtualOp::LB(r1, r2, imm)
                 }
                 "lw" => {
-                    errors.push(CompileError::DisallowedLw {
-                        span: name.span.clone(),
-                    });
-                    return err(warnings, errors);
+                    let (r1, r2, imm) = check!(
+                        two_regs_imm_12(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::LW(r1, r2, imm)
                 }
                 "aloc" => {
                     let r1 = check!(
@@ -879,6 +888,15 @@ impl<'sc> Op<'sc> {
                         errors
                     );
                     VirtualOp::S256(r1, r2, r3)
+                }
+                "xos" => {
+                    let (r1, r2) = check!(
+                        two_regs(args, immediate, whole_op_span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    VirtualOp::XOS(r1, r2)
                 }
                 "noop" => VirtualOp::NOOP,
                 "flag" => {
@@ -1330,6 +1348,7 @@ impl fmt::Display for Op<'_> {
                 ECR(a, b, c) => format!("ecr {} {} {}", a, b, c),
                 K256(a, b, c) => format!("k256 {} {} {}", a, b, c),
                 S256(a, b, c) => format!("s256 {} {} {}", a, b, c),
+                XOS(a, b) => format!("xos {} {}", a, b),
                 NOOP => "noop".to_string(),
                 FLAG(a) => format!("flag {}", a),
                 GM(a, b) => format!("gm {} {}", a, b),
