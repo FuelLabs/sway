@@ -108,6 +108,7 @@ fn initialize_small_array_instantiation<'sc>(
     ok(bytecode, warnings, errors)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn initialize_large_array_instantiation<'sc>(
     contents: &[TypedExpression<'sc>],
     elem_size_in_words: u64,
@@ -249,7 +250,7 @@ pub(super) fn convert_array_index_to_asm<'sc>(
 
     let prefix_reg = register_sequencer.next();
     bytecode.append(&mut check!(
-        convert_expression_to_asm(prefix, namespace, &prefix_reg.clone(), register_sequencer),
+        convert_expression_to_asm(prefix, namespace, &prefix_reg, register_sequencer),
         return err(warnings, errors),
         warnings,
         errors
@@ -300,7 +301,7 @@ pub(super) fn convert_array_index_to_asm<'sc>(
     bytecode.push(Op {
         opcode: either::Either::Left(VirtualOp::ADD(
             elem_offs_reg.clone(),
-            prefix_reg.clone(),
+            prefix_reg,
             elem_offs_reg.clone(),
         )),
         owning_span: Some(span.clone()),
@@ -322,7 +323,7 @@ pub(super) fn convert_array_index_to_asm<'sc>(
         bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::LW(
                 return_register.clone(),
-                elem_offs_reg.clone(),
+                elem_offs_reg,
                 VirtualImmediate12 { value: 0 },
             )),
             owning_span: Some(span.clone()),
@@ -331,7 +332,7 @@ pub(super) fn convert_array_index_to_asm<'sc>(
     } else {
         bytecode.push(Op::unowned_register_move(
             return_register.clone(),
-            elem_offs_reg.clone(),
+            elem_offs_reg,
         ));
     }
 

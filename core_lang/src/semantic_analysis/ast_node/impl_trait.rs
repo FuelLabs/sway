@@ -1,6 +1,8 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
 use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
-use crate::semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+use crate::semantic_analysis::{
+    Namespace, TCOpts, TypeCheckArguments, TypedDeclaration, TypedFunctionDeclaration,
+};
 use crate::span::Span;
 use crate::type_engine::{
     insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeInfo,
@@ -11,13 +13,14 @@ use crate::{
 };
 use std::collections::{HashMap, HashSet};
 
-pub(crate) fn implementation_of_trait<'n, 'sc>(
+pub(crate) fn implementation_of_trait<'sc>(
     impl_trait: ImplTrait<'sc>,
     namespace: &mut Namespace<'sc>,
     crate_namespace: Option<&Namespace<'sc>>,
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    opts: TCOpts,
 ) -> CompileResult<'sc, TypedDeclaration<'sc>> {
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -70,6 +73,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
                     &type_implementing_for_span,
                     Mode::NonAbi,
                     dependency_graph,
+                    opts,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -130,6 +134,7 @@ pub(crate) fn implementation_of_trait<'n, 'sc>(
                     &type_implementing_for_span,
                     Mode::ImplAbiFn,
                     dependency_graph,
+                    opts,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -170,7 +175,14 @@ pub enum Mode {
     NonAbi,
 }
 
-fn type_check_trait_implementation<'n, 'sc>(
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::NonAbi
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn type_check_trait_implementation<'sc>(
     interface_surface: &[TypedTraitFn<'sc>],
     functions: &[FunctionDeclaration<'sc>],
     methods: &[FunctionDeclaration<'sc>],
@@ -186,6 +198,7 @@ fn type_check_trait_implementation<'n, 'sc>(
     type_implementing_for_span: &Span<'sc>,
     mode: Mode,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    opts: TCOpts,
 ) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
@@ -204,18 +217,19 @@ fn type_check_trait_implementation<'n, 'sc>(
         // add(self: u64, other: u64) -> u64
 
         let fn_decl = check!(
-            TypedFunctionDeclaration::type_check(
-                fn_decl.clone(),
+            TypedFunctionDeclaration::type_check(TypeCheckArguments {
+                checkee: fn_decl.clone(),
                 namespace,
                 crate_namespace,
-                insert_type(TypeInfo::Unknown),
-                "",
-                type_implementing_for,
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: Default::default(),
+                self_type: type_implementing_for,
                 build_config,
                 dead_code_graph,
                 mode,
                 dependency_graph,
-            ),
+                opts,
+            }),
             continue,
             warnings,
             errors
@@ -280,13 +294,8 @@ fn type_check_trait_implementation<'n, 'sc>(
                                 self_type_id,
                                 &trait_param.type_span,
                             ) {
-                                Ok(ws) => {
-                                    for warn in ws {
-                                        warnings.push(CompileWarning {
-                                            warning_content: warn,
-                                            span: fn_decl_param.type_span.clone(),
-                                        });
-                                    }
+                                Ok(mut ws) => {
+                                    warnings.append(&mut ws);
                                 }
                                 Err(_e) => {
                                     errors.push(CompileError::MismatchedTypeInTrait {
@@ -312,13 +321,8 @@ fn type_check_trait_implementation<'n, 'sc>(
                         self_type_id,
                         &fn_decl.return_type_span,
                     ) {
-                        Ok(ws) => {
-                            for warn in ws {
-                                warnings.push(CompileWarning {
-                                    warning_content: warn,
-                                    span: fn_decl.return_type_span.clone(),
-                                });
-                            }
+                        Ok(mut ws) => {
+                            warnings.append(&mut ws);
                         }
                         Err(_e) => {
                             errors.push(CompileError::MismatchedTypeInTrait {
@@ -369,18 +373,19 @@ fn type_check_trait_implementation<'n, 'sc>(
         // use a local namespace which has the above interface inserted
         // into it as a trait implementation for this
         let method = check!(
-            TypedFunctionDeclaration::type_check(
-                method.clone(),
-                &mut local_namespace,
+            TypedFunctionDeclaration::type_check(TypeCheckArguments {
+                checkee: method.clone(),
+                namespace: &mut local_namespace,
                 crate_namespace,
-                crate::type_engine::insert_type(TypeInfo::Unknown),
-                "",
-                type_implementing_for,
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: "",
+                self_type: type_implementing_for,
                 build_config,
                 dead_code_graph,
                 mode,
                 dependency_graph,
-            ),
+                opts,
+            }),
             continue,
             warnings,
             errors

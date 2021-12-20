@@ -37,7 +37,7 @@ impl Engine {
         received: TypeId,
         expected: TypeId,
         span: &Span<'sc>,
-    ) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
+    ) -> Result<Vec<CompileWarning<'sc>>, TypeError<'sc>> {
         use TypeInfo::*;
         match (self.slab.get(received), self.slab.get(expected)) {
             // If the types are exactly the same, we are done.
@@ -74,7 +74,10 @@ impl Engine {
                 // `u64`.  So we're casting received TO expected.
                 let warn = match numeric_cast_compat(expected_width, recieved_width) {
                     NumericCastCompatResult::CastableWithWarning(warn) => {
-                        vec![warn]
+                        vec![CompileWarning {
+                            span: span.clone(),
+                            warning_content: warn,
+                        }]
                     }
                     NumericCastCompatResult::Compatible => {
                         vec![]
@@ -185,7 +188,7 @@ impl Engine {
         b: TypeId,
         self_type: TypeId,
         span: &Span<'sc>,
-    ) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
+    ) -> Result<Vec<CompileWarning<'sc>>, TypeError<'sc>> {
         let a = if self.look_up_type_id(a) == TypeInfo::SelfType {
             self_type
         } else {
@@ -231,7 +234,7 @@ pub fn unify_with_self<'sc>(
     b: TypeId,
     self_type: TypeId,
     span: &Span<'sc>,
-) -> Result<Vec<Warning<'sc>>, TypeError<'sc>> {
+) -> Result<Vec<CompileWarning<'sc>>, TypeError<'sc>> {
     TYPE_ENGINE.unify_with_self(a, b, self_type, span)
 }
 

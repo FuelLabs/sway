@@ -237,7 +237,7 @@ fn compile_library<'source, 'manifest>(
                         warnings,
                         TreeType::Library { name: name.clone() },
                     );
-                    let json_abi = generate_json_abi(&Some(parse_tree.clone()));
+                    let json_abi = generate_json_abi(&Some(*parse_tree.clone()));
                     Ok((parse_tree.into_namespace(), json_abi))
                 }
                 _ => {
@@ -276,7 +276,7 @@ fn compile<'source, 'manifest>(
                 }
                 typ => {
                     print_on_success(silent_mode, proj_name, warnings, typ);
-                    let json_abi = generate_json_abi(&Some(parse_tree));
+                    let json_abi = generate_json_abi(&Some(*parse_tree));
                     Ok(json_abi)
                 }
             }

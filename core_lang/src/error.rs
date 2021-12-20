@@ -18,6 +18,7 @@ macro_rules! check {
         let mut res = $fn_expr;
         $warnings.append(&mut res.warnings);
         $errors.append(&mut res.errors);
+        #[allow(clippy::manual_unwrap_or)]
         match res.value {
             None => $error_recovery,
             Some(value) => value,
@@ -814,6 +815,10 @@ pub enum CompileError<'sc> {
     },
     #[error("The name {name} overrides another symbol.")]
     OverridesOtherSymbol { name: String, span: Span<'sc> },
+    #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
+    PureCalledImpure { span: Span<'sc> },
+    #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
+    ImpureInNonContract { span: Span<'sc> },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -1003,6 +1008,8 @@ impl<'sc> CompileError<'sc> {
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
             OverridesOtherSymbol { span, .. } => span,
+            PureCalledImpure { span, .. } => span,
+            ImpureInNonContract { span, .. } => span,
         }
     }
 

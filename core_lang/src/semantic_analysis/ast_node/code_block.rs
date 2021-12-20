@@ -1,9 +1,6 @@
 use super::*;
-use crate::build_config::BuildConfig;
-use crate::control_flow_analysis::ControlFlowGraph;
-
+use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 use crate::CodeBlock;
-use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug)]
 pub(crate) struct TypedCodeBlock<'sc> {
@@ -11,21 +8,27 @@ pub(crate) struct TypedCodeBlock<'sc> {
     pub(crate) whole_block_span: Span<'sc>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl<'sc> TypedCodeBlock<'sc> {
     pub(crate) fn type_check<'n>(
-        other: CodeBlock<'sc>,
-        namespace: &Namespace<'sc>,
-        crate_namespace: Option<&'n Namespace<'sc>>,
-        // this is for the return or implicit return
-        type_annotation: TypeId,
-        help_text: impl Into<String> + Clone,
-        self_type: TypeId,
-        build_config: &BuildConfig,
-        dead_code_graph: &mut ControlFlowGraph<'sc>,
-        dependency_graph: &mut HashMap<String, HashSet<String>>,
+        arguments: TypeCheckArguments<'n, 'sc, CodeBlock<'sc>>,
     ) -> CompileResult<'sc, (Self, TypeId)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
+
+        let TypeCheckArguments {
+            checkee: other,
+            namespace,
+            crate_namespace,
+            return_type_annotation: type_annotation,
+            help_text,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
+            ..
+        } = arguments;
 
         // Mutable clone, because the interior of a code block must not change the surrounding
         // namespace.
@@ -34,17 +37,19 @@ impl<'sc> TypedCodeBlock<'sc> {
             .contents
             .iter()
             .filter_map(|node| {
-                TypedAstNode::type_check(
-                    node.clone(),
-                    &mut local_namespace,
+                TypedAstNode::type_check(TypeCheckArguments {
+                    checkee: node.clone(),
+                    namespace: &mut local_namespace,
                     crate_namespace,
-                    type_annotation,
-                    help_text.clone(),
+                    return_type_annotation: type_annotation,
+                    help_text: help_text,
                     self_type,
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                )
+                    mode: Mode::NonAbi,
+                    opts,
+                })
                 .ok(&mut warnings, &mut errors)
             })
             .collect::<Vec<TypedAstNode<'sc>>>();
@@ -81,15 +86,8 @@ impl<'sc> TypedCodeBlock<'sc> {
                     .clone()
                     .unwrap_or_else(|| other.whole_block_span.clone()),
             ) {
-                Ok(ws) => {
-                    for warning in ws {
-                        warnings.push(CompileWarning {
-                            warning_content: warning,
-                            span: implicit_return_span
-                                .clone()
-                                .unwrap_or_else(|| other.whole_block_span.clone()),
-                        });
-                    }
+                Ok(mut ws) => {
+                    warnings.append(&mut ws);
                 }
                 Err(e) => {
                     errors.push(CompileError::TypeError(e));

@@ -30,7 +30,7 @@ impl PartialEq for Ident<'_> {
 }
 impl Ord for Ident<'_> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.primary_name.cmp(&other.primary_name)
+        self.primary_name.cmp(other.primary_name)
     }
 }
 
