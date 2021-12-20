@@ -272,7 +272,7 @@ impl<'sc> TypedExpression<'sc> {
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                    opts
+                    opts,
                 )
             }
             a => {
@@ -1533,7 +1533,7 @@ impl<'sc> TypedExpression<'sc> {
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
-                    opts
+                    opts,
                 };
                 let parent = check!(
                     TypedExpression::type_check(args),
@@ -1629,7 +1629,7 @@ impl<'sc> TypedExpression<'sc> {
                     dead_code_graph,
                     dependency_graph,
                     mode: Mode::NonAbi,
-                    opts
+                    opts,
                 };
                 let parent = check!(
                     TypedExpression::type_check(args),

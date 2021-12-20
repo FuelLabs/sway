@@ -153,16 +153,3 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
 
     return ok(asm_buf, warnings, errors);
 }
-
-pub(crate) fn convert_enum_arg_expression_to_asm<'sc>(
-    span: &Span<'sc>,
-    parent: &TypedExpression<'sc>,
-    variant_to_access: &TypedEnumVariant<'sc>,
-    arg_num_to_access: usize,
-    resolved_type_of_parent: TypeId,
-    namespace: &mut AsmNamespace<'sc>,
-    register_sequencer: &mut RegisterSequencer,
-    return_register: &VirtualRegister,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
-    unimplemented!()
-}
