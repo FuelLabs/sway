@@ -146,11 +146,11 @@ impl<'sc> TraitFn<'sc> {
             errors
         );
         assert_or_warn!(
-            is_snake_case(name.primary_name()),
+            is_snake_case(name.as_str()),
             warnings,
             name_span,
             Warning::NonSnakeCaseFunctionName {
-                name: name.primary_name()
+                name: name.as_str()
             }
         );
         let parameters = signature.next().unwrap();

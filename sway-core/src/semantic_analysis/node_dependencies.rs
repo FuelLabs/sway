@@ -372,7 +372,7 @@ impl<'sc> Dependencies<'sc> {
                 ..
             } => {
                 self.deps.insert(DependentSymbol::Symbol(
-                    struct_name.primary_name().to_string(),
+                    struct_name.as_str().to_string(),
                 ));
                 self.gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
@@ -470,15 +470,15 @@ impl<'sc> Dependencies<'sc> {
         if call_path.prefixes.is_empty() {
             // We can just use the suffix.
             self.deps.insert(if is_fn_app {
-                DependentSymbol::Fn(call_path.suffix.primary_name(), None)
+                DependentSymbol::Fn(call_path.suffix.as_str(), None)
             } else {
-                DependentSymbol::Symbol(call_path.suffix.primary_name().to_string())
+                DependentSymbol::Symbol(call_path.suffix.as_str().to_string())
             });
         } else if use_prefix && call_path.prefixes.len() == 1 {
             // Here we can use the prefix (e.g., for 'Enum::Variant' -> 'Enum') as long is it's
             // only a single element.
             self.deps.insert(DependentSymbol::Symbol(
-                call_path.prefixes[0].primary_name().to_string(),
+                call_path.prefixes[0].as_str().to_string(),
             ));
         }
         self
@@ -488,7 +488,7 @@ impl<'sc> Dependencies<'sc> {
         for type_param in type_parameters {
             for constraint in &type_param.trait_constraints {
                 self.deps.insert(DependentSymbol::Symbol(
-                    constraint.name.primary_name().to_string(),
+                    constraint.name.as_str().to_string(),
                 ));
             }
         }
@@ -562,21 +562,21 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
     match decl {
         // These declarations can depend upon other declarations.
         Declaration::FunctionDeclaration(decl) => Some(DependentSymbol::Fn(
-            decl.name.primary_name(),
+            decl.name.as_str(),
             Some(decl.span.clone()),
         )),
-        Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.primary_name().to_string()),
-        Declaration::StructDeclaration(decl) => dep_sym(decl.name.primary_name().to_string()),
-        Declaration::EnumDeclaration(decl) => dep_sym(decl.name.primary_name().to_string()),
-        Declaration::TraitDeclaration(decl) => dep_sym(decl.name.primary_name().to_string()),
-        Declaration::AbiDeclaration(decl) => dep_sym(decl.name.primary_name().to_string()),
+        Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
+        Declaration::StructDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
+        Declaration::EnumDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
+        Declaration::TraitDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
+        Declaration::AbiDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl) => impl_sym("self", &decl.type_implementing_for),
         Declaration::ImplTrait(decl) => {
             if decl.trait_name.prefixes.is_empty() {
                 impl_sym(
-                    decl.trait_name.suffix.primary_name(),
+                    decl.trait_name.suffix.as_str(),
                     &decl.type_implementing_for,
                 )
             } else {

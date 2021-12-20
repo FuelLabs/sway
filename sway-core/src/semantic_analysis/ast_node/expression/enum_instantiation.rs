@@ -32,13 +32,13 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
     let (enum_field_type, tag, variant_name) = match enum_decl
         .variants
         .iter()
-        .find(|x| x.name.primary_name() == enum_field_name.primary_name())
+        .find(|x| x.name.as_str() == enum_field_name.as_str())
     {
         Some(o) => (o.r#type, o.tag, o.name.clone()),
         None => {
             errors.push(CompileError::UnknownEnumVariant {
-                enum_name: enum_decl.name.primary_name(),
-                variant_name: enum_field_name.primary_name(),
+                enum_name: enum_decl.name.as_str(),
+                variant_name: enum_field_name.as_str(),
                 span: enum_field_name.span().clone(),
             });
             return err(warnings, errors);

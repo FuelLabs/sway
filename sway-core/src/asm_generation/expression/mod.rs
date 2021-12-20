@@ -179,7 +179,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                 */
                 let replaced_registers = op.op_args.iter().map(|x| -> Result<_, CompileError> {
                     match realize_register(
-                        x.primary_name(),
+                        x.as_str(),
                         &mapping_of_real_registers_to_declared_names,
                     ) {
                         Some(o) => Ok(o),
@@ -437,7 +437,7 @@ fn convert_fn_app_to_asm<'sc>(
     let mut errors = vec![];
     let mut asm_buf = vec![Op::new_comment(format!(
         "{} fn call",
-        name.suffix.primary_name()
+        name.suffix.as_str()
     ))];
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
@@ -497,7 +497,7 @@ pub(crate) fn convert_abi_fn_to_asm<'sc>(
     let mut errors = vec![];
     let mut asm_buf = vec![Op::new_comment(format!(
         "{} abi fn",
-        decl.name.primary_name()
+        decl.name.as_str()
     ))];
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope

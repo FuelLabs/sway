@@ -89,11 +89,11 @@ impl<'sc> StructDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_upper_camel_case(name.primary_name()),
+            is_upper_camel_case(name.as_str()),
             warnings,
             span,
             Warning::NonClassCaseStructName {
-                struct_name: name.primary_name()
+                struct_name: name.as_str()
             }
         );
         ok(
@@ -131,11 +131,11 @@ impl<'sc> StructField<'sc> {
                 errors
             );
             assert_or_warn!(
-                is_snake_case(name.primary_name()),
+                is_snake_case(name.as_str()),
                 warnings,
                 span.clone(),
                 Warning::NonSnakeCaseStructFieldName {
-                    field_name: name.primary_name(),
+                    field_name: name.as_str(),
                 }
             );
             let type_pair = fields[i + 1].clone();

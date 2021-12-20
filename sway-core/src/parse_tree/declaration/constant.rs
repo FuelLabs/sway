@@ -67,14 +67,14 @@ impl<'sc> ConstantDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_screaming_snake_case(name.primary_name()),
+            is_screaming_snake_case(name.as_str()),
             warnings,
             Span {
                 span: name_pair.as_span(),
                 path,
             },
             Warning::NonScreamingSnakeCaseConstName {
-                name: name.primary_name(),
+                name: name.as_str(),
             }
         );
         ok(

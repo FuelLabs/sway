@@ -33,9 +33,9 @@ impl CallPath<'_> {
             prefixes: self
                 .prefixes
                 .iter()
-                .map(|x| x.primary_name().to_string())
+                .map(|x| x.as_str().to_string())
                 .collect(),
-            suffix: self.suffix.primary_name().to_string(),
+            suffix: self.suffix.as_str().to_string(),
         }
     }
 }

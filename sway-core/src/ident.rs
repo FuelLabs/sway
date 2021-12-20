@@ -21,17 +21,17 @@ pub struct Ident<'sc> {
 // often be different.
 impl Hash for Ident<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.primary_name().hash(state);
+        self.as_str().hash(state);
     }
 }
 impl PartialEq for Ident<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.primary_name() == other.primary_name()
+        self.as_str() == other.as_str()
     }
 }
 impl Ord for Ident<'_> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.primary_name().cmp(other.primary_name())
+        self.as_str().cmp(other.as_str())
     }
 }
 
@@ -44,7 +44,7 @@ impl PartialOrd for Ident<'_> {
 impl Eq for Ident<'_> {}
 
 impl<'sc> Ident<'sc> {
-    pub fn primary_name(&self) -> &'sc str {
+    pub fn as_str(&self) -> &'sc str {
         match self.name_override_opt {
             Some(name_override) => name_override,
             None => self.span.as_str(),

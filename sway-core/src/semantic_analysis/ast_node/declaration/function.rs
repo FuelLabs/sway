@@ -437,7 +437,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .collect::<Vec<String>>();
 
         ok(
-            format!("{}({})", self.name.primary_name(), named_params.join(","),),
+            format!("{}({})", self.name.as_str(), named_params.join(","),),
             warnings,
             errors,
         )
@@ -445,13 +445,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
 
     pub fn generate_json_abi(&self) -> Function {
         Function {
-            name: self.name.primary_name().to_string(),
+            name: self.name.as_str().to_string(),
             type_field: "function".to_string(),
             inputs: self
                 .parameters
                 .iter()
                 .map(|x| Property {
-                    name: x.name.primary_name().to_string(),
+                    name: x.name.as_str().to_string(),
                     type_field: x.r#type.json_abi_str(),
                     components: x.r#type.generate_json_abi(),
                 })
@@ -584,7 +584,7 @@ pub(crate) fn insert_type_parameters<'sc>(
             (
                 x.clone(),
                 insert_type(TypeInfo::UnknownGeneric {
-                    name: x.name_ident.primary_name().to_string(),
+                    name: x.name_ident.as_str().to_string(),
                 }),
             )
         })

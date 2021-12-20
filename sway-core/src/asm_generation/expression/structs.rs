@@ -33,7 +33,7 @@ impl ContiguousMemoryLayoutDescriptor<String> {
             self.fields
                 .iter()
                 .position(|FieldMemoryLayoutDescriptor { name_of_field, .. }| {
-                    name_of_field.as_str() == name.primary_name()
+                    name_of_field.as_str() == name.as_str()
                 }) {
             ix
         } else {
@@ -89,11 +89,11 @@ fn test_struct_memory_layout() {
     let numbers = ContiguousMemoryLayoutDescriptor {
         fields: vec![
             FieldMemoryLayoutDescriptor {
-                name_of_field: first_field_name.primary_name().to_string(),
+                name_of_field: first_field_name.as_str().to_string(),
                 size: 1,
             },
             FieldMemoryLayoutDescriptor {
-                name_of_field: second_field_name.primary_name().to_string(),
+                name_of_field: second_field_name.as_str().to_string(),
                 size: 1,
             },
         ],
@@ -316,14 +316,14 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
             (
                 value.clone(),
                 name.span().clone(),
-                name.primary_name().to_string(),
+                name.as_str().to_string(),
             )
         })
         .collect::<Vec<_>>();
 
     let asm_buf = vec![Op::new_comment(format!(
         "{} struct initialization",
-        struct_name.primary_name()
+        struct_name.as_str()
     ))];
 
     convert_fields_to_asm(

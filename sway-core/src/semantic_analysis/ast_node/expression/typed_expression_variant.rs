@@ -124,7 +124,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 }
             ),
             TypedExpressionVariant::FunctionApplication { name, .. } => {
-                format!("\"{}\" fn entry", name.suffix.primary_name())
+                format!("\"{}\" fn entry", name.suffix.as_str())
             }
             TypedExpressionVariant::LazyOperator { op, .. } => match op {
                 LazyOp::And => "&&".into(),
@@ -141,14 +141,14 @@ impl<'sc> TypedExpressionVariant<'sc> {
             TypedExpressionVariant::Array { .. } => "array".into(),
             TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
             TypedExpressionVariant::StructExpression { struct_name, .. } => {
-                format!("\"{}\" struct init", struct_name.primary_name())
+                format!("\"{}\" struct init", struct_name.as_str())
             }
             TypedExpressionVariant::CodeBlock(_) => "code block entry".into(),
             TypedExpressionVariant::FunctionParameter => "fn param access".into(),
             TypedExpressionVariant::IfExp { .. } => "if exp".into(),
             TypedExpressionVariant::AsmExpression { .. } => "inline asm".into(),
             TypedExpressionVariant::AbiCast { abi_name, .. } => {
-                format!("abi cast {}", abi_name.suffix.primary_name())
+                format!("abi cast {}", abi_name.suffix.as_str())
             }
             TypedExpressionVariant::StructFieldAccess {
                 resolved_type_of_parent,
@@ -173,7 +173,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 )
             }
             TypedExpressionVariant::VariableExpression { name, .. } => {
-                format!("\"{}\" variable exp", name.primary_name())
+                format!("\"{}\" variable exp", name.as_str())
             }
             TypedExpressionVariant::EnumInstantiation {
                 tag,
@@ -183,8 +183,8 @@ impl<'sc> TypedExpressionVariant<'sc> {
             } => {
                 format!(
                     "{}::{} enum instantiation (tag: {})",
-                    enum_decl.name.primary_name(),
-                    variant_name.primary_name(),
+                    enum_decl.name.as_str(),
+                    variant_name.as_str(),
                     tag
                 )
             }

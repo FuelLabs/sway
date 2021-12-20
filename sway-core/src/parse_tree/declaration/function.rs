@@ -66,11 +66,11 @@ impl<'sc> FunctionDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_snake_case(name.primary_name()),
+            is_snake_case(name.as_str()),
             warnings,
             name_span,
             Warning::NonSnakeCaseFunctionName {
-                name: name.primary_name()
+                name: name.as_str()
             }
         );
         let mut type_params_pair = None;
@@ -207,13 +207,13 @@ impl<'sc> FunctionDeclaration<'sc> {
 
     pub fn parse_json_abi(&self) -> Function {
         Function {
-            name: self.name.primary_name().to_string(),
+            name: self.name.as_str().to_string(),
             type_field: "function".to_string(),
             inputs: self
                 .parameters
                 .iter()
                 .map(|x| Property {
-                    name: x.name.primary_name().to_string(),
+                    name: x.name.as_str().to_string(),
                     type_field: x.r#type.friendly_type_str(),
                     components: None,
                 })

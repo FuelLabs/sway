@@ -118,14 +118,14 @@ impl<'sc> EnumDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_upper_camel_case(name.primary_name()),
+            is_upper_camel_case(name.as_str()),
             warnings,
             Span {
                 span: enum_name.as_span(),
                 path,
             },
             Warning::NonClassCaseEnumName {
-                enum_name: name.primary_name()
+                enum_name: name.as_str()
             }
         );
 
@@ -203,11 +203,11 @@ impl<'sc> EnumVariant<'sc> {
                     errors
                 );
                 assert_or_warn!(
-                    is_upper_camel_case(name.primary_name()),
+                    is_upper_camel_case(name.as_str()),
                     warnings,
                     name.span().clone(),
                     Warning::NonClassCaseEnumVariantName {
-                        variant_name: name.primary_name()
+                        variant_name: name.as_str()
                     }
                 );
                 let r#type = check!(

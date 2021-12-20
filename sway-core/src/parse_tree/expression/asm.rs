@@ -233,7 +233,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
 fn disallow_opcode<'sc>(op: &Ident<'sc>) -> Vec<CompileError<'sc>> {
     let mut errors = vec![];
 
-    match op.primary_name().to_lowercase().as_str() {
+    match op.as_str().to_lowercase().as_str() {
         "jnei" => {
             errors.push(CompileError::DisallowedJnei {
                 span: op.span().clone(),

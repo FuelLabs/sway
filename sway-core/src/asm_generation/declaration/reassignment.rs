@@ -66,7 +66,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     reassignment
                         .lhs
                         .iter()
-                        .map(|x| x.name.primary_name())
+                        .map(|x| x.name.as_str())
                         .collect::<Vec<_>>()
                         .join(".")
                 ),
@@ -86,7 +86,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     match resolve_type(*r#type, name.span()) {
                         Ok(TypeInfo::Struct { ref fields, .. }) => Ok((fields.clone(), name)),
                         Ok(ref a) => Err(CompileError::NotAStruct {
-                            name: name.primary_name().to_string(),
+                            name: name.as_str().to_string(),
                             span: name.span().clone(),
                             actually: a.friendly_type_str(),
                         }),
@@ -141,7 +141,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     TypeInfo::Struct { ref fields, .. } => fields.clone(),
                     a => {
                         errors.push(CompileError::NotAStruct {
-                            name: name.primary_name().to_string(),
+                            name: name.as_str().to_string(),
                             span: name.span().clone(),
                             actually: a.friendly_type_str(),
                         });

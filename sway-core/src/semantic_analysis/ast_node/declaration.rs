@@ -98,7 +98,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     fields,
                     ..
                 }) => crate::type_engine::insert_type(TypeInfo::Struct {
-                    name: name.primary_name().to_string(),
+                    name: name.as_str().to_string(),
                     fields: fields
                         .iter()
                         .map(TypedStructField::as_owned_typed_struct_field)
@@ -107,7 +107,7 @@ impl<'sc> TypedDeclaration<'sc> {
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
                     insert_type(TypeInfo::UnknownGeneric {
-                        name: name.primary_name().to_string(),
+                        name: name.as_str().to_string(),
                     })
                 }
                 decl => {
@@ -160,22 +160,22 @@ impl<'sc> TypedDeclaration<'sc> {
                 }) => format!(
                     "{} {}",
                     if *is_mutable { "mut" } else { "" },
-                    name.primary_name()
+                    name.as_str()
                 ),
                 TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                     name, ..
                 }) => {
-                    name.primary_name().into()
+                    name.as_str().into()
                 }
                 TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
-                    name.primary_name().into(),
+                    name.as_str().into(),
                 TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
-                    name.primary_name().into(),
+                    name.as_str().into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
-                    name.primary_name().into(),
+                    name.as_str().into(),
                 TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
                     .iter()
-                    .map(|x| x.name.primary_name())
+                    .map(|x| x.name.as_str())
                     .collect::<Vec<_>>()
                     .join("."),
                 _ => String::new(),
@@ -292,7 +292,7 @@ impl TypedStructField<'_> {
     }
     pub(crate) fn as_owned_typed_struct_field(&self) -> OwnedTypedStructField {
         OwnedTypedStructField {
-            name: self.name.primary_name().to_string(),
+            name: self.name.as_str().to_string(),
             r#type: self.r#type,
         }
     }
@@ -321,7 +321,7 @@ impl TypedEnumDeclaration<'_> {
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
         crate::type_engine::insert_type(TypeInfo::Enum {
-            name: self.name.primary_name().to_string(),
+            name: self.name.as_str().to_string(),
             variant_types: self
                 .variants
                 .iter()
@@ -350,7 +350,7 @@ impl TypedEnumVariant<'_> {
     }
     pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
         OwnedTypedEnumVariant {
-            name: self.name.primary_name().to_string(),
+            name: self.name.as_str().to_string(),
             r#type: self.r#type,
             tag: self.tag,
         }

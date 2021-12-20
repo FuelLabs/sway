@@ -784,7 +784,7 @@ fn import_new_file<'sc>(
         Some(ref alias) => alias,
         None => &name,
     };
-    let name = name.primary_name().to_string();
+    let name = name.as_str().to_string();
     namespace.insert_module(name, module);
     ok((), warnings, errors)
 }
@@ -823,7 +823,7 @@ fn reassignment<'n, 'sc>(
                     // early-returning, for the sake of better error reporting
                     if !is_mutable {
                         errors.push(CompileError::AssignmentToNonMutable(
-                            name.primary_name().to_string(),
+                            name.as_str().to_string(),
                             span.clone(),
                         ));
                     }
@@ -832,7 +832,7 @@ fn reassignment<'n, 'sc>(
                 }
                 Some(o) => {
                     errors.push(CompileError::ReassignmentToNonVariable {
-                        name: name.primary_name(),
+                        name: name.as_str(),
                         kind: o.friendly_name(),
                         span,
                     });
@@ -840,7 +840,7 @@ fn reassignment<'n, 'sc>(
                 }
                 None => {
                     errors.push(CompileError::UnknownVariable {
-                        var_name: name.primary_name().to_string(),
+                        var_name: name.as_str().to_string(),
                         span: name.span().clone(),
                     });
                     return err(warnings, errors);
@@ -1140,7 +1140,7 @@ fn type_check_trait_methods<'sc>(
                         name: name.to_string(),
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: fn_name.primary_name(),
+                        fn_name: fn_name.as_str(),
                         args: args_span.as_str().to_string(),
                     });
                 }

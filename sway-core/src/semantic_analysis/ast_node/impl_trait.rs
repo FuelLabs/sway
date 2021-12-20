@@ -161,7 +161,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         }
         Some(_) | None => {
             errors.push(CompileError::UnknownTrait {
-                name: trait_name.suffix.primary_name(),
+                name: trait_name.suffix.as_str(),
                 span: trait_name.span(),
             });
             ok(ERROR_RECOVERY_DECLARATION.clone(), warnings, errors)
@@ -243,7 +243,7 @@ fn type_check_trait_implementation<'sc>(
             Some(ix) => ix,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                    name: &(*fn_decl.name.primary_name()),
+                    name: &(*fn_decl.name.as_str()),
                     trait_name: trait_name.span().as_str().to_string(),
                     span: fn_decl.name.span().clone(),
                 });
@@ -270,8 +270,8 @@ fn type_check_trait_implementation<'sc>(
                         errors.push(
                             CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
                                 span: fn_decl.parameters_span(),
-                                fn_name: fn_decl.name.primary_name(),
-                                trait_name: trait_name.primary_name(),
+                                fn_name: fn_decl.name.as_str(),
+                                trait_name: trait_name.as_str(),
                                 num_args: parameters.len(),
                                 provided_args: fn_decl.parameters.len(),
                             },
@@ -400,7 +400,7 @@ fn type_check_trait_implementation<'sc>(
             span: block_span.clone(),
             missing_functions: function_checklist
                 .into_iter()
-                .map(|ident| ident.primary_name().to_string())
+                .map(|ident| ident.as_str().to_string())
                 .collect::<Vec<_>>()
                 .join("\n"),
         });

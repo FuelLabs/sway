@@ -56,7 +56,7 @@ impl<'sc> ControlFlowGraph<'sc> {
             errors.append(&mut self.ensure_all_paths_reach_exit(
                 *entry_point,
                 *exit_point,
-                name.primary_name(),
+                name.as_str(),
                 return_type,
             ));
         }
@@ -268,7 +268,7 @@ fn connect_typed_fn_decl<'sc>(
     _span: Span<'sc>,
 ) {
     let fn_exit_node =
-        graph.add_node(format!("\"{}\" fn exit", fn_decl.name.primary_name()).into());
+        graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let return_nodes = depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node]);
     for node in return_nodes {
         graph.add_edge(node, fn_exit_node, "return".into());

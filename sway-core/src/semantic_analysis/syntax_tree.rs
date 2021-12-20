@@ -165,7 +165,7 @@ impl<'sc> TypedParseTree<'sc> {
         for node in typed_tree_nodes {
             match node.content {
                 TypedAstNodeContent::Declaration(TypedDeclaration::FunctionDeclaration(func))
-                    if func.name.primary_name() == "main" =>
+                    if func.name.as_str() == "main" =>
                 {
                     mains.push(func)
                 }
