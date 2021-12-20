@@ -8,8 +8,12 @@ use crate::{CodeBlock, Ident, Rule};
 use core_types::{Function, Property};
 use pest::iterators::Pair;
 
+mod purity;
+pub use purity::Purity;
+
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration<'sc> {
+    pub purity: Purity,
     pub name: Ident<'sc>,
     pub visibility: Visibility,
     pub body: CodeBlock<'sc>,
@@ -30,13 +34,24 @@ impl<'sc> FunctionDeclaration<'sc> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let signature_or_visibility = parts.next().unwrap();
-        let (visibility, mut signature) = if signature_or_visibility.as_rule() == Rule::visibility {
+        let (visibility, signature) = if signature_or_visibility.as_rule() == Rule::visibility {
             (
                 Visibility::parse_from_pair(signature_or_visibility),
                 parts.next().unwrap().into_inner(),
             )
         } else {
             (Visibility::Private, signature_or_visibility.into_inner())
+        };
+        let mut signature = signature.peekable();
+        let purity = if signature
+            .peek()
+            .map(|x| x.as_rule() == Rule::impurity_keyword)
+            .unwrap_or(false)
+        {
+            let _ = signature.next();
+            Purity::Impure
+        } else {
+            Purity::Pure
         };
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
@@ -172,6 +187,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         );
         ok(
             FunctionDeclaration {
+                purity,
                 name,
                 parameters,
                 return_type_span,

@@ -70,6 +70,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("match_expressions_structs", ProgramState::Return(4)),
         ("block_height", ProgramState::Return(1)), // true
         ("b512_test", ProgramState::Return(1)),    // true
+        ("block_height", ProgramState::Return(1)),   // true
+        ("valid_impurity", ProgramState::Return(0)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
@@ -86,7 +88,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "asm_should_not_have_return",
         "missing_fn_arguments",
         "excess_fn_arguments",
-        // TEMPORARILY DISABLED DUE TO OOM "infinite_dependencies",
+        // the feature for the below test, detecting inf deps, was reverted
+        // when that is re-implemented we should reenable this test
+        //"infinite_dependencies",
         "top_level_vars",
         "dependencies_parsing_error",
         "disallowed_gm",
@@ -97,6 +101,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "array_bad_index",
         "match_expressions_wrong_struct",
         "match_expressions_enums",
+        "pure_calls_impure",
+        "nested_impure",
+        "predicate_calls_impure",
+        "script_calls_impure",
+        "contract_pure_calls_impure",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {

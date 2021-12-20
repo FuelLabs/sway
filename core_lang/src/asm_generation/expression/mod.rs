@@ -157,6 +157,24 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             // For each opcode in the asm expression, attempt to parse it into an opcode and
             // replace references to the above registers with the newly allocated ones.
             for op in body {
+                /*
+                errors.append(
+                    &mut op
+                        .op_args
+                        .iter()
+                        .filter_map(|Ident { primary_name, span }| {
+                            if mapping_of_real_registers_to_declared_names
+                                .get(primary_name)
+                                .is_none() &&
+                            {
+                                Some(todo!("error! {:?}", primary_name))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>(),
+                );
+                */
                 let replaced_registers = op.op_args.iter().map(|x| -> Result<_, CompileError> {
                     match realize_register(
                         x.primary_name,
