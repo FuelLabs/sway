@@ -917,10 +917,9 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::GM(r1, imm)
                 }
-
-                other => {
+                _ => {
                     errors.push(CompileError::UnrecognizedOp {
-                        op_name: other,
+                        op_name: name.clone(),
                         span: name.span().clone(),
                     });
                     return err(warnings, errors);

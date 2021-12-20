@@ -67,10 +67,8 @@ impl<'sc> TypeParameter<'sc> {
         if let Some(where_clause_pair) = where_clause_pair {
             let mut pair = where_clause_pair.into_inner().peekable();
             while pair.peek().is_some() {
-                let type_param = pair.next().unwrap();
-                assert_eq!(type_param.as_rule(), Rule::generic_type_param);
-                let trait_constraint = pair.next().unwrap();
-                assert_eq!(trait_constraint.as_rule(), Rule::trait_name);
+                let type_param = Ident::parse_from_pair(pair.next().unwrap(), config).value.unwrap();
+                let trait_constraint = Ident::parse_from_pair(pair.next().unwrap(), config).value.unwrap();
                 // assign trait constraints to above parsed type params
                 // find associated type name
                 let param_to_edit =
@@ -80,24 +78,16 @@ impl<'sc> TypeParameter<'sc> {
                         Some(o) => o,
                         None => {
                             errors.push(CompileError::ConstrainedNonExistentType {
-                                type_name: type_param.as_str(),
-                                trait_name: trait_constraint.as_str(),
-                                span: Span {
-                                    span: trait_constraint.as_span(),
-                                    path: path.clone(),
-                                },
+                                type_name: type_param,
+                                trait_name: trait_constraint.clone(),
+                                span: trait_constraint.span().clone(),
                             });
                             continue;
                         }
                     };
 
                 param_to_edit.trait_constraints.push(TraitConstraint {
-                    name: check!(
-                        Ident::parse_from_pair(trait_constraint, config),
-                        continue,
-                        warnings,
-                        errors
-                    ),
+                    name: trait_constraint,
                 });
             }
         }

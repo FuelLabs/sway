@@ -832,7 +832,7 @@ fn reassignment<'n, 'sc>(
                 }
                 Some(o) => {
                     errors.push(CompileError::ReassignmentToNonVariable {
-                        name: name.as_str(),
+                        name: name.clone(),
                         kind: o.friendly_name(),
                         span,
                     });
@@ -1140,7 +1140,7 @@ fn type_check_trait_methods<'sc>(
                         name: name.to_string(),
                         span: span.clone(),
                         comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: fn_name.as_str(),
+                        fn_name: fn_name.clone(),
                         args: args_span.as_str().to_string(),
                     });
                 }

@@ -17,10 +17,10 @@ pub enum MethodName<'sc> {
 
 impl<'sc> MethodName<'sc> {
     /// To be used for error messages and debug strings
-    pub(crate) fn easy_name(&self) -> &'sc str {
+    pub(crate) fn easy_name(&self) -> Ident<'sc> {
         match self {
-            MethodName::FromType { call_path, .. } => call_path.suffix.as_str(),
-            MethodName::FromModule { method_name, .. } => method_name.as_str(),
+            MethodName::FromType { call_path, .. } => call_path.suffix.clone(),
+            MethodName::FromModule { method_name, .. } => method_name.clone(),
         }
     }
 }

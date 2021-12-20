@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
+    ident::Ident,
     error::*, parse_tree::Scrutinee, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode,
     AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
 };
@@ -65,18 +66,18 @@ fn find_recursive_call_chain<'sc>(
     decl_dependencies: &DependencyMap<'sc>,
     fn_sym: &DependentSymbol<'sc>,
     fn_span: &Span<'sc>,
-    chain: &mut Vec<&'sc str>,
+    chain: &mut Vec<Ident<'sc>>,
 ) -> Option<CompileError<'sc>> {
-    if let DependentSymbol::Fn(fn_sym_str, _) = fn_sym {
-        if chain.iter().any(|seen_sym| seen_sym == fn_sym_str) {
+    if let DependentSymbol::Fn(fn_sym_ident, _) = fn_sym {
+        if chain.iter().any(|seen_sym| seen_sym == fn_sym_ident) {
             // We've found a recursive loop, but it's possible this function is not actually in the
             // loop, but is instead just calling into the loop.  Only if this function is at the
             // start of the chain do we need to report it.
-            return if &chain[0] != fn_sym_str {
+            return if &chain[0] != fn_sym_ident {
                 None
             } else {
                 Some(build_recursion_error(
-                    fn_sym_str,
+                    fn_sym_ident.clone(),
                     fn_span.clone(),
                     &chain[1..],
                 ))
@@ -85,7 +86,7 @@ fn find_recursive_call_chain<'sc>(
         decl_dependencies
             .get(fn_sym)
             .map(|deps_set| {
-                chain.push(fn_sym_str);
+                chain.push(fn_sym_ident.clone());
                 let result = deps_set.deps.iter().find_map(|dep_sym| {
                     find_recursive_call_chain(decl_dependencies, dep_sym, fn_span, chain)
                 });
@@ -99,9 +100,9 @@ fn find_recursive_call_chain<'sc>(
 }
 
 fn build_recursion_error<'sc>(
-    fn_sym: &'sc str,
+    fn_sym: Ident<'sc>,
     span: Span<'sc>,
-    chain: &[&'sc str],
+    chain: &[Ident<'sc>],
 ) -> CompileError<'sc> {
     match chain.len() {
         // An empty chain indicates immediate recursion.
@@ -112,14 +113,20 @@ fn build_recursion_error<'sc>(
         // Chain entries indicate mutual recursion.
         1 => CompileError::RecursiveCallChain {
             fn_name: fn_sym,
-            call_chain: chain[0].to_owned(),
+            call_chain: chain[0].as_str().to_string(),
             span,
         },
         n => {
-            let msg = chain[0..(n - 1)].join(", ");
+            let mut msg = chain[0].as_str().to_string();
+            for ident in &chain[1..(n - 1)] {
+                msg.push_str(", ");
+                msg.push_str(ident.as_str());
+            }
+            msg.push_str(" and ");
+            msg.push_str(chain[n - 1].as_str());
             CompileError::RecursiveCallChain {
                 fn_name: fn_sym,
-                call_chain: msg + " and " + chain[n - 1],
+                call_chain: msg,
                 span,
             }
         }
@@ -470,7 +477,7 @@ impl<'sc> Dependencies<'sc> {
         if call_path.prefixes.is_empty() {
             // We can just use the suffix.
             self.deps.insert(if is_fn_app {
-                DependentSymbol::Fn(call_path.suffix.as_str(), None)
+                DependentSymbol::Fn(call_path.suffix.clone(), None)
             } else {
                 DependentSymbol::Symbol(call_path.suffix.as_str().to_string())
             });
@@ -519,7 +526,7 @@ impl<'sc> Dependencies<'sc> {
 #[derive(Debug, Eq)]
 enum DependentSymbol<'sc> {
     Symbol(String),
-    Fn(&'sc str, Option<Span<'sc>>),
+    Fn(Ident<'sc>, Option<Span<'sc>>),
     Impl(&'sc str, String), // Trait or self, and type implementing for.
 }
 
@@ -562,7 +569,7 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
     match decl {
         // These declarations can depend upon other declarations.
         Declaration::FunctionDeclaration(decl) => Some(DependentSymbol::Fn(
-            decl.name.as_str(),
+            decl.name.clone(),
             Some(decl.span.clone()),
         )),
         Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),

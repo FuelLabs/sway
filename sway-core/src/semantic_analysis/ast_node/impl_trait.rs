@@ -161,7 +161,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         }
         Some(_) | None => {
             errors.push(CompileError::UnknownTrait {
-                name: trait_name.suffix.as_str(),
+                name: trait_name.suffix.clone(),
                 span: trait_name.span(),
             });
             ok(ERROR_RECOVERY_DECLARATION.clone(), warnings, errors)
@@ -243,8 +243,8 @@ fn type_check_trait_implementation<'sc>(
             Some(ix) => ix,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                    name: &(*fn_decl.name.as_str()),
-                    trait_name: trait_name.span().as_str().to_string(),
+                    name: fn_decl.name.clone(),
+                    trait_name: trait_name.clone(),
                     span: fn_decl.name.span().clone(),
                 });
                 return err(warnings, errors);
@@ -270,8 +270,8 @@ fn type_check_trait_implementation<'sc>(
                         errors.push(
                             CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
                                 span: fn_decl.parameters_span(),
-                                fn_name: fn_decl.name.as_str(),
-                                trait_name: trait_name.as_str(),
+                                fn_name: fn_decl.name.clone(),
+                                trait_name: trait_name.clone(),
                                 num_args: parameters.len(),
                                 provided_args: fn_decl.parameters.len(),
                             },

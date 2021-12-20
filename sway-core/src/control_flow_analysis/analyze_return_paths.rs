@@ -3,6 +3,7 @@
 
 use super::*;
 use super::{ControlFlowGraph, EntryPoint, ExitPoint, Graph};
+use crate::ident::Ident;
 use crate::parse_tree::CallPath;
 use crate::semantic_analysis::{
     ast_node::{
@@ -56,7 +57,7 @@ impl<'sc> ControlFlowGraph<'sc> {
             errors.append(&mut self.ensure_all_paths_reach_exit(
                 *entry_point,
                 *exit_point,
-                name.as_str(),
+                name,
                 return_type,
             ));
         }
@@ -66,7 +67,7 @@ impl<'sc> ControlFlowGraph<'sc> {
         &self,
         entry_point: EntryPoint,
         exit_point: ExitPoint,
-        function_name: &'sc str,
+        function_name: &Ident<'sc>,
         return_ty: &TypeInfo,
     ) -> Vec<CompileError<'sc>> {
         let mut rovers = vec![entry_point];
@@ -104,7 +105,7 @@ impl<'sc> ControlFlowGraph<'sc> {
                         // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
                         // different. To save some code duplication,
                         span,
-                        function_name,
+                        function_name: function_name.clone(),
                         ty: return_ty.friendly_type_str(),
                     });
                 }

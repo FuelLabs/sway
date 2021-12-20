@@ -317,7 +317,7 @@ impl<'sc> Expression<'sc> {
                 ),
                 None => {
                     errors.push(CompileError::ExpectedExprAfterOp {
-                        op: op_str,
+                        op: op_str.to_string(),
                         span: Span {
                             span: expr_for_debug.as_span(),
                             path: path.clone(),
@@ -1245,7 +1245,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
         "<=" => LessThanOrEqualTo,
         a => {
             errors.push(CompileError::ExpectedOp {
-                op: a,
+                op: a.to_string(),
                 span: Span {
                     span: op.as_span(),
                     path,

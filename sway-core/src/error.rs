@@ -151,6 +151,8 @@ impl<'sc, T> CompileResult<'sc, T> {
     }
 }
 
+// TODO: since moving to using Idents instead of strings the warning_content will usually contain a
+// duplicate of the span.
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub struct CompileWarning<'sc> {
     pub span: Span<'sc>,
@@ -383,14 +385,16 @@ impl<'sc> fmt::Display for Warning<'sc> {
     }
 }
 
+// TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
+// this type.
 #[derive(Error, Debug, Clone, PartialEq, Hash)]
 pub enum CompileError<'sc> {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: String, span: Span<'sc> },
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariablePath { var_name: &'sc str, span: Span<'sc> },
+    UnknownVariablePath { var_name: Ident<'sc>, span: Span<'sc> },
     #[error("Function \"{name}\" does not exist in this scope.")]
-    UnknownFunction { name: &'sc str, span: Span<'sc> },
+    UnknownFunction { name: Ident<'sc>, span: Span<'sc> },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
     NotAVariable {
         name: String,
@@ -435,9 +439,9 @@ pub enum CompileError<'sc> {
     )]
     InvalidByteLiteralLength { byte_length: usize, span: Span<'sc> },
     #[error("Expected an expression to follow operator \"{op}\"")]
-    ExpectedExprAfterOp { op: &'sc str, span: Span<'sc> },
+    ExpectedExprAfterOp { op: String, span: Span<'sc> },
     #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
-    ExpectedOp { op: &'sc str, span: Span<'sc> },
+    ExpectedOp { op: String, span: Span<'sc> },
     #[error(
         "Where clause was specified but there are no generic type parameters. Where clauses can \
          only be applied to generic type parameters."
@@ -448,7 +452,7 @@ pub enum CompileError<'sc> {
          arguments of function."
     )]
     UndeclaredGenericTypeInWhereClause {
-        type_name: &'sc str,
+        type_name: Ident<'sc>,
         span: Span<'sc>,
     },
     #[error(
@@ -472,8 +476,8 @@ pub enum CompileError<'sc> {
          in this scope."
     )]
     ConstrainedNonExistentType {
-        trait_name: &'sc str,
-        type_name: &'sc str,
+        trait_name: Ident<'sc>,
+        type_name: Ident<'sc>,
         span: Span<'sc>,
     },
     #[error(
@@ -499,8 +503,8 @@ pub enum CompileError<'sc> {
          variable, it is a {kind}."
     )]
     ReassignmentToNonVariable {
-        name: &'sc str,
-        kind: &'sc str,
+        name: Ident<'sc>,
+        kind: &'static str,
         span: Span<'sc>,
     },
     #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
@@ -514,7 +518,7 @@ pub enum CompileError<'sc> {
         name: String,
         span: Span<'sc>,
         comma_separated_generic_params: String,
-        fn_name: &'sc str,
+        fn_name: Ident<'sc>,
         args: String,
     },
     #[error(
@@ -532,13 +536,13 @@ pub enum CompileError<'sc> {
         expected: String,
     },
     #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\". ")]
-    NotATrait { span: Span<'sc>, name: &'sc str },
+    NotATrait { span: Span<'sc>, name: Ident<'sc> },
     #[error("Trait \"{name}\" cannot be found in the current scope.")]
-    UnknownTrait { span: Span<'sc>, name: &'sc str },
+    UnknownTrait { span: Span<'sc>, name: Ident<'sc> },
     #[error("Function \"{name}\" is not a part of trait \"{trait_name}\"'s interface surface.")]
     FunctionNotAPartOfInterfaceSurface {
-        name: &'sc str,
-        trait_name: String,
+        name: Ident<'sc>,
+        trait_name: Ident<'sc>,
         span: Span<'sc>,
     },
     #[error("Functions are missing from this trait implementation: {missing_functions}")]
@@ -556,19 +560,19 @@ pub enum CompileError<'sc> {
         "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
     )]
-    StructNotFound { name: &'sc str, span: Span<'sc> },
+    StructNotFound { name: Ident<'sc>, span: Span<'sc> },
     #[error(
         "The name \"{name}\" does not refer to a struct, but this is an attempted struct \
          declaration."
     )]
-    DeclaredNonStructAsStruct { name: &'sc str, span: Span<'sc> },
+    DeclaredNonStructAsStruct { name: Ident<'sc>, span: Span<'sc> },
     #[error(
         "Attempted to access field \"{field_name}\" of non-struct \"{name}\". Field accesses are \
          only valid on structs."
     )]
     AccessedFieldOfNonStruct {
-        field_name: &'sc str,
-        name: &'sc str,
+        field_name: Ident<'sc>,
+        name: Ident<'sc>,
         span: Span<'sc>,
     },
     #[error(
@@ -576,20 +580,20 @@ pub enum CompileError<'sc> {
          not a type with methods."
     )]
     MethodOnNonValue {
-        name: &'sc str,
-        thing: &'sc str,
+        name: Ident<'sc>,
+        thing: Ident<'sc>,
         span: Span<'sc>,
     },
     #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
     StructMissingField {
-        field_name: &'sc str,
-        struct_name: &'sc str,
+        field_name: Ident<'sc>,
+        struct_name: Ident<'sc>,
         span: Span<'sc>,
     },
     #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
     StructDoesNotHaveField {
-        field_name: &'sc str,
-        struct_name: &'sc str,
+        field_name: Ident<'sc>,
+        struct_name: Ident<'sc>,
         span: Span<'sc>,
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
@@ -619,7 +623,7 @@ pub enum CompileError<'sc> {
          {available_fields}"
     )]
     FieldNotFound {
-        field_name: &'sc str,
+        field_name: Ident<'sc>,
         available_fields: String,
         struct_name: String,
         span: Span<'sc>,
@@ -642,7 +646,7 @@ pub enum CompileError<'sc> {
     NotAType {
         span: Span<'sc>,
         name: String,
-        actually_is: &'sc str,
+        actually_is: &'static str,
     },
     #[error(
         "This enum variant requires an instantiation expression. Try initializing it with \
@@ -656,7 +660,7 @@ pub enum CompileError<'sc> {
     PathDoesNotReturn {
         span: Span<'sc>,
         ty: String,
-        function_name: &'sc str,
+        function_name: Ident<'sc>,
     },
     #[error("Expected block to implicitly return a value of type \"{ty}\".")]
     ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
@@ -681,12 +685,12 @@ pub enum CompileError<'sc> {
     InvalidAssemblyMismatchedReturn { span: Span<'sc> },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
     UnknownEnumVariant {
-        enum_name: &'sc str,
-        variant_name: &'sc str,
+        enum_name: Ident<'sc>,
+        variant_name: Ident<'sc>,
         span: Span<'sc>,
     },
     #[error("Unknown opcode: \"{op_name}\".")]
-    UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
+    UnrecognizedOp { op_name: Ident<'sc>, span: Span<'sc> },
     #[error("Unknown type \"{ty}\".")]
     TypeMustBeKnown { ty: String, span: Span<'sc> },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
@@ -744,7 +748,7 @@ pub enum CompileError<'sc> {
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span<'sc> },
     #[error("Trait \"{name}\" does not exist in this scope.")]
-    TraitNotFound { name: &'sc str, span: Span<'sc> },
+    TraitNotFound { name: Ident<'sc>, span: Span<'sc> },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
     InvalidExpressionOnLhs { span: Span<'sc> },
     #[error(
@@ -752,7 +756,7 @@ pub enum CompileError<'sc> {
     )]
     TooManyArgumentsForFunction {
         span: Span<'sc>,
-        method_name: &'sc str,
+        method_name: Ident<'sc>,
         expected: usize,
         received: usize,
     },
@@ -761,7 +765,7 @@ pub enum CompileError<'sc> {
     )]
     TooFewArgumentsForFunction {
         span: Span<'sc>,
-        method_name: &'sc str,
+        method_name: Ident<'sc>,
         expected: usize,
         received: usize,
     },
@@ -778,8 +782,8 @@ pub enum CompileError<'sc> {
     ImplAbiForNonContract { span: Span<'sc>, ty: String },
     #[error("The trait function \"{fn_name}\" in trait \"{trait_name}\" expects {num_args} arguments, but the provided implementation only takes {provided_args} arguments.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
-        fn_name: &'sc str,
-        trait_name: &'sc str,
+        fn_name: Ident<'sc>,
+        trait_name: Ident<'sc>,
         num_args: usize,
         provided_args: usize,
         span: Span<'sc>,
@@ -793,12 +797,12 @@ pub enum CompileError<'sc> {
         provided: String,
     },
     #[error("Function {fn_name} is recursive, which is unsupported at this time.")]
-    RecursiveCall { fn_name: &'sc str, span: Span<'sc> },
+    RecursiveCall { fn_name: Ident<'sc>, span: Span<'sc> },
     #[error(
         "Function {fn_name} is recursive via {call_chain}, which is unsupported at this time."
     )]
     RecursiveCallChain {
-        fn_name: &'sc str,
+        fn_name: Ident<'sc>,
         call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
         span: Span<'sc>,
     },

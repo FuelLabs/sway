@@ -479,7 +479,7 @@ impl<'sc> TypedExpression<'sc> {
                 );
                 errors.push(CompileError::TooManyArgumentsForFunction {
                     span: arguments_span,
-                    method_name: name.suffix.as_str(),
+                    method_name: name.suffix.clone(),
                     expected: parameters.len(),
                     received: arguments.len(),
                 });
@@ -494,7 +494,7 @@ impl<'sc> TypedExpression<'sc> {
                 );
                 errors.push(CompileError::TooFewArgumentsForFunction {
                     span: arguments_span,
-                    method_name: name.suffix.as_str(),
+                    method_name: name.suffix.clone(),
                     expected: parameters.len(),
                     received: arguments.len(),
                 });
@@ -907,14 +907,14 @@ impl<'sc> TypedExpression<'sc> {
                 Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
                 Some(_) => {
                     errors.push(CompileError::DeclaredNonStructAsStruct {
-                        name: struct_name.as_str(),
+                        name: struct_name.clone(),
                         span: span.clone(),
                     });
                     return err(warnings, errors);
                 }
                 None => {
                     errors.push(CompileError::StructNotFound {
-                        name: struct_name.as_str(),
+                        name: struct_name.clone(),
                         span: span.clone(),
                     });
                     return err(warnings, errors);
@@ -936,8 +936,8 @@ impl<'sc> TypedExpression<'sc> {
                     Some(val) => val.clone(),
                     None => {
                         errors.push(CompileError::StructMissingField {
-                            field_name: def_field.name.as_str(),
-                            struct_name: definition.name.as_str(),
+                            field_name: def_field.name.clone(),
+                            struct_name: definition.name.clone(),
                             span: span.clone(),
                         });
                         typed_fields_buf.push(TypedStructExpressionField {
@@ -983,8 +983,8 @@ impl<'sc> TypedExpression<'sc> {
         for field in fields {
             if !definition.fields.iter().any(|x| x.name == field.name) {
                 errors.push(CompileError::StructDoesNotHaveField {
-                    field_name: &(*field.name.as_str()),
-                    struct_name: definition.name.as_str(),
+                    field_name: field.name.clone(),
+                    struct_name: definition.name.clone(),
                     span: field.span,
                 });
             }
@@ -1065,7 +1065,7 @@ impl<'sc> TypedExpression<'sc> {
                     .map(|OwnedTypedStructField { name, .. }| name.to_string())
                     .collect::<Vec<_>>()
                     .join("\n"),
-                field_name: field_to_access.as_str(),
+                field_name: field_to_access.clone(),
                 struct_name,
             });
             return err(warnings, errors);

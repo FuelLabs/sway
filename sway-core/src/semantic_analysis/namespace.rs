@@ -402,12 +402,11 @@ impl<'sc> Namespace<'sc> {
                     Some(field) => field.clone(),
                     None => {
                         // gather available fields for the error message
-                        let field_name = &(*ident.as_str());
                         let available_fields =
                             fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
 
                         errors.push(CompileError::FieldNotFound {
-                            field_name,
+                            field_name: ident.clone(),
                             struct_name,
                             available_fields: available_fields.join(", "),
                             span: ident.span().clone(),
