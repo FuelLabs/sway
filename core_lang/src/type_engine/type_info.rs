@@ -245,6 +245,42 @@ impl TypeInfo {
         }
     }
 
+    pub(crate) fn json_abi_str(&self) -> String {
+        use TypeInfo::*;
+        match self {
+            Unknown => "unknown".into(),
+            UnknownGeneric { name, .. } => name.to_string(),
+            Str(x) => format!("str[{}]", x),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+            }
+            .into(),
+            Boolean => "bool".into(),
+            Custom { name } => format!("unresolved {}", name),
+            Ref(id) => format!("T{} ({})", id, (*id).json_abi_str()),
+            Unit => "()".into(),
+            SelfType => "Self".into(),
+            Byte => "byte".into(),
+            B256 => "b256".into(),
+            Numeric => "numeric".into(),
+            Contract => "contract".into(),
+            ErrorRecovery => "unknown due to error".into(),
+            Enum { name, .. } => {
+                format!("enum {}", name)
+            }
+            Struct { name, .. } => {
+                format!("struct {}", name)
+            }
+            ContractCaller { abi_name, .. } => {
+                format!("contract caller {}", abi_name.suffix)
+            }
+            Array(elem_ty, count) => format!("[{}; {}]", elem_ty.json_abi_str(), count),
+        }
+    }
+
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name<'sc>(
         &self,

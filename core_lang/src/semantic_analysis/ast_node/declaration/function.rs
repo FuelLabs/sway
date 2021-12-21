@@ -452,13 +452,13 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
                 .iter()
                 .map(|x| Property {
                     name: x.name.primary_name.to_string(),
-                    type_field: x.r#type.friendly_type_str(),
+                    type_field: x.r#type.json_abi_str(),
                     components: x.r#type.generate_json_abi(),
                 })
                 .collect(),
             outputs: vec![Property {
                 name: "".to_string(),
-                type_field: self.return_type.friendly_type_str(),
+                type_field: self.return_type.json_abi_str(),
                 components: self.return_type.generate_json_abi(),
             }],
         }
