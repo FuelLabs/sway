@@ -57,13 +57,14 @@ struct_field_access      =  {subfield_path}
 method_exp               =  {subfield_exp | fully_qualified_method}
 subfield_exp             =  {subfield_path ~ fn_args}
 // TODO subfield path should allow parenthesized expressions _or_ just idents
-subfield_path            =  {(call_item ~ ".")+ ~ call_item}
+subfield_path            =  {(sub_subfield_path ~ ".")+ ~ call_item}
+sub_subfield_path        =  {array_index|call_item}
 fully_qualified_method   =  {path_separator? ~ (path_ident ~ path_separator)* ~ "~" ~ type_name ~ path_separator ~ call_item ~ fn_args}
 call_item                =  {ident | "(" ~ expr ~ ")" }
 delineated_path          =  {path_component ~ fn_args?}
 path_component           =  {path_ident ~ (path_separator ~ path_ident)+}
 path_ident               =  {ident}
-array_index              =  {call_item ~ "[" ~ expr ~ "]"}      // This isn't going to work for array[a][b].
+array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}
 
 // abi blocks and abi casting
 abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ expr ~ ")"}
