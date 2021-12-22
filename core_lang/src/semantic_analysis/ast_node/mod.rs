@@ -324,6 +324,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 CallPath {
                                     prefixes: vec![],
                                     suffix: name.clone(),
+                                    is_absolute: false,
                                 },
                                 TypeInfo::SelfType,
                                 interface_surface
@@ -459,6 +460,7 @@ impl<'sc> TypedAstNode<'sc> {
                                     primary_name: "r#Self",
                                     span: block_span.clone(),
                                 },
+                                is_absolute: false,
                             };
                             namespace.insert_trait_implementation(
                                 trait_name.clone(),

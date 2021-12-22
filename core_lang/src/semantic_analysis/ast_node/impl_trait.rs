@@ -356,6 +356,7 @@ fn type_check_trait_implementation<'sc>(
         CallPath {
             prefixes: vec![],
             suffix: trait_name.clone(),
+            is_absolute: false,
         },
         match resolve_type(type_implementing_for, type_implementing_for_span) {
             Ok(o) => o,

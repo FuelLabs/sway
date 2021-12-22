@@ -10,6 +10,9 @@ use pest::iterators::Pair;
 pub struct CallPath<'sc> {
     pub prefixes: Vec<Ident<'sc>>,
     pub suffix: Ident<'sc>,
+    // If `is_absolute` is true, then this call path is an absolute path from
+    // the project root namespace. If not, then it is relative to the current namespace.
+    pub(crate) is_absolute: bool,
 }
 
 impl<'sc> std::convert::From<Ident<'sc>> for CallPath<'sc> {
@@ -17,6 +20,7 @@ impl<'sc> std::convert::From<Ident<'sc>> for CallPath<'sc> {
         CallPath {
             prefixes: vec![],
             suffix: other,
+            is_absolute: false,
         }
     }
 }
@@ -60,7 +64,16 @@ impl<'sc> CallPath<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut pairs_buf = vec![];
-        for pair in pair.clone().into_inner() {
+        let stmt = pair.into_inner().next().unwrap();
+        let is_absolute = stmt.as_rule() == Rule::absolute_call_path
+            || stmt.as_rule() == Rule::absolute_call_path_;
+        let stmt = stmt.into_inner();
+        let it = if is_absolute {
+            stmt.skip(1)
+        } else {
+            stmt.skip(0)
+        };
+        for pair in it {
             if pair.as_rule() != Rule::path_separator {
                 pairs_buf.push(check!(
                     Ident::parse_from_pair(pair, config),
@@ -74,7 +87,14 @@ impl<'sc> CallPath<'sc> {
         let suffix = pairs_buf.pop().unwrap();
         let prefixes = pairs_buf;
 
-        // TODO eventually we want to be able to call methods with colon-delineated syntax
-        ok(CallPath { prefixes, suffix }, warnings, errors)
+        ok(
+            CallPath {
+                prefixes,
+                suffix,
+                is_absolute,
+            },
+            warnings,
+            errors,
+        )
     }
 }

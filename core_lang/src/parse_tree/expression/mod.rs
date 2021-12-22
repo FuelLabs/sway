@@ -617,16 +617,16 @@ impl<'sc> Expression<'sc> {
                         }
                     }
                     Rule::fully_qualified_method => {
-                        let mut path_parts_buf = vec![];
+                        let mut call_path = None;
                         let mut type_name = None;
                         let mut method_name = None;
                         let mut arguments = None;
                         for pair in pair.into_inner() {
                             match pair.as_rule() {
                                 Rule::path_separator => (),
-                                Rule::path_ident => {
-                                    path_parts_buf.push(check!(
-                                        Ident::parse_from_pair(pair, config),
+                                Rule::call_path => {
+                                    call_path = Some(check!(
+                                        CallPath::parse_from_pair(pair, config),
                                         continue,
                                         warnings,
                                         errors
@@ -654,10 +654,14 @@ impl<'sc> Expression<'sc> {
                             errors
                         );
 
+                        let call_path = call_path.expect("guaranteed by grammar");
+                        let mut call_path_buf = call_path.prefixes;
+                        call_path_buf.push(call_path.suffix);
+
                         // parse the method name into a call path
                         let method_name = MethodName::FromType {
                             call_path: CallPath {
-                                prefixes: path_parts_buf,
+                                prefixes: call_path_buf,
                                 suffix: check!(
                                     Ident::parse_from_pair(
                                         method_name.expect("guaranteed by grammar"),
@@ -667,9 +671,9 @@ impl<'sc> Expression<'sc> {
                                     warnings,
                                     errors
                                 ),
+                                is_absolute: call_path.is_absolute, //is_absolute: false,
                             },
                             type_name: Some(type_name),
-                            is_absolute: false,
                         };
 
                         let mut arguments_buf = vec![];
@@ -1217,9 +1221,9 @@ fn arrange_by_order_of_operations<'sc>(
                                         },
                                     ],
                                     suffix: new_op.to_var_name(),
+                                    is_absolute: false,
                                 },
                                 type_name: None,
-                                is_absolute: true,
                             },
                             arguments: vec![lhs, rhs],
                             span: debug_span.clone(),
@@ -1277,9 +1281,9 @@ fn arrange_by_order_of_operations<'sc>(
                             },
                         ],
                         suffix: op.to_var_name(),
+                        is_absolute: true,
                     },
                     type_name: None,
-                    is_absolute: true,
                 },
                 arguments: vec![lhs.clone(), rhs.clone()],
                 span,

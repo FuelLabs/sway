@@ -48,7 +48,6 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
         MethodName::FromType {
             ref type_name,
             ref call_path,
-            is_absolute,
         } => {
             let ty = match type_name {
                 Some(name) => {
@@ -63,7 +62,11 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                     .map(|x| x.return_type)
                     .unwrap_or_else(|| insert_type(TypeInfo::Unknown)),
             };
-            let from_module = if is_absolute { crate_namespace } else { None };
+            let from_module = if call_path.is_absolute {
+                crate_namespace
+            } else {
+                None
+            };
             check!(
                 namespace.find_method_for_type(
                     ty,
@@ -152,6 +155,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                     name: CallPath {
                         prefixes: vec![],
                         suffix: method_name,
+                        is_absolute: false,
                     },
                     arguments: args_and_names,
                     function_body: method.body.clone(),

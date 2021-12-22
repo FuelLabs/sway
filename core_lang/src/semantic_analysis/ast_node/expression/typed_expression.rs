@@ -1537,9 +1537,9 @@ impl<'sc> TypedExpression<'sc> {
                         primary_name: "index",
                         span: span.clone(),
                     },
+                    is_absolute: true,
                 },
                 type_name: None,
-                is_absolute: true,
             };
             type_check_method_application(
                 method_name,

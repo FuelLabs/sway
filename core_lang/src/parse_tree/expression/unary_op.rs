@@ -68,6 +68,7 @@ impl UnaryOp {
                     primary_name: self.to_var_name(),
                     span: op_span,
                 },
+                is_absolute: false,
             },
             arguments: vec![arg],
             span,

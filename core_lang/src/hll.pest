@@ -41,6 +41,14 @@ predicate    =  {"predicate" ~ ";" ~ (non_var_decl|use_statement|include_stateme
 file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { as_keyword ~ ident }
+
+call_path           =  {relative_call_path|absolute_call_path}
+relative_call_path  =  {ident ~ (path_separator ~ ident)*}
+absolute_call_path  =  {path_separator ~ ident ~ (path_separator ~ ident)*}
+call_path_          =  {relative_call_path_|absolute_call_path_}
+relative_call_path_ =  {ident ~ (path_separator ~ ident)+}
+absolute_call_path_ =  {path_separator ~ ident ~ (path_separator ~ ident)+}
+
 // expressions
 expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|struct_field_access|delineated_path|array_index|var_exp|array_exp|parenthesized_expression|unit}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
@@ -58,11 +66,9 @@ method_exp               =  {subfield_exp | fully_qualified_method}
 subfield_exp             =  {subfield_path ~ fn_args}
 // TODO subfield path should allow parenthesized expressions _or_ just idents
 subfield_path            =  {(call_item ~ ".")+ ~ call_item}
-fully_qualified_method   =  {path_separator? ~ (path_ident ~ path_separator)* ~ "~" ~ type_name ~ path_separator ~ call_item ~ fn_args}
+fully_qualified_method   =  {call_path ~ "~" ~ type_name ~ path_separator ~ call_item ~ fn_args}
 call_item                =  {ident | "(" ~ expr ~ ")" }
-delineated_path          =  {path_component ~ fn_args?}
-path_component           =  {path_ident ~ (path_separator ~ path_ident)+}
-path_ident               =  {ident}
+delineated_path          =  {call_path_ ~ fn_args?}
 array_index              =  {call_item ~ "[" ~ expr ~ "]"}      // This isn't going to work for array[a][b].
 
 // abi blocks and abi casting
@@ -100,8 +106,7 @@ match_condition  =  {expr|"_"}
 
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
-struct_expression  =  {struct_exp_name ~ "{" ~ struct_expr_fields ~ "}"}
-struct_exp_name    =  {ident ~ (path_separator ~ ident)*}
+struct_expression  =  {call_path ~ "{" ~ struct_expr_fields ~ "}"}
 struct_expr_fields =  {(struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?)?}
 array_exp          =  {"[" ~ array_elems?  ~ "]"}
 // Strictly speaking the [val; count] initialiser for a static array can have any constant expression
@@ -158,10 +163,10 @@ return_statement =  {return_keyword ~ expr? ~ ";"}
 expr_statement   =  {expr ~ ";"}
 
 // traits
-trait_decl    =  {visibility ~ trait_decl_keyword ~ trait_name ~ type_params? ~ trait_bounds? ~ trait_methods}
+trait_decl    =  {visibility ~ trait_decl_keyword ~ call_path ~ type_params? ~ trait_bounds? ~ trait_methods}
 trait_methods =  {"{" ~ (fn_signature ~ ";")* ~ "}" ~ ("{" ~ fn_decl* ~ "}")*}
 trait_name    =  {ident ~ (path_separator ~ ident)*}
-impl_trait    =  {impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
+impl_trait    =  {impl_keyword ~ call_path ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // imports
 
