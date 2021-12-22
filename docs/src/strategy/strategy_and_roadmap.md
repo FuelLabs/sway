@@ -17,6 +17,7 @@ Each step is modular and independent of subsequent and preceding steps, for the 
 The compiler is developed both as a standalone executable and as a library which is consumed by other tooling for Sway, such as `forc` (including `forc fmt`, `forc doc`, etc.), the language server, and more. The synchronization of the teams working on these tools is key to an integrated, wholistic development experience.
 
 ## Roadmap
+The currently-in-progress big features are a robust, LLVM-like intermediate representation layer, the standard library, pattern matching, and a safe contract storage API. 
 
 ### Done
 1. Smart contracts, scripts, predicates
@@ -30,12 +31,12 @@ The compiler is developed both as a standalone executable and as a library which
 1. Language server and VSCode Plugin
 1. Contract calls (`CALL` opcode)
 1. Contract ABIs and ABI types
-
-
-### To be Included in MVP
 1. Rust-like Hindley-Milner-based type inference engine
 1. Generic types and trait-based inheritence
 1. Contract storage access in the standard library
+
+
+### To be Included in MVP
 1. Source Maps
 1. Auto-generated documentation webpages (`forc doc` -- modeled on `cargo doc` from Rust)
 1. Iterators
