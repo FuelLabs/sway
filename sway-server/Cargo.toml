@@ -1,5 +1,5 @@
 [package]
-authors = ["leviathan88 <elvisdedic@outlook.com>"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
 name = "sway-server"
 version = "0.1.0"

@@ -1,5 +1,5 @@
 [package]
-authors = ["Alex Hansen <alex.hansen@fuel.sh>"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
 name = "test"
 version = "0.1.0"

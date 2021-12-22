@@ -2,7 +2,7 @@
 name = "core-types"
 description = "Sway core types."
 version = "0.1.0"
-authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
 repository = "https://github.com/FuelLabs/sway"
 

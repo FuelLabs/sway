@@ -1,7 +1,7 @@
 [package]
 name = "core_lang"
 version = "0.1.0"
-authors = ["Alex <alex.hansen@fuel.sh>"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
 
 [features]
