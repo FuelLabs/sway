@@ -31,4 +31,4 @@
   - [Identifiers](./new-concepts/identifiers.md)
   - [Colored Coins](./new-concepts/colored-coins.md)
   - [UTXOs](./new-concepts/utxos.md)
-- [Strategy and Roadmap](./strategy/strategy_and_roadmap.md)
+- [Language Strategy and Roadmap](./strategy/strategy_and_roadmap.md)

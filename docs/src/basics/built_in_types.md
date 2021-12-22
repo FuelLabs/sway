@@ -92,6 +92,7 @@ let (number, foo, boolean) = x;
 ## Arrays
 
 An array is similar to a tuple, but an array's values must all be of the same type. An array is written as a comma-separated list inside square brackets:
+
 ```sway
 let x = [1, 2, 3, 4, 5];
 ```
@@ -99,6 +100,7 @@ let x = [1, 2, 3, 4, 5];
 Arrays are allocated on the stack since their size is known. An array's size is _always_ static, i.e. it cannot change. An array of five elements cannot become an array of six elements. 
 
 Arrays can be iterated over, unlike tuples. A common use case for arrays is checking set membership. If you are given a name, and you'd like to figure out if that name is included in your list of classmates, you can use an array:
+
 ```sway
 let name = /* some user input */;
 let classmates = ["Bob", "Jan", "Ron"];
@@ -106,11 +108,13 @@ assert(classmates.contains(name));
 ```
 
 An array's type is written as the type the array contains followed by the numer of elements, semicolon-separated and within square brackets.
+
 ```sway
 let x: [u64; 5] = [0, 1, 2, 3, 4];
 ```
 
 To access an element in an array, use _array indexing syntax_:
+
 ```sway
 let x: [bool; 2] = [true, false];
 
