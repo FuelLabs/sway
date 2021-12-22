@@ -1,5 +1,5 @@
 [project]
-author  = "Toby Hutton <toby.hutton@fuel.sh>"
+author  = "Fuel Labs <contact@fuel.sh>"
 license = "MIT"
 name = "recursive_calls"
 entry = "main.sw"

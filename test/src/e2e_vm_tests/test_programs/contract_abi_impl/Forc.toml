@@ -1,5 +1,5 @@
 [project]
-author  = "Alexander Hansen <alex.hansen@fuel.sh>"
+author  = "Fuel Labs <contact@fuel.sh>"
 license = "MIT"
 name = "contract_abi_impl"
 entry = "main.sw"

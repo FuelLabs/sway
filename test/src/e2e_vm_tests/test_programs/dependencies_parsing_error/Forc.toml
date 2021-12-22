@@ -1,5 +1,5 @@
 [project]
-author  = "Emily Herbert <emily.herbert@fuel.sh>"
+author  = "Fuel Labs <contact@fuel.sh>"
 license = "MIT"
 name = "dependencies_parsing_error"
 entry = "main.sw"
