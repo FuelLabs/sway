@@ -8,7 +8,7 @@ use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn type_check_method_application<'n, 'sc>(
+pub(crate) fn type_check_method_application<'n>(
     method_name: MethodName,
     arguments: Vec<Expression>,
     span: Span,
@@ -282,7 +282,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
 // TODO(static span): this whole method can go away and the address can go back in the contract
 // caller type.
 #[allow(clippy::too_many_arguments)]
-fn re_parse_expression<'n, 'a>(
+fn re_parse_expression<'n>(
     contract_string: Arc<str>,
     build_config: &BuildConfig,
     namespace: &mut Namespace,
@@ -304,7 +304,7 @@ fn re_parse_expression<'n, 'a>(
         Err(_e) => {
             errors.push(CompileError::Internal(
                 "Internal error handling contract call address parsing.",
-                span.clone(),
+                span,
             ));
             return err(warnings, errors);
         }
@@ -314,7 +314,7 @@ fn re_parse_expression<'n, 'a>(
         None => {
             errors.push(CompileError::Internal(
                 "Internal error handling contract call address parsing. No address.",
-                span.clone(),
+                span,
             ));
             return err(warnings, errors);
         }

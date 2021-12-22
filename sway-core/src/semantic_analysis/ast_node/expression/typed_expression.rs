@@ -33,8 +33,8 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 
 #[allow(clippy::too_many_arguments)]
 impl<'sc> TypedExpression {
-    pub(crate) fn type_check<'n>(
-        arguments: TypeCheckArguments<'n, Expression>,
+    pub(crate) fn type_check(
+        arguments: TypeCheckArguments<'_, Expression>,
     ) -> CompileResult<Self> {
         let TypeCheckArguments {
             checkee: other,
@@ -179,7 +179,7 @@ impl<'sc> TypedExpression {
             } => type_check_method_application(
                 method_name,
                 arguments,
-                span.clone(),
+                span,
                 namespace,
                 crate_namespace,
                 self_type,
@@ -402,11 +402,10 @@ impl<'sc> TypedExpression {
         ok(exp, vec![], errors)
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
-    fn type_check_function_application<'n>(
+    fn type_check_function_application(
         arguments: TypeCheckArguments<
-            'n,
+            '_,
             (
                 CallPath,
                 Vec<Expression>,
@@ -544,8 +543,8 @@ impl<'sc> TypedExpression {
                 is_constant: IsConstant::No,
                 expression: TypedExpressionVariant::FunctionApplication {
                     arguments: typed_call_arguments,
-                    name: name.clone(),
-                    function_body: body.clone(),
+                    name,
+                    function_body: body,
                     selector: None, // regular functions cannot be in a contract call; only methods
                 },
                 span,
@@ -555,9 +554,8 @@ impl<'sc> TypedExpression {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn type_check_lazy_operator<'n>(
-        arguments: TypeCheckArguments<'n, (LazyOp, Expression, Expression)>,
+    fn type_check_lazy_operator(
+        arguments: TypeCheckArguments<'_, (LazyOp, Expression, Expression)>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
@@ -646,7 +644,7 @@ impl<'sc> TypedExpression {
         let mut errors = vec![];
         let (typed_block, block_return_type) = check!(
             TypedCodeBlock::type_check(TypeCheckArguments {
-                checkee: contents.clone(),
+                checkee: contents,
                 namespace,
                 crate_namespace,
                 return_type_annotation: type_annotation,
@@ -670,7 +668,7 @@ impl<'sc> TypedExpression {
         );
 
         // this could probably be cleaned up with unification instead of comparing types
-        match unify_with_self(block_return_type, type_annotation, self_type, &span.clone()) {
+        match unify_with_self(block_return_type, type_annotation, self_type, &span) {
             Ok(mut ws) => {
                 warnings.append(&mut ws);
             }
@@ -691,11 +689,10 @@ impl<'sc> TypedExpression {
         ok(exp, warnings, errors)
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
-    fn type_check_if_expression<'n>(
+    fn type_check_if_expression(
         arguments: TypeCheckArguments<
-            'n,
+            '_,
             (
                 Box<Expression>,
                 Box<Expression>,
@@ -906,14 +903,14 @@ impl<'sc> TypedExpression {
                 Some(_) => {
                     errors.push(CompileError::DeclaredNonStructAsStruct {
                         name: struct_name.clone(),
-                        span: span.clone(),
+                        span,
                     });
                     return err(warnings, errors);
                 }
                 None => {
                     errors.push(CompileError::StructNotFound {
                         name: struct_name.clone(),
-                        span: span.clone(),
+                        span,
                     });
                     return err(warnings, errors);
                 }
@@ -997,7 +994,7 @@ impl<'sc> TypedExpression {
         });
         let exp = TypedExpression {
             expression: TypedExpressionVariant::StructExpression {
-                struct_name: definition.name.clone(),
+                struct_name: definition.name,
                 fields: typed_fields_buf,
             },
             return_type: struct_type_id,
@@ -1190,7 +1187,7 @@ impl<'sc> TypedExpression {
         let this_thing: Either<TypedDeclaration, TypedExpression> =
             match (module_result, enum_module_combined_result) {
                 (Some(_module), Some(_enum_res)) => {
-                    errors.push(CompileError::AmbiguousPath { span: span.clone() });
+                    errors.push(CompileError::AmbiguousPath { span });
                     return err(warnings, errors);
                 }
                 (Some(module), None) => match module.get_symbol(&call_path.suffix).value.cloned() {
@@ -1445,9 +1442,8 @@ impl<'sc> TypedExpression {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn type_check_array_index<'n>(
-        arguments: TypeCheckArguments<'n, (Expression, Expression)>,
+    fn type_check_array_index(
+        arguments: TypeCheckArguments<'_, (Expression, Expression)>,
         span: Span,
     ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
@@ -1514,7 +1510,7 @@ impl<'sc> TypedExpression {
                     },
                     return_type: elem_type_id,
                     is_constant: IsConstant::No,
-                    span: span.clone(),
+                    span,
                 },
                 warnings,
                 errors,
@@ -1811,7 +1807,7 @@ mod tests {
                     span: empty_span.clone(),
                 },
             ],
-            span: empty_span.clone(),
+            span: empty_span,
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
@@ -1844,7 +1840,7 @@ mod tests {
                     span: empty_span.clone(),
                 },
             ],
-            span: empty_span.clone(),
+            span: empty_span,
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
@@ -1888,7 +1884,7 @@ mod tests {
                     span: empty_span.clone(),
                 },
             ],
-            span: empty_span.clone(),
+            span: empty_span,
         };
 
         let comp_res = do_type_check_for_boolx2(expr);
@@ -1911,7 +1907,7 @@ mod tests {
 
         let expr = Expression::Array {
             contents: Vec::new(),
-            span: empty_span.clone(),
+            span: empty_span,
         };
 
         let comp_res = do_type_check(

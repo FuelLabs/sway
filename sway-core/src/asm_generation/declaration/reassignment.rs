@@ -12,7 +12,7 @@ use crate::{
 };
 use either::Either;
 
-pub(crate) fn convert_reassignment_to_asm<'sc>(
+pub(crate) fn convert_reassignment_to_asm(
     reassignment: &TypedReassignment,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,

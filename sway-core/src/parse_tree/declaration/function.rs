@@ -109,7 +109,7 @@ impl<'sc> FunctionDeclaration {
         let parameters_span = parameters_pair.as_span();
 
         let parameters = check!(
-            FunctionParameter::list_from_pairs(parameters_pair.clone().into_inner(), config),
+            FunctionParameter::list_from_pairs(parameters_pair.into_inner(), config),
             Vec::new(),
             warnings,
             errors

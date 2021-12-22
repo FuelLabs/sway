@@ -52,7 +52,7 @@ macro_rules! assert_or_warn {
 }
 
 /// Denotes a non-recoverable state
-pub(crate) fn err<'sc, T>(
+pub(crate) fn err<T>(
     warnings: Vec<CompileWarning>,
     errors: Vec<CompileError>,
 ) -> CompileResult<T> {
@@ -64,7 +64,7 @@ pub(crate) fn err<'sc, T>(
 }
 
 /// Denotes a recovered or non-error state
-pub(crate) fn ok<'sc, T>(
+pub(crate) fn ok<T>(
     value: T,
     warnings: Vec<CompileWarning>,
     errors: Vec<CompileError>,

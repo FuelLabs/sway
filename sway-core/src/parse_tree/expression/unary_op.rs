@@ -14,7 +14,7 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
-    pub fn parse_from_pair<'sc>(
+    pub fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
@@ -45,7 +45,7 @@ impl UnaryOp {
         }
     }
 
-    pub fn to_fn_application<'sc>(
+    pub fn to_fn_application(
         &self,
         arg: Expression,
         span: Span,

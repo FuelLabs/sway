@@ -11,7 +11,7 @@ pub(crate) use fn_decl::convert_fn_decl_to_asm;
 pub(crate) use reassignment::convert_reassignment_to_asm;
 pub(crate) use var_decl::convert_variable_decl_to_asm;
 
-pub(crate) fn convert_decl_to_asm<'sc>(
+pub(crate) fn convert_decl_to_asm(
     decl: &TypedDeclaration,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
@@ -42,7 +42,7 @@ pub(crate) fn convert_decl_to_asm<'sc>(
             vec![],
             vec![CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this declaration variant.",
-                decl.span().clone(),
+                decl.span()
             )],
         ),
     }

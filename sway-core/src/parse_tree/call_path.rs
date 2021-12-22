@@ -60,7 +60,7 @@ impl<'sc> CallPath {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut pairs_buf = vec![];
-        for pair in pair.clone().into_inner() {
+        for pair in pair.into_inner() {
             if pair.as_rule() != Rule::path_separator {
                 pairs_buf.push(check!(
                     Ident::parse_from_pair(pair, config),

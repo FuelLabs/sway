@@ -357,7 +357,7 @@ fn virtual_register_is_never_accessed_again(
 }
 
 /// helper function to check if a label is used in a given buffer of ops
-fn label_is_used<'sc>(buf: &[Op], label: &Label) -> bool {
+fn label_is_used(buf: &[Op], label: &Label) -> bool {
     buf.iter().any(|Op { ref opcode, .. }| match opcode {
         Either::Right(OrganizationalOp::Jump(ref l)) if label == l => true,
         Either::Right(OrganizationalOp::JumpIfNotEq(_reg0, _reg1, ref l)) if label == l => true,
@@ -617,7 +617,7 @@ impl<'sc> AsmNamespace {
     }
 }
 
-pub(crate) fn compile_ast_to_asm<'sc>(
+pub(crate) fn compile_ast_to_asm(
     ast: TypedParseTree,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
@@ -964,7 +964,7 @@ pub(crate) enum NodeAsmResult {
 
 /// The tuple being returned here contains the opcodes of the code block and,
 /// optionally, a return register in case this node was a return statement
-fn convert_node_to_asm<'sc>(
+fn convert_node_to_asm(
     node: &TypedAstNode,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
@@ -1118,7 +1118,7 @@ fn build_preamble(register_sequencer: &mut RegisterSequencer) -> [Op; 6] {
 /// Builds the contract switch statement, or function selector, which takes the selector
 /// stored in the call frame (see https://github.com/FuelLabs/sway/issues/97#issuecomment-870150684
 /// for an explanation of its location)
-fn build_contract_abi_switch<'sc>(
+fn build_contract_abi_switch(
     register_sequencer: &mut RegisterSequencer,
     namespace: &mut AsmNamespace,
     selectors_and_labels: Vec<([u8; 4], Label)>,
@@ -1194,7 +1194,7 @@ fn build_contract_abi_switch<'sc>(
     asm_buf
 }
 
-fn add_all_constant_decls<'sc>(
+fn add_all_constant_decls(
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op>,
@@ -1218,7 +1218,7 @@ fn add_all_constant_decls<'sc>(
     ok((), warnings, errors)
 }
 
-fn add_global_constant_decls<'sc>(
+fn add_global_constant_decls(
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op>,
@@ -1240,7 +1240,7 @@ fn add_global_constant_decls<'sc>(
     ok((), warnings, errors)
 }
 
-fn add_module_constant_decls<'sc>(
+fn add_module_constant_decls(
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
     asm_buf: &mut Vec<Op>,
@@ -1349,7 +1349,7 @@ fn compile_contract_to_selectors<'sc>(
     ok((selectors_labels_buf, asm_buf), warnings, errors)
 }
 /// Given a register, load the user-provided argument into it
-fn load_user_argument<'sc>(return_register: VirtualRegister) -> Op {
+fn load_user_argument(return_register: VirtualRegister) -> Op {
     Op {
         opcode: Either::Left(VirtualOp::LW(
             return_register,
@@ -1362,7 +1362,7 @@ fn load_user_argument<'sc>(return_register: VirtualRegister) -> Op {
     }
 }
 /// Given a register, load the current value of $cgas into it
-fn load_cgas<'sc>(return_register: VirtualRegister) -> Op {
+fn load_cgas(return_register: VirtualRegister) -> Op {
     Op {
         opcode: Either::Left(VirtualOp::LW(
             return_register,
@@ -1374,7 +1374,7 @@ fn load_cgas<'sc>(return_register: VirtualRegister) -> Op {
     }
 }
 /// Given a register, load the current value of $bal into it
-fn load_bal<'sc>(return_register: VirtualRegister) -> Op {
+fn load_bal(return_register: VirtualRegister) -> Op {
     Op {
         opcode: Either::Left(VirtualOp::LW(
             return_register,
@@ -1386,7 +1386,7 @@ fn load_bal<'sc>(return_register: VirtualRegister) -> Op {
     }
 }
 /// Given a register, load a pointer to the current coin color into it
-fn load_coin_color<'sc>(return_register: VirtualRegister) -> Op {
+fn load_coin_color(return_register: VirtualRegister) -> Op {
     Op {
         opcode: Either::Left(VirtualOp::LW(
             return_register,
@@ -1400,7 +1400,7 @@ fn load_coin_color<'sc>(return_register: VirtualRegister) -> Op {
 
 /// Given a [TypedFunctionDeclaration] and a `return_register`, return
 /// the return value of the function using either a `RET` or a `RETD` opcode.
-fn ret_or_retd_value<'sc>(
+fn ret_or_retd_value(
     func: &TypedFunctionDeclaration,
     return_register: VirtualRegister,
     register_sequencer: &mut RegisterSequencer,

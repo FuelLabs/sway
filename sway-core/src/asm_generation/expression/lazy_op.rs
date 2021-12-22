@@ -7,7 +7,7 @@ use crate::{
     CompileResult,
 };
 
-pub(crate) fn convert_lazy_operator_to_asm<'sc>(
+pub(crate) fn convert_lazy_operator_to_asm(
     op: &LazyOp,
     lhs: &TypedExpression,
     rhs: &TypedExpression,

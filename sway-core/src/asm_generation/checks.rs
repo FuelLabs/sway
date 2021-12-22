@@ -9,7 +9,7 @@ use crate::error::*;
 /// Checks for disallowed opcodes in non-contract code.
 /// i.e., if this is a script or predicate, we can't use certain contract opcodes.
 /// See https://github.com/FuelLabs/sway/issues/350 for details.
-pub fn check_invalid_opcodes<'sc>(asm: &FinalizedAsm) -> CompileResult<()> {
+pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
     match asm {
         FinalizedAsm::ContractAbi { .. } | FinalizedAsm::Library => ok((), vec![], vec![]),
         FinalizedAsm::ScriptMain {
@@ -23,7 +23,7 @@ pub fn check_invalid_opcodes<'sc>(asm: &FinalizedAsm) -> CompileResult<()> {
 
 /// Checks if an opcode is one that can only be executed from within a contract. If so, throw an
 /// error.
-fn check_for_contract_opcodes<'sc>(ops: &[AllocatedOp]) -> CompileResult<()> {
+fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
     use AllocatedOpcode::*;
     let default_span = crate::Span {
         span: pest::Span::new("no span found for opcode".into(), 0, 1).unwrap(),

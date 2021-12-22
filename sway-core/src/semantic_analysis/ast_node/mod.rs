@@ -113,8 +113,8 @@ impl<'sc> TypedAstNode {
             WhileLoop(_) | SideEffect => TypeInfo::Tuple(Vec::new()),
         }
     }
-    pub(crate) fn type_check<'n>(
-        arguments: TypeCheckArguments<'n, AstNode>,
+    pub(crate) fn type_check(
+        arguments: TypeCheckArguments<'_, AstNode>,
     ) -> CompileResult<TypedAstNode> {
         let TypeCheckArguments {
             checkee: node,
@@ -204,7 +204,7 @@ impl<'sc> TypedAstNode {
                                 .resolve_type_with_self(type_ascription, self_type)
                                 .unwrap_or_else(|_| {
                                     errors.push(CompileError::UnknownType {
-                                        span: type_ascription_span.expect("Invariant violated: type checked an annotation that did not exist in the source").clone(),
+                                        span: type_ascription_span.expect("Invariant violated: type checked an annotation that did not exist in the source"),
                                     });
                                     insert_type(TypeInfo::ErrorRecovery)
                                 });
@@ -561,7 +561,7 @@ impl<'sc> TypedAstNode {
                         Declaration::StorageDeclaration(StorageDeclaration { span, .. }) => {
                             errors.push(CompileError::Unimplemented(
                                 "Storage declarations are not supported yet. Coming soon!",
-                                span.clone(),
+                                span,
                             ));
                             return err(warnings, errors);
                         }
@@ -673,7 +673,7 @@ impl<'sc> TypedAstNode {
                         (
                             TypedCodeBlock {
                                 contents: vec![],
-                                whole_block_span: body.whole_block_span.clone(),
+                                whole_block_span: body.whole_block_span,
                             },
                             crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
                         ),
@@ -711,7 +711,7 @@ impl<'sc> TypedAstNode {
 
 /// Imports a new file, populates the given [Namespace] with its content,
 /// and appends the module's content to the control flow graph for later analysis.
-fn import_new_file<'sc>(
+fn import_new_file(
     statement: &IncludeStatement,
     namespace: &mut Namespace,
     build_config: &BuildConfig,
@@ -787,8 +787,8 @@ fn import_new_file<'sc>(
     ok((), warnings, errors)
 }
 
-fn reassignment<'n, 'sc>(
-    arguments: TypeCheckArguments<'n, (Box<Expression>, Expression)>,
+fn reassignment(
+    arguments: TypeCheckArguments<'_, (Box<Expression>, Expression)>,
     span: Span,
 ) -> CompileResult<TypedDeclaration> {
     let TypeCheckArguments {
@@ -985,7 +985,7 @@ fn reassignment<'n, 'sc>(
     }
 }
 
-fn type_check_interface_surface<'sc>(
+fn type_check_interface_surface(
     interface_surface: Vec<TraitFn>,
     namespace: &Namespace,
 ) -> CompileResult<Vec<TypedTraitFn>> {
@@ -1045,7 +1045,7 @@ fn type_check_interface_surface<'sc>(
     )
 }
 
-fn type_check_trait_methods<'sc>(
+fn type_check_trait_methods(
     methods: Vec<FunctionDeclaration>,
     namespace: &mut Namespace,
     crate_namespace: Option<&Namespace>,

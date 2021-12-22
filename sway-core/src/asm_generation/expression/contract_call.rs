@@ -3,7 +3,7 @@ use crate::semantic_analysis::ast_node::*;
 use either::Either;
 /// Converts a function application of a contract ABI function into assembly
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn convert_contract_call_to_asm<'sc>(
+pub(crate) fn convert_contract_call_to_asm(
     metadata: &ContractCallMetadata,
     cgas: &TypedExpression,
     bal: &TypedExpression,
@@ -167,7 +167,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     asm_buf.push(Op::register_move(
         return_register.into(),
         VirtualRegister::Constant(ConstantRegister::ReturnValue),
-        span.clone(),
+        span,
     ));
 
     ok(asm_buf, warnings, errors)

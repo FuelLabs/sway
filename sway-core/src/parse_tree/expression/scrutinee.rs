@@ -63,7 +63,7 @@ impl Scrutinee {
         let mut scrutinees = pair.into_inner();
         let scrutinee = scrutinees.next().unwrap();
         let scrutinee = check!(
-            Scrutinee::parse_from_pair_inner(scrutinee.clone(), config),
+            Scrutinee::parse_from_pair_inner(scrutinee, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -140,7 +140,7 @@ impl Scrutinee {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let scrutinee = Literal::parse_from_pair(scrutinee.clone(), config)
+        let scrutinee = Literal::parse_from_pair(scrutinee, config)
             .map(|(value, span)| Scrutinee::Literal { value, span })
             .unwrap_or_else(&mut warnings, &mut errors, || Scrutinee::Unit {
                 span: span.clone(),
@@ -155,7 +155,7 @@ impl Scrutinee {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let scrutinee = Ident::parse_from_pair(scrutinee.clone(), config)
+        let scrutinee = Ident::parse_from_pair(scrutinee, config)
             .map(|name| Scrutinee::Variable {
                 name,
                 span: span.clone(),

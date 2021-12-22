@@ -141,7 +141,7 @@ impl<'sc> Namespace {
                 },
             });
         }
-        self.symbols.insert(name.clone(), item.clone());
+        self.symbols.insert(name, item);
         ok((), warnings, vec![])
     }
 
@@ -383,7 +383,7 @@ impl<'sc> Namespace {
             errors
         );
         let mut type_fields =
-            self.get_struct_type_fields(symbol, first_ident.as_str(), &first_ident.span());
+            self.get_struct_type_fields(symbol, first_ident.as_str(), first_ident.span());
         warnings.append(&mut type_fields.warnings);
         errors.append(&mut type_fields.errors);
         let (mut fields, struct_name) = match type_fields.value {

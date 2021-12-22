@@ -5,7 +5,7 @@ use crate::{
     TypedFunctionDeclaration,
 };
 
-pub(crate) fn convert_fn_decl_to_asm<'sc>(
+pub(crate) fn convert_fn_decl_to_asm(
     _decl: &TypedFunctionDeclaration,
     _namespace: &mut AsmNamespace,
     _register_sequencer: &mut RegisterSequencer,

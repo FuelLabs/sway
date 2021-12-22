@@ -233,12 +233,7 @@ mod test {
             }"#.into(),
         );
         // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                panic!("{:#?}", e);
-            }
-            Ok(_) => (),
-        }
+        parsed.unwrap();
     }
     #[test]
     fn bytes_literals() {
@@ -255,12 +250,7 @@ mod test {
             "#.into(),
         );
         // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                panic!("{:#?}", e);
-            }
-            Ok(_) => (),
-        }
+        parsed.unwrap();
     }
 
     #[test]
@@ -285,12 +275,7 @@ mod test {
                 }
             "#.into(),
         );
-        match parsed {
-            Err(_) => {
-                panic!()
-            }
-            Ok(_) => (),
-        }
+        parsed.unwrap();
     }
 
     #[test]
@@ -304,11 +289,6 @@ mod test {
             return 10;
         }"#.into(),
         );
-        match parsed {
-            Err(e) => {
-                panic!("{:#?}", e);
-            }
-            Ok(_) => {}
-        }
+        parsed.unwrap();
     }
 }

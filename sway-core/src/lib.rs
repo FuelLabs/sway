@@ -245,7 +245,7 @@ pub(crate) struct InnerDependencyCompileResult {
 /// TODO -- there is _so_ much duplicated code and messiness in this file around the
 /// different types of compilation and stuff. After we get to a good state with the MVP,
 /// clean up the types here with the power of hindsight
-pub(crate) fn compile_inner_dependency<'sc>(
+pub(crate) fn compile_inner_dependency(
     input: Arc<str>,
     initial_namespace: &Namespace,
     build_config: BuildConfig,
@@ -266,7 +266,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
             errors.push(CompileError::ImportMustBeLibrary {
                 span: span::Span {
                     span: pest::Span::new(input, 0, 0).unwrap(),
-                    path: Some(build_config.clone().path()),
+                    path: Some(build_config.path()),
                 },
             });
             return err(warnings, errors);
@@ -277,7 +277,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
             parse_tree.tree,
             initial_namespace.clone(),
             &parse_tree.tree_type,
-            &build_config.clone(),
+            &build_config,
             dead_code_graph,
             dependency_graph,
         ),
@@ -310,7 +310,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
     )
 }
 
-pub fn compile_to_ast<'sc>(
+pub fn compile_to_ast(
     input: Arc<str>,
     initial_namespace: &Namespace,
     build_config: &BuildConfig,
@@ -368,7 +368,7 @@ pub fn compile_to_ast<'sc>(
 
 /// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
 /// form (not raw bytes/bytecode).
-pub fn compile_to_asm<'sc>(
+pub fn compile_to_asm(
     input: Arc<str>,
     initial_namespace: &Namespace,
     build_config: BuildConfig,
@@ -409,7 +409,7 @@ pub fn compile_to_asm<'sc>(
 
 /// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
 /// bytecode form.
-pub fn compile_to_bytecode<'sc>(
+pub fn compile_to_bytecode(
     input: Arc<str>,
     initial_namespace: &Namespace,
     build_config: BuildConfig,
@@ -446,7 +446,7 @@ pub fn compile_to_bytecode<'sc>(
 
 /// Given a [TypedParseTree], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
-fn perform_control_flow_analysis<'sc>(
+fn perform_control_flow_analysis(
     tree: &TypedParseTree,
     tree_type: &TreeType,
     dead_code_graph: &mut ControlFlowGraph,
@@ -465,7 +465,7 @@ fn perform_control_flow_analysis<'sc>(
 
 /// The basic recursive parser which handles the top-level parsing given the output of the
 /// pest-generated parser.
-fn parse_root_from_pairs<'sc>(
+fn parse_root_from_pairs(
     input: impl Iterator<Item = Pair<Rule>>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<HllParseTree> {

@@ -47,7 +47,7 @@ impl<'sc> FinalizedAsm {
     }
 }
 
-fn to_bytecode_mut<'sc>(
+fn to_bytecode_mut(
     program_section: &InstructionSet,
     data_section: &mut DataSection,
 ) -> CompileResult<Vec<u8>> {

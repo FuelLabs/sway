@@ -69,7 +69,7 @@ impl Default for TypeInfo {
 }
 
 impl TypeInfo {
-    pub(crate) fn parse_from_pair<'sc>(
+    pub(crate) fn parse_from_pair(
         input: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
@@ -90,7 +90,7 @@ impl TypeInfo {
         Self::parse_from_pair_inner(input.into_inner().next().unwrap(), config)
     }
 
-    fn parse_from_pair_inner<'sc>(
+    fn parse_from_pair_inner(
         input: Pair<Rule>,
         config: Option<&BuildConfig>,
     ) -> CompileResult<Self> {
@@ -307,7 +307,7 @@ impl TypeInfo {
     }
 
     /// maps a type to a name that is used when constructing function selectors
-    pub(crate) fn to_selector_name<'sc>(
+    pub(crate) fn to_selector_name(
         &self,
         error_msg_span: &Span,
     ) -> CompileResult<String> {
@@ -408,7 +408,7 @@ impl TypeInfo {
         ok(name, vec![], vec![])
     }
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
-    pub(crate) fn size_in_words<'sc>(
+    pub(crate) fn size_in_words(
         &self,
         err_span: &Span,
     ) -> Result<u64, CompileError> {
@@ -549,7 +549,7 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn matches_type_parameter<'sc>(
+    pub(crate) fn matches_type_parameter(
         &self,
         mapping: &[(TypeParameter, TypeId)],
     ) -> Option<TypeId> {
@@ -628,7 +628,7 @@ impl TypeInfo {
                     let new_field =
                         match look_up_type_id(fields[index]).matches_type_parameter(mapping) {
                             Some(new_field_id) => insert_type(TypeInfo::Ref(new_field_id)),
-                            None => fields[index].clone(),
+                            None => fields[index],
                         };
                     new_fields.push(new_field);
                     index += 1;

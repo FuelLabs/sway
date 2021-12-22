@@ -106,7 +106,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib<'source, 'manifest>(
+fn compile_dependency_lib<'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
@@ -233,7 +233,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     Ok(())
 }
 
-fn compile_library<'source>(
+fn compile_library(
     source: Arc<str>,
     proj_name: &str,
     namespace: &Namespace,
@@ -264,7 +264,7 @@ fn compile_library<'source>(
     }
 }
 
-fn compile<'source>(
+fn compile(
     source: Arc<str>,
     proj_name: &str,
     namespace: &Namespace,
@@ -284,12 +284,12 @@ fn compile<'source>(
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
             print_on_failure(silent_mode, warnings, errors);
-            return Err(format!("Failed to compile {}", proj_name));
+            Err(format!("Failed to compile {}", proj_name))
         }
     }
 }
 
-fn compile_to_asm<'sc>(
+fn compile_to_asm(
     source: Arc<str>,
     proj_name: &str,
     namespace: &Namespace,

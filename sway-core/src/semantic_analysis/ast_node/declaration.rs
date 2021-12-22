@@ -261,7 +261,7 @@ impl OwnedTypedStructField {
         };
     }
 
-    pub(crate) fn as_typed_struct_field<'sc>(&self, span: &Span) -> TypedStructField {
+    pub(crate) fn as_typed_struct_field(&self, span: &Span) -> TypedStructField {
         TypedStructField {
             name: Ident::new(
                 span.clone(),

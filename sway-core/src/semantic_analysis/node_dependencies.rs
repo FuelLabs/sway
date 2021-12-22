@@ -11,7 +11,7 @@ use crate::{
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any
 /// dependencies breaking.
 
-pub(crate) fn order_ast_nodes_by_dependency<'sc>(
+pub(crate) fn order_ast_nodes_by_dependency(
     nodes: Vec<AstNode>,
 ) -> CompileResult<Vec<AstNode>> {
     let decl_dependencies =
@@ -43,15 +43,15 @@ pub(crate) fn order_ast_nodes_by_dependency<'sc>(
 // -------------------------------------------------------------------------------------------------
 // Recursion detection.
 
-fn find_recursive_calls<'sc>(decl_dependencies: &DependencyMap<'sc>) -> Vec<CompileError> {
+fn find_recursive_calls(decl_dependencies: &DependencyMap) -> Vec<CompileError> {
     decl_dependencies
         .iter()
         .filter_map(|(dep_sym, _)| find_recursive_call(decl_dependencies, dep_sym))
         .collect()
 }
 
-fn find_recursive_call<'sc>(
-    decl_dependencies: &DependencyMap<'sc>,
+fn find_recursive_call(
+    decl_dependencies: &DependencyMap,
     fn_sym: &DependentSymbol,
 ) -> Option<CompileError> {
     if let DependentSymbol::Fn(_, Some(fn_span)) = fn_sym {
@@ -62,8 +62,8 @@ fn find_recursive_call<'sc>(
     }
 }
 
-fn find_recursive_call_chain<'sc>(
-    decl_dependencies: &DependencyMap<'sc>,
+fn find_recursive_call_chain(
+    decl_dependencies: &DependencyMap,
     fn_sym: &DependentSymbol,
     fn_span: &Span,
     chain: &mut Vec<Ident>,
@@ -99,7 +99,7 @@ fn find_recursive_call_chain<'sc>(
     }
 }
 
-fn build_recursion_error<'sc>(
+fn build_recursion_error(
     fn_sym: Ident,
     span: Span,
     chain: &[Ident],
@@ -136,10 +136,10 @@ fn build_recursion_error<'sc>(
 // -------------------------------------------------------------------------------------------------
 // Dependency gathering.
 
-type DependencyMap<'sc> = HashMap<DependentSymbol, Dependencies>;
+type DependencyMap = HashMap<DependentSymbol, Dependencies>;
 
-fn insert_into_ordered_nodes<'sc>(
-    decl_dependencies: &DependencyMap<'sc>,
+fn insert_into_ordered_nodes(
+    decl_dependencies: &DependencyMap,
     mut ordered_nodes: Vec<AstNode>,
     node: AstNode,
 ) -> Vec<AstNode> {
@@ -161,8 +161,8 @@ fn insert_into_ordered_nodes<'sc>(
 //
 // Does the dependant depend on the dependee?
 
-fn depends_on<'sc>(
-    decl_dependencies: &DependencyMap<'sc>,
+fn depends_on(
+    decl_dependencies: &DependencyMap,
     dependant_node: &AstNode,
     dependee_node: &AstNode,
 ) -> bool {
@@ -204,7 +204,7 @@ struct Dependencies {
 }
 
 impl Dependencies {
-    fn gather_from_decl_node<'sc>(
+    fn gather_from_decl_node(
         node: &AstNode,
     ) -> Option<(DependentSymbol, Dependencies)> {
         match &node.content {
@@ -221,7 +221,7 @@ impl Dependencies {
         }
     }
 
-    fn gather_from_decl<'sc>(self, decl: &Declaration) -> Self {
+    fn gather_from_decl(self, decl: &Declaration) -> Self {
         match decl {
             Declaration::VariableDeclaration(VariableDeclaration {
                 type_ascription,
@@ -327,7 +327,7 @@ impl Dependencies {
         }
     }
 
-    fn gather_from_fn_decl<'sc>(self, fn_decl: &FunctionDeclaration) -> Self {
+    fn gather_from_fn_decl(self, fn_decl: &FunctionDeclaration) -> Self {
         let FunctionDeclaration {
             parameters,
             return_type,
@@ -343,7 +343,7 @@ impl Dependencies {
         .gather_from_traits(type_parameters)
     }
 
-    fn gather_from_expr<'sc>(mut self, expr: &Expression) -> Self {
+    fn gather_from_expr(mut self, expr: &Expression) -> Self {
         match expr {
             Expression::VariableExpression { .. } => self,
             Expression::FunctionApplication {
@@ -437,20 +437,20 @@ impl Dependencies {
         }
     }
 
-    fn gather_from_opt_expr<'sc>(self, opt_expr: &Option<Expression>) -> Self {
+    fn gather_from_opt_expr(self, opt_expr: &Option<Expression>) -> Self {
         match opt_expr {
             None => self,
             Some(expr) => self.gather_from_expr(expr),
         }
     }
 
-    fn gather_from_block<'sc>(self, block: &CodeBlock) -> Self {
+    fn gather_from_block(self, block: &CodeBlock) -> Self {
         self.gather_from_iter(block.contents.iter(), |deps, node| {
             deps.gather_from_node(node)
         })
     }
 
-    fn gather_from_node<'sc>(self, node: &AstNode) -> Self {
+    fn gather_from_node(self, node: &AstNode) -> Self {
         match &node.content {
             AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
                 self.gather_from_expr(expr)
@@ -560,7 +560,7 @@ impl Hash for DependentSymbol {
     }
 }
 
-fn decl_name<'sc>(decl: &Declaration) -> Option<DependentSymbol> {
+fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
     let dep_sym = |name| Some(DependentSymbol::Symbol(name));
     let impl_sym = |trait_name, type_info: &TypeInfo| {
         Some(DependentSymbol::Impl(trait_name, type_info_name(type_info)))

@@ -49,7 +49,7 @@ impl<'sc> Declaration {
     ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut pair = decl.clone().into_inner();
+        let mut pair = decl.into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
             Rule::non_var_decl => check!(
@@ -134,7 +134,7 @@ impl<'sc> Declaration {
     ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut pair = decl.clone().into_inner();
+        let mut pair = decl.into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
             Rule::fn_decl => Declaration::FunctionDeclaration(check!(

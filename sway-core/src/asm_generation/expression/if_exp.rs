@@ -6,7 +6,7 @@ use crate::semantic_analysis::TypedExpression;
 
 use crate::CompileResult;
 
-pub(crate) fn convert_if_exp_to_asm<'sc>(
+pub(crate) fn convert_if_exp_to_asm(
     condition: &TypedExpression,
     then: &TypedExpression,
     r#else: &Option<Box<TypedExpression>>,

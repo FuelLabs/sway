@@ -374,7 +374,7 @@ impl<'sc> Expression {
         #[allow(unused_assignments)]
         let mut maybe_type_args = Vec::new();
         let parsed = match expr.as_rule() {
-            Rule::literal_value => Literal::parse_from_pair(expr.clone(), config)
+            Rule::literal_value => Literal::parse_from_pair(expr, config)
                 .map(|(value, span)| Expression::Literal { value, span })
                 .unwrap_or_else(&mut warnings, &mut errors, || Expression::Tuple {
                     fields: vec![],
@@ -473,7 +473,7 @@ impl<'sc> Expression {
                     parse_array_elems(array_elems, config),
                     Expression::Tuple {
                         fields: vec![],
-                        span: span.clone()
+                        span,
                     },
                     warnings,
                     errors
@@ -507,13 +507,12 @@ impl<'sc> Expression {
                     );
                     branches.push(res);
                 }
-                let exp = check!(
+                check!(
                     desugar_match_expression(primary_expression, branches, span),
                     return err(warnings, errors),
                     warnings,
                     errors
-                );
-                exp
+                )
             }
             Rule::struct_expression => {
                 let mut expr_iter = expr.into_inner();
@@ -556,7 +555,7 @@ impl<'sc> Expression {
                 }
             }
             Rule::parenthesized_expression => {
-                let expr = check!(
+                check!(
                     Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config),
                     Expression::Tuple {
                         fields: vec![],
@@ -567,8 +566,7 @@ impl<'sc> Expression {
                     },
                     warnings,
                     errors
-                );
-                expr
+                )
             }
             Rule::code_block => {
                 let whole_block_span = Span {
@@ -980,7 +978,7 @@ impl<'sc> Expression {
     }
 }
 
-fn convert_unary_to_fn_calls<'sc>(
+fn convert_unary_to_fn_calls(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<Expression> {
@@ -1113,7 +1111,7 @@ fn parse_subfield_path(
 // A call item is parsed as either an `ident` or a parenthesized `expr`. This method's job is to
 // figure out which variant of `call_item` this is and turn it into either a variable expression
 // or parse it as an expression otherwise.
-fn parse_call_item<'sc>(
+fn parse_call_item(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<Expression> {
@@ -1145,7 +1143,7 @@ fn parse_call_item<'sc>(
     ok(exp, warnings, errors)
 }
 
-fn parse_array_elems<'sc>(
+fn parse_array_elems(
     elems: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<Expression> {
@@ -1222,7 +1220,7 @@ fn parse_array_elems<'sc>(
     ok(Expression::Array { contents, span }, warnings, errors)
 }
 
-fn parse_op<'sc>(op: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Op> {
+fn parse_op(op: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Op> {
     let path = config.map(|c| c.path());
     use OpVariant::*;
     let mut errors = Vec::new();
@@ -1349,7 +1347,7 @@ impl OpVariant {
     }
 }
 
-fn arrange_by_order_of_operations<'sc>(
+fn arrange_by_order_of_operations(
     expressions: Vec<Either<Op, Expression>>,
     debug_span: Span,
 ) -> CompileResult<Expression> {

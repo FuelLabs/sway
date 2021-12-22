@@ -931,7 +931,7 @@ impl Op {
     }
 }
 
-fn single_reg<'sc>(
+fn single_reg(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
@@ -950,7 +950,7 @@ fn single_reg<'sc>(
         Some(reg) => reg,
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 1,
                 received: args.len(),
             });
@@ -969,7 +969,7 @@ fn single_reg<'sc>(
     ok(reg.clone(), warnings, errors)
 }
 
-fn two_regs<'sc>(
+fn two_regs(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
@@ -988,7 +988,7 @@ fn two_regs<'sc>(
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 2,
                 received: args.len(),
             });
@@ -1005,7 +1005,7 @@ fn two_regs<'sc>(
     ok((reg.clone(), reg2.clone()), warnings, errors)
 }
 
-fn four_regs<'sc>(
+fn four_regs(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
@@ -1031,7 +1031,7 @@ fn four_regs<'sc>(
         (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 4,
                 received: args.len(),
             });
@@ -1083,7 +1083,7 @@ fn four_regs<'sc>(
     )
 }
 
-fn three_regs<'sc>(
+fn three_regs(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
@@ -1102,7 +1102,7 @@ fn three_regs<'sc>(
         (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 3,
                 received: args.len(),
             });
@@ -1120,7 +1120,7 @@ fn three_regs<'sc>(
 
     ok((reg.clone(), reg2.clone(), reg3.clone()), warnings, errors)
 }
-fn single_imm_24<'sc>(
+fn single_imm_24(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
@@ -1137,7 +1137,7 @@ fn single_imm_24<'sc>(
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
             errors.push(CompileError::MissingImmediate {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
             });
             return err(warnings, errors);
         }
@@ -1162,7 +1162,7 @@ fn single_imm_24<'sc>(
 
     ok(imm, warnings, errors)
 }
-fn single_reg_imm_18<'sc>(
+fn single_reg_imm_18(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
@@ -1180,7 +1180,7 @@ fn single_reg_imm_18<'sc>(
         Some(reg) => reg,
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 1,
                 received: args.len(),
             });
@@ -1190,7 +1190,7 @@ fn single_reg_imm_18<'sc>(
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
             errors.push(CompileError::MissingImmediate {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
             });
             return err(warnings, errors);
         }
@@ -1215,7 +1215,7 @@ fn single_reg_imm_18<'sc>(
 
     ok((reg.clone(), imm), warnings, errors)
 }
-fn two_regs_imm_12<'sc>(
+fn two_regs_imm_12(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
@@ -1233,7 +1233,7 @@ fn two_regs_imm_12<'sc>(
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 2,
                 received: args.len(),
             });
@@ -1243,7 +1243,7 @@ fn two_regs_imm_12<'sc>(
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
             errors.push(CompileError::MissingImmediate {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
             });
             return err(warnings, errors);
         }

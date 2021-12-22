@@ -179,7 +179,7 @@ impl<'sc> ControlFlowGraph {
         Ok(())
     }
 }
-fn connect_node<'sc>(
+fn connect_node(
     node: &TypedAstNode,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
@@ -313,7 +313,7 @@ fn connect_node<'sc>(
     })
 }
 
-fn connect_declaration<'sc>(
+fn connect_declaration(
     decl: &TypedDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
@@ -380,7 +380,7 @@ fn connect_declaration<'sc>(
 
 /// Connect each individual struct field, and when that field is accessed in a subfield expression,
 /// connect that field.
-fn connect_struct_declaration<'sc>(
+fn connect_struct_declaration(
     struct_decl: &TypedStructDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
@@ -421,7 +421,7 @@ fn connect_struct_declaration<'sc>(
 /// that the declaration was indeed at some point implemented.
 /// Additionally, we insert the trait's methods into the method namespace in order to
 /// track which exact methods are dead code.
-fn connect_impl_trait<'sc>(
+fn connect_impl_trait(
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
     methods: &[TypedFunctionDeclaration],
@@ -483,7 +483,7 @@ fn connect_impl_trait<'sc>(
 ///
 /// The trait node itself has already been added (as `entry_node`), so we just need to insert that
 /// node index into the namespace for the trait.
-fn connect_trait_declaration<'sc>(
+fn connect_trait_declaration(
     decl: &TypedTraitDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
@@ -498,7 +498,7 @@ fn connect_trait_declaration<'sc>(
 }
 
 /// See [connect_trait_declaration] for implementation details.
-fn connect_abi_declaration<'sc>(
+fn connect_abi_declaration(
     decl: &TypedAbiDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
@@ -514,7 +514,7 @@ fn connect_abi_declaration<'sc>(
 /// For an enum declaration, we want to make a declaration node for every individual enum
 /// variant. When a variant is constructed, we can point an edge at that variant. This way,
 /// we can see clearly, and thusly warn, when individual variants are not ever constructed.
-fn connect_enum_declaration<'sc>(
+fn connect_enum_declaration(
     enum_decl: &TypedEnumDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
@@ -536,7 +536,7 @@ fn connect_enum_declaration<'sc>(
 /// When connecting a function declaration, we are inserting a new root node into the graph that
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
-fn connect_typed_fn_decl<'sc>(
+fn connect_typed_fn_decl(
     fn_decl: &TypedFunctionDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
@@ -559,7 +559,7 @@ fn connect_typed_fn_decl<'sc>(
 
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
-    let ty = resolve_type(fn_decl.return_type, &span).unwrap_or(TypeInfo::Tuple(Vec::new()));
+    let ty = resolve_type(fn_decl.return_type, &span).unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
@@ -573,7 +573,7 @@ fn connect_typed_fn_decl<'sc>(
     Ok(())
 }
 
-fn depth_first_insertion_code_block<'sc>(
+fn depth_first_insertion_code_block(
     node_content: &TypedCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
@@ -592,7 +592,7 @@ fn depth_first_insertion_code_block<'sc>(
 
 /// connects any inner parts of an expression to the graph
 /// note the main expression node has already been inserted
-fn connect_expression<'sc>(
+fn connect_expression(
     expr_variant: &TypedExpressionVariant,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
@@ -819,7 +819,7 @@ fn connect_expression<'sc>(
         } => {
             let resolved_type_of_parent =
                 resolve_type(*resolved_type_of_parent, field_to_access_span)
-                    .unwrap_or(TypeInfo::Tuple(Vec::new()));
+                    .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
             let resolved_type_of_parent = match resolved_type_of_parent {
@@ -945,15 +945,15 @@ fn connect_expression<'sc>(
         }
         a => {
             println!("Unimplemented: {:?}", a);
-            return Err(CompileError::Unimplemented(
+            Err(CompileError::Unimplemented(
                 "Unimplemented dead code analysis for this.",
                 expression_span,
-            ));
+            ))
         }
     }
 }
 
-fn connect_enum_instantiation<'sc>(
+fn connect_enum_instantiation(
     enum_decl: &TypedEnumDeclaration,
     variant_name: &Ident,
     graph: &mut ControlFlowGraph,
@@ -995,7 +995,7 @@ fn connect_enum_instantiation<'sc>(
 /// representing its unreached status. For example, we want to say "this function is never called"
 /// if the node is a function declaration, but "this trait is never used" if it is a trait
 /// declaration.
-fn construct_dead_code_warning_from_node<'sc>(
+fn construct_dead_code_warning_from_node(
     node: &TypedAstNode,
 ) -> Option<CompileWarning> {
     Some(match node {

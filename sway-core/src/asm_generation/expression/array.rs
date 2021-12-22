@@ -1,7 +1,7 @@
 use super::compiler_constants::{TWELVE_BITS, TWENTY_FOUR_BITS};
 use super::*;
 
-pub(super) fn convert_array_instantiation_to_asm<'sc>(
+pub(super) fn convert_array_instantiation_to_asm(
     contents: &[TypedExpression],
     namespace: &mut AsmNamespace,
     return_register: &VirtualRegister,
@@ -77,7 +77,7 @@ pub(super) fn convert_array_instantiation_to_asm<'sc>(
 
 // Initialise an array with an element size in words of 1 and where all elements can be addressed
 // with twelve bits.
-fn initialize_small_array_instantiation<'sc>(
+fn initialize_small_array_instantiation(
     contents: &[TypedExpression],
     array_start_reg: &VirtualRegister,
     mut bytecode: Vec<Op>,
@@ -109,7 +109,7 @@ fn initialize_small_array_instantiation<'sc>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn initialize_large_array_instantiation<'sc>(
+fn initialize_large_array_instantiation(
     contents: &[TypedExpression],
     elem_size_in_words: u64,
     array_offs_reg: &VirtualRegister,
@@ -205,7 +205,7 @@ fn initialize_large_array_instantiation<'sc>(
     ok(bytecode, warnings, errors)
 }
 
-pub(super) fn convert_array_index_to_asm<'sc>(
+pub(super) fn convert_array_index_to_asm(
     prefix: &TypedExpression,
     index: &TypedExpression,
     span: &Span,
@@ -344,7 +344,7 @@ pub(super) fn convert_array_index_to_asm<'sc>(
 // We want the first (and usually probably the only) operation to OR with Zero, so we recurse for
 // each set of 12 bits until we hit a zero value, and then return the Zero register to be used
 // next.  Thereafter we OR the destination register.
-fn set_large_register_value<'sc, 'a>(
+fn set_large_register_value<'a>(
     value: u64,
     dst_reg: &'a VirtualRegister,
     bytecode: &mut Vec<Op>,
@@ -381,7 +381,7 @@ fn set_large_register_value<'sc, 'a>(
     dst_reg
 }
 
-fn compile_bounds_assertion<'sc>(
+fn compile_bounds_assertion(
     bytecode: &mut Vec<Op>,
     count_reg: &VirtualRegister,
     index_reg: &VirtualRegister,

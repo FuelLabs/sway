@@ -129,7 +129,7 @@ impl<'sc> Literal {
                 };
                 let span = span::Span {
                     span: lit_span,
-                    path: path.clone(),
+                    path,
                 };
                 (Ok(Literal::String(lit)), span)
             }
@@ -137,7 +137,7 @@ impl<'sc> Literal {
                 let inner_byte = lit_inner.into_inner().next().unwrap();
                 let span = span::Span {
                     span: inner_byte.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 (
                     match inner_byte.as_rule() {
@@ -151,7 +151,7 @@ impl<'sc> Literal {
             Rule::boolean => {
                 let span = span::Span {
                     span: lit_inner.as_span(),
-                    path: path.clone(),
+                    path,
                 };
                 (
                     Ok(match lit_inner.as_str() {
@@ -178,7 +178,7 @@ impl<'sc> Literal {
                     )),
                     span::Span {
                         span: lit_inner.as_span(),
-                        path: path.clone(),
+                        path,
                     },
                 )
             }
@@ -236,7 +236,7 @@ impl<'sc> Literal {
     }
 }
 
-fn parse_hex_from_pair<'sc>(
+fn parse_hex_from_pair(
     pair: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> Result<Literal, CompileError> {
@@ -298,7 +298,7 @@ fn parse_hex_from_pair<'sc>(
     })
 }
 
-fn parse_binary_from_pair<'sc>(
+fn parse_binary_from_pair(
     pair: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> Result<Literal, CompileError> {

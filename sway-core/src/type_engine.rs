@@ -117,7 +117,7 @@ fn chain_of_refs_2() {
     );
 }
 
-fn parse_str_type<'sc>(raw: &'sc str, span: Span) -> CompileResult<TypeInfo> {
+fn parse_str_type(raw: &str, span: Span) -> CompileResult<TypeInfo> {
     if raw.starts_with("str[") {
         let mut rest = raw.split_at("str[".len()).1.chars().collect::<Vec<_>>();
         if let Some(']') = rest.pop() {

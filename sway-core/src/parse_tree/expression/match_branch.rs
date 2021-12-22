@@ -53,7 +53,7 @@ impl<'sc> MatchBranch {
                     }),
                     Rule::scrutinee => {
                         let scrutinee = check!(
-                            Scrutinee::parse_from_pair(e.clone(), config),
+                            Scrutinee::parse_from_pair(e, config),
                             return err(warnings, errors),
                             warnings,
                             errors

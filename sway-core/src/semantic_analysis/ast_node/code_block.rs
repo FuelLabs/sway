@@ -10,8 +10,8 @@ pub(crate) struct TypedCodeBlock {
 
 #[allow(clippy::too_many_arguments)]
 impl<'sc> TypedCodeBlock {
-    pub(crate) fn type_check<'n>(
-        arguments: TypeCheckArguments<'n, CodeBlock>,
+    pub(crate) fn type_check(
+        arguments: TypeCheckArguments<'_, CodeBlock>,
     ) -> CompileResult<(Self, TypeId)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -83,7 +83,6 @@ impl<'sc> TypedCodeBlock {
                 type_annotation,
                 self_type,
                 &implicit_return_span
-                    .clone()
                     .unwrap_or_else(|| other.whole_block_span.clone()),
             ) {
                 Ok(mut ws) => {

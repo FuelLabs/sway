@@ -180,7 +180,7 @@ fn parse_subfield_path_ensure_only_var(
 /// ```ignore
 /// (foo()).x = 5;
 /// ```
-fn parse_call_item_ensure_only_var<'sc>(
+fn parse_call_item_ensure_only_var(
     item: Pair<Rule>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<Expression> {

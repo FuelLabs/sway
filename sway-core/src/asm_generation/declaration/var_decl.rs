@@ -7,7 +7,7 @@ use crate::{
 
 /// Provisions a register to put a variable in, and then adds the assembly used to initialize the
 /// variable to the end of the buffer.
-pub(crate) fn convert_variable_decl_to_asm<'sc>(
+pub(crate) fn convert_variable_decl_to_asm(
     var_decl: &TypedVariableDeclaration,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,

@@ -73,7 +73,7 @@ pub fn get_main_file(
     Ok(main_file)
 }
 
-pub fn print_on_success<'sc>(
+pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,
     warnings: Vec<CompileWarning>,

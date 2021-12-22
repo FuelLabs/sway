@@ -32,7 +32,7 @@ impl Engine {
     /// there is a conflict between them).
     //
     // When reporting type errors we will report 'received' and 'expected' as such.
-    pub(crate) fn unify<'sc>(
+    pub(crate) fn unify(
         &self,
         received: TypeId,
         expected: TypeId,
@@ -190,7 +190,7 @@ impl Engine {
         }
     }
 
-    pub fn unify_with_self<'sc>(
+    pub fn unify_with_self(
         &self,
         received: TypeId,
         expected: TypeId,
@@ -211,7 +211,7 @@ impl Engine {
         self.unify(received, expected, span)
     }
 
-    pub fn resolve_type<'sc>(
+    pub fn resolve_type(
         &self,
         id: TypeId,
         error_span: &Span,
@@ -237,7 +237,7 @@ pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id_raw(id)
 }
 
-pub fn unify_with_self<'sc>(
+pub fn unify_with_self(
     a: TypeId,
     b: TypeId,
     self_type: TypeId,
@@ -246,11 +246,11 @@ pub fn unify_with_self<'sc>(
     TYPE_ENGINE.unify_with_self(a, b, self_type, span)
 }
 
-pub fn resolve_type<'sc>(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
+pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
     TYPE_ENGINE.resolve_type(id, error_span)
 }
 
-fn numeric_cast_compat<'sc>(
+fn numeric_cast_compat(
     new_size: IntegerBits,
     old_size: IntegerBits,
 ) -> NumericCastCompatResult {

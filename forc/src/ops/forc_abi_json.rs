@@ -129,7 +129,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib<'source, 'manifest>(
+fn compile_dependency_lib<'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
@@ -236,7 +236,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     Ok(json_abi)
 }
 
-fn compile_library<'source>(
+fn compile_library(
     source: Arc<str>,
     proj_name: &str,
     namespace: &Namespace,
@@ -258,7 +258,7 @@ fn compile_library<'source>(
                         silent_mode,
                         proj_name,
                         warnings,
-                        TreeType::Library { name: name.clone() },
+                        TreeType::Library { name },
                     );
                     let json_abi = generate_json_abi(&Some(*parse_tree.clone()));
                     Ok((parse_tree.into_namespace(), json_abi))
@@ -276,7 +276,7 @@ fn compile_library<'source>(
     }
 }
 
-fn compile<'source>(
+fn compile(
     source: Arc<str>,
     proj_name: &str,
     namespace: &Namespace,

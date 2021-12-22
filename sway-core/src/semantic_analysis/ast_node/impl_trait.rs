@@ -13,7 +13,7 @@ use crate::{
 };
 use std::collections::{HashMap, HashSet};
 
-pub(crate) fn implementation_of_trait<'sc>(
+pub(crate) fn implementation_of_trait(
     impl_trait: ImplTrait,
     namespace: &mut Namespace,
     crate_namespace: Option<&Namespace>,
@@ -47,7 +47,6 @@ pub(crate) fn implementation_of_trait<'sc>(
         .ok(&mut warnings, &mut errors)
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
-            let tr = tr.clone();
             if type_arguments.len() != tr.type_parameters.len() {
                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
                     given: type_arguments.len(),
@@ -182,7 +181,7 @@ impl Default for Mode {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn type_check_trait_implementation<'sc>(
+fn type_check_trait_implementation(
     interface_surface: &[TypedTraitFn],
     functions: &[FunctionDeclaration],
     methods: &[FunctionDeclaration],

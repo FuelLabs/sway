@@ -77,7 +77,6 @@ impl Ident {
     ) -> CompileResult<Ident> {
         let path = config.map(|config| config.path());
         let span = {
-            let pair = pair.clone();
             if pair.as_rule() != Rule::ident {
                 Span {
                     span: pair.into_inner().next().unwrap().as_span(),

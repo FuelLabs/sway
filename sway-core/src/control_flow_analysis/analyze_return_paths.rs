@@ -126,7 +126,7 @@ enum NodeConnection {
     Return(NodeIndex),
 }
 
-fn connect_node<'sc>(
+fn connect_node(
     node: &TypedAstNode,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],
@@ -167,7 +167,7 @@ fn connect_node<'sc>(
     }
 }
 
-fn connect_declaration<'sc>(
+fn connect_declaration(
     node: &TypedAstNode,
     decl: &TypedDeclaration,
     graph: &mut ControlFlowGraph,
@@ -224,7 +224,7 @@ fn connect_declaration<'sc>(
 /// that the declaration was indeed at some point implemented.
 /// Additionally, we insert the trait's methods into the method namespace in order to
 /// track which exact methods are dead code.
-fn connect_impl_trait<'sc>(
+fn connect_impl_trait(
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
     methods: &[TypedFunctionDeclaration],
@@ -262,7 +262,7 @@ fn connect_impl_trait<'sc>(
 /// When connecting a function declaration, we are inserting a new root node into the graph that
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
-fn connect_typed_fn_decl<'sc>(
+fn connect_typed_fn_decl(
     fn_decl: &TypedFunctionDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
@@ -279,7 +279,7 @@ fn connect_typed_fn_decl<'sc>(
         entry_point: entry_node,
         exit_point: fn_exit_node,
         return_type: resolve_type(fn_decl.return_type, &fn_decl.return_type_span)
-            .unwrap_or(TypeInfo::Tuple(Vec::new())),
+            .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new())),
     };
     graph
         .namespace
@@ -288,7 +288,7 @@ fn connect_typed_fn_decl<'sc>(
 
 type ReturnStatementNodes = Vec<NodeIndex>;
 
-fn depth_first_insertion_code_block<'sc>(
+fn depth_first_insertion_code_block(
     node_content: &TypedCodeBlock,
     graph: &mut ControlFlowGraph,
     leaves: &[NodeIndex],

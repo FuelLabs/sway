@@ -72,13 +72,12 @@ impl<'sc> TypedParseTree {
 
     pub(crate) fn type_check(
         parsed: ParseTree,
-        initial_namespace: Namespace,
+        mut new_namespace: Namespace,
         tree_type: &TreeType,
         build_config: &BuildConfig,
         dead_code_graph: &mut ControlFlowGraph,
         dependency_graph: &mut HashMap<String, HashSet<String>>,
     ) -> CompileResult<Self> {
-        let mut new_namespace = initial_namespace.clone();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -124,7 +123,7 @@ impl<'sc> TypedParseTree {
             .into_iter()
             .map(|node| {
                 TypedAstNode::type_check(TypeCheckArguments {
-                    checkee: node.clone(),
+                    checkee: node,
                     namespace,
                     crate_namespace: None,
                     return_type_annotation: insert_type(TypeInfo::Unknown),
@@ -248,7 +247,7 @@ impl<'sc> TypedParseTree {
     }
 }
 
-fn disallow_impure_functions<'sc>(
+fn disallow_impure_functions(
     declarations: &[TypedDeclaration],
     mains: &[TypedFunctionDeclaration],
 ) -> Vec<CompileError> {

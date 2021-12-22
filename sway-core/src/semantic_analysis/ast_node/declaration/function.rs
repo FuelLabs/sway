@@ -34,8 +34,8 @@ pub struct TypedFunctionDeclaration {
 }
 
 impl<'sc> TypedFunctionDeclaration {
-    pub fn type_check<'n>(
-        arguments: TypeCheckArguments<'n, FunctionDeclaration>,
+    pub fn type_check(
+        arguments: TypeCheckArguments<'_, FunctionDeclaration>,
     ) -> CompileResult<TypedFunctionDeclaration> {
         let TypeCheckArguments {
             checkee: fn_decl,
@@ -139,7 +139,7 @@ impl<'sc> TypedFunctionDeclaration {
             (
                 TypedCodeBlock {
                     contents: vec![],
-                    whole_block_span: body.whole_block_span.clone()
+                    whole_block_span: body.whole_block_span,
                 },
                 crate::type_engine::insert_type(TypeInfo::ErrorRecovery)
             ),
@@ -254,7 +254,7 @@ impl<'sc> TypedFunctionDeclaration {
                 name,
                 body,
                 parameters,
-                span: span.clone(),
+                span,
                 return_type,
                 type_parameters,
                 return_type_span,
@@ -575,7 +575,7 @@ fn test_function_selector_behavior() {
 }
 /// Insert all type parameters as unknown types. Return a mapping of type parameter to
 /// [TypeId]
-pub(crate) fn insert_type_parameters<'sc>(
+pub(crate) fn insert_type_parameters(
     params: &[TypeParameter],
 ) -> Vec<(TypeParameter, TypeId)> {
     params
