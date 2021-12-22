@@ -3,10 +3,11 @@ use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::MethodName;
 use crate::parser::{HllParser, Rule};
-
+use crate::semantic_analysis::TCOpts;
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application<'n, 'sc>(
     method_name: MethodName<'sc>,
     arguments: Vec<Expression<'sc>>,
@@ -17,23 +18,26 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
     build_config: &BuildConfig,
     dead_code_graph: &mut ControlFlowGraph<'sc>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    opts: TCOpts,
 ) -> CompileResult<'sc, TypedExpression<'sc>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut args_buf = VecDeque::new();
     for arg in arguments {
         args_buf.push_back(check!(
-            TypedExpression::type_check(
-                arg,
+            TypedExpression::type_check(TypeCheckArguments {
+                checkee: arg,
                 namespace,
                 crate_namespace,
-                None,
-                "",
+                return_type_annotation: insert_type(TypeInfo::Unknown),
+                help_text: Default::default(),
                 self_type,
                 build_config,
                 dead_code_graph,
                 dependency_graph,
-            ),
+                mode: Mode::NonAbi,
+                opts,
+            }),
             error_recovery_expr(span.clone()),
             warnings,
             errors
@@ -102,13 +106,8 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
             self_type,
             &arg.span,
         ) {
-            Ok(ws) => {
-                for warning in ws {
-                    warnings.push(CompileWarning {
-                        warning_content: warning,
-                        span: arg.span.clone(),
-                    });
-                }
+            Ok(mut ws) => {
+                warnings.append(&mut ws);
             }
             Err(_e) => {
                 errors.push(CompileError::ArgumentParameterTypeMismatch {
@@ -180,6 +179,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                                 self_type,
                                 dead_code_graph,
                                 dependency_graph,
+                                opts,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -254,6 +254,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
                                 self_type,
                                 dead_code_graph,
                                 dependency_graph,
+                                opts,
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -288,6 +289,7 @@ fn re_parse_expression<'n, 'a>(
     self_type: TypeId,
     dead_code_graph: &mut ControlFlowGraph<'a>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
+    opts: TCOpts,
 ) -> CompileResult<'a, TypedExpression<'a>> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -325,17 +327,19 @@ fn re_parse_expression<'n, 'a>(
         errors
     );
     let contract_address = check!(
-        TypedExpression::type_check(
-            contract_address,
+        TypedExpression::type_check(TypeCheckArguments {
+            checkee: contract_address,
             namespace,
             crate_namespace,
-            None,
-            "",
+            return_type_annotation: insert_type(TypeInfo::Unknown),
+            help_text: Default::default(),
             self_type,
             build_config,
             dead_code_graph,
             dependency_graph,
-        ),
+            mode: Mode::NonAbi,
+            opts,
+        }),
         return err(warnings, errors),
         warnings,
         errors

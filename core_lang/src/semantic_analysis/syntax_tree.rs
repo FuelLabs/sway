@@ -3,7 +3,8 @@ use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDe
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::ident::Ident;
-use crate::semantic_analysis::Namespace;
+use crate::parse_tree::Purity;
+use crate::semantic_analysis::{ast_node::Mode, Namespace, TypeCheckArguments};
 use crate::span::Span;
 use crate::{error::*, type_engine::*};
 use crate::{AstNode, ParseTree};
@@ -109,7 +110,7 @@ impl<'sc> TypedParseTree<'sc> {
         )
     }
 
-    fn type_check_nodes<'n>(
+    fn type_check_nodes(
         nodes: Vec<AstNode<'sc>>,
         namespace: &mut Namespace<'sc>,
         build_config: &BuildConfig,
@@ -121,19 +122,19 @@ impl<'sc> TypedParseTree<'sc> {
         let typed_nodes = nodes
             .into_iter()
             .map(|node| {
-                TypedAstNode::type_check(
-                    node.clone(),
+                TypedAstNode::type_check(TypeCheckArguments {
+                    checkee: node.clone(),
                     namespace,
-                    None,
-                    crate::type_engine::insert_type(TypeInfo::Unknown),
-                    "",
-                    // TODO only allow impl traits on contract trees, do something else
-                    // for other tree types
-                    crate::type_engine::insert_type(TypeInfo::Contract),
+                    crate_namespace: None,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: "",
+                    self_type: insert_type(TypeInfo::Contract),
                     build_config,
                     dead_code_graph,
                     dependency_graph,
-                )
+                    mode: Mode::NonAbi,
+                    opts: Default::default(),
+                })
             })
             .filter_map(|res| res.ok(&mut warnings, &mut errors))
             .collect();
@@ -145,7 +146,7 @@ impl<'sc> TypedParseTree<'sc> {
         }
     }
 
-    fn validate_typed_nodes<'n>(
+    fn validate_typed_nodes(
         typed_tree_nodes: Vec<TypedAstNode<'sc>>,
         span: Span<'sc>,
         namespace: Namespace<'sc>,
@@ -180,7 +181,12 @@ impl<'sc> TypedParseTree<'sc> {
             };
         }
 
-        // Perform validation based on the tree type.
+        // impure functions are disallowed in non-contracts
+        if *tree_type != TreeType::Contract {
+            errors.append(&mut disallow_impure_functions(&declarations, &mains));
+        }
+
+        // Perform other validation based on the tree type.
         let typed_parse_tree = match tree_type {
             TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
@@ -239,4 +245,28 @@ impl<'sc> TypedParseTree<'sc> {
 
         ok(typed_parse_tree, warnings, errors)
     }
+}
+
+fn disallow_impure_functions<'sc>(
+    declarations: &[TypedDeclaration<'sc>],
+    mains: &[TypedFunctionDeclaration<'sc>],
+) -> Vec<CompileError<'sc>> {
+    let fn_decls = declarations
+        .iter()
+        .filter_map(|decl| match decl {
+            TypedDeclaration::FunctionDeclaration(decl) => Some(decl),
+            _ => None,
+        })
+        .chain(mains);
+    fn_decls
+        .filter_map(|TypedFunctionDeclaration { purity, name, .. }| {
+            if *purity == Purity::Impure {
+                Some(CompileError::ImpureInNonContract {
+                    span: name.span.clone(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect()
 }

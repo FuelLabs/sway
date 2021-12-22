@@ -26,28 +26,28 @@ pub enum FinalizedAsm<'sc> {
     Library,
 }
 impl<'sc> FinalizedAsm<'sc> {
-    pub(crate) fn to_bytecode(&mut self) -> CompileResult<'sc, Vec<u8>> {
+    pub(crate) fn to_bytecode_mut(&mut self) -> CompileResult<'sc, Vec<u8>> {
         use FinalizedAsm::*;
         match self {
             ContractAbi {
                 program_section,
                 ref mut data_section,
-            } => to_bytecode(program_section, data_section),
+            } => to_bytecode_mut(program_section, data_section),
             // libraries are not compiled to asm
             Library => ok(vec![], vec![], vec![]),
             ScriptMain {
                 program_section,
                 ref mut data_section,
-            } => to_bytecode(program_section, data_section),
+            } => to_bytecode_mut(program_section, data_section),
             PredicateMain {
                 program_section,
                 ref mut data_section,
-            } => to_bytecode(program_section, data_section),
+            } => to_bytecode_mut(program_section, data_section),
         }
     }
 }
 
-fn to_bytecode<'sc>(
+fn to_bytecode_mut<'sc>(
     program_section: &InstructionSet<'sc>,
     data_section: &mut DataSection<'sc>,
 ) -> CompileResult<'sc, Vec<u8>> {

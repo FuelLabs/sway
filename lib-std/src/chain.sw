@@ -53,14 +53,14 @@ pub fn panic(code: u64) {
 // TODO some safety checks on the input data? We are going to assume it is the right type for now.
 pub fn get_script_data<T>() -> T {
     asm(script_data_len, to_return, script_data_ptr, script_len, script_len_ptr: 376, script_data_len_ptr: 384) {
-        lw script_len script_len_ptr;
-        lw script_data_len script_data_len_ptr;
+        lw script_len script_len_ptr i0;
+        lw script_data_len script_data_len_ptr i0;
         // get the start of the script data
         // script_len + script_start
         add script_data_ptr script_len is;
         // allocate memory to copy script data into
-        mv to_return sp;
-        cfe script_data_len;
+        aloc script_data_len;
+        move to_return sp;
         // copy script data into above buffer
         mcp to_return script_data_ptr script_data_len;
         to_return: T

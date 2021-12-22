@@ -41,9 +41,11 @@ impl std::convert::From<&str> for ControlFlowGraphEdge {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 pub enum ControlFlowGraphNode<'sc> {
     OrganizationalDominator(String),
+    #[allow(clippy::large_enum_variant)]
     ProgramNode(TypedAstNode<'sc>),
     EnumVariant {
         span: Span<'sc>,

@@ -1,0 +1,5 @@
+[project]
+author  = "Alexander Hansen"
+license = "MIT"
+name = "storage_declaration"
+entry = "main.sw"

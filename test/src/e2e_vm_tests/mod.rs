@@ -68,7 +68,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
         ("block_height", ProgramState::Return(1)),   // true
-        ("use_full_path_names", ProgramState::Return(1))
+        ("use_full_path_names", ProgramState::Return(1)),
+        ("valid_impurity", ProgramState::Return(0)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
@@ -85,7 +86,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "asm_should_not_have_return",
         "missing_fn_arguments",
         "excess_fn_arguments",
-        // TEMPORARILY DISABLED DUE TO OOM "infinite_dependencies",
+        // the feature for the below test, detecting inf deps, was reverted
+        // when that is re-implemented we should reenable this test
+        //"infinite_dependencies",
         "top_level_vars",
         "dependency_parsing_error",
         "disallowed_gm",
@@ -94,6 +97,11 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "unify_identical_unknowns",
         "array_oob",
         "array_bad_index",
+        "pure_calls_impure",
+        "nested_impure",
+        "predicate_calls_impure",
+        "script_calls_impure",
+        "contract_pure_calls_impure",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
