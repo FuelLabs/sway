@@ -372,7 +372,7 @@ impl<'sc> Dependencies<'sc> {
                 ..
             } => {
                 self.deps.insert(DependentSymbol::Symbol(
-                    struct_name.primary_name.to_string(),
+                    struct_name.suffix.primary_name.to_string(),
                 ));
                 self.gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)

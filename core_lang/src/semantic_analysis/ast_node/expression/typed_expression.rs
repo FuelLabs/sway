@@ -940,7 +940,7 @@ impl<'sc> TypedExpression<'sc> {
     #[allow(clippy::too_many_arguments)]
     fn type_check_struct_expression<'n>(
         span: Span<'sc>,
-        struct_name: Ident<'sc>,
+        call_path: CallPath<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
         namespace: &mut Namespace<'sc>,
         crate_namespace: Option<&'n Namespace<'sc>>,
@@ -952,26 +952,36 @@ impl<'sc> TypedExpression<'sc> {
     ) -> CompileResult<'sc, TypedExpression<'sc>> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let module_result = namespace
+            .find_module_relative(&call_path.prefixes)
+            .ok(&mut warnings, &mut errors);
         let mut typed_fields_buf = vec![];
-
-        let definition: TypedStructDeclaration =
-            match namespace.clone().get_symbol(&struct_name).value {
+        let definition = match module_result {
+            Some(module) => match module.clone().get_symbol(&call_path.suffix).value {
                 Some(TypedDeclaration::StructDeclaration(st)) => st.clone(),
                 Some(_) => {
                     errors.push(CompileError::DeclaredNonStructAsStruct {
-                        name: struct_name.primary_name,
+                        name: call_path.suffix.primary_name,
                         span: span.clone(),
                     });
                     return err(warnings, errors);
                 }
                 None => {
                     errors.push(CompileError::StructNotFound {
-                        name: struct_name.primary_name,
+                        name: call_path.suffix.primary_name,
                         span: span.clone(),
                     });
                     return err(warnings, errors);
                 }
-            };
+            },
+            None => {
+                errors.push(CompileError::StructNotFound {
+                    name: call_path.suffix.primary_name,
+                    span: span.clone(),
+                });
+                return err(warnings, errors);
+            }
+        };
         // if this is a generic struct, i.e. it has some type
         // parameters, monomorphize it before unifying the
         // types

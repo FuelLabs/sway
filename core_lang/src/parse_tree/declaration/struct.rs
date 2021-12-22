@@ -82,6 +82,7 @@ impl<'sc> StructDeclaration<'sc> {
             span: name.as_span(),
             path,
         };
+
         let name = check!(
             Ident::parse_from_pair(name, config),
             return err(warnings, errors),

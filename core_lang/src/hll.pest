@@ -100,7 +100,8 @@ match_condition  =  {expr|"_"}
 
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
-struct_expression  =  {struct_name ~ "{" ~ struct_expr_fields ~ "}"}
+struct_expression  =  {struct_exp_name ~ "{" ~ struct_expr_fields ~ "}"}
+struct_exp_name    =  {ident ~ (path_separator ~ ident)*}
 struct_expr_fields =  {(struct_field_name ~ ":" ~ expr ~ ("," ~ struct_field_name ~ ":" ~ expr)* ~ ","?)?}
 array_exp          =  {"[" ~ array_elems?  ~ "]"}
 // Strictly speaking the [val; count] initialiser for a static array can have any constant expression
@@ -127,9 +128,7 @@ struct_decl       =  {visibility ~ struct_keyword ~ struct_name ~ type_params? ~
 storage_decl      =  {storage_keyword ~ "{" ~ storage_fields ~ "}"}
 storage_fields    =  {storage_field ~ ("," ~ storage_field)* ~ ","?}
 storage_field     =  {ident ~ ":" ~ type_name ~ assign ~ expr}
-struct_name       =  {ident|struct_name_full}
-struct_name_full  =  {path_separator ~ struct_name_path}
-struct_name_path  =  {ident ~ (path_separator ~ ident)*}
+struct_name       =  {ident}
 struct_fields     =  {(struct_field_name ~ ":" ~ type_name ~ ("," ~ struct_field_name ~ ":" ~ type_name)* ~ ","?)?}
 struct_field_name =  {ident}
 // // enum declaration

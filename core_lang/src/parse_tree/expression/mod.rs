@@ -56,7 +56,7 @@ pub enum Expression<'sc> {
         span: Span<'sc>,
     },
     StructExpression {
-        struct_name: Ident<'sc>,
+        struct_name: CallPath<'sc>,
         fields: Vec<StructExpressionField<'sc>>,
         span: Span<'sc>,
     },
@@ -417,7 +417,7 @@ impl<'sc> Expression<'sc> {
                 let mut expr_iter = expr.into_inner();
                 let struct_name = expr_iter.next().unwrap();
                 let struct_name = check!(
-                    Ident::parse_from_pair(struct_name, config),
+                    CallPath::parse_from_pair(struct_name, config),
                     return err(warnings, errors),
                     warnings,
                     errors
