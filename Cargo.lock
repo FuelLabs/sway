@@ -987,7 +987,6 @@ dependencies = [
  "flate2",
  "fuel-asm",
  "fuel-gql-client",
- "fuel-pest",
  "fuel-tx",
  "fuel-vm",
  "futures",
@@ -1090,15 +1089,6 @@ dependencies = [
  "lazy_static 1.4.0",
  "sha2",
  "thiserror",
-]
-
-[[package]]
-name = "fuel-pest"
-version = "3.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad75583f2354bfc3bc533fae660e6510e8149e413382dee78e42d77236e5773c"
-dependencies = [
- "ucd-trie",
 ]
 
 [[package]]
@@ -2910,7 +2900,6 @@ name = "sway-server"
 version = "0.1.9"
 dependencies = [
  "dashmap",
- "fuel-pest",
  "lspower",
  "ropey",
  "serde_json",
