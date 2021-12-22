@@ -102,7 +102,7 @@ impl TypedAsmRegisterDeclaration {
     }
 }
 
-impl<'sc> TypedExpressionVariant {
+impl TypedExpressionVariant {
     pub(crate) fn pretty_print(&self) -> String {
         match self {
             TypedExpressionVariant::Literal(lit) => format!(

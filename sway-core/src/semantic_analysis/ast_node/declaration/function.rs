@@ -33,7 +33,7 @@ pub struct TypedFunctionDeclaration {
     pub(crate) purity: Purity,
 }
 
-impl<'sc> TypedFunctionDeclaration {
+impl TypedFunctionDeclaration {
     pub fn type_check(
         arguments: TypeCheckArguments<'_, FunctionDeclaration>,
     ) -> CompileResult<TypedFunctionDeclaration> {

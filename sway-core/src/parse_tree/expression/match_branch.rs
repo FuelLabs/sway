@@ -16,7 +16,7 @@ pub struct MatchBranch {
     pub(crate) span: span::Span,
 }
 
-impl<'sc> MatchBranch {
+impl MatchBranch {
     pub fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

@@ -6,7 +6,7 @@ pub(crate) struct TypedWhileLoop {
     pub(crate) body: TypedCodeBlock,
 }
 
-impl<'sc> TypedWhileLoop {
+impl TypedWhileLoop {
     pub(crate) fn pretty_print(&self) -> String {
         format!("while loop on {}", self.condition.pretty_print())
     }

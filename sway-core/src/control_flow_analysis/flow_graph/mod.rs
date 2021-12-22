@@ -61,7 +61,7 @@ pub enum ControlFlowGraphNode {
     },
 }
 
-impl<'sc> std::fmt::Debug for ControlFlowGraphNode {
+impl std::fmt::Debug for ControlFlowGraphNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
@@ -85,13 +85,13 @@ impl<'sc> std::fmt::Debug for ControlFlowGraphNode {
     }
 }
 
-impl<'sc> std::convert::From<&TypedAstNode> for ControlFlowGraphNode {
+impl std::convert::From<&TypedAstNode> for ControlFlowGraphNode {
     fn from(other: &TypedAstNode) -> Self {
         ControlFlowGraphNode::ProgramNode(other.clone())
     }
 }
 
-impl<'sc> std::convert::From<&TypedEnumVariant> for ControlFlowGraphNode {
+impl std::convert::From<&TypedEnumVariant> for ControlFlowGraphNode {
     fn from(other: &TypedEnumVariant) -> Self {
         ControlFlowGraphNode::EnumVariant {
             variant_name: other.name.as_str().to_string(),
@@ -100,7 +100,7 @@ impl<'sc> std::convert::From<&TypedEnumVariant> for ControlFlowGraphNode {
     }
 }
 
-impl<'sc> std::convert::From<&TypedStructField> for ControlFlowGraphNode {
+impl std::convert::From<&TypedStructField> for ControlFlowGraphNode {
     fn from(other: &TypedStructField) -> Self {
         ControlFlowGraphNode::StructField {
             struct_field_name: other.name.clone(),
@@ -120,7 +120,7 @@ impl std::convert::From<&str> for ControlFlowGraphNode {
     }
 }
 
-impl<'sc> ControlFlowGraph {
+impl ControlFlowGraph {
     pub(crate) fn add_edge_from_entry(&mut self, to: NodeIndex, label: ControlFlowGraphEdge) {
         for entry in &self.entry_points {
             self.graph.add_edge(*entry, to, label.clone());

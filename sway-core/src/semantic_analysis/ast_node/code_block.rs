@@ -9,7 +9,7 @@ pub(crate) struct TypedCodeBlock {
 }
 
 #[allow(clippy::too_many_arguments)]
-impl<'sc> TypedCodeBlock {
+impl TypedCodeBlock {
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, CodeBlock>,
     ) -> CompileResult<(Self, TypeId)> {

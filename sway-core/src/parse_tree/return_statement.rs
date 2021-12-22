@@ -10,7 +10,7 @@ pub struct ReturnStatement {
     pub expr: Expression,
 }
 
-impl<'sc> ReturnStatement {
+impl ReturnStatement {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

@@ -25,7 +25,7 @@ pub enum Literal {
     B256([u8; 32]),
 }
 
-impl<'sc> Literal {
+impl Literal {
     #[allow(dead_code)]
     pub(crate) fn as_type(&self) -> ResolvedType {
         use Literal::*;

@@ -17,7 +17,7 @@ pub struct TraitDeclaration {
     pub visibility: Visibility,
 }
 
-impl<'sc> TraitDeclaration {
+impl TraitDeclaration {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
@@ -120,7 +120,7 @@ pub(crate) struct TraitFn {
     pub(crate) return_type_span: Span,
 }
 
-impl<'sc> TraitFn {
+impl TraitFn {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

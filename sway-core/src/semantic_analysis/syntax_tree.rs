@@ -46,7 +46,7 @@ pub enum TypedParseTree {
     },
 }
 
-impl<'sc> TypedParseTree {
+impl TypedParseTree {
     /// The `all_nodes` field in the AST variants is used to perform control flow and return flow
     /// analysis, while the direct copies of the declarations and main functions are used to create
     /// the ASM.

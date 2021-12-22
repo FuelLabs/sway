@@ -12,7 +12,7 @@ pub struct CallPath {
     pub suffix: Ident,
 }
 
-impl<'sc> std::convert::From<Ident> for CallPath {
+impl std::convert::From<Ident> for CallPath {
     fn from(other: Ident) -> Self {
         CallPath {
             prefixes: vec![],
@@ -39,7 +39,7 @@ impl CallPath {
         }
     }
 }
-impl<'sc> CallPath {
+impl CallPath {
     pub(crate) fn span(&self) -> Span {
         if self.prefixes.is_empty() {
             self.suffix.span().clone()

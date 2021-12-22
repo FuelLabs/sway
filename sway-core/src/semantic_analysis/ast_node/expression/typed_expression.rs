@@ -32,7 +32,7 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 }
 
 #[allow(clippy::too_many_arguments)]
-impl<'sc> TypedExpression {
+impl TypedExpression {
     pub(crate) fn type_check(
         arguments: TypeCheckArguments<'_, Expression>,
     ) -> CompileResult<Self> {
@@ -1750,7 +1750,7 @@ impl<'sc> TypedExpression {
 mod tests {
     use super::*;
 
-    fn do_type_check<'sc>(
+    fn do_type_check(
         expr: Expression,
         type_annotation: TypeId,
     ) -> CompileResult<TypedExpression> {
@@ -1781,7 +1781,7 @@ mod tests {
         })
     }
 
-    fn do_type_check_for_boolx2<'sc>(expr: Expression) -> CompileResult<TypedExpression> {
+    fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<TypedExpression> {
         do_type_check(
             expr,
             insert_type(TypeInfo::Array(insert_type(TypeInfo::Boolean), 2)),
@@ -1789,7 +1789,7 @@ mod tests {
     }
 
     #[test]
-    fn test_array_type_check_non_homogeneous_0<'sc>() {
+    fn test_array_type_check_non_homogeneous_0() {
         let empty_span = Span {
             span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
@@ -1822,7 +1822,7 @@ mod tests {
     }
 
     #[test]
-    fn test_array_type_check_non_homogeneous_1<'sc>() {
+    fn test_array_type_check_non_homogeneous_1() {
         let empty_span = Span {
             span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
@@ -1862,7 +1862,7 @@ mod tests {
     }
 
     #[test]
-    fn test_array_type_check_bad_count<'sc>() {
+    fn test_array_type_check_bad_count() {
         let empty_span = Span {
             span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
@@ -1899,7 +1899,7 @@ mod tests {
     }
 
     #[test]
-    fn test_array_type_check_empty<'sc>() {
+    fn test_array_type_check_empty() {
         let empty_span = Span {
             span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,

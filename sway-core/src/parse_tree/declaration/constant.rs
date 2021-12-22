@@ -16,7 +16,7 @@ pub struct ConstantDeclaration {
     pub visibility: Visibility,
 }
 
-impl<'sc> ConstantDeclaration {
+impl ConstantDeclaration {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

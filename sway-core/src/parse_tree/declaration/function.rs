@@ -24,7 +24,7 @@ pub struct FunctionDeclaration {
     pub(crate) return_type_span: Span,
 }
 
-impl<'sc> FunctionDeclaration {
+impl FunctionDeclaration {
     pub fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
@@ -234,7 +234,7 @@ pub(crate) struct FunctionParameter {
     pub(crate) type_span: Span,
 }
 
-impl<'sc> FunctionParameter {
+impl FunctionParameter {
     pub(crate) fn list_from_pairs(
         pairs: impl Iterator<Item = Pair<Rule>>,
         config: Option<&BuildConfig>,

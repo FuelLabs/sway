@@ -97,7 +97,7 @@ pub enum AstNodeContent {
     IncludeStatement(IncludeStatement),
 }
 
-impl<'sc> ParseTree {
+impl ParseTree {
     /// Create a new, empty, [ParseTree] from a span which represents the source code that it will
     /// cover.
     pub(crate) fn new(span: span::Span) -> Self {
@@ -113,11 +113,7 @@ impl<'sc> ParseTree {
     }
 }
 
-/// Given an input `str` and an optional [BuildConfig], parse the input into a [HllParseTree].
-///
-/// Here, the `'sc` lifetime is introduced to the compilation process. It stands for _source code_,
-/// and all references to `'sc` in the compiler refer to the lifetime of the original source input
-/// `str`.
+/// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [HllParseTree].
 ///
 /// # Example
 /// ```

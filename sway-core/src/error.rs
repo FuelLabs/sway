@@ -83,7 +83,7 @@ pub struct CompileResult<T> {
     pub errors: Vec<CompileError>,
 }
 
-impl<'sc, T> From<Result<T, TypeError>> for CompileResult<T> {
+impl<T> From<Result<T, TypeError>> for CompileResult<T> {
     fn from(o: Result<T, TypeError>) -> Self {
         match o {
             Ok(o) => CompileResult {
@@ -100,7 +100,7 @@ impl<'sc, T> From<Result<T, TypeError>> for CompileResult<T> {
     }
 }
 
-impl<'sc, T> CompileResult<T> {
+impl<T> CompileResult<T> {
     pub fn ok(
         mut self,
         warnings: &mut Vec<CompileWarning>,
@@ -173,7 +173,7 @@ impl From<(usize, usize)> for LineCol {
     }
 }
 
-impl<'sc> CompileWarning {
+impl CompileWarning {
     pub fn to_friendly_warning_string(&self) -> String {
         self.warning_content.to_string()
     }
@@ -277,7 +277,7 @@ pub enum Warning {
     },
 }
 
-impl<'sc> fmt::Display for Warning {
+impl fmt::Display for Warning {
     // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Warning::*;
@@ -844,7 +844,7 @@ pub enum CompileError {
     IntegerContainsInvalidDigit { span: Span, ty: String },
 }
 
-impl<'sc> std::convert::From<TypeError> for CompileError {
+impl std::convert::From<TypeError> for CompileError {
     fn from(other: TypeError) -> CompileError {
         CompileError::TypeError(other)
     }
@@ -868,7 +868,7 @@ pub enum TypeError {
     UnknownType { span: Span },
 }
 
-impl<'sc> TypeError {
+impl TypeError {
     pub(crate) fn internal_span(&self) -> &Span {
         use TypeError::*;
         match self {
@@ -878,7 +878,7 @@ impl<'sc> TypeError {
     }
 }
 
-impl<'sc> CompileError {
+impl CompileError {
     pub fn to_friendly_error_string(&self) -> String {
         match self {
             CompileError::ParseFailure { err, .. } => format!(

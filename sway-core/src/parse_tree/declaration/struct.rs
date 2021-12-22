@@ -23,7 +23,7 @@ pub(crate) struct StructField {
     pub(crate) type_span: Span,
 }
 
-impl<'sc> StructDeclaration {
+impl StructDeclaration {
     pub(crate) fn parse_from_pair(
         decl: Pair<Rule>,
         config: Option<&BuildConfig>,
@@ -109,7 +109,7 @@ impl<'sc> StructDeclaration {
     }
 }
 
-impl<'sc> StructField {
+impl StructField {
     pub(crate) fn parse_from_pairs(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

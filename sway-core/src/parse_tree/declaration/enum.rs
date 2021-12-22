@@ -33,7 +33,7 @@ pub(crate) struct EnumVariant {
     pub(crate) span: Span,
 }
 
-impl<'sc> EnumDeclaration {
+impl EnumDeclaration {
     /// Looks up the various TypeInfos in the [Namespace] to see if they are generic or refer to
     /// something.
     pub(crate) fn to_typed_decl(
@@ -150,7 +150,7 @@ impl<'sc> EnumDeclaration {
     }
 }
 
-impl<'sc> EnumVariant {
+impl EnumVariant {
     pub(crate) fn to_typed_decl(
         &self,
         namespace: &mut Namespace,

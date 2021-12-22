@@ -22,7 +22,7 @@ pub struct UseStatement {
     pub(crate) alias: Option<Ident>,
 }
 
-impl<'sc> UseStatement {
+impl UseStatement {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

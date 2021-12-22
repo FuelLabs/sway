@@ -15,7 +15,7 @@ pub struct Reassignment {
     pub(crate) span: Span,
 }
 
-impl<'sc> Reassignment {
+impl Reassignment {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

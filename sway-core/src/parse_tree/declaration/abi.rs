@@ -19,7 +19,7 @@ pub struct AbiDeclaration {
     pub(crate) span: Span,
 }
 
-impl<'sc> AbiDeclaration {
+impl AbiDeclaration {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

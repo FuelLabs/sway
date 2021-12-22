@@ -11,7 +11,7 @@ pub(crate) struct TypeParameter {
     pub(crate) trait_constraints: Vec<TraitConstraint>,
 }
 
-impl<'sc> From<&TypeParameter> for TypedDeclaration {
+impl From<&TypeParameter> for TypedDeclaration {
     fn from(n: &TypeParameter) -> Self {
         TypedDeclaration::GenericTypeForFunctionScope {
             name: n.name_ident.clone(),
@@ -19,7 +19,7 @@ impl<'sc> From<&TypeParameter> for TypedDeclaration {
     }
 }
 
-impl<'sc> TypeParameter {
+impl TypeParameter {
     pub(crate) fn parse_from_type_params_and_where_clause(
         type_params_pair: Option<Pair<Rule>>,
         where_clause_pair: Option<Pair<Rule>>,

@@ -40,7 +40,7 @@ pub struct ControlFlowNamespace {
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
 }
 
-impl<'sc> ControlFlowNamespace {
+impl ControlFlowNamespace {
     pub(crate) fn get_function(&self, ident: &Ident) -> Option<&FunctionNamespaceEntry> {
         self.function_namespace.get(ident)
     }

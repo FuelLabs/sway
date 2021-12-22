@@ -47,7 +47,7 @@ impl Default for ResolvedType {
     }
 }
 
-impl<'sc> ResolvedType {
+impl ResolvedType {
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     /// This is _in words_!
     pub(crate) fn stack_size_of(&self) -> u64 {

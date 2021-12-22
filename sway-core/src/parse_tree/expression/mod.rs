@@ -193,7 +193,7 @@ pub struct StructExpressionField {
     pub(crate) span: Span,
 }
 
-impl<'sc> Expression {
+impl Expression {
     pub(crate) fn core_ops_eq(arguments: Vec<Expression>, span: Span) -> Expression {
         Expression::MethodApplication {
             method_name: MethodName::FromType {
@@ -1276,6 +1276,7 @@ impl Op {
         Ident::new_with_override(self.op_variant.as_str(), self.span.clone())
     }
 }
+
 #[derive(Debug)]
 pub enum OpVariant {
     Add,

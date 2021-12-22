@@ -22,7 +22,7 @@ pub struct StorageField {
     pub initializer: Expression,
 }
 
-impl<'sc> StorageField {
+impl StorageField {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         conf: Option<&BuildConfig>,
@@ -64,7 +64,7 @@ impl<'sc> StorageField {
     }
 }
 
-impl<'sc> StorageDeclaration {
+impl StorageDeclaration {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

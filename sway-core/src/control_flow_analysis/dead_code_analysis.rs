@@ -19,7 +19,7 @@ use crate::{
 use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
 
-impl<'sc> ControlFlowGraph {
+impl ControlFlowGraph {
     pub(crate) fn find_dead_code(&self) -> Vec<CompileWarning> {
         // dead code is code that has no path to the entry point
         let mut dead_nodes = vec![];

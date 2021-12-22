@@ -15,7 +15,7 @@ pub enum MethodName {
     FromModule { method_name: Ident },
 }
 
-impl<'sc> MethodName {
+impl MethodName {
     /// To be used for error messages and debug strings
     pub(crate) fn easy_name(&self) -> Ident {
         match self {

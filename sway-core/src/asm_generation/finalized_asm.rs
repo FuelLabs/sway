@@ -25,7 +25,7 @@ pub enum FinalizedAsm {
     // Libraries do not generate any asm.
     Library,
 }
-impl<'sc> FinalizedAsm {
+impl FinalizedAsm {
     pub(crate) fn to_bytecode_mut(&mut self) -> CompileResult<Vec<u8>> {
         use FinalizedAsm::*;
         match self {

@@ -15,7 +15,7 @@ pub struct CodeBlock {
     pub(crate) whole_block_span: Span,
 }
 
-impl<'sc> CodeBlock {
+impl CodeBlock {
     pub(crate) fn parse_from_pair(
         block: Pair<Rule>,
         config: Option<&BuildConfig>,

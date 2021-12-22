@@ -138,7 +138,7 @@ pub struct InstructionSet {
 }
 
 type Data = Literal;
-impl<'sc> AbstractInstructionSet {
+impl AbstractInstructionSet {
     /// Removes any jumps that jump to the subsequent line
     fn remove_sequential_jumps(&self) -> AbstractInstructionSet {
         let mut buf = vec![];
@@ -371,7 +371,7 @@ pub struct DataSection {
     pub value_pairs: Vec<Data>,
 }
 
-impl<'sc> DataSection {
+impl DataSection {
     /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
     pub(crate) fn offset_to_id(&self, id: &DataId) -> usize {
@@ -493,7 +493,7 @@ impl fmt::Display for JumpOptimizedAsmSet {
     }
 }
 
-impl<'sc> fmt::Display for RegisterAllocatedAsmSet {
+impl fmt::Display for RegisterAllocatedAsmSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             RegisterAllocatedAsmSet::ScriptMain {
@@ -520,7 +520,7 @@ impl<'sc> fmt::Display for RegisterAllocatedAsmSet {
     }
 }
 
-impl<'sc> fmt::Display for FinalizedAsm {
+impl fmt::Display for FinalizedAsm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FinalizedAsm::ScriptMain {
@@ -555,7 +555,7 @@ impl fmt::Display for AbstractInstructionSet {
     }
 }
 
-impl<'sc> fmt::Display for InstructionSet {
+impl fmt::Display for InstructionSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -585,7 +585,7 @@ impl fmt::Display for DataId {
     }
 }
 
-impl<'sc> AsmNamespace {
+impl AsmNamespace {
     pub(crate) fn insert_variable(
         &mut self,
         var_name: Ident,
@@ -789,7 +789,7 @@ pub(crate) fn compile_ast_to_asm(
     ok(finalized_asm, warnings, errors)
 }
 
-impl<'sc> HllAsmSet {
+impl HllAsmSet {
     pub(crate) fn remove_unnecessary_jumps(self) -> JumpOptimizedAsmSet {
         match self {
             HllAsmSet::ScriptMain {
@@ -818,7 +818,7 @@ impl<'sc> HllAsmSet {
     }
 }
 
-impl<'sc> JumpOptimizedAsmSet {
+impl JumpOptimizedAsmSet {
     fn allocate_registers(self, namespace: &AsmNamespace) -> RegisterAllocatedAsmSet {
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
@@ -894,7 +894,7 @@ pub enum RegisterAllocatedAsmSet {
     Library,
 }
 
-impl<'sc> RegisterAllocatedAsmSet {
+impl RegisterAllocatedAsmSet {
     fn optimize(self) -> FinalizedAsm {
         // TODO implement this -- noop for now
         match self {
@@ -1279,16 +1279,16 @@ fn add_module_constant_decls(
 /// The function selector value and corresponding label.
 type JumpDestination = Vec<([u8; 4], Label)>;
 /// A vector of opcodes representing the body of a contract ABI function.
-type AbiFunctionOpcodeBuffer<'sc> = Vec<Op>;
+type AbiFunctionOpcodeBuffer = Vec<Op>;
 /// The function selector information and compiled body of a contract ABI function.
-type SerializedAbiFunction<'sc> = (JumpDestination, AbiFunctionOpcodeBuffer<'sc>);
+type SerializedAbiFunction = (JumpDestination, AbiFunctionOpcodeBuffer);
 
 /// Given a contract's abi entries, compile them to jump destinations and an opcode buffer.
-fn compile_contract_to_selectors<'sc>(
+fn compile_contract_to_selectors(
     abi_entries: Vec<TypedFunctionDeclaration>,
     namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<SerializedAbiFunction<'sc>> {
+) -> CompileResult<SerializedAbiFunction> {
     let mut warnings = vec![];
     let mut errors = vec![];
     // for every ABI function, we need:

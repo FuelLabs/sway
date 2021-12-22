@@ -36,7 +36,7 @@ pub struct Namespace {
     use_aliases: HashMap<String, Ident>,
 }
 
-impl<'sc> Namespace {
+impl Namespace {
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &TypedDeclaration> {
         self.symbols.values()
     }

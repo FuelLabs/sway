@@ -61,7 +61,7 @@ pub struct TypedAstNode {
     pub(crate) span: Span,
 }
 
-impl<'sc> std::fmt::Debug for TypedAstNode {
+impl std::fmt::Debug for TypedAstNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TypedAstNodeContent::*;
         let text = match &self.content {
@@ -78,7 +78,7 @@ impl<'sc> std::fmt::Debug for TypedAstNode {
     }
 }
 
-impl<'sc> TypedAstNode {
+impl TypedAstNode {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         match self.content {
             TypedAstNodeContent::ReturnStatement(ref mut ret_stmt) => {

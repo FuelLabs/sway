@@ -14,7 +14,7 @@ pub struct WhileLoop {
     pub(crate) body: CodeBlock,
 }
 
-impl<'sc> WhileLoop {
+impl WhileLoop {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

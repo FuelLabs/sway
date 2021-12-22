@@ -18,7 +18,7 @@ use crate::type_engine::{resolve_type, TypeInfo};
 use crate::{error::*, semantic_analysis::TypedParseTree};
 use petgraph::prelude::NodeIndex;
 
-impl<'sc> ControlFlowGraph {
+impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(ast: &TypedParseTree) -> Self {
         let mut graph = ControlFlowGraph {
             graph: Graph::new(),

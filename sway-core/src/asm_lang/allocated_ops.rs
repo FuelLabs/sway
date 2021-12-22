@@ -168,7 +168,7 @@ pub(crate) struct AllocatedOp {
     pub(crate) owning_span: Option<Span>,
 }
 
-impl<'sc> fmt::Display for AllocatedOp {
+impl fmt::Display for AllocatedOp {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use AllocatedOpcode::*;
         #[rustfmt::skip]
@@ -268,7 +268,7 @@ impl<'sc> fmt::Display for AllocatedOp {
 
 type DoubleWideData = [u8; 8];
 
-impl<'sc> AllocatedOp {
+impl AllocatedOp {
     pub(crate) fn to_fuel_asm(
         &self,
         offset_to_data_section: u64,

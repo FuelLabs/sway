@@ -17,7 +17,7 @@ pub struct AsmExpression {
     pub(crate) whole_block_span: Span,
 }
 
-impl<'sc> AsmExpression {
+impl AsmExpression {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
@@ -110,7 +110,7 @@ pub(crate) struct AsmRegister {
     pub(crate) name: String,
 }
 
-impl<'sc> AsmRegister {
+impl AsmRegister {
     fn parse_from_pair(pair: Pair<Rule>) -> CompileResult<Self> {
         ok(
             AsmRegister {
@@ -128,7 +128,7 @@ impl From<AsmRegister> for String {
     }
 }
 
-impl<'sc> AsmOp {
+impl AsmOp {
     fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
@@ -190,7 +190,7 @@ pub(crate) struct AsmRegisterDeclaration {
     pub(crate) initializer: Option<Expression>,
 }
 
-impl<'sc> AsmRegisterDeclaration {
+impl AsmRegisterDeclaration {
     fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,

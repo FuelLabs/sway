@@ -60,7 +60,7 @@ impl TypedDeclaration {
     }
 }
 
-impl<'sc> TypedDeclaration {
+impl TypedDeclaration {
     /// friendly name string used for error reporting.
     pub(crate) fn friendly_name(&self) -> &'static str {
         use TypedDeclaration::*;
@@ -221,7 +221,7 @@ pub struct TypedStructDeclaration {
     pub(crate) visibility: Visibility,
 }
 
-impl<'sc> TypedStructDeclaration {
+impl TypedStructDeclaration {
     pub(crate) fn monomorphize(&self) -> Self {
         let mut new_decl = self.clone();
         let type_mapping = insert_type_parameters(&self.type_parameters);
@@ -423,7 +423,7 @@ pub struct ReassignmentLhs {
     pub(crate) r#type: TypeId,
 }
 
-impl<'sc> ReassignmentLhs {
+impl ReassignmentLhs {
     pub(crate) fn span(&self) -> Span {
         self.name.span().clone()
     }
@@ -454,7 +454,7 @@ impl TypedReassignment {
     }
 }
 
-impl<'sc> TypedTraitFn {
+impl TypedTraitFn {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.return_type = if let Some(matching_id) =
             look_up_type_id(self.return_type).matches_type_parameter(type_mapping)

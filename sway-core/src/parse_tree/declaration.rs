@@ -42,7 +42,7 @@ pub enum Declaration {
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
 }
-impl<'sc> Declaration {
+impl Declaration {
     pub(crate) fn parse_non_var_from_pair(
         decl: Pair<Rule>,
         config: Option<&BuildConfig>,

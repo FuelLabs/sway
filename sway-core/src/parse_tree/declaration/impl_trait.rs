@@ -33,7 +33,7 @@ pub struct ImplSelf {
     pub(crate) type_name_span: Span,
 }
 
-impl<'sc> ImplTrait {
+impl ImplTrait {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
@@ -121,7 +121,7 @@ impl<'sc> ImplTrait {
     }
 }
 
-impl<'sc> ImplSelf {
+impl ImplSelf {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
