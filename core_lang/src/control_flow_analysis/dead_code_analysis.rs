@@ -904,6 +904,18 @@ fn connect_expression<'sc>(
             )?;
             Ok([prefix_idx, index_idx].concat())
         }
+        EnumArgAccess { prefix, .. } => {
+            let prefix_idx = connect_expression(
+                &prefix.expression,
+                graph,
+                leaves,
+                exit_node,
+                "",
+                tree_type,
+                prefix.span.clone(),
+            )?;
+            Ok(prefix_idx)
+        }
         a => {
             println!("Unimplemented: {:?}", a);
             return Err(CompileError::Unimplemented(

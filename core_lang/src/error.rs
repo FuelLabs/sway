@@ -407,6 +407,8 @@ pub enum CompileError<'sc> {
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span<'sc>),
+    #[error("pattern matching algorithm failure on: {0}")]
+    PatternMatchingAlgorithmFailure(&'static str, Span<'sc>),
     #[error("{0}")]
     TypeError(TypeError<'sc>),
     #[error("Error parsing input: expected {err:?}")]
@@ -601,6 +603,12 @@ pub enum CompileError<'sc> {
     ModuleNotFound { span: Span<'sc>, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
     NotAStruct {
+        name: String,
+        span: Span<'sc>,
+        actually: String,
+    },
+    #[error("\"{name}\" is a {actually}, not an enum.")]
+    NotAnEnum {
         name: String,
         span: Span<'sc>,
         actually: String,
@@ -813,6 +821,12 @@ pub enum CompileError<'sc> {
         count: u64,
         span: Span<'sc>,
     },
+    #[error(
+        "Match expression arm has mismatched types.\n\
+         expected: {expected}\n\
+         "
+    )]
+    MatchWrongType { expected: TypeId, span: Span<'sc> },
     #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
     PureCalledImpure { span: Span<'sc> },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
@@ -1005,6 +1019,9 @@ impl<'sc> CompileError<'sc> {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
+            MatchWrongType { span, .. } => span,
+            NotAnEnum { span, .. } => span,
+            PatternMatchingAlgorithmFailure(_, span) => span,
             PureCalledImpure { span, .. } => span,
             ImpureInNonContract { span, .. } => span,
         }

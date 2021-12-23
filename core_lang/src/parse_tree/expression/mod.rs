@@ -1,9 +1,10 @@
 use crate::build_config::BuildConfig;
-use crate::error::*;
 use crate::parse_tree::{CallPath, Literal};
 use crate::Span;
+use crate::{error::*, AstNode, AstNodeContent, Declaration, VariableDeclaration};
 use crate::{parser::Rule, type_engine::TypeInfo};
 use crate::{CodeBlock, Ident};
+
 use either::Either;
 use pest;
 use pest::iterators::Pair;
@@ -12,13 +13,18 @@ use std::collections::VecDeque;
 mod asm;
 mod match_branch;
 mod match_condition;
+mod matcher;
 mod method_name;
+mod scrutinee;
 mod unary_op;
 use crate::utils::join_spans;
 pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
+pub(crate) use match_condition::CatchAll;
 pub(crate) use match_condition::MatchCondition;
+use matcher::matcher;
 pub(crate) use method_name::MethodName;
+pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
 pub(crate) use unary_op::UnaryOp;
 
 #[derive(Debug, Clone)]
@@ -128,6 +134,38 @@ pub enum Expression<'sc> {
         index: Box<Expression<'sc>>,
         span: Span<'sc>,
     },
+    /// This variant serves as a stand-in for parsing-level match expression desugaring.
+    /// Because types cannot be known at parsing-time, a desugared struct or enum gets
+    /// special cased into this variant. During type checking, this variant is removed
+    /// as is replaced with the corresponding field or argument access (given that the
+    /// expression inside of the delayed resolution has the appropriate struct or enum
+    /// type)
+    DelayedMatchTypeResolution {
+        variant: DelayedResolutionVariant<'sc>,
+        span: Span<'sc>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum DelayedResolutionVariant<'sc> {
+    StructField(DelayedStructFieldResolution<'sc>),
+    EnumVariant(DelayedEnumVariantResolution<'sc>),
+}
+
+/// During type checking, this gets replaced with struct field access.
+#[derive(Debug, Clone)]
+pub struct DelayedStructFieldResolution<'sc> {
+    pub exp: Box<Expression<'sc>>,
+    pub struct_name: Ident<'sc>,
+    pub field: Ident<'sc>,
+}
+
+/// During type checking, this gets replaced with enum arg access.
+#[derive(Debug, Clone)]
+pub struct DelayedEnumVariantResolution<'sc> {
+    pub exp: Box<Expression<'sc>>,
+    pub call_path: CallPath<'sc>,
+    pub arg_num: usize,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -154,6 +192,62 @@ pub struct StructExpressionField<'sc> {
 }
 
 impl<'sc> Expression<'sc> {
+    pub(crate) fn core_ops_eq(arguments: Vec<Expression<'sc>>, span: Span<'sc>) -> Expression<'sc> {
+        Expression::MethodApplication {
+            method_name: MethodName::FromType {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident {
+                            primary_name: "core",
+                            span: span.clone(),
+                        },
+                        Ident {
+                            primary_name: "ops",
+                            span: span.clone(),
+                        },
+                    ],
+                    suffix: Op {
+                        op_variant: OpVariant::Equals,
+                        span: span.clone(),
+                    }
+                    .to_var_name(),
+                },
+                type_name: None,
+                is_absolute: true,
+            },
+            arguments,
+            span,
+        }
+    }
+
+    pub(crate) fn core_ops(
+        op: Op<'sc>,
+        arguments: Vec<Expression<'sc>>,
+        span: Span<'sc>,
+    ) -> Expression<'sc> {
+        Expression::MethodApplication {
+            method_name: MethodName::FromType {
+                call_path: CallPath {
+                    prefixes: vec![
+                        Ident {
+                            primary_name: "core",
+                            span: span.clone(),
+                        },
+                        Ident {
+                            primary_name: "ops",
+                            span: span.clone(),
+                        },
+                    ],
+                    suffix: op.to_var_name(),
+                },
+                type_name: None,
+                is_absolute: true,
+            },
+            arguments,
+            span,
+        }
+    }
+
     pub(crate) fn span(&self) -> Span<'sc> {
         use Expression::*;
         (match self {
@@ -173,6 +267,7 @@ impl<'sc> Expression<'sc> {
             DelineatedPath { span, .. } => span,
             AbiCast { span, .. } => span,
             ArrayIndex { span, .. } => span,
+            DelayedMatchTypeResolution { span, .. } => span,
         })
         .clone()
     }
@@ -392,13 +487,12 @@ impl<'sc> Expression<'sc> {
                     warnings,
                     errors
                 );
-                let primary_expression = Box::new(primary_expression);
                 let mut branches = Vec::new();
                 for exp in expr_iter {
                     let res = check!(
                         MatchBranch::parse_from_pair(exp, config),
                         MatchBranch {
-                            condition: MatchCondition::CatchAll,
+                            condition: MatchCondition::CatchAll(CatchAll { span: span.clone() }),
                             result: Expression::Unit { span: span.clone() },
                             span: span.clone()
                         },
@@ -407,11 +501,13 @@ impl<'sc> Expression<'sc> {
                     );
                     branches.push(res);
                 }
-                Expression::MatchExpression {
-                    primary_expression,
-                    branches,
-                    span,
-                }
+                let exp = check!(
+                    desugar_match_expression(primary_expression, branches, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                exp
             }
             Rule::struct_expression => {
                 let mut expr_iter = expr.into_inner();
@@ -1132,13 +1228,13 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
 }
 
 #[derive(Debug)]
-struct Op<'sc> {
-    span: Span<'sc>,
-    op_variant: OpVariant,
+pub(crate) struct Op<'sc> {
+    pub span: Span<'sc>,
+    pub op_variant: OpVariant,
 }
 
 impl<'sc> Op<'sc> {
-    fn to_var_name(&self) -> Ident<'sc> {
+    pub fn to_var_name(&self) -> Ident<'sc> {
         Ident {
             primary_name: self.op_variant.as_str(),
             span: self.span.clone(),
@@ -1147,7 +1243,7 @@ impl<'sc> Op<'sc> {
     }
 }
 #[derive(Debug)]
-enum OpVariant {
+pub enum OpVariant {
     Add,
     Subtract,
     Divide,
@@ -1265,28 +1361,8 @@ fn arrange_by_order_of_operations<'sc>(
                             rhs: Box::new(rhs),
                             span: debug_span.clone(),
                         },
-                        _ => Expression::MethodApplication {
-                            method_name: MethodName::FromType {
-                                call_path: CallPath {
-                                    prefixes: vec![
-                                        Ident {
-                                            primary_name: "core",
-                                            span: new_op.span.clone(),
-                                        },
-                                        Ident {
-                                            primary_name: "ops",
-                                            span: new_op.span.clone(),
-                                        },
-                                    ],
-                                    suffix: new_op.to_var_name(),
-                                },
-                                type_name: None,
-                                is_absolute: true,
-                            },
-                            arguments: vec![lhs, rhs],
-                            span: debug_span.clone(),
-                        },
-                    });
+                        _ => Expression::core_ops(new_op, vec![lhs, rhs], debug_span.clone()),
+                    })
                 }
                 op_stack.push(op)
             }
@@ -1325,27 +1401,7 @@ fn arrange_by_order_of_operations<'sc>(
                 rhs: Box::new(rhs),
                 span,
             },
-            _ => Expression::MethodApplication {
-                method_name: MethodName::FromType {
-                    call_path: CallPath {
-                        prefixes: vec![
-                            Ident {
-                                primary_name: "core",
-                                span: op.span.clone(),
-                            },
-                            Ident {
-                                primary_name: "ops",
-                                span: op.span.clone(),
-                            },
-                        ],
-                        suffix: op.to_var_name(),
-                    },
-                    type_name: None,
-                    is_absolute: true,
-                },
-                arguments: vec![lhs.clone(), rhs.clone()],
-                span,
-            },
+            _ => Expression::core_ops(op, vec![lhs.clone(), rhs.clone()], span),
         });
     }
 
@@ -1358,4 +1414,273 @@ fn arrange_by_order_of_operations<'sc>(
     }
 
     ok(expression_stack[0].clone(), warnings, errors)
+}
+
+struct MatchedBranch<'sc> {
+    result: Expression<'sc>,
+    match_req_map: Vec<(Expression<'sc>, Expression<'sc>)>,
+    match_impl_map: Vec<(Ident<'sc>, Expression<'sc>)>,
+    branch_span: Span<'sc>,
+}
+
+/// This algorithm desugars match expressions to if statements.
+///
+/// Given the following example:
+///
+/// ```ignore
+/// struct Point {
+///     x: u64,
+///     y: u64
+/// }
+///
+/// let p = Point {
+///     x: 42,
+///     y: 24
+/// };
+///
+/// match p {
+///     Point { x, y: 5 } => { x },
+///     Point { x, y: 24 } => { x },
+///     _ => 0
+/// }
+/// ```
+///
+/// The resulting if statement would look roughly like this:
+///
+/// ```ignore
+/// if y==5 {
+///     let x = 42;
+///     x
+/// } else if y==42 {
+///     let x = 42;
+///     x
+/// } else {
+///     0
+/// }
+/// ```
+///
+/// The steps of the algorithm can roughly be broken down into:
+///
+/// 1. Assemble the "matched branches."
+/// 2. Assemble the possibly nested giant if statement using the matched branches.
+///     2a. Assemble the conditional that goes in the if primary expression.
+///     2b. Assemble the statements that go inside of the body of the if expression
+///     2c. Assemble the giant if statement.
+/// 3. Return!
+pub fn desugar_match_expression<'sc>(
+    primary_expression: Expression<'sc>,
+    branches: Vec<MatchBranch<'sc>>,
+    _span: Span<'sc>,
+) -> CompileResult<'sc, Expression<'sc>> {
+    let mut errors = vec![];
+    let mut warnings = vec![];
+
+    // 1. Assemble the "matched branches."
+    let mut matched_branches = vec![];
+    for MatchBranch {
+        condition,
+        result,
+        span: branch_span,
+    } in branches.iter()
+    {
+        let matches = match condition {
+            MatchCondition::CatchAll(_) => Some((vec![], vec![])),
+            MatchCondition::Scrutinee(scrutinee) => check!(
+                matcher(&primary_expression, scrutinee),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+        };
+        match matches {
+            Some((match_req_map, match_impl_map)) => {
+                matched_branches.push(MatchedBranch {
+                    result: result.to_owned(),
+                    match_req_map,
+                    match_impl_map,
+                    branch_span: branch_span.to_owned(),
+                });
+            }
+            None => {
+                let errors = vec![CompileError::PatternMatchingAlgorithmFailure(
+                    "found None",
+                    branch_span.clone(),
+                )];
+                let exp = Expression::Unit {
+                    span: branch_span.clone(),
+                };
+                return ok(exp, vec![], errors);
+            }
+        }
+    }
+
+    // 2. Assemble the possibly nested giant if statement using the matched branches.
+    let mut if_statement = None;
+    for MatchedBranch {
+        result,
+        match_req_map,
+        match_impl_map,
+        branch_span,
+    } in matched_branches.iter().rev()
+    {
+        // 2a. Assemble the conditional that goes in the if primary expression.
+        let mut conditional = None;
+        for (left_req, right_req) in match_req_map.iter() {
+            let joined_span = join_spans(left_req.clone().span(), right_req.clone().span());
+            let condition = Expression::core_ops_eq(
+                vec![left_req.to_owned(), right_req.to_owned()],
+                joined_span,
+            );
+            match conditional {
+                None => {
+                    conditional = Some(condition);
+                }
+                Some(the_conditional) => {
+                    conditional = Some(Expression::LazyOperator {
+                        op: crate::LazyOp::And,
+                        lhs: Box::new(the_conditional.clone()),
+                        rhs: Box::new(condition.clone()),
+                        span: join_spans(the_conditional.span(), condition.span()),
+                    });
+                }
+            }
+        }
+
+        // 2b. Assemble the statements that go inside of the body of the if expression
+        let mut code_block_stmts = vec![];
+        let mut code_block_stmts_span = None;
+        for (left_impl, right_impl) in match_impl_map.iter() {
+            let decl = Declaration::VariableDeclaration(VariableDeclaration {
+                name: left_impl.clone(),
+                is_mutable: false,
+                body: right_impl.clone(),
+                type_ascription: TypeInfo::Unknown,
+                type_ascription_span: None,
+            });
+            let new_span = join_spans(left_impl.span.clone(), right_impl.span());
+            code_block_stmts.push(AstNode {
+                content: AstNodeContent::Declaration(decl),
+                span: new_span.clone(),
+            });
+            code_block_stmts_span = match code_block_stmts_span {
+                None => Some(new_span),
+                Some(old_span) => Some(join_spans(old_span, new_span)),
+            };
+        }
+        match result {
+            Expression::CodeBlock {
+                contents:
+                    CodeBlock {
+                        contents,
+                        whole_block_span,
+                    },
+                span: _,
+            } => {
+                let mut contents = contents.clone();
+                code_block_stmts.append(&mut contents);
+                code_block_stmts_span = match code_block_stmts_span {
+                    None => Some(whole_block_span.clone()),
+                    Some(old_span) => Some(join_spans(old_span, whole_block_span.clone())),
+                };
+            }
+            result => {
+                code_block_stmts.push(AstNode {
+                    content: AstNodeContent::Expression(result.clone()),
+                    span: result.span(),
+                });
+                code_block_stmts_span = match code_block_stmts_span {
+                    None => Some(result.span()),
+                    Some(old_span) => Some(join_spans(old_span, result.span())),
+                };
+            }
+        }
+        let code_block_stmts_span = match code_block_stmts_span {
+            None => branch_span.clone(),
+            Some(span) => span,
+        };
+        let code_block = Expression::CodeBlock {
+            contents: CodeBlock {
+                contents: code_block_stmts.clone(),
+                whole_block_span: code_block_stmts_span.clone(),
+            },
+            span: code_block_stmts_span,
+        };
+
+        // 2c. Assemble the giant if statement.
+        match if_statement {
+            None => {
+                if_statement = match conditional {
+                    None => Some(code_block),
+                    Some(conditional) => Some(Expression::IfExp {
+                        condition: Box::new(conditional.clone()),
+                        then: Box::new(code_block.clone()),
+                        r#else: None,
+                        span: join_spans(conditional.span(), code_block.span()),
+                    }),
+                };
+            }
+            Some(Expression::CodeBlock {
+                contents: right_block,
+                span: exp_span,
+            }) => {
+                let right = Expression::CodeBlock {
+                    contents: right_block,
+                    span: exp_span,
+                };
+                if_statement = match conditional {
+                    None => Some(Expression::IfExp {
+                        condition: Box::new(Expression::Literal {
+                            value: Literal::Boolean(true),
+                            span: branch_span.clone(),
+                        }),
+                        then: Box::new(code_block.clone()),
+                        r#else: Some(Box::new(right.clone())),
+                        span: join_spans(code_block.clone().span(), right.clone().span()),
+                    }),
+                    Some(the_conditional) => Some(Expression::IfExp {
+                        condition: Box::new(the_conditional),
+                        then: Box::new(code_block.clone()),
+                        r#else: Some(Box::new(right.clone())),
+                        span: join_spans(code_block.clone().span(), right.clone().span()),
+                    }),
+                };
+            }
+            Some(Expression::IfExp {
+                condition,
+                then,
+                r#else,
+                span: exp_span,
+            }) => {
+                if_statement = Some(Expression::IfExp {
+                    condition: Box::new(conditional.unwrap()),
+                    then: Box::new(code_block.clone()),
+                    r#else: Some(Box::new(Expression::IfExp {
+                        condition,
+                        then,
+                        r#else,
+                        span: exp_span.clone(),
+                    })),
+                    span: join_spans(code_block.clone().span(), exp_span),
+                });
+            }
+            Some(if_statement) => {
+                eprintln!("Unimplemented if_statement_pattern: {:?}", if_statement,);
+                errors.push(CompileError::Unimplemented(
+                    "this desugared if expression pattern is not implemented",
+                    if_statement.span(),
+                ));
+                // construct unit expression for error recovery
+                let exp = Expression::Unit {
+                    span: if_statement.span(),
+                };
+                return ok(exp, warnings, errors);
+            }
+        }
+    }
+
+    // 3. Return!
+    match if_statement {
+        None => err(vec![], vec![]),
+        Some(if_statement) => ok(if_statement, warnings, errors),
+    }
 }

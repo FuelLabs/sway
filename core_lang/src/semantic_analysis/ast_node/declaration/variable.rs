@@ -11,7 +11,7 @@ pub struct TypedVariableDeclaration<'sc> {
     pub(crate) type_ascription: TypeId,
 }
 
-impl TypedVariableDeclaration<'_> {
+impl<'sc> TypedVariableDeclaration<'sc> {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         if let Some(matching_id) =
             look_up_type_id(self.type_ascription).matches_type_parameter(type_mapping)

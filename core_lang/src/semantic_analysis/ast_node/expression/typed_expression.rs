@@ -93,13 +93,6 @@ impl<'sc> TypedExpression<'sc> {
                 },
                 span,
             ),
-            Expression::MatchExpression { span, .. } => {
-                let errors = vec![CompileError::Unimplemented(
-                    "Match expressions and pattern matching have not been implemented.",
-                    span,
-                )];
-                return err(vec![], errors);
-            }
             Expression::CodeBlock { contents, span, .. } => Self::type_check_code_block(
                 contents,
                 span,
@@ -269,7 +262,20 @@ impl<'sc> TypedExpression<'sc> {
                 },
                 span,
             ),
-            /* a => {
+            Expression::DelayedMatchTypeResolution { variant, span } => {
+                Self::type_check_delayed_resolution(
+                    variant,
+                    span,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    opts,
+                )
+            }
+            a => {
                 let errors = vec![CompileError::Unimplemented(
                     "Unimplemented expression",
                     a.span(),
@@ -277,7 +283,7 @@ impl<'sc> TypedExpression<'sc> {
 
                 let exp = error_recovery_expr(a.span());
                 ok(exp, vec![], errors)
-            } */
+            }
         };
         let mut typed_expression = match res.value {
             Some(r) => r,
@@ -620,64 +626,6 @@ impl<'sc> TypedExpression<'sc> {
         )
     }
 
-    pub fn type_check_match_expression() -> CompileResult<'sc, TypedExpression<'sc>> {
-        /*
-        let typed_primary_expression = check!(
-            TypedExpression::type_check(*primary_expression, &namespace, None, ""),
-            ERROR_RECOVERY_EXPR.clone(),
-            warnings,
-            errors
-        );
-        let first_branch_result = check!(
-            TypedExpression::type_check(
-                branches[0].result.clone(),
-                &namespace,
-                type_annotation.clone(),
-                help_text.clone()
-            ),
-            ERROR_RECOVERY_EXPR.clone(),
-            warnings,
-            errors
-        );
-
-        let first_branch_result = vec![first_branch_result];
-        // use type of first branch for annotation on the rest of the branches
-        // we checked the first branch separately just to get its return type for inferencing the rest
-        let mut rest_of_branches = branches
-            .into_iter()
-            .skip(1)
-            .map(
-                |MatchBranch {
-                        condition, result, ..
-                    }| {
-                    check!(
-                        TypedExpression::type_check(
-                            result,
-                            &namespace,
-                            Some(first_branch_result[0].return_type.clone()),
-                            "All branches of a match expression must be of the same type.",
-                        ),
-                        ERROR_RECOVERY_EXPR.clone(),
-                        warnings,
-                        errors
-                    )
-                },
-            )
-            .collect::<Vec<_>>();
-
-        let mut all_branches = first_branch_result;
-        all_branches.append(&mut rest_of_branches);
-
-        errors.push(CompileError::Unimplemented(
-            "Match expressions and pattern matching",
-            span,
-        ));
-        ERROR_RECOVERY_EXPR.clone()
-        */
-        unimplemented!()
-    }
-
-    #[allow(clippy::too_many_arguments)]
     fn type_check_code_block<'n>(
         contents: CodeBlock<'sc>,
         span: Span<'sc>,
@@ -1543,6 +1491,200 @@ impl<'sc> TypedExpression<'sc> {
                 dependency_graph,
                 opts,
             )
+        }
+    }
+
+    /// This function takes a [DelayedResolutionVariant] and returns either a
+    /// [TypedExpressionVariant::EnumArgAccess] (given the case of enum arg
+    /// access) or returns a [TypedExpressionVariant::StructFieldAccess] (given
+    /// the case of struct field access). This function does several things, it
+    /// 1) checks to ensure that the expression inside of the
+    /// [DelayedResolutionVariant] is of the appropriate type (either an enum
+    /// or a struct), 2) determines the return type of the corresponding
+    /// struct field or enum arg, and 3) constructs the respective typed
+    /// expression.
+    fn type_check_delayed_resolution<'n>(
+        variant: DelayedResolutionVariant<'sc>,
+        span: Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
+        self_type: TypeId,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
+    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match variant {
+            DelayedResolutionVariant::EnumVariant(DelayedEnumVariantResolution {
+                exp,
+                call_path,
+                arg_num,
+            }) => {
+                let args = TypeCheckArguments {
+                    checkee: *exp,
+                    namespace,
+                    crate_namespace,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: "",
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                };
+                let parent = check!(
+                    TypedExpression::type_check(args),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let enum_name = call_path.prefixes.first().unwrap().clone();
+                let variant_name = call_path.suffix.clone();
+                let enum_module_combined_result = {
+                    let (module_path, enum_name) =
+                        call_path.prefixes.split_at(call_path.prefixes.len() - 1);
+                    let enum_name = enum_name[0].clone();
+                    let namespace = namespace.find_module_relative(module_path);
+                    let namespace = namespace.ok(&mut warnings, &mut errors);
+                    namespace.map(|ns| ns.find_enum(&enum_name)).flatten()
+                };
+                let mut return_type = None;
+                let mut owned_enum_variant = None;
+                match enum_module_combined_result {
+                    None => todo!(),
+                    Some(enum_decl) => {
+                        if enum_name.primary_name != enum_decl.name.primary_name {
+                            errors.push(CompileError::MatchWrongType {
+                                expected: parent.return_type,
+                                span: enum_name.span,
+                            });
+                            let exp = error_recovery_expr(span);
+                            return ok(exp, warnings, errors);
+                        }
+                        for (pos, variant) in enum_decl.variants.into_iter().enumerate() {
+                            match (
+                                pos == arg_num,
+                                variant.name.primary_name == variant_name.primary_name,
+                            ) {
+                                (true, true) => {
+                                    return_type = Some(variant.r#type);
+                                    owned_enum_variant = Some(variant);
+                                }
+                                (true, false) => {
+                                    errors.push(CompileError::MatchWrongType {
+                                        expected: parent.return_type,
+                                        span: variant_name.span,
+                                    });
+                                    let exp = error_recovery_expr(span);
+                                    return ok(exp, warnings, errors);
+                                }
+                                _ => (),
+                            }
+                        }
+                    }
+                }
+                let (return_type, _owned_enum_variant) = match (return_type, owned_enum_variant) {
+                    (Some(return_type), Some(owned_enum_variant)) => {
+                        (return_type, owned_enum_variant)
+                    }
+                    _ => {
+                        errors.push(CompileError::MatchWrongType {
+                            expected: parent.return_type,
+                            span: enum_name.span,
+                        });
+                        let exp = error_recovery_expr(span);
+                        return ok(exp, warnings, errors);
+                    }
+                };
+
+                let exp = TypedExpression {
+                    expression: TypedExpressionVariant::EnumArgAccess {
+                        resolved_type_of_parent: parent.return_type,
+                        prefix: Box::new(parent),
+                        //variant_to_access: owned_enum_variant.to_owned(),
+                        arg_num_to_access: arg_num,
+                    },
+                    return_type,
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(exp, warnings, errors)
+            }
+            DelayedResolutionVariant::StructField(DelayedStructFieldResolution {
+                exp,
+                struct_name,
+                field,
+            }) => {
+                let args = TypeCheckArguments {
+                    checkee: *exp,
+                    namespace,
+                    crate_namespace,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: "",
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                };
+                let parent = check!(
+                    TypedExpression::type_check(args),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let (struct_fields, other_struct_name) = check!(
+                    namespace.get_struct_type_fields(
+                        parent.return_type,
+                        parent.span.as_str(),
+                        &parent.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if struct_name.primary_name != other_struct_name {
+                    errors.push(CompileError::MatchWrongType {
+                        expected: parent.return_type,
+                        span: struct_name.span,
+                    });
+                    let exp = error_recovery_expr(span);
+                    return ok(exp, warnings, errors);
+                }
+                let mut field_to_access = None;
+                for struct_field in struct_fields.iter() {
+                    if struct_field.name == *field.primary_name {
+                        field_to_access = Some(struct_field.clone())
+                    }
+                }
+                let field_to_access = match field_to_access {
+                    None => {
+                        errors.push(CompileError::MatchWrongType {
+                            expected: parent.return_type,
+                            span: struct_name.span,
+                        });
+                        let exp = error_recovery_expr(span);
+                        return ok(exp, warnings, errors);
+                    }
+                    Some(field_to_access) => field_to_access,
+                };
+                let exp = TypedExpression {
+                    expression: TypedExpressionVariant::StructFieldAccess {
+                        resolved_type_of_parent: parent.return_type,
+                        prefix: Box::new(parent),
+                        field_to_access: field_to_access.clone(),
+                        field_to_access_span: field.span.clone(),
+                    },
+                    return_type: field_to_access.r#type,
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(exp, warnings, errors)
+            }
         }
     }
 

@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    error::*, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode, AstNodeContent,
-    CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
+    error::*, parse_tree::Scrutinee, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode,
+    AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -400,8 +400,10 @@ impl<'sc> Dependencies<'sc> {
                 branches.iter(),
                 |deps, branch| {
                     match &branch.condition {
-                        MatchCondition::CatchAll => deps,
-                        MatchCondition::Expression(expr) => deps.gather_from_expr(expr),
+                        MatchCondition::CatchAll(_) => deps,
+                        MatchCondition::Scrutinee(scrutinee) => {
+                            deps.gather_from_scrutinee(scrutinee)
+                        }
                     }
                     .gather_from_expr(&branch.result)
                 },
@@ -412,6 +414,17 @@ impl<'sc> Dependencies<'sc> {
 
             Expression::Literal { .. } => self,
             Expression::Unit { .. } => self,
+            Expression::DelayedMatchTypeResolution { .. } => self,
+        }
+    }
+
+    fn gather_from_scrutinee(self, scrutinee: &Scrutinee<'sc>) -> Self {
+        match scrutinee {
+            Scrutinee::Unit { .. } => self,
+            Scrutinee::Literal { .. } => self,
+            Scrutinee::Variable { .. } => self,
+            Scrutinee::StructScrutinee { .. } => self,
+            Scrutinee::EnumScrutinee { .. } => self,
         }
     }
 

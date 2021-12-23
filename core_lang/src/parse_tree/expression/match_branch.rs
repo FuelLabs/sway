@@ -2,17 +2,17 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::span;
+use crate::CatchAll;
 use crate::CodeBlock;
 use pest::iterators::Pair;
 
+use super::scrutinee::Scrutinee;
 use super::{Expression, MatchCondition};
 
 #[derive(Debug, Clone)]
 pub struct MatchBranch<'sc> {
     pub(crate) condition: MatchCondition<'sc>,
     pub(crate) result: Expression<'sc>,
-    #[allow(dead_code)]
-    // this span may be used for errors in the future, although it is not right now.
     pub(crate) span: span::Span<'sc>,
 }
 
@@ -44,21 +44,56 @@ impl<'sc> MatchBranch<'sc> {
         };
         let condition = match condition.into_inner().next() {
             Some(e) => {
-                let expr = check!(
-                    Expression::parse_from_pair(e.clone(), config),
-                    Expression::Unit {
+                match e.as_rule() {
+                    Rule::catch_all => MatchCondition::CatchAll(CatchAll {
                         span: span::Span {
                             span: e.as_span(),
-                            path: path.clone()
-                        }
-                    },
-                    warnings,
-                    errors
-                );
-                MatchCondition::Expression(Box::new(expr))
+                            path: path.clone(),
+                        },
+                    }),
+                    Rule::scrutinee => {
+                        let scrutinee = check!(
+                            Scrutinee::parse_from_pair(e.clone(), config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        MatchCondition::Scrutinee(scrutinee)
+                    }
+                    a => {
+                        eprintln!(
+                            "Unimplemented condition: {:?} ({:?}) ({:?})",
+                            a,
+                            e.as_str(),
+                            e.as_rule()
+                        );
+                        errors.push(CompileError::UnimplementedRule(
+                            a,
+                            span::Span {
+                                span: e.as_span(),
+                                path: path.clone(),
+                            },
+                        ));
+                        // construct unit expression for error recovery
+                        MatchCondition::CatchAll(CatchAll {
+                            span: span::Span {
+                                span: e.as_span(),
+                                path: path.clone(),
+                            },
+                        })
+                    }
+                }
             }
-            // the "_" case
-            None => MatchCondition::CatchAll,
+            None => {
+                errors.push(CompileError::Internal(
+                    "Unexpected empty iterator in match condition parsing.",
+                    span::Span {
+                        span: pair.as_span(),
+                        path,
+                    },
+                ));
+                return err(warnings, errors);
+            }
         };
         let result = match branch.next() {
             Some(o) => o,

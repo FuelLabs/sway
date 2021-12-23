@@ -62,11 +62,14 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("generic_struct", ProgramState::Return(1)),           // true
         ("zero_field_types", ProgramState::Return(10)),        // true
         ("assert_test", ProgramState::Return(1)),              // true
-        ("b512_test", ProgramState::Return(1)),                // true
-        ("assert_test", ProgramState::Return(1)),              // true
-        ("array_basics", ProgramState::Return(1)),             // true
+        ("match_expressions", ProgramState::Return(42)),
+        ("assert_test", ProgramState::Return(1)),  // true
+        ("array_basics", ProgramState::Return(1)), // true
         ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
+        ("match_expressions_structs", ProgramState::Return(4)),
+        ("block_height", ProgramState::Return(1)),   // true
+        ("b512_test", ProgramState::Return(1)),      // true
         ("block_height", ProgramState::Return(1)),   // true
         ("valid_impurity", ProgramState::Return(0)), // true
     ];
@@ -96,6 +99,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "unify_identical_unknowns",
         "array_oob",
         "array_bad_index",
+        "match_expressions_wrong_struct",
+        "match_expressions_enums",
         "pure_calls_impure",
         "nested_impure",
         "predicate_calls_impure",

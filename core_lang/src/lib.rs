@@ -150,13 +150,13 @@ pub fn parse<'sc>(
             )
         }
     };
-    let res = check!(
+    let parsed_root = check!(
         parse_root_from_pairs(parsed.next().unwrap().into_inner(), config),
         return err(warnings, errors),
         warnings,
         errors
     );
-    ok(res, warnings, errors)
+    ok(parsed_root, warnings, errors)
 }
 
 /// Represents the result of compiling Sway code via `compile_to_asm`.

@@ -37,11 +37,6 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         prefix: Box<TypedExpression<'sc>>,
         index: Box<TypedExpression<'sc>>,
     },
-    #[allow(dead_code)]
-    MatchExpression {
-        primary_expression: Box<TypedExpression<'sc>>,
-        branches: Vec<TypedMatchBranch<'sc>>,
-    },
     StructExpression {
         struct_name: Ident<'sc>,
         fields: Vec<TypedStructExpressionField<'sc>>,
@@ -66,6 +61,12 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         prefix: Box<TypedExpression<'sc>>,
         field_to_access: OwnedTypedStructField,
         field_to_access_span: Span<'sc>,
+        resolved_type_of_parent: TypeId,
+    },
+    EnumArgAccess {
+        prefix: Box<TypedExpression<'sc>>,
+        //variant_to_access: TypedEnumVariant<'sc>,
+        arg_num_to_access: usize,
         resolved_type_of_parent: TypeId,
     },
     EnumInstantiation {
@@ -99,6 +100,7 @@ impl TypedAsmRegisterDeclaration<'_> {
         }
     }
 }
+
 impl<'sc> TypedExpressionVariant<'sc> {
     pub(crate) fn pretty_print(&self) -> String {
         match self {
@@ -129,7 +131,6 @@ impl<'sc> TypedExpressionVariant<'sc> {
             TypedExpressionVariant::Unit => "unit".into(),
             TypedExpressionVariant::Array { .. } => "array".into(),
             TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
-            TypedExpressionVariant::MatchExpression { .. } => "match exp".into(),
             TypedExpressionVariant::StructExpression { struct_name, .. } => {
                 format!("\"{}\" struct init", struct_name.primary_name)
             }
@@ -149,6 +150,17 @@ impl<'sc> TypedExpressionVariant<'sc> {
                     "\"{}.{}\" struct field access",
                     look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
                     field_to_access.name
+                )
+            }
+            TypedExpressionVariant::EnumArgAccess {
+                resolved_type_of_parent,
+                arg_num_to_access,
+                ..
+            } => {
+                format!(
+                    "\"{}.{}\" arg num access",
+                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
+                    arg_num_to_access
                 )
             }
             TypedExpressionVariant::VariableExpression { name, .. } => {
@@ -193,8 +205,6 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 (*prefix).copy_types(type_mapping);
                 (*index).copy_types(type_mapping);
             }
-            #[allow(dead_code)]
-            MatchExpression { .. } => (),
             StructExpression { fields, .. } => {
                 fields.iter_mut().for_each(|x| x.copy_types(type_mapping))
             }
@@ -238,6 +248,21 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 };
 
                 field_to_access.copy_types(type_mapping);
+                prefix.copy_types(type_mapping);
+            }
+            EnumArgAccess {
+                prefix,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                *resolved_type_of_parent = if let Some(matching_id) =
+                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(&type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id))
+                } else {
+                    insert_type(look_up_type_id_raw(*resolved_type_of_parent))
+                };
+
                 prefix.copy_types(type_mapping);
             }
             EnumInstantiation {
