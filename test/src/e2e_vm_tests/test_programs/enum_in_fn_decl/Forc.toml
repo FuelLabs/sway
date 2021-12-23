@@ -1,6 +1,6 @@
 [project]
 author  = "Alexander Hansen <alex.hansen@fuel.sh>"
-license = "MIT"
+license = "Apache-2.0"
 name = "enum_in_fn_decl"
 entry = "main.sw"
 

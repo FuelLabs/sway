@@ -1,5 +1,5 @@
 [project]
 author  = "Alexander Hansen"
-license = "MIT"
+license = "Apache-2.0"
 name = "generic_functions"
 entry = "main.sw"

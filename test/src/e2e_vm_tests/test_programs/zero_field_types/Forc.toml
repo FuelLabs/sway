@@ -1,5 +1,5 @@
 [project]
 author  = "Andrew Cann"
-license = "MIT"
+license = "Apache-2.0"
 name = "zero_field_types"
 entry = "main.sw"

@@ -1,6 +1,6 @@
 [project]
 author  = "Alex Hansen"
-license = "MIT"
+license = "Apache-2.0"
 name = "lib-std"
 entry = "lib.sw"
 

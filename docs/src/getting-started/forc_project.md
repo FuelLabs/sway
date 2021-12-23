@@ -24,7 +24,7 @@ $ tree .
 ```toml
 [project]
 author  = "user"
-license = "MIT"
+license = "Apache-2.0"
 name = "hello_world"
 entry = "main.sw"
 ```

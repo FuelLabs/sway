@@ -1,6 +1,6 @@
 [project]
 author = "Nick Furfaro <nick.furfaro@fuel.sh>"
-license = "MIT"
+license = "Apache-2.0"
 name = "assert_test"
 entry = "main.sw"
 

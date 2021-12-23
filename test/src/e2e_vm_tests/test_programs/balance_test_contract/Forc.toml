@@ -1,6 +1,6 @@
 [project]
 author  = "Nick Furfaro"
-license = "MIT"
+license = "Apache-2.0"
 name = "balance_test_contract"
 entry = "main.sw"
 

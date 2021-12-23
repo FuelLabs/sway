@@ -1,6 +1,6 @@
 [project]
 author  = "Toby Hutton <toby.hutton@fuel.sh>"
-license = "MIT"
+license = "Apache-2.0"
 name = "array_basics"
 entry = "main.sw"
 

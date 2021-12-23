@@ -1,6 +1,6 @@
 [project]
 author  = "Nick Furfaro"
-license = "MIT"
+license = "Apache-2.0"
 name = "bal_opcode"
 entry = "main.sw"
 
