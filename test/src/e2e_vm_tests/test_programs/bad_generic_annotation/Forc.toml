@@ -1,5 +1,5 @@
 [project]
-author  = "Alexander Hansen"
+author = "Fuel Labs <contact@fuel.sh>"
 license = "Apache-2.0"
 name = "bad_generic_annotation"
 entry = "main.sw"

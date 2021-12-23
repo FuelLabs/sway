@@ -1,5 +1,5 @@
 [project]
-author  = "Toby Hutton <toby.hutton@fuel.sh>"
+author = "Fuel Labs <contact@fuel.sh>"
 license = "Apache-2.0"
 name = "array_dynamic_oob"
 entry = "main.sw"

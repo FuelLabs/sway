@@ -1,10 +1,12 @@
 [package]
 name = "core-types"
-description = "Sway core types."
 version = "0.1.0"
-authors = ["Victor Lopez <victor.lopez@fuel.sh>"]
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2018"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
+description = "Sway core types."
 
 [dependencies]
 fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }

@@ -1,5 +1,5 @@
 [project]
-author  = "Alexander Hansen <alex.hansen@fuel.sh>"
+author = "Fuel Labs <contact@fuel.sh>"
 license = "Apache-2.0"
 name = "if_elseif_enum"
 entry = "main.sw"

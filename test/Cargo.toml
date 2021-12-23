@@ -1,9 +1,8 @@
 [package]
-authors = ["Alex Hansen <alex.hansen@fuel.sh>"]
-edition = "2018"
 name = "test"
 version = "0.1.0"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2018"
 
 [dependencies]
 forc = { path = "../forc", features = ["test"], default-features = false }

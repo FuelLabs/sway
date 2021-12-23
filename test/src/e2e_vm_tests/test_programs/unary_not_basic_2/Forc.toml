@@ -1,5 +1,5 @@
 [project]
-author  = "Alex Hansen <alex.hansen@fuel.sh>"
+author = "Fuel Labs <contact@fuel.sh>"
 license = "Apache-2.0"
 name = "unary_not_basic_2"
 entry = "main.sw"

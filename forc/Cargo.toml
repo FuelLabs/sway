@@ -1,9 +1,12 @@
 [package]
-authors = ["Alex Hansen <alex.hansen@fuel.sh>"]
-edition = "2018"
 name = "forc"
 version = "0.1.0"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2018"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Fuel Orchestrator."
 
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] } # used for formating error/warning print
