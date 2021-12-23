@@ -1,6 +1,6 @@
 [project]
 author  = "alex"
-license = "MIT"
+license = "Apache-2.0"
 name = "caller_auth_test"
 entry = "main.sw"
 
