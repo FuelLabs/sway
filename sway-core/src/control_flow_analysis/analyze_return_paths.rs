@@ -268,8 +268,7 @@ fn connect_typed_fn_decl(
     entry_node: NodeIndex,
     _span: Span,
 ) {
-    let fn_exit_node =
-        graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
+    let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let return_nodes = depth_first_insertion_code_block(&fn_decl.body, graph, &[entry_node]);
     for node in return_nodes {
         graph.add_edge(node, fn_exit_node, "return".into());

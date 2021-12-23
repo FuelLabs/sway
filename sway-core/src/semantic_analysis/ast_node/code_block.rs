@@ -82,8 +82,7 @@ impl TypedCodeBlock {
                 return_type,
                 type_annotation,
                 self_type,
-                &implicit_return_span
-                    .unwrap_or_else(|| other.whole_block_span.clone()),
+                &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
             ) {
                 Ok(mut ws) => {
                     warnings.append(&mut ws);

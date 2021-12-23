@@ -8,9 +8,9 @@ use crate::{
 };
 use std::fs::File;
 use std::io::Write;
+use std::sync::Arc;
 use sway_core::{FinalizedAsm, TreeType};
 use sway_utils::{constants, find_manifest_dir};
-use std::sync::Arc;
 
 use sway_core::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 

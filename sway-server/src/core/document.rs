@@ -4,8 +4,8 @@ use crate::{capabilities, core::token::traverse_node};
 use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 use ropey::Rope;
 use std::collections::HashMap;
-use sway_core::{parse, TreeType};
 use std::sync::Arc;
+use sway_core::{parse, TreeType};
 
 #[derive(Debug)]
 pub struct TextDocument {

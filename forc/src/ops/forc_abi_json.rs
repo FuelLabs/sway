@@ -16,8 +16,8 @@ use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use sway_core::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
 use std::sync::Arc;
+use sway_core::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
 
 pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // find manifest directory, even if in subdirectory
@@ -254,12 +254,7 @@ fn compile_library(
             let errors = vec![];
             match tree_type {
                 TreeType::Library { name } => {
-                    print_on_success(
-                        silent_mode,
-                        proj_name,
-                        warnings,
-                        TreeType::Library { name },
-                    );
+                    print_on_success(silent_mode, proj_name, warnings, TreeType::Library { name });
                     let json_abi = generate_json_abi(&Some(*parse_tree.clone()));
                     Ok((parse_tree.into_namespace(), json_abi))
                 }

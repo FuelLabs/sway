@@ -114,8 +114,12 @@ pub(crate) fn convert_reassignment_to_asm(
                 };
                 // TODO(static span) use spans instead of strings below
                 let span = crate::Span {
-                    span: pest::Span::new("TODO(static span): use Idents instead of Strings".into(), 0, 0)
-                        .unwrap(),
+                    span: pest::Span::new(
+                        "TODO(static span): use Idents instead of Strings".into(),
+                        0,
+                        0,
+                    )
+                    .unwrap(),
                     path: None,
                 };
                 let fields_for_layout = fields

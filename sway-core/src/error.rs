@@ -52,10 +52,7 @@ macro_rules! assert_or_warn {
 }
 
 /// Denotes a non-recoverable state
-pub(crate) fn err<T>(
-    warnings: Vec<CompileWarning>,
-    errors: Vec<CompileError>,
-) -> CompileResult<T> {
+pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> CompileResult<T> {
     CompileResult {
         value: None,
         warnings,
@@ -132,11 +129,7 @@ impl<T> CompileResult<T> {
         }
     }
 
-    pub fn unwrap(
-        self,
-        warnings: &mut Vec<CompileWarning>,
-        errors: &mut Vec<CompileError>,
-    ) -> T {
+    pub fn unwrap(self, warnings: &mut Vec<CompileWarning>, errors: &mut Vec<CompileError>) -> T {
         let panic_msg = format!("Unwrapped an err {:?}", self.errors);
         self.unwrap_or_else(warnings, errors, || panic!("{}", panic_msg))
     }
@@ -451,10 +444,7 @@ pub enum CompileError {
         "Specified generic type in where clause \"{type_name}\" not found in generic type \
          arguments of function."
     )]
-    UndeclaredGenericTypeInWhereClause {
-        type_name: Ident,
-        span: Span,
-    },
+    UndeclaredGenericTypeInWhereClause { type_name: Ident, span: Span },
     #[error(
         "Program contains multiple contracts. A valid program should only contain at most one \
          contract."
@@ -821,11 +811,7 @@ pub enum CompileError {
     #[error("Contract storage cannot be used in an external context.")]
     ContractStorageFromExternalContext { span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
-    ArrayOutOfBounds {
-        index: u64,
-        count: u64,
-        span: Span,
-    },
+    ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\

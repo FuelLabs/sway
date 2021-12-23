@@ -17,10 +17,7 @@ pub struct MatchBranch {
 }
 
 impl MatchBranch {
-    pub fn parse_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

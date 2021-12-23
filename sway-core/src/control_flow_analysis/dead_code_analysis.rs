@@ -544,8 +544,7 @@ fn connect_typed_fn_decl(
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<(), CompileError> {
-    let fn_exit_node =
-        graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
+    let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let (_exit_nodes, _exit_node) = depth_first_insertion_code_block(
         &fn_decl.body,
         graph,
@@ -559,7 +558,8 @@ fn connect_typed_fn_decl(
 
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
-    let ty = resolve_type(fn_decl.return_type, &span).unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
+    let ty =
+        resolve_type(fn_decl.return_type, &span).unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
@@ -620,14 +620,12 @@ fn connect_expression(
                      }| (entry_point, exit_point),
                 )
                 .unwrap_or_else(|| {
-                    let node_idx = graph
-                        .add_node(format!("extern fn {}()", name.suffix.as_str()).into());
+                    let node_idx =
+                        graph.add_node(format!("extern fn {}()", name.suffix.as_str()).into());
                     is_external = true;
                     (
                         node_idx,
-                        graph.add_node(
-                            format!("extern fn {} exit", name.suffix.as_str()).into(),
-                        ),
+                        graph.add_node(format!("extern fn {} exit", name.suffix.as_str()).into()),
                     )
                 });
             for leaf in leaves {
@@ -779,8 +777,7 @@ fn connect_expression(
         } => {
             let decl = match graph.namespace.find_struct_decl(struct_name.as_str()) {
                 Some(ix) => *ix,
-                None => graph
-                    .add_node(format!("External struct  {}", struct_name.as_str()).into()),
+                None => graph.add_node(format!("External struct  {}", struct_name.as_str()).into()),
             };
             let entry = graph.add_node("Struct declaration entry".into());
             let exit = graph.add_node("Struct declaration exit".into());
@@ -995,9 +992,7 @@ fn connect_enum_instantiation(
 /// representing its unreached status. For example, we want to say "this function is never called"
 /// if the node is a function declaration, but "this trait is never used" if it is a trait
 /// declaration.
-fn construct_dead_code_warning_from_node(
-    node: &TypedAstNode,
-) -> Option<CompileWarning> {
+fn construct_dead_code_warning_from_node(node: &TypedAstNode) -> Option<CompileWarning> {
     Some(match node {
         // if this is a function, struct, or trait declaration that is never called, then it is dead
         // code.

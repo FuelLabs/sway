@@ -33,9 +33,7 @@ pub(crate) fn error_recovery_expr(span: Span) -> TypedExpression {
 
 #[allow(clippy::too_many_arguments)]
 impl TypedExpression {
-    pub(crate) fn type_check(
-        arguments: TypeCheckArguments<'_, Expression>,
-    ) -> CompileResult<Self> {
+    pub(crate) fn type_check(arguments: TypeCheckArguments<'_, Expression>) -> CompileResult<Self> {
         let TypeCheckArguments {
             checkee: other,
             namespace,
@@ -333,10 +331,7 @@ impl TypedExpression {
         self.expression.copy_types(type_mapping);
     }
 
-    fn type_check_literal(
-        lit: Literal,
-        span: Span,
-    ) -> CompileResult<TypedExpression> {
+    fn type_check_literal(lit: Literal, span: Span) -> CompileResult<TypedExpression> {
         let return_type = match &lit {
             Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
@@ -404,14 +399,7 @@ impl TypedExpression {
 
     #[allow(clippy::type_complexity)]
     fn type_check_function_application(
-        arguments: TypeCheckArguments<
-            '_,
-            (
-                CallPath,
-                Vec<Expression>,
-                Vec<(TypeInfo, Span)>,
-            ),
-        >,
+        arguments: TypeCheckArguments<'_, (CallPath, Vec<Expression>, Vec<(TypeInfo, Span)>)>,
         _span: Span,
     ) -> CompileResult<TypedExpression> {
         let TypeCheckArguments {
@@ -693,11 +681,7 @@ impl TypedExpression {
     fn type_check_if_expression(
         arguments: TypeCheckArguments<
             '_,
-            (
-                Box<Expression>,
-                Box<Expression>,
-                Option<Box<Expression>>,
-            ),
+            (Box<Expression>, Box<Expression>, Option<Box<Expression>>),
         >,
         span: Span,
     ) -> CompileResult<TypedExpression> {
@@ -836,33 +820,28 @@ impl TypedExpression {
             .registers
             .into_iter()
             .map(
-                |AsmRegisterDeclaration {
-                     name,
-                     initializer,
-                 }| {
-                    TypedAsmRegisterDeclaration {
-                        name,
-                        initializer: initializer.map(|initializer| {
-                            check!(
-                                TypedExpression::type_check(TypeCheckArguments {
-                                    checkee: initializer.clone(),
-                                    namespace,
-                                    crate_namespace,
-                                    return_type_annotation: insert_type(TypeInfo::Unknown),
-                                    help_text: Default::default(),
-                                    self_type,
-                                    build_config,
-                                    dead_code_graph,
-                                    dependency_graph,
-                                    mode: Mode::NonAbi,
-                                    opts,
-                                }),
-                                error_recovery_expr(initializer.span()),
-                                warnings,
-                                errors
-                            )
-                        }),
-                    }
+                |AsmRegisterDeclaration { name, initializer }| TypedAsmRegisterDeclaration {
+                    name,
+                    initializer: initializer.map(|initializer| {
+                        check!(
+                            TypedExpression::type_check(TypeCheckArguments {
+                                checkee: initializer.clone(),
+                                namespace,
+                                crate_namespace,
+                                return_type_annotation: insert_type(TypeInfo::Unknown),
+                                help_text: Default::default(),
+                                self_type,
+                                build_config,
+                                dead_code_graph,
+                                dependency_graph,
+                                mode: Mode::NonAbi,
+                                opts,
+                            }),
+                            error_recovery_expr(initializer.span()),
+                            warnings,
+                            errors
+                        )
+                    }),
                 },
             )
             .collect();
@@ -1047,10 +1026,10 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let field = if let Some(field) =
-            fields.iter().find(|OwnedTypedStructField { name, .. }| {
-                name.as_str() == field_to_access.as_str()
-            }) {
+        let field = if let Some(field) = fields
+            .iter()
+            .find(|OwnedTypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
+        {
             field
         } else {
             errors.push(CompileError::FieldNotFound {
@@ -1614,10 +1593,7 @@ impl TypedExpression {
                             return ok(exp, warnings, errors);
                         }
                         for (pos, variant) in enum_decl.variants.into_iter().enumerate() {
-                            match (
-                                pos == arg_num,
-                                variant.name == variant_name,
-                            ) {
+                            match (pos == arg_num, variant.name == variant_name) {
                                 (true, true) => {
                                     return_type = Some(variant.r#type);
                                     owned_enum_variant = Some(variant);
@@ -1750,10 +1726,7 @@ impl TypedExpression {
 mod tests {
     use super::*;
 
-    fn do_type_check(
-        expr: Expression,
-        type_annotation: TypeId,
-    ) -> CompileResult<TypedExpression> {
+    fn do_type_check(expr: Expression, type_annotation: TypeId) -> CompileResult<TypedExpression> {
         let mut namespace: Namespace = Default::default();
         let self_type = insert_type(TypeInfo::Unknown);
         let build_config = BuildConfig {

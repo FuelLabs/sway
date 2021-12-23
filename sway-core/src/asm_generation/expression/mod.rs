@@ -125,17 +125,15 @@ pub(crate) fn convert_expression_to_asm(
             // registers from the sequencer for replacement
             let mut mapping_of_real_registers_to_declared_names: HashMap<&str, VirtualRegister> =
                 Default::default();
-            for TypedAsmRegisterDeclaration {
-                name,
-                initializer,
-            } in registers
-            {
+            for TypedAsmRegisterDeclaration { name, initializer } in registers {
                 let register = register_sequencer.next();
                 assert_or_warn!(
                     ConstantRegister::parse_register_name(name.as_str()).is_none(),
                     warnings,
                     name.span().clone(),
-                    Warning::ShadowingReservedRegister { reg_name: name.clone() }
+                    Warning::ShadowingReservedRegister {
+                        reg_name: name.clone()
+                    }
                 );
 
                 mapping_of_real_registers_to_declared_names.insert(name.as_str(), register.clone());
@@ -177,10 +175,8 @@ pub(crate) fn convert_expression_to_asm(
                 );
                 */
                 let replaced_registers = op.op_args.iter().map(|x| -> Result<_, CompileError> {
-                    match realize_register(
-                        x.as_str(),
-                        &mapping_of_real_registers_to_declared_names,
-                    ) {
+                    match realize_register(x.as_str(), &mapping_of_real_registers_to_declared_names)
+                    {
                         Some(o) => Ok(o),
                         None => Err(CompileError::UnknownRegister {
                             span: x.span().clone(),
@@ -434,10 +430,7 @@ fn convert_fn_app_to_asm(
 ) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let mut asm_buf = vec![Op::new_comment(format!(
-        "{} fn call",
-        name.suffix.as_str()
-    ))];
+    let mut asm_buf = vec![Op::new_comment(format!("{} fn call", name.suffix.as_str()))];
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
     let mut namespace = parent_namespace.clone();
@@ -494,10 +487,7 @@ pub(crate) fn convert_abi_fn_to_asm(
 ) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let mut asm_buf = vec![Op::new_comment(format!(
-        "{} abi fn",
-        decl.name.as_str()
-    ))];
+    let mut asm_buf = vec![Op::new_comment(format!("{} abi fn", decl.name.as_str()))];
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
     let mut namespace = parent_namespace.clone();

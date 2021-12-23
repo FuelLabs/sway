@@ -295,7 +295,12 @@ fn re_parse_expression<'n>(
     let mut warnings = vec![];
     let mut errors = vec![];
     let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use Idents instead of Strings".into(), 0, 0).unwrap(),
+        span: pest::Span::new(
+            "TODO(static span): use Idents instead of Strings".into(),
+            0,
+            0,
+        )
+        .unwrap(),
         path: None,
     };
 

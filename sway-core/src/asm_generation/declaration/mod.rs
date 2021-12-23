@@ -42,7 +42,7 @@ pub(crate) fn convert_decl_to_asm(
             vec![],
             vec![CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this declaration variant.",
-                decl.span()
+                decl.span(),
             )],
         ),
     }

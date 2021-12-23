@@ -127,11 +127,7 @@ impl Namespace {
         }
     }
 
-    pub(crate) fn insert(
-        &mut self,
-        name: Ident,
-        item: TypedDeclaration,
-    ) -> CompileResult<()> {
+    pub(crate) fn insert(&mut self, name: Ident, item: TypedDeclaration) -> CompileResult<()> {
         let mut warnings = vec![];
         if self.symbols.get(&name).is_some() {
             warnings.push(CompileWarning {
@@ -162,10 +158,7 @@ impl Namespace {
         self.get_name_from_path_str(path, symbol).value
     }
 
-    pub(crate) fn get_symbol(
-        &self,
-        symbol: &Ident,
-    ) -> CompileResult<&TypedDeclaration> {
+    pub(crate) fn get_symbol(&self, symbol: &Ident) -> CompileResult<&TypedDeclaration> {
         let empty = vec![];
         let path = self.use_synonyms.get(symbol).unwrap_or(&empty);
         let true_symbol = self
@@ -179,10 +172,7 @@ impl Namespace {
     /// `foo::bar::function`
     /// where `foo` and `bar` are the prefixes
     /// and `function` is the suffix
-    pub(crate) fn get_call_path(
-        &self,
-        symbol: &CallPath,
-    ) -> CompileResult<TypedDeclaration> {
+    pub(crate) fn get_call_path(&self, symbol: &CallPath) -> CompileResult<TypedDeclaration> {
         let path = if symbol.prefixes.is_empty() {
             self.use_synonyms
                 .get(&symbol.suffix)
@@ -194,11 +184,7 @@ impl Namespace {
             .map(|decl| decl.clone())
     }
 
-    fn get_name_from_path(
-        &self,
-        path: &[Ident],
-        name: &Ident,
-    ) -> CompileResult<&TypedDeclaration> {
+    fn get_name_from_path(&self, path: &[Ident], name: &Ident) -> CompileResult<&TypedDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let module = check!(
@@ -265,10 +251,7 @@ impl Namespace {
         }
     }
 
-    pub(crate) fn find_module_relative(
-        &self,
-        path: &[Ident],
-    ) -> CompileResult<&Namespace> {
+    pub(crate) fn find_module_relative(&self, path: &[Ident]) -> CompileResult<&Namespace> {
         let mut namespace = self;
         let mut errors = vec![];
         let warnings = vec![];
@@ -330,11 +313,7 @@ impl Namespace {
         self.modules.insert(module_name, module_contents);
     }
 
-    pub fn insert_dependency_module(
-        &mut self,
-        module_name: String,
-        module_contents: Namespace,
-    ) {
+    pub fn insert_dependency_module(&mut self, module_name: String, module_contents: Namespace) {
         self.modules.insert(module_name, module_contents);
     }
 
@@ -434,10 +413,7 @@ impl Namespace {
         ok((symbol, parent_rover), warnings, errors)
     }
 
-    pub(crate) fn get_methods_for_type(
-        &self,
-        r#type: TypeId,
-    ) -> Vec<TypedFunctionDeclaration> {
+    pub(crate) fn get_methods_for_type(&self, r#type: TypeId) -> Vec<TypedFunctionDeclaration> {
         let mut methods = vec![];
         let r#type = crate::type_engine::look_up_type_id(r#type);
         for ((_trait_name, type_info), l_methods) in &self.implemented_traits {

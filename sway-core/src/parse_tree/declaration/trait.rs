@@ -47,9 +47,7 @@ impl TraitDeclaration {
             is_upper_camel_case(name_pair.as_str().trim()),
             warnings,
             span,
-            Warning::NonClassCaseTraitName {
-                name: name.clone(),
-            }
+            Warning::NonClassCaseTraitName { name: name.clone() }
         );
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
@@ -149,9 +147,7 @@ impl TraitFn {
             is_snake_case(name.as_str()),
             warnings,
             name_span,
-            Warning::NonSnakeCaseFunctionName {
-                name: name.clone()
-            }
+            Warning::NonSnakeCaseFunctionName { name: name.clone() }
         );
         let parameters = signature.next().unwrap();
         let parameters = check!(

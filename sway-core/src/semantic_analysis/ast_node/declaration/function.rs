@@ -575,9 +575,7 @@ fn test_function_selector_behavior() {
 }
 /// Insert all type parameters as unknown types. Return a mapping of type parameter to
 /// [TypeId]
-pub(crate) fn insert_type_parameters(
-    params: &[TypeParameter],
-) -> Vec<(TypeParameter, TypeId)> {
+pub(crate) fn insert_type_parameters(params: &[TypeParameter]) -> Vec<(TypeParameter, TypeId)> {
     params
         .iter()
         .map(|x| {

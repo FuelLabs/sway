@@ -54,10 +54,7 @@ impl Scrutinee {
         }
     }
 
-    pub fn parse_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut scrutinees = pair.into_inner();

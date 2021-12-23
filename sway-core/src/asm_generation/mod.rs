@@ -586,11 +586,7 @@ impl fmt::Display for DataId {
 }
 
 impl AsmNamespace {
-    pub(crate) fn insert_variable(
-        &mut self,
-        var_name: Ident,
-        register_location: VirtualRegister,
-    ) {
+    pub(crate) fn insert_variable(&mut self, var_name: Ident, register_location: VirtualRegister) {
         self.variables.insert(var_name, register_location);
     }
     pub(crate) fn insert_data_value(&mut self, data: &Data) -> DataId {
@@ -599,10 +595,7 @@ impl AsmNamespace {
     /// Finds the register which contains variable `var_name`
     /// The `get` is unwrapped, because invalid variable expressions are
     /// checked for in the type checking stage.
-    pub(crate) fn look_up_variable(
-        &self,
-        var_name: &Ident,
-    ) -> CompileResult<&VirtualRegister> {
+    pub(crate) fn look_up_variable(&self, var_name: &Ident) -> CompileResult<&VirtualRegister> {
         match self.variables.get(var_name) {
             Some(o) => ok(o, vec![], vec![]),
             None => err(

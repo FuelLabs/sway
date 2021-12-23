@@ -1009,14 +1009,12 @@ fn four_regs(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> CompileResult<
-    (
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-    ),
-> {
+) -> CompileResult<(
+    VirtualRegister,
+    VirtualRegister,
+    VirtualRegister,
+    VirtualRegister,
+)> {
     let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 4 {

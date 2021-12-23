@@ -73,9 +73,7 @@ impl ConstantDeclaration {
                 span: name_pair.as_span(),
                 path,
             },
-            Warning::NonScreamingSnakeCaseConstName {
-                name: name.clone(),
-            }
+            Warning::NonScreamingSnakeCaseConstName { name: name.clone() }
         );
         ok(
             ConstantDeclaration {

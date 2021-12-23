@@ -124,7 +124,12 @@ impl Literal {
                 // remove opening and closing quotes
                 let lit_span = lit_inner.as_span();
                 let lit = span::Span {
-                    span: pest::Span::new(lit_span.input().clone(), lit_span.start() + 1, lit_span.end() - 1).unwrap(),
+                    span: pest::Span::new(
+                        lit_span.input().clone(),
+                        lit_span.start() + 1,
+                        lit_span.end() - 1,
+                    )
+                    .unwrap(),
                     path: path.clone(),
                 };
                 let span = span::Span {

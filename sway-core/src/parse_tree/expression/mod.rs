@@ -216,11 +216,7 @@ impl Expression {
         }
     }
 
-    pub(crate) fn core_ops(
-        op: Op,
-        arguments: Vec<Expression>,
-        span: Span,
-    ) -> Expression {
+    pub(crate) fn core_ops(op: Op, arguments: Vec<Expression>, span: Span) -> Expression {
         Expression::MethodApplication {
             method_name: MethodName::FromType {
                 call_path: CallPath {
@@ -1111,10 +1107,7 @@ fn parse_subfield_path(
 // A call item is parsed as either an `ident` or a parenthesized `expr`. This method's job is to
 // figure out which variant of `call_item` this is and turn it into either a variable expression
 // or parse it as an expression otherwise.
-fn parse_call_item(
-    item: Pair<Rule>,
-    config: Option<&BuildConfig>,
-) -> CompileResult<Expression> {
+fn parse_call_item(item: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Expression> {
     let mut warnings = vec![];
     let mut errors = vec![];
     assert_eq!(item.as_rule(), Rule::call_item);
@@ -1143,10 +1136,7 @@ fn parse_call_item(
     ok(exp, warnings, errors)
 }
 
-fn parse_array_elems(
-    elems: Pair<Rule>,
-    config: Option<&BuildConfig>,
-) -> CompileResult<Expression> {
+fn parse_array_elems(elems: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Expression> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 

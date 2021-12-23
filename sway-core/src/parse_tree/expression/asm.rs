@@ -129,10 +129,7 @@ impl From<AsmRegister> for String {
 }
 
 impl AsmOp {
-    fn parse_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -153,20 +150,16 @@ impl AsmOp {
         for pair in iter {
             match pair.as_rule() {
                 Rule::asm_register => {
-                    args.push(Ident::new(
-                        Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
-                    ));
+                    args.push(Ident::new(Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    }));
                 }
                 Rule::asm_immediate => {
-                    immediate_value = Some(Ident::new(
-                        Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
-                    ));
+                    immediate_value = Some(Ident::new(Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    }));
                 }
                 _ => unreachable!(),
             }
@@ -191,10 +184,7 @@ pub(crate) struct AsmRegisterDeclaration {
 }
 
 impl AsmRegisterDeclaration {
-    fn parse_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Vec<Self>> {
+    fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Vec<Self>> {
         let iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();

@@ -67,8 +67,12 @@ impl TypeParameter {
         if let Some(where_clause_pair) = where_clause_pair {
             let mut pair = where_clause_pair.into_inner().peekable();
             while pair.peek().is_some() {
-                let type_param = Ident::parse_from_pair(pair.next().unwrap(), config).value.unwrap();
-                let trait_constraint = Ident::parse_from_pair(pair.next().unwrap(), config).value.unwrap();
+                let type_param = Ident::parse_from_pair(pair.next().unwrap(), config)
+                    .value
+                    .unwrap();
+                let trait_constraint = Ident::parse_from_pair(pair.next().unwrap(), config)
+                    .value
+                    .unwrap();
                 // assign trait constraints to above parsed type params
                 // find associated type name
                 let param_to_edit =

@@ -157,11 +157,7 @@ impl TypedDeclaration {
                     is_mutable,
                     name,
                     ..
-                }) => format!(
-                    "{} {}",
-                    if *is_mutable { "mut" } else { "" },
-                    name.as_str()
-                ),
+                }) => format!("{} {}", if *is_mutable { "mut" } else { "" }, name.as_str()),
                 TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                     name, ..
                 }) => {
@@ -263,9 +259,7 @@ impl OwnedTypedStructField {
 
     pub(crate) fn as_typed_struct_field(&self, span: &Span) -> TypedStructField {
         TypedStructField {
-            name: Ident::new(
-                span.clone(),
-            ),
+            name: Ident::new(span.clone()),
             r#type: self.r#type,
             span: span.clone(),
         }

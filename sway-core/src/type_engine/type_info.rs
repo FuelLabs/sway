@@ -307,10 +307,7 @@ impl TypeInfo {
     }
 
     /// maps a type to a name that is used when constructing function selectors
-    pub(crate) fn to_selector_name(
-        &self,
-        error_msg_span: &Span,
-    ) -> CompileResult<String> {
+    pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
         let name = match self {
             Str(len) => format!("str[{}]", len),
@@ -408,10 +405,7 @@ impl TypeInfo {
         ok(name, vec![], vec![])
     }
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
-    pub(crate) fn size_in_words(
-        &self,
-        err_span: &Span,
-    ) -> Result<u64, CompileError> {
+    pub(crate) fn size_in_words(&self, err_span: &Span) -> Result<u64, CompileError> {
         match self {
             // Each char is a byte, so the size is the num of characters / 8
             // rounded up to the nearest word

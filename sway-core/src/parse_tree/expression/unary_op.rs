@@ -14,10 +14,7 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
-    pub fn parse_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         use UnaryOp::*;
         match pair.as_str() {
             "!" => ok(Not, Vec::new(), Vec::new()),
@@ -45,12 +42,7 @@ impl UnaryOp {
         }
     }
 
-    pub fn to_fn_application(
-        &self,
-        arg: Expression,
-        span: Span,
-        op_span: Span,
-    ) -> Expression {
+    pub fn to_fn_application(&self, arg: Expression, span: Span, op_span: Span) -> Expression {
         Expression::FunctionApplication {
             type_arguments: Default::default(),
             name: CallPath {

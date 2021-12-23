@@ -26,8 +26,8 @@ pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
 use pest::Parser;
-use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 pub use semantic_analysis::TreeType;
 pub use semantic_analysis::TypedParseTree;
@@ -126,10 +126,7 @@ impl ParseTree {
 ///
 /// # Panics
 /// Panics if the generated parser from Pest panics.
-pub fn parse(
-    input: Arc<str>,
-    config: Option<&BuildConfig>,
-) -> CompileResult<HllParseTree> {
+pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<HllParseTree> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
     let mut parsed = match HllParser::parse(Rule::program, input.clone()) {
@@ -665,7 +662,8 @@ fn test_basic_prog() {
          func_app(my_args, (so_many_args))];
         return 5;
     }
-    "#.into(),
+    "#
+        .into(),
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -681,7 +679,8 @@ fn test_parenthesized() {
             let x = (5 + 6 / (1 + (2 / 1) + 4));
             return;
         }
-    "#.into(),
+    "#
+        .into(),
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -699,7 +698,8 @@ fn test_unary_ordering() {
         let a = true;
         let b = true;
         !a && b;
-    }"#.into(),
+    }"#
+        .into(),
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();

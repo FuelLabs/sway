@@ -2,18 +2,16 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    ident::Ident,
-    error::*, parse_tree::Scrutinee, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode,
-    AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
+    error::*, ident::Ident, parse_tree::Scrutinee, parse_tree::*, span::Span,
+    type_engine::IntegerBits, AstNode, AstNodeContent, CodeBlock, Declaration, Expression,
+    ReturnStatement, TypeInfo, WhileLoop,
 };
 
 // -------------------------------------------------------------------------------------------------
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any
 /// dependencies breaking.
 
-pub(crate) fn order_ast_nodes_by_dependency(
-    nodes: Vec<AstNode>,
-) -> CompileResult<Vec<AstNode>> {
+pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResult<Vec<AstNode>> {
     let decl_dependencies =
         DependencyMap::from_iter(nodes.iter().filter_map(Dependencies::gather_from_decl_node));
 
@@ -99,11 +97,7 @@ fn find_recursive_call_chain(
     }
 }
 
-fn build_recursion_error(
-    fn_sym: Ident,
-    span: Span,
-    chain: &[Ident],
-) -> CompileError {
+fn build_recursion_error(fn_sym: Ident, span: Span, chain: &[Ident]) -> CompileError {
     match chain.len() {
         // An empty chain indicates immediate recursion.
         0 => CompileError::RecursiveCall {
@@ -204,9 +198,7 @@ struct Dependencies {
 }
 
 impl Dependencies {
-    fn gather_from_decl_node(
-        node: &AstNode,
-    ) -> Option<(DependentSymbol, Dependencies)> {
+    fn gather_from_decl_node(node: &AstNode) -> Option<(DependentSymbol, Dependencies)> {
         match &node.content {
             AstNodeContent::Declaration(decl) => decl_name(decl).map(|name| {
                 (
@@ -378,9 +370,8 @@ impl Dependencies {
                 fields,
                 ..
             } => {
-                self.deps.insert(DependentSymbol::Symbol(
-                    struct_name.as_str().to_string(),
-                ));
+                self.deps
+                    .insert(DependentSymbol::Symbol(struct_name.as_str().to_string()));
                 self.gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
                 })
@@ -582,13 +573,10 @@ fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
         Declaration::ImplSelf(decl) => {
             let trait_name = Ident::new_with_override("self", decl.type_name_span.clone());
             impl_sym(trait_name, &decl.type_implementing_for)
-        },
+        }
         Declaration::ImplTrait(decl) => {
             if decl.trait_name.prefixes.is_empty() {
-                impl_sym(
-                    decl.trait_name.suffix.clone(),
-                    &decl.type_implementing_for,
-                )
+                impl_sym(decl.trait_name.suffix.clone(), &decl.type_implementing_for)
             } else {
                 None
             }

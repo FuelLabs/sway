@@ -1,7 +1,7 @@
-use std::sync::Arc;
 use super::code_builder::CodeBuilder;
 use crate::traversal::{traverse_for_changes, Change};
 use ropey::Rope;
+use std::sync::Arc;
 
 /// returns number of lines and formatted text
 pub fn get_formatted_data(file: Arc<str>, tab_size: u32) -> Result<(usize, String), Vec<String>> {

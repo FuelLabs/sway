@@ -75,10 +75,7 @@ impl std::fmt::Debug for ControlFlowGraphNode {
             ControlFlowGraphNode::StructField {
                 struct_field_name, ..
             } => {
-                format!(
-                    "Struct field {}",
-                    struct_field_name.as_str().to_string()
-                )
+                format!("Struct field {}", struct_field_name.as_str().to_string())
             }
         };
         f.write_str(&text)

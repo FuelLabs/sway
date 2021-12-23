@@ -60,7 +60,12 @@ pub(crate) fn convert_subfield_expression_to_asm(
     };
     // TODO(static span): str should be ident below
     let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use Idents instead of Strings".into(), 0, 0).unwrap(),
+        span: pest::Span::new(
+            "TODO(static span): use Idents instead of Strings".into(),
+            0,
+            0,
+        )
+        .unwrap(),
         path: None,
     };
     let fields_for_layout = fields

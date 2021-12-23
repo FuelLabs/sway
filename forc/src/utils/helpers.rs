@@ -7,9 +7,9 @@ use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::str;
+use std::sync::Arc;
 use sway_core::{CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
-use std::sync::Arc;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub fn is_sway_file(file: &Path) -> bool {
@@ -56,10 +56,7 @@ pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
     }
 }
 
-pub fn get_main_file(
-    manifest_of_dep: &Manifest,
-    manifest_dir: &Path,
-) -> Result<Arc<str>, String> {
+pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<Arc<str>, String> {
     let main_path = {
         let mut code_dir = PathBuf::from(manifest_dir);
         code_dir.push(constants::SRC_DIR);

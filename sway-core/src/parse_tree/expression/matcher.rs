@@ -52,10 +52,7 @@ pub type MatcherResult = Option<(MatchReqMap, MatchImplMap)>;
 ///     (x, 42) // add `let x = 42 in the body of the desugared if expression
 /// ]
 /// ```
-pub fn matcher(
-    exp: &Expression,
-    scrutinee: &Scrutinee,
-) -> CompileResult<MatcherResult> {
+pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<MatcherResult> {
     let mut errors = vec![];
     let warnings = vec![];
     match scrutinee {

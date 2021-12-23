@@ -56,7 +56,8 @@ impl Span {
             self.span.input().clone(),
             self.span.start() + start_delta,
             self.span.end() - end_delta,
-        ).unwrap();
+        )
+        .unwrap();
         Span {
             span,
             path: self.path,
