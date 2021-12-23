@@ -6,7 +6,7 @@ pub(crate) fn default_manifest(project_name: &str) -> String {
     format!(
         r#"[project]
 name = "{}"
-author  = "{}"
+author = "{}"
 entry = "main.sw"
 license = "Apache-2.0"
 "#,
@@ -25,7 +25,7 @@ pub(crate) fn default_tests_manifest(project_name: &str) -> String {
         r#"[package]
 name = "{}"
 version = "0.1.0"
-authors  = "{}"
+authors = "{}"
 edition = "2021"
 license = "Apache-2.0"
 
