@@ -110,7 +110,7 @@ struct Foo<T>
 
 ## Type Arguments
 
-Similar to Rust, Sway has what is colloquially known as the turbofish. The turbofish looks like this: `::<>` (see the little fish with bubbles behind it?). The turbofish is used to annotate types in a generic context. Say you have the following function:
+Similar to Rust, Sway has what is colloquially known as the [turbofish](https://github.com/rust-lang/rust/blob/e98309298d927307c5184f4869604bd068d26183/src/test/ui/parser/bastion-of-the-turbofish.rs). The turbofish looks like this: `::<>` (see the little fish with bubbles behind it?). The turbofish is used to annotate types in a generic context. Say you have the following function:
 
 ```sway
 fn foo<T, E>(t: T) -> Result<T, E> {
