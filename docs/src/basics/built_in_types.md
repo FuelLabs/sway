@@ -60,11 +60,11 @@ Because the string literal `"fuel"` is four letters, the type is `str[4]`, denot
 
 ## Address type
 
-The Address type is a type-safe wrapper around the primitive b256 type.
+The `Address` type is a type-safe wrapper around the primitive `b256` type.
 
 ## ContractId type
 
-The ContractId type is a type-safe wrapper around the primitive b256 type.
+The `ContractId` type is a type-safe wrapper around the primitive `b256` type.
 
 # Compound Types
 
