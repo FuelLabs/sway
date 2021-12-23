@@ -183,10 +183,10 @@ $ tree .
 </code></pre>
 <p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
 <pre><code class="language-toml">[project]
-author  = &quot;user&quot;
-license = &quot;Apache-2.0&quot;
 name = &quot;hello_world&quot;
+author = &quot;user&quot;
 entry = &quot;main.sw&quot;
+license = &quot;Apache-2.0&quot;
 </code></pre>
 <p>Here are the contents of the only Sway file in the project, and the main entry point, <code>src/main.sw</code>:</p>
 <pre><code class="language-sway">script;
