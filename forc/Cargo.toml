@@ -37,6 +37,8 @@ tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread", "process"]
 toml = "0.5"
 whoami = "1.1"
 core-types = { path = "../core-types" }
+sway-server = { path = "../sway-server" }
+common = { path = "../common" }
 
 [features]
 default = []

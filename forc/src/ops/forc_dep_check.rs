@@ -1,9 +1,6 @@
-use crate::utils::{
-    dependency,
-    helpers::{find_manifest_dir, read_manifest},
-};
-
+use crate::utils::{dependency, helpers::read_manifest};
 use anyhow::{anyhow, Result};
+use common::find_manifest_dir;
 use dirs::home_dir;
 use semver::Version;
 use std::{

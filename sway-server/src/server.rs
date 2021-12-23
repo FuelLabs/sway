@@ -3,7 +3,7 @@ use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
 };
-use forc::util::helpers::{find_manifest_dir, get_sway_files};
+use common::helpers::{find_manifest_dir, get_sway_files};
 use lsp::{
     CompletionParams, CompletionResponse, Hover, HoverParams, HoverProviderCapability,
     InitializeParams, InitializeResult, MessageType, OneOf,

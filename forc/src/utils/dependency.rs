@@ -1,6 +1,6 @@
-use crate::utils::constants;
 use crate::utils::manifest::Manifest;
 use anyhow::{anyhow, bail, Context, Result};
+use common::constants;
 use curl::easy::Easy;
 use dirs::home_dir;
 use flate2::read::GzDecoder;

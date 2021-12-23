@@ -1,13 +1,13 @@
-use crate::utils::constants;
 use crate::{
     cli::UpdateCommand,
     ops::forc_dep_check,
-    utils::{
-        dependency,
-        helpers::{find_manifest_dir, read_manifest},
-    },
+    utils::{dependency, helpers::read_manifest},
 };
 use anyhow::{anyhow, Result};
+use common::{
+    constants::{self},
+    find_manifest_dir,
+};
 use dirs::home_dir;
 use std::{path::PathBuf, str};
 

@@ -3,11 +3,12 @@ use crate::{
     cli::JsonAbiCommand,
     utils::dependency,
     utils::helpers::{
-        find_file_name, find_main_path, find_manifest_dir, get_main_file, print_on_failure,
-        print_on_success, read_manifest,
+        find_file_name, find_main_path, get_main_file, print_on_failure, print_on_success,
+        read_manifest,
     },
 };
 
+use common::find_manifest_dir;
 use core_types::{Function, JsonABI};
 
 use anyhow::Result;

@@ -8,7 +8,9 @@ members = [
     "formatter",
     "parser",
     "sway-server",
-    "test"]
+    "common",
+    "test"
+]
 
 [profile.dev.package.sway-server]
 debug = 2
