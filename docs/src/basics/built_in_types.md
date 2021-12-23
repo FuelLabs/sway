@@ -60,13 +60,18 @@ Because the string literal `"fuel"` is four letters, the type is `str[4]`, denot
 
 ## Address type
 
-In Sway, the Address type is a type-safe wrapper around the primitive b256 type.
-(as of now, not yet implemented)
+The Address type is a type-safe wrapper around the primitive b256 type.
+
+## ContractId type
+
+The ContractId type is a type-safe wrapper around the primitive b256 type.
 
 # Compound Types
+
 _Compound types_ are types which group multiple values into one type. In Sway, we have arrays and tuples.
 
 ## Tuple Types
+
 _note: tuples are a work in progress and are tracked by [this PR](https://github.com/FuelLabs/sway/pull/399)_
 A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type which consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.
 
@@ -74,7 +79,7 @@ A tuple is a general-purpose static-length aggregation of types. In more plain t
 let x: (u64, u64) = (0, 0);
 ```
 
-This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, `(u64, u64)`, is similar in syntax to the expression which instantiates that type, `(0, 0)`. 
+This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, `(u64, u64)`, is similar in syntax to the expression which instantiates that type, `(0, 0)`.
 
 ```sway
 let x: (u64, bool) = (42, true);
@@ -97,7 +102,7 @@ An array is similar to a tuple, but an array's values must all be of the same ty
 let x = [1, 2, 3, 4, 5];
 ```
 
-Arrays are allocated on the stack since their size is known. An array's size is _always_ static, i.e. it cannot change. An array of five elements cannot become an array of six elements. 
+Arrays are allocated on the stack since their size is known. An array's size is _always_ static, i.e. it cannot change. An array of five elements cannot become an array of six elements.
 
 Arrays can be iterated over, unlike tuples. A common use case for arrays is checking set membership. If you are given a name, and you'd like to figure out if that name is included in your list of classmates, you can use an array:
 
