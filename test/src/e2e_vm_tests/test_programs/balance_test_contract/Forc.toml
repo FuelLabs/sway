@@ -1,6 +1,6 @@
 [project]
 author = "Fuel Labs <contact@fuel.sh>"
-license = "MIT"
+license = "Apache-2.0"
 name = "balance_test_contract"
 entry = "main.sw"
 

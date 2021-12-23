@@ -1,6 +1,6 @@
 [project]
 author = "Fuel Labs <contact@fuel.sh>"
-license = "MIT"
+license = "Apache-2.0"
 name = "const_decl"
 entry = "main.sw"
 

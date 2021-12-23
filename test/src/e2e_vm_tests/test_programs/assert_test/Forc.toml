@@ -1,6 +1,6 @@
 [project]
-author = "Fuel Labs <contact@fuel.sh>"
-license = "MIT"
+<author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
 name = "assert_test"
 entry = "main.sw"
 
