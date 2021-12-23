@@ -1,4 +1,4 @@
-# Native support for different asset types
+# Native support for multiple asset types
 
 The FuelVM has built-in support for working with multiple assets!
 
