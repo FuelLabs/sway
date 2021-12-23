@@ -1,5 +1,5 @@
 [project]
-author  = "Fuel Labs <contact@fuel.sh>"
+author = "Fuel Labs <contact@fuel.sh>"
 license = "MIT"
 name = "basic_func_decl"
 entry = "main.sw"

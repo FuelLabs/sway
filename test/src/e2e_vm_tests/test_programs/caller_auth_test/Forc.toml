@@ -1,5 +1,5 @@
 [project]
-author  = "alex"
+author = "Fuel Labs <contact@fuel.sh>"
 license = "MIT"
 name = "caller_auth_test"
 entry = "main.sw"

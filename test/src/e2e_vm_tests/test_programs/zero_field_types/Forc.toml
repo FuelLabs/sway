@@ -1,5 +1,5 @@
 [project]
-author  = "Andrew Cann"
+author = "Fuel Labs <contact@fuel.sh>"
 license = "MIT"
 name = "zero_field_types"
 entry = "main.sw"

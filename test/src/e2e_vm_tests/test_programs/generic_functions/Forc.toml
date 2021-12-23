@@ -1,5 +1,5 @@
 [project]
-author  = "Alexander Hansen"
+author = "Fuel Labs <contact@fuel.sh>"
 license = "MIT"
 name = "generic_functions"
 entry = "main.sw"
