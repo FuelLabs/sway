@@ -58,14 +58,6 @@ let my_string: str[4] = "fuel";
 
 Because the string literal `"fuel"` is four letters, the type is `str[4]`, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.
 
-## Address type
-
-The `Address` type is a type-safe wrapper around the primitive `b256` type.
-
-## ContractId type
-
-The `ContractId` type is a type-safe wrapper around the primitive `b256` type.
-
 # Compound Types
 
 _Compound types_ are types which group multiple values into one type. In Sway, we have arrays and tuples.
