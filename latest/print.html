@@ -387,17 +387,17 @@ struct ParamsSend {
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
-    fn mint(gas: u64, coins: u64, color: b256, args: ParamsMint);
+    fn mint(gas: u64, coins: u64, asset_id: b256, args: ParamsMint);
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(gas: u64, coins: u64, color: b256, args: ParamsSend);
+    fn send(gas: u64, coins: u64, asset_id: b256, args: ParamsSend);
 }
 
 // Note: ABI methods for now must explicitly have as parameters:
 //  gas to forward: u64
 //  coins to forward: u64,
-//  color of coins: b256
+//  asset_id of coins: b256
 
 ////////////////////////////////////////
 // Constants
@@ -421,7 +421,7 @@ const STORAGE_BALANCES: b256 = 0x00000000000000000000000000000000000000000000000
 
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
-    fn mint(gas: u64, coins: u64, color: b256, args: ParamsMint) {
+    fn mint(gas: u64, coins: u64, asset_id: b256, args: ParamsMint) {
         // Note: authentication is not yet implemented, for now just trust params
         if args.receiver == minter {
             let storage_slot = hash_pair(STORAGE_BALANCES, minter, HashMethod::Sha256);
@@ -435,7 +435,7 @@ impl Token for Contract {
 
     }
 
-    fn send(gas: u64, coins: u64, color: b256, args: ParamsSend) {
+    fn send(gas: u64, coins: u64, asset_id: b256, args: ParamsSend) {
         let sender_storage_slot = hash_pair(STORAGE_BALANCES, args.sender, HashMethod::Sha256);
 
         let mut sender_amount = get_u64(sender_storage_slot);
@@ -464,17 +464,17 @@ enum FizzBuzzResult {
 }
 
 abi FizzBuzz {
-  fn fizzbuzz(gas: u64, coins: u64, color: b256, input: u64) -&gt; FizzBuzzResult;
+  fn fizzbuzz(gas: u64, coins: u64, asset_id: b256, input: u64) -&gt; FizzBuzzResult;
 }
 
 impl FizzBuzz for Contract {
-  fn fizzbuzz(gas: u64, coins: u64, color: b256, input: u64) -&gt; FizzBuzzResult {
+  fn fizzbuzz(gas: u64, coins: u64, asset_id: b256, input: u64) -&gt; FizzBuzzResult {
     if input % 15 == 0 {
       FizzBuzzResult::FizzBuzz
     } else if input % 3 == 0 {
       FizzBuzzResult::Fizz
     } else if input % 5 == 0 {
-      FizzBuzzResult::Buzz  
+      FizzBuzzResult::Buzz
     } else {
       FizzBuzzResult::Other(input)
     }
@@ -486,27 +486,27 @@ impl FizzBuzz for Contract {
 <pre><code class="language-sway">contract;
 
 const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
-const ETH_COLOR: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+const ETH_ID: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 use std::*;
 
 abi Wallet {
     storage balance: u64 = 0;
-    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, unused: ());
-    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, req: SendFundsRequest);
+    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ());
+    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest);
 }
 
 impl Wallet for Contract {
-    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, unused: ()) {
-        if color_of_coins == ETH_COLOR {
+    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ()) {
+        if asset_id == ETH_ID {
             balance += coins_to_forward;
         };
     }
 
-    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, req: SendFundsRequest) {
+    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest) {
         assert(sender() == OWNER_ADDRESS);
         assert(balance &gt; req.amount_to_send);
         balance -= req.amount_to_send;
-        transfer_coins(color_of_coins, req.recipient_address, req.amount_to_send);
+        transfer_coins(asset_id, req.recipient_address, req.amount_to_send);
     }
 }
 
@@ -686,12 +686,12 @@ struct InputStruct {
 
 fn main () {
   let x = abi(MyContract, 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
-  let color = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
+  let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
   let input = InputStruct {
     field_1: true,
     field_2: 3,
   };
-  x.foo(5000, 0, color, input);
+  x.foo(5000, 0, asset_id, input);
 }
 </code></pre>
 <h1 id="predicates"><a class="header" href="#predicates">Predicates</a></h1>

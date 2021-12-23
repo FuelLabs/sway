@@ -212,17 +212,17 @@ struct ParamsSend {
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
-    fn mint(gas: u64, coins: u64, color: b256, args: ParamsMint);
+    fn mint(gas: u64, coins: u64, asset_id: b256, args: ParamsMint);
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(gas: u64, coins: u64, color: b256, args: ParamsSend);
+    fn send(gas: u64, coins: u64, asset_id: b256, args: ParamsSend);
 }
 
 // Note: ABI methods for now must explicitly have as parameters:
 //  gas to forward: u64
 //  coins to forward: u64,
-//  color of coins: b256
+//  asset_id of coins: b256
 
 ////////////////////////////////////////
 // Constants
@@ -246,7 +246,7 @@ const STORAGE_BALANCES: b256 = 0x00000000000000000000000000000000000000000000000
 
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
-    fn mint(gas: u64, coins: u64, color: b256, args: ParamsMint) {
+    fn mint(gas: u64, coins: u64, asset_id: b256, args: ParamsMint) {
         // Note: authentication is not yet implemented, for now just trust params
         if args.receiver == minter {
             let storage_slot = hash_pair(STORAGE_BALANCES, minter, HashMethod::Sha256);
@@ -260,7 +260,7 @@ impl Token for Contract {
 
     }
 
-    fn send(gas: u64, coins: u64, color: b256, args: ParamsSend) {
+    fn send(gas: u64, coins: u64, asset_id: b256, args: ParamsSend) {
         let sender_storage_slot = hash_pair(STORAGE_BALANCES, args.sender, HashMethod::Sha256);
 
         let mut sender_amount = get_u64(sender_storage_slot);
