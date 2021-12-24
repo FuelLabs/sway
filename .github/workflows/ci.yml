@@ -44,14 +44,14 @@ jobs:
           command: fmt
           args: --all -- --check
 
-      - name: Clone and build fuel-core
-        run: |
-          git clone git@github.com:FuelLabs/fuel-core
-          (cd fuel-core && cargo build -p fuel-core --no-default-features)
+      - name: Install fuel-core
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: fuel-core
 
       - name: Run fuel-core
-        run: |
-          ./fuel-core/target/debug/fuel-core &
+        run: fuel-core
 
       - name: Build
         uses: actions-rs/cargo@v1
