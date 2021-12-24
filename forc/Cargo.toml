@@ -15,7 +15,7 @@ sway-core = { path = "../sway-core", version = "0.1" }
 curl = "0.4.38"
 dirs = "3.0.2"
 flate2 = "1.0.20"
-sway-fmt = { path = "../sway-fmt" }
+sway-fmt = { version = "0.1", path = "../sway-fmt" }
 fuel-asm = "0.1" 
 fuel-client = { version = "0.1", default-features = false }
 fuel-tx = "0.1"

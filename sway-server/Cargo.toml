@@ -11,7 +11,7 @@ description = "LSP server for Sway."
 [dependencies]
 sway-core = { path = "../sway-core" }
 dashmap = "4.0.2"
-sway-fmt = { path = "../sway-fmt" }
+sway-fmt = { version = "0.1", path = "../sway-fmt" }
 lspower = "1.0.0"
 fuel-pest = "3.0"
 ropey = "1.2"
