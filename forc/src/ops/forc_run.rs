@@ -11,9 +11,9 @@ use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
 use crate::utils::client::start_fuel_core;
 
-use crate::utils::{constants, helpers};
-use constants::{SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
-use helpers::{find_manifest_dir, get_main_file, read_manifest};
+use crate::utils::helpers;
+use helpers::{get_main_file, read_manifest};
+use sway_utils::{constants::*, find_manifest_dir};
 
 pub async fn run(command: RunCommand) -> Result<(), CliError> {
     let path_dir = if let Some(path) = &command.path {
