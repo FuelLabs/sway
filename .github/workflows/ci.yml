@@ -51,7 +51,7 @@ jobs:
           args: fuel-core
 
       - name: Run fuel-core
-        run: fuel-core
+        run: fuel-core &
 
       - name: Build
         uses: actions-rs/cargo@v1
