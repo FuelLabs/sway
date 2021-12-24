@@ -5,7 +5,7 @@ members = [
     "core-lang",
     "docstrings",
     "forc",
-    "formatter",
+    "sway-fmt",
     "parser",
     "sway-server",
     "sway-utils",

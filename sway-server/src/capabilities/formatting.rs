@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::core::session::Session;
-use formatter::get_formatted_data;
+use sway_fmt::get_formatted_data;
 use lspower::lsp::{
     DocumentFormattingParams, FormattingOptions, Position, Range, TextDocumentIdentifier, TextEdit,
 };

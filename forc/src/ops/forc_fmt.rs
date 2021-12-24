@@ -1,7 +1,7 @@
 use crate::cli::{BuildCommand, FormatCommand};
 use crate::ops::forc_build;
 use crate::utils::helpers::{println_green, println_red};
-use formatter::get_formatted_data;
+use sway_fmt::get_formatted_data;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{fmt, fs, io, path::Path};
 use sway_utils::{find_manifest_dir, get_sway_files};
