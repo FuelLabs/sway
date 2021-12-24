@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "core-types",
+    "sway-types",
     "core-lang",
     "docstrings",
     "forc",
