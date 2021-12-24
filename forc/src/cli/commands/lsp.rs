@@ -7,7 +7,7 @@ pub(crate) struct Command {}
 pub(crate) async fn exec(_command: Command) -> Result<(), String> {
     println!(
         "Running the {} language server...",
-        common::constants::LANGUAGE_NAME
+        sway_utils::constants::LANGUAGE_NAME
     );
     Ok(start().await)
 }

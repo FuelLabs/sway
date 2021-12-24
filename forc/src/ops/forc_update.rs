@@ -4,7 +4,7 @@ use crate::{
     utils::{dependency, helpers::read_manifest},
 };
 use anyhow::{anyhow, Result};
-use common::{
+use sway_utils::{
     constants::{self},
     find_manifest_dir,
 };

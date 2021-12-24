@@ -12,7 +12,7 @@ use crate::utils::cli_error::CliError;
 use crate::utils::client::start_fuel_core;
 
 use crate::utils::helpers;
-use common::{constants::*, find_manifest_dir};
+use sway_utils::{constants::*, find_manifest_dir};
 use helpers::{get_main_file, read_manifest};
 
 pub async fn run(command: RunCommand) -> Result<(), CliError> {

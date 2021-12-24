@@ -2,7 +2,7 @@ use std::net::AddrParseError;
 use std::path::PathBuf;
 use std::{fmt, io};
 
-use common::constants::MANIFEST_FILE_NAME;
+use sway_utils::constants::MANIFEST_FILE_NAME;
 use core_lang::CompileError;
 
 #[derive(Debug)]

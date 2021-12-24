@@ -8,7 +8,7 @@ members = [
     "formatter",
     "parser",
     "sway-server",
-    "common",
+    "sway-utils",
     "test"
 ]
 

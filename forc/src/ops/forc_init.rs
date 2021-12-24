@@ -1,5 +1,5 @@
 use crate::utils::defaults;
-use common::constants;
+use sway_utils::constants;
 use std::fs;
 
 pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::error::Error>> {

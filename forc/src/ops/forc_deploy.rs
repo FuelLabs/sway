@@ -8,7 +8,7 @@ use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
 
 use crate::utils::helpers;
-use common::{constants::*, find_manifest_dir};
+use sway_utils::{constants::*, find_manifest_dir};
 use helpers::{get_main_file, read_manifest};
 use std::path::PathBuf;
 
