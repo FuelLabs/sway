@@ -8,5 +8,5 @@ fuels-rs/ @digorithm
 lib-std/ @sezna
 lib-core/ @sezna
 test/ @sezna
-core-types/ @leviathanbeak
+sway-types/ @sezna
 scripts/ @leviathanbeak

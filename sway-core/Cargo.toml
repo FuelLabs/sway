@@ -12,11 +12,10 @@ description = "Sway core language."
 selector-debug = ["structopt", "hex"]
 
 [dependencies]
-core-types = { path = "../core-types" }
 derivative = "2.2.0"
 either = "1.6"
-fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
-fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
+fuel-asm = "0.1"
+fuel-vm = "0.1"
 hex = { version = "0.4", optional = true }
 lazy_static = "1.4"
 line-col = "0.2"
@@ -27,6 +26,7 @@ sha2 = "0.9"
 smallvec = "1.7"
 source-span = "2.4"
 structopt = { version = "0.3", default-features = false, optional = true }
+sway-types = { version = "0.1", path = "../sway-types" }
 thiserror = "1.0"
 uuid-b64 = "0.1"
 
