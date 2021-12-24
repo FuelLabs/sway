@@ -1,13 +1,13 @@
 [workspace]
 resolver = "2"
 members = [
-    "sway-types",
-    "sway-core",
     "docstrings",
     "forc",
-    "sway-fmt",
     "parser",
+    "sway-core",
+    "sway-fmt",
     "sway-server",
+    "sway-types",
     "sway-utils",
     "test"
 ]
