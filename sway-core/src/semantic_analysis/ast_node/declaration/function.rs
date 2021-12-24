@@ -10,8 +10,8 @@ use crate::span::Span;
 use crate::type_engine::*;
 use crate::TypeParameter;
 use crate::{error::*, Ident};
-use sway_types::{Function, Property};
 use sha2::{Digest, Sha256};
+use sway_types::{Function, Property};
 
 mod function_parameter;
 pub use function_parameter::*;

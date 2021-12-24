@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use crate::core::session::Session;
-use sway_fmt::get_formatted_data;
 use lspower::lsp::{
     DocumentFormattingParams, FormattingOptions, Position, Range, TextDocumentIdentifier, TextEdit,
 };
+use sway_fmt::get_formatted_data;
 
 pub fn format_document(
     session: Arc<Session>,

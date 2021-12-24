@@ -12,11 +12,11 @@ use sway_types::{Function, JsonABI};
 use sway_utils::find_manifest_dir;
 
 use anyhow::Result;
-use sway_core::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use sway_core::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
 
 pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // find manifest directory, even if in subdirectory

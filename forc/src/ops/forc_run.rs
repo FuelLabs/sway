@@ -1,9 +1,9 @@
-use sway_core::{parse, TreeType};
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
 use std::io::{self, Write};
 use std::path::PathBuf;
+use sway_core::{parse, TreeType};
 use tokio::process::Child;
 
 use crate::cli::{BuildCommand, RunCommand};

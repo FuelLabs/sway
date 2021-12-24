@@ -5,8 +5,8 @@ use crate::span::Span;
 use crate::style::is_snake_case;
 use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
-use sway_types::{Function, Property};
 use pest::iterators::Pair;
+use sway_types::{Function, Property};
 
 mod purity;
 pub use purity::Purity;

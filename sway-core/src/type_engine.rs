@@ -5,9 +5,9 @@ use std::iter::FromIterator;
 mod engine;
 mod integer_bits;
 mod type_info;
-use sway_types::Property;
 pub(crate) use engine::*;
 pub use integer_bits::*;
+use sway_types::Property;
 pub use type_info::*;
 
 /// A identifier to uniquely refer to our type terms
