@@ -5,9 +5,5 @@ use sway_server::start;
 pub(crate) struct Command {}
 
 pub(crate) async fn exec(_command: Command) -> Result<(), String> {
-    println!(
-        "Running the {} language server...",
-        sway_utils::constants::LANGUAGE_NAME
-    );
     Ok(start().await)
 }
