@@ -4,7 +4,7 @@ use crate::build_config::BuildConfig;
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::{error::*, Ident};
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 /// An `abi` declaration, which declares an interface for a contract
 /// to implement or for a caller to use to call a contract.

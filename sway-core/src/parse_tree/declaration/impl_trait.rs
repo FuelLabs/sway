@@ -3,7 +3,7 @@ use crate::build_config::BuildConfig;
 use crate::parse_tree::CallPath;
 use crate::span::Span;
 use crate::{error::*, parser::Rule, type_engine::TypeInfo};
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct ImplTrait<'sc> {

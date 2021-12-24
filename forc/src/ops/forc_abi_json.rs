@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-use core_types::{Function, JsonABI};
+use sway_types::{Function, JsonABI};
 use sway_utils::find_manifest_dir;
 
 use anyhow::Result;

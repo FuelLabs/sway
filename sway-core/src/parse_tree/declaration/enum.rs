@@ -14,7 +14,7 @@ use crate::{
     semantic_analysis::ast_node::TypedEnumVariant,
     style::is_upper_camel_case,
 };
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct EnumDeclaration<'sc> {

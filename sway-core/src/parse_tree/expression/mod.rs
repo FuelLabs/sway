@@ -6,8 +6,8 @@ use crate::{parser::Rule, type_engine::TypeInfo};
 use crate::{CodeBlock, Ident};
 
 use either::Either;
-use fuel_pest;
-use fuel_pest::iterators::Pair;
+use pest;
+use pest::iterators::Pair;
 use std::collections::VecDeque;
 
 mod asm;

@@ -52,7 +52,7 @@ impl<'sc> ResolvedType<'sc> {
     /// This is _in words_!
     pub(crate) fn stack_size_of(&self) -> u64 {
         let span = crate::Span {
-            span: fuel_pest::Span::new("TODO(static span)", 0, 0).unwrap(),
+            span: pest::Span::new("TODO(static span)", 0, 0).unwrap(),
             path: None,
         };
 

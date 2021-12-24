@@ -1,11 +1,11 @@
 #[derive(Parser)]
-#[grammar = "hll.fuel_pest"]
+#[grammar = "hll.pest"]
 pub struct HllParser;
 
 #[cfg(test)]
 mod test {
     use super::{HllParser, Rule};
-    use fuel_pest::Parser;
+    use pest::Parser;
     // basic sway-core tests
     #[test]
     fn test_var_decl() {

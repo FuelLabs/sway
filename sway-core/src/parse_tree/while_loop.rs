@@ -5,7 +5,7 @@ use crate::{
     error::{ok, CompileResult},
     CodeBlock, Expression,
 };
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct WhileLoop<'sc> {

@@ -3,7 +3,7 @@ use crate::error::*;
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::{Ident, TypeInfo};
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 use super::Expression;
 use crate::type_engine::IntegerBits;

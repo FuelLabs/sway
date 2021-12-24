@@ -15,12 +15,12 @@ curl = "0.4.38"
 dirs = "3.0.2"
 flate2 = "1.0.20"
 fuel-asm = "0.1" 
-fuel-client = { version = "0.1", default-features = false }
+fuel-gql-client = { version = "0.1", default-features = false }
 fuel-tx = "0.1"
 fuel-vm = "0.1"
 futures = "0.3"
 hex = "0.4.3"
-fuel-pest = "3.0"
+pest = {version = "3.0", package = "fuel-pest" }
 prettydiff = "0.4.0"
 reqwest = { version = "0.11.4", features = ["json"] }
 semver = "1.0.3"

@@ -5,7 +5,7 @@ use crate::{
     BuildConfig, CallPath, CompileError, CompileResult, Ident, Literal, Rule, Span,
 };
 
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 /// A [Scrutinee] is on the left-hand-side of a pattern, and dictates whether or
 /// not a pattern will succeed at pattern matching and what, if any, elements will

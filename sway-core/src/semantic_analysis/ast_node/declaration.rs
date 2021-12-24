@@ -4,7 +4,7 @@ use crate::parse_tree::*;
 use crate::span::Span;
 use crate::type_engine::*;
 use crate::{error::*, Ident};
-use core_types::Property;
+use sway_types::Property;
 
 mod function;
 mod variable;

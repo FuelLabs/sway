@@ -414,7 +414,7 @@ pub enum CompileError<'sc> {
     #[error("Error parsing input: expected {err:?}")]
     ParseFailure {
         span: Span<'sc>,
-        err: fuel_pest::error::Error<Rule>,
+        err: pest::error::Error<Rule>,
     },
     #[error(
         "Invalid top-level item: {0:?}. A program should consist of a contract, script, or \
@@ -873,7 +873,7 @@ impl<'sc> CompileError<'sc> {
             CompileError::ParseFailure { err, .. } => format!(
                 "Error parsing input: {}",
                 match &err.variant {
-                    fuel_pest::error::ErrorVariant::ParsingError {
+                    pest::error::ErrorVariant::ParsingError {
                         positives,
                         negatives,
                     } => {
@@ -900,7 +900,7 @@ impl<'sc> CompileError<'sc> {
                         }
                         buf
                     }
-                    fuel_pest::error::ErrorVariant::CustomError { message } => message.to_string(),
+                    pest::error::ErrorVariant::CustomError { message } => message.to_string(),
                 }
             ),
             a => format!("{}", a),

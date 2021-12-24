@@ -1,5 +1,5 @@
 use sway_core::{parse, TreeType};
-use fuel_client::client::FuelClient;
+use fuel_gql_client::client::FuelClient;
 use fuel_tx::Transaction;
 use futures::TryFutureExt;
 use std::io::{self, Write};

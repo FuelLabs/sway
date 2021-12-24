@@ -10,7 +10,7 @@ use crate::span::Span;
 use crate::type_engine::*;
 use crate::TypeParameter;
 use crate::{error::*, Ident};
-use core_types::{Function, Property};
+use sway_types::{Function, Property};
 use sha2::{Digest, Sha256};
 
 mod function_parameter;
@@ -473,26 +473,26 @@ fn test_function_selector_behavior() {
         name: Ident {
             primary_name: "foo",
             span: Span {
-                span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ", 0, 0).unwrap(),
                 path: None,
             },
         },
         body: TypedCodeBlock {
             contents: vec![],
             whole_block_span: Span {
-                span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ", 0, 0).unwrap(),
                 path: None,
             },
         },
         parameters: vec![],
         span: Span {
-            span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
         return_type: 0,
         type_parameters: vec![],
         return_type_span: Span {
-            span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
         visibility: Visibility::Public,
@@ -511,14 +511,14 @@ fn test_function_selector_behavior() {
         name: Ident {
             primary_name: "bar",
             span: Span {
-                span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ", 0, 0).unwrap(),
                 path: None,
             },
         },
         body: TypedCodeBlock {
             contents: vec![],
             whole_block_span: Span {
-                span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ", 0, 0).unwrap(),
                 path: None,
             },
         },
@@ -527,13 +527,13 @@ fn test_function_selector_behavior() {
                 name: Ident {
                     primary_name: "foo",
                     span: Span {
-                        span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+                        span: pest::Span::new(" ", 0, 0).unwrap(),
                         path: None,
                     },
                 },
                 r#type: crate::type_engine::insert_type(TypeInfo::Str(5)),
                 type_span: Span {
-                    span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+                    span: pest::Span::new(" ", 0, 0).unwrap(),
                     path: None,
                 },
             },
@@ -541,25 +541,25 @@ fn test_function_selector_behavior() {
                 name: Ident {
                     primary_name: "baz",
                     span: Span {
-                        span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+                        span: pest::Span::new(" ", 0, 0).unwrap(),
                         path: None,
                     },
                 },
                 r#type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
                 type_span: Span {
-                    span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+                    span: pest::Span::new(" ", 0, 0).unwrap(),
                     path: None,
                 },
             },
         ],
         span: Span {
-            span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
         return_type: 0,
         type_parameters: vec![],
         return_type_span: Span {
-            span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
         visibility: Visibility::Public,

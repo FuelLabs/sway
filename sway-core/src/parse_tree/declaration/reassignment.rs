@@ -4,7 +4,7 @@ use crate::parse_tree::Expression;
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::{parse_array_index, Ident};
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct Reassignment<'sc> {

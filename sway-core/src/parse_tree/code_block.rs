@@ -7,7 +7,7 @@ use crate::{
     parse_tree::{Expression, ReturnStatement},
     span, AstNode, AstNodeContent, Declaration,
 };
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct CodeBlock<'sc> {

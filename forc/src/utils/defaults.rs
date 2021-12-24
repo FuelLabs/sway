@@ -33,7 +33,7 @@ license = "Apache-2.0"
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
 fuels-abigen-macro = {{ git = "ssh://git@github.com/FuelLabs/fuels-rs.git" }}
 fuels-rs = {{ git = "ssh://git@github.com/FuelLabs/fuels-rs.git" }}
-fuel-client = {{ version = "0.1", default-features = false }}
+fuel-gql-client = {{ version = "0.1", default-features = false }}
 fuel-tx = {{ git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }}
 rand = "0.8"
 

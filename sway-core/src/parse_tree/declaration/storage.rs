@@ -1,7 +1,7 @@
 use crate::{
     error::*, ident::Ident, parse_tree::Expression, parser::Rule, type_engine::*, BuildConfig, Span,
 };
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 /// A declaration of contract storage. Only valid within contract contexts.

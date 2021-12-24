@@ -1434,7 +1434,7 @@ fn ret_or_retd_value<'sc>(
         );
     }
     let span = crate::Span {
-        span: fuel_pest::Span::new("TODO(static span)", 0, 0).unwrap(),
+        span: pest::Span::new("TODO(static span)", 0, 0).unwrap(),
         path: None,
     };
 

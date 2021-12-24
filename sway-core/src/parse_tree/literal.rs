@@ -5,7 +5,7 @@ use crate::span;
 use crate::type_engine::IntegerBits;
 use crate::types::ResolvedType;
 use crate::CompileError;
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 use std::convert::TryInto;
 
 #[derive(Debug, Clone, Eq, PartialEq)]

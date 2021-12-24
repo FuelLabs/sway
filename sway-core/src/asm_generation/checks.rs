@@ -26,7 +26,7 @@ pub fn check_invalid_opcodes<'sc>(asm: &FinalizedAsm<'sc>) -> CompileResult<'sc,
 fn check_for_contract_opcodes<'sc>(ops: &[AllocatedOp<'sc>]) -> CompileResult<'sc, ()> {
     use AllocatedOpcode::*;
     let default_span = crate::Span {
-        span: fuel_pest::Span::new("no span found for opcode", 0, 1).unwrap(),
+        span: pest::Span::new("no span found for opcode", 0, 1).unwrap(),
         path: None,
     };
     let mut errors = vec![];

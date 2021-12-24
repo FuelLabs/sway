@@ -68,14 +68,14 @@ fn test_struct_memory_layout() {
     use crate::span::Span;
     let first_field_name = Ident {
         span: Span {
-            span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
         primary_name: "foo",
     };
     let second_field_name = Ident {
         span: Span {
-            span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+            span: pest::Span::new(" ", 0, 0).unwrap(),
             path: None,
         },
         primary_name: "bar",
@@ -115,7 +115,7 @@ pub(crate) fn get_struct_memory_layout<'sc>(
     fields_with_names: &[(TypeId, &str)],
 ) -> CompileResult<'sc, StructMemoryLayoutDescriptor> {
     let span = crate::Span {
-        span: fuel_pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
+        span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
         path: None,
     };
     let mut fields_with_sizes = vec![];

@@ -133,24 +133,24 @@ impl Span {
         self.range.end
     }
 
-    #[cfg(feature = "fuel_pest-compat")]
-    pub fn start_pos(&self) -> fuel_pest::Position {
+    #[cfg(feature = "pest-compat")]
+    pub fn start_pos(&self) -> pest::Position {
         let input_file: &SourceFile = get_source(self.arena_idx);
-        fuel_pest::Position::new(&input_file.file_content, self.range.start)
+        pest::Position::new(&input_file.file_content, self.range.start)
     }
 
-    #[cfg(feature = "fuel_pest-compat")]
-    pub fn end_pos<'a>(&self) -> fuel_pest::Position<'a> {
+    #[cfg(feature = "pest-compat")]
+    pub fn end_pos<'a>(&self) -> pest::Position<'a> {
         let input_file: &SourceFile = get_source(self.arena_idx);
-        fuel_pest::Position::new(&input_file.file_content, self.range.end)
+        pest::Position::new(&input_file.file_content, self.range.end)
     }
 
-    #[cfg(feature = "fuel_pest-compat")]
-    pub fn split<'a>(&self) -> (fuel_pest::Position<'a>, fuel_pest::Position<'a>) {
+    #[cfg(feature = "pest-compat")]
+    pub fn split<'a>(&self) -> (pest::Position<'a>, pest::Position<'a>) {
         let input_file: &SourceFile = get_source(self.arena_idx);
         (
-            fuel_pest::Position::new(&input_file.file_content, self.range.start),
-            fuel_pest::Position::new(&input_file.file_content, self.range.end),
+            pest::Position::new(&input_file.file_content, self.range.start),
+            pest::Position::new(&input_file.file_content, self.range.end),
         )
     }
 

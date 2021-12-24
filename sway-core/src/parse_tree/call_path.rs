@@ -3,7 +3,7 @@ use crate::error::*;
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::Ident;
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

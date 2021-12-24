@@ -2,7 +2,7 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::span::Span;
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 use std::cmp::{Ord, Ordering};
 use std::hash::{Hash, Hasher};
 

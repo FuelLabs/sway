@@ -5,7 +5,7 @@ use std::iter::FromIterator;
 mod engine;
 mod integer_bits;
 mod type_info;
-use core_types::Property;
+use sway_types::Property;
 pub(crate) use engine::*;
 pub use integer_bits::*;
 pub use type_info::*;
@@ -59,7 +59,7 @@ fn basic_numeric_unknown() {
     let engine = Engine::default();
 
     let sp = Span {
-        span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+        span: pest::Span::new(" ", 0, 0).unwrap(),
         path: None,
     };
     // numerics
@@ -78,7 +78,7 @@ fn basic_numeric_unknown() {
 fn chain_of_refs() {
     let engine = Engine::default();
     let sp = Span {
-        span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+        span: pest::Span::new(" ", 0, 0).unwrap(),
         path: None,
     };
     // numerics
@@ -99,7 +99,7 @@ fn chain_of_refs() {
 fn chain_of_refs_2() {
     let engine = Engine::default();
     let sp = Span {
-        span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+        span: pest::Span::new(" ", 0, 0).unwrap(),
         path: None,
     };
     // numerics
@@ -141,7 +141,7 @@ fn test_str_parse() {
     match parse_str_type(
         "str[20]",
         Span {
-            span: fuel_pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("", 0, 0).unwrap(),
             path: None,
         },
     )
@@ -153,7 +153,7 @@ fn test_str_parse() {
     match parse_str_type(
         "str[]",
         Span {
-            span: fuel_pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("", 0, 0).unwrap(),
             path: None,
         },
     )
@@ -165,7 +165,7 @@ fn test_str_parse() {
     match parse_str_type(
         "str[ab]",
         Span {
-            span: fuel_pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("", 0, 0).unwrap(),
             path: None,
         },
     )
@@ -177,7 +177,7 @@ fn test_str_parse() {
     match parse_str_type(
         "str [ab]",
         Span {
-            span: fuel_pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("", 0, 0).unwrap(),
             path: None,
         },
     )
@@ -190,7 +190,7 @@ fn test_str_parse() {
     match parse_str_type(
         "not even a str[ type",
         Span {
-            span: fuel_pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("", 0, 0).unwrap(),
             path: None,
         },
     )
@@ -202,7 +202,7 @@ fn test_str_parse() {
     match parse_str_type(
         "",
         Span {
-            span: fuel_pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("", 0, 0).unwrap(),
             path: None,
         },
     )
@@ -214,7 +214,7 @@ fn test_str_parse() {
     match parse_str_type(
         "20",
         Span {
-            span: fuel_pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("", 0, 0).unwrap(),
             path: None,
         },
     )
@@ -226,7 +226,7 @@ fn test_str_parse() {
     match parse_str_type(
         "[20]",
         Span {
-            span: fuel_pest::Span::new("", 0, 0).unwrap(),
+            span: pest::Span::new("", 0, 0).unwrap(),
             path: None,
         },
     )

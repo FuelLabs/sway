@@ -57,7 +57,7 @@ fn to_bytecode_mut<'sc>(
         errors.push(CompileError::Internal(
             "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
             Span {
-                span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ", 0, 0).unwrap(),
                 path: None,
             },
         ));

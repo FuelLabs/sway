@@ -26,7 +26,7 @@ use crate::build_config::BuildConfig;
 use crate::error::*;
 use crate::parser::Rule;
 use crate::*;
-use fuel_pest::iterators::Pair;
+use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub enum Declaration<'sc> {
