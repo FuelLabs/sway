@@ -9,3 +9,4 @@ pub const SWAY_LIBRARY: &str = "library";
 pub const SWAY_SCRIPT: &str = "script";
 pub const SWAY_CONTRACT: &str = "contract";
 pub const DEFAULT_NODE_URL: &str = "127.0.0.1:4000";
+pub const LANGUAGE_NAME: &str = "Sway";

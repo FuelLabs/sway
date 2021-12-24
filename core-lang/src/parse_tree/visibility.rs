@@ -1,5 +1,5 @@
 use crate::Rule;
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Visibility {

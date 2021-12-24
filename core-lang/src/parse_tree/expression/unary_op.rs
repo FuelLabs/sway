@@ -4,7 +4,7 @@ use crate::parse_tree::{CallPath, Expression};
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::Ident;
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 
 #[derive(Clone, Debug)]
 pub enum UnaryOp {

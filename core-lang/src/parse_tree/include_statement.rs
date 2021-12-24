@@ -3,7 +3,7 @@ use crate::error::*;
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::Ident;
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 
 #[derive(Clone, Debug)]
 pub struct IncludeStatement<'sc> {

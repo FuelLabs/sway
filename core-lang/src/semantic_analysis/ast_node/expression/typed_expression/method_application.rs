@@ -4,7 +4,7 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::MethodName;
 use crate::parser::{HllParser, Rule};
 use crate::semantic_analysis::TCOpts;
-use pest::Parser;
+use fuel_pest::Parser;
 use std::collections::{HashMap, VecDeque};
 
 #[allow(clippy::too_many_arguments)]
@@ -294,7 +294,7 @@ fn re_parse_expression<'n, 'a>(
     let mut warnings = vec![];
     let mut errors = vec![];
     let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
+        span: fuel_pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0).unwrap(),
         path: None,
     };
 

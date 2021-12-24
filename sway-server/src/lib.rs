@@ -6,8 +6,7 @@ mod server;
 mod utils;
 use server::Backend;
 
-#[tokio::main]
-async fn main() {
+pub async fn start() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 

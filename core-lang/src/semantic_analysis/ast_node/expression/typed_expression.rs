@@ -1742,7 +1742,7 @@ mod tests {
     #[test]
     fn test_array_type_check_non_homogeneous_0<'sc>() {
         let empty_span = Span {
-            span: pest::Span::new_unchecked(" ", 0, 0),
+            span: fuel_pest::Span::new_unchecked(" ", 0, 0),
             path: None,
         };
 
@@ -1775,7 +1775,7 @@ mod tests {
     #[test]
     fn test_array_type_check_non_homogeneous_1<'sc>() {
         let empty_span = Span {
-            span: pest::Span::new_unchecked(" ", 0, 0),
+            span: fuel_pest::Span::new_unchecked(" ", 0, 0),
             path: None,
         };
 
@@ -1815,7 +1815,7 @@ mod tests {
     #[test]
     fn test_array_type_check_bad_count<'sc>() {
         let empty_span = Span {
-            span: pest::Span::new_unchecked(" ", 0, 0),
+            span: fuel_pest::Span::new_unchecked(" ", 0, 0),
             path: None,
         };
 
@@ -1852,7 +1852,7 @@ mod tests {
     #[test]
     fn test_array_type_check_empty<'sc>() {
         let empty_span = Span {
-            span: pest::Span::new_unchecked(" ", 0, 0),
+            span: fuel_pest::Span::new_unchecked(" ", 0, 0),
             path: None,
         };
 

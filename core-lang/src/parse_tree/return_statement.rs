@@ -3,7 +3,7 @@ use crate::error::ok;
 use crate::parser::Rule;
 use crate::span;
 use crate::{CompileResult, Expression};
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct ReturnStatement<'sc> {

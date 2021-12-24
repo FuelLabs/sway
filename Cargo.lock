@@ -1076,6 +1076,8 @@ dependencies = [
  "serde_json",
  "source-span",
  "structopt 0.3.25",
+ "sway-server",
+ "sway-utils",
  "tar",
  "term-table",
  "termcolor",
@@ -3033,14 +3035,18 @@ version = "0.1.0"
 dependencies = [
  "core-lang",
  "dashmap",
- "forc",
  "formatter",
  "lspower",
  "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ropey",
  "serde_json",
+ "sway-utils",
  "tokio",
 ]
+
+[[package]]
+name = "sway-utils"
+version = "0.1.0"
 
 [[package]]
 name = "syn"

@@ -3,13 +3,13 @@ use crate::core::{
     document::{DocumentError, TextDocument},
     session::Session,
 };
-use forc::util::helpers::{find_manifest_dir, get_sway_files};
 use lsp::{
     CompletionParams, CompletionResponse, Hover, HoverParams, HoverProviderCapability,
     InitializeParams, InitializeResult, MessageType, OneOf,
 };
 use lspower::{jsonrpc, lsp, Client, LanguageServer};
 use std::sync::Arc;
+use sway_utils::helpers::{find_manifest_dir, get_sway_files};
 
 #[derive(Debug)]
 pub struct Backend {

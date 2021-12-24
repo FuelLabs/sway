@@ -93,7 +93,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         );
 
     let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use span_for_this_field", 0, 0).unwrap(),
+        span: fuel_pest::Span::new("TODO(static span): use span_for_this_field", 0, 0).unwrap(),
         path: None,
     };
     // step 3

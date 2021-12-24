@@ -6,7 +6,7 @@ use crate::style::is_snake_case;
 use crate::type_engine::TypeInfo;
 use crate::{CodeBlock, Ident, Rule};
 use core_types::{Function, Property};
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 
 mod purity;
 pub use purity::Purity;

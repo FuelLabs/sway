@@ -4,7 +4,7 @@ use crate::parser::Rule;
 use crate::span;
 use crate::CatchAll;
 use crate::CodeBlock;
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 
 use super::scrutinee::Scrutinee;
 use super::{Expression, MatchCondition};

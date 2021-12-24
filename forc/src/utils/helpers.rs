@@ -1,4 +1,3 @@
-use super::constants::{SRC_DIR, SWAY_EXTENSION};
 use super::manifest::Manifest;
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
@@ -8,55 +7,18 @@ use core_lang::{CompileError, CompileWarning, TreeType};
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::{fs, str};
+use std::str;
+use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
-    Some(OsStr::new(SWAY_EXTENSION)) == res
-}
-
-pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
-    let mut files = vec![];
-    let mut dir_entries = vec![path];
-
-    while let Some(next_dir) = dir_entries.pop() {
-        if let Ok(read_dir) = fs::read_dir(next_dir) {
-            for entry in read_dir.filter_map(|res| res.ok()) {
-                let path = entry.path();
-
-                if path.is_dir() {
-                    dir_entries.push(path);
-                } else if is_sway_file(&path) {
-                    files.push(path)
-                }
-            }
-        }
-    }
-
-    files
-}
-
-// Continually go up in the file tree until a manifest (Forc.toml) is found.
-pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    let mut path = std::fs::canonicalize(starter_path).ok()?;
-    let empty_path = PathBuf::from("/");
-    while path != empty_path {
-        path.push(crate::utils::constants::MANIFEST_FILE_NAME);
-        if path.exists() {
-            path.pop();
-            return Some(path);
-        } else {
-            path.pop();
-            path.pop();
-        }
-    }
-    None
+    Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
 pub fn find_main_path(manifest_dir: &PathBuf, manifest: &Manifest) -> PathBuf {
     let mut code_dir = manifest_dir.clone();
-    code_dir.push(crate::utils::constants::SRC_DIR);
+    code_dir.push(constants::SRC_DIR);
     code_dir.push(&manifest.project.entry);
     code_dir
 }
@@ -77,7 +39,7 @@ pub fn find_file_name<'sc>(
 pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
     let manifest_path = {
         let mut man = PathBuf::from(manifest_dir);
-        man.push(crate::utils::constants::MANIFEST_FILE_NAME);
+        man.push(constants::MANIFEST_FILE_NAME);
         man
     };
     let manifest_path_str = format!("{:?}", manifest_path);
@@ -102,7 +64,7 @@ pub fn get_main_file(
 ) -> Result<&'static mut String, String> {
     let main_path = {
         let mut code_dir = PathBuf::from(manifest_dir);
-        code_dir.push(SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest_of_dep.project.entry);
         code_dir
     };

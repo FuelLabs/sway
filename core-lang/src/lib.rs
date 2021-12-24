@@ -24,8 +24,8 @@ use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
-use pest::iterators::Pair;
-use pest::Parser;
+use fuel_pest::iterators::Pair;
+use fuel_pest::Parser;
 use std::collections::{HashMap, HashSet};
 
 pub use semantic_analysis::TreeType;
@@ -142,7 +142,7 @@ pub fn parse<'sc>(
                 Vec::new(),
                 vec![CompileError::ParseFailure {
                     span: span::Span {
-                        span: pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
+                        span: fuel_pest::Span::new(input, get_start(&e), get_end(&e)).unwrap(),
                         path: config.map(|config| config.path()),
                     },
                     err: e,
@@ -215,19 +215,19 @@ pub fn extract_keyword(line: &str, rule: Rule) -> Option<&str> {
     }
 }
 
-/// Takes a parse failure as input and returns either the index of the positional pest parse error, or the start position of the span of text that the error occurs.
-fn get_start(err: &pest::error::Error<Rule>) -> usize {
+/// Takes a parse failure as input and returns either the index of the positional fuel_pest parse error, or the start position of the span of text that the error occurs.
+fn get_start(err: &fuel_pest::error::Error<Rule>) -> usize {
     match err.location {
-        pest::error::InputLocation::Pos(num) => num,
-        pest::error::InputLocation::Span((start, _)) => start,
+        fuel_pest::error::InputLocation::Pos(num) => num,
+        fuel_pest::error::InputLocation::Span((start, _)) => start,
     }
 }
 
-/// Takes a parse failure as input and returns either the index of the positional pest parse error, or the end position of the span of text that the error occurs.
-fn get_end(err: &pest::error::Error<Rule>) -> usize {
+/// Takes a parse failure as input and returns either the index of the positional fuel_pest parse error, or the end position of the span of text that the error occurs.
+fn get_end(err: &fuel_pest::error::Error<Rule>) -> usize {
     match err.location {
-        pest::error::InputLocation::Pos(num) => num,
-        pest::error::InputLocation::Span((_, end)) => end,
+        fuel_pest::error::InputLocation::Pos(num) => num,
+        fuel_pest::error::InputLocation::Span((_, end)) => end,
     }
 }
 
@@ -264,7 +264,7 @@ pub(crate) fn compile_inner_dependency<'sc>(
         TreeType::Contract | TreeType::Script | TreeType::Predicate => {
             errors.push(CompileError::ImportMustBeLibrary {
                 span: span::Span {
-                    span: pest::Span::new(input, 0, 0).unwrap(),
+                    span: fuel_pest::Span::new(input, 0, 0).unwrap(),
                     path: Some(build_config.clone().path()),
                 },
             });
@@ -463,7 +463,7 @@ fn perform_control_flow_analysis<'sc>(
 }
 
 /// The basic recursive parser which handles the top-level parsing given the output of the
-/// pest-generated parser.
+/// fuel_pest-generated parser.
 fn parse_root_from_pairs<'sc>(
     input: impl Iterator<Item = Pair<'sc, Rule>>,
     config: Option<&BuildConfig>,

@@ -6,7 +6,7 @@ use crate::error::{err, ok, CompileResult, Warning};
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::style::is_screaming_snake_case;
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration<'sc> {

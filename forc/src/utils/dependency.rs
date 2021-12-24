@@ -1,4 +1,3 @@
-use crate::utils::constants;
 use crate::utils::manifest::Manifest;
 use anyhow::{anyhow, bail, Context, Result};
 use curl::easy::Easy;
@@ -11,6 +10,7 @@ use std::{
     io::Cursor,
     path::{Path, PathBuf},
 };
+use sway_utils::constants;
 use tar::Archive;
 
 // A collection of remote dependency related functions

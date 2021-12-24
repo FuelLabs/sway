@@ -5,7 +5,7 @@ use crate::span::Span;
 use crate::style::{is_snake_case, is_upper_camel_case};
 use crate::type_engine::TypeInfo;
 use crate::{error::*, Ident};
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct StructDeclaration<'sc> {

@@ -245,11 +245,11 @@ impl<'sc> Namespace<'sc> {
                 let span = match path.get(0) {
                     Some(ident) => ident.span.clone(),
                     None => {
-                        errors.push(CompileError::Internal("Unable to construct span. This is a temporary error and will be fixed in a future release. )", Span { span: pest::Span::new(" ", 0, 0).unwrap(),
+                        errors.push(CompileError::Internal("Unable to construct span. This is a temporary error and will be fixed in a future release. )", Span { span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
                                 path: None
                             }));
                         Span {
-                            span: pest::Span::new(" ", 0, 0).unwrap(),
+                            span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
                             path: None,
                         }
                     }

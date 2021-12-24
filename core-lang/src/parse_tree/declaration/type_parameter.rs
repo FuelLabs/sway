@@ -1,7 +1,7 @@
 use crate::build_config::BuildConfig;
 use crate::span::Span;
 use crate::{error::*, type_engine::*, CompileError, Ident, Rule, TypedDeclaration};
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 use std::convert::From;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

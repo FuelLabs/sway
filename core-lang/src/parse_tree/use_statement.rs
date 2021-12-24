@@ -3,7 +3,7 @@ use crate::error::*;
 use crate::span;
 use crate::Ident;
 use crate::Rule;
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub enum ImportType<'sc> {

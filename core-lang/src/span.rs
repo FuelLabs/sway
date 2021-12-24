@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Span<'sc> {
-    pub span: pest::Span<'sc>,
+    pub span: fuel_pest::Span<'sc>,
     pub(crate) path: Option<Arc<PathBuf>>,
 }
 
@@ -15,15 +15,15 @@ impl<'sc> Span<'sc> {
         self.span.end()
     }
 
-    pub fn start_pos(&self) -> pest::Position {
+    pub fn start_pos(&self) -> fuel_pest::Position {
         self.span.start_pos()
     }
 
-    pub fn end_pos(&self) -> pest::Position {
+    pub fn end_pos(&self) -> fuel_pest::Position {
         self.span.end_pos()
     }
 
-    pub fn split(&self) -> (pest::Position<'sc>, pest::Position<'sc>) {
+    pub fn split(&self) -> (fuel_pest::Position<'sc>, fuel_pest::Position<'sc>) {
         self.span.split()
     }
 

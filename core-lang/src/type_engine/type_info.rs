@@ -7,7 +7,7 @@ use crate::{
 };
 use derivative::Derivative;
 
-use pest::iterators::Pair;
+use fuel_pest::iterators::Pair;
 /// Type information without an associated value, used for type inferencing and definition.
 // TODO use idents instead of Strings when we have arena spans
 #[derive(Derivative)]

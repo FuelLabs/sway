@@ -374,7 +374,7 @@ fn realize_lw(
     let offset_bytes = data_section.offset_to_id(data_id) as u64;
     let offset_words = offset_bytes / 8;
     let offset = match VirtualImmediate12::new(offset_words, Span {
-        span: pest::Span::new(" ", 0, 0).unwrap(),
+        span: fuel_pest::Span::new(" ", 0, 0).unwrap(),
         path: None
     }) {
         Ok(value) => value,

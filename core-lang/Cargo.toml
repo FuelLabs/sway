@@ -20,8 +20,7 @@ fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
 hex = { version = "0.4", optional = true }
 lazy_static = "1.4"
 line-col = "0.2"
-#pest = "2.0"
-pest = { git = "https://github.com/sezna/pest.git", rev = "0ee8d107923f8979897efbd12e16a0eb99ea98b3" }
+fuel-pest = "3.0"
 pest_derive = "2.0"
 petgraph = "0.5"
 sha2 = "0.9"

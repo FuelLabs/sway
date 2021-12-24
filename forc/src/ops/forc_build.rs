@@ -3,14 +3,13 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_main_file, print_on_failure, print_on_success,
-        print_on_success_library, read_manifest,
+        get_main_file, print_on_failure, print_on_success, print_on_success_library, read_manifest,
     },
 };
 use core_lang::{FinalizedAsm, TreeType};
-
 use std::fs::File;
 use std::io::Write;
+use sway_utils::{constants, find_manifest_dir};
 
 use core_lang::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 
@@ -48,7 +47,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     let main_path = {
         let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest.project.entry);
         code_dir
     };
@@ -185,7 +184,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
 
     let main_path = {
         let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest_of_dep.project.entry);
         code_dir
     };

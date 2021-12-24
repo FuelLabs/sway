@@ -1,6 +1,6 @@
 //! Used to debug function selectors
 //! Given an input function declaration, return the selector for it in hexidecimal.
-use pest::Parser;
+use fuel_pest::Parser;
 use structopt::StructOpt;
 
 use core_lang::{
