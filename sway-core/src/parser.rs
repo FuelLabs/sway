@@ -6,7 +6,7 @@ pub struct HllParser;
 mod test {
     use super::{HllParser, Rule};
     use fuel_pest::Parser;
-    // basic core-lang tests
+    // basic sway-core tests
     #[test]
     fn test_var_decl() {
         let parsed = HllParser::parse(Rule::var_decl, r#"let x = 2;"#);

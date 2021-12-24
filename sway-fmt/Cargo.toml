@@ -9,5 +9,5 @@ repository = "https://github.com/FuelLabs/sway"
 description = "Sway sway-fmt."
 
 [dependencies]
-core-lang = { path = "../core-lang", version = "0.1" }
+sway-core = { path = "../sway-core", version = "0.1" }
 ropey = "1.2"

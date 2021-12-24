@@ -120,7 +120,7 @@ impl<'sc> ParseTree<'sc> {
 ///
 /// # Example
 /// ```
-/// # use core_lang::parse;
+/// # use sway_core::parse;
 /// # fn main() {
 ///     let input = "script; fn main() -> bool { true }";
 ///     let result = parse(input, Default::default());
@@ -563,7 +563,7 @@ fn parse_root_from_pairs<'sc>(
                 fuel_ast_opt = Some(HllParseTree {
                     tree_type: TreeType::Library {
                         name: library_name.expect(
-                            "Safe unwrap, because the core-lang enforces the library keyword is \
+                            "Safe unwrap, because the sway-core enforces the library keyword is \
                              followed by a name. This is an invariant",
                         ),
                     },

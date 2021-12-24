@@ -1,4 +1,4 @@
-core-lang/ @sezna
+sway-core/ @sezna
 forc/ @sezna
 sway-fmt/ @leviathanbeak
 docs/ @adlerjohn @sezna

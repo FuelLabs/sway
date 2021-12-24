@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "sway-types",
-    "core-lang",
+    "sway-core",
     "docstrings",
     "forc",
     "sway-fmt",

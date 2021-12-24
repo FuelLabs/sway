@@ -1,7 +1,7 @@
 use lsp::{Diagnostic, DiagnosticSeverity, Position, Range};
 use lspower::lsp::{self};
 
-use core_lang::{CompileError, CompileWarning};
+use sway_core::{CompileError, CompileWarning};
 
 pub fn get_diagnostics(
     warnings: Vec<CompileWarning>,

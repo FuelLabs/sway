@@ -6,12 +6,12 @@ use crate::{
         get_main_file, print_on_failure, print_on_success, print_on_success_library, read_manifest,
     },
 };
-use core_lang::{FinalizedAsm, TreeType};
+use sway_core::{FinalizedAsm, TreeType};
 use std::fs::File;
 use std::io::Write;
 use sway_utils::{constants, find_manifest_dir};
 
-use core_lang::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
+use sway_core::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
@@ -244,7 +244,7 @@ fn compile_library<'source>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Namespace<'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
             namespace,
@@ -275,7 +275,7 @@ fn compile<'n, 'source>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_bytecode(source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
@@ -300,7 +300,7 @@ fn compile_to_asm<'sc>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<FinalizedAsm<'sc>, String> {
-    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {
             print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});

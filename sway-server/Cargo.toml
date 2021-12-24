@@ -9,7 +9,7 @@ repository = "https://github.com/FuelLabs/sway"
 description = "LSP server for Sway."
 
 [dependencies]
-core-lang = { path = "../core-lang" }
+sway-core = { path = "../sway-core" }
 dashmap = "4.0.2"
 sway-fmt = { path = "../sway-fmt" }
 lspower = "1.0.0"

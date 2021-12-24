@@ -3,7 +3,7 @@
 use fuel_pest::Parser;
 use structopt::StructOpt;
 
-use core_lang::{
+use sway_core::{
     error::CompileResult,
     parse_tree::function_declaration::FunctionDeclaration,
     semantic_analysis::ast_node::{declaration::TypedFunctionDeclaration, impl_trait::Mode},

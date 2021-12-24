@@ -12,7 +12,7 @@ use core_types::{Function, JsonABI};
 use sway_utils::find_manifest_dir;
 
 use anyhow::Result;
-use core_lang::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
+use sway_core::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
@@ -222,7 +222,7 @@ fn compile_library<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<(Namespace<'source>, Vec<Function>), String> {
-    let res = core_lang::compile_to_ast(source, namespace, &build_config, dependency_graph);
+    let res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
             parse_tree,
@@ -262,7 +262,7 @@ fn compile<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<Function>, String> {
-    let res = core_lang::compile_to_ast(&source, namespace, &build_config, dependency_graph);
+    let res = sway_core::compile_to_ast(&source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
             parse_tree,

@@ -1,7 +1,7 @@
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
 
-use core_lang::{extract_keyword, Rule};
+use sway_core::{extract_keyword, Rule};
 
 use super::code_builder_helpers::{is_comment, is_multiline_comment, is_newline_incoming};
 use crate::code_builder_helpers::clean_all_whitespace;

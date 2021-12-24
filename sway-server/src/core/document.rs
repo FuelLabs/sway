@@ -1,7 +1,7 @@
 use super::token::Token;
 use super::token_type::TokenType;
 use crate::{capabilities, core::token::traverse_node};
-use core_lang::{parse, TreeType};
+use sway_core::{parse, TreeType};
 use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 use ropey::Rope;
 use std::collections::HashMap;
