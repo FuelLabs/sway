@@ -2,6 +2,7 @@
 name = "parser"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 ariadne = "0.1"
