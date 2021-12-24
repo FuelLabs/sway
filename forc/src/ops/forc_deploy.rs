@@ -8,9 +8,9 @@ use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
 
 use crate::utils::helpers;
-use sway_utils::{constants::*, find_manifest_dir};
 use helpers::{get_main_file, read_manifest};
 use std::path::PathBuf;
+use sway_utils::{constants::*, find_manifest_dir};
 
 pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
     let curr_dir = if let Some(ref path) = command.path {

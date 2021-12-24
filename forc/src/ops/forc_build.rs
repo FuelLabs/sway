@@ -6,10 +6,10 @@ use crate::{
         get_main_file, print_on_failure, print_on_success, print_on_success_library, read_manifest,
     },
 };
-use sway_utils::{constants, find_manifest_dir};
 use core_lang::{FinalizedAsm, TreeType};
 use std::fs::File;
 use std::io::Write;
+use sway_utils::{constants, find_manifest_dir};
 
 use core_lang::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 

@@ -8,8 +8,8 @@ use crate::{
     },
 };
 
-use sway_utils::find_manifest_dir;
 use core_types::{Function, JsonABI};
+use sway_utils::find_manifest_dir;
 
 use anyhow::Result;
 use core_lang::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};

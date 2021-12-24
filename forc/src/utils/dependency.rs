@@ -1,6 +1,5 @@
 use crate::utils::manifest::Manifest;
 use anyhow::{anyhow, bail, Context, Result};
-use sway_utils::constants;
 use curl::easy::Easy;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
@@ -11,6 +10,7 @@ use std::{
     io::Cursor,
     path::{Path, PathBuf},
 };
+use sway_utils::constants;
 use tar::Archive;
 
 // A collection of remote dependency related functions

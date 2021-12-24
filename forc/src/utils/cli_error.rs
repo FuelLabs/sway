@@ -2,8 +2,8 @@ use std::net::AddrParseError;
 use std::path::PathBuf;
 use std::{fmt, io};
 
-use sway_utils::constants::MANIFEST_FILE_NAME;
 use core_lang::CompileError;
+use sway_utils::constants::MANIFEST_FILE_NAME;
 
 #[derive(Debug)]
 pub struct CliError {

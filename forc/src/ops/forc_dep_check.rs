@@ -1,12 +1,12 @@
 use crate::utils::{dependency, helpers::read_manifest};
 use anyhow::{anyhow, Result};
-use sway_utils::find_manifest_dir;
 use dirs::home_dir;
 use semver::Version;
 use std::{
     path::{Path, PathBuf},
     str,
 };
+use sway_utils::find_manifest_dir;
 
 /// Forc check will check if there are updates to Github-based dependencies.
 /// If a target dependency `-d` is passed, it will check only this one dependency.

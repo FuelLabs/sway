@@ -4,12 +4,12 @@ use crate::{
     utils::{dependency, helpers::read_manifest},
 };
 use anyhow::{anyhow, Result};
+use dirs::home_dir;
+use std::{path::PathBuf, str};
 use sway_utils::{
     constants::{self},
     find_manifest_dir,
 };
-use dirs::home_dir;
-use std::{path::PathBuf, str};
 
 /// Forc update will update the contents inside the Forc dependencies directory.
 /// If a dependency `d` is passed as parameter, it will only try and update that specific dependency.
