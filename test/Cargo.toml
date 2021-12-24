@@ -6,9 +6,9 @@ edition = "2018"
 
 [dependencies]
 forc = { path = "../forc", features = ["test"], default-features = false }
-fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
-fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
-fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git", features = ["random"] }
+fuel-asm = "0.1"
+fuel-tx = "0.1"
+fuel-vm = { version = "0.1", features = ["random"] }
 rand = "0.8"
 regex = "1"
 tokio = "1.12"

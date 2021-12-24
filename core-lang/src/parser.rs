@@ -6,7 +6,7 @@ pub struct HllParser;
 mod test {
     use super::{HllParser, Rule};
     use pest::Parser;
-    // basic core_lang tests
+    // basic core-lang tests
     #[test]
     fn test_var_decl() {
         let parsed = HllParser::parse(Rule::var_decl, r#"let x = 2;"#);

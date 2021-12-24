@@ -9,5 +9,5 @@ repository = "https://github.com/FuelLabs/sway"
 description = "Sway formatter."
 
 [dependencies]
-core_lang = { path = "../core_lang" }
+core-lang = { path = "../core-lang" }
 ropey = "1.2"

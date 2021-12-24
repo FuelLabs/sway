@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "core-types",
-    "core_lang",
+    "core-lang",
     "docstrings",
     "forc",
     "formatter",

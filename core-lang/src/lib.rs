@@ -563,7 +563,7 @@ fn parse_root_from_pairs<'sc>(
                 fuel_ast_opt = Some(HllParseTree {
                     tree_type: TreeType::Library {
                         name: library_name.expect(
-                            "Safe unwrap, because the core_lang enforces the library keyword is \
+                            "Safe unwrap, because the core-lang enforces the library keyword is \
                              followed by a name. This is an invariant",
                         ),
                     },

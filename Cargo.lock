@@ -628,22 +628,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
-name = "core-types"
-version = "0.1.0"
-dependencies = [
- "fuel-asm",
- "fuel-tx",
- "serde",
-]
-
-[[package]]
-name = "core_lang"
+name = "core-lang"
 version = "0.1.0"
 dependencies = [
  "core-types",
  "derivative",
  "either",
- "fuel-asm",
+ "fuel-asm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-asm.git)",
  "fuel-vm",
  "hex",
  "lazy_static 1.4.0",
@@ -657,6 +648,15 @@ dependencies = [
  "structopt 0.3.25",
  "thiserror",
  "uuid-b64",
+]
+
+[[package]]
+name = "core-types"
+version = "0.1.0"
+dependencies = [
+ "fuel-asm 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-tx 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
 ]
 
 [[package]]
@@ -1056,15 +1056,15 @@ version = "0.1.0"
 dependencies = [
  "annotate-snippets",
  "anyhow",
+ "core-lang",
  "core-types",
- "core_lang",
  "curl",
  "dirs 3.0.2",
  "flate2",
  "formatter",
- "fuel-asm",
+ "fuel-asm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-asm.git)",
  "fuel-client",
- "fuel-tx",
+ "fuel-tx 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-tx.git)",
  "fuel-vm",
  "futures",
  "hex",
@@ -1113,7 +1113,7 @@ dependencies = [
 name = "formatter"
 version = "0.1.0"
 dependencies = [
- "core_lang",
+ "core-lang",
  "ropey",
 ]
 
@@ -1126,9 +1126,18 @@ checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58631627ae1dccf81f7c8a214722746883b03d304ececbdb020bca08954f8312"
+dependencies = [
+ "fuel-types 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "fuel-asm"
+version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#5b3e85b921960101b981b2f0b977b58063c878b9"
 dependencies = [
- "fuel-types",
+ "fuel-types 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-types.git)",
  "serde",
 ]
 
@@ -1141,8 +1150,8 @@ dependencies = [
  "cynic",
  "derive_more",
  "fuel-storage",
- "fuel-tx",
- "fuel-types",
+ "fuel-tx 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-tx.git)",
+ "fuel-types 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-types.git)",
  "fuel-vm",
  "futures",
  "hex",
@@ -1177,15 +1186,34 @@ source = "git+ssh://git@github.com/FuelLabs/fuel-storage.git#c07850217d65e1d82bd
 [[package]]
 name = "fuel-tx"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ae7148d11382ae57c1336f3b59465c8d4affb68031c23b264151b16a8f56c4c"
+dependencies = [
+ "fuel-asm 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-types 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itertools",
+ "rand 0.8.4",
+ "sha2",
+]
+
+[[package]]
+name = "fuel-tx"
+version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#ec247e2eff991d884b3d139c1fb01374805ff212"
 dependencies = [
- "fuel-asm",
- "fuel-types",
+ "fuel-asm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-asm.git)",
+ "fuel-types 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-types.git)",
  "itertools",
  "rand 0.8.4",
  "serde",
  "sha2",
 ]
+
+[[package]]
+name = "fuel-types"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9b09a46ea50f8fa092a9a25069d9b5a90dcdb37545b4b3864f5ba006bf7612d"
 
 [[package]]
 name = "fuel-types"
@@ -1201,11 +1229,11 @@ name = "fuel-vm"
 version = "0.1.0"
 source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#82e6da37d40021617ac93d078d6d8526efc06ba2"
 dependencies = [
- "fuel-asm",
+ "fuel-asm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-asm.git)",
  "fuel-merkle",
  "fuel-storage",
- "fuel-tx",
- "fuel-types",
+ "fuel-tx 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-tx.git)",
+ "fuel-types 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-types.git)",
  "itertools",
  "secp256k1",
  "serde",
@@ -3003,7 +3031,7 @@ dependencies = [
 name = "sway-server"
 version = "0.1.0"
 dependencies = [
- "core_lang",
+ "core-lang",
  "dashmap",
  "forc",
  "formatter",
@@ -3109,8 +3137,8 @@ name = "test"
 version = "0.1.0"
 dependencies = [
  "forc",
- "fuel-asm",
- "fuel-tx",
+ "fuel-asm 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-asm.git)",
+ "fuel-tx 0.1.0 (git+ssh://git@github.com/FuelLabs/fuel-tx.git)",
  "fuel-vm",
  "rand 0.8.4",
  "regex",

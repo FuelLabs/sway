@@ -11,15 +11,15 @@ description = "Fuel Orchestrator."
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] } # used for formating error/warning print
 anyhow = "1.0.41"
-core_lang = { path = "../core_lang" }
+core-lang = { path = "../core-lang" }
 curl = "0.4.38"
 dirs = "3.0.2"
 flate2 = "1.0.20"
 formatter = { path = "../formatter" }
-fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
+fuel-asm = "0.1" 
 fuel-client = { git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false }
-fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
-fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
+fuel-tx = "0.1"
+fuel-vm = "0.1"
 futures = "0.3"
 hex = "0.4.3"
 pest = { git = "https://github.com/sezna/pest.git", rev = "8aa58791f759daf4caee26e8560e862df5a6afb7" }
