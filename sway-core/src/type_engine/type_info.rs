@@ -614,7 +614,8 @@ impl TypeInfo {
                 let mut new_fields = Vec::new();
                 let mut index = 0;
                 while index < fields.len() {
-                    let new_field_id_opt = look_up_type_id(fields[index]).matches_type_parameter(mapping);
+                    let new_field_id_opt =
+                        look_up_type_id(fields[index]).matches_type_parameter(mapping);
                     if let Some(new_field_id) = new_field_id_opt {
                         new_fields.extend(fields[..index].iter().cloned());
                         new_fields.push(insert_type(TypeInfo::Ref(new_field_id)));
@@ -624,10 +625,11 @@ impl TypeInfo {
                     index += 1;
                 }
                 while index < fields.len() {
-                    let new_field = match look_up_type_id(fields[index]).matches_type_parameter(mapping) {
-                        Some(new_field_id) => insert_type(TypeInfo::Ref(new_field_id)),
-                        None => fields[index].clone(),
-                    };
+                    let new_field =
+                        match look_up_type_id(fields[index]).matches_type_parameter(mapping) {
+                            Some(new_field_id) => insert_type(TypeInfo::Ref(new_field_id)),
+                            None => fields[index].clone(),
+                        };
                     new_fields.push(new_field);
                     index += 1;
                 }
@@ -636,7 +638,7 @@ impl TypeInfo {
                 } else {
                     Some(insert_type(TypeInfo::Tuple(new_fields)))
                 }
-            },
+            }
             Unknown
             | Str(..)
             | UnsignedInteger(..)

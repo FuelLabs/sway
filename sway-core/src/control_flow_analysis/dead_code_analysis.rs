@@ -817,9 +817,9 @@ fn connect_expression<'sc>(
             resolved_type_of_parent,
             ..
         } => {
-            let resolved_type_of_parent = resolve_type(*resolved_type_of_parent, field_to_access_span)
-                .unwrap_or(TypeInfo::Tuple(Vec::new()));
-
+            let resolved_type_of_parent =
+                resolve_type(*resolved_type_of_parent, field_to_access_span)
+                    .unwrap_or(TypeInfo::Tuple(Vec::new()));
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
             let resolved_type_of_parent = match resolved_type_of_parent {

@@ -1104,15 +1104,17 @@ impl<'sc> TypedExpression<'sc> {
         let field_type_ids_opt = match look_up_type_id(type_annotation) {
             TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
                 Some(field_type_ids)
-            },
+            }
             _ => None,
         };
         let mut typed_field_types = Vec::with_capacity(fields.len());
         let mut typed_fields = Vec::with_capacity(fields.len());
         let mut is_constant = IsConstant::Yes;
         for (i, field) in fields.into_iter().enumerate() {
-            let field_type_id =
-                field_type_ids_opt.as_ref().map(|field_type_ids| field_type_ids[i]).unwrap_or_default();
+            let field_type_id = field_type_ids_opt
+                .as_ref()
+                .map(|field_type_ids| field_type_ids[i])
+                .unwrap_or_default();
             let field_span = field.span();
             let typed_field = check!(
                 TypedExpression::type_check(TypeCheckArguments {

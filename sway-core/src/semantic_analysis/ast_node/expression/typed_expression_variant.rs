@@ -208,9 +208,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 (*rhs).copy_types(type_mapping);
             }
             VariableExpression { .. } => (),
-            Tuple { fields } => {
-                fields.iter_mut().for_each(|x| x.copy_types(type_mapping))
-            },
+            Tuple { fields } => fields.iter_mut().for_each(|x| x.copy_types(type_mapping)),
             Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
             ArrayIndex { prefix, index } => {
                 (*prefix).copy_types(type_mapping);
