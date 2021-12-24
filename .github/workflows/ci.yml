@@ -53,7 +53,10 @@ jobs:
           args: --debug fuel-core
 
       - name: Run fuel-core
-        run: fuel-core &
+        run: |
+          fuel-core &
+          mkdir ~/.tmp
+          echo "$!" > ~/.tmp/fuel-core.pid
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -65,17 +68,12 @@ jobs:
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
-          command: test
+          command: run
+          args: --release --bin test
 
-      - name: Build test suite
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --bin test
+      - name: Kill fuel-core
+        run: kill -9 $(<~/.tmp/fuel-core.pid)
 
-      - name: Run test suite
-        run: |
-          ./target/debug/test
 
   publish:
     # Only do this job if publishing a release
