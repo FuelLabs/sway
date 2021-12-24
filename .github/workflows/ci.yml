@@ -55,8 +55,7 @@ jobs:
       - name: Run fuel-core
         run: |
           fuel-core &
-          mkdir ~/.tmp
-          echo "$!" > ~/.tmp/fuel-core.pid
+          echo $! > ./fuel-core.pid
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -72,7 +71,7 @@ jobs:
           args: --release --bin test
 
       - name: Kill fuel-core
-        run: kill -9 $(<~/.tmp/fuel-core.pid)
+        run: cat ./fuel-core.pid | xargs kill
 
 
   publish:
