@@ -3,11 +3,11 @@ use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
-use core_lang::{CompileError, CompileWarning, TreeType};
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::str;
+use sway_core::{CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
@@ -215,7 +215,7 @@ fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io
     Ok(())
 }
 
-fn format_err(err: &core_lang::CompileError) {
+fn format_err(err: &sway_core::CompileError) {
     let input = err.internal_span().input();
     let path = err.path();
 
@@ -251,7 +251,7 @@ fn format_err(err: &core_lang::CompileError) {
     eprintln!("{}", DisplayList::from(snippet))
 }
 
-fn format_warning(err: &core_lang::CompileWarning) {
+fn format_warning(err: &sway_core::CompileWarning) {
     let input = err.span.input();
     let path = err.path();
 

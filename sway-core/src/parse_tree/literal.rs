@@ -62,7 +62,7 @@ impl<'sc> Literal<'sc> {
                             .map(Literal::U8)
                             .map_err(|_| {
                                 CompileError::Internal(
-                                    "Called incorrect internal core_lang on literal type.",
+                                    "Called incorrect internal sway-core on literal type.",
                                     span::Span {
                                         span: int_inner.as_span(),
                                         path,
@@ -77,7 +77,7 @@ impl<'sc> Literal<'sc> {
                             .map(Literal::U16)
                             .map_err(|_| {
                                 CompileError::Internal(
-                                    "Called incorrect internal core_lang on literal type.",
+                                    "Called incorrect internal sway-core on literal type.",
                                     span::Span {
                                         span: int_inner.as_span(),
                                         path,
@@ -92,7 +92,7 @@ impl<'sc> Literal<'sc> {
                             .map(Literal::U32)
                             .map_err(|_| {
                                 CompileError::Internal(
-                                    "Called incorrect internal core_lang on literal type.",
+                                    "Called incorrect internal sway-core on literal type.",
                                     span::Span {
                                         span: int_inner.as_span(),
                                         path: path.clone(),
@@ -107,7 +107,7 @@ impl<'sc> Literal<'sc> {
                             .map(Literal::U64)
                             .map_err(|_| {
                                 CompileError::Internal(
-                                    "Called incorrect internal core_lang on literal type.",
+                                    "Called incorrect internal sway-core on literal type.",
                                     span::Span {
                                         span: int_inner.as_span(),
                                         path: path.clone(),

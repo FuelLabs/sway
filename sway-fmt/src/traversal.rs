@@ -1,4 +1,4 @@
-use core_lang::{
+use sway_core::{
     AstNode, AstNodeContent, Declaration, Expression, HllParseTree, ReturnStatement, Span,
 };
 

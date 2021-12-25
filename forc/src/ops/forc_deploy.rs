@@ -1,7 +1,7 @@
-use core_lang::{parse, TreeType};
-use fuel_client::client::FuelClient;
+use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
 use fuel_vm::prelude::*;
+use sway_core::{parse, TreeType};
 
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;

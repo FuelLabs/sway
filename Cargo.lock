@@ -628,38 +628,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
-name = "core-types"
-version = "0.1.0"
-dependencies = [
- "fuel-asm",
- "fuel-tx",
- "serde",
-]
-
-[[package]]
-name = "core_lang"
-version = "0.1.0"
-dependencies = [
- "core-types",
- "derivative",
- "either",
- "fuel-asm",
- "fuel-vm",
- "hex",
- "lazy_static 1.4.0",
- "line-col",
- "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=0ee8d107923f8979897efbd12e16a0eb99ea98b3)",
- "pest_derive",
- "petgraph",
- "sha2",
- "smallvec",
- "source-span",
- "structopt 0.3.25",
- "thiserror",
- "uuid-b64",
-]
-
-[[package]]
 name = "cpufeatures"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1056,19 +1024,16 @@ version = "0.1.0"
 dependencies = [
  "annotate-snippets",
  "anyhow",
- "core-types",
- "core_lang",
  "curl",
  "dirs 3.0.2",
  "flate2",
- "formatter",
  "fuel-asm",
- "fuel-client",
+ "fuel-gql-client",
+ "fuel-pest",
  "fuel-tx",
  "fuel-vm",
  "futures",
  "hex",
- "pest 2.1.3 (git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7)",
  "prettydiff",
  "reqwest",
  "semver 1.0.4",
@@ -1076,7 +1041,10 @@ dependencies = [
  "serde_json",
  "source-span",
  "structopt 0.3.25",
+ "sway-core",
+ "sway-fmt",
  "sway-server",
+ "sway-types",
  "sway-utils",
  "tar",
  "term-table",
@@ -1112,14 +1080,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "formatter"
-version = "0.1.0"
-dependencies = [
- "core_lang",
- "ropey",
-]
-
-[[package]]
 name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1128,16 +1088,18 @@ checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 [[package]]
 name = "fuel-asm"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-asm.git#5b3e85b921960101b981b2f0b977b58063c878b9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58631627ae1dccf81f7c8a214722746883b03d304ececbdb020bca08954f8312"
 dependencies = [
  "fuel-types",
  "serde",
 ]
 
 [[package]]
-name = "fuel-client"
-version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-core#d45bd90c30116fc44e589e5f3e74d5649f85715a"
+name = "fuel-gql-client"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b44be65acdaae1d0c010b7eca682d20b0c72b4652a594173eda3b96a50a545e"
 dependencies = [
  "chrono",
  "cynic",
@@ -1158,8 +1120,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-merkle"
-version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-merkle.git#ff5e7335f13252b33ada2baba2127e159e8b88c8"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8148b67b9ca99755b8c73fbc5bad7710590e1d7e245680ffd351289915258851"
 dependencies = [
  "bytes 1.0.1",
  "digest 0.9.0",
@@ -1172,14 +1135,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-pest"
+version = "3.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad75583f2354bfc3bc533fae660e6510e8149e413382dee78e42d77236e5773c"
+dependencies = [
+ "ucd-trie",
+]
+
+[[package]]
 name = "fuel-storage"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-storage.git#c07850217d65e1d82bdc649a8793803922bd6fe9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f97a6a68c3378e486d645a47026bcd7139500345ef214653811ea4f016f142ce"
 
 [[package]]
 name = "fuel-tx"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-tx.git#ec247e2eff991d884b3d139c1fb01374805ff212"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ae7148d11382ae57c1336f3b59465c8d4affb68031c23b264151b16a8f56c4c"
 dependencies = [
  "fuel-asm",
  "fuel-types",
@@ -1192,7 +1166,8 @@ dependencies = [
 [[package]]
 name = "fuel-types"
 version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-types.git#fb1bd585058a4c8a492ad6d11be5088e00ef179f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9b09a46ea50f8fa092a9a25069d9b5a90dcdb37545b4b3864f5ba006bf7612d"
 dependencies = [
  "rand 0.8.4",
  "serde",
@@ -1200,8 +1175,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-vm"
-version = "0.1.0"
-source = "git+ssh://git@github.com/FuelLabs/fuel-vm.git#82e6da37d40021617ac93d078d6d8526efc06ba2"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fed9310d687a8d38f729876669f342a27710517614048b4d7421595d55209f99"
 dependencies = [
  "fuel-asm",
  "fuel-merkle",
@@ -2055,28 +2031,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "pest"
-version = "2.1.3"
-source = "git+https://github.com/sezna/pest.git?rev=0ee8d107923f8979897efbd12e16a0eb99ea98b3#0ee8d107923f8979897efbd12e16a0eb99ea98b3"
-dependencies = [
- "ucd-trie",
-]
-
-[[package]]
-name = "pest"
-version = "2.1.3"
-source = "git+https://github.com/sezna/pest.git?rev=8aa58791f759daf4caee26e8560e862df5a6afb7#8aa58791f759daf4caee26e8560e862df5a6afb7"
-dependencies = [
- "ucd-trie",
-]
-
-[[package]]
 name = "pest_derive"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "833d1ae558dc601e9a60366421196a8d94bc0ac980476d0b67e1d0988d72b2d0"
 dependencies = [
- "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pest",
  "pest_generator",
 ]
 
@@ -2086,7 +2046,7 @@ version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99b8db626e31e5b81787b9783425769681b347011cc59471e33ea46d2ea0cf55"
 dependencies = [
- "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pest",
  "pest_meta",
  "proc-macro2 1.0.32",
  "quote 1.0.10",
@@ -2100,7 +2060,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54be6e404f5317079812fc8f9f5279de376d8856929e21c184ecf6bbd692a11d"
 dependencies = [
  "maplit",
- "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pest",
  "sha-1",
 ]
 
@@ -2685,7 +2645,7 @@ version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0bef5b7f9e0df16536d3961cfb6e84331c065b4066afb39768d0e319411f7"
 dependencies = [
- "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pest",
 ]
 
 [[package]]
@@ -3002,18 +2962,58 @@ dependencies = [
 ]
 
 [[package]]
+name = "sway-core"
+version = "0.1.0"
+dependencies = [
+ "derivative",
+ "either",
+ "fuel-asm",
+ "fuel-pest",
+ "fuel-vm",
+ "hex",
+ "lazy_static 1.4.0",
+ "line-col",
+ "pest_derive",
+ "petgraph",
+ "sha2",
+ "smallvec",
+ "source-span",
+ "structopt 0.3.25",
+ "sway-types",
+ "thiserror",
+ "uuid-b64",
+]
+
+[[package]]
+name = "sway-fmt"
+version = "0.1.0"
+dependencies = [
+ "ropey",
+ "sway-core",
+]
+
+[[package]]
 name = "sway-server"
 version = "0.1.0"
 dependencies = [
- "core_lang",
  "dashmap",
- "formatter",
+ "fuel-pest",
  "lspower",
- "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ropey",
  "serde_json",
+ "sway-core",
+ "sway-fmt",
  "sway-utils",
  "tokio",
+]
+
+[[package]]
+name = "sway-types"
+version = "0.1.0"
+dependencies = [
+ "fuel-asm",
+ "fuel-tx",
+ "serde",
 ]
 
 [[package]]
