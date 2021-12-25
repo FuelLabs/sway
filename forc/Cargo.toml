@@ -25,7 +25,7 @@ prettydiff = "0.4.0"
 reqwest = { version = "0.11.4", features = ["json"] }
 semver = "1.0.3"
 serde = {version = "1.0", features = ["derive"]}
-serde_json = "*"
+serde_json = "1.0.73"
 source-span = "2.4"
 structopt = "0.3"
 sway-core = { version = "0.1.2", path = "../sway-core" }
