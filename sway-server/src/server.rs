@@ -24,7 +24,7 @@ impl Backend {
     }
 
     async fn log_info_message(&self, message: &str) {
-        self.client.log_message(MessageType::Info, message).await;
+        self.client.log_message(MessageType::INFO, message).await;
     }
 
     fn parse_and_store_sway_files(&self) -> Result<(), DocumentError> {
@@ -52,7 +52,7 @@ impl Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, _params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         self.client
-            .log_message(MessageType::Info, "Initializing the Server")
+            .log_message(MessageType::INFO, "Initializing the Server")
             .await;
 
         // iterate over the project dir, parse all sway files
@@ -62,7 +62,7 @@ impl LanguageServer for Backend {
             server_info: None,
             capabilities: lsp::ServerCapabilities {
                 text_document_sync: Some(lsp::TextDocumentSyncCapability::Kind(
-                    lsp::TextDocumentSyncKind::Incremental,
+                    lsp::TextDocumentSyncKind::INCREMENTAL,
                 )),
                 definition_provider: Some(lsp::OneOf::Left(true)),
                 semantic_tokens_provider: capabilities::semantic_tokens::get_semantic_tokens(),
