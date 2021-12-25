@@ -915,7 +915,7 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "docstrings"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "thiserror",
 ]
@@ -1020,7 +1020,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -2007,7 +2007,7 @@ checksum = "427c3892f9e783d91cc128285287e70a59e206ca452770ece88a76f7a3eddd72"
 
 [[package]]
 name = "parser"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ariadne",
  "chumsky",
@@ -2963,7 +2963,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "derivative",
  "either",
@@ -2986,7 +2986,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ropey",
  "sway-core",
@@ -2994,7 +2994,7 @@ dependencies = [
 
 [[package]]
 name = "sway-server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "dashmap",
  "fuel-pest",
@@ -3009,7 +3009,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "fuel-asm",
  "fuel-tx",
@@ -3018,7 +3018,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "syn"
@@ -3112,7 +3112,7 @@ dependencies = [
 
 [[package]]
 name = "test"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "forc",
  "fuel-asm",
