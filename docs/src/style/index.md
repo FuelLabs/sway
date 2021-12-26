@@ -1,1 +1,3 @@
 # Conventions
+
+- [Capitalization](./capitalization.md)
