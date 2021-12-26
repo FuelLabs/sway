@@ -6,6 +6,7 @@
   - [Installation](./getting-started/installation.md)
   - [The Sway Toolchain](./getting-started/sway-toolchain.md)
   - [A Forc Project](./getting-started/forc_project.md)
+  - [Why Sway?](./getting-started/why_sway.md)
 - [Examples](./examples/index.md)
   - [Subcurrency](./examples/subcurrency.md)
   - [FizzBuzz](./examples/fizzbuzz.md)
