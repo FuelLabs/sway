@@ -10,7 +10,7 @@ author = "{}"
 entry = "main.sw"
 license = "Apache-2.0"
 "#,
-        real_name, project_name,
+        project_name, real_name,
     )
 }
 
@@ -42,7 +42,7 @@ name = "integration_tests"
 path = "tests/harness.rs"
 harness = true
 "#,
-        real_name, project_name,
+        project_name, real_name,
     )
 }
 
