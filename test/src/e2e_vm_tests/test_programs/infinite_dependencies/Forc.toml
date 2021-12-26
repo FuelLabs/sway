@@ -1,6 +1,6 @@
 [project]
-author  = "Emily Herbert <emily.herbert@fuel.sh>"
-license = "MIT"
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
 name = "infinite_dependencies"
 entry = "main.sw"
 

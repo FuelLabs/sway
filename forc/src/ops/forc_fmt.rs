@@ -1,9 +1,10 @@
 use crate::cli::{BuildCommand, FormatCommand};
 use crate::ops::forc_build;
-use crate::utils::helpers::{find_manifest_dir, get_sway_files, println_green, println_red};
-use formatter::get_formatted_data;
+use crate::utils::helpers::{println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{fmt, fs, io, path::Path};
+use sway_fmt::get_formatted_data;
+use sway_utils::{find_manifest_dir, get_sway_files};
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {

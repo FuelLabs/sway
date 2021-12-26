@@ -1,6 +1,6 @@
 [project]
-author  = "alex"
-license = "MIT"
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
 name = "caller_auth_test"
 entry = "main.sw"
 

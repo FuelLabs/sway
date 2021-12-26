@@ -1,6 +1,6 @@
 [project]
-author  = "Toby Hutton <toby.hutton@fuel.sh>"
-license = "MIT"
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
 name = "bool_and_or"
 entry = "main.sw"
 

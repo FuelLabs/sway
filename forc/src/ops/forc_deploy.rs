@@ -1,16 +1,16 @@
-use core_lang::{parse, TreeType};
-use fuel_client::client::FuelClient;
+use fuel_gql_client::client::FuelClient;
 use fuel_tx::{Output, Salt, Transaction};
 use fuel_vm::prelude::*;
+use sway_core::{parse, TreeType};
 
 use crate::cli::{BuildCommand, DeployCommand};
 use crate::ops::forc_build;
 use crate::utils::cli_error::CliError;
 
-use crate::utils::{constants, helpers};
-use constants::{DEFAULT_NODE_URL, SWAY_CONTRACT, SWAY_LIBRARY, SWAY_PREDICATE, SWAY_SCRIPT};
-use helpers::{find_manifest_dir, get_main_file, read_manifest};
+use crate::utils::helpers;
+use helpers::{get_main_file, read_manifest};
 use std::path::PathBuf;
+use sway_utils::{constants::*, find_manifest_dir};
 
 pub async fn deploy(command: DeployCommand) -> Result<(), CliError> {
     let curr_dir = if let Some(ref path) = command.path {

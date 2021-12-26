@@ -28,7 +28,7 @@ The currently-in-progress big features are a robust, LLVM-like intermediate repr
 1. Smart contracts, scripts, predicates
 1. Rust-like compiler with verbose and descriptive errors and warnings
 1. Forc package manager and orchestrator (*f*uel-*o*rchestrator)
-1. Forc code formatter (`forc fmt`)
+1. Forc code sway-fmt (`forc fmt`)
 1. Compiler test suite
 1. Fuel-VM Assembly Expressions
 1. Control flow analysis with GraphViz output

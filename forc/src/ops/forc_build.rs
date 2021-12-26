@@ -3,16 +3,15 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_main_file, print_on_failure, print_on_success,
-        print_on_success_library, read_manifest,
+        get_main_file, print_on_failure, print_on_success, print_on_success_library, read_manifest,
     },
 };
-use core_lang::{FinalizedAsm, TreeType};
-
 use std::fs::File;
 use std::io::Write;
+use sway_core::{FinalizedAsm, TreeType};
+use sway_utils::{constants, find_manifest_dir};
 
-use core_lang::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
+use sway_core::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
@@ -48,7 +47,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     let main_path = {
         let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest.project.entry);
         code_dir
     };
@@ -185,7 +184,7 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
 
     let main_path = {
         let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest_of_dep.project.entry);
         code_dir
     };
@@ -245,7 +244,7 @@ fn compile_library<'source>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Namespace<'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
             namespace,
@@ -276,7 +275,7 @@ fn compile<'n, 'source>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_bytecode(source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
@@ -301,7 +300,7 @@ fn compile_to_asm<'sc>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<FinalizedAsm<'sc>, String> {
-    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {
             print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});

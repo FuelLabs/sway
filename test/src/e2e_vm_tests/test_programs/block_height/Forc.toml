@@ -1,6 +1,6 @@
 [project]
-author  = "Nick Furfaro"
-license = "MIT"
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
 name = "block_height"
 entry = "main.sw"
 

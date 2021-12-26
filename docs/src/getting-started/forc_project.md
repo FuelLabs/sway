@@ -23,10 +23,10 @@ $ tree .
 
 ```toml
 [project]
-author  = "user"
-license = "MIT"
 name = "hello_world"
+author = "user"
 entry = "main.sw"
+license = "Apache-2.0"
 ```
 
 Here are the contents of the only Sway file in the project, and the main entry point, `src/main.sw`:
