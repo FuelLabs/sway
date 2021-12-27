@@ -18,6 +18,7 @@
   - [Custom Types](./basics/custom_types.md)
   - [Blockchain Types](./basics/blockchain_types.md)
   - [Functions](./basics/functions.md)
+  - [Reference Types](./basics/reference_types.md)
 - [Sway on the Chain](./sway-on-chain/index.md)
   - [Smart Contracts](./sway-on-chain/smart_contracts.md)
   - [Scripts](./sway-on-chain/scripts.md)
