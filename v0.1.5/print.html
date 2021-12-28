@@ -1,0 +1,1328 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>The Sway Programming Language</title>
+        
+        <meta name="robots" content="noindex" />
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="index.html">The Sway Programming Language</a></li><li class="chapter-item expanded "><a href="getting-started/index.html"><strong aria-hidden="true">1.</strong> Getting Started</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="getting-started/installation.html"><strong aria-hidden="true">1.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="getting-started/sway-toolchain.html"><strong aria-hidden="true">1.2.</strong> The Sway Toolchain</a></li><li class="chapter-item expanded "><a href="getting-started/forc_project.html"><strong aria-hidden="true">1.3.</strong> A Forc Project</a></li><li class="chapter-item expanded "><a href="getting-started/why_sway.html"><strong aria-hidden="true">1.4.</strong> Why Sway?</a></li></ol></li><li class="chapter-item expanded "><a href="examples/index.html"><strong aria-hidden="true">2.</strong> Examples</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="examples/subcurrency.html"><strong aria-hidden="true">2.1.</strong> Subcurrency</a></li><li class="chapter-item expanded "><a href="examples/fizzbuzz.html"><strong aria-hidden="true">2.2.</strong> FizzBuzz</a></li><li class="chapter-item expanded "><a href="examples/wallet_smart_contract.html"><strong aria-hidden="true">2.3.</strong> Wallet Smart Contract</a></li></ol></li><li class="chapter-item expanded "><a href="basics/index.html"><strong aria-hidden="true">3.</strong> Basics</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics/project_structure.html"><strong aria-hidden="true">3.1.</strong> Project Structure</a></li><li class="chapter-item expanded "><a href="basics/variables.html"><strong aria-hidden="true">3.2.</strong> Variables</a></li><li class="chapter-item expanded "><a href="basics/built_in_types.html"><strong aria-hidden="true">3.3.</strong> Built-in Types</a></li><li class="chapter-item expanded "><a href="basics/custom_types.html"><strong aria-hidden="true">3.4.</strong> Custom Types</a></li><li class="chapter-item expanded "><a href="basics/blockchain_types.html"><strong aria-hidden="true">3.5.</strong> Blockchain Types</a></li><li class="chapter-item expanded "><a href="basics/functions.html"><strong aria-hidden="true">3.6.</strong> Functions</a></li><li class="chapter-item expanded "><a href="basics/reference_types.html"><strong aria-hidden="true">3.7.</strong> Reference Types</a></li></ol></li><li class="chapter-item expanded "><a href="sway-on-chain/index.html"><strong aria-hidden="true">4.</strong> Sway on the Chain</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="sway-on-chain/smart_contracts.html"><strong aria-hidden="true">4.1.</strong> Smart Contracts</a></li><li class="chapter-item expanded "><a href="sway-on-chain/scripts.html"><strong aria-hidden="true">4.2.</strong> Scripts</a></li><li class="chapter-item expanded "><a href="sway-on-chain/predicates.html"><strong aria-hidden="true">4.3.</strong> Predicates</a></li></ol></li><li class="chapter-item expanded "><a href="smart-contract-development/index.html"><strong aria-hidden="true">5.</strong> Smart Contract Development</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="smart-contract-development/storage.html"><strong aria-hidden="true">5.1.</strong> Contract Storage</a></li><li class="chapter-item expanded "><a href="smart-contract-development/purity.html"><strong aria-hidden="true">5.2.</strong> Function Purity</a></li></ol></li><li class="chapter-item expanded "><a href="advanced/index.html"><strong aria-hidden="true">6.</strong> Advanced Concepts</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="advanced/generic_types.html"><strong aria-hidden="true">6.1.</strong> Generic Types</a></li><li class="chapter-item expanded "><a href="advanced/traits.html"><strong aria-hidden="true">6.2.</strong> Traits</a></li><li class="chapter-item expanded "><a href="advanced/trait_constraints.html"><strong aria-hidden="true">6.3.</strong> Trait Constraints</a></li><li class="chapter-item expanded "><a href="advanced/assembly.html"><strong aria-hidden="true">6.4.</strong> Assembly</a></li></ol></li><li class="chapter-item expanded "><a href="style/index.html"><strong aria-hidden="true">7.</strong> Conventions</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="style/capitalization.html"><strong aria-hidden="true">7.1.</strong> Capitalization</a></li></ol></li><li class="chapter-item expanded "><a href="new-concepts/index.html"><strong aria-hidden="true">8.</strong> New Concepts</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="new-concepts/identifiers.html"><strong aria-hidden="true">8.1.</strong> Identifiers</a></li><li class="chapter-item expanded "><a href="new-concepts/native-assets.html"><strong aria-hidden="true">8.2.</strong> Native Assets</a></li><li class="chapter-item expanded "><a href="new-concepts/utxos.html"><strong aria-hidden="true">8.3.</strong> UTXOs</a></li></ol></li><li class="chapter-item expanded "><a href="strategy/strategy_and_roadmap.html"><strong aria-hidden="true">9.</strong> Language Strategy and Roadmap</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="the-sway-programming-language"><a class="header" href="#the-sway-programming-language">The Sway Programming Language</a></h1>
+<p>Sway is a domain-specific language (DSL) for the <a href="https://github.com/FuelLabs/fuel-specs">Fuel Virtual Machine (FuelVM)</a>, a blockchain-optimized VM designed for the Fuel blockchain. Sway is based on <a href="https://doc.rust-lang.org/book/">Rust</a>, and includes syntax to leverage a blockchain VM without needlessly verbose boilerplate.</p>
+<p>This book documents how to write smart contracts in Sway, along with how to install and use the Sway toolchain.</p>
+<h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
+<p>To get started with Forc and Sway start contract development, install the Sway toolchain and Fuel full node and set up your first project.</p>
+<ul>
+<li><a href="getting-started/./installation.html">Installation</a></li>
+<li><a href="getting-started/./sway-toolchain.html">The Sway Toolchain</a></li>
+<li><a href="getting-started/./forc_project.html">A Forc Project</a></li>
+<li><a href="getting-started/./why_sway.html">Why Sway?</a></li>
+</ul>
+<h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
+<p>Note that if you want to run (e.g. for testing) Sway smart contracts, a Fuel Core full node is required. Otherwise, the Sway toolchain is sufficient to compile Sway smart contracts.</p>
+<h2 id="installing-from-cargo"><a class="header" href="#installing-from-cargo">Installing from Cargo</a></h2>
+<p>The Sway toolchain and Fuel Core full node can be installed with:</p>
+<pre><code class="language-sh">cargo install forc fuel-core
+</code></pre>
+<h2 id="building-from-source"><a class="header" href="#building-from-source">Building from Source</a></h2>
+<p>The Sway toolchain can be built from source by following instructions at <a href="https://github.com/FuelLabs/sway">https://github.com/FuelLabs/sway</a>.</p>
+<p>The Fuel Core full node implementation can be built from source by following instructions at <a href="https://github.com/FuelLabs/fuel-core">https://github.com/FuelLabs/fuel-core</a>.</p>
+<h1 id="the-sway-toolchain"><a class="header" href="#the-sway-toolchain">The Sway Toolchain</a></h1>
+<p>The Sway toolchain consists of several components.</p>
+<h2 id="forc-forc"><a class="header" href="#forc-forc">Forc (<code>forc</code>)</a></h2>
+<p>The &quot;Fuel Orchestrator&quot; Forc is our equivalent of Rust's <a href="https://doc.rust-lang.org/cargo/">Cargo</a>. It is the primary entry point for creating, building, testing, and deploying Sway projects. The next pages in this section will introduce how to use Forc.</p>
+<h3 id="sway-language-server-forc-lsp"><a class="header" href="#sway-language-server-forc-lsp">Sway Language Server (<code>forc lsp</code>)</a></h3>
+<p>The Sway Language Server <code>forc lsp</code> is provided to expose features to IDEs. Currently, only <a href="https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin">Visual Studio Code is supported through a plugin</a>. Vim support is forthcoming, though <a href="https://github.com/FuelLabs/sway.vim">syntax highlighting is provided</a>. Note that there is no need to manually run <code>forc lsp</code> (the plugin will automaticaly start it), however it should be included in your <code>$PATH</code> if you are building <code>forc</code> from source.</p>
+<h2 id="fuel-core-fuel-core"><a class="header" href="#fuel-core-fuel-core">Fuel Core (<code>fuel-core</code>)</a></h2>
+<p>While not directly part of the Sway toolchain, an implementation of the Fuel protocol, <code>fuel-core</code>, is provided. Note that for now, users must manually run <code>fuel-core</code> to deploy contracts or run scripts. In the future, an instance of <code>fuel-core</code> will be initialized through <code>forc</code>.</p>
+<h1 id="a-forc-project"><a class="header" href="#a-forc-project">A Forc Project</a></h1>
+<p>To initialize a new project with Forc, use <code>forc init</code>:</p>
+<pre><code class="language-console">forc init hello_world
+</code></pre>
+<p>Here is the project that Forc has initialized:</p>
+<pre><code class="language-console">$ cd hello_world
+$ tree .
+├── Cargo.toml
+├── Forc.toml
+├── src
+│   └── main.sw
+└── tests
+    └── harness.rs
+</code></pre>
+<p><code>Forc.toml</code> is the <em>manifest file</em> (similar to <code>Cargo.toml</code> for Cargo or <code>package.json</code> for Node), and defines project metadata such as the project name and dependencies.</p>
+<pre><code class="language-toml">[project]
+name = &quot;hello_world&quot;
+author = &quot;user&quot;
+entry = &quot;main.sw&quot;
+license = &quot;Apache-2.0&quot;
+</code></pre>
+<p>Here are the contents of the only Sway file in the project, and the main entry point, <code>src/main.sw</code>:</p>
+<pre><code class="language-sway">script;
+
+fn main() {
+    
+}
+</code></pre>
+<p>The project is <em>script</em>, one of four different project types. For additional information on different project types, see <a href="getting-started/./../sway-on-chain/index.html">here</a>.</p>
+<p>We now compile our project with <code>forc build</code>, passing the flag <code>--print-finalized-asm</code> to view the generated assembly:</p>
+<pre><code class="language-console">$ forc build --print-finalized-asm
+.program:
+ji   i4
+noop
+DATA_SECTION_OFFSET[0..32]
+DATA_SECTION_OFFSET[32..64]
+lw   $ds $is 1
+add  $ds $ds $is
+ret  $zero                    ; main fn returns unit value
+.data:
+
+Compiled script &quot;hello_world&quot;.
+Bytecode size is 28 bytes.
+</code></pre>
+<p>To run this script, use <code>forc run</code> (note that <code>fuel-core</code> must be running for this to work):</p>
+<pre><code class="language-console">$ forc run
+Bytecode size is 28 bytes.
+[Return { id: ContractId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), val: 0, pc: 488, is: 464 }]
+</code></pre>
+<h2 id="testing-a-sway-project-with-forc"><a class="header" href="#testing-a-sway-project-with-forc">Testing a Sway Project with Forc</a></h2>
+<p>If you look again at the project structure when you create a new Forc project, you can see a directory called <code>tests/</code>:</p>
+<pre><code class="language-plaintext">$ forc init my-fuel-project
+$ cd my-fuel-project
+$ tree .
+├── Forc.toml
+├── Cargo.toml
+├── src
+│   └── main.sw
+└── tests
+    └── harness.rs
+</code></pre>
+<p>Note that this is a Rust package, hence the existence of a <code>Cargo.toml</code> (Rust manifest file) in the project root directory. The <code>Cargo.toml</code> in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our <a href="https://github.com/FuelLabs/fuels-rs">Rust SDK</a> (<code>fuels-rs</code>).</p>
+<p>These tests can be run using either <code>carg test</code>, or <code>forc test</code> which will look for Rust tests under the <code>tests/</code> directory (created automatically with <code>forc init</code>).</p>
+<p>For example, let's write tests against this contract, written in Sway:</p>
+<pre><code class="language-sway">contract;
+
+use std::storage::store_u64;
+use std::storage::get_u64;
+
+abi TestContract {
+  fn initialize_counter(gas_: u64, amount_: u64, coin_: b256, value: u64) -&gt; u64;
+  fn increment_counter(gas_: u64, amount_: u64, coin_: b256, amount: u64) -&gt; u64;
+}
+
+const COUNTER_KEY = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
+impl TestContract for Contract {
+  fn initialize_counter(gas_: u64, amount_: u64, color_: b256, value: u64) -&gt; u64 {
+    store_u64(COUNTER_KEY, value);
+    value
+  }
+  fn increment_counter(gas_: u64, amount_: u64, color_: b256, amount: u64) -&gt; u64 {
+    let value = get_u64(COUNTER_KEY) + amount;
+    store_u64(COUNTER_KEY, value);
+    value
+  }
+}
+</code></pre>
+<p>Our <code>tests/harness.rs</code> file could look like:</p>
+<pre><pre class="playground"><code class="language-rust edition2018">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use fuel_tx::Salt;
+use fuels_abigen_macro::abigen;
+use fuels_rs::contract::Contract;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+
+// Generate Rust bindings from our contract JSON ABI
+abigen!(MyContract, &quot;./my-contract-abi.json&quot;);
+
+#[tokio::test]
+async fn harness() {
+    let rng = &amp;mut StdRng::seed_from_u64(2322u64);
+
+    // Build the contract
+    let salt: [u8; 32] = rng.gen();
+    let salt = Salt::from(salt);
+    let compiled = Contract::compile_sway_contract(&quot;../&quot;, salt).unwrap();
+
+    // Launch a local network and deploy the contract
+    let (client, contract_id) = Contract::launch_and_deploy(&amp;compiled).await.unwrap();
+
+    let contract_instance = MyContract::new(compiled, client);
+
+    // Call `initialize_counter()` method in our deployed contract.
+    // Note that, here, you get type-safety for free!
+    let result = contract_instance
+        .initialize_counter(42)
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(42, result.unwrap());
+
+    // Call `increment_counter()` method in our deployed contract.
+    let result = contract_instance
+        .increment_counter(10)
+        .call()
+        .await
+        .unwrap();
+
+    assert_eq!(52, result.unwrap());
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>Then, in the root of our project, running <code>forc test</code> or <code>cargo test</code> will run the test above, compiling and deploying the contract to a local Fuel network, and calling the ABI methods against the contract deployed in there:</p>
+<pre><code class="language-plaintext">$ forc test
+
+running 1 test
+test harness ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
+</code></pre>
+<p>Instead of writing tests in Rust, tests can also be written in Typescript using our <a href="https://github.com/FuelLabs/fuels-ts/">Typescript SDK</a>.</p>
+<h1 id="why-sway"><a class="header" href="#why-sway">Why Sway?</a></h1>
+<h1 id="example"><a class="header" href="#example">Example</a></h1>
+<p>Some basic example contracts to see how Sway and Forc work.</p>
+<ul>
+<li><a href="examples/./subcurrency.html">Subcurrency</a></li>
+<li><a href="examples/./fizzbuzz.html">FizzBuzz</a></li>
+<li><a href="examples/./wallet_smart_contract.html">Wallet Smart Contract</a></li>
+</ul>
+<h1 id="subcurrency"><a class="header" href="#subcurrency">Subcurrency</a></h1>
+<pre><code class="language-sway">contract;
+
+use std::hash::*;
+use std::storage::*;
+
+////////////////////////////////////////
+// Event declarations
+////////////////////////////////////////
+
+// Events allow clients to react to changes in the contract.
+// Unlike Solidity, events are simply structs.
+
+/// Emitted when a token is sent.
+struct Sent {
+    from: b256,
+    to: b256,
+    amount: u64,
+}
+
+////////////////////////////////////////
+// ABI method parameter declarations
+////////////////////////////////////////
+
+/// Parameters for `mint` method.
+struct ParamsMint {
+    receiver: b256,
+    amount: u64,
+}
+
+/// Parameters for `send` method.
+struct ParamsSend {
+    sender: b256,
+    receiver: b256,
+    amount: u64,
+}
+
+////////////////////////////////////////
+// ABI declarations
+////////////////////////////////////////
+
+/// ABI definition for a subcurrency.
+abi Token {
+    // Mint new tokens and send to an address.
+    // Can only be called by the contract creator.
+    fn mint(gas: u64, coins: u64, asset_id: b256, args: ParamsMint);
+
+    // Sends an amount of an existing token.
+    // Can be called from any address.
+    fn send(gas: u64, coins: u64, asset_id: b256, args: ParamsSend);
+}
+
+// Note: ABI methods for now must explicitly have as parameters:
+//  gas to forward: u64
+//  coins to forward: u64,
+//  asset_id of coins: b256
+
+////////////////////////////////////////
+// Constants
+////////////////////////////////////////
+
+/// Address of contract creator.
+const minter: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+
+////////////////////////////////////////
+// Contract storage
+////////////////////////////////////////
+
+// Contract storage persists across transactions.
+// Note: Contract storage variables are not implemented yet.
+
+const STORAGE_BALANCES: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
+////////////////////////////////////////
+// ABI definitions
+////////////////////////////////////////
+
+/// Contract implements the `Token` ABI.
+impl Token for Contract {
+    fn mint(gas: u64, coins: u64, asset_id: b256, args: ParamsMint) {
+        // Note: authentication is not yet implemented, for now just trust params
+        if args.receiver == minter {
+            let storage_slot = hash_pair(STORAGE_BALANCES, minter, HashMethod::Sha256);
+
+            let mut amount = get_u64(storage_slot);
+            amount = amount + args.amount;
+            store_u64(storage_slot, amount);
+        } else {
+            // Note: Revert is not yet implemented
+        }
+
+    }
+
+    fn send(gas: u64, coins: u64, asset_id: b256, args: ParamsSend) {
+        let sender_storage_slot = hash_pair(STORAGE_BALANCES, args.sender, HashMethod::Sha256);
+
+        let mut sender_amount = get_u64(sender_storage_slot);
+        sender_amount = sender_amount - args.amount;
+        store_u64(sender_storage_slot, sender_amount);
+
+        let receiver_storage_slot = hash_pair(STORAGE_BALANCES, args.receiver, HashMethod::Sha256);
+
+        let mut receiver_amount = get_u64(receiver_storage_slot);
+        receiver_amount = receiver_amount + args.amount;
+        store_u64(receiver_storage_slot, receiver_amount);
+    }
+}
+</code></pre>
+<h1 id="fizzbuzz"><a class="header" href="#fizzbuzz">FizzBuzz</a></h1>
+<p>This example is not the traditional fizzbuzz, instead it is the smart contract version! A script can call this contract with some u64 value
+and receive back its fizzbuzzability as an enum. Note that the deserialization scheme for the fizzbuzz enum will be included in the ABI descriptor
+so the caller knows what to do with the bytes.</p>
+<pre><code class="language-sway">contract;
+
+enum FizzBuzzResult {
+  Fizz: (),
+  Buzz: (),
+  FizzBuzz: (),
+  Other: u64
+}
+
+abi FizzBuzz {
+  fn fizzbuzz(gas: u64, coins: u64, asset_id: b256, input: u64) -&gt; FizzBuzzResult;
+}
+
+impl FizzBuzz for Contract {
+  fn fizzbuzz(gas: u64, coins: u64, asset_id: b256, input: u64) -&gt; FizzBuzzResult {
+    if input % 15 == 0 {
+      FizzBuzzResult::FizzBuzz
+    } else if input % 3 == 0 {
+      FizzBuzzResult::Fizz
+    } else if input % 5 == 0 {
+      FizzBuzzResult::Buzz
+    } else {
+      FizzBuzzResult::Other(input)
+    }
+  }
+}
+</code></pre>
+<h1 id="wallet-smart-contract"><a class="header" href="#wallet-smart-contract">Wallet Smart Contract</a></h1>
+<p><em>Contract storage in the language syntax is a work-in-progress feature, and the following example does not currently compile.</em></p>
+<pre><code class="language-sway">contract;
+
+const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
+const ETH_ID: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+use std::*;
+
+
+storage {
+    balance: u64,  
+}
+
+abi Wallet {
+    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ());
+    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest);
+}
+
+impl Wallet for Contract {
+    fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ()) {
+        if asset_id == ETH_ID {
+            balance += coins_to_forward;
+        };
+    }
+
+    fn send_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest) {
+        assert(sender() == OWNER_ADDRESS);
+        assert(storage.balance &gt; req.amount_to_send);
+        storage.balance = storage.balance - req.amount_to_send;
+        transfer_coins(asset_id, req.recipient_address, req.amount_to_send);
+    }
+}
+
+struct SendFundsRequest {
+    amount_to_send: u64,
+    recipient_address: b256,
+}
+</code></pre>
+<h1 id="basics"><a class="header" href="#basics">Basics</a></h1>
+<p>Sway basics.</p>
+<ul>
+<li><a href="basics/./project_structure.html">Project Structure</a></li>
+<li><a href="basics/./variables.html">Variables</a></li>
+<li><a href="basics/./built_in_types.html">Built-in Types</a></li>
+<li><a href="basics/./custom_types.html">Custom Types</a></li>
+<li><a href="basics/./blockchain_types.html">Blockchain Types</a></li>
+<li><a href="basics/./functions.html">Functions</a></li>
+<li><a href="basics/./reference_types.html">Reference Types</a></li>
+</ul>
+<h1 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h1>
+<p>If you have used Rust, the structure of a Sway project will feel very familiar to you. It looks like this:</p>
+<!-- markdownlint-disable-next-line fenced-code-language -->
+<pre><code>my-project/
+├── Cargo.toml
+├── Forc.toml
+├── src
+│   └── main.sw
+└── tests
+    └── harness.rs
+</code></pre>
+<p>When initializing a new project via <code>forc init</code>, this is the structure that it will default to.</p>
+<h1 id="variables"><a class="header" href="#variables">Variables</a></h1>
+<p>Variables in Sway are <em>immutable by default</em>. This means that, by default, once a variable is declared, its value cannot change. This is one of the ways in which Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.</p>
+<h2 id="declaring-a-variable"><a class="header" href="#declaring-a-variable">Declaring a Variable</a></h2>
+<p>Let's look at a variable declaration:</p>
+<pre><code class="language-sway">let foo = 5;
+</code></pre>
+<p>Great! We have just declared a variable, <code>foo</code>. What do we know about <code>foo</code>?</p>
+<ol>
+<li>It is immutable.</li>
+<li>Its value is <code>5</code>.</li>
+<li>Its type is <code>u64</code>, a 64-bit unsigned integer.</li>
+</ol>
+<p>Wait, what? <code>u64</code>? What's that cryptic syntax about? See the section <a href="basics/./Types.html">Types</a> for more details on that. For now, just know that is the default numeric type.</p>
+<p>We can also make a mutable variable. Let's take a look:</p>
+<pre><code class="language-sway">let mut foo = 5;
+foo = 6;
+</code></pre>
+<p>Now, <code>foo</code> is mutable, and the reassignment to the number <code>6</code> is valid. That is, we are allowed to <em>mutate</em> the variable <code>foo</code> in order to change its value.</p>
+<h2 id="type-annotations"><a class="header" href="#type-annotations">Type annotations</a></h2>
+<p>A variable declaration can contain a <em>type annotation</em>. A type annotation serves the purpose of declaring the type, in addition to the value, of a variable. Let's take a look:</p>
+<pre><code class="language-sway">let foo: u32 = 5;
+</code></pre>
+<p>We have just declared the <em>type</em> of the variable <code>foo</code> as a <code>u32</code>, which is an unsigned 32 bit integer. Let's take a look at a few other type annotations:</p>
+<pre><code class="language-sway">let bar: str[4] = &quot;sway&quot;;
+let baz: bool = true;
+</code></pre>
+<p>If the value declared cannot be assigned to the declared type, there will be an error generated by the compiler.</p>
+<h1 id="built-in-types"><a class="header" href="#built-in-types">Built-in Types</a></h1>
+<p>Every value in Sway is of a certain type. Although, deep down, all values are just ones and zeroes in silicon, Sway needs to know what those ones and zeroes actually mean. This is accomplished with <em>types</em>.</p>
+<p>Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually the type can be reasonably inferred.</p>
+<h2 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h2>
+<p>Sway has the following primitive types:</p>
+<ol>
+<li><code>u8</code> (8-bit unsigned integer)</li>
+<li><code>u16</code> (16-bit unsigned integer)</li>
+<li><code>u32</code> (32-bit unsigned integer)</li>
+<li><code>u64</code> (64-bit unsigned integer)</li>
+<li><code>String</code></li>
+<li><code>Boolean</code></li>
+<li><code>Byte</code></li>
+<li><code>b256</code> (256 bits(32 bytes) -- i.e. a hash)</li>
+<li>Static-length arrays (as of now, not yet implemented)</li>
+</ol>
+<p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers -- this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
+<h2 id="numeric-types"><a class="header" href="#numeric-types">Numeric Types</a></h2>
+<p>All of the unsigned integer types are numeric types, and the <code>byte</code> type can also be viewed as an 8-bit unsigned integer.</p>
+<p>Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and with underscores for delineation. Let's take a look at the following valid numeric primitives:</p>
+<pre><code class="language-sway">0xffffff    // hexadecimal
+0b10101010  // binary
+10          // base-10
+100_000     // underscore delineated base-10
+0x1111_0000 // underscore delineated binary
+0xfff_aaa   // underscore delineated binary
+</code></pre>
+<p>The default numeric type is <code>u64</code>. The FuelVM's word size is 64 bits, and the cases where using a smaller numeric type saves space are minimal.</p>
+<h2 id="boolean-type"><a class="header" href="#boolean-type">Boolean Type</a></h2>
+<p>The boolean type (<code>bool</code>) has two potential values: <code>true</code> or <code>false</code>. Boolean values are typically used for conditional logic or validation, for example in <code>if</code> expressions. Booleans can be negated, or flipped, with the unary negation operator <code>!</code>. For example:</p>
+<pre><code class="language-sway">fn returns_false() -&gt; bool {
+  let boolean_value: bool = true;
+  !boolean_value
+}
+</code></pre>
+<h2 id="string-type"><a class="header" href="#string-type">String Type</a></h2>
+<p>In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for storage of that data. The size of the string is denoted with square brackets. Let's take a look:</p>
+<pre><code class="language-sway">let my_string: str[4] = &quot;fuel&quot;;
+</code></pre>
+<p>Because the string literal <code>&quot;fuel&quot;</code> is four letters, the type is <code>str[4]</code>, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.</p>
+<h2 id="compound-types"><a class="header" href="#compound-types">Compound Types</a></h2>
+<p><em>Compound types</em> are types which group multiple values into one type. In Sway, we have arrays and tuples.</p>
+<h2 id="tuple-types"><a class="header" href="#tuple-types">Tuple Types</a></h2>
+<p><em>note: tuples are a work in progress and are tracked by <a href="https://github.com/FuelLabs/sway/pull/399">this PR</a></em>
+A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type which consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.</p>
+<pre><code class="language-sway">let x: (u64, u64) = (0, 0);
+</code></pre>
+<p>This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, <code>(u64, u64)</code>, is similar in syntax to the expression which instantiates that type, <code>(0, 0)</code>.</p>
+<pre><code class="language-sway">let x: (u64, bool) = (42, true);
+assert(x.1)
+</code></pre>
+<p>In this example, we have created a new tuple type, <code>(u64, bool)</code>, which is a composite of a <code>u64</code> and a <code>bool</code>. To access a value within a tuple, we use <em>tuple indexing</em>: <code>x.1</code> stands for the first (zero-indexed, so the <code>bool</code>) value of the tuple. Likewise, <code>x.0</code> would be the zeroeth, <code>u64</code> value of the tuple. Tuple values can also be accessed via destructuring:</p>
+<pre><code class="language-sway">struct Foo {}
+let x: (u64, Foo, bool) = (42, Foo {}, true);
+let (number, foo, boolean) = x;
+</code></pre>
+<h2 id="arrays"><a class="header" href="#arrays">Arrays</a></h2>
+<p>An array is similar to a tuple, but an array's values must all be of the same type. An array is written as a comma-separated list inside square brackets:</p>
+<pre><code class="language-sway">let x = [1, 2, 3, 4, 5];
+</code></pre>
+<p>Arrays are allocated on the stack since their size is known. An array's size is <em>always</em> static, i.e. it cannot change. An array of five elements cannot become an array of six elements.</p>
+<p>Arrays can be iterated over, unlike tuples. A common use case for arrays is checking set membership. If you are given a name, and you'd like to figure out if that name is included in your list of classmates, you can use an array:</p>
+<pre><code class="language-sway">let name = /* some user input */;
+let classmates = [&quot;Bob&quot;, &quot;Jan&quot;, &quot;Ron&quot;];
+assert(classmates.contains(name));
+</code></pre>
+<p>An array's type is written as the type the array contains followed by the numer of elements, semicolon-separated and within square brackets.</p>
+<pre><code class="language-sway">let x: [u64; 5] = [0, 1, 2, 3, 4];
+</code></pre>
+<p>To access an element in an array, use <em>array indexing syntax</em>:</p>
+<pre><code class="language-sway">let x: [bool; 2] = [true, false];
+
+assert(x[0]);
+</code></pre>
+<p>Note that arrays are zero-indexed, just like tuples.</p>
+<h1 id="custom-types"><a class="header" href="#custom-types">Custom Types</a></h1>
+<h2 id="structs"><a class="header" href="#structs">Structs</a></h2>
+<p>Structs in Sway are a named grouping of types. You may also be familiar with structs via an name: <em>product types</em>. Sway does not make any significantly unique usages of structs, they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
+<p>To declare a struct type, use <em>struct declaration syntax</em>:</p>
+<pre><code class="language-sway">struct Foo {
+  bar: u64,
+  baz: bool 
+}
+</code></pre>
+<p>This is saying that we have some structure named <code>Foo</code>. <code>Foo</code> has two fields: <code>bar</code> (<code>u64</code>) and <code>baz</code> (<code>bool</code>). To instantiate the structure <code>Foo</code>, we can use <em>struct instantiation syntax</em>, which is very similar to the declaration syntax except with expressions in place of types.</p>
+<pre><code class="language-sway">let foo = Foo {
+  bar: 42,
+  baz: false,
+};
+</code></pre>
+<p>To access a field of a struct, use <em>struct field access syntax</em>: </p>
+<pre><code class="language-sway">let foo = Foo {
+  bar: 42,
+  baz: true,
+};
+
+assert(foo.baz);
+</code></pre>
+<h3 id="struct-memory-layout"><a class="header" href="#struct-memory-layout">Struct Memory Layout</a></h3>
+<p><em>This information is not vital if you are new to the language, or programming in general.</em></p>
+<p>Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.</p>
+<h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
+<p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type which could be one of a number of variants. To declare an enum, you enumerate all potential variants. Let's look at <em>enum declaration syntax</em>:</p>
+<pre><code class="language-sway">enum Color {
+  Blue   : (),
+  Green  : (),
+  Red    : (),
+  Silver : (),
+  Grey   : (),
+}
+</code></pre>
+<p>Here, we have defined five potential colors. Each individual enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit. It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:</p>
+<pre><code class="language-sway">use std::collections::Vec;
+use inventory_system::InventoryItem;
+use inventory_system::Insurer;
+struct Claim {
+  insurance_company: Insurer,
+  item_number: u64,
+  item_cost: u64,
+}
+
+struct Receipt {
+  customer: CustomerId,
+  items_purchased: Vec&lt;InventoryItem&gt;
+}
+
+struct Refund {
+  customer: CustomerId,
+  items_returned: Vec&lt;InventoryItem&gt;
+}
+
+enum InventoryEvent {
+  CustomerPurchase : Receipt,
+  ItemLoss         : Claim,
+  CustomerReturn   : Refund,
+}
+</code></pre>
+<pre><code class="language-sway">enum Color {
+  Blue   : (),
+  Green  : (),
+  Red    : (),
+  Silver : (),
+  Grey   : (),
+}
+
+fn main() {
+  let color = Color::Blue;
+}
+</code></pre>
+<p>Here, we have instantiated a variable named <code>color</code> with <em>enum instantiation syntax</em>. Note that enum instantiation does not require the <code>~</code> tilde syntax. If we wanted to instantiate an enum with some interior data, it looks like this:</p>
+<pre><code class="language-sway">struct Claim {
+  insurance_company: Insurer,
+  item_number: u64,
+  item_cost: u64,
+}
+
+let event = InventoryEvent::ItemLoss(Claim {
+  insurance_company: Insurer::default(),
+  item_number: 42,
+  item_cost: 1_000
+});
+</code></pre>
+<h3 id="enum-memory-layout"><a class="header" href="#enum-memory-layout">Enum Memory Layout</a></h3>
+<p><em>This information is not vital if you are new to the language, or programming in general.</em></p>
+<p>Enums do have some memory overhead. In order to know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the <em>largest</em> enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of <code>Color</code> above, where the variants are all <code>()</code>, the size would be 8 bytes since the size of the largest variant is 0 bytes. </p>
+<h2 id="methods-and-associated-functions"><a class="header" href="#methods-and-associated-functions">Methods and associated functions</a></h2>
+<p><em>Methods</em> are functions which are associated with a specific type and either refer to that type or mutate it. <em>Associated functions</em> are very similar, but they do not actually use any of the data in the type. Associated functions could be standalone functions, but they
+are included in a specific type for organizational or semantic reasons.</p>
+<p>In order to declare methods and associated functions for a struct or enum, use an <em>impl block</em>. Here, <code>impl</code> stands for implementation.</p>
+<pre><code class="language-sway">script; 
+struct Foo {
+  bar: u64,
+  baz: bool 
+}
+
+impl Foo {
+  // this is a _method_, as it takes `self` as a parameter.
+  fn is_baz_true(self) -&gt; bool {
+    self.baz
+  }
+
+  // this is an _associated function_, since it does not take `self` as a parameter.
+  fn new_foo(number: u64, boolean: bool) -&gt; Foo {
+    Foo {
+      bar: number,
+      baz: boolean,
+    }
+  }
+}
+
+fn main() {
+  let foo = ~Foo::new_foo(42, true);
+  assert(foo.is_baz_true());
+}
+</code></pre>
+<p>Note the syntax of the associated function call: <code>~Foo::new_foo(42, true);</code>. This bit of syntax is unique to Sway: when referring to a type directly, you preface the type with a tilde (<code>~</code>). To call an associated function, refer to the type and then the function name.
+To call a method, simply use dot syntax: <code>foo.iz_baz_true()</code>. </p>
+<h2 id="syntax-examples"><a class="header" href="#syntax-examples">Syntax Examples</a></h2>
+<pre><code class="language-sway">enum Color {
+  Blue   : (),
+  Green  : (),
+  Red    : (),
+  Silver : (),
+  Grey   : (),
+  // etc...
+}
+
+enum Make {
+  Ford      : (),
+  Toyota    : (),
+  Mazda     : (),
+  Chevrolet : (),
+  BMW       : (),
+  // etc...
+}
+struct Car {
+  make: CarMake,
+  color: Color,
+}
+</code></pre>
+<h1 id="blockchain-types"><a class="header" href="#blockchain-types">Blockchain Types</a></h1>
+<p>Sway has a selection of types provided via the standard library (<code>lib-std</code>) which both add a degree of type-safety, as well as make the intention of the developer more clear.</p>
+<h2 id="address-type"><a class="header" href="#address-type">Address type</a></h2>
+<p>The <code>Address</code> type is a type-safe wrapper around the primitive <code>b256</code> type. Unlike Ethereum, an address <strong>never</strong> refers to a deployed smart contract (see the <code>ContractId</code> type below). An <code>Address</code> can be either the hash of a public key (An Externally Owned Address if you're coming from Ethereum) or the hash of a <a href="basics/../sway-on-chain/predicates.html">predicate</a>.</p>
+<pre><code class="language-sway">pub struct Address {
+    value: b256,
+}
+</code></pre>
+<p>Casting between the <code>b256</code> &amp; <code>Address</code> types must be done explicitly:</p>
+<pre><code class="language-sway">let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
+let my_address: Address = ~Address::from(my_number);
+let forty_two: b256 = my_address.into();
+</code></pre>
+<h2 id="contractid-type"><a class="header" href="#contractid-type">ContractId type</a></h2>
+<p>The <code>ContractId</code> type is a type-safe wrapper around the primitive <code>b256</code> type. A contract's id is a unique, deterministic identifier analogous to a contract's address on Ethereum.</p>
+<pre><code class="language-sway">pub struct ContractId {
+    value: b256,
+}
+</code></pre>
+<p>Casting between the <code>b256</code> &amp; <code>ContractId</code> types must be done explicitly:</p>
+<pre><code class="language-sway">let my_number: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
+let my_contract_id: ContractId = ~ContractId::from(my_number);
+let forty_two: b256 = my_contract_id.into();
+</code></pre>
+<h1 id="functions"><a class="header" href="#functions">Functions</a></h1>
+<p>Functions in Sway are declared with the <code>fn</code> keyword. Let's take a look:</p>
+<pre><code class="language-sway">fn equals(first_param: u64, second_param: u64) -&gt; bool {
+    first_param == second_param
+}
+</code></pre>
+<p>We have just declared a function named <code>equals</code> which takes two parameters: <code>first_param</code> and <code>second_param</code>. This function also returns a <code>bool</code> value, i.e. either <code>true</code> or <code>false</code>. This function returns <code>true</code> if the two given parameters are equal, and <code>false</code> if they are not. If we want to use this function, we can do so like this:</p>
+<pre><code class="language-sway">fn main() {
+    equals(5, 5); // evaluates to `true`
+    equals(5, 6); // evaluates to `false`
+}
+</code></pre>
+<h1 id="reference-types"><a class="header" href="#reference-types">Reference Types</a></h1>
+<p>If you have familiarity with references, also called pointers, from other languages, Sway references are no different. If you're new to this concept, this chapter is for you!</p>
+<p>Memory in a computer is held in RAM. When you buy a Macbook Pro 16GB, for example, that 16GB number is referring to the <em>memory</em>, or <em>RAM</em>, available. In the FuelVM, we also have memory. When you instantiate a variable in a Sway program, it is written to some spot in memory. We need to keep track of <em>where</em> exactly that value was written in order to utilize it, though.</p>
+<p>Every single byte in FuelVM memory has a name. The first byte's name is <code>0x01</code>. The second byte's name is <code>0x02</code>. The 54,321st byte's name is <code>0xD431</code><sup class="footnote-reference"><a href="#1">1</a></sup>. A reference is a variable which contains the name of a specific location in the FuelVM's memory. This is useful if you want to reason about the memory which contains the value and not the value itself.</p>
+<pre><code class="language-sway">script;
+fn main() {
+    let x = 42;
+    let reference_to_x = ref x;
+}
+</code></pre>
+<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
+<p>Check out <a href="https://en.wikipedia.org/wiki/Hexadecimal">this article</a> if you're not used to seeing numbers with letters in them. </p>
+</div>
+<h2 id="dereferencing"><a class="header" href="#dereferencing">Dereferencing</a></h2>
+<h2 id="storage-references"><a class="header" href="#storage-references">Storage References</a></h2>
+<h2 id="implicit-references"><a class="header" href="#implicit-references">Implicit References</a></h2>
+<p>Types larger than one word in size are implicitly reference types.</p>
+<h1 id="sway-on-the-chain"><a class="header" href="#sway-on-the-chain">Sway on the Chain</a></h1>
+<p>Sway is fundamentally a blockchain language. Because of this, it has some features and requirements that you may not have seen in general purpose programming languages.</p>
+<h2 id="program-types"><a class="header" href="#program-types">Program Types</a></h2>
+<p>A Sway program itself has a type: it is either a <em>contract</em>, <em>predicate</em>, <em>script</em>, or <em>library</em>. The first three of these things are all deployable to the blockchain. A <em>library</em> is simply a project designed for code reuse, and is never directly deployed to the chain.</p>
+<p>Every Sway file <em>must</em> begin with a declaration of what type of program it is. A program can have many libraries within it, but only one contract, script, or predicate. Scripts and predicates require <code>main</code> functions to serve as entry points, while contracts instead publish an ABI. This chapter will go into detail about all of these various types of programs and what purposes they serve. For now, let's take a look at these types of programs, to get a feel of the syntax.</p>
+<h3 id="script"><a class="header" href="#script">Script</a></h3>
+<pre><code class="language-sway">script;
+
+// All scripts require a main function.
+fn main() {
+  return;
+}
+</code></pre>
+<h3 id="predicate"><a class="header" href="#predicate">Predicate</a></h3>
+<pre><code class="language-sway">predicate;
+
+// All predicates require a main function which returns a boolean value.
+fn main() -&gt; bool {
+  return true;
+}
+</code></pre>
+<h3 id="contract"><a class="header" href="#contract">Contract</a></h3>
+<pre><code class="language-sway">contract;
+
+// Public functions in contracts are compiled into an ABI, which can be called
+// from other code deployed on the chain.
+pub fn entry_one(arg: u64) -&gt; u64 {
+  arg
+}
+</code></pre>
+<h3 id="library"><a class="header" href="#library">Library</a></h3>
+<pre><code class="language-sway">// note that libraries must be named, so we know how to refer to them and import things.
+library my_library;
+
+// All public items in a library are made available to other projects which import this library.
+pub struct MyStruct {
+  field_one: u64,
+  field_two: bool,
+}
+</code></pre>
+<h1 id="smart-contracts"><a class="header" href="#smart-contracts">Smart Contracts</a></h1>
+<p>A smart contract is a callable entity that is deployed to the chain with some defined interface for interaction. See <a href="sway-on-chain/../examples/wallet_smart_contract.html">this contract</a> for an example.</p>
+<h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
+<p>A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract. A script can return a value of any type.</p>
+<p>This example script calls a contract.</p>
+<pre><code class="language-sway">script;
+
+use example_contract::MyContract;
+
+struct InputStruct {
+  field_1: bool,
+  field_2: u64
+}
+
+fn main () {
+  let x = abi(MyContract, 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861);
+  let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
+  let input = InputStruct {
+    field_1: true,
+    field_2: 3,
+  };
+  x.foo(5000, 0, asset_id, input);
+}
+</code></pre>
+<h1 id="predicates"><a class="header" href="#predicates">Predicates</a></h1>
+<p>From the perspective of Sway, predicates are programs which return a boolean value and which represent ownership of some resource upon execution to true. They have no access to contract storage. Here is a trivial predicate, which always evaluates to true:</p>
+<pre><code class="language-sway">predicate;
+
+fn main() -&gt; bool {
+  true
+}
+</code></pre>
+<h1 id="smart-contract-development"><a class="header" href="#smart-contract-development">Smart Contract Development</a></h1>
+<h1 id="storage"><a class="header" href="#storage">Storage</a></h1>
+<p>When developing a [smart contract](TODO: link to our smart contract description), you will typically need some sort of persistant storage. In this case, persistant storage, often just called <em>storage</em> in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in <em>memory</em>, which disappears after the contract exits.</p>
+<p>Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.</p>
+<p>Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.</p>
+<h2 id="syntax"><a class="header" href="#syntax">Syntax</a></h2>
+<h3 id="declaration"><a class="header" href="#declaration">Declaration</a></h3>
+<p>The syntax of declaring storage space in Sway looks like this:</p>
+<pre><code class="language-sway">storage {
+    owner: b256,
+}
+</code></pre>
+<p>It is very similar to a struct declaration, except with storage, you also have the option to specify an initial value:</p>
+<pre><code class="language-sway">storage {
+    owner: 0xeeb578f9e1ebfb5b78f8ff74352370c120bc8cacead1f5e4f9c74aafe0ca6bfd,
+}
+</code></pre>
+<p>This value is passed as a part of the transaction, which initializes storage upon contract deployment.</p>
+<h3 id="access"><a class="header" href="#access">Access</a></h3>
+<p>Storage access should be minimized, as it incurs a larger performance and gas cost than regular memory access. There are two types of storage access: <em>reading</em> and <em>writing</em>. </p>
+<h4 id="reading-from-storage"><a class="header" href="#reading-from-storage">Reading from Storage</a></h4>
+<p>Reading from storage is less expensive than writing. To read a value from storage, use the <code>.read()</code> method:</p>
+<pre><code class="language-sway">storage {
+    owner: b256
+}
+
+impure fn get_owner() -&gt; ref b256 {
+    storage.owner.read()
+}
+</code></pre>
+<p>This returns an immutable reference to a <code>b256</code> which is held in storage. The <code>read()</code> method itself actually copies the value from storage and returns a pointer to it to save on actual storage read opcodes, which are expensive. <strong>This means that writing to a storage value will not update other variables that are holding references to that value acquired via <code>read()</code></strong>. If you'd like an actual <code>StorageRef</code> to the value itself, which does <em>not</em> copy the value and instead incurs a storage read cost on every access, use <code>.direct_read()</code>. </p>
+<h4 id="writing-to-storage"><a class="header" href="#writing-to-storage">Writing to Storage</a></h4>
+<p>Writing to storage is accomplished with the <code>.write()</code> method. The <code>.write()</code> method returns a special kind of mutable reference, called a <code>MutStorageRef</code>, which mutates storage directly upon every write. Writing to values of this type costs more gas than usual and should be minimized.</p>
+<pre><code class="language-sway">contract;
+
+storage {
+    owner: b256
+}
+
+impure fn main() {
+    let mutable_owner_ptr = write_owner();
+    deref mutable_owner_ptr = 0x27829e78404b18c037b15bfba5110c613a83ea22c718c8b51596e17c9cb1cd6f;
+}
+
+impure fn write_owner() -&gt; MutStorageRef&lt;b256&gt; {
+    storage.owner.write()
+}
+</code></pre>
+<p>Note that to write to a mutable reference, you must dereference it first. See <a href="smart-contract-development/../basics/reference_types.html">the chapter on reference types</a> for more information on reference types in general..</p>
+<h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
+<p>A function is <em>pure</em> if it does not access any <a href="smart-contract-development/./storage.html">persistent storage</a>. Conversely, function is <em>impure</em> if it does not access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
+<p>Functions are pure by default but can be opted in to impurity via the <code>impure</code> keyword<sup class="footnote-reference"><a href="#1">1</a></sup>:</p>
+<pre><code class="language-sway">// an impure function
+impure fn foo() {
+    does_something_with_storage();
+}
+
+// a pure function, as there is no impure specification.
+fn bar() {}
+</code></pre>
+<p>A pure function gives you some guarantees: you will not incur excessive storage gas costs, the compiler can apply additional optimizations, and they are generally easy to reason about and audit. <a href="https://docs.soliditylang.org/en/v0.8.10/contracts.html#pure-functions">A similar concept exists in Solidity</a>. Note that Solidity refers to contract storage as <em>contract state</em>, and in the Sway/Fuel ecosystem, these two terms are largely interchangeable.</p>
+<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
+<p>This may be changed in the future to an annotation, like <code>#[impure]</code>, or something else. Don't get too attached to this keyword.</p>
+</div>
+<h1 id="advanced-concepts"><a class="header" href="#advanced-concepts">Advanced Concepts</a></h1>
+<p>Advanced concepts.</p>
+<ul>
+<li><a href="advanced/./generic_types.html">Generic Types</a></li>
+<li><a href="advanced/./traits.html">Traits</a></li>
+<li><a href="advanced/./trait_constraints.html">Trait Constraints</a></li>
+<li><a href="advanced/./assembly.html">Assembly</a></li>
+</ul>
+<h1 id="generic-types"><a class="header" href="#generic-types">Generic Types</a></h1>
+<h2 id="basics-1"><a class="header" href="#basics-1">Basics</a></h2>
+<p>In Sway, generic types follow a very similar pattern to those in Rust. Let's look as some example syntax, 
+starting with a generic function:</p>
+<pre><code class="language-sway">fn noop&lt;T&gt;(argument: T) -&gt; T {
+  argument
+}
+</code></pre>
+<p>Here, the <code>noop()</code> function trivially returns exactly what was given to it. <code>T</code> is a <em>type parameter</em>, and it saying
+that this function exists for all types T. More formally, this function could be typed as:</p>
+<pre><code class="language-math">noop :: ∀T. T -&gt; T
+</code></pre>
+<p>Generic types are a way to refer to types <em>in general</em>, meaning without specifying a single type. Clearly, our <code>noop</code> function
+would work with any type in the language, so we don't need to specify <code>noop(argument: u8) -&gt; u8</code>, <code>noop(argument: u16) -&gt; u16</code>, etc.</p>
+<h2 id="code-generation"><a class="header" href="#code-generation">Code Generation</a></h2>
+<p>One question that arises when dealing with generic types is: how does the assembly handle this? There are a few approaches to handling
+generic types at the lowest level. Sway uses a technique called <a href="https://en.wikipedia.org/wiki/Monomorphization">monomorphization</a>. This
+means that the generic function is compiled to a non-generic version for every type it is called on. In this way, generic functions are
+purely shorthand for the sake of ergonomics.</p>
+<h2 id="trait-constraints"><a class="header" href="#trait-constraints">Trait Constraints</a></h2>
+<p>Of course, our <code>noop()</code> function is not useful. Often, a programmer will want to declare functions over a types which satisfy certain traits.
+For example, let's try to implement the successor function, <code>successor()</code>, for all numeric types.</p>
+<pre><code class="language-sway">fn successor&lt;T&gt;(argument: T)
+  where T: Add
+{
+    argument + 1
+}
+</code></pre>
+<p>Run <code>forc build</code>, and you will get:</p>
+<pre><code class="language-sway">.. |
+ 9 |   where T: Add 
+10 |   {
+11 |     argument + 1                                        
+   |                ^ Mismatched types: expected type &quot;T&quot; but saw type &quot;u64&quot;
+12 |   }
+13 |
+
+</code></pre>
+<p>This is because we don't know for a fact that <code>1</code>, which in this case defaulted to <code>1u64</code>, actually can be added to <code>T</code>. What if <code>T</code> is <code>f64</code>? Or <code>b256</code>? What does it mean to add <code>1u64</code> in these cases?</p>
+<p>We can solve this problem with another trait constraint. We can only find the successor of some value of type <code>T</code> if that type <code>T</code> defines some incrementor. Let's make a trait:</p>
+<pre><code class="language-sway">trait Incrementable {
+  /// Returns the value to add when calculating the successor of a value.
+  fn incrementor() -&gt; Self;
+}
+</code></pre>
+<p>Now, we can modify our <code>successor()</code> function:</p>
+<pre><code class="language-sway">fn successor&lt;T&gt;(argument: T)
+  where T: Add,
+        T: Incrementable
+{
+    argument + ~T::incrementor()
+}
+</code></pre>
+<p><em>(There's a little bit of new syntax here. When directly referring to a type to execute a method from it, a tilde (<code>~</code>) is used. This may change in the future.)</em></p>
+<h2 id="generic-structs-and-enums"><a class="header" href="#generic-structs-and-enums">Generic Structs and Enums</a></h2>
+<p>Just like functions, structs and enums can be generic. Let's take a look at the standard library version of <code>Option&lt;T&gt;</code>:</p>
+<pre><code class="language-sway">enum Option&lt;T&gt; {
+  Some: T,
+  None: ()
+}
+</code></pre>
+<p>Just like an unconstrained generic function, this type exists for all (∀) types <code>T</code>. <code>Result&lt;T, E&gt;</code> is another example:</p>
+<pre><code class="language-sway">enum Result&lt;T, E&gt; {
+  Ok: T,
+  Err: E
+}
+</code></pre>
+<p>Both generic enums and generic structs can be trait constrained, as well. Consider this struct:</p>
+<pre><code class="language-sway">struct Foo&lt;T&gt;
+  where T: Add 
+{
+    field_one: T
+}
+</code></pre>
+<h2 id="type-arguments"><a class="header" href="#type-arguments">Type Arguments</a></h2>
+<p>Similar to Rust, Sway has what is colloquially known as the <a href="https://github.com/rust-lang/rust/blob/e98309298d927307c5184f4869604bd068d26183/src/test/ui/parser/bastion-of-the-turbofish.rs">turbofish</a>. The turbofish looks like this: <code>::&lt;&gt;</code> (see the little fish with bubbles behind it?). The turbofish is used to annotate types in a generic context. Say you have the following function:</p>
+<pre><code class="language-sway">fn foo&lt;T, E&gt;(t: T) -&gt; Result&lt;T, E&gt; {
+  Result::Ok(t)
+}
+</code></pre>
+<p>In this code example, which is admittedly asinine, you can't possibly know what type <code>E</code> is. You'd need to provide the type manually, with a turbofish:</p>
+<pre><code class="language-sway">fn foo&lt;T, E&gt;(t: T) -&gt; Result&lt;T, E&gt; {
+  Result::&lt;T, MyErrorType&gt;::Ok(t)
+}
+</code></pre>
+<p>It is also common to see the turbofish used on the function itself:</p>
+<pre><code class="language-sway">fn main() {
+  foo::&lt;Bar, Baz&gt;()
+}
+</code></pre>
+<h1 id="traits"><a class="header" href="#traits">Traits</a></h1>
+<h2 id="declaring-a-trait"><a class="header" href="#declaring-a-trait">Declaring a Trait</a></h2>
+<p>A <em>trait</em> opts a type into a certain type of behavior or functionality that can be shared among types. This allows for easy reuse of code and generic programming. If you have ever used a typeclass in Haskell, a trait in Rust, or even an interface in Java, these are similar concepts.</p>
+<p>Let's take a look at some code:</p>
+<pre><code class="language-sway">trait Compare {
+    fn equals(self, b: Self) -&gt; bool;
+} {
+    fn not_equals(self, b: Self) -&gt; bool {
+        !equals(self.equals(b))
+    }
+}
+</code></pre>
+<p>We have just declared a trait called <code>Compare</code>. After the name of the trait, there are two <em>blocks</em> of code (a <em>block</em> is code enclosed in <code>{</code> curly brackets <code>}</code>). The first block is the <em>interface surface</em>. The second block are the <em>methods</em> provided by the trait. If a type is able to provide the methods in the interface surface, then it gets access to the methods in the trait for free! What the above trait is saying is: if you can determine if two values are equal, then for free, you can determine that they are not equal. Note that trait methods have access to the methods defined in the interface surface.</p>
+<h2 id="implementing-a-trait"><a class="header" href="#implementing-a-trait">Implementing a Trait</a></h2>
+<p>Ok, so I know that numbers can be equal. I want to implement my <code>Compare</code> trait for <code>u64</code>. Let's take a look at how that is done:</p>
+<pre><code class="language-sway">impl Compare for u64 {
+    fn equals(self, b: Self) -&gt; bool {
+        self == b
+    }
+}
+</code></pre>
+<p>The above snippet declares all of the methods in the trait <code>Compare</code> for the type <code>u64</code>. Now, we have access to both the <code>equals</code> and <code>not_equals</code> methods for <code>u64</code>, as long as the trait <code>Compare</code> is in scope.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use Cases</a></h2>
+<h3 id="custom-types-structs-enums"><a class="header" href="#custom-types-structs-enums">Custom Types (structs, enums)</a></h3>
+<p>Often, libraries and APIs have interfaces that are abstracted over a type that implements a certain trait. It is up to the consumer of the interface to implement that trait for the type they wish to use with the interface. For example, let's take a look at a trait and an interface built off of it.</p>
+<pre><code class="language-sway">library games; 
+
+pub enum Suit {
+    Hearts: (),
+    Diamonds: (),
+    Clubs: (),
+    Spades: ()
+}
+
+pub trait Card {
+    fn suit(self) -&gt; Suit;
+    fn value(self) -&gt; u8;
+}
+
+fn play_game_with_deck&lt;T&gt;(a: Vec&lt;T&gt;) where T: Card {
+    // insert some creative card game here
+  }
+</code></pre>
+<p>Now, if you want to use the function <code>play_game_with_deck</code> with your own personal struct, you must implement <code>Card</code> for your struct. Note that the following code example assumes a dependency <em>games</em> has been included in the <code>Forc.toml</code> file.</p>
+<pre><code class="language-sway">script;
+use games::*;
+struct MyCard {
+    suit: Suit,
+    value: u8
+}
+
+impl Card for MyCard {
+    fn suit(self) -&gt; Suit {
+        self.suit
+    }
+    fn value(self) -&gt; u8 {
+        self.value
+    }
+}
+
+fn main() {
+    let mut i = 52;
+    let mut deck: Vec&lt;MyCard&gt; = Vec::with_capacity(50);
+    while i &gt; 0 {
+        i = i - 1;
+        deck.push(MyCard { suit: generate_random_suit(), value: i % 4}
+    }
+    play_game_with_deck(deck);
+}
+
+fn random_suit(i: u64) -&gt; Suit {
+  [ ... ]
+}
+</code></pre>
+<h1 id="trait-constraints-1"><a class="header" href="#trait-constraints-1">Trait Constraints</a></h1>
+<p>Trait constraints on generics are currently a work in progress.</p>
+<h1 id="inline-assembly-in-sway"><a class="header" href="#inline-assembly-in-sway">Inline Assembly in Sway</a></h1>
+<p>While many users will never have to touch assembly language while writing sway code, it is a powerful tool that enables many advanced use-cases (ie: optimizations, building libraries, etc).</p>
+<h2 id="asm-block"><a class="header" href="#asm-block">ASM Block</a></h2>
+<p>In Sway, the way we use assembly inline is to declare an asm block like this:</p>
+<pre><code class="language-sway">asm() {...}
+</code></pre>
+<p>Declaring an <code>asm</code> block is similar to declaring a function.
+We can specify register names to operate on as arguments, we can perform operations within the block, and we can return a value.
+Here's an example showing what this might look like:</p>
+<pre><code class="language-sway">pub fn add_1(num: u32) -&gt; u32 {
+  asm(r1: num, r2) {
+      add r2 r1 one;
+      r2: u32
+  }
+}
+</code></pre>
+<p>Note that in the above example:</p>
+<ul>
+<li>we initialized the register <code>r1</code> with the value of <code>num</code>.</li>
+<li>we declared a second register <code>r2</code> (you may choose any register names you want).</li>
+<li>we use the <code>add</code> opcode to add <code>one</code> to the value of <code>r1</code> and store it in <code>r2</code>.</li>
+<li><code>one</code> is an example of a &quot;reserved register&quot;, of which there are 16 in total. Further reading on this is linked below under &quot;Semantics&quot;.</li>
+<li>we return <code>r2</code> &amp; specify the return-type as being u32 (the return type is u64 by default).</li>
+</ul>
+<h2 id="helpful-links"><a class="header" href="#helpful-links">Helpful Links</a></h2>
+<p>For examples of assembly in action, check out the Sway standard library: <a href="https://github.com/FuelLabs/sway/tree/master/lib-std">StdLib</a></p>
+<p>For a complete list of all instructions supported in the FuelVM: <a href="https://github.com/FuelLabs/fuel-specs/blob/39e88370376a850f554cede87f9a749e6a0e80eb/specs/vm/opcodes.md#fuelvm-opcodes">Instructions</a></p>
+<p>And to learn more about the FuelVM semantics: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics">Semantics</a></p>
+<h1 id="conventions"><a class="header" href="#conventions">Conventions</a></h1>
+<ul>
+<li><a href="style/./capitalization.html">Capitalization</a></li>
+</ul>
+<h1 id="capitalization"><a class="header" href="#capitalization">Capitalization</a></h1>
+<p>In Sway, structs, traits, and enums are <code>CapitalCase</code>. Modules, variables, and functions are <code>snake_case</code>, constants are <code>SCREAMING_SNAKE_CASE</code>. The compiler will warn you if your capitalization is ever unidiomatic.</p>
+<h1 id="new-concepts"><a class="header" href="#new-concepts">New Concepts</a></h1>
+<p>These are some concepts related to the FuelVM and Fuel ecosystem that you may utilize when writing Sway.</p>
+<ul>
+<li><a href="new-concepts/./identifiers.html">Identifiers</a></li>
+<li><a href="new-concepts/./native-assets.html">Native Assets</a></li>
+<li><a href="new-concepts/./identifiers.html">UTXOs</a></li>
+</ul>
+<h1 id="identifiers"><a class="header" href="#identifiers">Identifiers</a></h1>
+<p>Addresses in Sway are similar to Ethereum addresses. The 2 differences are that Sway addresses are 32 bytes long (instead of 20) and are computed with Sha256(PublicKey) (instead of using Keccak256).</p>
+<p>Contracts, on the other hand, have a <code>contract_id</code> rather than an address.
+A contract's id is also 32 bytes long, and is calculated with:
+<code>sha256(0x4655454C ++ tx.data.salt ++ root(tx.data.witnesses[bytecodeWitnessIndex].data))</code></p>
+<h1 id="native-support-for-multiple-asset-types"><a class="header" href="#native-support-for-multiple-asset-types">Native support for multiple asset types</a></h1>
+<p>The FuelVM has built-in support for working with multiple assets!</p>
+<p>What does this mean in practice?</p>
+<p>As in Ethereum, sending ETH to an address or contract is an operation built in to the FuelVM, meaning it doesn't rely on the existence of some token smart contract to update balances in order to track ownership.</p>
+<p>However, unlike Ethereum, the process for sending <strong>any</strong> native asset is the same! This means that while you would still need a smart contract to handle minting &amp; burning of fungible tokens, the sending and receiving of these tokens can be done independently of the token contract.</p>
+<h1 id="utxos"><a class="header" href="#utxos">UTXOs</a></h1>
+<p>Unlike the Account-based model used by Ethereum, Fuel leverages a model based on Unspent Transaction Outputs(UTXOs).</p>
+<p>TODO</p>
+<h1 id="strategy-and-roadmap"><a class="header" href="#strategy-and-roadmap">Strategy and Roadmap</a></h1>
+<h2 id="strategy"><a class="header" href="#strategy">Strategy</a></h2>
+<h3 id="compiler-architecture"><a class="header" href="#compiler-architecture">Compiler Architecture</a></h3>
+<p>The Sway compiler employs a typical compiler architecture. The following procedures are performed in the listed order:</p>
+<ol>
+<li>Parsing/Lexing</li>
+<li>Type checking and inference</li>
+<li>Control flow analysis and dead code analysis</li>
+<li>IR generation</li>
+<li>Optimization passes</li>
+<li>Bytecode Generation</li>
+</ol>
+<p>Each step is modular and independent of subsequent and preceding steps, for the sake of future development and alternate back or front ends.</p>
+<h3 id="development-strategy"><a class="header" href="#development-strategy">Development Strategy</a></h3>
+<p>The compiler is developed both as a standalone executable and as a library which is consumed by other tooling for Sway, such as <code>forc</code> (including <code>forc fmt</code>, <code>forc doc</code>, etc.), the language server, and more. The synchronization of the teams working on these tools is key to an integrated, wholistic development experience.</p>
+<h2 id="roadmap"><a class="header" href="#roadmap">Roadmap</a></h2>
+<p>The currently-in-progress big features are a robust, LLVM-like intermediate representation layer, the standard library, pattern matching, and a safe contract storage API. </p>
+<h3 id="done"><a class="header" href="#done">Done</a></h3>
+<ol>
+<li>Smart contracts, scripts, predicates</li>
+<li>Rust-like compiler with verbose and descriptive errors and warnings</li>
+<li>Forc package manager and orchestrator (<em>f</em>uel-<em>o</em>rchestrator)</li>
+<li>Forc code sway-fmt (<code>forc fmt</code>)</li>
+<li>Compiler test suite</li>
+<li>Fuel-VM Assembly Expressions</li>
+<li>Control flow analysis with GraphViz output</li>
+<li>Visibility into both IR and finalized bytecode</li>
+<li>Language server and VSCode Plugin</li>
+<li>Contract calls (<code>CALL</code> opcode)</li>
+<li>Contract ABIs and ABI types</li>
+<li>Rust-like Hindley-Milner-based type inference engine</li>
+<li>Generic types and trait-based inheritence</li>
+<li>Contract storage access in the standard library</li>
+</ol>
+<h3 id="to-be-included-in-mvp"><a class="header" href="#to-be-included-in-mvp">To be Included in MVP</a></h3>
+<ol>
+<li>Source Maps</li>
+<li>Auto-generated documentation webpages (<code>forc doc</code> -- modeled on <code>cargo doc</code> from Rust)</li>
+<li>Iterators</li>
+<li>Well-featured standard library for contract development</li>
+</ol>
+<h3 id="post-mvp"><a class="header" href="#post-mvp">Post-MVP</a></h3>
+<ol>
+<li>Safety checks (re-entrancy, safe data types)</li>
+<li>Macro system</li>
+<li>Godbolt visualizer</li>
+<li>Gas profiler</li>
+<li>More optimization passes</li>
+<li>Extensive standard library features</li>
+<li>Auto-chunking of large bytecode into multiple deployments</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+        
+        <script type="text/javascript">
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+        
+        
+
+    </body>
+</html>
