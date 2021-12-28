@@ -17,6 +17,10 @@ core = { path = "./lib-core" }
 std = { path = "./lib-std" }
 ```
 
+## Explicit Parameters
+
+For now, the first tree parameters of an ABI method must be the amount of gas forwarded with the call, the amount of coins, and the asset ID of the coin (i.e. token type). A single fourth parameter is available (which could be a struct) for actual arguments. This restriction will be removed in the near future, such that only the actual arguments need to be declared.
+
 ## Storage Variables and Mappings
 
 Storage variables (or more specifically, automatic assignment of storage slots) are not yet implemented. Storage slots will have to be assigned manually.
