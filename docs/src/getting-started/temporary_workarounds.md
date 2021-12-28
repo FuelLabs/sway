@@ -2,19 +2,12 @@
 
 ## Standard Library
 
-The standard library is currently not distributed with `forc` if [installed via `cargo`](./installation.md#installing-from-cargo). It must be downloaded manually. The following two Forc projects must be downloaded to a local directory:
-
-1. [lib-core](https://github.com/FuelLabs/sway/tree/master/lib-core)
-1. [lib-std](https://github.com/FuelLabs/sway/tree/master/lib-std)
-
-In addition, the standard library is not included as a dependency by default. A variation of the following must be included in your project's `Forc.toml` file:
+The standard library is currently not distributed with `forc` if [installed via `cargo`](./installation.md#installing-from-cargo). It must be downloaded manually or specified as a dependency in the Forc manifest file. A variation of the following must be included in your project's `Forc.toml` file:
 
 ```toml
-# Assuming `lib-core` and `lib-std` are in the same directory
-# as the manifest file. If not, adjust the relative paths.
 [dependencies]
-core = { path = "./lib-core" }
-std = { path = "./lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 ```
 
 ## Explicit Parameters
