@@ -5,5 +5,5 @@ name = "unary_not_basic"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
-core = { path = "../../../../../lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }

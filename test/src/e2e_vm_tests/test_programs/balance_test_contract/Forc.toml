@@ -5,5 +5,5 @@ name = "balance_test_contract"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 balance_test_abi = { path = "../balance_test_abi"}
