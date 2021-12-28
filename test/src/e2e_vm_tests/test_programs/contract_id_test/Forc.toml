@@ -6,4 +6,4 @@ entry = "main.sw"
 
 [dependencies]
 std = { git = "http://github.com/FuelLabs/sway-lib-std" }
-core = { path = "../../../../../lib-core" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
