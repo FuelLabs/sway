@@ -11,7 +11,8 @@ entry = "main.sw"
 license = "Apache-2.0"
 
 [dependencies]
-std = {{ git = "http://github.com/FuelLabs/sway-lib-std" }}
+std  = {{ git = "http://github.com/FuelLabs/sway-lib-std" }}
+core = {{ git = "http://github.com/FuelLabs/sway-lib-core" }}
 "#,
         project_name, real_name,
     )
