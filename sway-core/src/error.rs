@@ -831,6 +831,12 @@ pub enum CompileError<'sc> {
     PureCalledImpure { span: Span<'sc> },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
     ImpureInNonContract { span: Span<'sc> },
+    #[error("Literal value is too large for type {ty}.")]
+    IntegerTooLarge { span: Span<'sc>, ty: String },
+    #[error("Literal value underflows type {ty}.")]
+    IntegerTooSmall { span: Span<'sc>, ty: String },
+    #[error("Literal value contains digits which are not valid for type {ty}.")]
+    IntegerContainsInvalidDigit { span: Span<'sc>, ty: String },
 }
 
 impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
@@ -1024,6 +1030,9 @@ impl<'sc> CompileError<'sc> {
             PatternMatchingAlgorithmFailure(_, span) => span,
             PureCalledImpure { span, .. } => span,
             ImpureInNonContract { span, .. } => span,
+            IntegerTooLarge { span, .. } => span,
+            IntegerTooSmall { span, .. } => span,
+            IntegerContainsInvalidDigit { span, .. } => span,
         }
     }
 

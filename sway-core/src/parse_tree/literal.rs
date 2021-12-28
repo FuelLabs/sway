@@ -5,8 +5,13 @@ use crate::span;
 use crate::type_engine::IntegerBits;
 use crate::types::ResolvedType;
 use crate::CompileError;
+use crate::TypeInfo;
 use pest::iterators::Pair;
+use pest::Span;
 use std::convert::TryInto;
+use std::num::{IntErrorKind, ParseIntError};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Literal<'sc> {
@@ -60,13 +65,12 @@ impl<'sc> Literal<'sc> {
                             .replace("_", "")
                             .parse()
                             .map(Literal::U8)
-                            .map_err(|_| {
-                                CompileError::Internal(
-                                    "Called incorrect internal sway-core on literal type.",
-                                    span::Span {
-                                        span: int_inner.as_span(),
-                                        path,
-                                    },
+                            .map_err(|e| {
+                                handle_parse_int_error(
+                                    e,
+                                    TypeInfo::UnsignedInteger(IntegerBits::Eight),
+                                    int_inner.as_span(),
+                                    path.clone(),
                                 )
                             }),
                         Rule::u16_integer => int_inner
@@ -75,13 +79,12 @@ impl<'sc> Literal<'sc> {
                             .replace("_", "")
                             .parse()
                             .map(Literal::U16)
-                            .map_err(|_| {
-                                CompileError::Internal(
-                                    "Called incorrect internal sway-core on literal type.",
-                                    span::Span {
-                                        span: int_inner.as_span(),
-                                        path,
-                                    },
+                            .map_err(|e| {
+                                handle_parse_int_error(
+                                    e,
+                                    TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
+                                    int_inner.as_span(),
+                                    path.clone(),
                                 )
                             }),
                         Rule::u32_integer => int_inner
@@ -90,13 +93,12 @@ impl<'sc> Literal<'sc> {
                             .replace("_", "")
                             .parse()
                             .map(Literal::U32)
-                            .map_err(|_| {
-                                CompileError::Internal(
-                                    "Called incorrect internal sway-core on literal type.",
-                                    span::Span {
-                                        span: int_inner.as_span(),
-                                        path: path.clone(),
-                                    },
+                            .map_err(|e| {
+                                handle_parse_int_error(
+                                    e,
+                                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                                    int_inner.as_span(),
+                                    path.clone(),
                                 )
                             }),
                         Rule::u64_integer => int_inner
@@ -105,13 +107,12 @@ impl<'sc> Literal<'sc> {
                             .replace("_", "")
                             .parse()
                             .map(Literal::U64)
-                            .map_err(|_| {
-                                CompileError::Internal(
-                                    "Called incorrect internal sway-core on literal type.",
-                                    span::Span {
-                                        span: int_inner.as_span(),
-                                        path: path.clone(),
-                                    },
+                            .map_err(|e| {
+                                handle_parse_int_error(
+                                    e,
+                                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                                    int_inner.as_span(),
+                                    path.clone(),
                                 )
                             }),
                         _ => unreachable!(),
@@ -353,4 +354,29 @@ fn parse_binary_from_pair<'sc>(
             })
         }
     })
+}
+fn handle_parse_int_error<'sc>(
+    e: ParseIntError,
+    ty: TypeInfo,
+    span: Span<'sc>,
+    path: Option<Arc<PathBuf>>,
+) -> CompileError<'sc> {
+    match e.kind() {
+        IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
+            ty: ty.friendly_type_str(),
+            span: span::Span { span, path },
+        },
+        IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
+            ty: ty.friendly_type_str(),
+            span: span::Span { span, path },
+        },
+        IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
+            ty: ty.friendly_type_str(),
+            span: span::Span { span, path },
+        },
+        IntErrorKind::Zero | IntErrorKind::Empty | _ => CompileError::Internal(
+            "Called incorrect internal sway-core on literal type.",
+            span::Span { span, path },
+        ),
+    }
 }
