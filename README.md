@@ -9,9 +9,11 @@ Sway is a language developed for the Fuel blockchain. It is heavily inspired by 
 
 ## Documentation
 
-For user documentation, see the Sway Book: <https://fuellabs.github.io/sway/latest/>.
+For user documentation, including installing release builds, see the Sway Book: <https://fuellabs.github.io/sway/latest/>.
 
 ## Building from Source
+
+This section is for developing the Sway compiler and toolchain. For developing contracts and using Sway, see the above documentation section.
 
 ### Dependencies
 
@@ -29,7 +31,7 @@ export PATH="${HOME}/.cargo/bin:${PATH}"
 
 To ensure access to all dependent repositories, [create](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent) and [add](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) SSH keys to your GitHub account.
 
-### Building Sway
+### Building Forc
 
 Clone the repository and build the Sway toolchain:
 
@@ -51,6 +53,4 @@ To run `forc` from any directory, install `forc` to your local Cargo bin directo
 
 ```sh
 cargo install --locked --path forc
-# Also install sway-server if using the IDE plugin
-cargo install --locked --path sway-server
 ```

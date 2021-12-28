@@ -2,8 +2,10 @@
 
 ## Strategy
 
-### Compiler Architecture 
+### Compiler Architecture
+
 The Sway compiler employs a typical compiler architecture. The following procedures are performed in the listed order:
+
 1. Parsing/Lexing
 1. Type checking and inference
 1. Control flow analysis and dead code analysis
@@ -14,11 +16,15 @@ The Sway compiler employs a typical compiler architecture. The following procedu
 Each step is modular and independent of subsequent and preceding steps, for the sake of future development and alternate back or front ends.
 
 ### Development Strategy
+
 The compiler is developed both as a standalone executable and as a library which is consumed by other tooling for Sway, such as `forc` (including `forc fmt`, `forc doc`, etc.), the language server, and more. The synchronization of the teams working on these tools is key to an integrated, wholistic development experience.
 
 ## Roadmap
 
+The currently-in-progress big features are a robust, LLVM-like intermediate representation layer, the standard library, pattern matching, and a safe contract storage API. 
+
 ### Done
+
 1. Smart contracts, scripts, predicates
 1. Rust-like compiler with verbose and descriptive errors and warnings
 1. Forc package manager and orchestrator (*f*uel-*o*rchestrator)
@@ -30,19 +36,19 @@ The compiler is developed both as a standalone executable and as a library which
 1. Language server and VSCode Plugin
 1. Contract calls (`CALL` opcode)
 1. Contract ABIs and ABI types
-
-
-### To be Included in MVP
 1. Rust-like Hindley-Milner-based type inference engine
 1. Generic types and trait-based inheritence
 1. Contract storage access in the standard library
+
+### To be Included in MVP
+
 1. Source Maps
 1. Auto-generated documentation webpages (`forc doc` -- modeled on `cargo doc` from Rust)
 1. Iterators
 1. Well-featured standard library for contract development
 
-
 ### Post-MVP
+
 1. Safety checks (re-entrancy, safe data types)
 1. Macro system
 1. Godbolt visualizer

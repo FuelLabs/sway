@@ -1,4 +1,4 @@
-# Types
+# Built-in Types
 
 Every value in Sway is of a certain type. Although, deep down, all values are just ones and zeroes in silicon, Sway needs to know what those ones and zeroes actually mean. This is accomplished with _types_.
 
@@ -58,7 +58,64 @@ let my_string: str[4] = "fuel";
 
 Because the string literal `"fuel"` is four letters, the type is `str[4]`, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.
 
-## Address type
+## Compound Types
 
-In Sway, the Address type is a type-safe wrapper around the primitive b256 type.
-(as of now, not yet implemented)
+_Compound types_ are types which group multiple values into one type. In Sway, we have arrays and tuples.
+
+## Tuple Types
+
+_note: tuples are a work in progress and are tracked by [this PR](https://github.com/FuelLabs/sway/pull/399)_
+A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type which consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.
+
+```sway
+let x: (u64, u64) = (0, 0);
+```
+
+This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, `(u64, u64)`, is similar in syntax to the expression which instantiates that type, `(0, 0)`.
+
+```sway
+let x: (u64, bool) = (42, true);
+assert(x.1)
+```
+
+In this example, we have created a new tuple type, `(u64, bool)`, which is a composite of a `u64` and a `bool`. To access a value within a tuple, we use _tuple indexing_: `x.1` stands for the first (zero-indexed, so the `bool`) value of the tuple. Likewise, `x.0` would be the zeroeth, `u64` value of the tuple. Tuple values can also be accessed via destructuring:
+
+```sway
+struct Foo {}
+let x: (u64, Foo, bool) = (42, Foo {}, true);
+let (number, foo, boolean) = x;
+```
+
+## Arrays
+
+An array is similar to a tuple, but an array's values must all be of the same type. An array is written as a comma-separated list inside square brackets:
+
+```sway
+let x = [1, 2, 3, 4, 5];
+```
+
+Arrays are allocated on the stack since their size is known. An array's size is _always_ static, i.e. it cannot change. An array of five elements cannot become an array of six elements.
+
+Arrays can be iterated over, unlike tuples. A common use case for arrays is checking set membership. If you are given a name, and you'd like to figure out if that name is included in your list of classmates, you can use an array:
+
+```sway
+let name = /* some user input */;
+let classmates = ["Bob", "Jan", "Ron"];
+assert(classmates.contains(name));
+```
+
+An array's type is written as the type the array contains followed by the numer of elements, semicolon-separated and within square brackets.
+
+```sway
+let x: [u64; 5] = [0, 1, 2, 3, 4];
+```
+
+To access an element in an array, use _array indexing syntax_:
+
+```sway
+let x: [bool; 2] = [true, false];
+
+assert(x[0]);
+```
+
+Note that arrays are zero-indexed, just like tuples.

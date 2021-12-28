@@ -11,8 +11,8 @@ Here is the project that Forc has initialized:
 ```console
 $ cd hello_world
 $ tree .
-├── Forc.toml
 ├── Cargo.toml
+├── Forc.toml
 ├── src
 │   └── main.sw
 └── tests
@@ -67,15 +67,14 @@ Bytecode size is 28 bytes.
 [Return { id: ContractId([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), val: 0, pc: 488, is: 464 }]
 ```
 
-## Testing a Sway project with Forc
+## Testing a Sway Project with Forc
 
 If you look again at the project structure when you create a new Forc project, you can see a directory called `tests/`:
 
 ```plaintext
 $ forc init my-fuel-project
 $ cd my-fuel-project
-$ tree
-.
+$ tree .
 ├── Forc.toml
 ├── Cargo.toml
 ├── src
@@ -84,9 +83,9 @@ $ tree
     └── harness.rs
 ```
 
-Note that this is a Rust package, that's why inside it you can see a `Cargo.toml`, which is a Rust project manifest file. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our Rust SDK (`fuels-rs`).
+Note that this is a Rust package, hence the existence of a `Cargo.toml` (Rust manifest file) in the project root directory. The `Cargo.toml` in the root directory contains necessary Rust dependencies to enable you to write Rust-based tests using our [Rust SDK](https://github.com/FuelLabs/fuels-rs) (`fuels-rs`).
 
-These tests can be run using either the Rust compiler / Cargo, or you can opt to use `forc test`, which will look for Rust tests under the `tests/` directory (which is created automatically with `forc init`).
+These tests can be run using either `carg test`, or `forc test` which will look for Rust tests under the `tests/` directory (created automatically with `forc init`).
 
 For example, let's write tests against this contract, written in Sway:
 
@@ -118,7 +117,7 @@ impl TestContract for Contract {
 
 Our `tests/harness.rs` file could look like:
 
-```sway
+```rust
 use fuel_tx::Salt;
 use fuels_abigen_macro::abigen;
 use fuels_rs::contract::Contract;
@@ -163,7 +162,7 @@ async fn harness() {
 }
 ```
 
-Then, in the root of our project, running `forc test` will run the test above, compiling and deploying the contract to a local Fuel network, and calling the ABI methods against the contract deployed in there:
+Then, in the root of our project, running `forc test` or `cargo test` will run the test above, compiling and deploying the contract to a local Fuel network, and calling the ABI methods against the contract deployed in there:
 
 ```plaintext
 $ forc test
@@ -174,6 +173,4 @@ test harness ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
 ```
 
-Alternatively, you could `cd` into `test/` and run `cargo test`.
-
-Alternatively, you could opt to write these tests in Typescript, using our [Typescript SDK](https://github.com/FuelLabs/fuels-ts/).
+Instead of writing tests in Rust, tests can also be written in Typescript using our [Typescript SDK](https://github.com/FuelLabs/fuels-ts/).
