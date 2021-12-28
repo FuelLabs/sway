@@ -10,7 +10,7 @@ author = "{}"
 entry = "main.sw"
 license = "Apache-2.0"
 "#,
-        real_name, project_name,
+        project_name, real_name,
     )
 }
 
@@ -25,16 +25,16 @@ pub(crate) fn default_tests_manifest(project_name: &str) -> String {
         r#"[package]
 name = "{}"
 version = "0.1.0"
-authors = "{}"
+authors = ["{}"]
 edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
-fuels-abigen-macro = {{ git = "ssh://git@github.com/FuelLabs/fuels-rs.git" }}
-fuels-rs = {{ git = "ssh://git@github.com/FuelLabs/fuels-rs.git" }}
+fuels-abigen-macro = "0.1"
+fuels-rs = "0.1"
 fuel-gql-client = {{ version = "0.1", default-features = false }}
-fuel-tx = {{ git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }}
+fuel-tx = "0.1"
 rand = "0.8"
 
 [[test]]
@@ -42,7 +42,7 @@ name = "integration_tests"
 path = "tests/harness.rs"
 harness = true
 "#,
-        real_name, project_name,
+        project_name, real_name,
     )
 }
 
