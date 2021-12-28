@@ -56,4 +56,10 @@ impl Store for Contract {
 
 ## Serialization and Deserialization
 
+Serialization/encoding of structures (Solidity's `abi.encode()` and `abi.encodePacked()`) is not yet implemented. Therefore, hashing an encoded struct is not possible without some manual work.
+
+Serializing arbitrary structures can be accomplished manually by composition of recursive `hash_pair()` invocations. See the above example for hashing a pair of values.
+
 ## Optimizer
+
+The optimizing pass of the compiler is not yet implemented, therefore bytecode will be more expensive and larger than it would be in production. Note that eventually the optimizer will support zero-cost abstractions, avoiding the need for developers to go down to inline assembly to produce optimal code.
