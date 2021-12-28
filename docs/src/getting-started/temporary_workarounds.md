@@ -10,6 +10,8 @@ core = { git = "http://github.com/FuelLabs/sway-lib-core" }
 std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 ```
 
+Note that the default `Forc.toml` generated with `forc init` already includes these lines, so no further action is necessary.
+
 ## Explicit Parameters
 
 For now, the first tree parameters of an ABI method must be the amount of gas forwarded with the call, the amount of coins, and the asset ID of the coin (i.e. token type). A single fourth parameter is available (which could be a struct) for actual arguments. This restriction will be removed in the near future, such that only the actual arguments need to be declared.
