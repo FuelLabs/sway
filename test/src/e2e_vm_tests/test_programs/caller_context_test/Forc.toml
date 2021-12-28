@@ -5,7 +5,7 @@ name = "caller_context_test"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 core = { path = "../../../../../lib-core" }
 context_testing_abi = { path = "../context_testing_abi" }
 

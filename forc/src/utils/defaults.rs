@@ -9,6 +9,9 @@ name = "{}"
 author = "{}"
 entry = "main.sw"
 license = "Apache-2.0"
+
+[dependencies]
+std = {{ git = "http://github.com/FuelLabs/sway-lib-std" }}
 "#,
         project_name, real_name,
     )

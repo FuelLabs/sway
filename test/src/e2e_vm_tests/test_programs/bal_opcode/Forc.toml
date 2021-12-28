@@ -5,7 +5,7 @@ name = "bal_opcode"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 core = { path = "../../../../../lib-core" }
 balance_test_abi = { path = "../balance_test_abi"}
 

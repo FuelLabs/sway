@@ -5,7 +5,7 @@ name = "caller_auth_test"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 core = { path = "../../../../../lib-core" }
 auth_testing_abi = { path = "../auth_testing_abi" }
 

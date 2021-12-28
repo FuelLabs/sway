@@ -158,7 +158,10 @@ pub fn download_github_dep(
 
     let github_api_url = build_github_repo_api_url(repo_base_url, branch, version);
 
-    println!("Downloading {:?} into {:?}", dep_name, out_dir);
+    let _ = crate::utils::helpers::println_green(&format!(
+        "  Downloading {:?} ({:?})",
+        dep_name, out_dir
+    ));
 
     match download_tarball(&github_api_url, &out_dir) {
         Ok(downloaded_dir) => Ok(downloaded_dir),

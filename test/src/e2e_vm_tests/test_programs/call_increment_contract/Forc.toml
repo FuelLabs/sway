@@ -5,7 +5,7 @@ name = "call_increment_contract"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 core = { path = "../../../../../lib-core" }
 increment_abi = { path = "../increment_abi" }
 
