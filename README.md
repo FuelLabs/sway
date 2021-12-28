@@ -29,8 +29,6 @@ If not already done, add the Cargo bin directory to your `PATH` by adding the fo
 export PATH="${HOME}/.cargo/bin:${PATH}"
 ```
 
-To ensure access to all dependent repositories, [create](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent) and [add](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) SSH keys to your GitHub account.
-
 ### Building Forc
 
 Clone the repository and build the Sway toolchain:
