@@ -617,11 +617,11 @@ impl<'sc> Namespace<'sc> {
                 });
                 insert_type(TypeInfo::ErrorRecovery)
             });
-        let methods = self.get_methods_for_type(r#type);
-        let methods = match methods[..] {
-            [] => namespace.get_methods_for_type(r#type),
-            _ => methods,
-        };
+        let local_methods = self.get_methods_for_type(r#type);
+        let mut ns_methods = namespace.get_methods_for_type(r#type);
+
+        let mut methods = local_methods;
+        methods.append(&mut ns_methods);
 
         match methods
             .into_iter()
