@@ -105,14 +105,24 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // now, compile this program with all of its dependencies
     let main_file = get_main_file(&manifest, &manifest_dir)?;
 
-    json_abi.append(&mut compile(
+    let mut res = compile(
         main_file,
         &manifest.project.name,
         &namespace,
         build_config,
         &mut dependency_graph,
         silent_mode,
-    )?);
+    )?;
+
+    if res.1 != TreeType::Contract  {
+        return Err(format!("Cannot construct a JSON ABI descriptor for a non-contract. This program is a {}, not a contract.", match res.1 {
+            TreeType::Contract => unreachable!(),
+            TreeType::Script => "script",
+            TreeType::Predicate => "predicate",
+            TreeType::Library { .. } => "library",
+        }));
+    }
+    json_abi.append(&mut res.0);
 
     let output_json = json!(json_abi);
 
@@ -282,7 +292,7 @@ fn compile<'source, 'manifest>(
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<Vec<Function>, String> {
+) -> Result<(Vec<Function>, TreeType<'source>), String> {
     let res = sway_core::compile_to_ast(&source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
@@ -297,9 +307,9 @@ fn compile<'source, 'manifest>(
                     Err(format!("Failed to compile {}", proj_name))
                 }
                 typ => {
-                    print_on_success(silent_mode, proj_name, warnings, typ);
+                    print_on_success(silent_mode, proj_name, warnings, typ.clone());
                     let json_abi = generate_json_abi(&Some(*parse_tree));
-                    Ok(json_abi)
+                    Ok((json_abi, typ))
                 }
             }
         }
