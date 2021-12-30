@@ -1,21 +1,22 @@
-use crate::utils::dependency::{Dependency, DependencyDetails};
+use crate::utils::dependency::Dependency;
 use crate::{
     cli::JsonAbiCommand,
     utils::dependency,
     utils::helpers::{
-        find_file_name, find_main_path, find_manifest_dir, get_main_file, print_on_failure,
-        print_on_success, read_manifest,
+        find_file_name, find_main_path, get_main_file, print_on_failure, print_on_success,
+        read_manifest,
     },
 };
 
-use core_types::{Function, JsonABI};
+use sway_types::{Function, JsonABI};
+use sway_utils::find_manifest_dir;
 
 use anyhow::Result;
-use core_lang::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use sway_core::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
 
 pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
     // find manifest directory, even if in subdirectory
@@ -96,6 +97,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
                 &mut namespace,
                 &mut dependency_graph,
                 silent_mode,
+                offline_mode,
             )?);
         }
     }
@@ -129,22 +131,43 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
 fn compile_dependency_lib<'source, 'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
-    dependency_lib: &Dependency,
+    dependency_lib: &mut Dependency,
     namespace: &mut Namespace<'source>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
+    offline_mode: bool,
 ) -> Result<Vec<Function>, String> {
-    let dep_path = match dependency_lib {
+    let mut details = match dependency_lib {
         Dependency::Simple(..) => {
             return Err(
                 "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
             )
         }
-        Dependency::Detailed(DependencyDetails { path, .. }) => path,
+        Dependency::Detailed(ref mut details) => details,
     };
+    // Download a non-local dependency if the `git` property is set in this dependency.
+    if let Some(ref git) = details.git {
+        let downloaded_dep_path = match dependency::download_github_dep(
+            dependency_name,
+            git,
+            &details.branch,
+            &details.version,
+            offline_mode.into(),
+        ) {
+            Ok(path) => path,
+            Err(e) => {
+                return Err(format!(
+                    "Couldn't download dependency ({:?}): {:?}",
+                    dependency_name, e
+                ))
+            }
+        };
 
+        // Mutate this dependency's path to hold the newly downloaded dependency's path.
+        details.path = Some(downloaded_dep_path);
+    }
     let dep_path =
-        match dep_path {
+        match &details.path {
             Some(p) => p,
             None => return Err(
                 "Only simple path imports are supported right now. Please supply a path relative \
@@ -168,7 +191,7 @@ fn compile_dependency_lib<'source, 'manifest>(
             ))
         }
     };
-    let manifest_of_dep = read_manifest(&manifest_dir)?;
+    let mut manifest_of_dep = read_manifest(&manifest_dir)?;
     let main_path = find_main_path(&manifest_dir, &manifest_of_dep);
     let file_name = find_file_name(&manifest_dir, &main_path)?;
 
@@ -176,22 +199,21 @@ fn compile_dependency_lib<'source, 'manifest>(
         file_name.to_owned(),
         manifest_dir.clone(),
     );
-    let mut dep_namespace = namespace.clone();
+    let mut dep_namespace = Default::default();
 
     // The part below here is just a massive shortcut to get the standard library working
-    if let Some(ref deps) = manifest_of_dep.dependencies {
-        for dep in deps {
+    if let Some(ref mut deps) = manifest_of_dep.dependencies {
+        for ref mut dep in deps {
             // to do this properly, iterate over list of dependencies make sure there are no
             // circular dependencies
-            //return Err("Unimplemented: dependencies that have dependencies".into());
             compile_dependency_lib(
                 &manifest_dir,
                 dep.0,
                 dep.1,
-                // give it a cloned namespace, which we then merge with this namespace
                 &mut dep_namespace,
                 dependency_graph,
                 silent_mode,
+                offline_mode,
             )?;
         }
     }
@@ -221,7 +243,7 @@ fn compile_library<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<(Namespace<'source>, Vec<Function>), String> {
-    let res = core_lang::compile_to_ast(source, namespace, &build_config, dependency_graph);
+    let res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
             parse_tree,
@@ -261,7 +283,7 @@ fn compile<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<Function>, String> {
-    let res = core_lang::compile_to_ast(&source, namespace, &build_config, dependency_graph);
+    let res = sway_core::compile_to_ast(&source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
             parse_tree,

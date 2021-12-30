@@ -58,7 +58,7 @@ pub(crate) fn runs_on_node(file_name: &str) {
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
 pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
-    let mut storage = MemoryStorage::default();
+    let storage = MemoryStorage::default();
 
     let script = compile_to_bytes(file_name).unwrap();
     let gas_price = 10;
@@ -80,9 +80,8 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     );
     let block_height = (u32::MAX >> 1) as u64;
     tx_to_test.validate(block_height).unwrap();
-    *Interpreter::transition(&mut storage, tx_to_test)
-        .unwrap()
-        .state()
+    let mut i = Interpreter::with_storage(storage);
+    i.transact(tx_to_test).unwrap().state().clone()
 }
 
 /// Panics if code _does_ compile, used for test cases where the source
@@ -153,6 +152,6 @@ fn compile_to_json_abi(file_name: &str) -> Result<Value, String> {
             manifest_dir, file_name, "json_abi_output.json"
         )),
         offline_mode: false,
-        silent_mode: false,
+        silent_mode: true,
     })
 }

@@ -1,9 +1,9 @@
 [project]
-author  = "Alexander Hansen"
-license = "MIT"
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
 name = "eq_4_test"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
-core = { path = "../../../../../lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }

@@ -1,4 +1,4 @@
-use fuel_client::client::FuelClient;
+use fuel_gql_client::client::FuelClient;
 use std::process::Stdio;
 use tokio::process::{Child, Command};
 use tokio::time::{sleep, Duration};
