@@ -1,6 +1,8 @@
 name: Clippy Check
 
-on: pull_request
+on: 
+  pull_request:
+    path: 'core_lang'
 
 jobs:
   clippy_check:
@@ -21,4 +23,4 @@ jobs:
             ${{ secrets.PRIVATE_KEY_FUEL_TX }}
             ${{ secrets.PRIVATE_KEY_FUEL_TYPES }}
             ${{ secrets.PRIVATE_KEY_FUEL_VM }}
-          args: core_lang
+          args: --all-features
