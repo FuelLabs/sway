@@ -160,6 +160,46 @@ impl Divide for u8 {
     }
 }
 
+pub trait Mod {
+    fn modulo(self, other: Self) -> Self;
+}
+
+impl Mod for u64 {
+    fn modulo(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            mod r3 r1 r2;
+            r3: u64
+        }
+    }
+}
+
+impl Mod for u32 {
+    fn modulo(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            mod r3 r1 r2;
+            r3: u32
+        }
+    }
+}
+
+impl Mod for u16 {
+    fn modulo(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            mod r3 r1 r2;
+            r3: u16
+        }
+    }
+}
+
+impl Mod for u8 {
+    fn modulo(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            mod r3 r1 r2;
+            r3: u8
+        }
+    }
+}
+
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;
