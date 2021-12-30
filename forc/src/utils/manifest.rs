@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
-use super::constants::DEFAULT_NODE_URL;
+use sway_utils::constants::DEFAULT_NODE_URL;
 
 // using https://github.com/rust-lang/cargo/blob/master/src/cargo/util/toml/mod.rs as the source of
 // implementation strategy

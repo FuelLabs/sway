@@ -1,5 +1,6 @@
-use crate::utils::{constants, defaults};
+use crate::utils::defaults;
 use std::fs;
+use sway_utils::constants;
 
 pub(crate) fn init_new_project(project_name: String) -> Result<(), Box<dyn std::error::Error>> {
     // Make a new directory for the project

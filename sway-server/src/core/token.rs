@@ -3,10 +3,10 @@ use crate::{
     core::token_type::{get_function_details, get_struct_details},
     utils::common::extract_var_body,
 };
-use core_lang::{
+use lspower::lsp::{Position, Range};
+use sway_core::{
     AstNode, AstNodeContent, Declaration, Expression, Ident, Span, VariableDeclaration,
 };
-use lspower::lsp::{Position, Range};
 
 #[derive(Debug, Clone)]
 pub struct Token {

@@ -1,5 +1,5 @@
 use crate::utils::function::extract_fn_signature;
-use core_lang::{FunctionDeclaration, StructDeclaration, TraitDeclaration, Visibility};
+use sway_core::{FunctionDeclaration, StructDeclaration, TraitDeclaration, Visibility};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {

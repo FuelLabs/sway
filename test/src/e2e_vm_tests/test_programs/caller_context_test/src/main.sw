@@ -23,7 +23,7 @@ fn main() -> bool {
     assert(returned_this_balance == 0);
 
     let params = ParamsContractBalance {
-        token_id: ETH_ID,
+        asset_id: ETH_ID,
         contract_id: other_contract_id
     };
     // test Context::balance_of_contract():
@@ -34,9 +34,9 @@ fn main() -> bool {
     let returned_amount = test_contract.get_amount(gas, amount, ETH_ID, ());
     assert(returned_amount == amount);
 
-    // test Context::msg_color():
-    let returned_token_id = test_contract.get_token_id(gas, amount, ETH_ID, ());
-    assert(returned_token_id == ETH_ID);
+    // test Context::msg_asset_id():
+    let returned_asset_id = test_contract.get_asset_id(gas, amount, ETH_ID, ());
+    assert(returned_asset_id == ETH_ID);
 
     // test Context::msg_gas():
     // @todo expect the correct gas here... this should fail using `1000`
