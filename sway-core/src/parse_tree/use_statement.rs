@@ -11,6 +11,8 @@ pub enum ImportType<'sc> {
     Item(Ident<'sc>),
 }
 
+/// Contains the necessary components to form the call paths for a [UseStatement] declaration, e.g. `use foo::bar;` or `use ::foo::bar;`. 
+/// A [UseStatement] shortens the path required to refer to a module item, and may appear in modules and blocks, usually at the top.
 #[derive(Debug, Clone)]
 pub struct UseStatement<'sc> {
     pub(crate) call_path: Vec<Ident<'sc>>,
