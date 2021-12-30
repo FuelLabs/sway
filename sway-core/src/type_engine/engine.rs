@@ -184,23 +184,23 @@ impl Engine {
 
     pub fn unify_with_self<'sc>(
         &self,
-        a: TypeId,
-        b: TypeId,
+        received: TypeId,
+        expected: TypeId,
         self_type: TypeId,
         span: &Span<'sc>,
     ) -> Result<Vec<CompileWarning<'sc>>, TypeError<'sc>> {
-        let a = if self.look_up_type_id(a) == TypeInfo::SelfType {
+        let received = if self.look_up_type_id(received) == TypeInfo::SelfType {
             self_type
         } else {
-            a
+            received
         };
-        let b = if self.look_up_type_id(b) == TypeInfo::SelfType {
+        let expected = if self.look_up_type_id(expected) == TypeInfo::SelfType {
             self_type
         } else {
-            b
+            expected
         };
 
-        self.unify(a, b, span)
+        self.unify(received, expected, span)
     }
 
     pub fn resolve_type<'sc>(

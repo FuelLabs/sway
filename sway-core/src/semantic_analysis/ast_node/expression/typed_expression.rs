@@ -667,16 +667,13 @@ impl<'sc> TypedExpression<'sc> {
         );
 
         // this could probably be cleaned up with unification instead of comparing types
-        let type_annotation = look_up_type_id(type_annotation);
-        let block_return_type: TypeId = match look_up_type_id(block_return_type) {
-            TypeInfo::Unit if type_annotation != TypeInfo::Unit => {
-                errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
-                    span: span.clone(),
-                    ty: type_annotation.friendly_type_str(),
-                });
-                insert_type(TypeInfo::ErrorRecovery)
+         match unify_with_self(block_return_type, type_annotation, self_type, &span.clone()) {
+            Ok(mut ws) => {
+                warnings.append(&mut ws);
             }
-            _otherwise => block_return_type,
+            Err(e) => {
+                errors.push(e.into());
+            }
         };
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
@@ -736,6 +733,7 @@ impl<'sc> TypedExpression<'sc> {
             warnings,
             errors
         ));
+        println!("type annotation: {}", type_annotation.friendly_type_str());
         let then = Box::new(check!(
             TypedExpression::type_check(TypeCheckArguments {
                 checkee: *then.clone(),
@@ -780,6 +778,7 @@ impl<'sc> TypedExpression<'sc> {
             .map(|ref x| x.return_type)
             .unwrap_or_else(|| insert_type(TypeInfo::Unit));
         // if there is a type annotation, then the else branch must exist
+        println!("{} {}", then.return_type.friendly_type_str(), r#else_ret_ty.friendly_type_str());
         match unify_with_self(then.return_type, r#else_ret_ty, self_type, &span) {
             Ok(mut warn) => {
                 warnings.append(&mut warn);
