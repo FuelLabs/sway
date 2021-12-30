@@ -667,16 +667,13 @@ impl<'sc> TypedExpression<'sc> {
         );
 
         // this could probably be cleaned up with unification instead of comparing types
-        let type_annotation = look_up_type_id(type_annotation);
-        let block_return_type: TypeId = match look_up_type_id(block_return_type) {
-            TypeInfo::Unit if type_annotation != TypeInfo::Unit => {
-                errors.push(CompileError::ExpectedImplicitReturnFromBlockWithType {
-                    span: span.clone(),
-                    ty: type_annotation.friendly_type_str(),
-                });
-                insert_type(TypeInfo::ErrorRecovery)
+        match unify_with_self(block_return_type, type_annotation, self_type, &span.clone()) {
+            Ok(mut ws) => {
+                warnings.append(&mut ws);
             }
-            _otherwise => block_return_type,
+            Err(e) => {
+                errors.push(e.into());
+            }
         };
         let exp = TypedExpression {
             expression: TypedExpressionVariant::CodeBlock(TypedCodeBlock {
