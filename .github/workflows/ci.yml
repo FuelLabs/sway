@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+          
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          # We use debug here to reduce build time, since the performance difference
+          # is minimal between release and debug builds for the purposes of these tests.
+          args: --debug forc
+
+      - name: Check formatting
+        run: |
+          forc fmt --check
+
+      - name: Build
+        run: |
+          forc build
