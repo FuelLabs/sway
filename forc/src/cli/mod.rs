@@ -53,5 +53,4 @@ pub(crate) async fn run_cli() -> Result<(), String> {
         Forc::JsonAbi(command) => json_abi::exec(command),
         Forc::Lsp(command) => lsp::exec(command).await,
     }
-
 }
