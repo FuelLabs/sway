@@ -1,0 +1,6 @@
+[project]
+name = "if_implicit_unit"
+author = "Alexander Hansen"
+entry = "main.sw"
+license = "Apache-2.0"
+

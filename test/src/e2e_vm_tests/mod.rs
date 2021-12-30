@@ -73,6 +73,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("block_height", ProgramState::Return(1)),   // true
         ("valid_impurity", ProgramState::Return(0)), // false
         ("trait_override_bug", ProgramState::Return(7)),
+        ("if_implicit_unit", ProgramState::Return(0)),
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
