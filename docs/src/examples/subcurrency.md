@@ -3,6 +3,7 @@
 ```sway
 contract;
 
+use std::chain::*;
 use std::hash::*;
 use std::storage::*;
 
@@ -12,6 +13,9 @@ use std::storage::*;
 
 // Events allow clients to react to changes in the contract.
 // Unlike Solidity, events are simply structs.
+// Note: Serialization in not yet implemented, therefore logging
+//  of arbitrary structures will not work without manual
+//  serialization.
 
 /// Emitted when a token is sent.
 struct Sent {
@@ -45,24 +49,24 @@ struct ParamsSend {
 abi Token {
     // Mint new tokens and send to an address.
     // Can only be called by the contract creator.
-    fn mint(gas: u64, coins: u64, color: b256, args: ParamsMint);
+    fn mint(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsMint);
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    fn send(gas: u64, coins: u64, color: b256, args: ParamsSend);
+    fn send(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsSend);
 }
 
 // Note: ABI methods for now must explicitly have as parameters:
-//  gas to forward: u64
-//  coins to forward: u64,
-//  color of coins: b256
+//  gas_ to forward: u64
+//  coins_ to forward: u64,
+//  asset_id_ of coins: b256
 
 ////////////////////////////////////////
 // Constants
 ////////////////////////////////////////
 
 /// Address of contract creator.
-const minter: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
+const MINTER: b256 = 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b;
 
 ////////////////////////////////////////
 // Contract storage
@@ -79,32 +83,33 @@ const STORAGE_BALANCES: b256 = 0x00000000000000000000000000000000000000000000000
 
 /// Contract implements the `Token` ABI.
 impl Token for Contract {
-    fn mint(gas: u64, coins: u64, color: b256, args: ParamsMint) {
+    fn mint(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsMint) {
         // Note: authentication is not yet implemented, for now just trust params
-        if args.receiver == minter {
-            let storage_slot = hash_pair(STORAGE_BALANCES, minter, HashMethod::Sha256);
+        // See https://github.com/FuelLabs/sway/issues/195
+        if args.receiver == MINTER {
+            let storage_slot = hash_pair(STORAGE_BALANCES, MINTER, HashMethod::Sha256);
 
-            let mut amount = get_u64(storage_slot);
+            let mut amount = get::<u64>(storage_slot);
             amount = amount + args.amount;
-            store_u64(storage_slot, amount);
+            store(storage_slot, amount);
         } else {
-            // Note: Revert is not yet implemented
+            // Revert with error `69`, chosen arbitrarily
+            panic(69);
         }
-
     }
 
-    fn send(gas: u64, coins: u64, color: b256, args: ParamsSend) {
+    fn send(gas_: u64, coins_: u64, asset_id_: b256, args: ParamsSend) {
         let sender_storage_slot = hash_pair(STORAGE_BALANCES, args.sender, HashMethod::Sha256);
 
-        let mut sender_amount = get_u64(sender_storage_slot);
+        let mut sender_amount = get::<u64>(sender_storage_slot);
         sender_amount = sender_amount - args.amount;
-        store_u64(sender_storage_slot, sender_amount);
+        store(sender_storage_slot, sender_amount);
 
         let receiver_storage_slot = hash_pair(STORAGE_BALANCES, args.receiver, HashMethod::Sha256);
 
-        let mut receiver_amount = get_u64(receiver_storage_slot);
+        let mut receiver_amount = get::<u64>(receiver_storage_slot);
         receiver_amount = receiver_amount + args.amount;
-        store_u64(receiver_storage_slot, receiver_amount);
+        store(receiver_storage_slot, receiver_amount);
     }
 }
 ```

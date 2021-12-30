@@ -5,12 +5,16 @@ pub(crate) fn default_manifest(project_name: &str) -> String {
 
     format!(
         r#"[project]
-author  = "{}"
-license = "MIT"
 name = "{}"
+author = "{}"
 entry = "main.sw"
+license = "Apache-2.0"
+
+[dependencies]
+std  = {{ git = "http://github.com/FuelLabs/sway-lib-std" }}
+core = {{ git = "http://github.com/FuelLabs/sway-lib-core" }}
 "#,
-        real_name, project_name,
+        project_name, real_name,
     )
 }
 
@@ -23,18 +27,19 @@ pub(crate) fn default_tests_manifest(project_name: &str) -> String {
 
     format!(
         r#"[package]
-author  = "{}"
-license = "MIT"
 name = "{}"
-edition = "2021"
 version = "0.1.0"
+authors = ["{}"]
+edition = "2021"
+license = "Apache-2.0"
 
 [dependencies]
 tokio = {{ version = "1.12", features = ["rt", "macros"] }}
-fuels-abigen-macro = {{ git = "ssh://git@github.com/FuelLabs/fuels-rs.git" }}
-fuels-rs = {{ git = "ssh://git@github.com/FuelLabs/fuels-rs.git" }}
-fuel-client = {{ git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false }}
-fuel-tx = {{ git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }}
+fuels-abigen-macro = "0.1"
+fuels-core = "0.1"
+fuels-rs = "0.1"
+fuel-gql-client = {{ version = "0.1", default-features = false }}
+fuel-tx = "0.1"
 rand = "0.8"
 
 [[test]]
@@ -42,7 +47,7 @@ name = "integration_tests"
 path = "tests/harness.rs"
 harness = true
 "#,
-        real_name, project_name,
+        project_name, real_name,
     )
 }
 
