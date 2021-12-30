@@ -1,6 +1,6 @@
 [package]
 name = "parser"
-version = "0.1.8"
+version = "0.1.7"
 edition = "2021"
 publish = false
 
