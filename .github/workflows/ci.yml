@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+          
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install rustfmt
+        run: rustup component add rustfmt
+
+      - name: Set git config
+        run: |
+          git config --global core.bigfilethreshold 500m
+
+      - name: Check formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Install fuel-core
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          # We use debug here to reduce build time, since the performance difference
+          # is minimal between release and debug builds for the purposes of these tests.
+          args: --debug fuel-core
+
+      - name: Run fuel-core
+        run: |
+          fuel-core &
+          echo $! > ./fuel-core.pid
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+        env:
+          RUSTFLAGS: "-D warnings"
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --release --bin test
+
+      - name: Kill fuel-core
+        run: cat ./fuel-core.pid | xargs kill
+
+
+  publish:
+    # Only do this job if publishing a release
+    needs: build
+    if: github.event_name == 'release' && github.event.action == 'published'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Verify tag version
+      run: |
+        cargo install toml-cli
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-fmt/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-server/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
+        ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
+    - name: Publish crate
+      uses: katyo/publish-crates@v1
+      with:
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}

@@ -1,9 +1,0 @@
-[package]
-authors = ["leviathan88 <elvisdedic@outlook.com>"]
-edition = "2018"
-name = "formatter"
-version = "0.1.0"
-
-[dependencies]
-core_lang = { path = "../core_lang" }
-ropey = "1.2"
