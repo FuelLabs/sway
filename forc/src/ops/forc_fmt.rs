@@ -101,14 +101,14 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
             if command.check {
                 if contains_edits {
                     // One or more files are not formatted, exit with error
-                    std::process::exit(1);
+                    Err("Files contain formatting violations.".into())
                 } else {
                     // All files are formatted, exit cleanly
-                    std::process::exit(0);
+                    Ok(())
                 }
+            } else {
+                Ok(())
             }
-
-            Ok(())
         }
         _ => Err("Manifest file does not exist".into()),
     }

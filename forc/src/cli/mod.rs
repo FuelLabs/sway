@@ -52,7 +52,5 @@ pub(crate) async fn run_cli() -> Result<(), String> {
         Forc::Update(command) => update::exec(command).await,
         Forc::JsonAbi(command) => json_abi::exec(command),
         Forc::Lsp(command) => lsp::exec(command).await,
-    }?;
-
-    Ok(())
+    }
 }
