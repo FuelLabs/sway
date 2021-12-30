@@ -26,6 +26,5 @@ pub struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> Result<(), String> {
-    forc_build::build(command)?;
-    Ok(())
+    forc_build::build(command)
 }
