@@ -101,11 +101,13 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
             if command.check {
                 if contains_edits {
                     // One or more files are not formatted, exit with error
-                    return Err("Files contain formatting violations.");
+                    Err("Files contain formatting violations.".into())
                 } else {
                     // All files are formatted, exit cleanly
-                    return Ok(());
+                    Ok(())
                 }
+            } else {
+                Ok(())
             }
         }
         _ => Err("Manifest file does not exist".into()),
