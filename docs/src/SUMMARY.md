@@ -8,6 +8,7 @@
   - [A Forc Project](./getting-started/forc_project.md)
   - [Why Sway?](./getting-started/why_sway.md)
   - [Temporary Workarounds](./getting-started/temporary_workarounds.md)
+  - [Differences Between Solidity](./getting-started/solidity_differences.md)
 - [Examples](./examples/index.md)
   - [Subcurrency](./examples/subcurrency.md)
   - [FizzBuzz](./examples/fizzbuzz.md)
