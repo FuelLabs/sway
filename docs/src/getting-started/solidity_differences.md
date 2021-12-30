@@ -21,3 +21,7 @@ Panics in the FuelVM (called "reverts" in Solidity and the EVM) are global, i.e.
 ## Default Safe Math
 
 Math in the FuelVM is by default safe (i.e. any overflow or exception is a panic). Safety checks are performed natively in the VM implementation, rather than at the bytecode level like [Solidity's default safe math](https://docs.soliditylang.org/en/latest/080-breaking-changes.html#silent-changes-of-the-semantics).
+
+## No* Code Size Limit
+
+There is no practical code size limit to Sway contracts. The physical limit is governed by the [`VM_MAX_RAM` VM parameter](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#parameters), which at the time of writing is 64 MiB.
