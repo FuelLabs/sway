@@ -16,15 +16,15 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
-/// A namespace represents all items that exist either via declaration or importing, a  stateful context which holds all items and their names.
+/// A namespace represents all items that exist either via declaration or importing.
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
     // order.
     symbols: BTreeMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    // Any other modules within this scope, where a module is a namespace associated with an identifier.
     implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
+    // Any other modules within this scope, where a module is a namespace associated with an identifier.
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
     // order.
