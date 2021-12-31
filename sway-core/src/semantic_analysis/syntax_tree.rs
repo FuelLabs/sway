@@ -11,7 +11,7 @@ use crate::{AstNode, ParseTree};
 
 use std::collections::{HashMap, HashSet};
 
-/// Represents the possible types of a parse tree.
+/// Represents the different variants of the AST.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TreeType<'sc> {
     Predicate,

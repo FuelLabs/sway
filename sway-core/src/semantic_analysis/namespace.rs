@@ -16,20 +16,15 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 type ModuleName = String;
 type TraitName<'a> = CallPath<'a>;
 
-/// Contains the symbol, type, trait and other relevant naming information of some Sway source code, and ensures that
-/// all of a given set will have unique names so they can be easily identified.
+/// A namespace represents all items that exist either via declaration or importing, a  stateful context which holds all items and their names.
 #[derive(Clone, Debug, Default)]
 pub struct Namespace<'sc> {
-    // A key/value set containing the name and span of a symbol, and its type, respectively.
-    //
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_declared_symbols] -- we need that iterator to have a deterministic
     // order.
     symbols: BTreeMap<Ident<'sc>, TypedDeclaration<'sc>>,
-    // A key/value set containing the [TraitName], [TypeInfo] of a trait, and a vector containing the function attributes, respectively.
+    // Any other modules within this scope, where a module is a namespace associated with an identifier.
     implemented_traits: HashMap<(TraitName<'sc>, TypeInfo), Vec<TypedFunctionDeclaration<'sc>>>,
-    // Any imported namespaces associated with an ident which is a  library name.
-    //
     // This is a BTreeMap because we rely on its ordering being consistent. See
     // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
     // order.

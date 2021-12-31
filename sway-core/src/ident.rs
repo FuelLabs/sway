@@ -6,7 +6,7 @@ use pest::iterators::Pair;
 use std::cmp::{Ord, Ordering};
 use std::hash::{Hash, Hasher};
 
-/// Represents the name and span of a symbol. Note that a symbol is not
+/// An [Ident] is an _identifier_ with a corresponding `span` from which it was derived. Note that a symbol is not
 /// equivalent to a token, where a token is just a literal character.
 #[derive(Debug, Clone)]
 pub struct Ident<'sc> {
