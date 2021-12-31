@@ -2,7 +2,7 @@ name: Clippy Check
 
 on: 
   pull_request:
-    path: 'core_lang'
+    path: 'sway-core'
 
 jobs:
   clippy_check:
