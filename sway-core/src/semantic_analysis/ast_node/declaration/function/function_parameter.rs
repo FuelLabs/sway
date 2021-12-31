@@ -14,7 +14,7 @@ pub struct TypedFunctionParameter<'sc> {
 impl TypedFunctionParameter<'_> {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
-            look_up_type_id(self.r#type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {

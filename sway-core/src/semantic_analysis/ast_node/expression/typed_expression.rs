@@ -400,6 +400,7 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
     fn type_check_function_application<'n>(
         arguments: TypeCheckArguments<
             'n,
@@ -689,6 +690,7 @@ impl<'sc> TypedExpression<'sc> {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
     fn type_check_if_expression<'n>(
         arguments: TypeCheckArguments<
             'n,
@@ -774,7 +776,7 @@ impl<'sc> TypedExpression<'sc> {
 
         let r#else_ret_ty = r#else
             .as_ref()
-            .map(|ref x| x.return_type)
+            .map(|x| x.return_type)
             .unwrap_or_else(|| insert_type(TypeInfo::Unit));
         // if there is a type annotation, then the else branch must exist
         match unify_with_self(then.return_type, r#else_ret_ty, self_type, &span) {

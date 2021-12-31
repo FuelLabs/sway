@@ -42,7 +42,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                     namespace: &mut local_namespace,
                     crate_namespace,
                     return_type_annotation: type_annotation,
-                    help_text: help_text,
+                    help_text,
                     self_type,
                     build_config,
                     dead_code_graph,
