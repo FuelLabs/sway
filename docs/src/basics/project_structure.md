@@ -5,11 +5,11 @@ If you have used Rust, the structure of a Sway project will feel very familiar t
 <!-- markdownlint-disable-next-line fenced-code-language -->
 ```
 my-project/
+├── Cargo.toml
 ├── Forc.toml
 ├── src
 │   └── main.sw
 └── tests
-    ├── Cargo.toml
     └── harness.rs
 ```
 
