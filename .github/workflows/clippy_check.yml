@@ -15,4 +15,5 @@ jobs:
 
       - name: rust-clippy-check
         uses: actions-rs/clippy-check@v1.0.7
+        with:
           args: --all-features
