@@ -11,6 +11,7 @@ pub enum ImportType<'sc> {
     Item(Ident<'sc>),
 }
 
+/// A [UseStatement] is a statement that imports something from a module into the local namespace.
 #[derive(Debug, Clone)]
 pub struct UseStatement<'sc> {
     pub(crate) call_path: Vec<Ident<'sc>>,
