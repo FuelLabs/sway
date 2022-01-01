@@ -1233,10 +1233,10 @@ fn random_suit(i: u64) -&gt; Suit {
 We can specify register names to operate on as arguments, we can perform operations within the block, and we can return a value.
 Here's an example showing what this might look like:</p>
 <pre><code class="language-sway">pub fn add_1(num: u32) -&gt; u32 {
-  asm(r1: num, r2) {
-      add r2 r1 one;
-      r2: u32
-  }
+    asm(r1: num, r2) {
+        add r2 r1 one;
+        r2: u32
+    }
 }
 </code></pre>
 <p>Note that in the above example:</p>
@@ -1248,9 +1248,9 @@ Here's an example showing what this might look like:</p>
 <li>we return <code>r2</code> &amp; specify the return-type as being u32 (the return type is u64 by default).</li>
 </ul>
 <h2 id="helpful-links"><a class="header" href="#helpful-links">Helpful Links</a></h2>
-<p>For examples of assembly in action, check out the Sway standard library: <a href="https://github.com/FuelLabs/sway/tree/master/lib-std">StdLib</a></p>
-<p>For a complete list of all instructions supported in the FuelVM: <a href="https://github.com/FuelLabs/fuel-specs/blob/39e88370376a850f554cede87f9a749e6a0e80eb/specs/vm/opcodes.md#fuelvm-opcodes">Instructions</a></p>
-<p>And to learn more about the FuelVM semantics: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics">Semantics</a></p>
+<p>For examples of assembly in action, check out the <a href="https://github.com/FuelLabs/sway-lib-std">Sway standard library</a>.</p>
+<p>For a complete list of all instructions supported in the FuelVM: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md">Instructions</a>.</p>
+<p>And to learn more about the FuelVM semantics: <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics">Semantics</a>.</p>
 <h1 id="conventions"><a class="header" href="#conventions">Conventions</a></h1>
 <ul>
 <li><a href="style/./capitalization.html">Capitalization</a></li>
