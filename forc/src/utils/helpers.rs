@@ -23,10 +23,7 @@ pub fn find_main_path(manifest_dir: &Path, manifest: &Manifest) -> PathBuf {
     code_dir
 }
 
-pub fn find_file_name<'sc>(
-    manifest_dir: &Path,
-    main_path: &'sc Path,
-) -> Result<&'sc Path, String> {
+pub fn find_file_name<'sc>(manifest_dir: &Path, main_path: &'sc Path) -> Result<&'sc Path, String> {
     let mut file_path = manifest_dir.to_path_buf();
     file_path.pop();
     let file_name = match main_path.strip_prefix(file_path.clone()) {
@@ -110,11 +107,7 @@ pub fn print_on_success<'sc>(
     }
 }
 
-pub fn print_on_success_library(
-    silent_mode: bool,
-    proj_name: &str,
-    warnings: Vec<CompileWarning>,
-) {
+pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: Vec<CompileWarning>) {
     if !silent_mode {
         warnings.iter().for_each(format_warning);
     }
