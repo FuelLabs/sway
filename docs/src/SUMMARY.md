@@ -39,4 +39,3 @@
   - [Identifiers](./new-concepts/identifiers.md)
   - [Native Assets](./new-concepts/native-assets.md)
   - [UTXOs](./new-concepts/utxos.md)
-- [Language Strategy and Roadmap](./strategy/strategy_and_roadmap.md)
