@@ -355,12 +355,14 @@ fn parse_binary_from_pair<'sc>(
         }
     })
 }
-fn handle_parse_int_error<'sc>(
+
+#[allow(clippy::wildcard_in_or_patterns)]
+fn handle_parse_int_error(
     e: ParseIntError,
     ty: TypeInfo,
-    span: Span<'sc>,
+    span: Span,
     path: Option<Arc<PathBuf>>,
-) -> CompileError<'sc> {
+) -> CompileError {
     match e.kind() {
         IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
             ty: ty.friendly_type_str(),

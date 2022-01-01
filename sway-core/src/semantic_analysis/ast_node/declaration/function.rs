@@ -274,7 +274,7 @@ impl<'sc> TypedFunctionDeclaration<'sc> {
             .for_each(|x| x.copy_types(type_mapping));
 
         self.return_type = if let Some(matching_id) =
-            look_up_type_id(self.return_type).matches_type_parameter(&type_mapping)
+            look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
         {
             insert_type(TypeInfo::Ref(matching_id))
         } else {

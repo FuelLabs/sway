@@ -281,6 +281,7 @@ pub(crate) fn type_check_method_application<'n, 'sc>(
 
 // TODO(static span): this whole method can go away and the address can go back in the contract
 // caller type.
+#[allow(clippy::too_many_arguments)]
 fn re_parse_expression<'n, 'a>(
     contract_string: String,
     build_config: &BuildConfig,

@@ -111,7 +111,7 @@ fn match_variable<'sc>(
 fn match_struct<'sc>(
     exp: &Expression<'sc>,
     struct_name: &Ident<'sc>,
-    fields: &Vec<StructScrutineeField<'sc>>,
+    fields: &[StructScrutineeField<'sc>],
     span: &Span<'sc>,
 ) -> CompileResult<'sc, MatcherResult<'sc>> {
     let mut warnings = vec![];
@@ -159,7 +159,7 @@ fn match_struct<'sc>(
 fn match_enum<'sc>(
     exp: &Expression<'sc>,
     call_path: &CallPath<'sc>,
-    args: &Vec<Scrutinee<'sc>>,
+    args: &[Scrutinee<'sc>],
     span: &Span<'sc>,
 ) -> CompileResult<'sc, MatcherResult<'sc>> {
     let mut warnings = vec![];
