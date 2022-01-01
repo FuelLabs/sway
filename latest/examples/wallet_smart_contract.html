@@ -171,13 +171,13 @@
 <p><em>Contract storage in the language syntax is a work-in-progress feature, and the following example does not currently compile.</em></p>
 <pre><code class="language-sway">contract;
 
-const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
-const ETH_ID: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 use std::*;
 
+const OWNER_ADDRESS: b256 = 0x8900c5bec4ca97d4febf9ceb4754a60d782abbf3cd815836c1872116f203f861;
+const ETH_ID: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 storage {
-    balance: u64,  
+    balance: u64,
 }
 
 abi Wallet {

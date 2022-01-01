@@ -187,6 +187,10 @@ name = &quot;hello_world&quot;
 author = &quot;user&quot;
 entry = &quot;main.sw&quot;
 license = &quot;Apache-2.0&quot;
+
+[dependencies]
+core = { git = &quot;http://github.com/FuelLabs/sway-lib-core&quot; }
+std = { git = &quot;http://github.com/FuelLabs/sway-lib-std&quot; }
 </code></pre>
 <p>Here are the contents of the only Sway file in the project, and the main entry point, <code>src/main.sw</code>:</p>
 <pre><code class="language-sway">script;
@@ -221,8 +225,8 @@ Bytecode size is 28 bytes.
 <pre><code class="language-plaintext">$ forc init my-fuel-project
 $ cd my-fuel-project
 $ tree .
-├── Forc.toml
 ├── Cargo.toml
+├── Forc.toml
 ├── src
 │   └── main.sw
 └── tests
@@ -237,24 +241,24 @@ use std::storage::*;
 use std::constants::*;
 
 abi TestContract {
-  fn initialize_counter(gas_: u64, amount_: u64, coin_: b256, value: u64) -&gt; u64;
-  fn increment_counter(gas_: u64, amount_: u64, coin_: b256, amount: u64) -&gt; u64;
+    fn initialize_counter(gas_: u64, amount_: u64, coin_: b256, value: u64) -&gt; u64;
+    fn increment_counter(gas_: u64, amount_: u64, coin_: b256, amount: u64) -&gt; u64;
 }
 
 const SLOT = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
 impl TestContract for Contract {
-  fn initialize_counter(gas_: u64, amount_: u64, color_: b256, value: u64) -&gt; u64 {
-    store(SLOT, value);
-    value
-  }
+    fn initialize_counter(gas_: u64, amount_: u64, color_: b256, value: u64) -&gt; u64 {
+        store(SLOT, value);
+        value
+    }
 
-  fn increment_counter(gas_: u64, amount_: u64, color_: b256, amount: u64) -&gt; u64 {
-    let storedVal: u64 = get(SLOT);
-    let value = storedVal + amount;
-    store(SLOT, value);
-    value
-  }
+    fn increment_counter(gas_: u64, amount_: u64, color_: b256, amount: u64) -&gt; u64 {
+        let storedVal: u64 = get(SLOT);
+        let value = storedVal + amount;
+        store(SLOT, value);
+        value
+    }
 }
 </code></pre>
 <p>Our <code>tests/harness.rs</code> file could look like:</p>
