@@ -217,7 +217,7 @@ impl Engine {
     }
 }
 
-pub(crate) fn insert_type(ty: TypeInfo) -> TypeId {
+pub fn insert_type(ty: TypeInfo) -> TypeId {
     TYPE_ENGINE.insert_type(ty)
 }
 

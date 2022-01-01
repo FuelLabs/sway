@@ -6,17 +6,17 @@ use crate::type_engine::*;
 
 use std::collections::{HashMap, HashSet};
 pub struct TypeCheckArguments<'a, 'sc, T> {
-    pub(crate) checkee: T,
-    pub(crate) namespace: &'a mut Namespace<'sc>,
-    pub(crate) crate_namespace: Option<&'a Namespace<'sc>>,
-    pub(crate) return_type_annotation: TypeId,
-    pub(crate) help_text: &'static str,
-    pub(crate) self_type: TypeId,
-    pub(crate) build_config: &'a BuildConfig,
-    pub(crate) dead_code_graph: &'a mut ControlFlowGraph<'sc>,
-    pub(crate) mode: Mode,
-    pub(crate) dependency_graph: &'a mut HashMap<String, HashSet<String>>,
-    pub(crate) opts: TCOpts,
+    pub checkee: T,
+    pub namespace: &'a mut Namespace<'sc>,
+    pub crate_namespace: Option<&'a Namespace<'sc>>,
+    pub return_type_annotation: TypeId,
+    pub help_text: &'static str,
+    pub self_type: TypeId,
+    pub build_config: &'a BuildConfig,
+    pub dead_code_graph: &'a mut ControlFlowGraph<'sc>,
+    pub mode: Mode,
+    pub dependency_graph: &'a mut HashMap<String, HashSet<String>>,
+    pub opts: TCOpts,
 }
 
 #[derive(Default, Clone, Copy)]

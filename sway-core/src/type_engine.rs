@@ -5,7 +5,7 @@ use std::iter::FromIterator;
 mod engine;
 mod integer_bits;
 mod type_info;
-pub(crate) use engine::*;
+pub use engine::*;
 pub use integer_bits::*;
 use sway_types::Property;
 pub use type_info::*;

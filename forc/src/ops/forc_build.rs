@@ -105,7 +105,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib<'n, 'source, 'manifest>(
+fn compile_dependency_lib<'source, 'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
@@ -263,7 +263,7 @@ fn compile_library<'source>(
     }
 }
 
-fn compile<'n, 'source>(
+fn compile<'source>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
@@ -275,11 +275,11 @@ fn compile<'n, 'source>(
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
-            return Ok(bytes);
+            Ok(bytes)
         }
         BytecodeCompilationResult::Library { warnings } => {
             print_on_success_library(silent_mode, proj_name, warnings);
-            return Ok(vec![]);
+            Ok(vec![])
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
             print_on_failure(silent_mode, warnings, errors);
