@@ -27,6 +27,7 @@ pub(crate) use method_name::MethodName;
 pub(crate) use scrutinee::{Scrutinee, StructScrutineeField};
 pub(crate) use unary_op::UnaryOp;
 
+/// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]
 pub enum Expression<'sc> {
     Literal {
@@ -86,7 +87,7 @@ pub enum Expression<'sc> {
         arguments: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
-    /// A subfield expression is anything of the form:
+    /// A _subfield expression_ is anything of the form:
     /// ```ignore
     /// <ident>.<ident>
     /// ```
@@ -96,7 +97,7 @@ pub enum Expression<'sc> {
         span: Span<'sc>,
         field_to_access: Ident<'sc>,
     },
-    /// A [DelineatedPath] is anything of the form:
+    /// A _delineated path_ is anything of the form:
     /// ```ignore
     /// <ident>::<ident>
     /// ```

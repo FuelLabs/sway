@@ -6,6 +6,7 @@ use pest::iterators::Pair;
 use std::cmp::{Ord, Ordering};
 use std::hash::{Hash, Hasher};
 
+/// An [Ident] is an _identifier_ with a corresponding `span` from which it was derived.
 #[derive(Debug, Clone)]
 pub struct Ident<'sc> {
     pub primary_name: &'sc str,

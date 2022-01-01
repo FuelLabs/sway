@@ -201,7 +201,7 @@ impl<'sc> TypedDeclaration<'sc> {
     }
 }
 
-/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's [AbiDeclaration].
+/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug)]
 pub struct TypedAbiDeclaration<'sc> {
     /// The name of the abi trait (also known as a "contract trait")

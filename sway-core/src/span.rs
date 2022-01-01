@@ -1,8 +1,11 @@
 use std::{path::PathBuf, sync::Arc};
 
+/// Represents a span of the source code in a specific file.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Span<'sc> {
+    ///  A [pest::Span] returned directly from the generated parser.
     pub span: pest::Span<'sc>,
+    // A reference counted pointer to the file from which this span originated.
     pub(crate) path: Option<Arc<PathBuf>>,
 }
 
