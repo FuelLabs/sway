@@ -18,7 +18,7 @@ Sway has the following primitive types:
 1. `b256` (256 bits(32 bytes) -- i.e. a hash)
 1. Static-length arrays (as of now, not yet implemented)
 
-All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers -- this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.
+All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers&mdash;this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.
 
 ## Numeric Types
 
@@ -65,6 +65,7 @@ _Compound types_ are types which group multiple values into one type. In Sway, w
 ## Tuple Types
 
 _note: tuples are a work in progress and are tracked by [this PR](https://github.com/FuelLabs/sway/pull/399)_
+
 A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type which consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.
 
 ```sway
@@ -78,7 +79,7 @@ let x: (u64, bool) = (42, true);
 assert(x.1)
 ```
 
-In this example, we have created a new tuple type, `(u64, bool)`, which is a composite of a `u64` and a `bool`. To access a value within a tuple, we use _tuple indexing_: `x.1` stands for the first (zero-indexed, so the `bool`) value of the tuple. Likewise, `x.0` would be the zeroeth, `u64` value of the tuple. Tuple values can also be accessed via destructuring:
+In this example, we have created a new tuple type, `(u64, bool)`, which is a composite of a `u64` and a `bool`. To access a value within a tuple, we use _tuple indexing_: `x.1` stands for the first (zero-indexed, so the `bool`) value of the tuple. Likewise, `x.0` would be the zeroth, `u64` value of the tuple. Tuple values can also be accessed via destructuring:
 
 ```sway
 struct Foo {}
