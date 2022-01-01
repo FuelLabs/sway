@@ -16,10 +16,10 @@ Here's an example showing what this might look like:
 
 ```sway
 pub fn add_1(num: u32) -> u32 {
-  asm(r1: num, r2) {
-      add r2 r1 one;
-      r2: u32
-  }
+    asm(r1: num, r2) {
+        add r2 r1 one;
+        r2: u32
+    }
 }
 ```
 
@@ -33,8 +33,8 @@ Note that in the above example:
 
 ## Helpful Links
 
-For examples of assembly in action, check out the Sway standard library: [StdLib](https://github.com/FuelLabs/sway/tree/master/lib-std)
+For examples of assembly in action, check out the [Sway standard library](https://github.com/FuelLabs/sway-lib-std).
 
-For a complete list of all instructions supported in the FuelVM: [Instructions](https://github.com/FuelLabs/fuel-specs/blob/39e88370376a850f554cede87f9a749e6a0e80eb/specs/vm/opcodes.md#fuelvm-opcodes)
+For a complete list of all instructions supported in the FuelVM: [Instructions](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/opcodes.md).
 
-And to learn more about the FuelVM semantics: [Semantics](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics)
+And to learn more about the FuelVM semantics: [Semantics](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/main.md#semantics).
