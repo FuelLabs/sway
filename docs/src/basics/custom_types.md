@@ -13,7 +13,7 @@ struct Foo {
 }
 ```
 
-This is saying that we have some structure named `Foo`. `Foo` has two fields: `bar` (a `u64`) and `baz` (a `bool`). To instantiate the structure `Foo`, we can use _struct instantiation syntax_, which is very similar to the declaration syntax except with expressions in place of types.
+This is saying that we have some structure named `Foo`. `Foo` has two fields: `bar`, a `u64`; and `baz`, a `bool`. To instantiate the structure `Foo`, we can use _struct instantiation syntax_, which is very similar to the declaration syntax except with expressions in place of types.
 
 ```sway
 let foo = Foo {
