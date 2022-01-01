@@ -1,8 +1,6 @@
 name: Clippy Check
 
-on: 
-  pull_request:
-    path: 'sway'
+on: [ pull_request ]
 
 jobs:
   clippy_check:
