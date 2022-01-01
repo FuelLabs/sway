@@ -81,7 +81,7 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     let block_height = (u32::MAX >> 1) as u64;
     tx_to_test.validate(block_height).unwrap();
     let mut i = Interpreter::with_storage(storage);
-    i.transact(tx_to_test).unwrap().state().clone()
+    *i.transact(tx_to_test).unwrap().state()
 }
 
 /// Panics if code _does_ compile, used for test cases where the source

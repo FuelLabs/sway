@@ -118,7 +118,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
 
     if let Some(outfile) = json_outfile {
         let file = File::create(outfile).map_err(|e| e.to_string())?;
-        serde_json::to_writer(&file, &output_json.clone()).map_err(|e| e.to_string())?;
+        serde_json::to_writer(&file, &output_json).map_err(|e| e.to_string())?;
     } else {
         println!("{}", output_json);
     }
@@ -224,7 +224,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         main_file,
         &manifest_of_dep.project.name,
         &dep_namespace,
-        build_config.clone(),
+        build_config,
         dependency_graph,
         silent_mode,
     )?;
@@ -235,7 +235,7 @@ fn compile_dependency_lib<'source, 'manifest>(
     Ok(json_abi)
 }
 
-fn compile_library<'source, 'manifest>(
+fn compile_library<'source>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
@@ -275,7 +275,7 @@ fn compile_library<'source, 'manifest>(
     }
 }
 
-fn compile<'source, 'manifest>(
+fn compile<'source>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
@@ -283,7 +283,7 @@ fn compile<'source, 'manifest>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<Function>, String> {
-    let res = sway_core::compile_to_ast(&source, namespace, &build_config, dependency_graph);
+    let res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
             parse_tree,

@@ -16,18 +16,18 @@ pub fn is_sway_file(file: &Path) -> bool {
     Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
-pub fn find_main_path(manifest_dir: &PathBuf, manifest: &Manifest) -> PathBuf {
-    let mut code_dir = manifest_dir.clone();
+pub fn find_main_path(manifest_dir: &Path, manifest: &Manifest) -> PathBuf {
+    let mut code_dir = manifest_dir.to_path_buf();
     code_dir.push(constants::SRC_DIR);
     code_dir.push(&manifest.project.entry);
     code_dir
 }
 
 pub fn find_file_name<'sc>(
-    manifest_dir: &'sc PathBuf,
-    main_path: &'sc PathBuf,
+    manifest_dir: &Path,
+    main_path: &'sc Path,
 ) -> Result<&'sc Path, String> {
-    let mut file_path = manifest_dir.clone();
+    let mut file_path = manifest_dir.to_path_buf();
     file_path.pop();
     let file_name = match main_path.strip_prefix(file_path.clone()) {
         Ok(o) => o,
@@ -90,7 +90,7 @@ pub fn print_on_success<'sc>(
     };
 
     if !silent_mode {
-        warnings.iter().for_each(|warning| format_warning(warning));
+        warnings.iter().for_each(format_warning);
     }
 
     if warnings.is_empty() {
@@ -110,13 +110,13 @@ pub fn print_on_success<'sc>(
     }
 }
 
-pub fn print_on_success_library<'sc>(
+pub fn print_on_success_library(
     silent_mode: bool,
     proj_name: &str,
     warnings: Vec<CompileWarning>,
 ) {
     if !silent_mode {
-        warnings.iter().for_each(|warning| format_warning(warning));
+        warnings.iter().for_each(format_warning);
     }
 
     if warnings.is_empty() {
@@ -143,7 +143,7 @@ pub fn print_on_failure(
     let e_len = errors.len();
 
     if !silent_mode {
-        warnings.iter().for_each(|warning| format_warning(warning));
+        warnings.iter().for_each(format_warning);
         errors.into_iter().for_each(|error| format_err(&error));
     }
 

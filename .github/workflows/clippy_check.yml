@@ -2,7 +2,7 @@ name: Clippy Check
 
 on: 
   pull_request:
-    path: 'sway-core'
+    path: 'sway'
 
 jobs:
   clippy_check:
@@ -17,4 +17,4 @@ jobs:
         uses: actions-rs/clippy-check@v1.0.7
         with:
           token: ${{ github.token }}
-          args: --all-features -p sway-core
+          args: --all-features -p sway
