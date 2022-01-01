@@ -6,4 +6,5 @@ To get started with Forc and Sway start contract development, install the Sway t
 - [The Sway Toolchain](./sway-toolchain.md)
 - [A Forc Project](./forc_project.md)
 - [Why Sway?](./why_sway.md)
+- [Temporary Workarounds](./temporary_workarounds.md)
 - [Differences From Solidity](./solidity_differences.md)
