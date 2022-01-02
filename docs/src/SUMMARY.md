@@ -38,6 +38,5 @@
   - [Blockchain Types](./new-concepts/blockchain_types.md)
   - [Identifiers](./new-concepts/identifiers.md)
   - [Native Assets](./new-concepts/native-assets.md)
-  - [UTXOs](./new-concepts/utxos.md)
 - [Conventions](./style/index.md)
   - [Capitalization](./style/capitalization.md)
