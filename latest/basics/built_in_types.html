@@ -183,7 +183,7 @@
 <li><code>b256</code> (256 bits(32 bytes) -- i.e. a hash)</li>
 <li>Static-length arrays (as of now, not yet implemented)</li>
 </ol>
-<p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers -- this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
+<p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers—this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
 <h2 id="numeric-types"><a class="header" href="#numeric-types">Numeric Types</a></h2>
 <p>All of the unsigned integer types are numeric types, and the <code>byte</code> type can also be viewed as an 8-bit unsigned integer.</p>
 <p>Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and with underscores for delineation. Let's take a look at the following valid numeric primitives:</p>
@@ -210,15 +210,15 @@
 <h2 id="compound-types"><a class="header" href="#compound-types">Compound Types</a></h2>
 <p><em>Compound types</em> are types which group multiple values into one type. In Sway, we have arrays and tuples.</p>
 <h2 id="tuple-types"><a class="header" href="#tuple-types">Tuple Types</a></h2>
-<p><em>note: tuples are a work in progress and are tracked by <a href="https://github.com/FuelLabs/sway/pull/399">this PR</a></em>
-A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type which consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.</p>
+<p><em>note: tuples are a work in progress and are tracked by <a href="https://github.com/FuelLabs/sway/pull/399">this PR</a></em></p>
+<p>A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type which consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.</p>
 <pre><code class="language-sway">let x: (u64, u64) = (0, 0);
 </code></pre>
 <p>This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, <code>(u64, u64)</code>, is similar in syntax to the expression which instantiates that type, <code>(0, 0)</code>.</p>
 <pre><code class="language-sway">let x: (u64, bool) = (42, true);
 assert(x.1)
 </code></pre>
-<p>In this example, we have created a new tuple type, <code>(u64, bool)</code>, which is a composite of a <code>u64</code> and a <code>bool</code>. To access a value within a tuple, we use <em>tuple indexing</em>: <code>x.1</code> stands for the first (zero-indexed, so the <code>bool</code>) value of the tuple. Likewise, <code>x.0</code> would be the zeroeth, <code>u64</code> value of the tuple. Tuple values can also be accessed via destructuring:</p>
+<p>In this example, we have created a new tuple type, <code>(u64, bool)</code>, which is a composite of a <code>u64</code> and a <code>bool</code>. To access a value within a tuple, we use <em>tuple indexing</em>: <code>x.1</code> stands for the first (zero-indexed, so the <code>bool</code>) value of the tuple. Likewise, <code>x.0</code> would be the zeroth, <code>u64</code> value of the tuple. Tuple values can also be accessed via destructuring:</p>
 <pre><code class="language-sway">struct Foo {}
 let x: (u64, Foo, bool) = (42, Foo {}, true);
 let (number, foo, boolean) = x;
