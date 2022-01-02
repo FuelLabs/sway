@@ -22,7 +22,8 @@ abi Wallet {
 impl Wallet for Contract {
     fn receive_funds(gas_to_forward: u64, coins_to_forward: u64, asset_id: b256, unused: ()) {
         if asset_id == ETH_ID {
-            balance += coins_to_forward;
+            let balance = storage.balance.write();
+            deref balance = balance + coins_to_forward;
         };
     }
 
