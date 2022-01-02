@@ -37,6 +37,6 @@
 - [Blockchain Concepts](./blockchain-concepts/index.md)
   - [Blockchain Types](./blockchain-concepts/blockchain_types.md)
   - [Identifiers](./blockchain-concepts/identifiers.md)
-  - [Native Assets](./blockchain-concepts/native-assets.md)
+  - [Native Assets](./blockchain-concepts/native_assets.md)
 - [Conventions](./style/index.md)
   - [Capitalization](./style/capitalization.md)
