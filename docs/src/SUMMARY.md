@@ -14,7 +14,6 @@
   - [FizzBuzz](./examples/fizzbuzz.md)
   - [Wallet Smart Contract](./examples/wallet_smart_contract.md)
 - [Basics](./basics/index.md)
-  - [Project Structure](./basics/project_structure.md)
   - [Variables](./basics/variables.md)
   - [Built-in Types](./basics/built_in_types.md)
   - [Custom Types](./basics/custom_types.md)
