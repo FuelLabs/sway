@@ -179,7 +179,7 @@
 <li>Its value is <code>5</code>.</li>
 <li>Its type is <code>u64</code>, a 64-bit unsigned integer.</li>
 </ol>
-<p>Wait, what? <code>u64</code>? What's that cryptic syntax about? See the section <a href="./Types.html">Types</a> for more details on that. For now, just know that is the default numeric type.</p>
+<p><code>u64</code> is the default numeric type, and represents a 64-bit unsigned integer. See the section <a href="./built_in_types.html">Built-in Types</a> for more details.</p>
 <p>We can also make a mutable variable. Let's take a look:</p>
 <pre><code class="language-sway">let mut foo = 5;
 foo = 6;
@@ -189,7 +189,7 @@ foo = 6;
 <p>A variable declaration can contain a <em>type annotation</em>. A type annotation serves the purpose of declaring the type, in addition to the value, of a variable. Let's take a look:</p>
 <pre><code class="language-sway">let foo: u32 = 5;
 </code></pre>
-<p>We have just declared the <em>type</em> of the variable <code>foo</code> as a <code>u32</code>, which is an unsigned 32 bit integer. Let's take a look at a few other type annotations:</p>
+<p>We have just declared the <em>type</em> of the variable <code>foo</code> as a <code>u32</code>, which is an unsigned 32-bit integer. Let's take a look at a few other type annotations:</p>
 <pre><code class="language-sway">let bar: str[4] = &quot;sway&quot;;
 let baz: bool = true;
 </code></pre>
