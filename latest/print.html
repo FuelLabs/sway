@@ -733,25 +733,27 @@ assert(x[0]);
 <p>Note that arrays are zero-indexed, just like tuples.</p>
 <h1 id="custom-types"><a class="header" href="#custom-types">Custom Types</a></h1>
 <h2 id="structs"><a class="header" href="#structs">Structs</a></h2>
-<p>Structs in Sway are a named grouping of types. You may also be familiar with structs via an name: <em>product types</em>. Sway does not make any significantly unique usages of structs, they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
+<p>Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: <em>product types</em>. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
 <p>To declare a struct type, use <em>struct declaration syntax</em>:</p>
 <pre><code class="language-sway">struct Foo {
-  bar: u64,
-  baz: bool 
+    bar: u64,
+    baz: bool,
 }
 </code></pre>
-<p>This is saying that we have some structure named <code>Foo</code>. <code>Foo</code> has two fields: <code>bar</code> (<code>u64</code>) and <code>baz</code> (<code>bool</code>). To instantiate the structure <code>Foo</code>, we can use <em>struct instantiation syntax</em>, which is very similar to the declaration syntax except with expressions in place of types.</p>
+<p>This is saying that we have some structure named <code>Foo</code>. <code>Foo</code> has two fields: <code>bar</code>, a <code>u64</code>; and <code>baz</code>, a <code>bool</code>. To instantiate the structure <code>Foo</code>, we can use <em>struct instantiation syntax</em>, which is very similar to the declaration syntax except with expressions in place of types.</p>
 <pre><code class="language-sway">let foo = Foo {
-  bar: 42,
-  baz: false,
+    bar: 42,
+    baz: false,
 };
 </code></pre>
-<p>To access a field of a struct, use <em>struct field access syntax</em>: </p>
-<pre><code class="language-sway">let foo = Foo {
-  bar: 42,
-  baz: true,
+<p>To access a field of a struct, use <em>struct field access syntax</em>:</p>
+<pre><code class="language-sway">// Instantiate `foo`.
+let foo = Foo {
+    bar: 42,
+    baz: true,
 };
 
+// Access field `baz` of `foo`.
 assert(foo.baz);
 </code></pre>
 <h3 id="struct-memory-layout"><a class="header" href="#struct-memory-layout">Struct Memory Layout</a></h3>
@@ -760,120 +762,122 @@ assert(foo.baz);
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
 <p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type which could be one of a number of variants. To declare an enum, you enumerate all potential variants. Let's look at <em>enum declaration syntax</em>:</p>
 <pre><code class="language-sway">enum Color {
-  Blue   : (),
-  Green  : (),
-  Red    : (),
-  Silver : (),
-  Grey   : (),
+    Blue   : (),
+    Green  : (),
+    Red    : (),
+    Silver : (),
+    Grey   : (),
 }
 </code></pre>
 <p>Here, we have defined five potential colors. Each individual enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit. It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:</p>
 <pre><code class="language-sway">use std::collections::Vec;
 use inventory_system::InventoryItem;
 use inventory_system::Insurer;
+
 struct Claim {
-  insurance_company: Insurer,
-  item_number: u64,
-  item_cost: u64,
+    insurance_company: Insurer,
+    item_number: u64,
+    item_cost: u64,
 }
 
 struct Receipt {
-  customer: CustomerId,
-  items_purchased: Vec&lt;InventoryItem&gt;
+    customer: CustomerId,
+    items_purchased: Vec&lt;InventoryItem&gt;,
 }
 
 struct Refund {
-  customer: CustomerId,
-  items_returned: Vec&lt;InventoryItem&gt;
+    customer: CustomerId,
+    items_returned: Vec&lt;InventoryItem&gt;,
 }
 
 enum InventoryEvent {
-  CustomerPurchase : Receipt,
-  ItemLoss         : Claim,
-  CustomerReturn   : Refund,
+    CustomerPurchase : Receipt,
+    ItemLoss         : Claim,
+    CustomerReturn   : Refund,
 }
 </code></pre>
 <pre><code class="language-sway">enum Color {
-  Blue   : (),
-  Green  : (),
-  Red    : (),
-  Silver : (),
-  Grey   : (),
+    Blue   : (),
+    Green  : (),
+    Red    : (),
+    Silver : (),
+    Grey   : (),
 }
 
 fn main() {
-  let color = Color::Blue;
+    let color = Color::Blue;
 }
 </code></pre>
 <p>Here, we have instantiated a variable named <code>color</code> with <em>enum instantiation syntax</em>. Note that enum instantiation does not require the <code>~</code> tilde syntax. If we wanted to instantiate an enum with some interior data, it looks like this:</p>
 <pre><code class="language-sway">struct Claim {
-  insurance_company: Insurer,
-  item_number: u64,
-  item_cost: u64,
+    insurance_company: Insurer,
+    item_number: u64,
+    item_cost: u64,
 }
 
 let event = InventoryEvent::ItemLoss(Claim {
-  insurance_company: Insurer::default(),
-  item_number: 42,
-  item_cost: 1_000
+    insurance_company: Insurer::default(),
+    item_number: 42,
+    item_cost: 1_000,
 });
 </code></pre>
 <h3 id="enum-memory-layout"><a class="header" href="#enum-memory-layout">Enum Memory Layout</a></h3>
 <p><em>This information is not vital if you are new to the language, or programming in general.</em></p>
-<p>Enums do have some memory overhead. In order to know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the <em>largest</em> enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of <code>Color</code> above, where the variants are all <code>()</code>, the size would be 8 bytes since the size of the largest variant is 0 bytes. </p>
-<h2 id="methods-and-associated-functions"><a class="header" href="#methods-and-associated-functions">Methods and associated functions</a></h2>
+<p>Enums do have some memory overhead. In order to know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the <em>largest</em> enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of <code>Color</code> above, where the variants are all <code>()</code>, the size would be 8 bytes since the size of the largest variant is 0 bytes.</p>
+<h2 id="methods-and-associated-functions"><a class="header" href="#methods-and-associated-functions">Methods and Associated Functions</a></h2>
 <p><em>Methods</em> are functions which are associated with a specific type and either refer to that type or mutate it. <em>Associated functions</em> are very similar, but they do not actually use any of the data in the type. Associated functions could be standalone functions, but they
 are included in a specific type for organizational or semantic reasons.</p>
 <p>In order to declare methods and associated functions for a struct or enum, use an <em>impl block</em>. Here, <code>impl</code> stands for implementation.</p>
-<pre><code class="language-sway">script; 
+<pre><code class="language-sway">script;
+
 struct Foo {
-  bar: u64,
-  baz: bool 
+    bar: u64,
+    baz: bool,
 }
 
 impl Foo {
-  // this is a _method_, as it takes `self` as a parameter.
-  fn is_baz_true(self) -&gt; bool {
-    self.baz
-  }
-
-  // this is an _associated function_, since it does not take `self` as a parameter.
-  fn new_foo(number: u64, boolean: bool) -&gt; Foo {
-    Foo {
-      bar: number,
-      baz: boolean,
+    // this is a _method_, as it takes `self` as a parameter.
+    fn is_baz_true(self) -&gt; bool {
+        self.baz
     }
-  }
+
+    // this is an _associated function_, since it does not take `self` as a parameter.
+    fn new_foo(number: u64, boolean: bool) -&gt; Foo {
+      Foo {
+          bar: number,
+          baz: boolean,
+      }
+    }
 }
 
 fn main() {
-  let foo = ~Foo::new_foo(42, true);
-  assert(foo.is_baz_true());
+    let foo = ~Foo::new_foo(42, true);
+    assert(foo.is_baz_true());
 }
 </code></pre>
 <p>Note the syntax of the associated function call: <code>~Foo::new_foo(42, true);</code>. This bit of syntax is unique to Sway: when referring to a type directly, you preface the type with a tilde (<code>~</code>). To call an associated function, refer to the type and then the function name.
-To call a method, simply use dot syntax: <code>foo.iz_baz_true()</code>. </p>
+To call a method, simply use dot syntax: <code>foo.iz_baz_true()</code>.</p>
 <h2 id="syntax-examples"><a class="header" href="#syntax-examples">Syntax Examples</a></h2>
 <pre><code class="language-sway">enum Color {
-  Blue   : (),
-  Green  : (),
-  Red    : (),
-  Silver : (),
-  Grey   : (),
-  // etc...
+    Blue   : (),
+    Green  : (),
+    Red    : (),
+    Silver : (),
+    Grey   : (),
+    // etc...
 }
 
 enum Make {
-  Ford      : (),
-  Toyota    : (),
-  Mazda     : (),
-  Chevrolet : (),
-  BMW       : (),
-  // etc...
+    Ford      : (),
+    Toyota    : (),
+    Mazda     : (),
+    Chevrolet : (),
+    BMW       : (),
+    // etc...
 }
 struct Car {
-  make: CarMake,
-  color: Color,
+    make: CarMake,
+    color: Color,
 }
 </code></pre>
 <h1 id="blockchain-types"><a class="header" href="#blockchain-types">Blockchain Types</a></h1>
