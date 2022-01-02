@@ -666,11 +666,9 @@ let baz: bool = true;
 <li><code>u16</code> (16-bit unsigned integer)</li>
 <li><code>u32</code> (32-bit unsigned integer)</li>
 <li><code>u64</code> (64-bit unsigned integer)</li>
-<li><code>String</code></li>
-<li><code>Boolean</code></li>
-<li><code>Byte</code></li>
-<li><code>b256</code> (256 bits(32 bytes) -- i.e. a hash)</li>
-<li>Static-length arrays (as of now, not yet implemented)</li>
+<li><code>str[]</code> (fixed-length string)</li>
+<li><code>bool</code> (Boolean <code>true</code> or <code>false</code>)</li>
+<li><code>b256</code> (256 bits (32 bytes), i.e. a hash)</li>
 </ol>
 <p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers—this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
 <h2 id="numeric-types"><a class="header" href="#numeric-types">Numeric Types</a></h2>
