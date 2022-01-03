@@ -103,7 +103,7 @@ let classmates = ["Bob", "Jan", "Ron"];
 assert(classmates.contains(name));
 ```
 
-An array's type is written as the type the array contains followed by the numer of elements, semicolon-separated and within square brackets.
+An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets.
 
 ```sway
 let x: [u64; 5] = [0, 1, 2, 3, 4];
