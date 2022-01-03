@@ -2,7 +2,7 @@
 
 Libraries in Sway are files used to define new common behavior. An example of this is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core) which outlines various methods that the `u64` type implements. 
 
-Functions in Libraries can also read from storage and interact with the state. Libraries are denoted using the `library` keyword followed by a name so that they can be imported.
+Functions in libraries can also read from storage and interact with state. Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported. E.g. `library foo;`.
 
 ```sway
 library my_library;
