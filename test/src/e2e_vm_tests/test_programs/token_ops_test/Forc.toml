@@ -5,8 +5,8 @@ name = "token_ops_test"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
-core = { path = "../../../../../lib-core" }
+std = { path = "../../../../../../sway-lib-std/src"}
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
 test_fuel_coin_abi = { path = "../test_fuel_coin_abi"}
 
 # test_fuel_coin_contract
