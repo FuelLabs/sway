@@ -25,7 +25,7 @@ impl Add for u64 {
 }
 ```
 
-which defines a trait, then implements it for the `u64` type with an implementation. This gives all `u64`s the `add` function, which is inserted at compile time when you use the `+` operator in Sway. Libraries don't just have to export functions attached to types though, you can also use libraries to just export types like below.
+This snippet defines the trait `Add`, then implements it for the `u64` type by providing a function body. This gives all `u64`s the `add` function, which is inserted at compile time when you use the `+` operator in Sway. Libraries can export more than functions, though. You can also use libraries to just export types like below.
 
 ```sway
 pub struct MyStruct {
