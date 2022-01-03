@@ -80,7 +80,7 @@ impl Token {
     }
 
     pub fn is_initial_declaration(&self) -> bool {
-        matches!(
+        !matches!(
             self.token_type,
             TokenType::Reassignment | TokenType::FunctionApplication
         )
