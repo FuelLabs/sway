@@ -5,4 +5,4 @@ name = "test_fuel_coin_abi"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
+std = { path = "../../../../../../sway-lib-std/src"}

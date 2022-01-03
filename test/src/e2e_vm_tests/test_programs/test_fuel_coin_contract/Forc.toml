@@ -5,5 +5,5 @@ name = "test_fuel_coin_contract"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
+std = { path = "../../../../../../sway-lib-std/src"}
 test_fuel_coin_abi = { path = "../test_fuel_coin_abi"}
