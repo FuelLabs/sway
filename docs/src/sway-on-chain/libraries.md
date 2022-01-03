@@ -8,7 +8,7 @@ Functions in Libraries should not depend on reading any state or mutable values 
 library my_library;
 ```
 
-A good example of how to get started writing libraries is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core). This snippet below defines a good example
+A good reference library to use when learning about designing your own is [Sway Core Library](https://github.com/FuelLabs/sway-lib-core). The Add function that is exported done by creating a trait and implemented for u64, attaching this library function to the type, so that when imported uint's can utilize the add function.
 
 ```sway
 pub trait Add {
@@ -25,7 +25,7 @@ impl Add for u64 {
 }
 ```
 
-which defines a trait, then implies it for the u64 type with an implementation. This gives all uint64's the add function, which is inserted at compile time when you use the "+" operator in sway. Libraries don't just have to export functions attached to types though, you can also use libraries to define types like below.
+which defines a trait, then implies it for the u64 type with an implementation. This gives all uint64's the add function, which is inserted at compile time when you use the "+" operator in sway. Libraries don't just have to export functions attached to types though, you can also use libraries to just export types like below.
 
 ```sway
 pub struct MyStruct {
