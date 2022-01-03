@@ -10,4 +10,4 @@ Contracts are used primarily for protocols or systems that operate within a fixe
 
 Scripts are used for complex on-chain interactions that won't persist. An example of this may be using a DEX and Lender to create a leveraged position (borrow, swap, re-collateralize, borrow) which is a complex transaction that would usually take multiple steps.
 
-Libraries are for code that is reusable and useful for handling common situations. A good example of this would be a library to handle floating-point math or avoiding phantom overflow for uint64.
+Libraries are for code that is reusable and useful for handling common situations. A good example of this would be a library to handle floating-point math or avoiding phantom overflow for `u64`.
