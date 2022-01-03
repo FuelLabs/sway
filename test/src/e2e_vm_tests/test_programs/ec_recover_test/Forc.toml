@@ -5,5 +5,6 @@ name = "ec_recover_test"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
-core = { path = "../../../../../lib-core" }
+std = { path = "../../../../../../sway-lib-std/src" }
+# std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
