@@ -168,15 +168,35 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
-<pre><code class="language-sway">// note that libraries must be named, so we know how to refer to them and import things.
-library my_library;
+<p>Libraries in Sway are files used to define new common behavior. An example of this is the <a href="https://github.com/FuelLabs/sway-lib-core">Sway Core Library</a> which outlines various methods that the <code>u64</code> type implements. </p>
+<p>Functions in libraries can also read from storage and interact with state. Libraries are denoted using the <code>library</code> keyword at the beginning of the file, followed by a name so that they can be imported. E.g. <code>library foo;</code>.</p>
+<pre><code class="language-sway">library my_library;
+</code></pre>
+<p>A good reference library to use when learning library design is the <a href="https://github.com/FuelLabs/sway-lib-core">Sway Core Library</a>. The <code>add</code> function interface is defined via the <code>Add</code> trait and then implemented it for <code>u64</code>. This attaches this <code>add</code> function to the type so that, when the trait is imported, <code>u64</code>s can utilize the <code>add</code> function.</p>
+<pre><code class="language-sway">pub trait Add {
+    fn add(self, other: Self) -&gt; Self;
+}
 
-// All public items in a library are made available to other projects which import this library.
-pub struct MyStruct {
+impl Add for u64 {
+    fn add(self, other: Self) -&gt; Self {
+        asm(r1: self, r2: other, r3) {
+            add r3 r2 r1;
+            r3: u64
+        }
+    }
+}
+</code></pre>
+<p>This snippet defines the trait <code>Add</code>, then implements it for the <code>u64</code> type by providing a function body. This gives all <code>u64</code>s the <code>add</code> function, which is inserted at compile time when you use the <code>+</code> operator in Sway. Libraries can export more than functions, though. You can also use libraries to just export types like below.</p>
+<pre><code class="language-sway">pub struct MyStruct {
     field_one: u64,
     field_two: bool,
 }
 </code></pre>
+<p>Libraries can be imported using the <code>use</code> keyword and with a <code>::</code> separating the name of the library and the import.</p>
+<p>Here is an example of importing storage and its related functions from the standard library. </p>
+<pre><code class="language-sway">use std::storage::*;
+</code></pre>
+<p>Wildcard imports using <code>*</code> are supported, but it is always recommended to use explicit imports where possible. Note that multiple imports are not yet supported: https://github.com/FuelLabs/sway/issues/563.</p>
 
                     </main>
 

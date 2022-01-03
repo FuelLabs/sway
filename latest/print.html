@@ -714,7 +714,7 @@ let (number, foo, boolean) = x;
 let classmates = [&quot;Bob&quot;, &quot;Jan&quot;, &quot;Ron&quot;];
 assert(classmates.contains(name));
 </code></pre>
-<p>An array's type is written as the type the array contains followed by the numer of elements, semicolon-separated and within square brackets.</p>
+<p>An array's type is written as the type the array contains followed by the number of elements, semicolon-separated and within square brackets.</p>
 <pre><code class="language-sway">let x: [u64; 5] = [0, 1, 2, 3, 4];
 </code></pre>
 <p>To access an element in an array, use <em>array indexing syntax</em>:</p>
@@ -910,9 +910,12 @@ fn main() {
 <li><a href="sway-on-chain/./predicates.html">Predicates</a></li>
 </ul>
 <h1 id="program-types"><a class="header" href="#program-types">Program Types</a></h1>
-<p>Sway is fundamentally a blockchain language. Because of this, it has some features and requirements that you may not have seen in general purpose programming languages.</p>
-<p>A Sway program itself has a type: it is either a <em>contract</em>, a <em>predicate</em>, a <em>script</em>, or a <em>library</em>. The first three of these things are all deployable to the blockchain. A <em>library</em> is simply a project designed for code reuse, and is never directly deployed to the chain.</p>
+<p>Sway is fundamentally a blockchain language. Because of this, it has some features and requirements that you may not have seen in general-purpose programming languages.</p>
+<p>A Sway program itself has a type: it is either a <em>contract</em>, a <em>predicate</em>, a <em>script</em>, or a <em>library</em>. The first three of these things are all deployable to the blockchain. A <em>library</em> is simply a project designed for code reuse and is never directly deployed to the chain.</p>
 <p>Every Sway file <em>must</em> begin with a declaration of what type of program it is. A project can have many libraries within it, but only one contract, script, or predicate. Scripts and predicates require <code>main</code> functions to serve as entry points, while contracts instead publish an ABI. This chapter will go into detail about all of these various types of programs and what purposes they serve.</p>
+<p>Contracts are used primarily for protocols or systems that operate within a fixed set of rules. A good example would be a staking contract or a decentralized exchange.</p>
+<p>Scripts are used for complex on-chain interactions that won't persist. An example of this may be using a DEX and Lender to create a leveraged position (borrow, swap, re-collateralize, borrow) which is a complex transaction that would usually take multiple steps.</p>
+<p>Libraries are for code that is reusable and useful for handling common situations. A good example of this would be a library to handle floating-point math or avoiding phantom overflow for <code>u64</code>.</p>
 <h1 id="what-is-a-smart-contract"><a class="header" href="#what-is-a-smart-contract">What is a Smart Contract?</a></h1>
 <p>A smart contract no different than a script or predicate in that it is a piece of bytecode which is deployed to the blockchain via a <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="sway-on-chain/smart_contracts.html#abi-declarations">ABI declaration</a>. See <a href="sway-on-chain/../examples/subcurrency.html">this contract</a> for an example.</p>
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
@@ -997,17 +1000,39 @@ fn main() {
 </code></pre>
 <p>The main new concept is the <em>abi cast</em>: <code>abi(AbiName, contract_address)</code>. This returns a <code>ContractCaller</code> type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: <code>send_funds</code> and <code>receive_funds</code>. We then construct the request format, <code>SendFundsRequest</code>, and directly call the contract ABI method as if it was just a regular method.</p>
 <h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
-<pre><code class="language-sway">// note that libraries must be named, so we know how to refer to them and import things.
-library my_library;
+<p>Libraries in Sway are files used to define new common behavior. An example of this is the <a href="https://github.com/FuelLabs/sway-lib-core">Sway Core Library</a> which outlines various methods that the <code>u64</code> type implements. </p>
+<p>Functions in libraries can also read from storage and interact with state. Libraries are denoted using the <code>library</code> keyword at the beginning of the file, followed by a name so that they can be imported. E.g. <code>library foo;</code>.</p>
+<pre><code class="language-sway">library my_library;
+</code></pre>
+<p>A good reference library to use when learning library design is the <a href="https://github.com/FuelLabs/sway-lib-core">Sway Core Library</a>. The <code>add</code> function interface is defined via the <code>Add</code> trait and then implemented it for <code>u64</code>. This attaches this <code>add</code> function to the type so that, when the trait is imported, <code>u64</code>s can utilize the <code>add</code> function.</p>
+<pre><code class="language-sway">pub trait Add {
+    fn add(self, other: Self) -&gt; Self;
+}
 
-// All public items in a library are made available to other projects which import this library.
-pub struct MyStruct {
+impl Add for u64 {
+    fn add(self, other: Self) -&gt; Self {
+        asm(r1: self, r2: other, r3) {
+            add r3 r2 r1;
+            r3: u64
+        }
+    }
+}
+</code></pre>
+<p>This snippet defines the trait <code>Add</code>, then implements it for the <code>u64</code> type by providing a function body. This gives all <code>u64</code>s the <code>add</code> function, which is inserted at compile time when you use the <code>+</code> operator in Sway. Libraries can export more than functions, though. You can also use libraries to just export types like below.</p>
+<pre><code class="language-sway">pub struct MyStruct {
     field_one: u64,
     field_two: bool,
 }
 </code></pre>
+<p>Libraries can be imported using the <code>use</code> keyword and with a <code>::</code> separating the name of the library and the import.</p>
+<p>Here is an example of importing storage and its related functions from the standard library. </p>
+<pre><code class="language-sway">use std::storage::*;
+</code></pre>
+<p>Wildcard imports using <code>*</code> are supported, but it is always recommended to use explicit imports where possible. Note that multiple imports are not yet supported: https://github.com/FuelLabs/sway/issues/563.</p>
 <h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
-<p>A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract. A script can return a value of any type.</p>
+<p>A script is deployed bytecode on the chain which executes once to perform some task. It does not represent ownership of any resources and it cannot be called by a contract. A script can return a single value of any type.</p>
+<p>Scripts are state-aware in that while they have no persistent storage (because they only exist during the transaction) they can call contracts and act based upon the returned values and results.</p>
+<p>Under the hood, the Rust and Typescript SDK wrap all smart contract calls from EOAs with scripts that contain minimal code to make the call and forward script data as call parameters.</p>
 <p>This example script calls a contract.</p>
 <pre><code class="language-sway">script;
 
@@ -1029,6 +1054,8 @@ fn main () {
     x.foo(5000, 0, asset_id, input);
 }
 </code></pre>
+<p>Scripts, similar to predicates, rely on a <code>main()</code> function as an entry point. You can call other functions defined in a script from the <code>main()</code> function or call another contract via an <a href="sway-on-chain/./smart_contracts.html#calling-a-smart-contract-from-a-script">abi cast</a>.</p>
+<p>An example usecase for a script would be a router that trades funds through multiple DEXes to get the price for the input asset, or a script to re-adjust a Collateralized Debt Position via a flashloan.</p>
 <h1 id="predicates"><a class="header" href="#predicates">Predicates</a></h1>
 <p>From the perspective of Sway, predicates are programs which return a Boolean value and which represent ownership of some resource upon execution to true. They have no access to contract storage. Here is a trivial predicate, which always evaluates to true:</p>
 <pre><code class="language-sway">predicate;
