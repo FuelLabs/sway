@@ -44,4 +44,4 @@ Here is an example of importing storage and its related functions from the stand
 use std::storage::*;
 ```
 
-Wildcard imports using * are supported, but it is always recommended to use explicit imports where possible.
+Wildcard imports using `*` are supported, but it is always recommended to use explicit imports where possible. Note that multiple imports are not yet supported: https://github.com/FuelLabs/sway/issues/563.
