@@ -355,8 +355,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
             ),
             ShadowsOtherSymbol { name } => write!(
                 f,
-                "This shadows another symbol with the same name \"{}\" in this \
-                 namespace.",
+                "This shadows another symbol in this scope with the same name \"{}\".",
                 name
             ),
             OverridingTraitImplementation => write!(
