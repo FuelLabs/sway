@@ -821,7 +821,7 @@ pub enum CompileError<'sc> {
         count: u64,
         span: Span<'sc>,
     },
-    #[error("The name {name} shadows another symbol.")]
+    #[error("The name \"{name}\" shadows another symbol with the same name.")]
     ShadowsOtherSymbol { name: String, span: Span<'sc> },
     #[error(
         "Match expression arm has mismatched types.\n\
