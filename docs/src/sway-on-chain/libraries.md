@@ -34,7 +34,6 @@ pub struct MyStruct {
 }
 ```
 
-Then contracts which import these libraries will be able to access this type.
 
 Libraries can be imported using the `use` keyword and with a `::` separating the name of the library and the import.
 
