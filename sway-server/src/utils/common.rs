@@ -1,4 +1,4 @@
-use sway_core::{VariableDeclaration, Visibility, Literal};
+use sway_core::{Literal, VariableDeclaration, Visibility};
 
 use crate::core::token_type::VarBody;
 use sway_core::Expression;
@@ -18,19 +18,17 @@ pub(crate) fn extract_var_body(var_dec: &VariableDeclaration) -> VarBody {
         Expression::StructExpression { struct_name, .. } => {
             VarBody::Type(struct_name.primary_name.into())
         }
-        Expression::Literal { value, .. } => {
-            match value {
-                Literal::U8(_) => VarBody::Type("u8".into()),
-                Literal::U16(_) => VarBody::Type("u16".into()),
-                Literal::U32(_) => VarBody::Type("u32".into()),
-                Literal::U64(_) => VarBody::Type("u64".into()),
-                Literal::String(_) => VarBody::Type("string".into()),
-                Literal::Boolean(_) => VarBody::Type("bool".into()),
-                Literal::Byte(_) => VarBody::Type("u8".into()),
-                Literal::B256(_) => VarBody::Type("b256".into()),
-                _ => VarBody::Type("unknown".into())
-            }
-        }
+        Expression::Literal { value, .. } => match value {
+            Literal::U8(_) => VarBody::Type("u8".into()),
+            Literal::U16(_) => VarBody::Type("u16".into()),
+            Literal::U32(_) => VarBody::Type("u32".into()),
+            Literal::U64(_) => VarBody::Type("u64".into()),
+            Literal::String(_) => VarBody::Type("string".into()),
+            Literal::Boolean(_) => VarBody::Type("bool".into()),
+            Literal::Byte(_) => VarBody::Type("u8".into()),
+            Literal::B256(_) => VarBody::Type("b256".into()),
+            _ => VarBody::Type("unknown".into()),
+        },
         _ => VarBody::Other,
     }
 }
