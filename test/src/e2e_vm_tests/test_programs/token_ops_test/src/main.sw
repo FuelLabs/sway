@@ -31,21 +31,19 @@ fn main() -> bool {
     // @todo use correct type ContractId
     let fuel_coin = abi(TestFuelCoin, fuelcoin_id.value);
 
-    // @todo add total supply modification checks for force_transfer,  mint & burn once balance() is added to stdlib lands.
-
-    let mut fuelcoin_balance = balance_of_contract(fuelcoin_id, balance_id);
+    let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, balance_id);
     assert(fuelcoin_balance == 0);
 
     fuel_coin.mint(default.gas, default.coins, default.id.value, 11);
 
     // check that the mint was successful
-    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id);
+    fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 11);
 
     fuel_coin.burn(default.gas, default.coins, default.id.value, 7);
 
     // check that the burn was successful
-    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id);
+    fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 4);
 
     let force_transfer_args = ParamsForceTransfer {
@@ -53,13 +51,13 @@ fn main() -> bool {
         token_id: fuelcoin_id,
         c_id: balance_id,
     };
-    let mut balance2 = balance_of_contract(fuelcoin_id, balance_id);
+    let mut balance2 = balance_of_contract(fuelcoin_id.value, balance_id);
     assert(balance2 == 0);
 
     fuel_coin.force_transfer(default.gas, default.coins, default.id.value, force_transfer_args);
 
-    balance2 = balance_of_contract(fuelcoin_id, balance_id);
-    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id);
+    balance2 = balance_of_contract(fuelcoin_id.value, balance_id);
+    fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(balance2 == 3);
 
     assert(fuelcoin_balance == 1);
@@ -71,7 +69,7 @@ fn main() -> bool {
     };
 
     fuel_coin.transfer_to_output(default.gas, default.coins, default.id.value, transfer_to_output_args);
-    fuelcoin_balance = balance_of_contract(fuelcoin_id, fuelcoin_id);
+    fuelcoin_balance = balance_of_contract(fuelcoin_id.value, fuelcoin_id);
     assert(fuelcoin_balance == 0);
 
     true
