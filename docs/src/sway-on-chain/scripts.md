@@ -30,6 +30,6 @@ fn main () {
 }
 ```
 
-Scripts because of their lack of persistence do not have public functions like ABI or contracts, instead relying on a main() function as an entry point. You can call other functions defined in a script from the main() function or call another contract and react based on the returned result.
+Scripts because of their lack of persistence do not have public functions like ABI or contracts, instead relying on a `main()` function as an entry point. You can call other functions defined in a script from the `main()` function or call another contract and react based on the returned result.
 
 An example usecase for a script would be a router that trades funds through multiple DEXes to get the price for the input asset, or a script to re-adjust a Collateralized Debt Position via a flashloan.
