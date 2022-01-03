@@ -3,21 +3,17 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_main_file, println_green_err, println_red_err, println_yellow_err,
-        read_manifest,
+        get_main_file, print_on_failure, print_on_success, print_on_success_library, read_manifest,
     },
 };
-use annotate_snippets::{
-    display_list::{DisplayList, FormatOptions},
-    snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
-};
-use core_lang::FinalizedAsm;
-
 use std::fs::File;
 use std::io::Write;
+use sway_core::{FinalizedAsm, TreeType};
+use sway_utils::{constants, find_manifest_dir};
+
+use sway_core::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 
 use anyhow::Result;
-use core_lang::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -51,7 +47,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     let main_path = {
         let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest.project.entry);
         code_dir
     };
@@ -74,39 +70,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let mut namespace: Namespace = Default::default();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
-            // Check if dependency is a git-based dependency.
-            let dep = match dependency_details {
-                Dependency::Simple(..) => {
-                    return Err(
-                        "Not yet implemented: Simple version-spec dependencies require a registry."
-                            .into(),
-                    );
-                }
-                Dependency::Detailed(dep_details) => dep_details,
-            };
-
-            // Download a non-local dependency if the `git` property is set in this dependency.
-            if let Some(git) = &dep.git {
-                let downloaded_dep_path = match dependency::download_github_dep(
-                    dependency_name,
-                    git,
-                    &dep.branch,
-                    &dep.version,
-                    offline_mode.into(),
-                ) {
-                    Ok(path) => path,
-                    Err(e) => {
-                        return Err(format!(
-                            "Couldn't download dependency ({:?}): {:?}",
-                            dependency_name, e
-                        ))
-                    }
-                };
-
-                // Mutate this dependency's path to hold the newly downloaded dependency's path.
-                dep.path = Some(downloaded_dep_path);
-            }
-
             compile_dependency_lib(
                 &this_dir,
                 dependency_name,
@@ -114,6 +77,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 &mut namespace,
                 &mut dependency_graph,
                 silent_mode,
+                offline_mode,
             )?;
         }
     }
@@ -141,14 +105,44 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib<'n, 'source, 'manifest>(
+fn compile_dependency_lib<'source, 'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
-    dependency_lib: &Dependency,
+    dependency_lib: &mut Dependency,
     namespace: &mut Namespace<'source>,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
+    offline_mode: bool,
 ) -> Result<(), String> {
+    let mut details = match dependency_lib {
+        Dependency::Simple(..) => {
+            return Err(
+                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
+            )
+        }
+        Dependency::Detailed(ref mut details) => details,
+    };
+    // Download a non-local dependency if the `git` property is set in this dependency.
+    if let Some(ref git) = details.git {
+        let downloaded_dep_path = match dependency::download_github_dep(
+            dependency_name,
+            git,
+            &details.branch,
+            &details.version,
+            offline_mode.into(),
+        ) {
+            Ok(path) => path,
+            Err(e) => {
+                return Err(format!(
+                    "Couldn't download dependency ({:?}): {:?}",
+                    dependency_name, e
+                ))
+            }
+        };
+
+        // Mutate this dependency's path to hold the newly downloaded dependency's path.
+        details.path = Some(downloaded_dep_path);
+    }
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
             return Err(
@@ -184,11 +178,11 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         }
     };
 
-    let manifest_of_dep = read_manifest(&manifest_dir)?;
+    let mut manifest_of_dep = read_manifest(&manifest_dir)?;
 
     let main_path = {
         let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest_of_dep.project.entry);
         code_dir
     };
@@ -205,20 +199,18 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
     );
     let mut dep_namespace: Namespace = Default::default();
 
-    // The part below here is just a massive shortcut to get the standard library working
-    if let Some(ref deps) = manifest_of_dep.dependencies {
-        for (dependency_name, dependency_lib) in deps {
+    if let Some(ref mut deps) = manifest_of_dep.dependencies {
+        for (dependency_name, ref mut dependency_lib) in deps {
             // to do this properly, iterate over list of dependencies make sure there are no
             // circular dependencies
-            //return Err("Unimplemented: dependencies that have dependencies".into());
             compile_dependency_lib(
                 &manifest_dir,
                 dependency_name,
                 dependency_lib,
-                // give it a cloned namespace, which we then merge with this namespace
                 &mut dep_namespace,
                 dependency_graph,
                 silent_mode,
+                offline_mode,
             )?;
         }
     }
@@ -248,47 +240,18 @@ fn compile_library<'source>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Namespace<'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
             namespace,
             warnings,
             ..
         } => {
-            if !silent_mode {
-                warnings.iter().for_each(format_warning);
-            }
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled library {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
-            Ok(namespace)
+            print_on_success_library(silent_mode, proj_name, warnings);
+            Ok(*namespace)
         }
         CompilationResult::Failure { errors, warnings } => {
-            let e_len = errors.len();
-
-            if !silent_mode {
-                warnings.iter().for_each(format_warning);
-                errors.iter().for_each(format_err);
-            }
-
-            println_red_err(&format!(
-                "  Aborting due to {} {}.",
-                e_len,
-                if e_len > 1 { "errors" } else { "error" }
-            ))
-            .unwrap();
+            print_on_failure(silent_mode, warnings, errors);
             Err(format!("Failed to compile {}", proj_name))
         }
         _ => {
@@ -300,7 +263,7 @@ fn compile_library<'source>(
     }
 }
 
-fn compile<'n, 'source>(
+fn compile<'source>(
     source: &'source str,
     proj_name: &str,
     namespace: &Namespace<'source>,
@@ -308,201 +271,44 @@ fn compile<'n, 'source>(
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_bytecode(source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
-            if !silent_mode {
-                warnings.iter().for_each(format_warning);
-            }
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled script {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
+            print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
             Ok(bytes)
         }
         BytecodeCompilationResult::Library { warnings } => {
-            if !silent_mode {
-                warnings.iter().for_each(format_warning);
-            }
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled library {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
+            print_on_success_library(silent_mode, proj_name, warnings);
             Ok(vec![])
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
-            let e_len = errors.len();
-
-            if !silent_mode {
-                warnings.iter().for_each(|warning| format_warning(warning));
-                errors.iter().for_each(|error| format_err(error));
-            }
-
-            println_red_err(&format!(
-                "  Aborting due to {} {}.",
-                e_len,
-                if e_len > 1 { "errors" } else { "error" }
-            ))
-            .unwrap();
-            Err(format!("Failed to compile {}", proj_name))
+            print_on_failure(silent_mode, warnings, errors);
+            return Err(format!("Failed to compile {}", proj_name));
         }
     }
 }
 
-fn format_warning(err: &core_lang::CompileWarning) {
-    let input = err.span.input();
-    let path = err.path();
-
-    let (start_pos, mut end_pos) = err.span();
-    let friendly_str = err.to_friendly_warning_string();
-    if start_pos == end_pos {
-        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
-        end_pos += 1;
-    }
-    let snippet = Snippet {
-        title: Some(Annotation {
-            label: None,
-            id: None,
-            annotation_type: AnnotationType::Warning,
-        }),
-        footer: vec![],
-        slices: vec![Slice {
-            source: input,
-            line_start: 0,
-            origin: Some(&path),
-            fold: true,
-            annotations: vec![SourceAnnotation {
-                label: &friendly_str,
-                annotation_type: AnnotationType::Warning,
-                range: (start_pos, end_pos),
-            }],
-        }],
-        opt: FormatOptions {
-            color: true,
-            ..Default::default()
-        },
-    };
-    eprintln!("{}", DisplayList::from(snippet))
-}
-
-fn format_err(err: &core_lang::CompileError) {
-    let input = err.internal_span().input();
-    let path = err.path();
-
-    let (start_pos, mut end_pos) = err.span();
-    if start_pos == end_pos {
-        // if start/pos are same we will not get that arrow pointing to code, so we add +1.
-        end_pos += 1;
-    }
-    let friendly_str = err.to_friendly_error_string();
-    let snippet = Snippet {
-        title: Some(Annotation {
-            label: None,
-            id: None,
-            annotation_type: AnnotationType::Error,
-        }),
-        footer: vec![],
-        slices: vec![Slice {
-            source: input,
-            line_start: 0,
-            origin: Some(&path),
-            fold: true,
-            annotations: vec![SourceAnnotation {
-                label: &friendly_str,
-                annotation_type: AnnotationType::Error,
-                range: (start_pos, end_pos),
-            }],
-        }],
-        opt: FormatOptions {
-            color: true,
-            ..Default::default()
-        },
-    };
-    eprintln!("{}", DisplayList::from(snippet))
-}
-
-fn compile_to_asm<'n, 'source>(
-    source: &'source str,
+fn compile_to_asm<'sc>(
+    source: &'sc str,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace<'sc>,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
-) -> Result<FinalizedAsm<'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
+    silent_mode: bool,
+) -> Result<FinalizedAsm<'sc>, String> {
+    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled script {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled script {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
+            print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
             Ok(asm)
         }
         CompilationResult::Library { warnings, .. } => {
-            warnings.iter().for_each(|warning| format_warning(warning));
-
-            if warnings.is_empty() {
-                let _ = println_green_err(&format!("  Compiled library {:?}.", proj_name));
-            } else {
-                let _ = println_yellow_err(&format!(
-                    "  Compiled library {:?} with {} {}.",
-                    proj_name,
-                    warnings.len(),
-                    if warnings.len() > 1 {
-                        "warnings"
-                    } else {
-                        "warning"
-                    }
-                ));
-            }
+            print_on_success_library(silent_mode, proj_name, warnings);
             Ok(FinalizedAsm::Library)
         }
         CompilationResult::Failure { errors, warnings } => {
-            let e_len = errors.len();
-
-            warnings.iter().for_each(format_warning);
-            errors.iter().for_each(format_err);
-
-            println_red_err(&format!(
-                "  Aborting due to {} {}.",
-                e_len,
-                if e_len > 1 { "errors" } else { "error" }
-            ))
-            .unwrap();
-            Err(format!("Failed to compile {}", proj_name))
+            print_on_failure(silent_mode, warnings, errors);
+            return Err(format!("Failed to compile {}", proj_name));
         }
     }
 }

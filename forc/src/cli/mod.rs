@@ -1,12 +1,16 @@
 use structopt::StructOpt;
 
 mod commands;
-use self::commands::{build, deploy, format, init, parse_bytecode, run, test, update};
+use self::commands::{
+    build, deploy, format, init, json_abi, lsp, parse_bytecode, run, test, update,
+};
 
 pub use build::Command as BuildCommand;
 pub use deploy::Command as DeployCommand;
 pub use format::Command as FormatCommand;
 use init::Command as InitCommand;
+pub use json_abi::Command as JsonAbiCommand;
+use lsp::Command as LspCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use run::Command as RunCommand;
 use test::Command as TestCommand;
@@ -31,6 +35,8 @@ enum Forc {
     Run(RunCommand),
     Test(TestCommand),
     Update(UpdateCommand),
+    JsonAbi(JsonAbiCommand),
+    Lsp(LspCommand),
 }
 
 pub(crate) async fn run_cli() -> Result<(), String> {
@@ -44,7 +50,7 @@ pub(crate) async fn run_cli() -> Result<(), String> {
         Forc::Run(command) => run::exec(command).await,
         Forc::Test(command) => test::exec(command),
         Forc::Update(command) => update::exec(command).await,
-    }?;
-
-    Ok(())
+        Forc::JsonAbi(command) => json_abi::exec(command),
+        Forc::Lsp(command) => lsp::exec(command).await,
+    }
 }

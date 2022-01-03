@@ -16,7 +16,7 @@ Great! We have just declared a variable, `foo`. What do we know about `foo`?
 1. Its value is `5`.
 1. Its type is `u64`, a 64-bit unsigned integer.
 
-Wait, what? `u64`? What's that cryptic syntax about? See the section [Types](./Types.md) for more details on that. For now, just know that is the default numeric type.
+`u64` is the default numeric type, and represents a 64-bit unsigned integer. See the section [Built-in Types](./built_in_types.md) for more details.
 
 We can also make a mutable variable. Let's take a look:
 
@@ -35,7 +35,7 @@ A variable declaration can contain a _type annotation_. A type annotation serves
 let foo: u32 = 5;
 ```
 
-We have just declared the _type_ of the variable `foo` as a `u32`, which is an unsigned 32 bit integer. Let's take a look at a few other type annotations:
+We have just declared the _type_ of the variable `foo` as a `u32`, which is an unsigned 32-bit integer. Let's take a look at a few other type annotations:
 
 ```sway
 let bar: str[4] = "sway";

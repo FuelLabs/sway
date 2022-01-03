@@ -1,9 +1,12 @@
-use forc::test::{forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, RunCommand};
-use fuel_tx::{Input, Output, Transaction};
+use forc::test::{
+    forc_abi_json, forc_build, forc_deploy, forc_run, BuildCommand, DeployCommand, JsonAbiCommand,
+    RunCommand,
+};
+use fuel_tx::Transaction;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use serde_json::Value;
+use std::fs;
 
 pub(crate) fn deploy_contract(file_name: &str) {
     // build the contract
@@ -55,59 +58,15 @@ pub(crate) fn runs_on_node(file_name: &str) {
 /// Very basic check that code does indeed run in the VM.
 /// `true` if it does, `false` if not.
 pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
-    let mut storage = MemoryStorage::default();
-    let program = vec![Opcode::NOOP, Opcode::RET(1)];
-
-    let program: Witness = program.into_iter().collect::<Vec<u8>>().into();
-
-    let contract = Contract::from(program.as_ref());
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    let salt: Salt = rng.gen();
-
-    let contract_root = contract.root();
-    let contract_id = contract.id(&salt, &contract_root);
-
-    let output = Output::contract_created(contract_id);
-
-    let bytecode_witness = 0;
-    let gas_price = 10;
-    let gas_limit = 10000;
-    let maturity = 0;
-    let tx = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    );
-
-    // Deploy the contract into the blockchain
-    Interpreter::transition(&mut storage, tx).expect("Failed to transact");
-    // evaluate the test case
-    let input_contract = Input::Contract {
-        utxo_id: rng.gen(),
-        balance_root: rng.gen(),
-        state_root: rng.gen(),
-        contract_id,
-    };
-    let output_contract = Output::Contract {
-        input_index: 0,
-        balance_root: rng.gen(),
-        state_root: rng.gen(),
-    };
+    let storage = MemoryStorage::default();
 
     let script = compile_to_bytes(file_name).unwrap();
     let gas_price = 10;
     let gas_limit = 100000;
     let maturity = 0;
     let script_data = vec![];
-    let inputs = vec![input_contract];
-    let outputs = vec![output_contract];
+    let inputs = vec![];
+    let outputs = vec![];
     let witness = vec![];
     let tx_to_test = Transaction::script(
         gas_price,
@@ -121,9 +80,8 @@ pub(crate) fn runs_in_vm(file_name: &str) -> ProgramState {
     );
     let block_height = (u32::MAX >> 1) as u64;
     tx_to_test.validate(block_height).unwrap();
-    *Interpreter::transition(&mut storage, tx_to_test)
-        .unwrap()
-        .state()
+    let mut i = Interpreter::with_storage(storage);
+    *i.transact(tx_to_test).unwrap().state()
 }
 
 /// Panics if code _does_ compile, used for test cases where the source
@@ -149,6 +107,50 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
         print_finalized_asm: false,
         print_intermediate_asm: false,
         binary_outfile: None,
+        offline_mode: false,
+        silent_mode: true,
+    })
+}
+
+pub(crate) fn test_json_abi(file_name: &str) -> Result<(), String> {
+    let _script = compile_to_json_abi(file_name)?;
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let oracle_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_abi_oracle.json"
+    );
+    let output_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/{}",
+        manifest_dir, file_name, "json_abi_output.json"
+    );
+    if fs::metadata(oracle_path.clone()).is_err() {
+        return Err("JSON ABI oracle file does not exist for this test.".to_string());
+    }
+    if fs::metadata(output_path.clone()).is_err() {
+        return Err("JSON ABI output file does not exist for this test.".to_string());
+    }
+    let oracle_contents =
+        fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
+    let output_contents =
+        fs::read_to_string(output_path).expect("Something went wrong reading the file.");
+    if oracle_contents != output_contents {
+        return Err("Mismatched ABI JSON output.".to_string());
+    }
+    Ok(())
+}
+
+fn compile_to_json_abi(file_name: &str) -> Result<Value, String> {
+    println!("   ABI gen {}", file_name);
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    forc_abi_json::build(JsonAbiCommand {
+        path: Some(format!(
+            "{}/src/e2e_vm_tests/test_programs/{}",
+            manifest_dir, file_name
+        )),
+        json_outfile: Some(format!(
+            "{}/src/e2e_vm_tests/test_programs/{}/{}",
+            manifest_dir, file_name, "json_abi_output.json"
+        )),
         offline_mode: false,
         silent_mode: true,
     })

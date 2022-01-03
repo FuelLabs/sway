@@ -1,0 +1,17 @@
+[project]
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
+name = "bal_opcode"
+entry = "main.sw"
+
+[dependencies]
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+balance_test_abi = { path = "../balance_test_abi"}
+
+[[tx-input]]
+type = "Contract"
+contract-id = "0x2152e04a705351b6483514d212a333090f7c5f40cb0b9b802089aaa33572e501"
+utxo-id = "0x2152e04a705351b6483514d212a333090f7c5f40cb0b9b802089aaa33572e501"
+balance-root = "0x2152e04a705351b6483514d212a333090f7c5f40cb0b9b802089aaa33572e501"
+state-root = "0x2152e04a705351b6483514d212a333090f7c5f40cb0b9b802089aaa33572e501"

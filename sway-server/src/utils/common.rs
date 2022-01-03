@@ -1,7 +1,7 @@
-use core_lang::{VariableDeclaration, Visibility};
+use sway_core::{VariableDeclaration, Visibility};
 
 use crate::core::token_type::VarBody;
-use core_lang::Expression;
+use sway_core::Expression;
 
 pub(crate) fn extract_visibility(visibility: &Visibility) -> String {
     match visibility {

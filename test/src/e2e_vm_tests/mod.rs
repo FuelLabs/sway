@@ -19,7 +19,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("if_elseif_enum", ProgramState::Return(10)),
         ("out_of_order_decl", ProgramState::Return(1)),
         ("struct_field_reassignment", ProgramState::Return(0)),
-        ("contract_call", ProgramState::Return(0)),
         ("enum_in_fn_decl", ProgramState::Return(255)),
         ("empty_impl", ProgramState::Return(0)),
         ("main_returns_unit", ProgramState::Return(0)),
@@ -65,17 +64,25 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("generic_struct", ProgramState::Return(1)),           // true
         ("zero_field_types", ProgramState::Return(10)),        // true
         ("assert_test", ProgramState::Return(1)),              // true
-        ("b512_test", ProgramState::Return(1)),                // true
-        ("assert_test", ProgramState::Return(1)),              // true
-        ("array_basics", ProgramState::Return(1)),             // true
+        ("match_expressions", ProgramState::Return(42)),
+        ("assert_test", ProgramState::Return(1)),  // true
+        ("array_basics", ProgramState::Return(1)), // true
         ("array_dynamic_oob", ProgramState::Revert(1)),
         ("array_generics", ProgramState::Return(1)), // true
+        ("match_expressions_structs", ProgramState::Return(4)),
         ("block_height", ProgramState::Return(1)),   // true
+        ("b512_test", ProgramState::Return(1)),      // true
+        ("block_height", ProgramState::Return(1)),   // true
+        ("valid_impurity", ProgramState::Return(0)), // false
+        ("trait_override_bug", ProgramState::Return(7)),
+        ("if_implicit_unit", ProgramState::Return(0)),
+        ("modulo_uint_test", ProgramState::Return(1)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
         if filter(name) {
             assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
+            assert_eq!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(()));
         }
     });
 
@@ -86,7 +93,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "asm_should_not_have_return",
         "missing_fn_arguments",
         "excess_fn_arguments",
-        // TEMPORARILY DISABLED DUE TO OOM "infinite_dependencies",
+        // the feature for the below test, detecting inf deps, was reverted
+        // when that is re-implemented we should reenable this test
+        //"infinite_dependencies",
         "top_level_vars",
         "dependencies_parsing_error",
         "disallowed_gm",
@@ -95,6 +104,13 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "unify_identical_unknowns",
         "array_oob",
         "array_bad_index",
+        "match_expressions_wrong_struct",
+        "match_expressions_enums",
+        "pure_calls_impure",
+        "nested_impure",
+        "predicate_calls_impure",
+        "script_calls_impure",
+        "contract_pure_calls_impure",
     ];
     project_names.into_iter().for_each(|name| {
         if filter(name) {
@@ -109,6 +125,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("increment_contract", "call_increment_contract"),
         ("auth_testing_contract", "caller_auth_test"),
         ("context_testing_contract", "caller_context_test"),
+        ("contract_abi_impl", "contract_call"),
+        ("balance_test_contract", "bal_opcode"),
     ];
 
     // Filter them first.

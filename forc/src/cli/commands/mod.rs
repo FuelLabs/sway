@@ -2,6 +2,8 @@ pub mod build;
 pub mod deploy;
 pub mod format;
 pub mod init;
+pub mod json_abi;
+pub mod lsp;
 pub mod parse_bytecode;
 pub mod run;
 pub mod test;
