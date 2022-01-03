@@ -8,7 +8,7 @@ Functions in Libraries should not depend on reading any state or mutable values 
 library my_library;
 ```
 
-A good reference library to use when learning about designing your own is [Sway Core Library](https://github.com/FuelLabs/sway-lib-core). The Add function that is exported done by creating a trait and implemented for u64, attaching this library function to the type, so that when imported uint's can utilize the add function.
+A good reference library to use when learning about designing your own is [Sway Core Library](https://github.com/FuelLabs/sway-lib-core). The `add` function that is exported is done by creating an `Add` trait and implementing it for `u64`, attaching this library function to the type, so that when imported, `u64`s can utilize the `add` function.
 
 ```sway
 pub trait Add {
