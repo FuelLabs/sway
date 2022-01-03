@@ -1,6 +1,6 @@
 # Libraries
 
-Libraries in Sway are files used to define out new types and functions useful for general-purpose programming. An example of this is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core) which outlines various functions that attach to the uint64 type. 
+Libraries in Sway are files used to define new common behavior. An example of this is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core) which outlines various methods that the `u64` type implements. 
 
 Functions in Libraries can also read from storage and interact with the state. Libraries are denoted using the `library` keyword followed by a name so that they can be imported.
 
