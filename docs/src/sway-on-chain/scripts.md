@@ -4,7 +4,7 @@ A script is a deployed bytecode on the chain which executes to perform some task
 
 Scripts are state-aware in that while they have no persistent storage (because they only exist during the call) they can read the value from contracts and act based upon the return value.
 
-Under the hood, all smart contract calls from EOA's are scripts that contain minimal code to make the call.
+Under the hood, the Rust and Typescript SDK wrap all smart contract calls from EOAs with scripts that contain minimal code to make the call and forward script data as call parameters.
 
 This example script calls a contract.
 
