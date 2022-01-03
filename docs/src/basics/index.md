@@ -2,6 +2,7 @@
 
 Sway basics.
 
+- [Overview](./overview.md)
 - [Variables](./variables.md)
 - [Built-in Types](./built_in_types.md)
 - [Custom Types](./custom_types.md)
