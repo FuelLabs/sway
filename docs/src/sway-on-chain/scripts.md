@@ -1,6 +1,6 @@
 # Scripts
 
-A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called by a contract. A script can return a single value of any type.
+A script is deployed bytecode on the chain which executes once to perform some task. It does not represent ownership of any resources and it cannot be called by a contract. A script can return a single value of any type.
 
 Scripts are state-aware in that while they have no persistent storage (because they only exist during the transaction) they can call contracts and act based upon the returned values and results.
 
