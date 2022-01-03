@@ -8,7 +8,7 @@ Functions in Libraries can also read from storage and interact with the state. L
 library my_library;
 ```
 
-A good reference library to use when learning about designing your own is [Sway Core Library](https://github.com/FuelLabs/sway-lib-core). The `add` function that is exported is done by creating an `Add` trait and implementing it for `u64`, attaching this library function to the type, so that when imported, `u64`s can utilize the `add` function.
+A good reference library to use when learning library design is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core). The `add` function interface is defined via the `Add` trait and then implemented it for `u64`. This attaches this `add` function to the type so that, when the trait is imported, `u64`s can utilize the `add` function.
 
 ```sway
 pub trait Add {
