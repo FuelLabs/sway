@@ -178,7 +178,7 @@ impl<'sc> TraitFn<'sc> {
                     span,
                 )
             }
-            None => (TypeInfo::Unit, whole_fn_sig_span),
+            None => (TypeInfo::Tuple(Vec::new()), whole_fn_sig_span),
         };
 
         ok(

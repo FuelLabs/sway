@@ -558,7 +558,7 @@ fn connect_typed_fn_decl<'sc>(
 
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
-    let ty = resolve_type(fn_decl.return_type, &span).unwrap_or(TypeInfo::Unit);
+    let ty = resolve_type(fn_decl.return_type, &span).unwrap_or(TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
         entry_point: entry_node,
@@ -819,7 +819,7 @@ fn connect_expression<'sc>(
         } => {
             let resolved_type_of_parent =
                 resolve_type(*resolved_type_of_parent, field_to_access_span)
-                    .unwrap_or(TypeInfo::Unit);
+                    .unwrap_or(TypeInfo::Tuple(Vec::new()));
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
             let resolved_type_of_parent = match resolved_type_of_parent {
@@ -856,7 +856,34 @@ fn connect_expression<'sc>(
             }
             Ok(vec![asm_node])
         }
-        Unit => Ok(vec![]),
+        Tuple { fields } => {
+            let entry = graph.add_node("tuple entry".into());
+            let exit = graph.add_node("tuple exit".into());
+            // connect current leaves to the beginning of this expr
+            for leaf in leaves {
+                graph.add_edge(*leaf, entry, label.into());
+            }
+
+            let mut current_leaf = vec![entry];
+            // for every field, connect its expression
+            for value in fields {
+                current_leaf = connect_expression(
+                    &value.expression,
+                    graph,
+                    &current_leaf,
+                    exit_node,
+                    "tuple field instantiation",
+                    tree_type,
+                    value.clone().span,
+                )?;
+            }
+
+            // connect the final field to the exit
+            for leaf in current_leaf {
+                graph.add_edge(leaf, exit, "".into());
+            }
+            Ok(vec![exit])
+        }
         AbiCast { address, .. } => connect_expression(
             &address.expression,
             graph,

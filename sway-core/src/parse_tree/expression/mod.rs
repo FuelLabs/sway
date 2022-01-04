@@ -50,7 +50,8 @@ pub enum Expression<'sc> {
         name: Ident<'sc>,
         span: Span<'sc>,
     },
-    Unit {
+    Tuple {
+        fields: Vec<Expression<'sc>>,
         span: Span<'sc>,
     },
     Array {
@@ -256,7 +257,7 @@ impl<'sc> Expression<'sc> {
             FunctionApplication { span, .. } => span,
             LazyOperator { span, .. } => span,
             VariableExpression { span, .. } => span,
-            Unit { span } => span,
+            Tuple { span, .. } => span,
             Array { span, .. } => span,
             MatchExpression { span, .. } => span,
             StructExpression { span, .. } => span,
@@ -285,7 +286,8 @@ impl<'sc> Expression<'sc> {
         let first_expr = expr_iter.next().unwrap();
         let first_expr = check!(
             Expression::parse_from_pair_inner(first_expr.clone(), config),
-            Expression::Unit {
+            Expression::Tuple {
+                fields: vec![],
                 span: Span {
                     span: first_expr.as_span(),
                     path: path.clone(),
@@ -315,7 +317,8 @@ impl<'sc> Expression<'sc> {
             let next_expr = match expr_iter.next() {
                 Some(o) => check!(
                     Expression::parse_from_pair_inner(o.clone(), config),
-                    Expression::Unit {
+                    Expression::Tuple {
+                        fields: vec![],
                         span: Span {
                             span: o.as_span(),
                             path: path.clone()
@@ -332,7 +335,10 @@ impl<'sc> Expression<'sc> {
                             path: path.clone(),
                         },
                     });
-                    Expression::Unit { span: op_span }
+                    Expression::Tuple {
+                        fields: vec![],
+                        span: op_span,
+                    }
                 }
             };
             // pushing these into a vec in this manner so we can re-associate according to order of
@@ -355,7 +361,8 @@ impl<'sc> Expression<'sc> {
                     path: path.clone(),
                 },
             )
-            .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit {
+            .unwrap_or_else(&mut warnings, &mut errors, || Expression::Tuple {
+                fields: vec![],
                 span: Span {
                     span: expr_for_debug.as_span(),
                     path: path.clone(),
@@ -381,7 +388,10 @@ impl<'sc> Expression<'sc> {
         let parsed = match expr.as_rule() {
             Rule::literal_value => Literal::parse_from_pair(expr.clone(), config)
                 .map(|(value, span)| Expression::Literal { value, span })
-                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit { span }),
+                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Tuple {
+                    fields: vec![],
+                    span,
+                }),
             Rule::func_app => {
                 let span = Span {
                     span: expr.as_span(),
@@ -409,7 +419,8 @@ impl<'sc> Expression<'sc> {
                 for argument in arguments.into_inner() {
                     let arg = check!(
                         Expression::parse_from_pair(argument.clone(), config),
-                        Expression::Unit {
+                        Expression::Tuple {
+                            fields: vec![],
                             span: Span {
                                 span: argument.as_span(),
                                 path: path.clone()
@@ -475,7 +486,10 @@ impl<'sc> Expression<'sc> {
                 },
                 Some(array_elems) => check!(
                     parse_array_elems(array_elems, config),
-                    Expression::Unit { span: span.clone() },
+                    Expression::Tuple {
+                        fields: vec![],
+                        span: span.clone()
+                    },
                     warnings,
                     errors
                 ),
@@ -484,7 +498,10 @@ impl<'sc> Expression<'sc> {
                 let mut expr_iter = expr.into_inner();
                 let primary_expression = check!(
                     Expression::parse_from_pair(expr_iter.next().unwrap(), config),
-                    Expression::Unit { span: span.clone() },
+                    Expression::Tuple {
+                        fields: vec![],
+                        span: span.clone()
+                    },
                     warnings,
                     errors
                 );
@@ -494,7 +511,10 @@ impl<'sc> Expression<'sc> {
                         MatchBranch::parse_from_pair(exp, config),
                         MatchBranch {
                             condition: MatchCondition::CatchAll(CatchAll { span: span.clone() }),
-                            result: Expression::Unit { span: span.clone() },
+                            result: Expression::Tuple {
+                                fields: vec![],
+                                span: span.clone(),
+                            },
                             span: span.clone()
                         },
                         warnings,
@@ -534,7 +554,10 @@ impl<'sc> Expression<'sc> {
                     };
                     let value = check!(
                         Expression::parse_from_pair(fields[i + 1].clone(), config),
-                        Expression::Unit { span: span.clone() },
+                        Expression::Tuple {
+                            fields: vec![],
+                            span: span.clone()
+                        },
                         warnings,
                         errors
                     );
@@ -550,7 +573,8 @@ impl<'sc> Expression<'sc> {
             Rule::parenthesized_expression => {
                 let expr = check!(
                     Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config),
-                    Expression::Unit {
+                    Expression::Tuple {
+                        fields: vec![],
                         span: Span {
                             span: expr.as_span(),
                             path,
@@ -591,20 +615,29 @@ impl<'sc> Expression<'sc> {
                 let else_pair = if_exp_pairs.next();
                 let condition = Box::new(check!(
                     Expression::parse_from_pair(condition_pair, config),
-                    Expression::Unit { span: span.clone() },
+                    Expression::Tuple {
+                        fields: vec![],
+                        span: span.clone()
+                    },
                     warnings,
                     errors
                 ));
                 let then = Box::new(check!(
                     Expression::parse_from_pair_inner(then_pair, config),
-                    Expression::Unit { span: span.clone() },
+                    Expression::Tuple {
+                        fields: vec![],
+                        span: span.clone()
+                    },
                     warnings,
                     errors
                 ));
                 let r#else = else_pair.map(|else_pair| {
                     Box::new(check!(
                         Expression::parse_from_pair_inner(else_pair, config),
-                        Expression::Unit { span: span.clone() },
+                        Expression::Tuple {
+                            fields: vec![],
+                            span: span.clone()
+                        },
                         warnings,
                         errors
                     ))
@@ -666,7 +699,8 @@ impl<'sc> Expression<'sc> {
                         for argument in function_arguments {
                             let arg = check!(
                                 Expression::parse_from_pair(argument.clone(), config),
-                                Expression::Unit {
+                                Expression::Tuple {
+                                    fields: vec![],
                                     span: Span {
                                         span: argument.as_span(),
                                         path: path.clone()
@@ -775,7 +809,8 @@ impl<'sc> Expression<'sc> {
                             for argument in arguments.into_inner() {
                                 let arg = check!(
                                     Expression::parse_from_pair(argument.clone(), config),
-                                    Expression::Unit {
+                                    Expression::Tuple {
+                                        fields: vec![],
                                         span: Span {
                                             span: argument.as_span(),
                                             path: path.clone()
@@ -841,12 +876,26 @@ impl<'sc> Expression<'sc> {
                     type_arguments: vec![],
                 }
             }
-            Rule::unit => Expression::Unit {
-                span: Span {
-                    span: expr.as_span(),
-                    path,
-                },
-            },
+            Rule::tuple_expr => {
+                let fields = expr.into_inner().collect::<Vec<_>>();
+                let mut fields_buf = Vec::with_capacity(fields.len());
+                for field in fields {
+                    let value = check!(
+                        Expression::parse_from_pair(field.clone(), config),
+                        Expression::Tuple {
+                            fields: vec![],
+                            span: span.clone()
+                        },
+                        warnings,
+                        errors
+                    );
+                    fields_buf.push(value);
+                }
+                Expression::Tuple {
+                    fields: fields_buf,
+                    span,
+                }
+            }
             Rule::struct_field_access => {
                 let inner = expr.into_inner().next().expect("guaranteed by grammar");
                 assert_eq!(inner.as_rule(), Rule::subfield_path);
@@ -933,7 +982,8 @@ impl<'sc> Expression<'sc> {
                     },
                 ));
                 // construct unit expression for error recovery
-                Expression::Unit {
+                Expression::Tuple {
+                    fields: vec![],
                     span: Span {
                         span: expr.as_span(),
                         path,
@@ -1063,7 +1113,8 @@ fn parse_subfield_path<'sc>(
                 },
             ));
             // construct unit expression for error recovery
-            let exp = Expression::Unit {
+            let exp = Expression::Tuple {
+                fields: vec![],
                 span: Span {
                     span: item.as_span(),
                     path,
@@ -1130,7 +1181,8 @@ fn parse_array_elems<'sc>(
             let span = first_elem.as_span();
             let init = Literal::parse_from_pair(first_elem, config)
                 .map(|(value, span)| Expression::Literal { value, span })
-                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Unit {
+                .unwrap_or_else(&mut warnings, &mut errors, || Expression::Tuple {
+                    fields: vec![],
                     span: Span { span, path },
                 });
 
@@ -1153,7 +1205,8 @@ fn parse_array_elems<'sc>(
             let span = first_elem.as_span();
             let first_elem_expr = check!(
                 Expression::parse_from_pair(first_elem, config),
-                Expression::Unit {
+                Expression::Tuple {
+                    fields: vec![],
                     span: Span {
                         span,
                         path: path.clone()
@@ -1166,7 +1219,8 @@ fn parse_array_elems<'sc>(
                 let span = pair.as_span();
                 elems.push(check!(
                     Expression::parse_from_pair(pair, config),
-                    Expression::Unit {
+                    Expression::Tuple {
+                        fields: vec![],
                         span: Span {
                             span,
                             path: path.clone()
@@ -1507,7 +1561,8 @@ pub fn desugar_match_expression<'sc>(
                     "found None",
                     branch_span.clone(),
                 )];
-                let exp = Expression::Unit {
+                let exp = Expression::Tuple {
+                    fields: vec![],
                     span: branch_span.clone(),
                 };
                 return ok(exp, vec![], errors);
@@ -1671,7 +1726,8 @@ pub fn desugar_match_expression<'sc>(
                     if_statement.span(),
                 ));
                 // construct unit expression for error recovery
-                let exp = Expression::Unit {
+                let exp = Expression::Tuple {
+                    fields: vec![],
                     span: if_statement.span(),
                 };
                 return ok(exp, warnings, errors);

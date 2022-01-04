@@ -1,0 +1,10 @@
+[project]
+author  = "Alexander Hansen <alex.hansen@fuel.sh>"
+license = "MIT"
+name = "tuple_types"
+entry = "main.sw"
+
+[dependencies]
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+

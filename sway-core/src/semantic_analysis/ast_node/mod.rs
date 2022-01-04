@@ -103,14 +103,14 @@ impl<'sc> TypedAstNode<'sc> {
         // return statement should be ()
         use TypedAstNodeContent::*;
         match &self.content {
-            ReturnStatement(_) | Declaration(_) => TypeInfo::Unit,
+            ReturnStatement(_) | Declaration(_) => TypeInfo::Tuple(Vec::new()),
             Expression(TypedExpression { return_type, .. }) => {
                 crate::type_engine::look_up_type_id(*return_type)
             }
             ImplicitReturnExpression(TypedExpression { return_type, .. }) => {
                 crate::type_engine::look_up_type_id(*return_type)
             }
-            WhileLoop(_) | SideEffect => TypeInfo::Unit,
+            WhileLoop(_) | SideEffect => TypeInfo::Tuple(Vec::new()),
         }
     }
     pub(crate) fn type_check<'n>(
@@ -663,7 +663,7 @@ impl<'sc> TypedAstNode<'sc> {
                             checkee: body.clone(),
                             namespace,
                             crate_namespace,
-                            return_type_annotation: insert_type(TypeInfo::Unit),
+                            return_type_annotation: insert_type(TypeInfo::Tuple(Vec::new())),
                             help_text:
                                 "A while loop's loop body cannot implicitly return a value.Try \
                              assigning it to a mutable variable declared outside of the loop \
@@ -680,7 +680,7 @@ impl<'sc> TypedAstNode<'sc> {
                                 contents: vec![],
                                 whole_block_span: body.whole_block_span.clone(),
                             },
-                            crate::type_engine::insert_type(TypeInfo::Unit)
+                            crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
                         ),
                         warnings,
                         errors
@@ -703,7 +703,7 @@ impl<'sc> TypedAstNode<'sc> {
                 r#type: node.type_info(),
             };
             assert_or_warn!(
-                node.type_info() == TypeInfo::Unit || node.type_info() == TypeInfo::ErrorRecovery,
+                node.type_info().is_unit() || node.type_info() == TypeInfo::ErrorRecovery,
                 warnings,
                 node.span.clone(),
                 warning

@@ -413,7 +413,9 @@ impl<'sc> Dependencies<'sc> {
             Expression::AbiCast { .. } => self,
 
             Expression::Literal { .. } => self,
-            Expression::Unit { .. } => self,
+            Expression::Tuple { fields, .. } => {
+                self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
+            }
             Expression::DelayedMatchTypeResolution { .. } => self,
         }
     }
@@ -603,7 +605,8 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         },
         TypeInfo::Boolean => "bool",
         TypeInfo::Custom { name } => name,
-        TypeInfo::Unit => "unit",
+        TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
+        TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",
         TypeInfo::Byte => "byte",
         TypeInfo::B256 => "b256",

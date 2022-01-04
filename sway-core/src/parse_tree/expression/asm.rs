@@ -80,7 +80,7 @@ impl<'sc> AsmExpression<'sc> {
         let return_type = implicit_op_type.unwrap_or(if implicit_op_return.is_some() {
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
         } else {
-            TypeInfo::Unit
+            TypeInfo::Tuple(Vec::new())
         });
 
         ok(

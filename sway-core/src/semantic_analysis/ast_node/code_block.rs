@@ -102,7 +102,9 @@ impl<'sc> TypedCodeBlock<'sc> {
                     contents: evaluated_contents,
                     whole_block_span: other.whole_block_span,
                 },
-                return_type.unwrap_or_else(|| crate::type_engine::insert_type(TypeInfo::Unit)),
+                return_type.unwrap_or_else(|| {
+                    crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
+                }),
             ),
             warnings,
             errors,

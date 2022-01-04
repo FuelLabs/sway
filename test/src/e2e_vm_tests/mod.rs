@@ -17,6 +17,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("contract_abi_impl", ProgramState::Return(0)),
         // TEMPORARILY DISABLED DUE TO OOM ("dependencies", ProgramState::Return(0)), // 0 == false
         ("if_elseif_enum", ProgramState::Return(10)),
+        ("tuple_types", ProgramState::Return(123)),
         ("out_of_order_decl", ProgramState::Return(1)),
         ("struct_field_reassignment", ProgramState::Return(0)),
         ("enum_in_fn_decl", ProgramState::Return(255)),

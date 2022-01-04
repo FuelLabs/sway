@@ -41,7 +41,8 @@ impl<'sc> Reassignment<'sc> {
                 let body = iter.next().unwrap();
                 let body = check!(
                     Expression::parse_from_pair(body.clone(), config),
-                    Expression::Unit {
+                    Expression::Tuple {
+                        fields: vec![],
                         span: Span {
                             span: body.as_span(),
                             path
@@ -71,7 +72,10 @@ impl<'sc> Reassignment<'sc> {
                 };
                 let body = check!(
                     Expression::parse_from_pair(rhs, config),
-                    Expression::Unit { span: rhs_span },
+                    Expression::Tuple {
+                        fields: vec![],
+                        span: rhs_span
+                    },
                     warnings,
                     errors
                 );
@@ -153,7 +157,8 @@ fn parse_subfield_path_ensure_only_var<'sc>(
                 },
             ));
             // construct unit expression for error recovery
-            let exp = Expression::Unit {
+            let exp = Expression::Tuple {
+                fields: vec![],
                 span: Span {
                     span: item.as_span(),
                     path,

@@ -1417,7 +1417,7 @@ fn ret_or_retd_value<'sc>(
         }
     };
 
-    if main_func_ret_ty == TypeInfo::Unit {
+    if main_func_ret_ty.is_unit() {
         // unit returns should always be zero, although because they can be
         // omitted from functions, the register is sometimes uninitialized.
         // Manually return zero in this case.
