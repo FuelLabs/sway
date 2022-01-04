@@ -1,0 +1,22 @@
+[project]
+author  = "Nick Furfaro"
+license = "MIT"
+name = "token_ops_test"
+entry = "main.sw"
+
+
+# test_fuel_coin_contract
+[[tx-input]]
+type = "Contract"
+contract-id = "0x9c8a446c98b85592823934520a4865a5a93b8dbb0e825e98ef26a08a6e88a17"
+utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
+balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
+state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
+
+# balance_test_contract
+[[tx-input]]
+type = "Contract"
+contract-id = "0xa72b68c70be7e137de429840d67bce3b1e9a545fa05f77ec090091539d4fbf3c"
+utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
+balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
+state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
