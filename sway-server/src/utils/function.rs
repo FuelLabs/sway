@@ -1,4 +1,4 @@
-use core_lang::FunctionDeclaration;
+use sway_core::FunctionDeclaration;
 
 pub(crate) fn extract_fn_signature(func_dec: &FunctionDeclaration) -> String {
     let value = func_dec.span.as_str();

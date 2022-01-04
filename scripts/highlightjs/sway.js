@@ -1,7 +1,7 @@
 /*
 Language: Sway
-Author: Fuel devprogram@fuel.sh
-Contributors: Elvis Dedic <elvis@fuel.sh>,
+Author: Fuel Labs contact@fuel.sh
+Contributors: Fuel Labs <contact@fuel.sh>,
 Website: https://fuel.sh
 Category: smart contracts, layer 2, blockchain,
 */

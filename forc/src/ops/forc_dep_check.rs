@@ -1,8 +1,4 @@
-use crate::utils::{
-    dependency,
-    helpers::{find_manifest_dir, read_manifest},
-};
-
+use crate::utils::{dependency, helpers::read_manifest};
 use anyhow::{anyhow, Result};
 use dirs::home_dir;
 use semver::Version;
@@ -10,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
     str,
 };
+use sway_utils::find_manifest_dir;
 
 /// Forc check will check if there are updates to Github-based dependencies.
 /// If a target dependency `-d` is passed, it will check only this one dependency.
@@ -124,7 +121,7 @@ async fn check_untagged_dependency(
     dependency_name: &str,
     dep: &dependency::DependencyDetails,
 ) -> Result<()> {
-    let current = dependency::get_current_dependency_version(&target_directory)?;
+    let current = dependency::get_current_dependency_version(target_directory)?;
 
     let latest_hash = dependency::get_latest_commit_sha(git_repo, &dep.branch).await?;
 

@@ -1,7 +1,7 @@
 use lsp::{Diagnostic, DiagnosticSeverity, Position, Range};
 use lspower::lsp::{self};
 
-use core_lang::{CompileError, CompileWarning};
+use sway_core::{CompileError, CompileWarning};
 
 pub fn get_diagnostics(
     warnings: Vec<CompileWarning>,
@@ -13,7 +13,7 @@ pub fn get_diagnostics(
             let range = get_range(&WarningOrError::Error(error));
             Diagnostic {
                 range,
-                severity: Some(DiagnosticSeverity::Error),
+                severity: Some(DiagnosticSeverity::ERROR),
                 message: error.to_friendly_error_string(),
                 ..Default::default()
             }
@@ -26,7 +26,7 @@ pub fn get_diagnostics(
             let range = get_range(&WarningOrError::Warning(warning));
             Diagnostic {
                 range,
-                severity: Some(DiagnosticSeverity::Warning),
+                severity: Some(DiagnosticSeverity::WARNING),
                 message: warning.to_friendly_warning_string(),
                 ..Default::default()
             }

@@ -1,5 +1,5 @@
 [project]
-author  = "Toby Hutton <toby.hutton@fuel.sh>"
-license = "MIT"
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
 name = "top_level_vars"
 entry = "main.sw"
