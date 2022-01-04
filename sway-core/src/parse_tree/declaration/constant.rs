@@ -48,7 +48,7 @@ impl<'sc> ConstantDeclaration<'sc> {
                 let type_name = ascription.into_inner().next().unwrap();
                 check!(
                     TypeInfo::parse_from_pair(type_name, config),
-                    TypeInfo::Unit,
+                    TypeInfo::Tuple(Vec::new()),
                     warnings,
                     errors
                 )

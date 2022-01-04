@@ -29,7 +29,9 @@ pub(crate) enum TypedExpressionVariant<'sc> {
     VariableExpression {
         name: Ident<'sc>,
     },
-    Unit,
+    Tuple {
+        fields: Vec<TypedExpression<'sc>>,
+    },
     Array {
         contents: Vec<TypedExpression<'sc>>,
     },
@@ -128,7 +130,14 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 LazyOp::And => "&&".into(),
                 LazyOp::Or => "||".into(),
             },
-            TypedExpressionVariant::Unit => "unit".into(),
+            TypedExpressionVariant::Tuple { fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|field| field.pretty_print())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("tuple({})", fields)
+            }
             TypedExpressionVariant::Array { .. } => "array".into(),
             TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
             TypedExpressionVariant::StructExpression { struct_name, .. } => {
@@ -199,7 +208,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 (*rhs).copy_types(type_mapping);
             }
             VariableExpression { .. } => (),
-            Unit => (),
+            Tuple { fields } => fields.iter_mut().for_each(|x| x.copy_types(type_mapping)),
             Array { contents } => contents.iter_mut().for_each(|x| x.copy_types(type_mapping)),
             ArrayIndex { prefix, index } => {
                 (*prefix).copy_types(type_mapping);

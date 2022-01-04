@@ -24,7 +24,7 @@ pub struct TypedExpression<'sc> {
 
 pub(crate) fn error_recovery_expr(span: Span<'_>) -> TypedExpression<'_> {
     TypedExpression {
-        expression: TypedExpressionVariant::Unit,
+        expression: TypedExpressionVariant::Tuple { fields: vec![] },
         return_type: crate::type_engine::insert_type(TypeInfo::ErrorRecovery),
         is_constant: IsConstant::No,
         span,
@@ -188,15 +188,18 @@ impl<'sc> TypedExpression<'sc> {
                 dependency_graph,
                 opts,
             ),
-            Expression::Unit { span } => {
-                let exp = TypedExpression {
-                    expression: TypedExpressionVariant::Unit,
-                    return_type: crate::type_engine::insert_type(TypeInfo::Unit),
-                    is_constant: IsConstant::Yes,
-                    span,
-                };
-                ok(exp, vec![], vec![])
-            }
+            Expression::Tuple { fields, span } => Self::type_check_tuple(
+                fields,
+                span,
+                namespace,
+                crate_namespace,
+                type_annotation,
+                self_type,
+                build_config,
+                dead_code_graph,
+                dependency_graph,
+                opts,
+            ),
             Expression::DelineatedPath {
                 call_path,
                 span,
@@ -661,7 +664,7 @@ impl<'sc> TypedExpression<'sc> {
                     contents: vec![],
                     whole_block_span: span.clone()
                 },
-                crate::type_engine::insert_type(TypeInfo::Unit)
+                crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
             ),
             warnings,
             errors
@@ -777,12 +780,12 @@ impl<'sc> TypedExpression<'sc> {
         let r#else_ret_ty = r#else
             .as_ref()
             .map(|x| x.return_type)
-            .unwrap_or_else(|| insert_type(TypeInfo::Unit));
+            .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
         // if there is a type annotation, then the else branch must exist
         match unify_with_self(then.return_type, r#else_ret_ty, self_type, &span) {
             Ok(mut warn) => {
                 warnings.append(&mut warn);
-                if look_up_type_id(r#else_ret_ty) != TypeInfo::Unit && r#else.is_none() {
+                if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
                     errors.push(CompileError::NoElseBranch {
                         span: span.clone(),
                         r#type: look_up_type_id(type_annotation).friendly_type_str(),
@@ -942,7 +945,7 @@ impl<'sc> TypedExpression<'sc> {
                         typed_fields_buf.push(TypedStructExpressionField {
                             name: def_field.name.clone(),
                             value: TypedExpression {
-                                expression: TypedExpressionVariant::Unit,
+                                expression: TypedExpressionVariant::Tuple { fields: vec![] },
                                 return_type: insert_type(TypeInfo::ErrorRecovery),
                                 is_constant: IsConstant::No,
                                 span: span.clone(),
@@ -1079,6 +1082,70 @@ impl<'sc> TypedExpression<'sc> {
             },
             return_type: field.r#type,
             is_constant: IsConstant::No,
+            span,
+        };
+        ok(exp, warnings, errors)
+    }
+
+    fn type_check_tuple<'n>(
+        fields: Vec<Expression<'sc>>,
+        span: Span<'sc>,
+        namespace: &mut Namespace<'sc>,
+        crate_namespace: Option<&'n Namespace<'sc>>,
+        type_annotation: TypeId,
+        self_type: TypeId,
+        build_config: &BuildConfig,
+        dead_code_graph: &mut ControlFlowGraph<'sc>,
+        dependency_graph: &mut HashMap<String, HashSet<String>>,
+        opts: TCOpts,
+    ) -> CompileResult<'sc, TypedExpression<'sc>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let field_type_ids_opt = match look_up_type_id(type_annotation) {
+            TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
+                Some(field_type_ids)
+            }
+            _ => None,
+        };
+        let mut typed_field_types = Vec::with_capacity(fields.len());
+        let mut typed_fields = Vec::with_capacity(fields.len());
+        let mut is_constant = IsConstant::Yes;
+        for (i, field) in fields.into_iter().enumerate() {
+            let field_type_id = field_type_ids_opt
+                .as_ref()
+                .map(|field_type_ids| field_type_ids[i])
+                .unwrap_or_default();
+            let field_span = field.span();
+            let typed_field = check!(
+                TypedExpression::type_check(TypeCheckArguments {
+                    checkee: field,
+                    namespace,
+                    crate_namespace,
+                    return_type_annotation: field_type_id,
+                    help_text: "tuple field type does not match the expected type",
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                }),
+                error_recovery_expr(field_span),
+                warnings,
+                errors
+            );
+            if let IsConstant::No = typed_field.is_constant {
+                is_constant = IsConstant::No;
+            }
+            typed_field_types.push(typed_field.return_type);
+            typed_fields.push(typed_field);
+        }
+        let exp = TypedExpression {
+            expression: TypedExpressionVariant::Tuple {
+                fields: typed_fields,
+            },
+            return_type: crate::type_engine::insert_type(TypeInfo::Tuple(typed_field_types)),
+            is_constant,
             span,
         };
         ok(exp, warnings, errors)

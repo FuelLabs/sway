@@ -111,7 +111,8 @@ impl<'sc> MatchBranch<'sc> {
         let result = match result.as_rule() {
             Rule::expr => check!(
                 Expression::parse_from_pair(result.clone(), config),
-                Expression::Unit {
+                Expression::Tuple {
+                    fields: vec![],
                     span: span::Span {
                         span: result.as_span(),
                         path

@@ -49,7 +49,7 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
     // instantiator, then the type of the enum is necessarily the unit type.
 
     match (&args[..], look_up_type_id(enum_field_type)) {
-        ([], TypeInfo::Unit) => ok(
+        ([], ty) if ty.is_unit() => ok(
             TypedExpression {
                 return_type: enum_decl.as_type(),
                 expression: TypedExpressionVariant::EnumInstantiation {
@@ -109,7 +109,7 @@ pub(crate) fn instantiate_enum<'n, 'sc>(
             });
             err(warnings, errors)
         }
-        (_too_many_expressions, TypeInfo::Unit) => {
+        (_too_many_expressions, ty) if ty.is_unit() => {
             errors.push(CompileError::UnnecessaryEnumInstantiator {
                 span: enum_field_name.span.clone(),
             });

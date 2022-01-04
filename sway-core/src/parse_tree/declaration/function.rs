@@ -126,11 +126,11 @@ impl<'sc> FunctionDeclaration<'sc> {
         let return_type = match return_type_pair {
             Some(ref pair) => check!(
                 TypeInfo::parse_from_pair(pair.clone(), config),
-                TypeInfo::Unit,
+                TypeInfo::Tuple(Vec::new()),
                 warnings,
                 errors
             ),
-            None => TypeInfo::Unit,
+            None => TypeInfo::Tuple(Vec::new()),
         };
         let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
             type_params_pair,

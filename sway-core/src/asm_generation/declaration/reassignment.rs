@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     asm_generation::{
-        convert_expression_to_asm, expression::get_struct_memory_layout, AsmNamespace,
+        convert_expression_to_asm, expression::get_contiguous_memory_layout, AsmNamespace,
         RegisterSequencer,
     },
     asm_lang::{VirtualImmediate12, VirtualOp},
@@ -113,12 +113,19 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     }
                 };
                 // TODO(static span) use spans instead of strings below
+                let span = crate::Span {
+                    span: pest::Span::new("TODO(static span): use Idents instead of Strings", 0, 0)
+                        .unwrap(),
+                    path: None,
+                };
                 let fields_for_layout = fields
                     .iter()
-                    .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, name.as_str()))
+                    .map(|OwnedTypedStructField { name, r#type, .. }| {
+                        (*r#type, span.clone(), name.clone())
+                    })
                     .collect::<Vec<_>>();
                 let field_layout = check!(
-                    get_struct_memory_layout(&fields_for_layout[..]),
+                    get_contiguous_memory_layout(&fields_for_layout[..]),
                     return err(warnings, errors),
                     warnings,
                     errors

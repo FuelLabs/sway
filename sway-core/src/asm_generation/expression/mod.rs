@@ -20,7 +20,9 @@ mod subfield;
 use contract_call::convert_contract_call_to_asm;
 use enums::convert_enum_instantiation_to_asm;
 use if_exp::convert_if_exp_to_asm;
-pub(crate) use structs::{convert_struct_expression_to_asm, get_struct_memory_layout};
+pub(crate) use structs::{
+    convert_struct_expression_to_asm, convert_tuple_expression_to_asm, get_contiguous_memory_layout,
+};
 use subfield::convert_subfield_expression_to_asm;
 
 /// Given a [TypedExpression], convert it to assembly and put its return value, if any, in the
@@ -248,7 +250,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
-                _ if look_up_type_id(exp.return_type) == TypeInfo::Unit => (),
+                _ if look_up_type_id(exp.return_type).is_unit() => (),
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),
@@ -341,7 +343,9 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             return_register,
             register_sequencer,
         ),
-        TypedExpressionVariant::Unit => ok(vec![], warnings, errors),
+        TypedExpressionVariant::Tuple { fields } => {
+            convert_tuple_expression_to_asm(fields, return_register, namespace, register_sequencer)
+        }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
         a => {
