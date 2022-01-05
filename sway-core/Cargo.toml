@@ -1,0 +1,36 @@
+[package]
+name = "sway-core"
+version = "0.1.9"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2018"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Sway core language."
+
+[features]
+selector-debug = ["structopt", "hex"]
+
+[dependencies]
+derivative = "2.2.0"
+either = "1.6"
+fuel-asm = "0.1"
+fuel-vm = "0.1"
+hex = { version = "0.4", optional = true }
+lazy_static = "1.4"
+line-col = "0.2"
+pest = { version = "3.0", package = "fuel-pest" }
+pest_derive = "2.0"
+petgraph = "0.5"
+sha2 = "0.9"
+smallvec = "1.7"
+source-span = "2.4"
+structopt = { version = "0.3", default-features = false, optional = true }
+sway-types = { version = "0.1.9", path = "../sway-types" }
+thiserror = "1.0"
+uuid-b64 = "0.1"
+
+[[bin]]
+name = "selector-debug"
+path = "utils/selector_debug.rs"
+required-features = ["selector-debug"]

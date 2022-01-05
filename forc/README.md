@@ -124,7 +124,7 @@ async fn harness() {
     // Build the contract
     let salt: [u8; 32] = rng.gen();
     let salt = Salt::from(salt);
-    let compiled = Contract::compile_sway_contract("../", salt).unwrap();
+    let compiled = Contract::compile_sway_contract("./", salt).unwrap();
 
     // Launch a local network and deploy the contract
     let (client, contract_id) = Contract::launch_and_deploy(&compiled).await.unwrap();
@@ -227,7 +227,7 @@ Alternatively, you could deploy your contract programmatically using our SDK:
 // Build the contract
 let salt: [u8; 32] = rng.gen();
 let salt = Salt::from(salt);
-let compiled = Contract::compile_sway_contract("../", salt).unwrap();
+let compiled = Contract::compile_sway_contract("./", salt).unwrap();
 
 // Launch a local network and deploy the contract
 let (client, contract_id) = Contract::launch_and_deploy(&compiled).await.unwrap();

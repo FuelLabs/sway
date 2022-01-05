@@ -1,12 +1,12 @@
 [project]
-author  = "Nick Furfaro"
-license = "MIT"
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
 name = "bal_opcode"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../lib-std" }
-core = { path = "../../../../../lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
 balance_test_abi = { path = "../balance_test_abi"}
 
 [[tx-input]]

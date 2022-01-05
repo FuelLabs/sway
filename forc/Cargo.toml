@@ -1,39 +1,44 @@
 [package]
-authors = ["Alex Hansen <alex.hansen@fuel.sh>"]
-edition = "2018"
 name = "forc"
-version = "0.1.0"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version = "0.1.9"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+edition = "2018"
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Fuel Orchestrator."
 
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] } # used for formating error/warning print
 anyhow = "1.0.41"
-core_lang = { path = "../core_lang" }
 curl = "0.4.38"
 dirs = "3.0.2"
 flate2 = "1.0.20"
-formatter = { path = "../formatter" }
-fuel-asm = { git = "ssh://git@github.com/FuelLabs/fuel-asm.git" }
-fuel-client = { git = "ssh://git@github.com/FuelLabs/fuel-core", default-features = false }
-fuel-tx = { git = "ssh://git@github.com/FuelLabs/fuel-tx.git" }
-fuel-vm = { git = "ssh://git@github.com/FuelLabs/fuel-vm.git" }
+fuel-asm = "0.1" 
+fuel-gql-client = { version = "0.1", default-features = false }
+fuel-tx = "0.1"
+fuel-vm = "0.1"
 futures = "0.3"
 hex = "0.4.3"
-pest = { git = "https://github.com/sezna/pest.git", rev = "8aa58791f759daf4caee26e8560e862df5a6afb7" }
+pest = { version = "3.0", package = "fuel-pest" }
 prettydiff = "0.4.0"
 reqwest = { version = "0.11.4", features = ["json"] }
 semver = "1.0.3"
 serde = {version = "1.0", features = ["derive"]}
-serde_json = "*"
+serde_json = "1.0.73"
 source-span = "2.4"
 structopt = "0.3"
+sway-core = { version = "0.1.9", path = "../sway-core" }
+sway-fmt = { version = "0.1.9", path = "../sway-fmt" }
+sway-server = { version = "0.1.9", path = "../sway-server" }
+sway-utils = { version = "0.1.9", path = "../sway-utils" }
+sway-types = { version = "0.1.9", path = "../sway-types" }
 tar = "0.4.35"
 term-table = "1.3"
 termcolor = "1.1"
 tokio = { version = "1.8.0", features = ["macros", "rt-multi-thread", "process"] }
 toml = "0.5"
 whoami = "1.1"
-core-types = { path = "../core-types" }
 
 [features]
 default = []
