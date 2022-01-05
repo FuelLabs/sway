@@ -103,6 +103,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "unify_identical_unknowns",
         "array_oob",
         "array_bad_index",
+        "name_shadowing",
         "match_expressions_wrong_struct",
         "match_expressions_enums",
         "pure_calls_impure",
