@@ -12,7 +12,7 @@ test_fuel_coin_abi = { path = "../test_fuel_coin_abi"}
 # test_fuel_coin_contract
 [[tx-input]]
 type = "Contract"
-contract-id = "0x9c8a446c98b85592823934520a4865a5a93b8dbb0e825e98ef26a08a6e88a17"
+contract-id = "0x9c8a446c98b85592823934520a4865a5a93b8dbb0e825e98ef26a08a6e88a17b"
 utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
