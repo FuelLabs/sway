@@ -38,14 +38,12 @@ impl UseStatement {
         } else {
             stmt.clone().next().expect("Guaranteed by grammar")
         };
+        let mut import_path_buf = vec![];
         let mut use_statements_buf = Vec::new();
         let mut import_path_vec = import_path.into_inner().collect::<Vec<_>>();
-        let last_item_in_path_vec = import_path_vec.pop().unwrap();
-        let is_multi_import_items = last_item_in_path_vec.as_rule() == Rule::import_items;
+        let last_item = import_path_vec.pop().unwrap();
 
-        let mut import_path_buf = vec![];
-
-        for item in import_path_vec.clone().into_iter() {
+        for item in import_path_vec.into_iter() {
             if item.as_rule() == Rule::star {
                 errors.push(CompileError::NonFinalAsteriskInPath {
                     span: span::Span {
@@ -64,7 +62,7 @@ impl UseStatement {
             }
         }
         let mut alias = None;
-        for item in stmt.clone() {
+        for item in stmt {
             if item.as_rule() == Rule::alias {
                 let item = item.into_inner().nth(1).unwrap();
                 let alias_parsed = check!(
@@ -77,11 +75,12 @@ impl UseStatement {
             }
         }
 
+        let is_multi_import_items = last_item.as_rule() == Rule::import_items;
         if is_multi_import_items {
-            let mut last_item = last_item_in_path_vec.clone().into_inner();
-            let _path_separator = last_item.next();
+            let mut import_items = last_item.clone().into_inner();
+            let _path_separator = import_items.next();
             
-            for item in last_item {
+            for item in import_items {
                 let import_type = match item.as_rule() {
                     Rule::ident => ImportType::Item(check!(
                         Ident::parse_from_pair(item, config),
@@ -100,10 +99,10 @@ impl UseStatement {
                 });
             }
         } else {
-            let import_type = match last_item_in_path_vec.as_rule() {
+            let import_type = match last_item.as_rule() {
                 Rule::star => ImportType::Star,
                 Rule::ident => ImportType::Item(check!(
-                    Ident::parse_from_pair(last_item_in_path_vec, config),
+                    Ident::parse_from_pair(last_item, config),
                     return err(warnings, errors),
                     warnings,
                     errors
