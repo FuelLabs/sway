@@ -175,8 +175,8 @@ impl_trait    =  {impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~
 use_statement           =  {relative_use_statement | absolute_use_statement}
 relative_use_statement  =  {use_keyword ~ import_path ~ alias? ~ ";"}
 absolute_use_statement  =  {use_keyword ~ path_separator ~ import_path ~ alias? ~ ";"}
-import_path             =  {ident ~ (path_separator ~ (ident|star))* ~ import_items?}
-import_items            =  {path_separator ~ "{" ~ ident ~ alias? ~ ("," ~ ident ~ alias?)* ~ "}"}
+import_path             =  {(ident|star) ~ (path_separator ~ (ident|star))* ~ import_items?}
+import_items            =  {path_separator ~ "{" ~ import_path ~ alias? ~  ("," ~ import_path ~ alias?)* ~ "}"}
 star                    =  {"*"}
 
 // loops
