@@ -498,13 +498,15 @@ fn parse_root_from_pairs(
                         warnings,
                         errors
                     );
-                    parse_tree.push(AstNode {
-                        content: AstNodeContent::UseStatement(stmt),
-                        span: span::Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
-                    });
+                    for entry in &stmt {
+                        parse_tree.push(AstNode {
+                            content: AstNodeContent::UseStatement(entry.clone()),
+                            span: span::Span {
+                                span: pair.as_span(),
+                                path: path.clone(),
+                            },
+                        });
+                    }
                 }
                 Rule::library_name => {
                     let lib_pair = pair.into_inner().next().unwrap();

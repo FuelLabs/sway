@@ -26,7 +26,7 @@ impl UseStatement {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<Vec<Self>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let stmt = pair.into_inner().next().unwrap();
@@ -38,21 +38,14 @@ impl UseStatement {
         } else {
             stmt.clone().next().expect("Guaranteed by grammar")
         };
-        let mut import_path_buf = vec![];
+        let mut use_statements_buf = Vec::new();
         let mut import_path_vec = import_path.into_inner().collect::<Vec<_>>();
-        let last_item = import_path_vec.pop().unwrap();
-        let import_type = match last_item.as_rule() {
-            Rule::star => ImportType::Star,
-            Rule::ident => ImportType::Item(check!(
-                Ident::parse_from_pair(last_item, config),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )),
-            _ => unreachable!(),
-        };
+        let last_item_in_path_vec = import_path_vec.pop().unwrap();
+        let is_multi_import_items = last_item_in_path_vec.as_rule() == Rule::import_items;
 
-        for item in import_path_vec.into_iter() {
+        let mut import_path_buf = vec![];
+
+        for item in import_path_vec.clone().into_iter() {
             if item.as_rule() == Rule::star {
                 errors.push(CompileError::NonFinalAsteriskInPath {
                     span: span::Span {
@@ -70,9 +63,8 @@ impl UseStatement {
                 ));
             }
         }
-
         let mut alias = None;
-        for item in stmt {
+        for item in stmt.clone() {
             if item.as_rule() == Rule::alias {
                 let item = item.into_inner().nth(1).unwrap();
                 let alias_parsed = check!(
@@ -85,13 +77,49 @@ impl UseStatement {
             }
         }
 
-        ok(
-            UseStatement {
-                call_path: import_path_buf,
+        if is_multi_import_items {
+            let mut last_item = last_item_in_path_vec.clone().into_inner();
+            let _path_separator = last_item.next();
+            
+            for item in last_item {
+                let import_type = match item.as_rule() {
+                    Rule::ident => ImportType::Item(check!(
+                        Ident::parse_from_pair(item, config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )),
+                    _ => unreachable!(),
+                };
+                
+                use_statements_buf.push(UseStatement{
+                    call_path: import_path_buf.clone(),
+                    import_type,
+                    is_absolute,
+                    alias: alias.clone(),
+                });
+            }
+        } else {
+            let import_type = match last_item_in_path_vec.as_rule() {
+                Rule::star => ImportType::Star,
+                Rule::ident => ImportType::Item(check!(
+                    Ident::parse_from_pair(last_item_in_path_vec, config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                )),
+                _ => unreachable!(),
+            };
+
+            use_statements_buf.push(UseStatement{
+                call_path: import_path_buf.clone(),
                 import_type,
                 is_absolute,
-                alias,
-            },
+                alias: alias.clone(),
+            });
+        }
+        ok(
+            use_statements_buf,
             Vec::new(),
             Vec::new(),
         )
