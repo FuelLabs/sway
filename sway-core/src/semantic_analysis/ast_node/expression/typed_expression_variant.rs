@@ -71,6 +71,11 @@ pub(crate) enum TypedExpressionVariant<'sc> {
         arg_num_to_access: usize,
         resolved_type_of_parent: TypeId,
     },
+    TupleElemAccess {
+        prefix: Box<TypedExpression<'sc>>,
+        elem_num_to_access: usize,
+        resolved_type_of_parent: TypeId,
+    },
     EnumInstantiation {
         /// for printing
         enum_decl: TypedEnumDeclaration<'sc>,
@@ -172,6 +177,17 @@ impl<'sc> TypedExpressionVariant<'sc> {
                     arg_num_to_access
                 )
             }
+            TypedExpressionVariant::TupleElemAccess {
+                resolved_type_of_parent,
+                elem_num_to_access,
+                ..
+            } => {
+                format!(
+                    "\"{}.{}\" elem num access",
+                    look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
+                    elem_num_to_access
+                )
+            }
             TypedExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.primary_name)
             }
@@ -260,6 +276,21 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 prefix.copy_types(type_mapping);
             }
             EnumArgAccess {
+                prefix,
+                ref mut resolved_type_of_parent,
+                ..
+            } => {
+                *resolved_type_of_parent = if let Some(matching_id) =
+                    look_up_type_id(*resolved_type_of_parent).matches_type_parameter(type_mapping)
+                {
+                    insert_type(TypeInfo::Ref(matching_id))
+                } else {
+                    insert_type(look_up_type_id_raw(*resolved_type_of_parent))
+                };
+
+                prefix.copy_types(type_mapping);
+            }
+            TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..

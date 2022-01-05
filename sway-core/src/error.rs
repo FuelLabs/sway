@@ -607,6 +607,12 @@ pub enum CompileError<'sc> {
         span: Span<'sc>,
         actually: String,
     },
+    #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
+    NotATuple {
+        name: String,
+        span: Span<'sc>,
+        actually: String,
+    },
     #[error("\"{name}\" is a {actually}, not an enum.")]
     NotAnEnum {
         name: String,
@@ -969,6 +975,7 @@ impl<'sc> CompileError<'sc> {
             MethodNotFound { span, .. } => span,
             NonFinalAsteriskInPath { span, .. } => span,
             ModuleNotFound { span, .. } => span,
+            NotATuple { span, .. } => span,
             NotAStruct { span, .. } => span,
             FieldNotFound { span, .. } => span,
             SymbolNotFound { span, .. } => span,

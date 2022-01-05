@@ -1583,6 +1583,68 @@ impl<'sc> TypedExpression<'sc> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match variant {
+            DelayedResolutionVariant::TupleVariant(DelayedTupleVariantResolution {
+                exp,
+                elem_num,
+            }) => {
+                let args = TypeCheckArguments {
+                    checkee: *exp,
+                    namespace,
+                    crate_namespace,
+                    return_type_annotation: insert_type(TypeInfo::Unknown),
+                    help_text: "",
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    mode: Mode::NonAbi,
+                    opts,
+                };
+                let parent = check!(
+                    TypedExpression::type_check(args),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let tuple_elems = check!(
+                    namespace.get_tuple_elems(
+                        parent.return_type,
+                        parent.span.as_str(),
+                        &parent.span
+                    ),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let mut tuple_elem_to_access = None;
+                for (pos, tuple_elem) in tuple_elems.into_iter().enumerate() {
+                    if pos == elem_num {
+                        tuple_elem_to_access = Some(tuple_elem)
+                    }
+                }
+                let tuple_elem_to_access = match tuple_elem_to_access {
+                    None => {
+                        errors.push(CompileError::MatchWrongType {
+                            expected: parent.return_type,
+                            span: parent.span,
+                        });
+                        let exp = error_recovery_expr(span);
+                        return ok(exp, warnings, errors);
+                    }
+                    Some(tuple_elem_to_access) => tuple_elem_to_access,
+                };
+                let exp = TypedExpression {
+                    expression: TypedExpressionVariant::TupleElemAccess {
+                        resolved_type_of_parent: parent.return_type,
+                        prefix: Box::new(parent),
+                        elem_num_to_access: elem_num,
+                    },
+                    return_type: tuple_elem_to_access,
+                    is_constant: IsConstant::No,
+                    span,
+                };
+                ok(exp, warnings, errors)
+            }
             DelayedResolutionVariant::EnumVariant(DelayedEnumVariantResolution {
                 exp,
                 call_path,

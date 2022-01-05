@@ -76,6 +76,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("trait_override_bug", ProgramState::Return(7)),
         ("if_implicit_unit", ProgramState::Return(0)),
         ("modulo_uint_test", ProgramState::Return(1)), // true
+        ("tuple_desugaring", ProgramState::Return(1)),
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
