@@ -1,8 +1,6 @@
 script;
 
-use std::hash::HashMethod;
-use std::hash::hash_value;
-use std::hash::hash_pair;
+use std::hash::{HashMethod, hash_value, hash_pair};
 
 fn main() -> u64 {
     let aaaa = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;

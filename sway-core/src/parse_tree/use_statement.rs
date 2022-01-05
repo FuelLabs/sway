@@ -45,7 +45,6 @@ impl UseStatement {
             warnings,
             errors
         );
-        //print!("Size in main function: {}\n", use_statements_buf.len());
         
         ok(
             use_statements_buf,
@@ -66,7 +65,20 @@ fn handle_import_path (
     // Populate the call path
     let mut import_path_buf = vec![];
     let mut import_path_vec = import_path.clone().into_inner().collect::<Vec<_>>();
-    let last_item = import_path_vec.pop().unwrap();
+    let mut last_item = import_path_vec.pop().unwrap();
+
+    let mut top_level_alias = None;
+    if last_item.as_rule() == Rule::alias {
+        let item = last_item.into_inner().nth(1).unwrap();
+        let alias_parsed = check!(
+            Ident::parse_from_pair(item, config),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        top_level_alias = Some(alias_parsed);
+        last_item = import_path_vec.pop().unwrap();
+    }
 
     for item in import_path_vec.into_iter() {
         if item.as_rule() == Rule::star {
@@ -94,7 +106,6 @@ fn handle_import_path (
         let mut import_items = last_item.into_inner();
         let _path_separator = import_items.next();
         
-        //print!("import_items: {}\n", import_items);
         let mut it = import_items.clone();
         while let Some(item) = it.next() {
             // kind of a base case here
@@ -128,7 +139,6 @@ fn handle_import_path (
                     alias,
                 });
             } else if item.as_rule() == Rule::import_path {
-                //print!("in import_path_inner branch: {}\n", item);
                 // recurse - get the statement buffers and append 
                 let use_statements_buf_local = check!(
                     handle_import_path(item, config, is_absolute),
@@ -149,22 +159,8 @@ fn handle_import_path (
                 }
             }
         }
-        //print!("\n");
     } else {
         // Handle the case where the last item is just an individual item 
-        let alias = None;
-        /*for item in stmt {
-            if item.as_rule() == Rule::alias {
-                let item = item.into_inner().nth(1).unwrap();
-                let alias_parsed = check!(
-                    Ident::parse_from_pair(item, config),
-                    continue,
-                    warnings,
-                    errors
-                );
-                alias = Some(alias_parsed);
-            }
-        }*/
         let import_type = match last_item.as_rule() {
             Rule::star => ImportType::Star,
             Rule::ident => ImportType::Item(check!(
@@ -180,11 +176,10 @@ fn handle_import_path (
             call_path: import_path_buf.clone(),
             import_type,
             is_absolute,
-            alias,
+            alias: top_level_alias,
         });
     }
 
-    //print!("Size in other function: {}\n", use_statements_buf.len());
     ok(
         use_statements_buf,
         warnings, 
