@@ -6,15 +6,15 @@ use crate::{CompileResult, Expression};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub struct ReturnStatement<'sc> {
-    pub expr: Expression<'sc>,
+pub struct ReturnStatement {
+    pub expr: Expression,
 }
 
-impl<'sc> ReturnStatement<'sc> {
+impl ReturnStatement {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let span = span::Span {
             span: pair.as_span(),
             path: config.map(|c| c.path()),

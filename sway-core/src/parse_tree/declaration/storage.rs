@@ -6,9 +6,9 @@ use pest::iterators::Pair;
 #[derive(Debug, Clone)]
 /// A declaration of contract storage. Only valid within contract contexts.
 /// All values in this struct are mutable and persistent among executions of the same contract deployment.
-pub struct StorageDeclaration<'sc> {
-    pub fields: Vec<StorageField<'sc>>,
-    pub span: Span<'sc>,
+pub struct StorageDeclaration {
+    pub fields: Vec<StorageField>,
+    pub span: Span,
 }
 
 /// An individual field in a storage declaration.
@@ -16,17 +16,17 @@ pub struct StorageDeclaration<'sc> {
 /// constant expression. For now, that basically means just a literal, but as constant folding
 /// improves, we can update that.
 #[derive(Debug, Clone)]
-pub struct StorageField<'sc> {
-    pub name: Ident<'sc>,
+pub struct StorageField {
+    pub name: Ident,
     pub r#type: TypeInfo,
-    pub initializer: Expression<'sc>,
+    pub initializer: Expression,
 }
 
-impl<'sc> StorageField<'sc> {
+impl StorageField {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         conf: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut iter = pair.into_inner();
@@ -64,11 +64,11 @@ impl<'sc> StorageField<'sc> {
     }
 }
 
-impl<'sc> StorageDeclaration<'sc> {
+impl StorageDeclaration {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         debug_assert_eq!(pair.as_rule(), Rule::storage_decl);
         let path = config.map(|c| c.path());
         let mut errors = vec![];
@@ -83,7 +83,7 @@ impl<'sc> StorageDeclaration<'sc> {
             storage_keyword.map(|x| x.as_rule()),
             Some(Rule::storage_keyword)
         );
-        let fields_results: Vec<CompileResult<'sc, StorageField>> = iter
+        let fields_results: Vec<CompileResult<StorageField>> = iter
             .next()
             .unwrap()
             .into_inner()

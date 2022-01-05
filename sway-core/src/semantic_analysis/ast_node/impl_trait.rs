@@ -13,15 +13,15 @@ use crate::{
 };
 use std::collections::{HashMap, HashSet};
 
-pub(crate) fn implementation_of_trait<'sc>(
-    impl_trait: ImplTrait<'sc>,
-    namespace: &mut Namespace<'sc>,
-    crate_namespace: Option<&Namespace<'sc>>,
+pub(crate) fn implementation_of_trait(
+    impl_trait: ImplTrait,
+    namespace: &mut Namespace,
+    crate_namespace: Option<&Namespace>,
     build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
+    dead_code_graph: &mut ControlFlowGraph,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
-) -> CompileResult<'sc, TypedDeclaration<'sc>> {
+) -> CompileResult<TypedDeclaration> {
     let mut errors = vec![];
     let mut warnings = vec![];
     let ImplTrait {
@@ -39,7 +39,7 @@ pub(crate) fn implementation_of_trait<'sc>(
     if !type_arguments.is_empty() {
         errors.push(CompileError::Internal(
             "Where clauses are not supported yet.",
-            type_arguments[0].clone().name_ident.span,
+            type_arguments[0].clone().name_ident.span().clone(),
         ));
     }
     match namespace
@@ -47,7 +47,6 @@ pub(crate) fn implementation_of_trait<'sc>(
         .ok(&mut warnings, &mut errors)
     {
         Some(TypedDeclaration::TraitDeclaration(tr)) => {
-            let tr = tr.clone();
             if type_arguments.len() != tr.type_parameters.len() {
                 errors.push(CompileError::IncorrectNumberOfTypeArguments {
                     given: type_arguments.len(),
@@ -161,7 +160,7 @@ pub(crate) fn implementation_of_trait<'sc>(
         }
         Some(_) | None => {
             errors.push(CompileError::UnknownTrait {
-                name: trait_name.suffix.primary_name,
+                name: trait_name.suffix.clone(),
                 span: trait_name.span(),
             });
             ok(ERROR_RECOVERY_DECLARATION.clone(), warnings, errors)
@@ -182,24 +181,24 @@ impl Default for Mode {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn type_check_trait_implementation<'sc>(
-    interface_surface: &[TypedTraitFn<'sc>],
-    functions: &[FunctionDeclaration<'sc>],
-    methods: &[FunctionDeclaration<'sc>],
-    trait_name: &Ident<'sc>,
-    type_arguments: &[TypeParameter<'sc>],
-    namespace: &mut Namespace<'sc>,
-    crate_namespace: Option<&Namespace<'sc>>,
+fn type_check_trait_implementation(
+    interface_surface: &[TypedTraitFn],
+    functions: &[FunctionDeclaration],
+    methods: &[FunctionDeclaration],
+    trait_name: &Ident,
+    type_arguments: &[TypeParameter],
+    namespace: &mut Namespace,
+    crate_namespace: Option<&Namespace>,
     _self_type: TypeId,
     build_config: &BuildConfig,
-    dead_code_graph: &mut ControlFlowGraph<'sc>,
-    block_span: &Span<'sc>,
+    dead_code_graph: &mut ControlFlowGraph,
+    block_span: &Span,
     type_implementing_for: TypeId,
-    type_implementing_for_span: &Span<'sc>,
+    type_implementing_for_span: &Span,
     mode: Mode,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     opts: TCOpts,
-) -> CompileResult<'sc, Vec<TypedFunctionDeclaration<'sc>>> {
+) -> CompileResult<Vec<TypedFunctionDeclaration>> {
     let mut functions_buf: Vec<TypedFunctionDeclaration> = vec![];
     let mut errors = vec![];
     let mut warnings = vec![];
@@ -243,9 +242,9 @@ fn type_check_trait_implementation<'sc>(
             Some(ix) => ix,
             None => {
                 errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                    name: &(*fn_decl.name.primary_name),
-                    trait_name: trait_name.span.as_str().to_string(),
-                    span: fn_decl.name.span.clone(),
+                    name: fn_decl.name.clone(),
+                    trait_name: trait_name.clone(),
+                    span: fn_decl.name.span().clone(),
                 });
                 return err(warnings, errors);
             }
@@ -270,8 +269,8 @@ fn type_check_trait_implementation<'sc>(
                         errors.push(
                             CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
                                 span: fn_decl.parameters_span(),
-                                fn_name: fn_decl.name.primary_name,
-                                trait_name: trait_name.primary_name,
+                                fn_name: fn_decl.name.clone(),
+                                trait_name: trait_name.clone(),
                                 num_args: parameters.len(),
                                 provided_args: fn_decl.parameters.len(),
                             },
@@ -400,7 +399,7 @@ fn type_check_trait_implementation<'sc>(
             span: block_span.clone(),
             missing_functions: function_checklist
                 .into_iter()
-                .map(|Ident { primary_name, .. }| primary_name.to_string())
+                .map(|ident| ident.as_str().to_string())
                 .collect::<Vec<_>>()
                 .join("\n"),
         });

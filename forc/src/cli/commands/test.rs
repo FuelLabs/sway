@@ -21,7 +21,7 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
     // Cargo args setup
     let mut args: Vec<String> = vec!["test".into()];
     if let Some(name) = command.test_name {
-        args.push(name)
+        args.push(name);
     };
     args.push("--color".into());
     args.push("always".into());

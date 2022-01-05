@@ -4,6 +4,7 @@ use crate::{capabilities, core::token::traverse_node};
 use lspower::lsp::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
 use ropey::Rope;
 use std::collections::HashMap;
+use std::sync::Arc;
 use sway_core::{parse, TreeType};
 
 #[derive(Debug)]
@@ -107,7 +108,7 @@ impl TextDocument {
 // private methods
 impl TextDocument {
     fn parse_tokens_from_text(&self) -> Result<(Vec<Token>, Vec<Diagnostic>), Vec<Diagnostic>> {
-        let text = &self.get_text();
+        let text = Arc::from(self.get_text());
         let parsed_result = parse(text, None);
         match parsed_result.value {
             None => Err(capabilities::diagnostic::get_diagnostics(

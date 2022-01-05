@@ -5,102 +5,101 @@ use crate::type_engine::*;
 use crate::Ident;
 
 #[derive(Clone, Debug)]
-pub(crate) struct ContractCallMetadata<'sc> {
+pub(crate) struct ContractCallMetadata {
     pub(crate) func_selector: [u8; 4],
-    pub(crate) contract_address: Box<TypedExpression<'sc>>,
+    pub(crate) contract_address: Box<TypedExpression>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum TypedExpressionVariant<'sc> {
-    Literal(Literal<'sc>),
+pub(crate) enum TypedExpressionVariant {
+    Literal(Literal),
     FunctionApplication {
-        name: CallPath<'sc>,
-        arguments: Vec<(Ident<'sc>, TypedExpression<'sc>)>,
-        function_body: TypedCodeBlock<'sc>,
+        name: CallPath,
+        arguments: Vec<(Ident, TypedExpression)>,
+        function_body: TypedCodeBlock,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
-        selector: Option<ContractCallMetadata<'sc>>,
+        selector: Option<ContractCallMetadata>,
     },
     LazyOperator {
         op: LazyOp,
-        lhs: Box<TypedExpression<'sc>>,
-        rhs: Box<TypedExpression<'sc>>,
+        lhs: Box<TypedExpression>,
+        rhs: Box<TypedExpression>,
     },
     VariableExpression {
-        name: Ident<'sc>,
+        name: Ident,
     },
     Tuple {
-        fields: Vec<TypedExpression<'sc>>,
+        fields: Vec<TypedExpression>,
     },
     Array {
-        contents: Vec<TypedExpression<'sc>>,
+        contents: Vec<TypedExpression>,
     },
     ArrayIndex {
-        prefix: Box<TypedExpression<'sc>>,
-        index: Box<TypedExpression<'sc>>,
+        prefix: Box<TypedExpression>,
+        index: Box<TypedExpression>,
     },
     StructExpression {
-        struct_name: Ident<'sc>,
-        fields: Vec<TypedStructExpressionField<'sc>>,
+        struct_name: Ident,
+        fields: Vec<TypedStructExpressionField>,
     },
-    CodeBlock(TypedCodeBlock<'sc>),
+    CodeBlock(TypedCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
     FunctionParameter,
     IfExp {
-        condition: Box<TypedExpression<'sc>>,
-        then: Box<TypedExpression<'sc>>,
-        r#else: Option<Box<TypedExpression<'sc>>>,
+        condition: Box<TypedExpression>,
+        then: Box<TypedExpression>,
+        r#else: Option<Box<TypedExpression>>,
     },
     AsmExpression {
-        registers: Vec<TypedAsmRegisterDeclaration<'sc>>,
-        body: Vec<AsmOp<'sc>>,
-        returns: Option<(AsmRegister, Span<'sc>)>,
-        whole_block_span: Span<'sc>,
+        registers: Vec<TypedAsmRegisterDeclaration>,
+        body: Vec<AsmOp>,
+        returns: Option<(AsmRegister, Span)>,
+        whole_block_span: Span,
     },
     // like a variable expression but it has multiple parts,
     // like looking up a field in a struct
     StructFieldAccess {
-        prefix: Box<TypedExpression<'sc>>,
+        prefix: Box<TypedExpression>,
         field_to_access: OwnedTypedStructField,
-        field_to_access_span: Span<'sc>,
+        field_to_access_span: Span,
         resolved_type_of_parent: TypeId,
     },
     EnumArgAccess {
-        prefix: Box<TypedExpression<'sc>>,
-        //variant_to_access: TypedEnumVariant<'sc>,
+        prefix: Box<TypedExpression>,
+        //variant_to_access: TypedEnumVariant,
         arg_num_to_access: usize,
         resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {
-        prefix: Box<TypedExpression<'sc>>,
+        prefix: Box<TypedExpression>,
         elem_num_to_access: usize,
         resolved_type_of_parent: TypeId,
     },
     EnumInstantiation {
         /// for printing
-        enum_decl: TypedEnumDeclaration<'sc>,
+        enum_decl: TypedEnumDeclaration,
         /// for printing
-        variant_name: Ident<'sc>,
+        variant_name: Ident,
         tag: usize,
-        contents: Option<Box<TypedExpression<'sc>>>,
+        contents: Option<Box<TypedExpression>>,
     },
     AbiCast {
-        abi_name: CallPath<'sc>,
-        address: Box<TypedExpression<'sc>>,
+        abi_name: CallPath,
+        address: Box<TypedExpression>,
         #[allow(dead_code)]
         // this span may be used for errors in the future, although it is not right now.
-        span: Span<'sc>,
+        span: Span,
     },
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypedAsmRegisterDeclaration<'sc> {
-    pub(crate) initializer: Option<TypedExpression<'sc>>,
-    pub(crate) name: &'sc str,
-    pub(crate) name_span: Span<'sc>,
+pub(crate) struct TypedAsmRegisterDeclaration {
+    pub(crate) initializer: Option<TypedExpression>,
+    pub(crate) name: Ident,
 }
 
-impl TypedAsmRegisterDeclaration<'_> {
+impl TypedAsmRegisterDeclaration {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         if let Some(ref mut initializer) = self.initializer {
             initializer.copy_types(type_mapping)
@@ -108,7 +107,7 @@ impl TypedAsmRegisterDeclaration<'_> {
     }
 }
 
-impl<'sc> TypedExpressionVariant<'sc> {
+impl TypedExpressionVariant {
     pub(crate) fn pretty_print(&self) -> String {
         match self {
             TypedExpressionVariant::Literal(lit) => format!(
@@ -118,7 +117,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                     Literal::U16(content) => content.to_string(),
                     Literal::U32(content) => content.to_string(),
                     Literal::U64(content) => content.to_string(),
-                    Literal::String(content) => content.to_string(),
+                    Literal::String(content) => content.as_str().to_string(),
                     Literal::Boolean(content) => content.to_string(),
                     Literal::Byte(content) => content.to_string(),
                     Literal::B256(content) => content
@@ -129,7 +128,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 }
             ),
             TypedExpressionVariant::FunctionApplication { name, .. } => {
-                format!("\"{}\" fn entry", name.suffix.primary_name)
+                format!("\"{}\" fn entry", name.suffix.as_str())
             }
             TypedExpressionVariant::LazyOperator { op, .. } => match op {
                 LazyOp::And => "&&".into(),
@@ -146,14 +145,14 @@ impl<'sc> TypedExpressionVariant<'sc> {
             TypedExpressionVariant::Array { .. } => "array".into(),
             TypedExpressionVariant::ArrayIndex { .. } => "[..]".into(),
             TypedExpressionVariant::StructExpression { struct_name, .. } => {
-                format!("\"{}\" struct init", struct_name.primary_name)
+                format!("\"{}\" struct init", struct_name.as_str())
             }
             TypedExpressionVariant::CodeBlock(_) => "code block entry".into(),
             TypedExpressionVariant::FunctionParameter => "fn param access".into(),
             TypedExpressionVariant::IfExp { .. } => "if exp".into(),
             TypedExpressionVariant::AsmExpression { .. } => "inline asm".into(),
             TypedExpressionVariant::AbiCast { abi_name, .. } => {
-                format!("abi cast {}", abi_name.suffix.primary_name)
+                format!("abi cast {}", abi_name.suffix.as_str())
             }
             TypedExpressionVariant::StructFieldAccess {
                 resolved_type_of_parent,
@@ -189,7 +188,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 )
             }
             TypedExpressionVariant::VariableExpression { name, .. } => {
-                format!("\"{}\" variable exp", name.primary_name)
+                format!("\"{}\" variable exp", name.as_str())
             }
             TypedExpressionVariant::EnumInstantiation {
                 tag,
@@ -199,7 +198,9 @@ impl<'sc> TypedExpressionVariant<'sc> {
             } => {
                 format!(
                     "{}::{} enum instantiation (tag: {})",
-                    enum_decl.name.primary_name, variant_name.primary_name, tag
+                    enum_decl.name.as_str(),
+                    variant_name.as_str(),
+                    tag
                 )
             }
         }
@@ -249,7 +250,7 @@ impl<'sc> TypedExpressionVariant<'sc> {
                 }
             }
             AsmExpression {
-                registers, //: Vec<TypedAsmRegisterDeclaration<'sc>>,
+                registers, //: Vec<TypedAsmRegisterDeclaration>,
                 ..
             } => {
                 registers

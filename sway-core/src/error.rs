@@ -1,5 +1,6 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
+use crate::ident::Ident;
 use crate::parser::Rule;
 use crate::span::Span;
 use crate::style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case};
@@ -51,10 +52,7 @@ macro_rules! assert_or_warn {
 }
 
 /// Denotes a non-recoverable state
-pub(crate) fn err<'sc, T>(
-    warnings: Vec<CompileWarning<'sc>>,
-    errors: Vec<CompileError<'sc>>,
-) -> CompileResult<'sc, T> {
+pub(crate) fn err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> CompileResult<T> {
     CompileResult {
         value: None,
         warnings,
@@ -63,11 +61,11 @@ pub(crate) fn err<'sc, T>(
 }
 
 /// Denotes a recovered or non-error state
-pub(crate) fn ok<'sc, T>(
+pub(crate) fn ok<T>(
     value: T,
-    warnings: Vec<CompileWarning<'sc>>,
-    errors: Vec<CompileError<'sc>>,
-) -> CompileResult<'sc, T> {
+    warnings: Vec<CompileWarning>,
+    errors: Vec<CompileError>,
+) -> CompileResult<T> {
     CompileResult {
         value: Some(value),
         warnings,
@@ -76,14 +74,14 @@ pub(crate) fn ok<'sc, T>(
 }
 
 #[derive(Debug, Clone)]
-pub struct CompileResult<'sc, T> {
+pub struct CompileResult<T> {
     pub value: Option<T>,
-    pub warnings: Vec<CompileWarning<'sc>>,
-    pub errors: Vec<CompileError<'sc>>,
+    pub warnings: Vec<CompileWarning>,
+    pub errors: Vec<CompileError>,
 }
 
-impl<'sc, T> From<Result<T, TypeError<'sc>>> for CompileResult<'sc, T> {
-    fn from(o: Result<T, TypeError<'sc>>) -> Self {
+impl<T> From<Result<T, TypeError>> for CompileResult<T> {
+    fn from(o: Result<T, TypeError>) -> Self {
         match o {
             Ok(o) => CompileResult {
                 value: Some(o),
@@ -99,25 +97,25 @@ impl<'sc, T> From<Result<T, TypeError<'sc>>> for CompileResult<'sc, T> {
     }
 }
 
-impl<'sc, T> CompileResult<'sc, T> {
+impl<T> CompileResult<T> {
     pub fn ok(
         mut self,
-        warnings: &mut Vec<CompileWarning<'sc>>,
-        errors: &mut Vec<CompileError<'sc>>,
+        warnings: &mut Vec<CompileWarning>,
+        errors: &mut Vec<CompileError>,
     ) -> Option<T> {
         warnings.append(&mut self.warnings);
         errors.append(&mut self.errors);
         self.value
     }
 
-    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> CompileResult<'sc, U> {
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> CompileResult<U> {
         match self.value {
             None => err(self.warnings, self.errors),
             Some(value) => ok(f(value), self.warnings, self.errors),
         }
     }
 
-    pub fn flat_map<U, F: FnOnce(T) -> CompileResult<'sc, U>>(self, f: F) -> CompileResult<'sc, U> {
+    pub fn flat_map<U, F: FnOnce(T) -> CompileResult<U>>(self, f: F) -> CompileResult<U> {
         match self.value {
             None => err(self.warnings, self.errors),
             Some(value) => {
@@ -131,29 +129,27 @@ impl<'sc, T> CompileResult<'sc, T> {
         }
     }
 
-    pub fn unwrap(
-        self,
-        warnings: &mut Vec<CompileWarning<'sc>>,
-        errors: &mut Vec<CompileError<'sc>>,
-    ) -> T {
+    pub fn unwrap(self, warnings: &mut Vec<CompileWarning>, errors: &mut Vec<CompileError>) -> T {
         let panic_msg = format!("Unwrapped an err {:?}", self.errors);
         self.unwrap_or_else(warnings, errors, || panic!("{}", panic_msg))
     }
 
     pub fn unwrap_or_else<F: FnOnce() -> T>(
         self,
-        warnings: &mut Vec<CompileWarning<'sc>>,
-        errors: &mut Vec<CompileError<'sc>>,
+        warnings: &mut Vec<CompileWarning>,
+        errors: &mut Vec<CompileError>,
         or_else: F,
     ) -> T {
         self.ok(warnings, errors).unwrap_or_else(or_else)
     }
 }
 
+// TODO: since moving to using Idents instead of strings the warning_content will usually contain a
+// duplicate of the span.
 #[derive(Debug, Clone, PartialEq, Hash)]
-pub struct CompileWarning<'sc> {
-    pub span: Span<'sc>,
-    pub warning_content: Warning<'sc>,
+pub struct CompileWarning {
+    pub span: Span,
+    pub warning_content: Warning,
 }
 
 pub struct LineCol {
@@ -170,7 +166,7 @@ impl From<(usize, usize)> for LineCol {
     }
 }
 
-impl<'sc> CompileWarning<'sc> {
+impl CompileWarning {
     pub fn to_friendly_warning_string(&self) -> String {
         self.warning_content.to_string()
     }
@@ -221,27 +217,27 @@ impl<'sc> CompileWarning<'sc> {
 }
 
 #[derive(Debug, Clone, PartialEq, Hash)]
-pub enum Warning<'sc> {
+pub enum Warning {
     NonClassCaseStructName {
-        struct_name: &'sc str,
+        struct_name: Ident,
     },
     NonClassCaseTraitName {
-        name: &'sc str,
+        name: Ident,
     },
     NonClassCaseEnumName {
-        enum_name: &'sc str,
+        enum_name: Ident,
     },
     NonClassCaseEnumVariantName {
-        variant_name: &'sc str,
+        variant_name: Ident,
     },
     NonSnakeCaseStructFieldName {
-        field_name: &'sc str,
+        field_name: Ident,
     },
     NonSnakeCaseFunctionName {
-        name: &'sc str,
+        name: Ident,
     },
     NonScreamingSnakeCaseConstName {
-        name: &'sc str,
+        name: Ident,
     },
     LossOfPrecision {
         initial_type: IntegerBits,
@@ -251,9 +247,9 @@ pub enum Warning<'sc> {
         r#type: TypeInfo,
     },
     SimilarMethodFound {
-        lib: &'sc str,
-        module: &'sc str,
-        name: &'sc str,
+        lib: Ident,
+        module: Ident,
+        name: Ident,
     },
     OverridesOtherSymbol {
         name: String,
@@ -270,11 +266,11 @@ pub enum Warning<'sc> {
     DeadMethod,
     StructFieldNeverRead,
     ShadowingReservedRegister {
-        reg_name: &'sc str,
+        reg_name: Ident,
     },
 }
 
-impl<'sc> fmt::Display for Warning<'sc> {
+impl fmt::Display for Warning {
     // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Warning::*;
@@ -284,7 +280,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Struct name \"{}\" is not idiomatic. Structs should have a ClassCase name, like \
                  \"{}\".",
                 struct_name,
-                to_upper_camel_case(struct_name)
+                to_upper_camel_case(struct_name.as_str())
             )
             }
             NonClassCaseTraitName { name } => {
@@ -292,7 +288,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Trait name \"{}\" is not idiomatic. Traits should have a ClassCase name, like \
                  \"{}\".",
                 name,
-                to_upper_camel_case(name)
+                to_upper_camel_case(name.as_str())
             )
             }
             NonClassCaseEnumName { enum_name } => write!(
@@ -300,28 +296,28 @@ impl<'sc> fmt::Display for Warning<'sc> {
                 "Enum \"{}\"'s capitalization is not idiomatic. Enums should have a ClassCase \
                  name, like \"{}\".",
                 enum_name,
-                to_upper_camel_case(enum_name)
+                to_upper_camel_case(enum_name.as_str())
             ),
             NonSnakeCaseStructFieldName { field_name } => write!(
                 f,
                 "Struct field name \"{}\" is not idiomatic. Struct field names should have a \
                  snake_case name, like \"{}\".",
                 field_name,
-                to_snake_case(field_name)
+                to_snake_case(field_name.as_str())
             ),
             NonClassCaseEnumVariantName { variant_name } => write!(
                 f,
                 "Enum variant name \"{}\" is not idiomatic. Enum variant names should be \
                  ClassCase, like \"{}\".",
                 variant_name,
-                to_upper_camel_case(variant_name)
+                to_upper_camel_case(variant_name.as_str())
             ),
             NonSnakeCaseFunctionName { name } => {
                 write!(f,
                 "Function name \"{}\" is not idiomatic. Function names should be snake_case, like \
                  \"{}\".",
                 name,
-                to_snake_case(name)
+                to_snake_case(name.as_str())
             )
             }
             NonScreamingSnakeCaseConstName { name } => {
@@ -330,7 +326,7 @@ impl<'sc> fmt::Display for Warning<'sc> {
                     "Constant name \"{}\" is not idiomatic. Constant names should be SCREAMING_SNAKE_CASE, like \
                     \"{}\".",
                     name,
-                    to_screaming_snake_case(name),
+                    to_screaming_snake_case(name.as_str()),
                 )
             },
             LossOfPrecision {
@@ -382,18 +378,20 @@ impl<'sc> fmt::Display for Warning<'sc> {
     }
 }
 
+// TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
+// this type.
 #[derive(Error, Debug, Clone, PartialEq, Hash)]
-pub enum CompileError<'sc> {
+pub enum CompileError {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariable { var_name: String, span: Span<'sc> },
+    UnknownVariable { var_name: String, span: Span },
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariablePath { var_name: &'sc str, span: Span<'sc> },
+    UnknownVariablePath { var_name: Ident, span: Span },
     #[error("Function \"{name}\" does not exist in this scope.")]
-    UnknownFunction { name: &'sc str, span: Span<'sc> },
+    UnknownFunction { name: Ident, span: Span },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
     NotAVariable {
         name: String,
-        span: Span<'sc>,
+        span: Span,
         what_it_is: &'static str,
     },
     #[error(
@@ -402,108 +400,105 @@ pub enum CompileError<'sc> {
     )]
     NotAFunction {
         name: String,
-        span: Span<'sc>,
+        span: Span,
         what_it_is: &'static str,
     },
     #[error("Unimplemented feature: {0}")]
-    Unimplemented(&'static str, Span<'sc>),
+    Unimplemented(&'static str, Span),
     #[error("pattern matching algorithm failure on: {0}")]
-    PatternMatchingAlgorithmFailure(&'static str, Span<'sc>),
+    PatternMatchingAlgorithmFailure(&'static str, Span),
     #[error("{0}")]
-    TypeError(TypeError<'sc>),
+    TypeError(TypeError),
     #[error("Error parsing input: expected {err:?}")]
     ParseFailure {
-        span: Span<'sc>,
+        span: Span,
         err: pest::error::Error<Rule>,
     },
     #[error(
         "Invalid top-level item: {0:?}. A program should consist of a contract, script, or \
          predicate at the top level."
     )]
-    InvalidTopLevelItem(Rule, Span<'sc>),
+    InvalidTopLevelItem(Rule, Span),
     #[error(
         "Internal compiler error: {0}\nPlease file an issue on the repository and include the \
          code that triggered this error."
     )]
-    Internal(&'static str, Span<'sc>),
+    Internal(&'static str, Span),
     #[error("Unimplemented feature: {0:?}")]
-    UnimplementedRule(Rule, Span<'sc>),
+    UnimplementedRule(Rule, Span),
     #[error(
         "Byte literal had length of {byte_length}. Byte literals must be either one byte long (8 \
          binary digits or 2 hex digits) or 32 bytes long (256 binary digits or 64 hex digits)"
     )]
-    InvalidByteLiteralLength { byte_length: usize, span: Span<'sc> },
+    InvalidByteLiteralLength { byte_length: usize, span: Span },
     #[error("Expected an expression to follow operator \"{op}\"")]
-    ExpectedExprAfterOp { op: &'sc str, span: Span<'sc> },
+    ExpectedExprAfterOp { op: String, span: Span },
     #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
-    ExpectedOp { op: &'sc str, span: Span<'sc> },
+    ExpectedOp { op: String, span: Span },
     #[error(
         "Where clause was specified but there are no generic type parameters. Where clauses can \
          only be applied to generic type parameters."
     )]
-    UnexpectedWhereClause(Span<'sc>),
+    UnexpectedWhereClause(Span),
     #[error(
         "Specified generic type in where clause \"{type_name}\" not found in generic type \
          arguments of function."
     )]
-    UndeclaredGenericTypeInWhereClause {
-        type_name: &'sc str,
-        span: Span<'sc>,
-    },
+    UndeclaredGenericTypeInWhereClause { type_name: Ident, span: Span },
     #[error(
         "Program contains multiple contracts. A valid program should only contain at most one \
          contract."
     )]
-    MultipleContracts(Span<'sc>),
+    MultipleContracts(Span),
     #[error(
         "Program contains multiple scripts. A valid program should only contain at most one \
          script."
     )]
-    MultipleScripts(Span<'sc>),
+    MultipleScripts(Span),
     #[error(
         "Program contains multiple predicates. A valid program should only contain at most one \
          predicate."
     )]
-    MultiplePredicates(Span<'sc>),
+    MultiplePredicates(Span),
     #[error(
         "Trait constraint was applied to generic type that is not in scope. Trait \
          \"{trait_name}\" cannot constrain type \"{type_name}\" because that type does not exist \
          in this scope."
     )]
     ConstrainedNonExistentType {
-        trait_name: &'sc str,
-        type_name: &'sc str,
-        span: Span<'sc>,
+        trait_name: Ident,
+        type_name: Ident,
+        span: Span,
     },
     #[error(
         "Predicate definition contains multiple main functions. Multiple functions in the same \
          scope cannot have the same name."
     )]
-    MultiplePredicateMainFunctions(Span<'sc>),
+    MultiplePredicateMainFunctions(Span),
     #[error(
         "Predicate declaration contains no main function. Predicates require a main function."
     )]
-    NoPredicateMainFunction(Span<'sc>),
+    NoPredicateMainFunction(Span),
     #[error("A predicate's main function must return a boolean.")]
-    PredicateMainDoesNotReturnBool(Span<'sc>),
+    PredicateMainDoesNotReturnBool(Span),
     #[error("Script declaration contains no main function. Scripts require a main function.")]
-    NoScriptMainFunction(Span<'sc>),
+    NoScriptMainFunction(Span),
     #[error(
         "Script definition contains multiple main functions. Multiple functions in the same scope \
          cannot have the same name."
     )]
-    MultipleScriptMainFunctions(Span<'sc>),
+    MultipleScriptMainFunctions(Span),
     #[error(
         "Attempted to reassign to a symbol that is not a variable. Symbol {name} is not a mutable \
          variable, it is a {kind}."
     )]
     ReassignmentToNonVariable {
-        name: &'sc str,
-        kind: &'sc str,
-        span: Span<'sc>,
+        name: Ident,
+        kind: &'static str,
+        span: Span,
     },
     #[error("Assignment to immutable variable. Variable {0} is not declared as mutable.")]
-    AssignmentToNonMutable(String, Span<'sc>),
+    AssignmentToNonMutable(String, Span),
     #[error(
         "Generic type \"{name}\" is not in scope. Perhaps you meant to specify type parameters in \
          the function signature? For example: \n`fn \
@@ -511,112 +506,112 @@ pub enum CompileError<'sc> {
     )]
     TypeParameterNotInTypeScope {
         name: String,
-        span: Span<'sc>,
+        span: Span,
         comma_separated_generic_params: String,
-        fn_name: &'sc str,
+        fn_name: Ident,
         args: String,
     },
     #[error(
         "Asm opcode has multiple immediates specified, when any opcode has at most one immediate."
     )]
-    MultipleImmediates(Span<'sc>),
+    MultipleImmediates(Span),
     #[error(
         "Expected: {expected} \n\
          found:    {given}. The definition of this function must \
          match the one in the trait declaration."
     )]
     MismatchedTypeInTrait {
-        span: Span<'sc>,
+        span: Span,
         given: String,
         expected: String,
     },
     #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\". ")]
-    NotATrait { span: Span<'sc>, name: &'sc str },
+    NotATrait { span: Span, name: Ident },
     #[error("Trait \"{name}\" cannot be found in the current scope.")]
-    UnknownTrait { span: Span<'sc>, name: &'sc str },
+    UnknownTrait { span: Span, name: Ident },
     #[error("Function \"{name}\" is not a part of trait \"{trait_name}\"'s interface surface.")]
     FunctionNotAPartOfInterfaceSurface {
-        name: &'sc str,
-        trait_name: String,
-        span: Span<'sc>,
+        name: Ident,
+        trait_name: Ident,
+        span: Span,
     },
     #[error("Functions are missing from this trait implementation: {missing_functions}")]
     MissingInterfaceSurfaceMethods {
         missing_functions: String,
-        span: Span<'sc>,
+        span: Span,
     },
     #[error("Expected {expected} type arguments, but instead found {given}.")]
     IncorrectNumberOfTypeArguments {
         given: usize,
         expected: usize,
-        span: Span<'sc>,
+        span: Span,
     },
     #[error(
         "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
     )]
-    StructNotFound { name: &'sc str, span: Span<'sc> },
+    StructNotFound { name: Ident, span: Span },
     #[error(
         "The name \"{name}\" does not refer to a struct, but this is an attempted struct \
          declaration."
     )]
-    DeclaredNonStructAsStruct { name: &'sc str, span: Span<'sc> },
+    DeclaredNonStructAsStruct { name: Ident, span: Span },
     #[error(
         "Attempted to access field \"{field_name}\" of non-struct \"{name}\". Field accesses are \
          only valid on structs."
     )]
     AccessedFieldOfNonStruct {
-        field_name: &'sc str,
-        name: &'sc str,
-        span: Span<'sc>,
+        field_name: Ident,
+        name: Ident,
+        span: Span,
     },
     #[error(
         "Attempted to access a method on something that has no methods. \"{name}\" is a {thing}, \
          not a type with methods."
     )]
     MethodOnNonValue {
-        name: &'sc str,
-        thing: &'sc str,
-        span: Span<'sc>,
+        name: Ident,
+        thing: Ident,
+        span: Span,
     },
     #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
     StructMissingField {
-        field_name: &'sc str,
-        struct_name: &'sc str,
-        span: Span<'sc>,
+        field_name: Ident,
+        struct_name: Ident,
+        span: Span,
     },
     #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
     StructDoesNotHaveField {
-        field_name: &'sc str,
-        struct_name: &'sc str,
-        span: Span<'sc>,
+        field_name: Ident,
+        struct_name: Ident,
+        span: Span,
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
-        span: Span<'sc>,
+        span: Span,
         method_name: String,
         type_name: String,
     },
     #[error("The asterisk, if present, must be the last part of a path. E.g., `use foo::bar::*`.")]
-    NonFinalAsteriskInPath { span: Span<'sc> },
+    NonFinalAsteriskInPath { span: Span },
     #[error("Module \"{name}\" could not be found.")]
-    ModuleNotFound { span: Span<'sc>, name: String },
+    ModuleNotFound { span: Span, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
     NotAStruct {
         name: String,
-        span: Span<'sc>,
+        span: Span,
         actually: String,
     },
     #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
     NotATuple {
         name: String,
-        span: Span<'sc>,
+        span: Span,
         actually: String,
     },
     #[error("\"{name}\" is a {actually}, not an enum.")]
     NotAnEnum {
         name: String,
-        span: Span<'sc>,
+        span: Span,
         actually: String,
     },
     #[error(
@@ -624,140 +619,140 @@ pub enum CompileError<'sc> {
          {available_fields}"
     )]
     FieldNotFound {
-        field_name: &'sc str,
+        field_name: Ident,
         available_fields: String,
         struct_name: String,
-        span: Span<'sc>,
+        span: Span,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { span: Span<'sc>, name: String },
+    SymbolNotFound { span: Span, name: String },
     #[error("Symbol \"{name}\" is private.")]
-    ImportPrivateSymbol { span: Span<'sc>, name: String },
+    ImportPrivateSymbol { span: Span, name: String },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
     )]
-    NoElseBranch { span: Span<'sc>, r#type: String },
+    NoElseBranch { span: Span, r#type: String },
     #[error("Use of type `Self` outside of a context in which `Self` refers to a type.")]
-    UnqualifiedSelfType { span: Span<'sc> },
+    UnqualifiedSelfType { span: Span },
     #[error(
         "Symbol \"{name}\" does not refer to a type, it refers to a {actually_is}. It cannot be \
          used in this position."
     )]
     NotAType {
-        span: Span<'sc>,
+        span: Span,
         name: String,
-        actually_is: &'sc str,
+        actually_is: &'static str,
     },
     #[error(
         "This enum variant requires an instantiation expression. Try initializing it with \
          arguments in parentheses."
     )]
-    MissingEnumInstantiator { span: Span<'sc> },
+    MissingEnumInstantiator { span: Span },
     #[error(
         "This path must return a value of type \"{ty}\" from function \"{function_name}\", but it \
          does not."
     )]
     PathDoesNotReturn {
-        span: Span<'sc>,
+        span: Span,
         ty: String,
-        function_name: &'sc str,
+        function_name: Ident,
     },
     #[error("Expected block to implicitly return a value of type \"{ty}\".")]
-    ExpectedImplicitReturnFromBlockWithType { span: Span<'sc>, ty: String },
+    ExpectedImplicitReturnFromBlockWithType { span: Span, ty: String },
     #[error("Expected block to implicitly return a value.")]
-    ExpectedImplicitReturnFromBlock { span: Span<'sc> },
+    ExpectedImplicitReturnFromBlock { span: Span },
     #[error(
         "This register was not initialized in the initialization section of the ASM expression. \
          Initialized registers are: {initialized_registers}"
     )]
     UnknownRegister {
-        span: Span<'sc>,
+        span: Span,
         initialized_registers: String,
     },
     #[error("This opcode takes an immediate value but none was provided.")]
-    MissingImmediate { span: Span<'sc> },
+    MissingImmediate { span: Span },
     #[error("This immediate value is invalid.")]
-    InvalidImmediateValue { span: Span<'sc> },
+    InvalidImmediateValue { span: Span },
     #[error(
         "This expression was expected to return a value but no return register was specified. \
          Provide a register in the implicit return position of this asm expression to return it."
     )]
-    InvalidAssemblyMismatchedReturn { span: Span<'sc> },
+    InvalidAssemblyMismatchedReturn { span: Span },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
     UnknownEnumVariant {
-        enum_name: &'sc str,
-        variant_name: &'sc str,
-        span: Span<'sc>,
+        enum_name: Ident,
+        variant_name: Ident,
+        span: Span,
     },
     #[error("Unknown opcode: \"{op_name}\".")]
-    UnrecognizedOp { op_name: &'sc str, span: Span<'sc> },
+    UnrecognizedOp { op_name: Ident, span: Span },
     #[error("Unknown type \"{ty}\".")]
-    TypeMustBeKnown { ty: String, span: Span<'sc> },
+    TypeMustBeKnown { ty: String, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 6-bit immediate spot.")]
-    Immediate06TooLarge { val: u64, span: Span<'sc> },
+    Immediate06TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 12-bit immediate spot.")]
-    Immediate12TooLarge { val: u64, span: Span<'sc> },
+    Immediate12TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 18-bit immediate spot.")]
-    Immediate18TooLarge { val: u64, span: Span<'sc> },
+    Immediate18TooLarge { val: u64, span: Span },
     #[error("The value \"{val}\" is too large to fit in this 24-bit immediate spot.")]
-    Immediate24TooLarge { val: u64, span: Span<'sc> },
+    Immediate24TooLarge { val: u64, span: Span },
     #[error("The opcode \"jnei\" is not valid in inline assembly. Use an enclosing if expression instead.")]
-    DisallowedJnei { span: Span<'sc> },
+    DisallowedJnei { span: Span },
     #[error(
         "The opcode \"ji\" is not valid in inline assembly. Try using function calls instead."
     )]
-    DisallowedJi { span: Span<'sc> },
+    DisallowedJi { span: Span },
     #[error(
         "The opcode \"lw\" is not valid in inline assembly. Try assigning a static value to a variable instead."
     )]
-    DisallowedLw { span: Span<'sc> },
+    DisallowedLw { span: Span },
     #[error(
         "This op expects {expected} register(s) as arguments, but you provided {received} register(s)."
     )]
     IncorrectNumberOfAsmRegisters {
-        span: Span<'sc>,
+        span: Span,
         expected: usize,
         received: usize,
     },
     #[error("This op does not take an immediate value.")]
-    UnnecessaryImmediate { span: Span<'sc> },
+    UnnecessaryImmediate { span: Span },
     #[error("This reference is ambiguous, and could refer to either a module or an enum of the same name. Try qualifying the name with a path.")]
-    AmbiguousPath { span: Span<'sc> },
+    AmbiguousPath { span: Span },
     #[error("This value is not valid within a \"str\" type.")]
-    InvalidStrType { raw: String, span: Span<'sc> },
+    InvalidStrType { raw: String, span: Span },
     #[error("Unknown type name.")]
-    UnknownType { span: Span<'sc> },
+    UnknownType { span: Span },
     #[error("Bytecode can only support programs with up to 2^12 words worth of opcodes. Try refactoring into contract calls? This is a temporary error and will be implemented in the future.")]
-    TooManyInstructions { span: Span<'sc> },
+    TooManyInstructions { span: Span },
     #[error(
         "No valid {} file (.{}) was found at {file_path}",
         crate::constants::LANGUAGE_NAME,
         crate::constants::DEFAULT_FILE_EXTENSION
     )]
-    FileNotFound { span: Span<'sc>, file_path: String },
+    FileNotFound { span: Span, file_path: String },
     #[error("The file {file_path} could not be read: {stringified_error}")]
     FileCouldNotBeRead {
-        span: Span<'sc>,
+        span: Span,
         file_path: String,
         stringified_error: String,
     },
     #[error("This imported file must be a library. It must start with \"library <name>\", where \"name\" is the name of the library this file contains.")]
-    ImportMustBeLibrary { span: Span<'sc> },
+    ImportMustBeLibrary { span: Span },
     #[error("An enum instantiaton cannot contain more than one value. This should be a single value of type {ty}.")]
-    MoreThanOneEnumInstantiator { span: Span<'sc>, ty: String },
+    MoreThanOneEnumInstantiator { span: Span, ty: String },
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
-    UnnecessaryEnumInstantiator { span: Span<'sc> },
+    UnnecessaryEnumInstantiator { span: Span },
     #[error("Trait \"{name}\" does not exist in this scope.")]
-    TraitNotFound { name: &'sc str, span: Span<'sc> },
+    TraitNotFound { name: Ident, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
-    InvalidExpressionOnLhs { span: Span<'sc> },
+    InvalidExpressionOnLhs { span: Span },
     #[error(
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooManyArgumentsForFunction {
-        span: Span<'sc>,
-        method_name: &'sc str,
+        span: Span,
+        method_name: Ident,
         expected: usize,
         received: usize,
     },
@@ -765,94 +760,90 @@ pub enum CompileError<'sc> {
         "Function \"{method_name}\" expects {expected} arguments but you provided {received}."
     )]
     TooFewArgumentsForFunction {
-        span: Span<'sc>,
-        method_name: &'sc str,
+        span: Span,
+        method_name: Ident,
         expected: usize,
         received: usize,
     },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
-    InvalidAbiType { span: Span<'sc> },
+    InvalidAbiType { span: Span },
     #[error("An ABI function must accept exactly four arguments.")]
-    InvalidNumberOfAbiParams { span: Span<'sc> },
+    InvalidNumberOfAbiParams { span: Span },
     #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
     NotAnAbi {
-        span: Span<'sc>,
+        span: Span,
         actually_is: &'static str,
     },
     #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
-    ImplAbiForNonContract { span: Span<'sc>, ty: String },
+    ImplAbiForNonContract { span: Span, ty: String },
     #[error("The trait function \"{fn_name}\" in trait \"{trait_name}\" expects {num_args} arguments, but the provided implementation only takes {provided_args} arguments.")]
     IncorrectNumberOfInterfaceSurfaceFunctionParameters {
-        fn_name: &'sc str,
-        trait_name: &'sc str,
+        fn_name: Ident,
+        trait_name: Ident,
         num_args: usize,
         provided_args: usize,
-        span: Span<'sc>,
+        span: Span,
     },
     #[error("For now, ABI functions must take exactly four parameters, in this order: gas_to_forward: u64, coins_to_forward: u64, color_of_coins: b256, <your_function_parameter>: ?")]
-    AbiFunctionRequiresSpecificSignature { span: Span<'sc> },
+    AbiFunctionRequiresSpecificSignature { span: Span },
     #[error("This parameter was declared as type {should_be}, but argument of type {provided} was provided.")]
     ArgumentParameterTypeMismatch {
-        span: Span<'sc>,
+        span: Span,
         should_be: String,
         provided: String,
     },
     #[error("Function {fn_name} is recursive, which is unsupported at this time.")]
-    RecursiveCall { fn_name: &'sc str, span: Span<'sc> },
+    RecursiveCall { fn_name: Ident, span: Span },
     #[error(
         "Function {fn_name} is recursive via {call_chain}, which is unsupported at this time."
     )]
     RecursiveCallChain {
-        fn_name: &'sc str,
+        fn_name: Ident,
         call_chain: String, // Pretty list of symbols, e.g., "a, b and c".
-        span: Span<'sc>,
+        span: Span,
     },
     #[error(
         "The size of this type is not known. Try putting it on the heap or changing the type."
     )]
-    TypeWithUnknownSize { span: Span<'sc> },
+    TypeWithUnknownSize { span: Span },
     #[error("File {file_path} generates an infinite dependency cycle.")]
-    InfiniteDependencies { file_path: String, span: Span<'sc> },
+    InfiniteDependencies { file_path: String, span: Span },
     #[error("The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.")]
-    GMFromExternalContract { span: Span<'sc> },
+    GMFromExternalContract { span: Span },
     #[error("The MINT opcode cannot be used in an external context.")]
-    MintFromExternalContext { span: Span<'sc> },
+    MintFromExternalContext { span: Span },
     #[error("The BURN opcode cannot be used in an external context.")]
-    BurnFromExternalContext { span: Span<'sc> },
+    BurnFromExternalContext { span: Span },
     #[error("Contract storage cannot be used in an external context.")]
-    ContractStorageFromExternalContext { span: Span<'sc> },
+    ContractStorageFromExternalContext { span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
-    ArrayOutOfBounds {
-        index: u64,
-        count: u64,
-        span: Span<'sc>,
-    },
+    ArrayOutOfBounds { index: u64, count: u64, span: Span },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
          "
     )]
-    MatchWrongType { expected: TypeId, span: Span<'sc> },
+    MatchWrongType { expected: TypeId, span: Span },
     #[error("Impure function called inside of pure function. Pure functions can only call other pure functions. Try making the surrounding function impure by prepending \"impure\" to the function declaration.")]
-    PureCalledImpure { span: Span<'sc> },
+    PureCalledImpure { span: Span },
     #[error("Impure function inside of non-contract. Contract storage is only accessible from contracts.")]
-    ImpureInNonContract { span: Span<'sc> },
+    ImpureInNonContract { span: Span },
     #[error("Literal value is too large for type {ty}.")]
-    IntegerTooLarge { span: Span<'sc>, ty: String },
+    IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
-    IntegerTooSmall { span: Span<'sc>, ty: String },
+    IntegerTooSmall { span: Span, ty: String },
     #[error("Literal value contains digits which are not valid for type {ty}.")]
-    IntegerContainsInvalidDigit { span: Span<'sc>, ty: String },
+    IntegerContainsInvalidDigit { span: Span, ty: String },
 }
 
-impl<'sc> std::convert::From<TypeError<'sc>> for CompileError<'sc> {
-    fn from(other: TypeError<'sc>) -> CompileError<'sc> {
+impl std::convert::From<TypeError> for CompileError {
+    fn from(other: TypeError) -> CompileError {
         CompileError::TypeError(other)
     }
 }
 
 #[derive(Error, Debug, Clone, PartialEq, Hash)]
-pub enum TypeError<'sc> {
+pub enum TypeError {
     #[error(
         "Mismatched types.\n\
          expected: {expected}\n\
@@ -863,14 +854,14 @@ pub enum TypeError<'sc> {
         expected: TypeId,
         received: TypeId,
         help_text: String,
-        span: Span<'sc>,
+        span: Span,
     },
     #[error("This type is not known. Try annotating it with a type annotation.")]
-    UnknownType { span: Span<'sc> },
+    UnknownType { span: Span },
 }
 
-impl<'sc> TypeError<'sc> {
-    pub(crate) fn internal_span(&self) -> &Span<'sc> {
+impl TypeError {
+    pub(crate) fn internal_span(&self) -> &Span {
         use TypeError::*;
         match self {
             MismatchedType { span, .. } => span,
@@ -879,7 +870,7 @@ impl<'sc> TypeError<'sc> {
     }
 }
 
-impl<'sc> CompileError<'sc> {
+impl CompileError {
     pub fn to_friendly_error_string(&self) -> String {
         match self {
             CompileError::ParseFailure { err, .. } => format!(
@@ -928,7 +919,7 @@ impl<'sc> CompileError<'sc> {
         self.internal_span().path()
     }
 
-    pub fn internal_span(&self) -> &Span<'sc> {
+    pub fn internal_span(&self) -> &Span {
         use CompileError::*;
         match self {
             UnknownVariable { span, .. } => span,

@@ -8,6 +8,7 @@ use crate::{
 };
 use std::fs::File;
 use std::io::Write;
+use std::sync::Arc;
 use sway_core::{FinalizedAsm, TreeType};
 use sway_utils::{constants, find_manifest_dir};
 
@@ -105,11 +106,11 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib<'source, 'manifest>(
+fn compile_dependency_lib<'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
-    namespace: &mut Namespace<'source>,
+    namespace: &mut Namespace,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
     offline_mode: bool,
@@ -232,14 +233,14 @@ fn compile_dependency_lib<'source, 'manifest>(
     Ok(())
 }
 
-fn compile_library<'source>(
-    source: &'source str,
+fn compile_library(
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<Namespace<'source>, String> {
+) -> Result<Namespace, String> {
     let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
@@ -263,10 +264,10 @@ fn compile_library<'source>(
     }
 }
 
-fn compile<'source>(
-    source: &'source str,
+fn compile(
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
@@ -283,19 +284,19 @@ fn compile<'source>(
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
             print_on_failure(silent_mode, warnings, errors);
-            return Err(format!("Failed to compile {}", proj_name));
+            Err(format!("Failed to compile {}", proj_name))
         }
     }
 }
 
-fn compile_to_asm<'sc>(
-    source: &'sc str,
+fn compile_to_asm(
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'sc>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<FinalizedAsm<'sc>, String> {
+) -> Result<FinalizedAsm, String> {
     let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {

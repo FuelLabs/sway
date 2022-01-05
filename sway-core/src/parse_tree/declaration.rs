@@ -29,27 +29,27 @@ use crate::*;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub enum Declaration<'sc> {
-    VariableDeclaration(VariableDeclaration<'sc>),
-    FunctionDeclaration(FunctionDeclaration<'sc>),
-    TraitDeclaration(TraitDeclaration<'sc>),
-    StructDeclaration(StructDeclaration<'sc>),
-    EnumDeclaration(EnumDeclaration<'sc>),
-    Reassignment(Reassignment<'sc>),
-    ImplTrait(ImplTrait<'sc>),
-    ImplSelf(ImplSelf<'sc>),
-    AbiDeclaration(AbiDeclaration<'sc>),
-    ConstantDeclaration(ConstantDeclaration<'sc>),
-    StorageDeclaration(StorageDeclaration<'sc>),
+pub enum Declaration {
+    VariableDeclaration(VariableDeclaration),
+    FunctionDeclaration(FunctionDeclaration),
+    TraitDeclaration(TraitDeclaration),
+    StructDeclaration(StructDeclaration),
+    EnumDeclaration(EnumDeclaration),
+    Reassignment(Reassignment),
+    ImplTrait(ImplTrait),
+    ImplSelf(ImplSelf),
+    AbiDeclaration(AbiDeclaration),
+    ConstantDeclaration(ConstantDeclaration),
+    StorageDeclaration(StorageDeclaration),
 }
-impl<'sc> Declaration<'sc> {
+impl Declaration {
     pub(crate) fn parse_non_var_from_pair(
-        decl: Pair<'sc, Rule>,
+        decl: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut pair = decl.clone().into_inner();
+        let mut pair = decl.into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
             Rule::non_var_decl => check!(
@@ -129,12 +129,12 @@ impl<'sc> Declaration<'sc> {
         ok(parsed_declaration, warnings, errors)
     }
     pub(crate) fn parse_from_pair(
-        decl: Pair<'sc, Rule>,
+        decl: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut pair = decl.clone().into_inner();
+        let mut pair = decl.into_inner();
         let decl_inner = pair.next().unwrap();
         let parsed_declaration = match decl_inner.as_rule() {
             Rule::fn_decl => Declaration::FunctionDeclaration(check!(

@@ -9,21 +9,21 @@ use pest::iterators::Pair;
 /// An `abi` declaration, which declares an interface for a contract
 /// to implement or for a caller to use to call a contract.
 #[derive(Debug, Clone)]
-pub struct AbiDeclaration<'sc> {
+pub struct AbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
-    pub(crate) name: Ident<'sc>,
+    pub(crate) name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
-    pub(crate) interface_surface: Vec<TraitFn<'sc>>,
+    pub(crate) interface_surface: Vec<TraitFn>,
     /// The methods provided to a contract "for free" upon opting in to this interface
-    pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
-    pub(crate) span: Span<'sc>,
+    pub(crate) methods: Vec<FunctionDeclaration>,
+    pub(crate) span: Span,
 }
 
-impl<'sc> AbiDeclaration<'sc> {
+impl AbiDeclaration {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let span = Span {
             span: pair.as_span(),
             path: config.map(|c| c.path()),

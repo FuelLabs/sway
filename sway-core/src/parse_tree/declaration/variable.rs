@@ -3,10 +3,10 @@ use crate::Span;
 use crate::{type_engine::TypeInfo, Ident};
 
 #[derive(Debug, Clone)]
-pub struct VariableDeclaration<'sc> {
-    pub name: Ident<'sc>,
+pub struct VariableDeclaration {
+    pub name: Ident,
     pub type_ascription: TypeInfo,
-    pub type_ascription_span: Option<Span<'sc>>,
-    pub body: Expression<'sc>, // will be codeblock variant
+    pub type_ascription_span: Option<Span>,
+    pub body: Expression, // will be codeblock variant
     pub is_mutable: bool,
 }

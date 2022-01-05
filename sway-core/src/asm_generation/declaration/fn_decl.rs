@@ -5,11 +5,11 @@ use crate::{
     TypedFunctionDeclaration,
 };
 
-pub(crate) fn convert_fn_decl_to_asm<'sc>(
-    _decl: &TypedFunctionDeclaration<'sc>,
+pub(crate) fn convert_fn_decl_to_asm(
+    _decl: &TypedFunctionDeclaration,
     _namespace: &mut AsmNamespace,
     _register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     // for now, we inline all functions as a shortcut.
     ok(vec![], vec![], vec![])
 }
