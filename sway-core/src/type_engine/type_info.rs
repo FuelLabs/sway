@@ -40,7 +40,7 @@ pub enum TypeInfo {
         address: String,
         // TODO(static span): the above String should be a TypedExpression
         //        #[derivative(PartialEq = "ignore", Hash = "ignore")]
-        //        address: Box<TypedExpression<'sc>>,
+        //        address: Box<TypedExpression>,
     },
     /// A custom type could be a struct or similar if the name is in scope,
     /// or just a generic parameter if it is not.
@@ -69,10 +69,10 @@ impl Default for TypeInfo {
 }
 
 impl TypeInfo {
-    pub(crate) fn parse_from_pair<'sc>(
-        input: Pair<'sc, Rule>,
+    pub(crate) fn parse_from_pair(
+        input: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         match input.as_rule() {
             Rule::type_name | Rule::generic_type_param => (),
             _ => {
@@ -90,10 +90,10 @@ impl TypeInfo {
         Self::parse_from_pair_inner(input.into_inner().next().unwrap(), config)
     }
 
-    fn parse_from_pair_inner<'sc>(
-        input: Pair<'sc, Rule>,
+    fn parse_from_pair_inner(
+        input: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let span = Span {
@@ -307,10 +307,7 @@ impl TypeInfo {
     }
 
     /// maps a type to a name that is used when constructing function selectors
-    pub(crate) fn to_selector_name<'sc>(
-        &self,
-        error_msg_span: &Span<'sc>,
-    ) -> CompileResult<'sc, String> {
+    pub(crate) fn to_selector_name(&self, error_msg_span: &Span) -> CompileResult<String> {
         use TypeInfo::*;
         let name = match self {
             Str(len) => format!("str[{}]", len),
@@ -408,10 +405,7 @@ impl TypeInfo {
         ok(name, vec![], vec![])
     }
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
-    pub(crate) fn size_in_words<'sc>(
-        &self,
-        err_span: &Span<'sc>,
-    ) -> Result<u64, CompileError<'sc>> {
+    pub(crate) fn size_in_words(&self, err_span: &Span) -> Result<u64, CompileError> {
         match self {
             // Each char is a byte, so the size is the num of characters / 8
             // rounded up to the nearest word
@@ -549,9 +543,9 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn matches_type_parameter<'sc>(
+    pub(crate) fn matches_type_parameter(
         &self,
-        mapping: &[(TypeParameter<'sc>, TypeId)],
+        mapping: &[(TypeParameter, TypeId)],
     ) -> Option<TypeId> {
         use TypeInfo::*;
         match self {
@@ -628,7 +622,7 @@ impl TypeInfo {
                     let new_field =
                         match look_up_type_id(fields[index]).matches_type_parameter(mapping) {
                             Some(new_field_id) => insert_type(TypeInfo::Ref(new_field_id)),
-                            None => fields[index].clone(),
+                            None => fields[index],
                         };
                     new_fields.push(new_field);
                     index += 1;

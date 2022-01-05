@@ -20,7 +20,6 @@ fuel-tx = "0.1"
 fuel-vm = "0.1"
 futures = "0.3"
 hex = "0.4.3"
-pest = { version = "3.0", package = "fuel-pest" }
 prettydiff = "0.4.0"
 reqwest = { version = "0.11.4", features = ["json"] }
 semver = "1.0.3"

@@ -29,64 +29,64 @@ pub(crate) use unary_op::UnaryOp;
 
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]
-pub enum Expression<'sc> {
+pub enum Expression {
     Literal {
-        value: Literal<'sc>,
-        span: Span<'sc>,
+        value: Literal,
+        span: Span,
     },
     FunctionApplication {
-        name: CallPath<'sc>,
-        arguments: Vec<Expression<'sc>>,
-        type_arguments: Vec<(TypeInfo, Span<'sc>)>,
-        span: Span<'sc>,
+        name: CallPath,
+        arguments: Vec<Expression>,
+        type_arguments: Vec<(TypeInfo, Span)>,
+        span: Span,
     },
     LazyOperator {
         op: LazyOp,
-        lhs: Box<Expression<'sc>>,
-        rhs: Box<Expression<'sc>>,
-        span: Span<'sc>,
+        lhs: Box<Expression>,
+        rhs: Box<Expression>,
+        span: Span,
     },
     VariableExpression {
-        name: Ident<'sc>,
-        span: Span<'sc>,
+        name: Ident,
+        span: Span,
     },
     Tuple {
-        fields: Vec<Expression<'sc>>,
-        span: Span<'sc>,
+        fields: Vec<Expression>,
+        span: Span,
     },
     Array {
-        contents: Vec<Expression<'sc>>,
-        span: Span<'sc>,
+        contents: Vec<Expression>,
+        span: Span,
     },
     MatchExpression {
-        primary_expression: Box<Expression<'sc>>,
-        branches: Vec<MatchBranch<'sc>>,
-        span: Span<'sc>,
+        primary_expression: Box<Expression>,
+        branches: Vec<MatchBranch>,
+        span: Span,
     },
     StructExpression {
-        struct_name: Ident<'sc>,
-        fields: Vec<StructExpressionField<'sc>>,
-        span: Span<'sc>,
+        struct_name: Ident,
+        fields: Vec<StructExpressionField>,
+        span: Span,
     },
     CodeBlock {
-        contents: CodeBlock<'sc>,
-        span: Span<'sc>,
+        contents: CodeBlock,
+        span: Span,
     },
     IfExp {
-        condition: Box<Expression<'sc>>,
-        then: Box<Expression<'sc>>,
-        r#else: Option<Box<Expression<'sc>>>,
-        span: Span<'sc>,
+        condition: Box<Expression>,
+        then: Box<Expression>,
+        r#else: Option<Box<Expression>>,
+        span: Span,
     },
     // separated into other struct for parsing reasons
     AsmExpression {
-        span: Span<'sc>,
-        asm: AsmExpression<'sc>,
+        span: Span,
+        asm: AsmExpression,
     },
     MethodApplication {
-        method_name: MethodName<'sc>,
-        arguments: Vec<Expression<'sc>>,
-        span: Span<'sc>,
+        method_name: MethodName,
+        arguments: Vec<Expression>,
+        span: Span,
     },
     /// A _subfield expression_ is anything of the form:
     /// ```ignore
@@ -94,9 +94,9 @@ pub enum Expression<'sc> {
     /// ```
     ///
     SubfieldExpression {
-        prefix: Box<Expression<'sc>>,
-        span: Span<'sc>,
-        field_to_access: Ident<'sc>,
+        prefix: Box<Expression>,
+        span: Span,
+        field_to_access: Ident,
     },
     /// A _delineated path_ is anything of the form:
     /// ```ignore
@@ -120,21 +120,21 @@ pub enum Expression<'sc> {
     /// MyEnum::Variant1
     /// ```
     DelineatedPath {
-        call_path: CallPath<'sc>,
-        args: Vec<Expression<'sc>>,
-        span: Span<'sc>,
+        call_path: CallPath,
+        args: Vec<Expression>,
+        span: Span,
         type_arguments: Vec<TypeInfo>,
     },
     /// A cast of a hash to an ABI for calling a contract.
     AbiCast {
-        abi_name: CallPath<'sc>,
-        address: Box<Expression<'sc>>,
-        span: Span<'sc>,
+        abi_name: CallPath,
+        address: Box<Expression>,
+        span: Span,
     },
     ArrayIndex {
-        prefix: Box<Expression<'sc>>,
-        index: Box<Expression<'sc>>,
-        span: Span<'sc>,
+        prefix: Box<Expression>,
+        index: Box<Expression>,
+        span: Span,
     },
     /// This variant serves as a stand-in for parsing-level match expression desugaring.
     /// Because types cannot be known at parsing-time, a desugared struct or enum gets
@@ -143,30 +143,30 @@ pub enum Expression<'sc> {
     /// expression inside of the delayed resolution has the appropriate struct or enum
     /// type)
     DelayedMatchTypeResolution {
-        variant: DelayedResolutionVariant<'sc>,
-        span: Span<'sc>,
+        variant: DelayedResolutionVariant,
+        span: Span,
     },
 }
 
 #[derive(Debug, Clone)]
-pub enum DelayedResolutionVariant<'sc> {
-    StructField(DelayedStructFieldResolution<'sc>),
-    EnumVariant(DelayedEnumVariantResolution<'sc>),
+pub enum DelayedResolutionVariant {
+    StructField(DelayedStructFieldResolution),
+    EnumVariant(DelayedEnumVariantResolution),
 }
 
 /// During type checking, this gets replaced with struct field access.
 #[derive(Debug, Clone)]
-pub struct DelayedStructFieldResolution<'sc> {
-    pub exp: Box<Expression<'sc>>,
-    pub struct_name: Ident<'sc>,
-    pub field: Ident<'sc>,
+pub struct DelayedStructFieldResolution {
+    pub exp: Box<Expression>,
+    pub struct_name: Ident,
+    pub field: Ident,
 }
 
 /// During type checking, this gets replaced with enum arg access.
 #[derive(Debug, Clone)]
-pub struct DelayedEnumVariantResolution<'sc> {
-    pub exp: Box<Expression<'sc>>,
-    pub call_path: CallPath<'sc>,
+pub struct DelayedEnumVariantResolution {
+    pub exp: Box<Expression>,
+    pub call_path: CallPath,
     pub arg_num: usize,
 }
 
@@ -187,26 +187,20 @@ impl LazyOp {
 }
 
 #[derive(Debug, Clone)]
-pub struct StructExpressionField<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) value: Expression<'sc>,
-    pub(crate) span: Span<'sc>,
+pub struct StructExpressionField {
+    pub(crate) name: Ident,
+    pub(crate) value: Expression,
+    pub(crate) span: Span,
 }
 
-impl<'sc> Expression<'sc> {
-    pub(crate) fn core_ops_eq(arguments: Vec<Expression<'sc>>, span: Span<'sc>) -> Expression<'sc> {
+impl Expression {
+    pub(crate) fn core_ops_eq(arguments: Vec<Expression>, span: Span) -> Expression {
         Expression::MethodApplication {
             method_name: MethodName::FromType {
                 call_path: CallPath {
                     prefixes: vec![
-                        Ident {
-                            primary_name: "core",
-                            span: span.clone(),
-                        },
-                        Ident {
-                            primary_name: "ops",
-                            span: span.clone(),
-                        },
+                        Ident::new_with_override("core", span.clone()),
+                        Ident::new_with_override("ops", span.clone()),
                     ],
                     suffix: Op {
                         op_variant: OpVariant::Equals,
@@ -222,23 +216,13 @@ impl<'sc> Expression<'sc> {
         }
     }
 
-    pub(crate) fn core_ops(
-        op: Op<'sc>,
-        arguments: Vec<Expression<'sc>>,
-        span: Span<'sc>,
-    ) -> Expression<'sc> {
+    pub(crate) fn core_ops(op: Op, arguments: Vec<Expression>, span: Span) -> Expression {
         Expression::MethodApplication {
             method_name: MethodName::FromType {
                 call_path: CallPath {
                     prefixes: vec![
-                        Ident {
-                            primary_name: "core",
-                            span: span.clone(),
-                        },
-                        Ident {
-                            primary_name: "ops",
-                            span: span.clone(),
-                        },
+                        Ident::new_with_override("core", span.clone()),
+                        Ident::new_with_override("ops", span.clone()),
                     ],
                     suffix: op.to_var_name(),
                 },
@@ -250,7 +234,7 @@ impl<'sc> Expression<'sc> {
         }
     }
 
-    pub(crate) fn span(&self) -> Span<'sc> {
+    pub(crate) fn span(&self) -> Span {
         use Expression::*;
         (match self {
             Literal { span, .. } => span,
@@ -274,9 +258,9 @@ impl<'sc> Expression<'sc> {
         .clone()
     }
     pub(crate) fn parse_from_pair(
-        expr: Pair<'sc, Rule>,
+        expr: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -300,7 +284,7 @@ impl<'sc> Expression<'sc> {
             vec![Either::Right(first_expr.clone())];
         // sometimes exprs are followed by ops in the same expr
         while let Some(op) = expr_iter.next() {
-            let op_str = op.as_str();
+            let op_str = op.as_str().to_string();
             let op_span = Span {
                 span: op.as_span(),
                 path: path.clone(),
@@ -373,9 +357,9 @@ impl<'sc> Expression<'sc> {
     }
 
     pub(crate) fn parse_from_pair_inner(
-        expr: Pair<'sc, Rule>,
+        expr: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
@@ -386,7 +370,7 @@ impl<'sc> Expression<'sc> {
         #[allow(unused_assignments)]
         let mut maybe_type_args = Vec::new();
         let parsed = match expr.as_rule() {
-            Rule::literal_value => Literal::parse_from_pair(expr.clone(), config)
+            Rule::literal_value => Literal::parse_from_pair(expr, config)
                 .map(|(value, span)| Expression::Literal { value, span })
                 .unwrap_or_else(&mut warnings, &mut errors, || Expression::Tuple {
                     fields: vec![],
@@ -464,10 +448,7 @@ impl<'sc> Expression<'sc> {
                         Rule::var_name_ident => {
                             name = Some(check!(
                                 Ident::parse_from_pair(pair, config),
-                                Ident {
-                                    primary_name: "error parsing var name",
-                                    span: span.clone()
-                                },
+                                Ident::new_with_override("error parsing var name", span.clone()),
                                 warnings,
                                 errors
                             ));
@@ -488,7 +469,7 @@ impl<'sc> Expression<'sc> {
                     parse_array_elems(array_elems, config),
                     Expression::Tuple {
                         fields: vec![],
-                        span: span.clone()
+                        span,
                     },
                     warnings,
                     errors
@@ -522,13 +503,12 @@ impl<'sc> Expression<'sc> {
                     );
                     branches.push(res);
                 }
-                let exp = check!(
+                check!(
                     desugar_match_expression(primary_expression, branches, span),
                     return err(warnings, errors),
                     warnings,
                     errors
-                );
-                exp
+                )
             }
             Rule::struct_expression => {
                 let mut expr_iter = expr.into_inner();
@@ -571,7 +551,7 @@ impl<'sc> Expression<'sc> {
                 }
             }
             Rule::parenthesized_expression => {
-                let expr = check!(
+                check!(
                     Expression::parse_from_pair(expr.clone().into_inner().next().unwrap(), config),
                     Expression::Tuple {
                         fields: vec![],
@@ -582,8 +562,7 @@ impl<'sc> Expression<'sc> {
                     },
                     warnings,
                     errors
-                );
-                expr
+                )
             }
             Rule::code_block => {
                 let whole_block_span = Span {
@@ -995,10 +974,10 @@ impl<'sc> Expression<'sc> {
     }
 }
 
-fn convert_unary_to_fn_calls<'sc>(
-    item: Pair<'sc, Rule>,
+fn convert_unary_to_fn_calls(
+    item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<'sc, Expression<'sc>> {
+) -> CompileResult<Expression> {
     let iter = item.into_inner();
     let mut unary_stack = vec![];
     let mut warnings = vec![];
@@ -1041,10 +1020,10 @@ fn convert_unary_to_fn_calls<'sc>(
     ok(expr, warnings, errors)
 }
 
-pub(crate) fn parse_array_index<'sc>(
-    item: Pair<'sc, Rule>,
+pub(crate) fn parse_array_index(
+    item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<'sc, Expression<'sc>> {
+) -> CompileResult<Expression> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let path = config.map(|c| c.path());
@@ -1070,7 +1049,7 @@ pub(crate) fn parse_array_index<'sc>(
         prefix: Box::new(prefix),
         index: Box::new(first_index.to_owned()),
         span: Span {
-            span,
+            span: span.clone(),
             path: path.clone(),
         },
     };
@@ -1079,7 +1058,7 @@ pub(crate) fn parse_array_index<'sc>(
             prefix: Box::new(exp),
             index: Box::new(index),
             span: Span {
-                span,
+                span: span.clone(),
                 path: path.clone(),
             },
         };
@@ -1087,10 +1066,10 @@ pub(crate) fn parse_array_index<'sc>(
     ok(exp, warnings, errors)
 }
 
-fn parse_subfield_path<'sc>(
-    item: Pair<'sc, Rule>,
+fn parse_subfield_path(
+    item: Pair<Rule>,
     config: Option<&BuildConfig>,
-) -> CompileResult<'sc, Expression<'sc>> {
+) -> CompileResult<Expression> {
     let warnings = vec![];
     let mut errors = vec![];
     let path = config.map(|c| c.path());
@@ -1128,10 +1107,7 @@ fn parse_subfield_path<'sc>(
 // A call item is parsed as either an `ident` or a parenthesized `expr`. This method's job is to
 // figure out which variant of `call_item` this is and turn it into either a variable expression
 // or parse it as an expression otherwise.
-fn parse_call_item<'sc>(
-    item: Pair<'sc, Rule>,
-    config: Option<&BuildConfig>,
-) -> CompileResult<'sc, Expression<'sc>> {
+fn parse_call_item(item: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Expression> {
     let mut warnings = vec![];
     let mut errors = vec![];
     assert_eq!(item.as_rule(), Rule::call_item);
@@ -1160,10 +1136,7 @@ fn parse_call_item<'sc>(
     ok(exp, warnings, errors)
 }
 
-fn parse_array_elems<'sc>(
-    elems: Pair<'sc, Rule>,
-    config: Option<&BuildConfig>,
-) -> CompileResult<'sc, Expression<'sc>> {
+fn parse_array_elems(elems: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Expression> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
@@ -1237,7 +1210,7 @@ fn parse_array_elems<'sc>(
     ok(Expression::Array { contents, span }, warnings, errors)
 }
 
-fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileResult<'sc, Op<'sc>> {
+fn parse_op(op: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Op> {
     let path = config.map(|c| c.path());
     use OpVariant::*;
     let mut errors = Vec::new();
@@ -1260,7 +1233,7 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
         "<=" => LessThanOrEqualTo,
         a => {
             errors.push(CompileError::ExpectedOp {
-                op: a,
+                op: a.to_string(),
                 span: Span {
                     span: op.as_span(),
                     path,
@@ -1283,20 +1256,17 @@ fn parse_op<'sc>(op: Pair<'sc, Rule>, config: Option<&BuildConfig>) -> CompileRe
 }
 
 #[derive(Debug)]
-pub(crate) struct Op<'sc> {
-    pub span: Span<'sc>,
+pub(crate) struct Op {
+    pub span: Span,
     pub op_variant: OpVariant,
 }
 
-impl<'sc> Op<'sc> {
-    pub fn to_var_name(&self) -> Ident<'sc> {
-        Ident {
-            primary_name: self.op_variant.as_str(),
-            span: self.span.clone(),
-            // TODO this should be a method exp not a var name
-        }
+impl Op {
+    pub fn to_var_name(&self) -> Ident {
+        Ident::new_with_override(self.op_variant.as_str(), self.span.clone())
     }
 }
+
 #[derive(Debug)]
 pub enum OpVariant {
     Add,
@@ -1368,10 +1338,10 @@ impl OpVariant {
     }
 }
 
-fn arrange_by_order_of_operations<'sc>(
-    expressions: Vec<Either<Op<'sc>, Expression<'sc>>>,
-    debug_span: Span<'sc>,
-) -> CompileResult<'sc, Expression<'sc>> {
+fn arrange_by_order_of_operations(
+    expressions: Vec<Either<Op, Expression>>,
+    debug_span: Span,
+) -> CompileResult<Expression> {
     let mut errors = Vec::new();
     let warnings = Vec::new();
     let mut expression_stack = Vec::new();
@@ -1471,11 +1441,11 @@ fn arrange_by_order_of_operations<'sc>(
     ok(expression_stack[0].clone(), warnings, errors)
 }
 
-struct MatchedBranch<'sc> {
-    result: Expression<'sc>,
-    match_req_map: Vec<(Expression<'sc>, Expression<'sc>)>,
-    match_impl_map: Vec<(Ident<'sc>, Expression<'sc>)>,
-    branch_span: Span<'sc>,
+struct MatchedBranch {
+    result: Expression,
+    match_req_map: Vec<(Expression, Expression)>,
+    match_impl_map: Vec<(Ident, Expression)>,
+    branch_span: Span,
 }
 
 /// This algorithm desugars match expressions to if statements.
@@ -1522,11 +1492,11 @@ struct MatchedBranch<'sc> {
 ///     2b. Assemble the statements that go inside of the body of the if expression
 ///     2c. Assemble the giant if statement.
 /// 3. Return!
-pub fn desugar_match_expression<'sc>(
-    primary_expression: Expression<'sc>,
-    branches: Vec<MatchBranch<'sc>>,
-    _span: Span<'sc>,
-) -> CompileResult<'sc, Expression<'sc>> {
+pub fn desugar_match_expression(
+    primary_expression: Expression,
+    branches: Vec<MatchBranch>,
+    _span: Span,
+) -> CompileResult<Expression> {
     let mut errors = vec![];
     let mut warnings = vec![];
 
@@ -1613,7 +1583,7 @@ pub fn desugar_match_expression<'sc>(
                 type_ascription: TypeInfo::Unknown,
                 type_ascription_span: None,
             });
-            let new_span = join_spans(left_impl.span.clone(), right_impl.span());
+            let new_span = join_spans(left_impl.span().clone(), right_impl.span());
             code_block_stmts.push(AstNode {
                 content: AstNodeContent::Declaration(decl),
                 span: new_span.clone(),

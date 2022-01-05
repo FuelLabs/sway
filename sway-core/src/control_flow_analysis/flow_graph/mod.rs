@@ -18,13 +18,13 @@ pub type ExitPoint = NodeIndex;
 /// A graph that can be used to model the control flow of a fuel HLL program.
 /// This graph is used as the basis for all of the algorithms in the control flow analysis portion
 /// of the compiler.
-pub struct ControlFlowGraph<'sc> {
-    pub(crate) graph: Graph<'sc>,
+pub struct ControlFlowGraph {
+    pub(crate) graph: Graph,
     pub(crate) entry_points: Vec<NodeIndex>,
-    pub(crate) namespace: ControlFlowNamespace<'sc>,
+    pub(crate) namespace: ControlFlowNamespace,
 }
 
-pub type Graph<'sc> = petgraph::Graph<ControlFlowGraphNode<'sc>, ControlFlowGraphEdge>;
+pub type Graph = petgraph::Graph<ControlFlowGraphNode, ControlFlowGraphEdge>;
 
 #[derive(Clone)]
 pub struct ControlFlowGraphEdge(String);
@@ -43,25 +43,25 @@ impl std::convert::From<&str> for ControlFlowGraphEdge {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
-pub enum ControlFlowGraphNode<'sc> {
+pub enum ControlFlowGraphNode {
     OrganizationalDominator(String),
     #[allow(clippy::large_enum_variant)]
-    ProgramNode(TypedAstNode<'sc>),
+    ProgramNode(TypedAstNode),
     EnumVariant {
-        span: Span<'sc>,
+        span: Span,
         variant_name: String,
     },
     MethodDeclaration {
-        span: Span<'sc>,
-        method_name: Ident<'sc>,
+        span: Span,
+        method_name: Ident,
     },
     StructField {
-        struct_field_name: Ident<'sc>,
-        span: Span<'sc>,
+        struct_field_name: Ident,
+        span: Span,
     },
 }
 
-impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {
+impl std::fmt::Debug for ControlFlowGraphNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
@@ -70,63 +70,60 @@ impl<'sc> std::fmt::Debug for ControlFlowGraphNode<'sc> {
                 format!("Enum variant {}", variant_name.to_string())
             }
             ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
-                format!("Method {}", method_name.primary_name.to_string())
+                format!("Method {}", method_name.as_str().to_string())
             }
             ControlFlowGraphNode::StructField {
                 struct_field_name, ..
             } => {
-                format!(
-                    "Struct field {}",
-                    struct_field_name.primary_name.to_string()
-                )
+                format!("Struct field {}", struct_field_name.as_str().to_string())
             }
         };
         f.write_str(&text)
     }
 }
 
-impl<'sc> std::convert::From<&TypedAstNode<'sc>> for ControlFlowGraphNode<'sc> {
-    fn from(other: &TypedAstNode<'sc>) -> Self {
+impl std::convert::From<&TypedAstNode> for ControlFlowGraphNode {
+    fn from(other: &TypedAstNode) -> Self {
         ControlFlowGraphNode::ProgramNode(other.clone())
     }
 }
 
-impl<'sc> std::convert::From<&TypedEnumVariant<'sc>> for ControlFlowGraphNode<'sc> {
-    fn from(other: &TypedEnumVariant<'sc>) -> Self {
+impl std::convert::From<&TypedEnumVariant> for ControlFlowGraphNode {
+    fn from(other: &TypedEnumVariant) -> Self {
         ControlFlowGraphNode::EnumVariant {
-            variant_name: other.name.primary_name.to_string(),
+            variant_name: other.name.as_str().to_string(),
             span: other.span.clone(),
         }
     }
 }
 
-impl<'sc> std::convert::From<&TypedStructField<'sc>> for ControlFlowGraphNode<'sc> {
-    fn from(other: &TypedStructField<'sc>) -> Self {
+impl std::convert::From<&TypedStructField> for ControlFlowGraphNode {
+    fn from(other: &TypedStructField) -> Self {
         ControlFlowGraphNode::StructField {
             struct_field_name: other.name.clone(),
             span: other.span.clone(),
         }
     }
 }
-impl std::convert::From<String> for ControlFlowGraphNode<'_> {
+impl std::convert::From<String> for ControlFlowGraphNode {
     fn from(other: String) -> Self {
         ControlFlowGraphNode::OrganizationalDominator(other)
     }
 }
 
-impl std::convert::From<&str> for ControlFlowGraphNode<'_> {
+impl std::convert::From<&str> for ControlFlowGraphNode {
     fn from(other: &str) -> Self {
         ControlFlowGraphNode::OrganizationalDominator(other.to_string())
     }
 }
 
-impl<'sc> ControlFlowGraph<'sc> {
+impl ControlFlowGraph {
     pub(crate) fn add_edge_from_entry(&mut self, to: NodeIndex, label: ControlFlowGraphEdge) {
         for entry in &self.entry_points {
             self.graph.add_edge(*entry, to, label.clone());
         }
     }
-    pub(crate) fn add_node(&mut self, node: ControlFlowGraphNode<'sc>) -> NodeIndex {
+    pub(crate) fn add_node(&mut self, node: ControlFlowGraphNode) -> NodeIndex {
         self.graph.add_node(node)
     }
     pub(crate) fn add_edge(

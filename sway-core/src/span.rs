@@ -2,14 +2,14 @@ use std::{path::PathBuf, sync::Arc};
 
 /// Represents a span of the source code in a specific file.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Span<'sc> {
+pub struct Span {
     ///  A [pest::Span] returned directly from the generated parser.
-    pub span: pest::Span<'sc>,
+    pub span: pest::Span,
     // A reference counted pointer to the file from which this span originated.
     pub(crate) path: Option<Arc<PathBuf>>,
 }
 
-impl<'sc> Span<'sc> {
+impl Span {
     pub fn start(&self) -> usize {
         self.span.start()
     }
@@ -26,8 +26,8 @@ impl<'sc> Span<'sc> {
         self.span.end_pos()
     }
 
-    pub fn split(&self) -> (pest::Position<'sc>, pest::Position<'sc>) {
-        self.span.split()
+    pub fn split(&self) -> (pest::Position, pest::Position) {
+        self.span.clone().split()
     }
 
     pub fn str(self) -> String {
@@ -47,5 +47,20 @@ impl<'sc> Span<'sc> {
             .as_deref()
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_else(|| "".to_string())
+    }
+
+    pub fn trim(self) -> Span {
+        let start_delta = self.as_str().len() - self.as_str().trim_start().len();
+        let end_delta = self.as_str().len() - self.as_str().trim_end().len();
+        let span = pest::Span::new(
+            self.span.input().clone(),
+            self.span.start() + start_delta,
+            self.span.end() - end_delta,
+        )
+        .unwrap();
+        Span {
+            span,
+            path: self.path,
+        }
     }
 }

@@ -12,23 +12,20 @@ mod purity;
 pub use purity::Purity;
 
 #[derive(Debug, Clone)]
-pub struct FunctionDeclaration<'sc> {
+pub struct FunctionDeclaration {
     pub purity: Purity,
-    pub name: Ident<'sc>,
+    pub name: Ident,
     pub visibility: Visibility,
-    pub body: CodeBlock<'sc>,
-    pub(crate) parameters: Vec<FunctionParameter<'sc>>,
-    pub span: Span<'sc>,
+    pub body: CodeBlock,
+    pub(crate) parameters: Vec<FunctionParameter>,
+    pub span: Span,
     pub(crate) return_type: TypeInfo,
-    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
-    pub(crate) return_type_span: Span<'sc>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub(crate) return_type_span: Span,
 }
 
-impl<'sc> FunctionDeclaration<'sc> {
-    pub fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+impl FunctionDeclaration {
+    pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut parts = pair.clone().into_inner();
         let mut warnings = Vec::new();
@@ -66,12 +63,10 @@ impl<'sc> FunctionDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_snake_case(name.primary_name),
+            is_snake_case(name.as_str()),
             warnings,
             name_span,
-            Warning::NonSnakeCaseFunctionName {
-                name: name.primary_name
-            }
+            Warning::NonSnakeCaseFunctionName { name: name.clone() }
         );
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
@@ -109,7 +104,7 @@ impl<'sc> FunctionDeclaration<'sc> {
         let parameters_span = parameters_pair.as_span();
 
         let parameters = check!(
-            FunctionParameter::list_from_pairs(parameters_pair.clone().into_inner(), config),
+            FunctionParameter::list_from_pairs(parameters_pair.into_inner(), config),
             Vec::new(),
             warnings,
             errors
@@ -207,13 +202,13 @@ impl<'sc> FunctionDeclaration<'sc> {
 
     pub fn parse_json_abi(&self) -> Function {
         Function {
-            name: self.name.primary_name.to_string(),
+            name: self.name.as_str().to_string(),
             type_field: "function".to_string(),
             inputs: self
                 .parameters
                 .iter()
                 .map(|x| Property {
-                    name: x.name.primary_name.to_string(),
+                    name: x.name.as_str().to_string(),
                     type_field: x.r#type.friendly_type_str(),
                     components: None,
                 })
@@ -228,17 +223,17 @@ impl<'sc> FunctionDeclaration<'sc> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FunctionParameter<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub(crate) struct FunctionParameter {
+    pub(crate) name: Ident,
     pub(crate) r#type: TypeInfo,
-    pub(crate) type_span: Span<'sc>,
+    pub(crate) type_span: Span,
 }
 
-impl<'sc> FunctionParameter<'sc> {
+impl FunctionParameter {
     pub(crate) fn list_from_pairs(
-        pairs: impl Iterator<Item = Pair<'sc, Rule>>,
+        pairs: impl Iterator<Item = Pair<Rule>>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Vec<FunctionParameter<'sc>>> {
+    ) -> CompileResult<Vec<FunctionParameter>> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -250,13 +245,13 @@ impl<'sc> FunctionParameter<'sc> {
                     path: path.clone(),
                 };
                 let r#type = TypeInfo::SelfType;
-                let name = Ident {
-                    span: Span {
+                let name = Ident::new_with_override(
+                    "self",
+                    Span {
                         span: pair.as_span(),
                         path: path.clone(),
                     },
-                    primary_name: "self",
-                };
+                );
                 pairs_buf.push(FunctionParameter {
                     name,
                     r#type,

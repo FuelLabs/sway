@@ -28,12 +28,12 @@ pub(crate) struct FieldMemoryLayoutDescriptor<N> {
 // TODO(static span) this String should be an Ident
 impl ContiguousMemoryLayoutDescriptor<String> {
     /// Calculates the offset in words from the start of a struct to a specific field.
-    pub(crate) fn offset_to_field_name<'sc>(&self, name: &Ident<'sc>) -> CompileResult<'sc, u64> {
+    pub(crate) fn offset_to_field_name(&self, name: &Ident) -> CompileResult<u64> {
         let field_ix = if let Some(ix) =
             self.fields
                 .iter()
                 .position(|FieldMemoryLayoutDescriptor { name_of_field, .. }| {
-                    name_of_field.as_str() == name.primary_name
+                    name_of_field.as_str() == name.as_str()
                 }) {
             ix
         } else {
@@ -41,7 +41,7 @@ impl ContiguousMemoryLayoutDescriptor<String> {
                 vec![
                 CompileError::Internal(
                     "Attempted to calculate struct memory offset on field that did not exist in struct.",
-                    name.span.clone()
+                    name.span().clone()
                     )
                 ]);
         };
@@ -71,29 +71,29 @@ impl<N> ContiguousMemoryLayoutDescriptor<N> {
 #[test]
 fn test_struct_memory_layout() {
     use crate::span::Span;
-    let first_field_name = Ident {
-        span: Span {
-            span: pest::Span::new(" ", 0, 0).unwrap(),
+    let first_field_name = Ident::new_with_override(
+        "foo",
+        Span {
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         },
-        primary_name: "foo",
-    };
-    let second_field_name = Ident {
-        span: Span {
-            span: pest::Span::new(" ", 0, 0).unwrap(),
+    );
+    let second_field_name = Ident::new_with_override(
+        "bar",
+        Span {
+            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
             path: None,
         },
-        primary_name: "bar",
-    };
+    );
 
     let numbers = ContiguousMemoryLayoutDescriptor {
         fields: vec![
             FieldMemoryLayoutDescriptor {
-                name_of_field: first_field_name.primary_name.to_string(),
+                name_of_field: first_field_name.as_str().to_string(),
                 size: 1,
             },
             FieldMemoryLayoutDescriptor {
-                name_of_field: second_field_name.primary_name.to_string(),
+                name_of_field: second_field_name.as_str().to_string(),
                 size: 1,
             },
         ],
@@ -116,15 +116,15 @@ fn test_struct_memory_layout() {
     );
 }
 
-pub(crate) fn get_contiguous_memory_layout<'sc, N: Clone>(
-    fields_with_names: &[(TypeId, Span<'sc>, N)],
-) -> CompileResult<'sc, ContiguousMemoryLayoutDescriptor<N>> {
+pub(crate) fn get_contiguous_memory_layout<N: Clone>(
+    fields_with_names: &[(TypeId, Span, N)],
+) -> CompileResult<ContiguousMemoryLayoutDescriptor<N>> {
     let mut fields_with_sizes = Vec::with_capacity(fields_with_names.len());
     let warnings = vec![];
     let mut errors = vec![];
     for (field, span, name) in fields_with_names {
         let ty = look_up_type_id(*field);
-        let stack_size = match ty.size_in_words(&span) {
+        let stack_size = match ty.size_in_words(span) {
             Ok(o) => o,
             Err(e) => {
                 errors.push(e);
@@ -146,13 +146,13 @@ pub(crate) fn get_contiguous_memory_layout<'sc, N: Clone>(
     )
 }
 
-pub(crate) fn convert_fields_to_asm<'sc, N: Clone + std::fmt::Display>(
-    fields: &[(TypedExpression<'sc>, Span<'sc>, N)],
+pub(crate) fn convert_fields_to_asm<N: Clone + std::fmt::Display>(
+    fields: &[(TypedExpression, Span, N)],
     struct_beginning_pointer: &VirtualRegister,
-    namespace: &mut AsmNamespace<'sc>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-    mut asm_buf: Vec<Op<'sc>>,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    mut asm_buf: Vec<Op>,
+) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     // step 0: calculate the total size needed for the whole struct
@@ -230,8 +230,8 @@ pub(crate) fn convert_fields_to_asm<'sc, N: Clone + std::fmt::Display>(
     for (value, span, name) in fields {
         // evaluate the expression
         let return_register = register_sequencer.next();
-        let value_stack_size: u64 = match resolve_type(value.return_type, &span) {
-            Ok(o) => match o.size_in_words(&span) {
+        let value_stack_size: u64 = match resolve_type(value.return_type, span) {
+            Ok(o) => match o.size_in_words(span) {
                 Ok(o) => o,
                 Err(e) => {
                     errors.push(e);
@@ -303,27 +303,27 @@ pub(crate) fn convert_fields_to_asm<'sc, N: Clone + std::fmt::Display>(
     ok(asm_buf, warnings, errors)
 }
 
-pub(crate) fn convert_struct_expression_to_asm<'sc>(
-    struct_name: &Ident<'sc>,
-    fields: &[TypedStructExpressionField<'sc>],
+pub(crate) fn convert_struct_expression_to_asm(
+    struct_name: &Ident,
+    fields: &[TypedStructExpressionField],
     struct_beginning_pointer: &VirtualRegister,
-    namespace: &mut AsmNamespace<'sc>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let fields = fields
         .iter()
         .map(|TypedStructExpressionField { name, value }| {
             (
                 value.clone(),
-                name.span.clone(),
-                name.primary_name.to_string(),
+                name.span().clone(),
+                name.as_str().to_string(),
             )
         })
         .collect::<Vec<_>>();
 
     let asm_buf = vec![Op::new_comment(format!(
         "{} struct initialization",
-        struct_name.primary_name
+        struct_name.as_str()
     ))];
 
     convert_fields_to_asm(
@@ -335,12 +335,12 @@ pub(crate) fn convert_struct_expression_to_asm<'sc>(
     )
 }
 
-pub(crate) fn convert_tuple_expression_to_asm<'sc>(
-    fields: &[TypedExpression<'sc>],
+pub(crate) fn convert_tuple_expression_to_asm(
+    fields: &[TypedExpression],
     tuple_beginning_pointer: &VirtualRegister,
-    namespace: &mut AsmNamespace<'sc>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let fields = fields
         .iter()
         .enumerate()

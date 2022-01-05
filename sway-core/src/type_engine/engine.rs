@@ -32,12 +32,12 @@ impl Engine {
     /// there is a conflict between them).
     //
     // When reporting type errors we will report 'received' and 'expected' as such.
-    pub(crate) fn unify<'sc>(
+    pub(crate) fn unify(
         &self,
         received: TypeId,
         expected: TypeId,
-        span: &Span<'sc>,
-    ) -> Result<Vec<CompileWarning<'sc>>, TypeError<'sc>> {
+        span: &Span,
+    ) -> Result<Vec<CompileWarning>, TypeError> {
         use TypeInfo::*;
         match (self.slab.get(received), self.slab.get(expected)) {
             // If the types are exactly the same, we are done.
@@ -190,13 +190,13 @@ impl Engine {
         }
     }
 
-    pub fn unify_with_self<'sc>(
+    pub fn unify_with_self(
         &self,
         received: TypeId,
         expected: TypeId,
         self_type: TypeId,
-        span: &Span<'sc>,
-    ) -> Result<Vec<CompileWarning<'sc>>, TypeError<'sc>> {
+        span: &Span,
+    ) -> Result<Vec<CompileWarning>, TypeError> {
         let received = if self.look_up_type_id(received) == TypeInfo::SelfType {
             self_type
         } else {
@@ -211,11 +211,7 @@ impl Engine {
         self.unify(received, expected, span)
     }
 
-    pub fn resolve_type<'sc>(
-        &self,
-        id: TypeId,
-        error_span: &Span<'sc>,
-    ) -> Result<TypeInfo, TypeError<'sc>> {
+    pub fn resolve_type(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.look_up_type_id(id) {
             TypeInfo::Unknown => Err(TypeError::UnknownType {
                 span: error_span.clone(),
@@ -237,23 +233,20 @@ pub(crate) fn look_up_type_id_raw(id: TypeId) -> TypeInfo {
     TYPE_ENGINE.look_up_type_id_raw(id)
 }
 
-pub fn unify_with_self<'sc>(
+pub fn unify_with_self(
     a: TypeId,
     b: TypeId,
     self_type: TypeId,
-    span: &Span<'sc>,
-) -> Result<Vec<CompileWarning<'sc>>, TypeError<'sc>> {
+    span: &Span,
+) -> Result<Vec<CompileWarning>, TypeError> {
     TYPE_ENGINE.unify_with_self(a, b, self_type, span)
 }
 
-pub fn resolve_type<'sc>(id: TypeId, error_span: &Span<'sc>) -> Result<TypeInfo, TypeError<'sc>> {
+pub fn resolve_type(id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
     TYPE_ENGINE.resolve_type(id, error_span)
 }
 
-fn numeric_cast_compat<'sc>(
-    new_size: IntegerBits,
-    old_size: IntegerBits,
-) -> NumericCastCompatResult<'sc> {
+fn numeric_cast_compat(new_size: IntegerBits, old_size: IntegerBits) -> NumericCastCompatResult {
     // If this is a downcast, warn for loss of precision. If upcast, then no warning.
     use IntegerBits::*;
     match (new_size, old_size) {
@@ -273,7 +266,7 @@ fn numeric_cast_compat<'sc>(
         _ => NumericCastCompatResult::Compatible,
     }
 }
-enum NumericCastCompatResult<'sc> {
+enum NumericCastCompatResult {
     Compatible,
-    CastableWithWarning(Warning<'sc>),
+    CastableWithWarning(Warning),
 }
