@@ -42,7 +42,6 @@ impl UseStatement {
         let mut import_path_vec = import_path.into_inner().collect::<Vec<_>>();
         let last_item = import_path_vec.pop().unwrap();
 
-        
         for item in import_path_vec.into_iter() {
             if item.as_rule() == Rule::star {
                 errors.push(CompileError::NonFinalAsteriskInPath {
@@ -61,6 +60,7 @@ impl UseStatement {
                 ));
             }
         }
+
         let mut alias = None;
         for item in stmt {
             if item.as_rule() == Rule::alias {
@@ -77,7 +77,7 @@ impl UseStatement {
 
         let mut use_statements_buf = Vec::new();
         if last_item.as_rule() == Rule::import_items {
-            let mut import_items = last_item.clone().into_inner();
+            let mut import_items = last_item.into_inner();
             let _path_separator = import_items.next();
             
             for item in import_items {
