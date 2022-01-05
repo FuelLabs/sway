@@ -73,7 +73,8 @@ pub(crate) enum TypedExpressionVariant {
     },
     TupleElemAccess {
         prefix: Box<TypedExpression>,
-        elem_num_to_access: usize,
+        elem_to_access_num: usize,
+        elem_to_access_span: Span,
         resolved_type_of_parent: TypeId,
     },
     EnumInstantiation {
@@ -178,13 +179,13 @@ impl TypedExpressionVariant {
             }
             TypedExpressionVariant::TupleElemAccess {
                 resolved_type_of_parent,
-                elem_num_to_access,
+                elem_to_access_num,
                 ..
             } => {
                 format!(
                     "\"{}.{}\" elem num access",
                     look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
-                    elem_num_to_access
+                    elem_to_access_num
                 )
             }
             TypedExpressionVariant::VariableExpression { name, .. } => {

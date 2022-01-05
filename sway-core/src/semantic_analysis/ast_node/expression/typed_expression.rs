@@ -1599,7 +1599,8 @@ impl TypedExpression {
                     expression: TypedExpressionVariant::TupleElemAccess {
                         resolved_type_of_parent: parent.return_type,
                         prefix: Box::new(parent),
-                        elem_num_to_access: elem_num,
+                        elem_to_access_num: elem_num,
+                        elem_to_access_span: span.clone(),
                     },
                     return_type: tuple_elem_to_access,
                     is_constant: IsConstant::No,

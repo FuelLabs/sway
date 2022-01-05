@@ -191,11 +191,7 @@ fn match_enum(
     ok(Some((match_req_map, match_impl_map)), warnings, errors)
 }
 
-fn match_tuple(
-    exp: &Expression,
-    elems: &[Scrutinee],
-    span: &Span,
-) -> CompileResult<MatcherResult> {
+fn match_tuple(exp: &Expression, elems: &[Scrutinee], span: &Span) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut match_req_map = vec![];
