@@ -498,7 +498,7 @@ fn parse_root_from_pairs(
                         warnings,
                         errors
                     );
-                    for entry in &stmt {
+                    for entry in stmt {
                         parse_tree.push(AstNode {
                             content: AstNodeContent::UseStatement(entry.clone()),
                             span: span::Span {
