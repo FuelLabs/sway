@@ -41,7 +41,7 @@ impl ContiguousMemoryLayoutDescriptor<String> {
                 vec![
                 CompileError::Internal(
                     "Attempted to calculate struct memory offset on field that did not exist in struct.",
-                    span.clone()
+                    span
                     )
                 ]);
         };
