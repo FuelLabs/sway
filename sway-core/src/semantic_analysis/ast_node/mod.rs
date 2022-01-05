@@ -273,7 +273,12 @@ impl TypedAstNode {
                                 e.to_typed_decl(namespace, self_type),
                             );
 
-                            namespace.insert(e.name.clone(), decl.clone());
+                            let _ = check!(
+                                namespace.insert(e.name.clone(), decl.clone()),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
                             decl
                         }
                         Declaration::FunctionDeclaration(fn_decl) => {
@@ -508,9 +513,14 @@ impl TypedAstNode {
                             };
 
                             // insert struct into namespace
-                            namespace.insert(
-                                decl.name.clone(),
-                                TypedDeclaration::StructDeclaration(decl.clone()),
+                            let _ = check!(
+                                namespace.insert(
+                                    decl.name.clone(),
+                                    TypedDeclaration::StructDeclaration(decl.clone()),
+                                ),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
                             );
 
                             TypedDeclaration::StructDeclaration(decl)

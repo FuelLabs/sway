@@ -251,7 +251,7 @@ pub enum Warning {
         module: Ident,
         name: Ident,
     },
-    OverridesOtherSymbol {
+    ShadowsOtherSymbol {
         name: String,
     },
     OverridingTraitImplementation,
@@ -349,10 +349,9 @@ impl fmt::Display for Warning {
                  Traits must be in scope in order to access their methods. ",
                 name, lib, module
             ),
-            OverridesOtherSymbol { name } => write!(
+            ShadowsOtherSymbol { name } => write!(
                 f,
-                "This import would override another symbol with the same name \"{}\" in this \
-                 namespace.",
+                "This shadows another symbol in this scope with the same name \"{}\".",
                 name
             ),
             OverridingTraitImplementation => write!(
@@ -812,6 +811,8 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
+    #[error("The name \"{name}\" shadows another symbol with the same name.")]
+    ShadowsOtherSymbol { name: String, span: Span },
     #[error(
         "Match expression arm has mismatched types.\n\
          expected: {expected}\n\
@@ -1016,6 +1017,7 @@ impl CompileError {
             BurnFromExternalContext { span, .. } => span,
             ContractStorageFromExternalContext { span, .. } => span,
             ArrayOutOfBounds { span, .. } => span,
+            ShadowsOtherSymbol { span, .. } => span,
             MatchWrongType { span, .. } => span,
             NotAnEnum { span, .. } => span,
             PatternMatchingAlgorithmFailure(_, span) => span,
