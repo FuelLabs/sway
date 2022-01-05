@@ -42,6 +42,7 @@ impl UseStatement {
         let mut import_path_vec = import_path.into_inner().collect::<Vec<_>>();
         let last_item = import_path_vec.pop().unwrap();
 
+        // Populate the call path
         for item in import_path_vec.into_iter() {
             if item.as_rule() == Rule::star {
                 errors.push(CompileError::NonFinalAsteriskInPath {
@@ -61,44 +62,66 @@ impl UseStatement {
             }
         }
 
-        let mut alias = None;
-        for item in stmt {
-            if item.as_rule() == Rule::alias {
-                let item = item.into_inner().nth(1).unwrap();
-                let alias_parsed = check!(
-                    Ident::parse_from_pair(item, config),
-                    continue,
-                    warnings,
-                    errors
-                );
-                alias = Some(alias_parsed);
-            }
-        }
-
         let mut use_statements_buf = Vec::new();
+
         if last_item.as_rule() == Rule::import_items {
+            // Last item is a 
             let mut import_items = last_item.into_inner();
             let _path_separator = import_items.next();
-            
-            for item in import_items {
-                let import_type = match item.as_rule() {
-                    Rule::ident => ImportType::Item(check!(
+           
+            let mut it = import_items.clone();
+            while let Some(item) = it.next() {
+                if item.as_rule() == Rule::ident {
+                    let import_type = match item.as_rule() {
+                        Rule::ident => ImportType::Item(check!(
+                            Ident::parse_from_pair(item.clone(), config),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )),
+                        _ => unreachable!(),
+                    };
+                    let next = it.clone().next();
+                    let next_is_alias = !next.is_none() && next.clone().unwrap().as_rule() == Rule::alias;
+                    let mut alias = None;
+                    if next_is_alias {
+                        let next_item = next.clone().unwrap();
+                        if next_item.as_rule() == Rule::alias {
+                            let itemm = next_item.into_inner().nth(1).unwrap();
+                            let alias_parsed = check!(
+                                Ident::parse_from_pair(itemm, config),
+                                continue,
+                                warnings,
+                                errors
+                            );
+                            alias = Some(alias_parsed);
+                            it.next();
+                        } 
+                    }
+                   
+                    use_statements_buf.push(UseStatement{
+                        call_path: import_path_buf.clone(),
+                        import_type,
+                        is_absolute,
+                        alias,
+                    });
+                }
+            }
+            print!("\n");
+        } else {
+            let mut alias = None;
+            for item in stmt {
+                if item.as_rule() == Rule::alias {
+                    let item = item.into_inner().nth(1).unwrap();
+                    let alias_parsed = check!(
                         Ident::parse_from_pair(item, config),
-                        return err(warnings, errors),
+                        continue,
                         warnings,
                         errors
-                    )),
-                    _ => unreachable!(),
-                };
-                
-                use_statements_buf.push(UseStatement{
-                    call_path: import_path_buf.clone(),
-                    import_type,
-                    is_absolute,
-                    alias: alias.clone(),
-                });
+                    );
+                    alias = Some(alias_parsed);
+                }
             }
-        } else {
             let import_type = match last_item.as_rule() {
                 Rule::star => ImportType::Star,
                 Rule::ident => ImportType::Item(check!(
@@ -114,7 +137,7 @@ impl UseStatement {
                 call_path: import_path_buf.clone(),
                 import_type,
                 is_absolute,
-                alias: alias.clone(),
+                alias,
             });
         }
         ok(
