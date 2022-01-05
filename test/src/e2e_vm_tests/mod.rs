@@ -73,11 +73,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("b512_test", ProgramState::Return(1)),    // true
         ("block_height", ProgramState::Return(1)), // true
         ("use_full_path_names", ProgramState::Return(1)),
-        ("valid_impurity", ProgramState::Return(0)), // true
         ("valid_impurity", ProgramState::Return(0)), // false
         ("trait_override_bug", ProgramState::Return(7)),
         ("if_implicit_unit", ProgramState::Return(0)),
-        ("modulo_uint_test", ProgramState::Return(1)), // true
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
