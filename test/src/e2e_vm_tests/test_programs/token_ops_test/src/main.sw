@@ -29,7 +29,7 @@ fn main() -> bool {
     // the deployed fuel_coin contract
     let fuelcoin_id = ~ContractId::from(0x9c8a446c98b85592823934520a4865a5a93b8dbb0e825e98ef26a08a6e88a17b);
     // @todo use correct type ContractId
-    let fuel_coin = abi(TestFuelCoin, fuelcoin_id.value);
+    let fuel_coin = abi(TestFuelCoin, 0x9c8a446c98b85592823934520a4865a5a93b8dbb0e825e98ef26a08a6e88a17b);
 
     let mut fuelcoin_balance = balance_of_contract(fuelcoin_id.value, balance_id);
     assert(fuelcoin_balance == 0);
