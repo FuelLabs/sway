@@ -158,14 +158,14 @@ fn default_url() -> String {
 fn try_parse() {
     println!(
         "{:#?}",
-        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj".into())).unwrap()
+        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj")).unwrap()
     )
 }
 
 #[test]
 fn test_print_tx_inputs() {
     let mut default_manifest: Manifest =
-        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj".into())).unwrap();
+        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj")).unwrap();
 
     let input1 = TxInput {
         contract_id: Some(

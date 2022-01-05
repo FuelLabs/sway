@@ -7,16 +7,16 @@ use pest::iterators::Pair;
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct CallPath<'sc> {
-    pub prefixes: Vec<Ident<'sc>>,
-    pub suffix: Ident<'sc>,
+pub struct CallPath {
+    pub prefixes: Vec<Ident>,
+    pub suffix: Ident,
     // If `is_absolute` is true, then this call path is an absolute path from
     // the project root namespace. If not, then it is relative to the current namespace.
     pub(crate) is_absolute: bool,
 }
 
-impl<'sc> std::convert::From<Ident<'sc>> for CallPath<'sc> {
-    fn from(other: Ident<'sc>) -> Self {
+impl std::convert::From<Ident> for CallPath {
+    fn from(other: Ident) -> Self {
         CallPath {
             prefixes: vec![],
             suffix: other,
@@ -31,36 +31,36 @@ pub struct OwnedCallPath {
     pub suffix: String,
 }
 
-impl CallPath<'_> {
+impl CallPath {
     pub(crate) fn to_owned_call_path(&self) -> OwnedCallPath {
         OwnedCallPath {
             prefixes: self
                 .prefixes
                 .iter()
-                .map(|x| x.primary_name.to_string())
+                .map(|x| x.as_str().to_string())
                 .collect(),
-            suffix: self.suffix.primary_name.to_string(),
+            suffix: self.suffix.as_str().to_string(),
         }
     }
 }
-impl<'sc> CallPath<'sc> {
-    pub(crate) fn span(&self) -> Span<'sc> {
+impl CallPath {
+    pub(crate) fn span(&self) -> Span {
         if self.prefixes.is_empty() {
-            self.suffix.span.clone()
+            self.suffix.span().clone()
         } else {
             let prefixes_span = self
                 .prefixes
                 .iter()
-                .fold(self.prefixes[0].span.clone(), |acc, sp| {
-                    crate::utils::join_spans(acc, sp.span.clone())
+                .fold(self.prefixes[0].span().clone(), |acc, sp| {
+                    crate::utils::join_spans(acc, sp.span().clone())
                 });
-            crate::utils::join_spans(prefixes_span, self.suffix.span.clone())
+            crate::utils::join_spans(prefixes_span, self.suffix.span().clone())
         }
     }
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, CallPath<'sc>> {
+    ) -> CompileResult<CallPath> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut pairs_buf = vec![];

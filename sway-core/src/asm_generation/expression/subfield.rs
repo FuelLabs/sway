@@ -21,15 +21,15 @@ use crate::{
     },
 };
 
-pub(crate) fn convert_subfield_expression_to_asm<'sc>(
-    span: &Span<'sc>,
-    parent: &TypedExpression<'sc>,
-    field_to_access: &TypedStructField<'sc>,
+pub(crate) fn convert_subfield_expression_to_asm(
+    span: &Span,
+    parent: &TypedExpression,
+    field_to_access: &TypedStructField,
     resolved_type_of_parent: TypeId,
-    namespace: &mut AsmNamespace<'sc>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
     return_register: &VirtualRegister,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     // step 0. find the type and register of the prefix
     // step 1. get the memory layout of the struct
     // step 2. calculate the offset to the spot we are accessing
@@ -59,12 +59,21 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         }
     };
     // TODO(static span): str should be ident below
-    let fields_for_layout: Vec<(TypeId, &str)> = fields
+    let span = crate::Span {
+        span: pest::Span::new(
+            "TODO(static span): use Idents instead of Strings".into(),
+            0,
+            0,
+        )
+        .unwrap(),
+        path: None,
+    };
+    let fields_for_layout = fields
         .iter()
-        .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, name.as_str()))
+        .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, span.clone(), name.clone()))
         .collect::<Vec<_>>();
     let descriptor = check!(
-        get_struct_memory_layout(&fields_for_layout[..]),
+        get_contiguous_memory_layout(&fields_for_layout[..]),
         return err(warnings, errors),
         warnings,
         errors
@@ -81,8 +90,8 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     // TODO(static span): name_for_this_field should be span_for_this_field
     let (type_of_this_field, name_for_this_field) = fields_for_layout
         .into_iter()
-        .find_map(|(ty, name)| {
-            if name == field_to_access.name.primary_name {
+        .find_map(|(ty, _span, name)| {
+            if name == field_to_access.name.as_str() {
                 Some((ty, name))
             } else {
                 None
@@ -93,7 +102,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         );
 
     let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use span_for_this_field", 0, 0).unwrap(),
+        span: pest::Span::new("TODO(static span): use span_for_this_field".into(), 0, 0).unwrap(),
         path: None,
     };
     // step 3

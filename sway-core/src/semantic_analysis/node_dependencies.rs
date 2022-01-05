@@ -2,17 +2,16 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    error::*, parse_tree::Scrutinee, parse_tree::*, span::Span, type_engine::IntegerBits, AstNode,
-    AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo, WhileLoop,
+    error::*, ident::Ident, parse_tree::Scrutinee, parse_tree::*, span::Span,
+    type_engine::IntegerBits, AstNode, AstNodeContent, CodeBlock, Declaration, Expression,
+    ReturnStatement, TypeInfo, WhileLoop,
 };
 
 // -------------------------------------------------------------------------------------------------
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any
 /// dependencies breaking.
 
-pub(crate) fn order_ast_nodes_by_dependency<'sc>(
-    nodes: Vec<AstNode<'sc>>,
-) -> CompileResult<'sc, Vec<AstNode<'sc>>> {
+pub(crate) fn order_ast_nodes_by_dependency(nodes: Vec<AstNode>) -> CompileResult<Vec<AstNode>> {
     let decl_dependencies =
         DependencyMap::from_iter(nodes.iter().filter_map(Dependencies::gather_from_decl_node));
 
@@ -30,7 +29,7 @@ pub(crate) fn order_ast_nodes_by_dependency<'sc>(
         ok(
             nodes
                 .into_iter()
-                .fold(Vec::<AstNode<'sc>>::new(), |ordered, node| {
+                .fold(Vec::<AstNode>::new(), |ordered, node| {
                     insert_into_ordered_nodes(&decl_dependencies, ordered, node)
                 }),
             Vec::new(),
@@ -42,17 +41,17 @@ pub(crate) fn order_ast_nodes_by_dependency<'sc>(
 // -------------------------------------------------------------------------------------------------
 // Recursion detection.
 
-fn find_recursive_calls<'sc>(decl_dependencies: &DependencyMap<'sc>) -> Vec<CompileError<'sc>> {
+fn find_recursive_calls(decl_dependencies: &DependencyMap) -> Vec<CompileError> {
     decl_dependencies
         .iter()
         .filter_map(|(dep_sym, _)| find_recursive_call(decl_dependencies, dep_sym))
         .collect()
 }
 
-fn find_recursive_call<'sc>(
-    decl_dependencies: &DependencyMap<'sc>,
-    fn_sym: &DependentSymbol<'sc>,
-) -> Option<CompileError<'sc>> {
+fn find_recursive_call(
+    decl_dependencies: &DependencyMap,
+    fn_sym: &DependentSymbol,
+) -> Option<CompileError> {
     if let DependentSymbol::Fn(_, Some(fn_span)) = fn_sym {
         let mut chain = Vec::new();
         find_recursive_call_chain(decl_dependencies, fn_sym, fn_span, &mut chain)
@@ -61,22 +60,22 @@ fn find_recursive_call<'sc>(
     }
 }
 
-fn find_recursive_call_chain<'sc>(
-    decl_dependencies: &DependencyMap<'sc>,
-    fn_sym: &DependentSymbol<'sc>,
-    fn_span: &Span<'sc>,
-    chain: &mut Vec<&'sc str>,
-) -> Option<CompileError<'sc>> {
-    if let DependentSymbol::Fn(fn_sym_str, _) = fn_sym {
-        if chain.iter().any(|seen_sym| seen_sym == fn_sym_str) {
+fn find_recursive_call_chain(
+    decl_dependencies: &DependencyMap,
+    fn_sym: &DependentSymbol,
+    fn_span: &Span,
+    chain: &mut Vec<Ident>,
+) -> Option<CompileError> {
+    if let DependentSymbol::Fn(fn_sym_ident, _) = fn_sym {
+        if chain.iter().any(|seen_sym| seen_sym == fn_sym_ident) {
             // We've found a recursive loop, but it's possible this function is not actually in the
             // loop, but is instead just calling into the loop.  Only if this function is at the
             // start of the chain do we need to report it.
-            return if &chain[0] != fn_sym_str {
+            return if &chain[0] != fn_sym_ident {
                 None
             } else {
                 Some(build_recursion_error(
-                    fn_sym_str,
+                    fn_sym_ident.clone(),
                     fn_span.clone(),
                     &chain[1..],
                 ))
@@ -85,7 +84,7 @@ fn find_recursive_call_chain<'sc>(
         decl_dependencies
             .get(fn_sym)
             .map(|deps_set| {
-                chain.push(fn_sym_str);
+                chain.push(fn_sym_ident.clone());
                 let result = deps_set.deps.iter().find_map(|dep_sym| {
                     find_recursive_call_chain(decl_dependencies, dep_sym, fn_span, chain)
                 });
@@ -98,11 +97,7 @@ fn find_recursive_call_chain<'sc>(
     }
 }
 
-fn build_recursion_error<'sc>(
-    fn_sym: &'sc str,
-    span: Span<'sc>,
-    chain: &[&'sc str],
-) -> CompileError<'sc> {
+fn build_recursion_error(fn_sym: Ident, span: Span, chain: &[Ident]) -> CompileError {
     match chain.len() {
         // An empty chain indicates immediate recursion.
         0 => CompileError::RecursiveCall {
@@ -112,14 +107,20 @@ fn build_recursion_error<'sc>(
         // Chain entries indicate mutual recursion.
         1 => CompileError::RecursiveCallChain {
             fn_name: fn_sym,
-            call_chain: chain[0].to_owned(),
+            call_chain: chain[0].as_str().to_string(),
             span,
         },
         n => {
-            let msg = chain[0..(n - 1)].join(", ");
+            let mut msg = chain[0].as_str().to_string();
+            for ident in &chain[1..(n - 1)] {
+                msg.push_str(", ");
+                msg.push_str(ident.as_str());
+            }
+            msg.push_str(" and ");
+            msg.push_str(chain[n - 1].as_str());
             CompileError::RecursiveCallChain {
                 fn_name: fn_sym,
-                call_chain: msg + " and " + chain[n - 1],
+                call_chain: msg,
                 span,
             }
         }
@@ -129,13 +130,13 @@ fn build_recursion_error<'sc>(
 // -------------------------------------------------------------------------------------------------
 // Dependency gathering.
 
-type DependencyMap<'sc> = HashMap<DependentSymbol<'sc>, Dependencies<'sc>>;
+type DependencyMap = HashMap<DependentSymbol, Dependencies>;
 
-fn insert_into_ordered_nodes<'sc>(
-    decl_dependencies: &DependencyMap<'sc>,
-    mut ordered_nodes: Vec<AstNode<'sc>>,
-    node: AstNode<'sc>,
-) -> Vec<AstNode<'sc>> {
+fn insert_into_ordered_nodes(
+    decl_dependencies: &DependencyMap,
+    mut ordered_nodes: Vec<AstNode>,
+    node: AstNode,
+) -> Vec<AstNode> {
     for idx in 0..ordered_nodes.len() {
         // If we find a node which depends on the new node, insert it in front.
         if depends_on(decl_dependencies, &ordered_nodes[idx], &node) {
@@ -154,10 +155,10 @@ fn insert_into_ordered_nodes<'sc>(
 //
 // Does the dependant depend on the dependee?
 
-fn depends_on<'sc>(
-    decl_dependencies: &DependencyMap<'sc>,
-    dependant_node: &AstNode<'sc>,
-    dependee_node: &AstNode<'sc>,
+fn depends_on(
+    decl_dependencies: &DependencyMap,
+    dependant_node: &AstNode,
+    dependee_node: &AstNode,
 ) -> bool {
     match (&dependant_node.content, &dependee_node.content) {
         // Include statements first.
@@ -192,14 +193,12 @@ fn depends_on<'sc>(
 // Dependencies are just a collection of dependee symbols.
 
 #[derive(Debug)]
-struct Dependencies<'sc> {
-    deps: HashSet<DependentSymbol<'sc>>,
+struct Dependencies {
+    deps: HashSet<DependentSymbol>,
 }
 
-impl<'sc> Dependencies<'sc> {
-    fn gather_from_decl_node(
-        node: &AstNode<'sc>,
-    ) -> Option<(DependentSymbol<'sc>, Dependencies<'sc>)> {
+impl Dependencies {
+    fn gather_from_decl_node(node: &AstNode) -> Option<(DependentSymbol, Dependencies)> {
         match &node.content {
             AstNodeContent::Declaration(decl) => decl_name(decl).map(|name| {
                 (
@@ -214,7 +213,7 @@ impl<'sc> Dependencies<'sc> {
         }
     }
 
-    fn gather_from_decl(self, decl: &Declaration<'sc>) -> Self {
+    fn gather_from_decl(self, decl: &Declaration) -> Self {
         match decl {
             Declaration::VariableDeclaration(VariableDeclaration {
                 type_ascription,
@@ -320,7 +319,7 @@ impl<'sc> Dependencies<'sc> {
         }
     }
 
-    fn gather_from_fn_decl(self, fn_decl: &FunctionDeclaration<'sc>) -> Self {
+    fn gather_from_fn_decl(self, fn_decl: &FunctionDeclaration) -> Self {
         let FunctionDeclaration {
             parameters,
             return_type,
@@ -336,7 +335,7 @@ impl<'sc> Dependencies<'sc> {
         .gather_from_traits(type_parameters)
     }
 
-    fn gather_from_expr(mut self, expr: &Expression<'sc>) -> Self {
+    fn gather_from_expr(mut self, expr: &Expression) -> Self {
         match expr {
             Expression::VariableExpression { .. } => self,
             Expression::FunctionApplication {
@@ -372,7 +371,7 @@ impl<'sc> Dependencies<'sc> {
                 ..
             } => {
                 self.deps.insert(DependentSymbol::Symbol(
-                    struct_name.suffix.primary_name.to_string(),
+                    struct_name.suffix.as_str().to_string(),
                 ));
                 self.gather_from_iter(fields.iter(), |deps, field| {
                     deps.gather_from_expr(&field.value)
@@ -413,12 +412,14 @@ impl<'sc> Dependencies<'sc> {
             Expression::AbiCast { .. } => self,
 
             Expression::Literal { .. } => self,
-            Expression::Unit { .. } => self,
+            Expression::Tuple { fields, .. } => {
+                self.gather_from_iter(fields.iter(), |deps, field| deps.gather_from_expr(field))
+            }
             Expression::DelayedMatchTypeResolution { .. } => self,
         }
     }
 
-    fn gather_from_scrutinee(self, scrutinee: &Scrutinee<'sc>) -> Self {
+    fn gather_from_scrutinee(self, scrutinee: &Scrutinee) -> Self {
         match scrutinee {
             Scrutinee::Unit { .. } => self,
             Scrutinee::Literal { .. } => self,
@@ -428,20 +429,20 @@ impl<'sc> Dependencies<'sc> {
         }
     }
 
-    fn gather_from_opt_expr(self, opt_expr: &Option<Expression<'sc>>) -> Self {
+    fn gather_from_opt_expr(self, opt_expr: &Option<Expression>) -> Self {
         match opt_expr {
             None => self,
             Some(expr) => self.gather_from_expr(expr),
         }
     }
 
-    fn gather_from_block(self, block: &CodeBlock<'sc>) -> Self {
+    fn gather_from_block(self, block: &CodeBlock) -> Self {
         self.gather_from_iter(block.contents.iter(), |deps, node| {
             deps.gather_from_node(node)
         })
     }
 
-    fn gather_from_node(self, node: &AstNode<'sc>) -> Self {
+    fn gather_from_node(self, node: &AstNode) -> Self {
         match &node.content {
             AstNodeContent::ReturnStatement(ReturnStatement { expr }) => {
                 self.gather_from_expr(expr)
@@ -461,32 +462,32 @@ impl<'sc> Dependencies<'sc> {
 
     fn gather_from_call_path(
         mut self,
-        call_path: &CallPath<'sc>,
+        call_path: &CallPath,
         use_prefix: bool,
         is_fn_app: bool,
     ) -> Self {
         if call_path.prefixes.is_empty() {
             // We can just use the suffix.
             self.deps.insert(if is_fn_app {
-                DependentSymbol::Fn(call_path.suffix.primary_name, None)
+                DependentSymbol::Fn(call_path.suffix.clone(), None)
             } else {
-                DependentSymbol::Symbol(call_path.suffix.primary_name.to_string())
+                DependentSymbol::Symbol(call_path.suffix.as_str().to_string())
             });
         } else if use_prefix && call_path.prefixes.len() == 1 {
             // Here we can use the prefix (e.g., for 'Enum::Variant' -> 'Enum') as long is it's
             // only a single element.
             self.deps.insert(DependentSymbol::Symbol(
-                call_path.prefixes[0].primary_name.to_string(),
+                call_path.prefixes[0].as_str().to_string(),
             ));
         }
         self
     }
 
-    fn gather_from_traits(mut self, type_parameters: &[TypeParameter<'sc>]) -> Self {
+    fn gather_from_traits(mut self, type_parameters: &[TypeParameter]) -> Self {
         for type_param in type_parameters {
             for constraint in &type_param.trait_constraints {
                 self.deps.insert(DependentSymbol::Symbol(
-                    constraint.name.primary_name.to_string(),
+                    constraint.name.as_str().to_string(),
                 ));
             }
         }
@@ -515,15 +516,15 @@ impl<'sc> Dependencies<'sc> {
 // illustrated in DependentSymbol::is().
 
 #[derive(Debug, Eq)]
-enum DependentSymbol<'sc> {
+enum DependentSymbol {
     Symbol(String),
-    Fn(&'sc str, Option<Span<'sc>>),
-    Impl(&'sc str, String), // Trait or self, and type implementing for.
+    Fn(Ident, Option<Span>),
+    Impl(Ident, String), // Trait or self, and type implementing for.
 }
 
 // We'll use a custom Hash and PartialEq here to explicitly ignore the span in the Fn variant.
 
-impl<'sc> PartialEq for DependentSymbol<'sc> {
+impl PartialEq for DependentSymbol {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
             (DependentSymbol::Symbol(l), DependentSymbol::Symbol(r)) => l.eq(r),
@@ -538,7 +539,7 @@ impl<'sc> PartialEq for DependentSymbol<'sc> {
 
 use std::hash::{Hash, Hasher};
 
-impl<'sc> Hash for DependentSymbol<'sc> {
+impl Hash for DependentSymbol {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             DependentSymbol::Symbol(s) => s.hash(state),
@@ -551,7 +552,7 @@ impl<'sc> Hash for DependentSymbol<'sc> {
     }
 }
 
-fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
+fn decl_name(decl: &Declaration) -> Option<DependentSymbol> {
     let dep_sym = |name| Some(DependentSymbol::Symbol(name));
     let impl_sym = |trait_name, type_info: &TypeInfo| {
         Some(DependentSymbol::Impl(trait_name, type_info_name(type_info)))
@@ -560,23 +561,23 @@ fn decl_name<'sc>(decl: &Declaration<'sc>) -> Option<DependentSymbol<'sc>> {
     match decl {
         // These declarations can depend upon other declarations.
         Declaration::FunctionDeclaration(decl) => Some(DependentSymbol::Fn(
-            decl.name.primary_name,
+            decl.name.clone(),
             Some(decl.span.clone()),
         )),
-        Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
-        Declaration::StructDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
-        Declaration::EnumDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
-        Declaration::TraitDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
-        Declaration::AbiDeclaration(decl) => dep_sym(decl.name.primary_name.to_string()),
+        Declaration::ConstantDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
+        Declaration::StructDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
+        Declaration::EnumDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
+        Declaration::TraitDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
+        Declaration::AbiDeclaration(decl) => dep_sym(decl.name.as_str().to_string()),
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
-        Declaration::ImplSelf(decl) => impl_sym("self", &decl.type_implementing_for),
+        Declaration::ImplSelf(decl) => {
+            let trait_name = Ident::new_with_override("self", decl.type_name_span.clone());
+            impl_sym(trait_name, &decl.type_implementing_for)
+        }
         Declaration::ImplTrait(decl) => {
             if decl.trait_name.prefixes.is_empty() {
-                impl_sym(
-                    decl.trait_name.suffix.primary_name,
-                    &decl.type_implementing_for,
-                )
+                impl_sym(decl.trait_name.suffix.clone(), &decl.type_implementing_for)
             } else {
                 None
             }
@@ -603,7 +604,8 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         },
         TypeInfo::Boolean => "bool",
         TypeInfo::Custom { name } => name,
-        TypeInfo::Unit => "unit",
+        TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
+        TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",
         TypeInfo::Byte => "byte",
         TypeInfo::B256 => "b256",

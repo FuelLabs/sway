@@ -109,7 +109,7 @@ struct Claim {
 }
 
 let event = InventoryEvent::ItemLoss(Claim {
-    insurance_company: Insurer::default(),
+    insurance_company: ~Insurer::default(),
     item_number: 42,
     item_cost: 1_000,
 });

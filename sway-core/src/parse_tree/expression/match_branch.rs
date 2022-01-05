@@ -10,17 +10,14 @@ use super::scrutinee::Scrutinee;
 use super::{Expression, MatchCondition};
 
 #[derive(Debug, Clone)]
-pub struct MatchBranch<'sc> {
-    pub(crate) condition: MatchCondition<'sc>,
-    pub(crate) result: Expression<'sc>,
-    pub(crate) span: span::Span<'sc>,
+pub struct MatchBranch {
+    pub(crate) condition: MatchCondition,
+    pub(crate) result: Expression,
+    pub(crate) span: span::Span,
 }
 
-impl<'sc> MatchBranch<'sc> {
-    pub fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+impl MatchBranch {
+    pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -53,7 +50,7 @@ impl<'sc> MatchBranch<'sc> {
                     }),
                     Rule::scrutinee => {
                         let scrutinee = check!(
-                            Scrutinee::parse_from_pair(e.clone(), config),
+                            Scrutinee::parse_from_pair(e, config),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -111,7 +108,8 @@ impl<'sc> MatchBranch<'sc> {
         let result = match result.as_rule() {
             Rule::expr => check!(
                 Expression::parse_from_pair(result.clone(), config),
-                Expression::Unit {
+                Expression::Tuple {
+                    fields: vec![],
                     span: span::Span {
                         span: result.as_span(),
                         path
