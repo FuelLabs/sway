@@ -1,6 +1,7 @@
 use super::*;
 use crate::{
     build_config::BuildConfig,
+    ident::Ident,
     parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
     Rule, Span, TypeParameter,
@@ -47,7 +48,7 @@ pub enum TypeInfo {
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        name: String,
+        name: Ident,
     },
     SelfType,
     Byte,
@@ -121,7 +122,12 @@ impl TypeInfo {
                 "Self" | "self" => TypeInfo::SelfType,
                 "Contract" => TypeInfo::Contract,
                 _other => TypeInfo::Custom {
-                    name: input.as_str().trim().to_string(),
+                    name: check!(
+                        Ident::parse_from_pair(input, config),
+                        return err(warnings, errors),
+                        warnings,
+                        errors,
+                    ),
                 },
             },
             Rule::array_type => {
@@ -559,12 +565,11 @@ impl TypeInfo {
             }
             TypeInfo::UnknownGeneric { name, .. } => {
                 for (param, ty_id) in mapping.iter() {
-                    if param.name
-                        == (TypeInfo::Custom {
-                            name: name.to_string(),
-                        })
-                    {
-                        return Some(*ty_id);
+                    match &param.name {
+                        TypeInfo::Custom { name: custom_name } if custom_name.as_str() == name => {
+                            return Some(*ty_id);
+                        }
+                        _ => (),
                     }
                 }
                 None

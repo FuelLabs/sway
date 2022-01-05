@@ -54,7 +54,7 @@ impl Namespace {
         self_type: TypeId,
     ) -> Result<TypeId, ()> {
         Ok(match ty {
-            TypeInfo::Custom { ref name } => match self.get_symbol_by_str(name) {
+            TypeInfo::Custom { ref name } => match self.get_symbol(name).value {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,
@@ -95,7 +95,7 @@ impl Namespace {
     pub(crate) fn resolve_type_without_self(&self, ty: &TypeInfo) -> TypeId {
         let ty = ty.clone();
         match ty {
-            TypeInfo::Custom { name } => match self.get_symbol_by_str(&name) {
+            TypeInfo::Custom { name } => match self.get_symbol(&name).value {
                 Some(TypedDeclaration::StructDeclaration(TypedStructDeclaration {
                     name,
                     fields,
@@ -152,23 +152,6 @@ impl Namespace {
         ok((), warnings, errors)
     }
 
-    // TODO(static span) remove this and switch to spans when we have arena spans
-    pub(crate) fn get_symbol_by_str(&self, symbol: &str) -> Option<&TypedDeclaration> {
-        let empty = vec![];
-        let path = self
-            .use_synonyms
-            .iter()
-            .find_map(|(name, value)| {
-                if name.as_str() == symbol {
-                    Some(value)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(&empty);
-        self.get_name_from_path_str(path, symbol).value
-    }
-
     pub(crate) fn get_symbol(&self, symbol: &Ident) -> CompileResult<&TypedDeclaration> {
         let empty = vec![];
         let path = self.use_synonyms.get(symbol).unwrap_or(&empty);
@@ -211,51 +194,6 @@ impl Namespace {
                 errors.push(CompileError::SymbolNotFound {
                     name: name.as_str().to_string(),
                     span: name.span().clone(),
-                });
-                err(warnings, errors)
-            }
-        }
-    }
-
-    // TODO(static span) remove this when typeinfo uses spans
-    fn get_name_from_path_str(
-        &self,
-        path: &[Ident],
-        name: &str,
-    ) -> CompileResult<&TypedDeclaration> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let module = check!(
-            self.find_module_relative(path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        match module.symbols.iter().find_map(|(item, other)| {
-            if item.as_str() == name {
-                Some(other)
-            } else {
-                None
-            }
-        }) {
-            Some(decl) => ok(decl, warnings, errors),
-            None => {
-                let span = match path.get(0) {
-                    Some(ident) => ident.span().clone(),
-                    None => {
-                        errors.push(CompileError::Internal("Unable to construct span. This is a temporary error and will be fixed in a future release. )", Span { span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                                path: None
-                            }));
-                        Span {
-                            span: pest::Span::new(" ".into(), 0, 0).unwrap(),
-                            path: None,
-                        }
-                    }
-                };
-                errors.push(CompileError::SymbolNotFound {
-                    name: name.to_string(),
-                    span,
                 });
                 err(warnings, errors)
             }
