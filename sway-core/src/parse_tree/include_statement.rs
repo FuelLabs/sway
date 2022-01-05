@@ -6,20 +6,19 @@ use crate::Ident;
 use pest::iterators::Pair;
 
 #[derive(Clone, Debug)]
-pub struct IncludeStatement<'sc> {
-    pub(crate) file_path: &'sc str,
-    pub(crate) alias: Option<Ident<'sc>>,
+pub struct IncludeStatement {
+    pub(crate) alias: Option<Ident>,
     #[allow(dead_code)]
     // this span may be used for errors in the future, although it is not right now.
-    span: Span<'sc>,
-    pub(crate) path_span: Span<'sc>,
+    span: Span,
+    pub(crate) path_span: Span,
 }
 
-impl<'sc> IncludeStatement<'sc> {
+impl IncludeStatement {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -31,16 +30,17 @@ impl<'sc> IncludeStatement<'sc> {
         let _include_keyword = iter.next();
         let path_to_file_raw = iter.collect::<Vec<_>>();
         let mut alias = None;
-        let mut file_path = None;
         let mut path_span = None;
 
         for item in path_to_file_raw {
             if item.as_rule() == Rule::file_path {
-                file_path = Some(item.as_str().trim());
-                path_span = Some(Span {
-                    span: item.as_span(),
-                    path: path.clone(),
-                });
+                path_span = Some(
+                    Span {
+                        span: item.as_span(),
+                        path: path.clone(),
+                    }
+                    .trim(),
+                );
             } else if item.as_rule() == Rule::alias {
                 let alias_parsed = check!(
                     Ident::parse_from_pair(item.into_inner().next().unwrap(), config),
@@ -52,12 +52,10 @@ impl<'sc> IncludeStatement<'sc> {
             }
         }
 
-        let file_path = file_path.expect("guaranteed to exist by grammar");
         let path_span = path_span.expect("guaranteed to exist by grammar");
         ok(
             IncludeStatement {
                 span,
-                file_path,
                 alias,
                 path_span,
             },

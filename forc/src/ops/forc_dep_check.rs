@@ -121,7 +121,7 @@ async fn check_untagged_dependency(
     dependency_name: &str,
     dep: &dependency::DependencyDetails,
 ) -> Result<()> {
-    let current = dependency::get_current_dependency_version(&target_directory)?;
+    let current = dependency::get_current_dependency_version(target_directory)?;
 
     let latest_hash = dependency::get_latest_commit_sha(git_repo, &dep.branch).await?;
 

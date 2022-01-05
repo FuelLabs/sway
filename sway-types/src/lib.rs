@@ -13,7 +13,7 @@ pub struct Position {
     pub col: usize,
 }
 
-/// Based on https://llvm.org/docs/CoverageMappingFormat.html#source-code-range
+/// Based on `<https://llvm.org/docs/CoverageMappingFormat.html#source-code-range>`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Range {
     /// Beginning of the code range
@@ -332,7 +332,7 @@ impl Context {
 }
 
 /// Fuel/Sway ABI representation in JSON, originally
-/// specified here: https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md
+/// specified here: `<https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md>`
 /// This type is used by the compiler and the tooling around it convert
 /// an ABI representation into native Rust structs and vice-versa.
 pub type JsonABI = Vec<Function>;

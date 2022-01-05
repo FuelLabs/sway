@@ -9,6 +9,6 @@ pub use ast_node::{TypedConstantDeclaration, TypedDeclaration, TypedFunctionDecl
 pub use namespace::Namespace;
 pub use syntax_tree::TreeType;
 pub use syntax_tree::TypedParseTree;
-pub(crate) use type_check_arguments::*;
+pub use type_check_arguments::*;
 
 const ERROR_RECOVERY_DECLARATION: TypedDeclaration = TypedDeclaration::ErrorRecovery;

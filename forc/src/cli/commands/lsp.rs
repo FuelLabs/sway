@@ -5,5 +5,6 @@ use sway_server::start;
 pub(crate) struct Command {}
 
 pub(crate) async fn exec(_command: Command) -> Result<(), String> {
-    Ok(start().await)
+    start().await;
+    Ok(())
 }

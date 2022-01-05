@@ -12,30 +12,30 @@ pub use function::*;
 pub use variable::*;
 
 #[derive(Clone, Debug)]
-pub enum TypedDeclaration<'sc> {
-    VariableDeclaration(TypedVariableDeclaration<'sc>),
-    ConstantDeclaration(TypedConstantDeclaration<'sc>),
-    FunctionDeclaration(TypedFunctionDeclaration<'sc>),
-    TraitDeclaration(TypedTraitDeclaration<'sc>),
-    StructDeclaration(TypedStructDeclaration<'sc>),
-    EnumDeclaration(TypedEnumDeclaration<'sc>),
-    Reassignment(TypedReassignment<'sc>),
+pub enum TypedDeclaration {
+    VariableDeclaration(TypedVariableDeclaration),
+    ConstantDeclaration(TypedConstantDeclaration),
+    FunctionDeclaration(TypedFunctionDeclaration),
+    TraitDeclaration(TypedTraitDeclaration),
+    StructDeclaration(TypedStructDeclaration),
+    EnumDeclaration(TypedEnumDeclaration),
+    Reassignment(TypedReassignment),
     ImplTrait {
-        trait_name: CallPath<'sc>,
-        span: Span<'sc>,
-        methods: Vec<TypedFunctionDeclaration<'sc>>,
+        trait_name: CallPath,
+        span: Span,
+        methods: Vec<TypedFunctionDeclaration>,
         type_implementing_for: TypeInfo,
     },
-    AbiDeclaration(TypedAbiDeclaration<'sc>),
+    AbiDeclaration(TypedAbiDeclaration),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope {
-        name: Ident<'sc>,
+        name: Ident,
     },
     ErrorRecovery,
 }
 
-impl TypedDeclaration<'_> {
+impl TypedDeclaration {
     /// The entry point to monomorphizing typed declarations. Instantiates all new type ids,
     /// assuming `self` has already been copied.
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
@@ -60,7 +60,7 @@ impl TypedDeclaration<'_> {
     }
 }
 
-impl<'sc> TypedDeclaration<'sc> {
+impl TypedDeclaration {
     /// friendly name string used for error reporting.
     pub(crate) fn friendly_name(&self) -> &'static str {
         use TypedDeclaration::*;
@@ -78,7 +78,7 @@ impl<'sc> TypedDeclaration<'sc> {
             ErrorRecovery => "error",
         }
     }
-    pub(crate) fn return_type(&self) -> CompileResult<'sc, TypeId> {
+    pub(crate) fn return_type(&self) -> CompileResult<TypeId> {
         ok(
             match self {
                 TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
@@ -98,7 +98,7 @@ impl<'sc> TypedDeclaration<'sc> {
                     fields,
                     ..
                 }) => crate::type_engine::insert_type(TypeInfo::Struct {
-                    name: name.primary_name.to_string(),
+                    name: name.as_str().to_string(),
                     fields: fields
                         .iter()
                         .map(TypedStructField::as_owned_typed_struct_field)
@@ -107,7 +107,7 @@ impl<'sc> TypedDeclaration<'sc> {
                 TypedDeclaration::Reassignment(TypedReassignment { rhs, .. }) => rhs.return_type,
                 TypedDeclaration::GenericTypeForFunctionScope { name } => {
                     insert_type(TypeInfo::UnknownGeneric {
-                        name: name.primary_name.to_string(),
+                        name: name.as_str().to_string(),
                     })
                 }
                 decl => {
@@ -126,14 +126,14 @@ impl<'sc> TypedDeclaration<'sc> {
         )
     }
 
-    pub(crate) fn span(&self) -> Span<'sc> {
+    pub(crate) fn span(&self) -> Span {
         use TypedDeclaration::*;
         match self {
-            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span.clone(),
-            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span.clone(),
+            VariableDeclaration(TypedVariableDeclaration { name, .. }) => name.span().clone(),
+            ConstantDeclaration(TypedConstantDeclaration { name, .. }) => name.span().clone(),
             FunctionDeclaration(TypedFunctionDeclaration { span, .. }) => span.clone(),
-            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span.clone(),
-            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span.clone(),
+            TraitDeclaration(TypedTraitDeclaration { name, .. }) => name.span().clone(),
+            StructDeclaration(TypedStructDeclaration { name, .. }) => name.span().clone(),
             EnumDeclaration(TypedEnumDeclaration { span, .. }) => span.clone(),
             Reassignment(TypedReassignment { lhs, .. }) => {
                 lhs.iter().fold(lhs[0].span(), |acc, this| {
@@ -157,25 +157,21 @@ impl<'sc> TypedDeclaration<'sc> {
                     is_mutable,
                     name,
                     ..
-                }) => format!(
-                    "{} {}",
-                    if *is_mutable { "mut" } else { "" },
-                    name.primary_name
-                ),
+                }) => format!("{} {}", if *is_mutable { "mut" } else { "" }, name.as_str()),
                 TypedDeclaration::FunctionDeclaration(TypedFunctionDeclaration {
                     name, ..
                 }) => {
-                    name.primary_name.into()
+                    name.as_str().into()
                 }
                 TypedDeclaration::TraitDeclaration(TypedTraitDeclaration { name, .. }) =>
-                    name.primary_name.into(),
+                    name.as_str().into(),
                 TypedDeclaration::StructDeclaration(TypedStructDeclaration { name, .. }) =>
-                    name.primary_name.into(),
+                    name.as_str().into(),
                 TypedDeclaration::EnumDeclaration(TypedEnumDeclaration { name, .. }) =>
-                    name.primary_name.into(),
+                    name.as_str().into(),
                 TypedDeclaration::Reassignment(TypedReassignment { lhs, .. }) => lhs
                     .iter()
-                    .map(|x| x.name.primary_name)
+                    .map(|x| x.name.as_str())
                     .collect::<Vec<_>>()
                     .join("."),
                 _ => String::new(),
@@ -201,27 +197,27 @@ impl<'sc> TypedDeclaration<'sc> {
     }
 }
 
-/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's [AbiDeclaration].
+/// A `TypedAbiDeclaration` contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug)]
-pub struct TypedAbiDeclaration<'sc> {
+pub struct TypedAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
-    pub(crate) name: Ident<'sc>,
+    pub(crate) name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
-    pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
+    pub(crate) interface_surface: Vec<TypedTraitFn>,
     /// The methods provided to a contract "for free" upon opting in to this interface
-    pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
-    pub(crate) span: Span<'sc>,
+    pub(crate) methods: Vec<FunctionDeclaration>,
+    pub(crate) span: Span,
 }
 
 #[derive(Clone, Debug)]
-pub struct TypedStructDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) fields: Vec<TypedStructField<'sc>>,
-    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+pub struct TypedStructDeclaration {
+    pub(crate) name: Ident,
+    pub(crate) fields: Vec<TypedStructField>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) visibility: Visibility,
 }
 
-impl<'sc> TypedStructDeclaration<'sc> {
+impl TypedStructDeclaration {
     pub(crate) fn monomorphize(&self) -> Self {
         let mut new_decl = self.clone();
         let type_mapping = insert_type_parameters(&self.type_parameters);
@@ -237,10 +233,10 @@ impl<'sc> TypedStructDeclaration<'sc> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct TypedStructField<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub struct TypedStructField {
+    pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
-    pub(crate) span: Span<'sc>,
+    pub(crate) span: Span,
 }
 
 // TODO(Static span) -- remove this type and use TypedStructField
@@ -261,12 +257,9 @@ impl OwnedTypedStructField {
         };
     }
 
-    pub(crate) fn as_typed_struct_field<'sc>(&self, span: &Span<'sc>) -> TypedStructField<'sc> {
+    pub(crate) fn as_typed_struct_field(&self, span: &Span) -> TypedStructField {
         TypedStructField {
-            name: Ident {
-                span: span.clone(),
-                primary_name: Box::leak(span.clone().as_str().to_string().into_boxed_str()),
-            },
+            name: Ident::new(span.clone()),
             r#type: self.r#type,
             span: span.clone(),
         }
@@ -281,7 +274,7 @@ impl OwnedTypedStructField {
     }
 }
 
-impl TypedStructField<'_> {
+impl TypedStructField {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
@@ -293,21 +286,21 @@ impl TypedStructField<'_> {
     }
     pub(crate) fn as_owned_typed_struct_field(&self) -> OwnedTypedStructField {
         OwnedTypedStructField {
-            name: self.name.primary_name.to_string(),
+            name: self.name.as_str().to_string(),
             r#type: self.r#type,
         }
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct TypedEnumDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
-    pub(crate) variants: Vec<TypedEnumVariant<'sc>>,
-    pub(crate) span: Span<'sc>,
+pub struct TypedEnumDeclaration {
+    pub(crate) name: Ident,
+    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub(crate) variants: Vec<TypedEnumVariant>,
+    pub(crate) span: Span,
     pub(crate) visibility: Visibility,
 }
-impl TypedEnumDeclaration<'_> {
+impl TypedEnumDeclaration {
     pub(crate) fn monomorphize(&self) -> Self {
         let mut new_decl = self.clone();
         let type_mapping = insert_type_parameters(&self.type_parameters);
@@ -322,7 +315,7 @@ impl TypedEnumDeclaration<'_> {
     /// Returns the [ResolvedType] corresponding to this enum's type.
     pub(crate) fn as_type(&self) -> TypeId {
         crate::type_engine::insert_type(TypeInfo::Enum {
-            name: self.name.primary_name.to_string(),
+            name: self.name.as_str().to_string(),
             variant_types: self
                 .variants
                 .iter()
@@ -332,14 +325,14 @@ impl TypedEnumDeclaration<'_> {
     }
 }
 #[derive(Debug, Clone)]
-pub struct TypedEnumVariant<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub struct TypedEnumVariant {
+    pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
     pub(crate) tag: usize,
-    pub(crate) span: Span<'sc>,
+    pub(crate) span: Span,
 }
 
-impl TypedEnumVariant<'_> {
+impl TypedEnumVariant {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.r#type = if let Some(matching_id) =
             look_up_type_id(self.r#type).matches_type_parameter(type_mapping)
@@ -351,7 +344,7 @@ impl TypedEnumVariant<'_> {
     }
     pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
         OwnedTypedEnumVariant {
-            name: self.name.primary_name.to_string(),
+            name: self.name.as_str().to_string(),
             r#type: self.r#type,
             tag: self.tag,
         }
@@ -377,27 +370,27 @@ impl OwnedTypedEnumVariant {
 }
 
 #[derive(Clone, Debug)]
-pub struct TypedConstantDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) value: TypedExpression<'sc>,
+pub struct TypedConstantDeclaration {
+    pub(crate) name: Ident,
+    pub(crate) value: TypedExpression,
     pub(crate) visibility: Visibility,
 }
 
-impl TypedConstantDeclaration<'_> {
+impl TypedConstantDeclaration {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.value.copy_types(type_mapping);
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct TypedTraitDeclaration<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) interface_surface: Vec<TypedTraitFn<'sc>>,
-    pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
-    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+pub struct TypedTraitDeclaration {
+    pub(crate) name: Ident,
+    pub(crate) interface_surface: Vec<TypedTraitFn>,
+    pub(crate) methods: Vec<FunctionDeclaration>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
     pub(crate) visibility: Visibility,
 }
-impl TypedTraitDeclaration<'_> {
+impl TypedTraitDeclaration {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         let additional_type_map = insert_type_parameters(&self.type_parameters);
         let type_mapping = [type_mapping, &additional_type_map].concat();
@@ -408,37 +401,37 @@ impl TypedTraitDeclaration<'_> {
     }
 }
 #[derive(Clone, Debug)]
-pub struct TypedTraitFn<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) parameters: Vec<TypedFunctionParameter<'sc>>,
+pub struct TypedTraitFn {
+    pub(crate) name: Ident,
+    pub(crate) parameters: Vec<TypedFunctionParameter>,
     pub(crate) return_type: TypeId,
-    pub(crate) return_type_span: Span<'sc>,
+    pub(crate) return_type_span: Span,
 }
 
 /// Represents the left hand side of a reassignment -- a name to locate it in the
 /// namespace, and the type that the name refers to. The type is used for memory layout
 /// in asm generation.
 #[derive(Clone, Debug)]
-pub struct ReassignmentLhs<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub struct ReassignmentLhs {
+    pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
 }
 
-impl<'sc> ReassignmentLhs<'sc> {
-    pub(crate) fn span(&self) -> Span<'sc> {
-        self.name.span.clone()
+impl ReassignmentLhs {
+    pub(crate) fn span(&self) -> Span {
+        self.name.span().clone()
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct TypedReassignment<'sc> {
+pub struct TypedReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
-    pub(crate) lhs: Vec<ReassignmentLhs<'sc>>,
-    pub(crate) rhs: TypedExpression<'sc>,
+    pub(crate) lhs: Vec<ReassignmentLhs>,
+    pub(crate) rhs: TypedExpression,
 }
 
-impl TypedReassignment<'_> {
+impl TypedReassignment {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.rhs.copy_types(type_mapping);
         self.lhs
@@ -455,7 +448,7 @@ impl TypedReassignment<'_> {
     }
 }
 
-impl<'sc> TypedTraitFn<'sc> {
+impl TypedTraitFn {
     pub(crate) fn copy_types(&mut self, type_mapping: &[(TypeParameter, TypeId)]) {
         self.return_type = if let Some(matching_id) =
             look_up_type_id(self.return_type).matches_type_parameter(type_mapping)
@@ -468,16 +461,16 @@ impl<'sc> TypedTraitFn<'sc> {
     /// This function is used in trait declarations to insert "placeholder" functions
     /// in the methods. This allows the methods to use functions declared in the
     /// interface surface.
-    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration<'sc> {
+    pub(crate) fn to_dummy_func(&self, mode: Mode) -> TypedFunctionDeclaration {
         TypedFunctionDeclaration {
             purity: Default::default(),
             name: self.name.clone(),
             body: TypedCodeBlock {
                 contents: vec![],
-                whole_block_span: self.name.span.clone(),
+                whole_block_span: self.name.span().clone(),
             },
             parameters: self.parameters.clone(),
-            span: self.name.span.clone(),
+            span: self.name.span().clone(),
             return_type: self.return_type,
             return_type_span: self.return_type_span.clone(),
             visibility: Visibility::Public,

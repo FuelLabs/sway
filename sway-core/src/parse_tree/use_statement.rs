@@ -6,26 +6,27 @@ use crate::Rule;
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub enum ImportType<'sc> {
+pub enum ImportType {
     Star,
-    Item(Ident<'sc>),
+    Item(Ident),
 }
 
+/// A [UseStatement] is a statement that imports something from a module into the local namespace.
 #[derive(Debug, Clone)]
-pub struct UseStatement<'sc> {
-    pub(crate) call_path: Vec<Ident<'sc>>,
-    pub(crate) import_type: ImportType<'sc>,
+pub struct UseStatement {
+    pub(crate) call_path: Vec<Ident>,
+    pub(crate) import_type: ImportType,
     // If `is_absolute` is true, then this use statement is an absolute path from
     // the project root namespace. If not, then it is relative to the current namespace.
     pub(crate) is_absolute: bool,
-    pub(crate) alias: Option<Ident<'sc>>,
+    pub(crate) alias: Option<Ident>,
 }
 
-impl<'sc> UseStatement<'sc> {
+impl UseStatement {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let stmt = pair.into_inner().next().unwrap();

@@ -7,6 +7,7 @@ use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::str;
+use std::sync::Arc;
 use sway_core::{CompileError, CompileWarning, TreeType};
 use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -16,18 +17,15 @@ pub fn is_sway_file(file: &Path) -> bool {
     Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
-pub fn find_main_path(manifest_dir: &PathBuf, manifest: &Manifest) -> PathBuf {
-    let mut code_dir = manifest_dir.clone();
+pub fn find_main_path(manifest_dir: &Path, manifest: &Manifest) -> PathBuf {
+    let mut code_dir = manifest_dir.to_path_buf();
     code_dir.push(constants::SRC_DIR);
     code_dir.push(&manifest.project.entry);
     code_dir
 }
 
-pub fn find_file_name<'sc>(
-    manifest_dir: &'sc PathBuf,
-    main_path: &'sc PathBuf,
-) -> Result<&'sc Path, String> {
-    let mut file_path = manifest_dir.clone();
+pub fn find_file_name<'sc>(manifest_dir: &Path, main_path: &'sc Path) -> Result<&'sc Path, String> {
+    let mut file_path = manifest_dir.to_path_buf();
     file_path.pop();
     let file_name = match main_path.strip_prefix(file_path.clone()) {
         Ok(o) => o,
@@ -58,10 +56,7 @@ pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
     }
 }
 
-pub fn get_main_file(
-    manifest_of_dep: &Manifest,
-    manifest_dir: &Path,
-) -> Result<&'static mut String, String> {
+pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<Arc<str>, String> {
     let main_path = {
         let mut code_dir = PathBuf::from(manifest_dir);
         code_dir.push(constants::SRC_DIR);
@@ -71,16 +66,15 @@ pub fn get_main_file(
 
     // some hackery to get around lifetimes for now, until the AST returns a non-lifetime-bound AST
     let main_file = std::fs::read_to_string(&main_path).map_err(|e| e.to_string())?;
-    let main_file = Box::new(main_file);
-    let main_file: &'static mut String = Box::leak(main_file);
+    let main_file = Arc::from(main_file);
     Ok(main_file)
 }
 
-pub fn print_on_success<'sc>(
+pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,
     warnings: Vec<CompileWarning>,
-    tree_type: TreeType<'sc>,
+    tree_type: TreeType,
 ) {
     let type_str = match tree_type {
         TreeType::Script {} => "script",
@@ -90,7 +84,7 @@ pub fn print_on_success<'sc>(
     };
 
     if !silent_mode {
-        warnings.iter().for_each(|warning| format_warning(warning));
+        warnings.iter().for_each(format_warning);
     }
 
     if warnings.is_empty() {
@@ -110,13 +104,9 @@ pub fn print_on_success<'sc>(
     }
 }
 
-pub fn print_on_success_library<'sc>(
-    silent_mode: bool,
-    proj_name: &str,
-    warnings: Vec<CompileWarning>,
-) {
+pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: Vec<CompileWarning>) {
     if !silent_mode {
-        warnings.iter().for_each(|warning| format_warning(warning));
+        warnings.iter().for_each(format_warning);
     }
 
     if warnings.is_empty() {
@@ -143,7 +133,7 @@ pub fn print_on_failure(
     let e_len = errors.len();
 
     if !silent_mode {
-        warnings.iter().for_each(|warning| format_warning(warning));
+        warnings.iter().for_each(format_warning);
         errors.into_iter().for_each(|error| format_err(&error));
     }
 

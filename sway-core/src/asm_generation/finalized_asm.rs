@@ -9,24 +9,24 @@ use std::io::Read;
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
 #[derive(Clone)]
-pub enum FinalizedAsm<'sc> {
+pub enum FinalizedAsm {
     ContractAbi {
-        data_section: DataSection<'sc>,
-        program_section: InstructionSet<'sc>,
+        data_section: DataSection,
+        program_section: InstructionSet,
     },
     ScriptMain {
-        data_section: DataSection<'sc>,
-        program_section: InstructionSet<'sc>,
+        data_section: DataSection,
+        program_section: InstructionSet,
     },
     PredicateMain {
-        data_section: DataSection<'sc>,
-        program_section: InstructionSet<'sc>,
+        data_section: DataSection,
+        program_section: InstructionSet,
     },
     // Libraries do not generate any asm.
     Library,
 }
-impl<'sc> FinalizedAsm<'sc> {
-    pub(crate) fn to_bytecode_mut(&mut self) -> CompileResult<'sc, Vec<u8>> {
+impl FinalizedAsm {
+    pub(crate) fn to_bytecode_mut(&mut self) -> CompileResult<Vec<u8>> {
         use FinalizedAsm::*;
         match self {
             ContractAbi {
@@ -47,17 +47,17 @@ impl<'sc> FinalizedAsm<'sc> {
     }
 }
 
-fn to_bytecode_mut<'sc>(
-    program_section: &InstructionSet<'sc>,
-    data_section: &mut DataSection<'sc>,
-) -> CompileResult<'sc, Vec<u8>> {
+fn to_bytecode_mut(
+    program_section: &InstructionSet,
+    data_section: &mut DataSection,
+) -> CompileResult<Vec<u8>> {
     let mut errors = vec![];
     if program_section.ops.len() & 1 != 0 {
         println!("ops len: {}", program_section.ops.len());
         errors.push(CompileError::Internal(
             "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
             Span {
-                span: pest::Span::new(" ", 0, 0).unwrap(),
+                span: pest::Span::new(" ".into(), 0, 0).unwrap(),
                 path: None,
             },
         ));

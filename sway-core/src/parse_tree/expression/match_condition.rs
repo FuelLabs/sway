@@ -3,12 +3,12 @@ use crate::Span;
 use super::scrutinee::Scrutinee;
 
 #[derive(Debug, Clone)]
-pub(crate) enum MatchCondition<'sc> {
-    CatchAll(CatchAll<'sc>),
-    Scrutinee(Scrutinee<'sc>),
+pub(crate) enum MatchCondition {
+    CatchAll(CatchAll),
+    Scrutinee(Scrutinee),
 }
 
 #[derive(Debug, Clone)]
-pub struct CatchAll<'sc> {
-    pub span: Span<'sc>,
+pub struct CatchAll {
+    pub span: Span,
 }

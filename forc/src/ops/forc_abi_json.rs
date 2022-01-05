@@ -16,6 +16,7 @@ use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use sway_core::{BuildConfig, CompileAstResult, Namespace, TreeType, TypedParseTree};
 
 pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
@@ -118,7 +119,7 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
 
     if let Some(outfile) = json_outfile {
         let file = File::create(outfile).map_err(|e| e.to_string())?;
-        serde_json::to_writer(&file, &output_json.clone()).map_err(|e| e.to_string())?;
+        serde_json::to_writer(&file, &output_json).map_err(|e| e.to_string())?;
     } else {
         println!("{}", output_json);
     }
@@ -128,11 +129,11 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib<'source, 'manifest>(
+fn compile_dependency_lib<'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
     dependency_lib: &mut Dependency,
-    namespace: &mut Namespace<'source>,
+    namespace: &mut Namespace,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
     offline_mode: bool,
@@ -224,7 +225,7 @@ fn compile_dependency_lib<'source, 'manifest>(
         main_file,
         &manifest_of_dep.project.name,
         &dep_namespace,
-        build_config.clone(),
+        build_config,
         dependency_graph,
         silent_mode,
     )?;
@@ -235,14 +236,14 @@ fn compile_dependency_lib<'source, 'manifest>(
     Ok(json_abi)
 }
 
-fn compile_library<'source, 'manifest>(
-    source: &'source str,
+fn compile_library(
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<(Namespace<'source>, Vec<Function>), String> {
+) -> Result<(Namespace, Vec<Function>), String> {
     let res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
@@ -253,12 +254,7 @@ fn compile_library<'source, 'manifest>(
             let errors = vec![];
             match tree_type {
                 TreeType::Library { name } => {
-                    print_on_success(
-                        silent_mode,
-                        proj_name,
-                        warnings,
-                        TreeType::Library { name: name.clone() },
-                    );
+                    print_on_success(silent_mode, proj_name, warnings, TreeType::Library { name });
                     let json_abi = generate_json_abi(&Some(*parse_tree.clone()));
                     Ok((parse_tree.into_namespace(), json_abi))
                 }
@@ -275,15 +271,15 @@ fn compile_library<'source, 'manifest>(
     }
 }
 
-fn compile<'source, 'manifest>(
-    source: &'source str,
+fn compile(
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<Function>, String> {
-    let res = sway_core::compile_to_ast(&source, namespace, &build_config, dependency_graph);
+    let res = sway_core::compile_to_ast(source, namespace, &build_config, dependency_graph);
     match res {
         CompileAstResult::Success {
             parse_tree,

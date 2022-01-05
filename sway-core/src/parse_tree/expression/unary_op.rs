@@ -14,10 +14,7 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
-    pub fn parse_from_pair<'sc>(
-        pair: Pair<'sc, Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    pub fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         use UnaryOp::*;
         match pair.as_str() {
             "!" => ok(Not, Vec::new(), Vec::new()),
@@ -45,29 +42,15 @@ impl UnaryOp {
         }
     }
 
-    pub fn to_fn_application<'sc>(
-        &self,
-        arg: Expression<'sc>,
-        span: Span<'sc>,
-        op_span: Span<'sc>,
-    ) -> Expression<'sc> {
+    pub fn to_fn_application(&self, arg: Expression, span: Span, op_span: Span) -> Expression {
         Expression::FunctionApplication {
             type_arguments: Default::default(),
             name: CallPath {
                 prefixes: vec![
-                    Ident {
-                        primary_name: "core",
-                        span: op_span.clone(),
-                    },
-                    Ident {
-                        primary_name: "ops",
-                        span: op_span.clone(),
-                    },
+                    Ident::new_with_override("core", op_span.clone()),
+                    Ident::new_with_override("ops", op_span.clone()),
                 ],
-                suffix: Ident {
-                    primary_name: self.to_var_name(),
-                    span: op_span,
-                },
+                suffix: Ident::new_with_override(self.to_var_name(), op_span),
             },
             arguments: vec![arg],
             span,

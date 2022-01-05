@@ -12,15 +12,15 @@ use crate::{
     CompileResult, Ident, Literal,
 };
 
-pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
-    decl: &TypedEnumDeclaration<'sc>,
-    variant_name: &Ident<'sc>,
+pub(crate) fn convert_enum_instantiation_to_asm(
+    decl: &TypedEnumDeclaration,
+    variant_name: &Ident,
     tag: usize,
-    contents: &Option<Box<TypedExpression<'sc>>>,
+    contents: &Option<Box<TypedExpression>>,
     return_register: &VirtualRegister,
-    namespace: &mut AsmNamespace<'sc>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     // step 0: load the tag into a register
@@ -34,7 +34,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
     asm_buf.push(Op::unowned_load_data_comment(
         tag_register.clone(),
         data_label,
-        format!("{} enum instantiation", decl.name.primary_name),
+        format!("{} enum instantiation", decl.name.as_str()),
     ));
     let pointer_register = register_sequencer.next();
     // copy stack pointer into pointer register
@@ -50,7 +50,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
             return err(warnings, errors);
         }
     };
-    let size_of_enum: u64 = 1 /* tag */ + match ty.size_in_words(&variant_name.span) {
+    let size_of_enum: u64 = 1 /* tag */ + match ty.size_in_words(variant_name.span()) {
         Ok(o) => o,
         Err(e) => {
             errors.push(e);
@@ -116,7 +116,7 @@ pub(crate) fn convert_enum_instantiation_to_asm<'sc>(
             return_register,
             VirtualImmediate12::new_unchecked(1, "this is the constant 1; infallible"), // offset by 1 because the tag was already written
             instantiation.span.clone(),
-            format!("{} enum contents", decl.name.primary_name),
+            format!("{} enum contents", decl.name.as_str()),
         ));
     }
 

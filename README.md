@@ -44,9 +44,3 @@ Confirm the Sway toolchain built successfully:
 ```sh
 cargo run --bin forc -- --help
 ```
-
-To run `forc` from any directory, install `forc` to your local Cargo bin directory:
-
-```sh
-cargo install --locked --path forc
-```
