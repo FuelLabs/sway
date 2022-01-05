@@ -4,7 +4,7 @@ dep a_dependency;
 
 fn main() -> u64 {
     let foo = foo::Foo {
-        foo: "foo",
+        foo: 1u32,
     };
-    1
+    foo.foo
 }
