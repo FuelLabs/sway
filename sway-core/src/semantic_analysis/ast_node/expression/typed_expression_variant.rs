@@ -183,7 +183,7 @@ impl TypedExpressionVariant {
                 ..
             } => {
                 format!(
-                    "\"{}.{}\" elem num access",
+                    "\"{}.{}\" tuple index",
                     look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
                     elem_to_access_num
                 )
