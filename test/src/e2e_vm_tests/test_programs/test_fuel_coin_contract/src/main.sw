@@ -6,7 +6,7 @@ use test_fuel_coin_abi::*;
 impl TestFuelCoin for Contract {
 
 
-    // @todo add event logging
+    // todo add event logging
     fn mint(gas: u64, coins: u64, asset_id: b256, mint_amount: u64) {
         mint(coins);
     }
