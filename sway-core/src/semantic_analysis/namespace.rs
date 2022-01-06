@@ -472,7 +472,8 @@ impl Namespace {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let namespace = { let base_namespace = match from_module {
+        let namespace = {
+            let base_namespace = match from_module {
                 Some(base_namespace) => base_namespace,
                 None => self,
             };
@@ -495,7 +496,8 @@ impl Namespace {
             })
             .collect::<Vec<_>>();
         let implemented_traits = namespace.implemented_traits.clone();
-        self.implemented_traits.extend(&mut implemented_traits.into_iter());
+        self.implemented_traits
+            .extend(&mut implemented_traits.into_iter());
         for symbol in symbols {
             self.use_synonyms.insert(symbol, path.clone());
         }

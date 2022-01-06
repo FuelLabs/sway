@@ -3,10 +3,8 @@ dep shiftable;
 use shiftable::*;
 
 
-fn main() -> bool {
+fn main() {
     let mut shiftAnswer: u64 = 0;
 
     shiftAnswer.rsh(5);
-
-    true
 }
