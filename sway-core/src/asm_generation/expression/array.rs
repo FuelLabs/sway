@@ -1,12 +1,12 @@
 use super::compiler_constants::{TWELVE_BITS, TWENTY_FOUR_BITS};
 use super::*;
 
-pub(super) fn convert_array_instantiation_to_asm<'sc>(
-    contents: &[TypedExpression<'sc>],
-    namespace: &mut AsmNamespace<'sc>,
+pub(super) fn convert_array_instantiation_to_asm(
+    contents: &[TypedExpression],
+    namespace: &mut AsmNamespace,
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     // If the array is empty then this is a NOOP.  We don't even need to initialise
     // `return_register`, do we?  Or should we return an error about trying to create this?
     if contents.is_empty() {
@@ -77,15 +77,15 @@ pub(super) fn convert_array_instantiation_to_asm<'sc>(
 
 // Initialise an array with an element size in words of 1 and where all elements can be addressed
 // with twelve bits.
-fn initialize_small_array_instantiation<'sc>(
-    contents: &[TypedExpression<'sc>],
+fn initialize_small_array_instantiation(
+    contents: &[TypedExpression],
     array_start_reg: &VirtualRegister,
-    mut bytecode: Vec<Op<'sc>>,
-    namespace: &mut AsmNamespace<'sc>,
+    mut bytecode: Vec<Op>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-    mut warnings: Vec<CompileWarning<'sc>>,
-    mut errors: Vec<CompileError<'sc>>,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    mut warnings: Vec<CompileWarning>,
+    mut errors: Vec<CompileError>,
+) -> CompileResult<Vec<Op>> {
     assert!(contents.len() as u64 - 1 <= TWELVE_BITS);
 
     let elem_init_reg = register_sequencer.next();
@@ -109,16 +109,16 @@ fn initialize_small_array_instantiation<'sc>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn initialize_large_array_instantiation<'sc>(
-    contents: &[TypedExpression<'sc>],
+fn initialize_large_array_instantiation(
+    contents: &[TypedExpression],
     elem_size_in_words: u64,
     array_offs_reg: &VirtualRegister,
-    mut bytecode: Vec<Op<'sc>>,
-    namespace: &mut AsmNamespace<'sc>,
+    mut bytecode: Vec<Op>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-    mut warnings: Vec<CompileWarning<'sc>>,
-    mut errors: Vec<CompileError<'sc>>,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    mut warnings: Vec<CompileWarning>,
+    mut errors: Vec<CompileError>,
+) -> CompileResult<Vec<Op>> {
     let elem_offs_reg = register_sequencer.next();
     bytecode.push(Op::unowned_register_move(
         elem_offs_reg.clone(),
@@ -205,14 +205,14 @@ fn initialize_large_array_instantiation<'sc>(
     ok(bytecode, warnings, errors)
 }
 
-pub(super) fn convert_array_index_to_asm<'sc>(
-    prefix: &TypedExpression<'sc>,
-    index: &TypedExpression<'sc>,
-    span: &Span<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+pub(super) fn convert_array_index_to_asm(
+    prefix: &TypedExpression,
+    index: &TypedExpression,
+    span: &Span,
+    namespace: &mut AsmNamespace,
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let mut bytecode = Vec::new();
@@ -344,11 +344,11 @@ pub(super) fn convert_array_index_to_asm<'sc>(
 // We want the first (and usually probably the only) operation to OR with Zero, so we recurse for
 // each set of 12 bits until we hit a zero value, and then return the Zero register to be used
 // next.  Thereafter we OR the destination register.
-fn set_large_register_value<'sc, 'a>(
+fn set_large_register_value<'a>(
     value: u64,
     dst_reg: &'a VirtualRegister,
-    bytecode: &mut Vec<Op<'sc>>,
-    span: &Span<'sc>,
+    bytecode: &mut Vec<Op>,
+    span: &Span,
 ) -> &'a VirtualRegister {
     if value == 0 {
         return &VirtualRegister::Constant(ConstantRegister::Zero);
@@ -381,11 +381,11 @@ fn set_large_register_value<'sc, 'a>(
     dst_reg
 }
 
-fn compile_bounds_assertion<'sc>(
-    bytecode: &mut Vec<Op<'sc>>,
+fn compile_bounds_assertion(
+    bytecode: &mut Vec<Op>,
     count_reg: &VirtualRegister,
     index_reg: &VirtualRegister,
-    span: &Span<'sc>,
+    span: &Span,
     register_sequencer: &mut RegisterSequencer,
 ) {
     // gt_reg = index_reg > count_reg.

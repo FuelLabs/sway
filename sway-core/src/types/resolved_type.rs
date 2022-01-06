@@ -5,7 +5,7 @@ use derivative::Derivative;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum ResolvedType<'sc> {
+pub enum ResolvedType {
     /// The number in a `Str` represents its size, which must be known at compile time
     Str(u64),
     UnsignedInteger(IntegerBits),
@@ -14,12 +14,12 @@ pub enum ResolvedType<'sc> {
     Byte,
     B256,
     Struct {
-        name: Ident<'sc>,
-        fields: Vec<TypedStructField<'sc>>,
+        name: Ident,
+        fields: Vec<TypedStructField>,
     },
     Enum {
-        name: Ident<'sc>,
-        variant_types: Vec<ResolvedType<'sc>>,
+        name: Ident,
+        variant_types: Vec<ResolvedType>,
     },
     /// Represents the contract's type as a whole. Used for implementing
     /// traits on the contract itself, to enforce a specific type of ABI.
@@ -27,32 +27,32 @@ pub enum ResolvedType<'sc> {
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
-        abi_name: CallPath<'sc>,
+        abi_name: CallPath,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
-        address: Box<TypedExpression<'sc>>,
+        address: Box<TypedExpression>,
     },
     Function {
-        from: Box<ResolvedType<'sc>>,
-        to: Box<ResolvedType<'sc>>,
+        from: Box<ResolvedType>,
+        to: Box<ResolvedType>,
     },
     // used for recovering from errors in the ast
     ErrorRecovery,
 }
 
-impl ResolvedType<'_> {}
+impl ResolvedType {}
 
-impl Default for ResolvedType<'_> {
+impl Default for ResolvedType {
     fn default() -> Self {
         ResolvedType::Unit
     }
 }
 
-impl<'sc> ResolvedType<'sc> {
+impl ResolvedType {
     /// Calculates the stack size of this type, to be used when allocating stack memory for it.
     /// This is _in words_!
     pub(crate) fn stack_size_of(&self) -> u64 {
         let span = crate::Span {
-            span: pest::Span::new("TODO(static span)", 0, 0).unwrap(),
+            span: pest::Span::new("TODO(static span)".into(), 0, 0).unwrap(),
             path: None,
         };
 

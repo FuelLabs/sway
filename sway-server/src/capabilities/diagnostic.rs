@@ -55,6 +55,6 @@ fn get_range(warning_or_error: &WarningOrError<'_>) -> Range {
 }
 
 enum WarningOrError<'s> {
-    Warning(&'s CompileWarning<'s>),
-    Error(&'s CompileError<'s>),
+    Warning(&'s CompileWarning),
+    Error(&'s CompileError),
 }

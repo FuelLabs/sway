@@ -11,11 +11,11 @@ pub(crate) use fn_decl::convert_fn_decl_to_asm;
 pub(crate) use reassignment::convert_reassignment_to_asm;
 pub(crate) use var_decl::convert_variable_decl_to_asm;
 
-pub(crate) fn convert_decl_to_asm<'sc>(
-    decl: &TypedDeclaration<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+pub(crate) fn convert_decl_to_asm(
+    decl: &TypedDeclaration,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     match decl {
         // For an enum declaration, we don't generate any asm.
         TypedDeclaration::EnumDeclaration(_) => ok(vec![], vec![], vec![]),
@@ -42,7 +42,7 @@ pub(crate) fn convert_decl_to_asm<'sc>(
             vec![],
             vec![CompileError::Unimplemented(
                 "ASM generation has not yet been implemented for this declaration variant.",
-                decl.span().clone(),
+                decl.span(),
             )],
         ),
     }

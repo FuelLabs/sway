@@ -1,11 +1,11 @@
 use super::*;
 use crate::asm_lang::{ConstantRegister, VirtualRegister};
 use crate::semantic_analysis::ast_node::TypedWhileLoop;
-pub(super) fn convert_while_loop_to_asm<'sc>(
-    r#loop: &TypedWhileLoop<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+pub(super) fn convert_while_loop_to_asm(
+    r#loop: &TypedWhileLoop,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut buf: Vec<Op> = vec![];
@@ -23,7 +23,7 @@ pub(super) fn convert_while_loop_to_asm<'sc>(
     let condition_span = r#loop.condition.span.clone();
     buf.push(Op::jump_label_comment(
         label.clone(),
-        condition_span.clone(),
+        condition_span,
         "begin while loop",
     ));
 

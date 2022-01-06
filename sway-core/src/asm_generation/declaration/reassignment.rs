@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     asm_generation::{
-        convert_expression_to_asm, expression::get_struct_memory_layout, AsmNamespace,
+        convert_expression_to_asm, expression::get_contiguous_memory_layout, AsmNamespace,
         RegisterSequencer,
     },
     asm_lang::{VirtualImmediate12, VirtualOp},
@@ -12,11 +12,11 @@ use crate::{
 };
 use either::Either;
 
-pub(crate) fn convert_reassignment_to_asm<'sc>(
-    reassignment: &TypedReassignment<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+pub(crate) fn convert_reassignment_to_asm(
+    reassignment: &TypedReassignment,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     // 0. evaluate the RHS of the reassignment
     // 1. Find the register that the previous var was stored in
     // 2. move the return register of the RHS into the register in the namespace
@@ -66,7 +66,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     reassignment
                         .lhs
                         .iter()
-                        .map(|x| x.name.primary_name)
+                        .map(|x| x.name.as_str())
                         .collect::<Vec<_>>()
                         .join(".")
                 ),
@@ -83,11 +83,11 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             let (mut fields, top_level_decl) = match iter
                 .next()
                 .map(|ReassignmentLhs { r#type, name }| -> Result<_, _> {
-                    match resolve_type(*r#type, &name.span) {
+                    match resolve_type(*r#type, name.span()) {
                         Ok(TypeInfo::Struct { ref fields, .. }) => Ok((fields.clone(), name)),
                         Ok(ref a) => Err(CompileError::NotAStruct {
-                            name: name.primary_name.to_string(),
-                            span: name.span.clone(),
+                            name: name.as_str().to_string(),
+                            span: name.span().clone(),
                             actually: a.friendly_type_str(),
                         }),
                         Err(a) => Err(CompileError::TypeError(a)),
@@ -105,7 +105,7 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
             // delve into this potentially nested field access and figure out the location of this
             // subfield
             for ReassignmentLhs { r#type, name } in iter {
-                let r#type = match resolve_type(*r#type, &name.span) {
+                let r#type = match resolve_type(*r#type, name.span()) {
                     Ok(o) => o,
                     Err(e) => {
                         errors.push(CompileError::TypeError(e));
@@ -113,18 +113,29 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     }
                 };
                 // TODO(static span) use spans instead of strings below
+                let span = crate::Span {
+                    span: pest::Span::new(
+                        "TODO(static span): use Idents instead of Strings".into(),
+                        0,
+                        0,
+                    )
+                    .unwrap(),
+                    path: None,
+                };
                 let fields_for_layout = fields
                     .iter()
-                    .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, name.as_str()))
+                    .map(|OwnedTypedStructField { name, r#type, .. }| {
+                        (*r#type, span.clone(), name.clone())
+                    })
                     .collect::<Vec<_>>();
                 let field_layout = check!(
-                    get_struct_memory_layout(&fields_for_layout[..]),
+                    get_contiguous_memory_layout(&fields_for_layout[..]),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 let offset_of_this_field = check!(
-                    field_layout.offset_to_field_name(name),
+                    field_layout.offset_to_field_name(name.as_str(), name.span().clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -134,8 +145,8 @@ pub(crate) fn convert_reassignment_to_asm<'sc>(
                     TypeInfo::Struct { ref fields, .. } => fields.clone(),
                     a => {
                         errors.push(CompileError::NotAStruct {
-                            name: name.primary_name.to_string(),
-                            span: name.span.clone(),
+                            name: name.as_str().to_string(),
+                            span: name.span().clone(),
                             actually: a.friendly_type_str(),
                         });
                         return err(warnings, errors);

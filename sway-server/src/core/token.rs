@@ -58,11 +58,11 @@ impl Token {
 
     pub fn from_variable(var_dec: &VariableDeclaration) -> Self {
         let ident = &var_dec.name;
-        let name = ident.primary_name;
+        let name = ident.as_str();
         let var_body = extract_var_body(var_dec);
 
         Token::new(
-            &ident.span,
+            ident.span(),
             name.into(),
             TokenType::Variable(VariableDetails {
                 is_mutable: var_dec.is_mutable,
@@ -72,7 +72,7 @@ impl Token {
     }
 
     pub fn from_ident(ident: &Ident, token_type: TokenType) -> Self {
-        Token::new(&ident.span, ident.primary_name.into(), token_type)
+        Token::new(ident.span(), ident.as_str().into(), token_type)
     }
 
     pub fn from_span(span: Span, token_type: TokenType) -> Self {

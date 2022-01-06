@@ -5,26 +5,26 @@ use pest::iterators::Pair;
 use std::convert::From;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct TypeParameter<'sc> {
+pub(crate) struct TypeParameter {
     pub(crate) name: TypeInfo,
-    pub(crate) name_ident: Ident<'sc>,
-    pub(crate) trait_constraints: Vec<TraitConstraint<'sc>>,
+    pub(crate) name_ident: Ident,
+    pub(crate) trait_constraints: Vec<TraitConstraint>,
 }
 
-impl<'sc> From<&TypeParameter<'sc>> for TypedDeclaration<'sc> {
-    fn from(n: &TypeParameter<'sc>) -> Self {
+impl From<&TypeParameter> for TypedDeclaration {
+    fn from(n: &TypeParameter) -> Self {
         TypedDeclaration::GenericTypeForFunctionScope {
             name: n.name_ident.clone(),
         }
     }
 }
 
-impl<'sc> TypeParameter<'sc> {
+impl TypeParameter {
     pub(crate) fn parse_from_type_params_and_where_clause(
-        type_params_pair: Option<Pair<'sc, Rule>>,
-        where_clause_pair: Option<Pair<'sc, Rule>>,
+        type_params_pair: Option<Pair<Rule>>,
+        where_clause_pair: Option<Pair<Rule>>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Vec<TypeParameter<'sc>>> {
+    ) -> CompileResult<Vec<TypeParameter>> {
         let path = config.map(|c| c.path());
         let mut errors = Vec::new();
         let mut warnings = vec![];
@@ -67,37 +67,31 @@ impl<'sc> TypeParameter<'sc> {
         if let Some(where_clause_pair) = where_clause_pair {
             let mut pair = where_clause_pair.into_inner().peekable();
             while pair.peek().is_some() {
-                let type_param = pair.next().unwrap();
-                assert_eq!(type_param.as_rule(), Rule::generic_type_param);
-                let trait_constraint = pair.next().unwrap();
-                assert_eq!(trait_constraint.as_rule(), Rule::trait_name);
+                let type_param = Ident::parse_from_pair(pair.next().unwrap(), config)
+                    .value
+                    .unwrap();
+                let trait_constraint = Ident::parse_from_pair(pair.next().unwrap(), config)
+                    .value
+                    .unwrap();
                 // assign trait constraints to above parsed type params
                 // find associated type name
                 let param_to_edit =
                     match params.iter_mut().find(|TypeParameter { name_ident, .. }| {
-                        name_ident.primary_name == type_param.as_str()
+                        name_ident.as_str() == type_param.as_str()
                     }) {
                         Some(o) => o,
                         None => {
                             errors.push(CompileError::ConstrainedNonExistentType {
-                                type_name: type_param.as_str(),
-                                trait_name: trait_constraint.as_str(),
-                                span: Span {
-                                    span: trait_constraint.as_span(),
-                                    path: path.clone(),
-                                },
+                                type_name: type_param,
+                                trait_name: trait_constraint.clone(),
+                                span: trait_constraint.span().clone(),
                             });
                             continue;
                         }
                     };
 
                 param_to_edit.trait_constraints.push(TraitConstraint {
-                    name: check!(
-                        Ident::parse_from_pair(trait_constraint, config),
-                        continue,
-                        warnings,
-                        errors
-                    ),
+                    name: trait_constraint,
                 });
             }
         }
@@ -106,6 +100,6 @@ impl<'sc> TypeParameter<'sc> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub(crate) struct TraitConstraint<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub(crate) struct TraitConstraint {
+    pub(crate) name: Ident,
 }

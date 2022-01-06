@@ -17,30 +17,30 @@ use crate::{
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub struct EnumDeclaration<'sc> {
-    pub name: Ident<'sc>,
-    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
-    pub(crate) variants: Vec<EnumVariant<'sc>>,
-    pub(crate) span: Span<'sc>,
+pub struct EnumDeclaration {
+    pub name: Ident,
+    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub(crate) variants: Vec<EnumVariant>,
+    pub(crate) span: Span,
     pub visibility: Visibility,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct EnumVariant<'sc> {
-    pub(crate) name: Ident<'sc>,
+pub(crate) struct EnumVariant {
+    pub(crate) name: Ident,
     pub(crate) r#type: TypeInfo,
     pub(crate) tag: usize,
-    pub(crate) span: Span<'sc>,
+    pub(crate) span: Span,
 }
 
-impl<'sc> EnumDeclaration<'sc> {
+impl EnumDeclaration {
     /// Looks up the various TypeInfos in the [Namespace] to see if they are generic or refer to
     /// something.
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace,
         self_type: TypeId,
-    ) -> TypedEnumDeclaration<'sc> {
+    ) -> TypedEnumDeclaration {
         let mut variants_buf = vec![];
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -64,9 +64,9 @@ impl<'sc> EnumDeclaration<'sc> {
     }
 
     pub(crate) fn parse_from_pair(
-        decl_inner: Pair<'sc, Rule>,
+        decl_inner: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let whole_enum_span = Span {
             span: decl_inner.as_span(),
@@ -118,14 +118,14 @@ impl<'sc> EnumDeclaration<'sc> {
             errors
         );
         assert_or_warn!(
-            is_upper_camel_case(name.primary_name),
+            is_upper_camel_case(name.as_str()),
             warnings,
             Span {
                 span: enum_name.as_span(),
                 path,
             },
             Warning::NonClassCaseEnumName {
-                enum_name: name.primary_name
+                enum_name: name.clone()
             }
         );
 
@@ -150,14 +150,14 @@ impl<'sc> EnumDeclaration<'sc> {
     }
 }
 
-impl<'sc> EnumVariant<'sc> {
+impl EnumVariant {
     pub(crate) fn to_typed_decl(
         &self,
-        namespace: &mut Namespace<'sc>,
+        namespace: &mut Namespace,
         self_type: TypeId,
-        span: Span<'sc>,
+        span: Span,
         type_mapping: &[(TypeParameter, TypeId)],
-    ) -> CompileResult<'sc, TypedEnumVariant<'sc>> {
+    ) -> CompileResult<TypedEnumVariant> {
         let mut errors = vec![];
         let enum_variant_type =
             if let Some(matching_id) = self.r#type.matches_type_parameter(type_mapping) {
@@ -182,9 +182,9 @@ impl<'sc> EnumVariant<'sc> {
         )
     }
     pub(crate) fn parse_from_pairs(
-        decl_inner: Option<Pair<'sc, Rule>>,
+        decl_inner: Option<Pair<Rule>>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Vec<Self>> {
+    ) -> CompileResult<Vec<Self>> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut fields_buf = Vec::new();
@@ -203,16 +203,16 @@ impl<'sc> EnumVariant<'sc> {
                     errors
                 );
                 assert_or_warn!(
-                    is_upper_camel_case(name.primary_name),
+                    is_upper_camel_case(name.as_str()),
                     warnings,
-                    name.span.clone(),
+                    name.span().clone(),
                     Warning::NonClassCaseEnumVariantName {
-                        variant_name: name.primary_name
+                        variant_name: name.clone()
                     }
                 );
                 let r#type = check!(
                     TypeInfo::parse_from_pair(fields[i + 1].clone(), config),
-                    TypeInfo::Unit,
+                    TypeInfo::Tuple(Vec::new()),
                     warnings,
                     errors
                 );

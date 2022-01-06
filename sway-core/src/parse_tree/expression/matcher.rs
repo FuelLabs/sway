@@ -1,21 +1,21 @@
 use crate::{
     error::{err, ok},
     CallPath, CompileError, CompileResult, DelayedEnumVariantResolution, DelayedResolutionVariant,
-    DelayedStructFieldResolution, Expression, Ident, Literal, Scrutinee, Span,
-    StructScrutineeField,
+    DelayedStructFieldResolution, DelayedTupleVariantResolution, Expression, Ident, Literal,
+    Scrutinee, Span, StructScrutineeField,
 };
 
 /// List of requirements that a desugared if expression must include in the conditional.
-pub type MatchReqMap<'sc> = Vec<(Expression<'sc>, Expression<'sc>)>;
+pub type MatchReqMap = Vec<(Expression, Expression)>;
 /// List of variable declarations that must be placed inside of the body of the if expression.
-pub type MatchImplMap<'sc> = Vec<(Ident<'sc>, Expression<'sc>)>;
+pub type MatchImplMap = Vec<(Ident, Expression)>;
 /// This is the result type given back by the matcher.
-pub type MatcherResult<'sc> = Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)>;
+pub type MatcherResult = Option<(MatchReqMap, MatchImplMap)>;
 
 /// This algorithm desugars pattern matching into a [MatcherResult], by creating two lists,
 /// the [MatchReqMap] which is a list of requirements that a desugared if expression
 /// must inlcude in the conditional, and the [MatchImplMap] which is a list of variable
-/// declarations that must be placed inside the bofy of the if expression.
+/// declarations that must be placed inside the body of the if expression.
 ///
 /// Given the following example
 ///
@@ -49,13 +49,10 @@ pub type MatcherResult<'sc> = Option<(MatchReqMap<'sc>, MatchImplMap<'sc>)>;
 ///
 /// ```ignore
 /// [
-///     (x, 42) // add `let x = 42 in the body of the desugared if expression
+///     (x, 42) // add `let x = 42` in the body of the desugared if expression
 /// ]
 /// ```
-pub fn matcher<'sc>(
-    exp: &Expression<'sc>,
-    scrutinee: &Scrutinee<'sc>,
-) -> CompileResult<'sc, MatcherResult<'sc>> {
+pub fn matcher(exp: &Expression, scrutinee: &Scrutinee) -> CompileResult<MatcherResult> {
     let mut errors = vec![];
     let warnings = vec![];
     match scrutinee {
@@ -71,6 +68,7 @@ pub fn matcher<'sc>(
             args,
             span,
         } => match_enum(exp, call_path, args, span),
+        Scrutinee::Tuple { elems, span } => match_tuple(exp, elems, span),
         scrutinee => {
             eprintln!("Unimplemented scrutinee: {:?}", scrutinee,);
             errors.push(CompileError::Unimplemented(
@@ -82,11 +80,11 @@ pub fn matcher<'sc>(
     }
 }
 
-fn match_literal<'sc>(
-    exp: &Expression<'sc>,
-    scrutinee: &Literal<'sc>,
-    scrutinee_span: &Span<'sc>,
-) -> CompileResult<'sc, MatcherResult<'sc>> {
+fn match_literal(
+    exp: &Expression,
+    scrutinee: &Literal,
+    scrutinee_span: &Span,
+) -> CompileResult<MatcherResult> {
     let match_req_map = vec![(
         exp.to_owned(),
         Expression::Literal {
@@ -98,22 +96,22 @@ fn match_literal<'sc>(
     ok(Some((match_req_map, match_impl_map)), vec![], vec![])
 }
 
-fn match_variable<'sc>(
-    exp: &Expression<'sc>,
-    scrutinee_name: &Ident<'sc>,
-    _span: &Span<'sc>,
-) -> CompileResult<'sc, MatcherResult<'sc>> {
+fn match_variable(
+    exp: &Expression,
+    scrutinee_name: &Ident,
+    _span: &Span,
+) -> CompileResult<MatcherResult> {
     let match_req_map = vec![];
     let match_impl_map = vec![(scrutinee_name.to_owned(), exp.to_owned())];
     ok(Some((match_req_map, match_impl_map)), vec![], vec![])
 }
 
-fn match_struct<'sc>(
-    exp: &Expression<'sc>,
-    struct_name: &Ident<'sc>,
-    fields: &[StructScrutineeField<'sc>],
-    span: &Span<'sc>,
-) -> CompileResult<'sc, MatcherResult<'sc>> {
+fn match_struct(
+    exp: &Expression,
+    struct_name: &Ident,
+    fields: &[StructScrutineeField],
+    span: &Span,
+) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut match_req_map = vec![];
@@ -156,12 +154,12 @@ fn match_struct<'sc>(
     ok(Some((match_req_map, match_impl_map)), warnings, errors)
 }
 
-fn match_enum<'sc>(
-    exp: &Expression<'sc>,
-    call_path: &CallPath<'sc>,
-    args: &[Scrutinee<'sc>],
-    span: &Span<'sc>,
-) -> CompileResult<'sc, MatcherResult<'sc>> {
+fn match_enum(
+    exp: &Expression,
+    call_path: &CallPath,
+    args: &[Scrutinee],
+    span: &Span,
+) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut match_req_map = vec![];
@@ -177,6 +175,37 @@ fn match_enum<'sc>(
         };
         let new_matches = check!(
             matcher(&delayed_resolution_exp, arg),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        match new_matches {
+            Some((mut new_match_req_map, mut new_match_impl_map)) => {
+                match_req_map.append(&mut new_match_req_map);
+                match_impl_map.append(&mut new_match_impl_map);
+            }
+            None => return ok(None, warnings, errors),
+        }
+    }
+
+    ok(Some((match_req_map, match_impl_map)), warnings, errors)
+}
+
+fn match_tuple(exp: &Expression, elems: &[Scrutinee], span: &Span) -> CompileResult<MatcherResult> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let mut match_req_map = vec![];
+    let mut match_impl_map = vec![];
+    for (pos, elem) in elems.iter().enumerate() {
+        let delayed_resolution_exp = Expression::DelayedMatchTypeResolution {
+            variant: DelayedResolutionVariant::TupleVariant(DelayedTupleVariantResolution {
+                exp: Box::new(exp.clone()),
+                elem_num: pos,
+            }),
+            span: span.clone(),
+        };
+        let new_matches = check!(
+            matcher(&delayed_resolution_exp, elem),
             return err(warnings, errors),
             warnings,
             errors

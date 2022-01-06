@@ -9,19 +9,19 @@ use super::Expression;
 use crate::type_engine::IntegerBits;
 
 #[derive(Debug, Clone)]
-pub struct AsmExpression<'sc> {
-    pub(crate) registers: Vec<AsmRegisterDeclaration<'sc>>,
-    pub(crate) body: Vec<AsmOp<'sc>>,
-    pub(crate) returns: Option<(AsmRegister, Span<'sc>)>,
+pub struct AsmExpression {
+    pub(crate) registers: Vec<AsmRegisterDeclaration>,
+    pub(crate) body: Vec<AsmOp>,
+    pub(crate) returns: Option<(AsmRegister, Span)>,
     pub(crate) return_type: TypeInfo,
-    pub(crate) whole_block_span: Span<'sc>,
+    pub(crate) whole_block_span: Span,
 }
 
-impl<'sc> AsmExpression<'sc> {
+impl AsmExpression {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let whole_block_span = Span {
             span: pair.as_span(),
@@ -80,7 +80,7 @@ impl<'sc> AsmExpression<'sc> {
         let return_type = implicit_op_type.unwrap_or(if implicit_op_return.is_some() {
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
         } else {
-            TypeInfo::Unit
+            TypeInfo::Tuple(Vec::new())
         });
 
         ok(
@@ -98,11 +98,11 @@ impl<'sc> AsmExpression<'sc> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AsmOp<'sc> {
-    pub(crate) op_name: Ident<'sc>,
-    pub(crate) op_args: Vec<Ident<'sc>>,
-    pub(crate) span: Span<'sc>,
-    pub(crate) immediate: Option<Ident<'sc>>,
+pub(crate) struct AsmOp {
+    pub(crate) op_name: Ident,
+    pub(crate) op_args: Vec<Ident>,
+    pub(crate) span: Span,
+    pub(crate) immediate: Option<Ident>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -110,8 +110,8 @@ pub(crate) struct AsmRegister {
     pub(crate) name: String,
 }
 
-impl<'sc> AsmRegister {
-    fn parse_from_pair(pair: Pair<'sc, Rule>) -> CompileResult<'sc, Self> {
+impl AsmRegister {
+    fn parse_from_pair(pair: Pair<Rule>) -> CompileResult<Self> {
         ok(
             AsmRegister {
                 name: pair.as_str().to_string(),
@@ -128,11 +128,8 @@ impl From<AsmRegister> for String {
     }
 }
 
-impl<'sc> AsmOp<'sc> {
-    fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+impl AsmOp {
+    fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -153,22 +150,16 @@ impl<'sc> AsmOp<'sc> {
         for pair in iter {
             match pair.as_rule() {
                 Rule::asm_register => {
-                    args.push(Ident {
-                        primary_name: pair.as_str(),
-                        span: Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
-                    });
+                    args.push(Ident::new(Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    }));
                 }
                 Rule::asm_immediate => {
-                    immediate_value = Some(Ident {
-                        primary_name: pair.as_str().trim(),
-                        span: Span {
-                            span: pair.as_span(),
-                            path: path.clone(),
-                        },
-                    });
+                    immediate_value = Some(Ident::new(Span {
+                        span: pair.as_span(),
+                        path: path.clone(),
+                    }));
                 }
                 _ => unreachable!(),
             }
@@ -187,17 +178,13 @@ impl<'sc> AsmOp<'sc> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct AsmRegisterDeclaration<'sc> {
-    pub(crate) name: &'sc str,
-    pub(crate) initializer: Option<Expression<'sc>>,
-    pub(crate) name_span: Span<'sc>,
+pub(crate) struct AsmRegisterDeclaration {
+    pub(crate) name: Ident,
+    pub(crate) initializer: Option<Expression>,
 }
 
-impl<'sc> AsmRegisterDeclaration<'sc> {
-    fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Vec<Self>> {
+impl AsmRegisterDeclaration {
+    fn parse_from_pair(pair: Pair<Rule>, config: Option<&BuildConfig>) -> CompileResult<Vec<Self>> {
         let iter = pair.into_inner();
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -205,7 +192,12 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
         for pair in iter {
             assert_eq!(pair.as_rule(), Rule::asm_register_declaration);
             let mut iter = pair.into_inner();
-            let reg_name = iter.next().unwrap();
+            let reg_name = check!(
+                Ident::parse_from_pair(iter.next().unwrap(), config),
+                return err(warnings, errors),
+                warnings,
+                errors,
+            );
             // if there is still anything in the iterator, then it is a variable expression to be
             // assigned to that register
             let initializer = if let Some(pair) = iter.next() {
@@ -219,11 +211,7 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
                 None
             };
             reg_buf.push(AsmRegisterDeclaration {
-                name: reg_name.as_str(),
-                name_span: Span {
-                    span: reg_name.as_span(),
-                    path: config.map(|c| c.path()),
-                },
+                name: reg_name,
                 initializer,
             })
         }
@@ -232,18 +220,18 @@ impl<'sc> AsmRegisterDeclaration<'sc> {
     }
 }
 
-fn disallow_opcode<'sc>(op: &Ident<'sc>) -> Vec<CompileError<'sc>> {
+fn disallow_opcode(op: &Ident) -> Vec<CompileError> {
     let mut errors = vec![];
 
-    match op.primary_name.to_lowercase().as_str() {
+    match op.as_str().to_lowercase().as_str() {
         "jnei" => {
             errors.push(CompileError::DisallowedJnei {
-                span: op.span.clone(),
+                span: op.span().clone(),
             });
         }
         "ji" => {
             errors.push(CompileError::DisallowedJi {
-                span: op.span.clone(),
+                span: op.span().clone(),
             });
         }
         _ => (),

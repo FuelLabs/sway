@@ -3,16 +3,16 @@ use crate::semantic_analysis::{ast_node::Mode, TypeCheckArguments};
 use crate::CodeBlock;
 
 #[derive(Clone, Debug)]
-pub(crate) struct TypedCodeBlock<'sc> {
-    pub(crate) contents: Vec<TypedAstNode<'sc>>,
-    pub(crate) whole_block_span: Span<'sc>,
+pub(crate) struct TypedCodeBlock {
+    pub(crate) contents: Vec<TypedAstNode>,
+    pub(crate) whole_block_span: Span,
 }
 
 #[allow(clippy::too_many_arguments)]
-impl<'sc> TypedCodeBlock<'sc> {
-    pub(crate) fn type_check<'n>(
-        arguments: TypeCheckArguments<'n, 'sc, CodeBlock<'sc>>,
-    ) -> CompileResult<'sc, (Self, TypeId)> {
+impl TypedCodeBlock {
+    pub(crate) fn type_check(
+        arguments: TypeCheckArguments<'_, CodeBlock>,
+    ) -> CompileResult<(Self, TypeId)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -52,7 +52,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 })
                 .ok(&mut warnings, &mut errors)
             })
-            .collect::<Vec<TypedAstNode<'sc>>>();
+            .collect::<Vec<TypedAstNode>>();
 
         let implicit_return_span = other
             .contents
@@ -82,9 +82,7 @@ impl<'sc> TypedCodeBlock<'sc> {
                 return_type,
                 type_annotation,
                 self_type,
-                &implicit_return_span
-                    .clone()
-                    .unwrap_or_else(|| other.whole_block_span.clone()),
+                &implicit_return_span.unwrap_or_else(|| other.whole_block_span.clone()),
             ) {
                 Ok(mut ws) => {
                     warnings.append(&mut ws);
@@ -102,7 +100,9 @@ impl<'sc> TypedCodeBlock<'sc> {
                     contents: evaluated_contents,
                     whole_block_span: other.whole_block_span,
                 },
-                return_type.unwrap_or_else(|| crate::type_engine::insert_type(TypeInfo::Unit)),
+                return_type.unwrap_or_else(|| {
+                    crate::type_engine::insert_type(TypeInfo::Tuple(Vec::new()))
+                }),
             ),
             warnings,
             errors,

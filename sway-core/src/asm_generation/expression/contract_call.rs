@@ -3,17 +3,17 @@ use crate::semantic_analysis::ast_node::*;
 use either::Either;
 /// Converts a function application of a contract ABI function into assembly
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn convert_contract_call_to_asm<'sc>(
-    metadata: &ContractCallMetadata<'sc>,
-    cgas: &TypedExpression<'sc>,
-    bal: &TypedExpression<'sc>,
-    coin_color: &TypedExpression<'sc>,
-    user_argument: &TypedExpression<'sc>,
+pub(crate) fn convert_contract_call_to_asm(
+    metadata: &ContractCallMetadata,
+    cgas: &TypedExpression,
+    bal: &TypedExpression,
+    coin_color: &TypedExpression,
+    user_argument: &TypedExpression,
     register_sequencer: &mut RegisterSequencer,
     return_register: &VirtualRegister,
-    namespace: &mut AsmNamespace<'sc>,
-    span: Span<'sc>,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+    namespace: &mut AsmNamespace,
+    span: Span,
+) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut asm_buf = vec![];
@@ -167,7 +167,7 @@ pub(crate) fn convert_contract_call_to_asm<'sc>(
     asm_buf.push(Op::register_move(
         return_register.into(),
         VirtualRegister::Constant(ConstantRegister::ReturnValue),
-        span.clone(),
+        span,
     ));
 
     ok(asm_buf, warnings, errors)

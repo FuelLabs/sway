@@ -20,17 +20,19 @@ mod subfield;
 use contract_call::convert_contract_call_to_asm;
 use enums::convert_enum_instantiation_to_asm;
 use if_exp::convert_if_exp_to_asm;
-pub(crate) use structs::{convert_struct_expression_to_asm, get_struct_memory_layout};
+pub(crate) use structs::{
+    convert_struct_expression_to_asm, convert_tuple_expression_to_asm, get_contiguous_memory_layout,
+};
 use subfield::convert_subfield_expression_to_asm;
 
 /// Given a [TypedExpression], convert it to assembly and put its return value, if any, in the
 /// `return_register`.
-pub(crate) fn convert_expression_to_asm<'sc>(
-    exp: &TypedExpression<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+pub(crate) fn convert_expression_to_asm(
+    exp: &TypedExpression,
+    namespace: &mut AsmNamespace,
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     match &exp.expression {
@@ -123,21 +125,18 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             // registers from the sequencer for replacement
             let mut mapping_of_real_registers_to_declared_names: HashMap<&str, VirtualRegister> =
                 Default::default();
-            for TypedAsmRegisterDeclaration {
-                name,
-                initializer,
-                name_span,
-            } in registers
-            {
+            for TypedAsmRegisterDeclaration { name, initializer } in registers {
                 let register = register_sequencer.next();
                 assert_or_warn!(
-                    ConstantRegister::parse_register_name(name).is_none(),
+                    ConstantRegister::parse_register_name(name.as_str()).is_none(),
                     warnings,
-                    name_span.clone(),
-                    Warning::ShadowingReservedRegister { reg_name: name }
+                    name.span().clone(),
+                    Warning::ShadowingReservedRegister {
+                        reg_name: name.clone()
+                    }
                 );
 
-                mapping_of_real_registers_to_declared_names.insert(name, register.clone());
+                mapping_of_real_registers_to_declared_names.insert(name.as_str(), register.clone());
                 // evaluate each register's initializer
                 if let Some(initializer) = initializer {
                     asm_buf.append(&mut check!(
@@ -176,13 +175,11 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                 );
                 */
                 let replaced_registers = op.op_args.iter().map(|x| -> Result<_, CompileError> {
-                    match realize_register(
-                        x.primary_name,
-                        &mapping_of_real_registers_to_declared_names,
-                    ) {
+                    match realize_register(x.as_str(), &mapping_of_real_registers_to_declared_names)
+                    {
                         Some(o) => Ok(o),
                         None => Err(CompileError::UnknownRegister {
-                            span: x.span.clone(),
+                            span: x.span().clone(),
                             initialized_registers: mapping_of_real_registers_to_declared_names
                                 .iter()
                                 .map(|(name, _)| name.to_string())
@@ -248,7 +245,7 @@ pub(crate) fn convert_expression_to_asm<'sc>(
                         "return value from inline asm",
                     ));
                 }
-                _ if look_up_type_id(exp.return_type) == TypeInfo::Unit => (),
+                _ if look_up_type_id(exp.return_type).is_unit() => (),
                 _ => {
                     errors.push(CompileError::InvalidAssemblyMismatchedReturn {
                         span: whole_block_span.clone(),
@@ -275,7 +272,25 @@ pub(crate) fn convert_expression_to_asm<'sc>(
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            &field_to_access.as_typed_struct_field(field_to_access_span),
+            &field_to_access.name,
+            field_to_access_span.clone(),
+            *resolved_type_of_parent,
+            namespace,
+            register_sequencer,
+            return_register,
+        ),
+        // tuples are treated like mini structs, so we can use the same method that
+        // struct field access uses
+        TypedExpressionVariant::TupleElemAccess {
+            resolved_type_of_parent,
+            prefix,
+            elem_to_access_num,
+            elem_to_access_span,
+        } => convert_subfield_expression_to_asm(
+            &exp.span,
+            prefix,
+            &format!("{}", elem_to_access_num),
+            elem_to_access_span.clone(),
             *resolved_type_of_parent,
             namespace,
             register_sequencer,
@@ -341,7 +356,9 @@ pub(crate) fn convert_expression_to_asm<'sc>(
             return_register,
             register_sequencer,
         ),
-        TypedExpressionVariant::Unit => ok(vec![], warnings, errors),
+        TypedExpressionVariant::Tuple { fields } => {
+            convert_tuple_expression_to_asm(fields, return_register, namespace, register_sequencer)
+        }
         // ABI casts are purely compile-time constructs and generate no corresponding bytecode
         TypedExpressionVariant::AbiCast { .. } => ok(vec![], warnings, errors),
         a => {
@@ -367,13 +384,13 @@ fn realize_register(
     }
 }
 
-pub(crate) fn convert_code_block_to_asm<'sc>(
-    block: &TypedCodeBlock<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+pub(crate) fn convert_code_block_to_asm(
+    block: &TypedCodeBlock,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
     // Where to put the return value of this code block, if there was any.
     return_register: Option<&VirtualRegister>,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let mut asm_buf: Vec<Op> = vec![];
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -403,13 +420,13 @@ pub(crate) fn convert_code_block_to_asm<'sc>(
 }
 
 /// Initializes [Literal] `lit` into [VirtualRegister] `return_register`.
-fn convert_literal_to_asm<'sc>(
-    lit: &Literal<'sc>,
-    namespace: &mut AsmNamespace<'sc>,
+fn convert_literal_to_asm(
+    lit: &Literal,
+    namespace: &mut AsmNamespace,
     return_register: &VirtualRegister,
     _register_sequencer: &mut RegisterSequencer,
-    span: Span<'sc>,
-) -> Vec<Op<'sc>> {
+    span: Span,
+) -> Vec<Op> {
     // first, insert the literal into the data section
     let data_id = namespace.insert_data_value(lit);
     // then get that literal id and use it to make a load word op
@@ -421,24 +438,21 @@ fn convert_literal_to_asm<'sc>(
 }
 
 /// For now, all functions are handled by inlining at the time of application.
-fn convert_fn_app_to_asm<'sc>(
-    name: &CallPath<'sc>,
-    arguments: &[(Ident<'sc>, TypedExpression<'sc>)],
-    function_body: &TypedCodeBlock<'sc>,
-    parent_namespace: &mut AsmNamespace<'sc>,
+fn convert_fn_app_to_asm(
+    name: &CallPath,
+    arguments: &[(Ident, TypedExpression)],
+    function_body: &TypedCodeBlock,
+    parent_namespace: &mut AsmNamespace,
     return_register: &VirtualRegister,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let mut asm_buf = vec![Op::new_comment(format!(
-        "{} fn call",
-        name.suffix.primary_name
-    ))];
+    let mut asm_buf = vec![Op::new_comment(format!("{} fn call", name.suffix.as_str()))];
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
     let mut namespace = parent_namespace.clone();
-    let mut args_and_registers: HashMap<Ident<'sc>, VirtualRegister> = Default::default();
+    let mut args_and_registers: HashMap<Ident, VirtualRegister> = Default::default();
     // evaluate every expression being passed into the function
     for (name, arg) in arguments {
         let return_register = register_sequencer.next();
@@ -480,21 +494,18 @@ fn convert_fn_app_to_asm<'sc>(
 /// This is similar to `convert_fn_app_to_asm()`, except instead of function arguments, this
 /// takes four registers where the registers are expected to be pre-loaded with the desired values
 /// when this function is jumped to.
-pub(crate) fn convert_abi_fn_to_asm<'sc>(
-    decl: &TypedFunctionDeclaration<'sc>,
-    user_argument: (Ident<'sc>, VirtualRegister),
-    cgas: (Ident<'sc>, VirtualRegister),
-    bal: (Ident<'sc>, VirtualRegister),
-    coin_color: (Ident<'sc>, VirtualRegister),
-    parent_namespace: &mut AsmNamespace<'sc>,
+pub(crate) fn convert_abi_fn_to_asm(
+    decl: &TypedFunctionDeclaration,
+    user_argument: (Ident, VirtualRegister),
+    cgas: (Ident, VirtualRegister),
+    bal: (Ident, VirtualRegister),
+    coin_color: (Ident, VirtualRegister),
+    parent_namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let mut asm_buf = vec![Op::new_comment(format!(
-        "{} abi fn",
-        decl.name.primary_name
-    ))];
+    let mut asm_buf = vec![Op::new_comment(format!("{} abi fn", decl.name.as_str()))];
     // Make a local namespace so that the namespace of this function does not pollute the outer
     // scope
     let mut namespace = parent_namespace.clone();
