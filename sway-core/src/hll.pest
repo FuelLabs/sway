@@ -107,7 +107,6 @@ enum_scrutinee_component = {path_ident ~ (path_separator ~ path_ident)+}
 fn_args_scrutinee =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)*)? ~ ")" }
 tuple_scrutinee  =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)* ~ ","?)? ~ ")" }
 
-
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
 
 struct_expression  =  {struct_name ~ "{" ~ struct_expr_fields ~ "}"}

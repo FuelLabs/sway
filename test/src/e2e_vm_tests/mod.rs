@@ -77,6 +77,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("if_implicit_unit", ProgramState::Return(0)),
         ("modulo_uint_test", ProgramState::Return(1)), // true
         ("tuple_desugaring", ProgramState::Return(9)),
+        ("match_expressions_enums", ProgramState::Return(42)),
     ];
 
     project_names.into_iter().for_each(|(name, res)| {
@@ -106,7 +107,6 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "array_bad_index",
         "name_shadowing",
         "match_expressions_wrong_struct",
-        "match_expressions_enums",
         "pure_calls_impure",
         "nested_impure",
         "predicate_calls_impure",
