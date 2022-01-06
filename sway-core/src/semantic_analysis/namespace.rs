@@ -29,8 +29,6 @@ pub struct Namespace {
     // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
     // order.
     modules: BTreeMap<ModuleName, Namespace>,
-    // The crate namespace, to be used in absolute importing. This is `None` if the current
-    // namespace _is_ the root namespace.
     use_synonyms: HashMap<Ident, Vec<Ident>>,
     // Represents an alternative name for a symbol.
     use_aliases: HashMap<String, Ident>,
@@ -497,16 +495,18 @@ impl Namespace {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let base_namespace = match from_module {
-            Some(base_namespace) => base_namespace,
-            None => self,
+        let namespace = {
+            let base_namespace = match from_module {
+                Some(base_namespace) => base_namespace,
+                None => self,
+            };
+            check!(
+                base_namespace.find_module_relative(&path),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
         };
-        let namespace = check!(
-            base_namespace.find_module_relative(&path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
         let symbols = namespace
             .symbols
             .iter()
@@ -518,6 +518,9 @@ impl Namespace {
                 }
             })
             .collect::<Vec<_>>();
+        let implemented_traits = namespace.implemented_traits.clone();
+        self.implemented_traits
+            .extend(&mut implemented_traits.into_iter());
         for symbol in symbols {
             self.use_synonyms.insert(symbol, path.clone());
         }
