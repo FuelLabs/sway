@@ -257,14 +257,6 @@ impl OwnedTypedStructField {
         };
     }
 
-    pub(crate) fn as_typed_struct_field(&self, span: &Span) -> TypedStructField {
-        TypedStructField {
-            name: Ident::new(span.clone()),
-            r#type: self.r#type,
-            span: span.clone(),
-        }
-    }
-
     pub fn generate_json_abi(&self) -> Property {
         Property {
             name: self.name.clone(),

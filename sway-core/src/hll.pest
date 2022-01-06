@@ -97,7 +97,7 @@ match_expression =  {"match" ~ expr ~ "{" ~ match_branch+ ~ "}"}
 match_branch     =  {match_scrutinee ~ "=>" ~ (code_block|expr) ~ ","}
 match_scrutinee  =  {scrutinee|catch_all}
 catch_all        =  {"_"}
-scrutinee        =  {enum_scrutinee|struct_scrutinee|literal_value|ident}
+scrutinee        =  {enum_scrutinee|struct_scrutinee|tuple_scrutinee|literal_value|ident}
 struct_scrutinee =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
 struct_scrutinee_fields = {struct_scrutinee_field ~ ("," ~ struct_scrutinee_field)* ~ ","?}
 struct_scrutinee_field = {ident ~ field_scrutinee?}
@@ -105,6 +105,7 @@ field_scrutinee  =  {":" ~ scrutinee}
 enum_scrutinee   =  {enum_scrutinee_component ~ fn_args_scrutinee?}
 enum_scrutinee_component = {path_ident ~ (path_separator ~ path_ident)+}
 fn_args_scrutinee =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)*)? ~ ")" }
+tuple_scrutinee  =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)* ~ ","?)? ~ ")" }
 
 
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
