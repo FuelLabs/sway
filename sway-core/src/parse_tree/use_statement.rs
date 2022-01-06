@@ -1,6 +1,5 @@
 use crate::build_config::BuildConfig;
 use crate::error::*;
-use crate::span;
 use crate::Ident;
 use crate::Rule;
 use pest::iterators::Pair;
@@ -77,15 +76,7 @@ fn handle_import_path(
     }
 
     for item in import_path_vec.into_iter() {
-        if item.as_rule() == Rule::star {
-            errors.push(CompileError::NonFinalAsteriskInPath {
-                span: span::Span {
-                    span: item.as_span(),
-                    path: config.map(|c| c.path()),
-                },
-            });
-            continue;
-        } else if item.as_rule() == Rule::ident {
+        if item.as_rule() == Rule::ident {
             import_path_buf.push(check!(
                 Ident::parse_from_pair(item, config),
                 return err(warnings, errors),
