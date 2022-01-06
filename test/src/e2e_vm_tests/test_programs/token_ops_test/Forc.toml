@@ -20,7 +20,7 @@ state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586
 # balance_test_contract
 [[tx-input]]
 type = "Contract"
-contract-id = "0x2152e04a705351b6483514d212a333090f7c5f40cb0b9b802089aaa33572e501"
+contract-id = "0x259c8e56878e4b2b8b54acd2590ccfc0909a442e1634bed8c6a347e53d66c1b4"
 utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"

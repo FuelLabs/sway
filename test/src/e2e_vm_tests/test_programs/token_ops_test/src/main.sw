@@ -24,7 +24,7 @@ fn main() -> bool {
 
     let test_recipient = ~Address::from(0x3333333333333333333333333333333333333333333333333333333333333333);
     // the already deployed balance_test contract
-    let balance_id = ~ContractId::from(0xa72b68c70be7e137de429840d67bce3b1e9a545fa05f77ec090091539d4fbf3c);
+    let balance_id = ~ContractId::from(0x259c8e56878e4b2b8b54acd2590ccfc0909a442e1634bed8c6a347e53d66c1b4);
 
     // the deployed fuel_coin contract
     let fuelcoin_id = ~ContractId::from(0x9c8a446c98b85592823934520a4865a5a93b8dbb0e825e98ef26a08a6e88a17b);
