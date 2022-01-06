@@ -418,14 +418,8 @@ impl Dependencies {
         }
     }
 
-    fn gather_from_scrutinee(self, scrutinee: &Scrutinee) -> Self {
-        match scrutinee {
-            Scrutinee::Unit { .. } => self,
-            Scrutinee::Literal { .. } => self,
-            Scrutinee::Variable { .. } => self,
-            Scrutinee::StructScrutinee { .. } => self,
-            Scrutinee::EnumScrutinee { .. } => self,
-        }
+    fn gather_from_scrutinee(self, _scrutinee: &Scrutinee) -> Self {
+        self
     }
 
     fn gather_from_opt_expr(self, opt_expr: &Option<Expression>) -> Self {

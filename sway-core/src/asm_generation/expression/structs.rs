@@ -28,12 +28,12 @@ pub(crate) struct FieldMemoryLayoutDescriptor<N> {
 // TODO(static span) this String should be an Ident
 impl ContiguousMemoryLayoutDescriptor<String> {
     /// Calculates the offset in words from the start of a struct to a specific field.
-    pub(crate) fn offset_to_field_name(&self, name: &Ident) -> CompileResult<u64> {
+    pub(crate) fn offset_to_field_name(&self, name: &str, span: Span) -> CompileResult<u64> {
         let field_ix = if let Some(ix) =
             self.fields
                 .iter()
                 .position(|FieldMemoryLayoutDescriptor { name_of_field, .. }| {
-                    name_of_field.as_str() == name.as_str()
+                    name_of_field.as_str() == name
                 }) {
             ix
         } else {
@@ -41,7 +41,7 @@ impl ContiguousMemoryLayoutDescriptor<String> {
                 vec![
                 CompileError::Internal(
                     "Attempted to calculate struct memory offset on field that did not exist in struct.",
-                    name.span().clone()
+                    span
                     )
                 ]);
         };
@@ -104,13 +104,13 @@ fn test_struct_memory_layout() {
     assert_eq!(numbers.total_size(), 2u64);
     assert_eq!(
         numbers
-            .offset_to_field_name(&first_field_name)
+            .offset_to_field_name(first_field_name.as_str(), first_field_name.span().clone())
             .unwrap(&mut warnings, &mut errors),
         0u64
     );
     assert_eq!(
         numbers
-            .offset_to_field_name(&second_field_name)
+            .offset_to_field_name(second_field_name.as_str(), first_field_name.span().clone())
             .unwrap(&mut warnings, &mut errors),
         1u64
     );

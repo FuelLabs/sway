@@ -129,16 +129,29 @@ impl Namespace {
 
     pub(crate) fn insert(&mut self, name: Ident, item: TypedDeclaration) -> CompileResult<()> {
         let mut warnings = vec![];
+        let mut errors = vec![];
         if self.symbols.get(&name).is_some() {
-            warnings.push(CompileWarning {
-                span: name.span().clone(),
-                warning_content: Warning::OverridesOtherSymbol {
-                    name: name.span().as_str().to_string(),
-                },
-            });
+            match item {
+                TypedDeclaration::EnumDeclaration { .. }
+                | TypedDeclaration::StructDeclaration { .. } => {
+                    errors.push(CompileError::ShadowsOtherSymbol {
+                        span: name.span().clone(),
+                        name: name.as_str().to_string(),
+                    });
+                    return err(warnings, errors);
+                }
+                _ => {
+                    warnings.push(CompileWarning {
+                        span: name.span().clone(),
+                        warning_content: Warning::ShadowsOtherSymbol {
+                            name: name.span().as_str().to_string(),
+                        },
+                    });
+                }
+            }
         }
-        self.symbols.insert(name, item);
-        ok((), warnings, vec![])
+        self.symbols.insert(name.clone(), item.clone());
+        ok((), warnings, errors)
     }
 
     // TODO(static span) remove this and switch to spans when we have arena spans
@@ -444,6 +457,29 @@ impl Namespace {
             a => err(
                 vec![],
                 vec![CompileError::NotAStruct {
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.friendly_type_str(),
+                }],
+            ),
+        }
+    }
+
+    pub(crate) fn get_tuple_elems(
+        &self,
+        ty: TypeId,
+        debug_string: impl Into<String>,
+        debug_span: &Span,
+    ) -> CompileResult<Vec<TypeId>> {
+        let warnings = vec![];
+        let errors = vec![];
+        let ty = crate::type_engine::look_up_type_id(ty);
+        match ty {
+            TypeInfo::Tuple(elems) => ok(elems, warnings, errors),
+            TypeInfo::ErrorRecovery => err(warnings, errors),
+            a => err(
+                vec![],
+                vec![CompileError::NotATuple {
                     name: debug_string.into(),
                     span: debug_span.clone(),
                     actually: a.friendly_type_str(),
