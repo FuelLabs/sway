@@ -3,9 +3,6 @@ contract;
 use std::token::*;
 use test_fuel_coin_abi::*;
 
-// Name of the coin managed by this contract
-const NAME: str[14] = "Test Fuel Coin";
-
 impl TestFuelCoin for Contract {
 
 
@@ -27,6 +24,6 @@ impl TestFuelCoin for Contract {
     }
 
     fn name(gas: u64, coins: u64, asset_id: b256, input: ()) -> str[14] {
-        NAME
+        "Test Fuel Coin"
     }
 }
