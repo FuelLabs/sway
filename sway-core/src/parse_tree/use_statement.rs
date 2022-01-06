@@ -45,16 +45,12 @@ impl UseStatement {
             warnings,
             errors
         );
-        
-        ok(
-            use_statements_buf,
-            Vec::new(),
-            Vec::new(),
-        )
+
+        ok(use_statements_buf, Vec::new(), Vec::new())
     }
 }
 
-fn handle_import_path (
+fn handle_import_path(
     import_path: Pair<Rule>,
     config: Option<&BuildConfig>,
     is_absolute: bool,
@@ -105,7 +101,7 @@ fn handle_import_path (
         // Handle the case where the last item is actually a list of items
         let mut import_items = last_item.into_inner();
         let _path_separator = import_items.next();
-        
+
         let mut it = import_items.clone();
         while let Some(item) = it.next() {
             // kind of a base case here
@@ -117,7 +113,8 @@ fn handle_import_path (
                     errors
                 ));
                 let next = it.clone().next();
-                let next_is_alias = !next.is_none() && next.clone().unwrap().as_rule() == Rule::alias;
+                let next_is_alias =
+                    !next.is_none() && next.clone().unwrap().as_rule() == Rule::alias;
                 let mut alias = None;
                 if next_is_alias {
                     let next_item = next.clone().unwrap();
@@ -131,15 +128,15 @@ fn handle_import_path (
                     alias = Some(alias_parsed);
                     it.next();
                 }
-                 
-                use_statements_buf.push(UseStatement{
+
+                use_statements_buf.push(UseStatement {
                     call_path: import_path_buf.clone(),
                     import_type,
                     is_absolute,
                     alias,
                 });
             } else if item.as_rule() == Rule::import_path {
-                // recurse - get the statement buffers and append 
+                // recurse - get the statement buffers and append
                 let use_statements_buf_local = check!(
                     handle_import_path(item, config, is_absolute),
                     return err(warnings, errors),
@@ -160,7 +157,7 @@ fn handle_import_path (
             }
         }
     } else {
-        // Handle the case where the last item is just an individual item 
+        // Handle the case where the last item is just an individual item
         let import_type = match last_item.as_rule() {
             Rule::star => ImportType::Star,
             Rule::ident => ImportType::Item(check!(
@@ -172,7 +169,7 @@ fn handle_import_path (
             _ => unreachable!(),
         };
 
-        use_statements_buf.push(UseStatement{
+        use_statements_buf.push(UseStatement {
             call_path: import_path_buf.clone(),
             import_type,
             is_absolute,
@@ -180,10 +177,5 @@ fn handle_import_path (
         });
     }
 
-    ok(
-        use_statements_buf,
-        warnings, 
-        errors,
-    )
+    ok(use_statements_buf, warnings, errors)
 }
-
