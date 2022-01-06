@@ -150,7 +150,7 @@ impl Namespace {
                 }
             }
         }
-        self.symbols.insert(name.clone(), item.clone());
+        self.symbols.insert(name, item);
         ok((), warnings, errors)
     }
 
