@@ -11,7 +11,7 @@ mod test {
     // basic sway-core tests
     #[test]
     fn test_var_decl() {
-        let parsed = HllParser::parse(Rule::var_decl, r#"let x = 2;"#);
+        let parsed = HllParser::parse(Rule::var_decl, r#"let x = 2;"#.into());
         if let Err(e) = parsed {
             panic!("{:#?}", e);
         }
@@ -24,7 +24,8 @@ mod test {
             r#"let x = 2; // and a comment
 
         /* and a multiline comment
-         * second line */"#,
+         * second line */"#
+                .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -40,7 +41,8 @@ mod test {
             let x = 5;
             let y = 10;
             return 10;
-        }"#,
+        }"#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -59,7 +61,8 @@ mod test {
                 else { 6 };
             let y = 10;
             return 10;
-        }"#,
+        }"#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -74,7 +77,8 @@ mod test {
             // a function body
             if true { /* comment */ 5 /*comment test*/ };
             /* some comments */
-        }"#,
+        }"#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -89,7 +93,8 @@ mod test {
             // a function body
             if ((true)) { /* comment */ (((5))) /*comment test*/ };
             /* some comments */
-        }"#,
+        }"#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -102,7 +107,8 @@ mod test {
             r#"fn myfunc(x: i32, y: i32) -> i32 {
             // a function body
             if ((true)) { /* comment */ (((5)) };
-        }"#,
+        }"#
+            .into(),
         );
         // this parse should fail since parens are wrong
         match parsed {
@@ -119,7 +125,8 @@ mod test {
             Rule::fn_decl,
             r#"fn myfunc(x: i32, y: i32) -> i32 {
         let x = 5 + 10;
-        }"#,
+        }"#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -135,7 +142,8 @@ mod test {
         let foo = 20;
         let y = (x + foo) - x ;
         return y;
-        }"#,
+        }"#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -150,7 +158,8 @@ mod test {
         let foo = 20;
         let y = (x + foo + 3) - x ;
         return y;
-        }"#,
+        }"#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -163,7 +172,8 @@ mod test {
             r#"script;
                 trait MyTrait {
                     fn some_method_you_need_to_implement(x: i32) -> i32;
-            }"#,
+            }"#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -184,7 +194,8 @@ mod test {
                 }
                 }
 
-            "#,
+            "#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -195,7 +206,8 @@ mod test {
         let parsed = HllParser::parse(
             Rule::use_statement,
             r#"use otherlibrary::packagename;
-            "#,
+            "#
+            .into(),
         );
         if let Err(e) = parsed {
             panic!("{:#?}", e);
@@ -213,7 +225,8 @@ mod test {
                 return x;
                 
             }
-            "#,
+            "#
+            .into(),
         );
         // this parse should fail since parens are wrong
         if let Err(e) = parsed {
@@ -230,15 +243,11 @@ mod test {
                     let x = 0b01011010;
                     let y = 0xAF;
                     return 0;
-            }"#,
+            }"#
+            .into(),
         );
         // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                panic!("{:#?}", e);
-            }
-            Ok(_) => (),
-        }
+        parsed.unwrap();
     }
     #[test]
     fn bytes_literals() {
@@ -252,15 +261,11 @@ mod test {
                     let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
                     return x;
                 }
-            "#,
+            "#
+            .into(),
         );
         // this parse should fail since parens are wrong
-        match parsed {
-            Err(e) => {
-                panic!("{:#?}", e);
-            }
-            Ok(_) => (),
-        }
+        parsed.unwrap();
     }
 
     #[test]
@@ -283,14 +288,10 @@ mod test {
                     let y = 0xAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAFAF;
                     return x;
                 }
-            "#,
+            "#
+            .into(),
         );
-        match parsed {
-            Err(_) => {
-                panic!()
-            }
-            Ok(_) => (),
-        }
+        parsed.unwrap();
     }
 
     #[test]
@@ -302,13 +303,9 @@ mod test {
             let x = 5;
             let y = 10;
             return 10;
-        }"#,
+        }"#
+            .into(),
         );
-        match parsed {
-            Err(e) => {
-                panic!("{:#?}", e);
-            }
-            Ok(_) => {}
-        }
+        parsed.unwrap();
     }
 }

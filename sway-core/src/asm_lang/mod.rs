@@ -28,29 +28,29 @@ impl From<&AsmRegister> for VirtualRegister {
 }
 
 #[derive(Clone)]
-pub(crate) struct Op<'sc> {
+pub(crate) struct Op {
     pub(crate) opcode: Either<VirtualOp, OrganizationalOp>,
     /// A descriptive comment for ASM readability
     pub(crate) comment: String,
-    pub(crate) owning_span: Option<Span<'sc>>,
+    pub(crate) owning_span: Option<Span>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct RealizedOp<'sc> {
+pub(crate) struct RealizedOp {
     pub(crate) opcode: VirtualOp,
     /// A descriptive comment for ASM readability
     pub(crate) comment: String,
-    pub(crate) owning_span: Option<Span<'sc>>,
+    pub(crate) owning_span: Option<Span>,
 }
 
-impl<'sc> Op<'sc> {
+impl Op {
     /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
     /// [VirtualRegister] `destination_address`
     pub(crate) fn write_register_to_memory(
         destination_address: VirtualRegister,
         value_to_write: VirtualRegister,
         offset: VirtualImmediate12,
-        span: Span<'sc>,
+        span: Span,
     ) -> Self {
         Op {
             opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
@@ -64,7 +64,7 @@ impl<'sc> Op<'sc> {
         destination_address: VirtualRegister,
         value_to_write: VirtualRegister,
         offset: VirtualImmediate12,
-        span: Span<'sc>,
+        span: Span,
         comment: impl Into<String>,
     ) -> Self {
         Op {
@@ -75,10 +75,10 @@ impl<'sc> Op<'sc> {
     }
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
     pub(crate) fn unowned_stack_allocate_memory(
-        size_to_allocate_in_words: VirtualImmediate24,
+        size_to_allocate_in_bytes: VirtualImmediate24,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_words)),
+            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_bytes)),
             comment: String::new(),
             owning_span: None,
         }
@@ -90,7 +90,7 @@ impl<'sc> Op<'sc> {
             owning_span: None,
         }
     }
-    pub(crate) fn new(opcode: VirtualOp, owning_span: Span<'sc>) -> Self {
+    pub(crate) fn new(opcode: VirtualOp, owning_span: Span) -> Self {
         Op {
             opcode: Either::Left(opcode),
             comment: String::new(),
@@ -99,7 +99,7 @@ impl<'sc> Op<'sc> {
     }
     pub(crate) fn new_with_comment(
         opcode: VirtualOp,
-        owning_span: Span<'sc>,
+        owning_span: Span,
         comment: impl Into<String>,
     ) -> Self {
         let comment = comment.into();
@@ -111,7 +111,7 @@ impl<'sc> Op<'sc> {
     }
 
     /// Given a label, creates the actual asm line to put in the ASM which represents a label
-    pub(crate) fn jump_label(label: Label, owning_span: Span<'sc>) -> Self {
+    pub(crate) fn jump_label(label: Label, owning_span: Span) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::Label(label)),
             comment: String::new(),
@@ -145,7 +145,7 @@ impl<'sc> Op<'sc> {
     /// Also attaches a comment to it.
     pub(crate) fn jump_label_comment(
         label: Label,
-        owning_span: Span<'sc>,
+        owning_span: Span,
         comment: impl Into<String>,
     ) -> Self {
         Op {
@@ -168,7 +168,7 @@ impl<'sc> Op<'sc> {
     pub(crate) fn register_move(
         r1: VirtualRegister,
         r2: VirtualRegister,
-        owning_span: Span<'sc>,
+        owning_span: Span,
     ) -> Self {
         Op {
             opcode: Either::Left(VirtualOp::MOVE(r1, r2)),
@@ -189,7 +189,7 @@ impl<'sc> Op<'sc> {
     pub(crate) fn register_move_comment(
         r1: VirtualRegister,
         r2: VirtualRegister,
-        owning_span: Span<'sc>,
+        owning_span: Span,
         comment: impl Into<String>,
     ) -> Self {
         Op {
@@ -250,15 +250,15 @@ impl<'sc> Op<'sc> {
     }
 
     pub(crate) fn parse_opcode(
-        name: &Ident<'sc>,
+        name: &Ident,
         args: &[VirtualRegister],
-        immediate: &Option<Ident<'sc>>,
-        whole_op_span: Span<'sc>,
-    ) -> CompileResult<'sc, VirtualOp> {
+        immediate: &Option<Ident>,
+        whole_op_span: Span,
+    ) -> CompileResult<VirtualOp> {
         let mut warnings = vec![];
         let mut errors = vec![];
         ok(
-            match name.primary_name {
+            match name.as_str() {
                 "add" => {
                     let (r1, r2, r3) = check!(
                         three_regs(args, immediate, whole_op_span),
@@ -917,11 +917,10 @@ impl<'sc> Op<'sc> {
                     );
                     VirtualOp::GM(r1, imm)
                 }
-
-                other => {
+                _ => {
                     errors.push(CompileError::UnrecognizedOp {
-                        op_name: other,
-                        span: name.span.clone(),
+                        op_name: name.clone(),
+                        span: name.span().clone(),
                     });
                     return err(warnings, errors);
                 }
@@ -932,11 +931,11 @@ impl<'sc> Op<'sc> {
     }
 }
 
-fn single_reg<'sc>(
+fn single_reg(
     args: &[VirtualRegister],
-    immediate: &Option<Ident<'sc>>,
-    whole_op_span: Span<'sc>,
-) -> CompileResult<'sc, VirtualRegister> {
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> CompileResult<VirtualRegister> {
     let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 1 {
@@ -951,7 +950,7 @@ fn single_reg<'sc>(
         Some(reg) => reg,
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 1,
                 received: args.len(),
             });
@@ -962,7 +961,7 @@ fn single_reg<'sc>(
         None => (),
         Some(i) => {
             errors.push(CompileError::UnnecessaryImmediate {
-                span: i.span.clone(),
+                span: i.span().clone(),
             });
         }
     };
@@ -970,11 +969,11 @@ fn single_reg<'sc>(
     ok(reg.clone(), warnings, errors)
 }
 
-fn two_regs<'sc>(
+fn two_regs(
     args: &[VirtualRegister],
-    immediate: &Option<Ident<'sc>>,
-    whole_op_span: Span<'sc>,
-) -> CompileResult<'sc, (VirtualRegister, VirtualRegister)> {
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> CompileResult<(VirtualRegister, VirtualRegister)> {
     let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 2 {
@@ -989,7 +988,7 @@ fn two_regs<'sc>(
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 2,
                 received: args.len(),
             });
@@ -999,26 +998,23 @@ fn two_regs<'sc>(
     match immediate {
         None => (),
         Some(i) => errors.push(CompileError::UnnecessaryImmediate {
-            span: i.span.clone(),
+            span: i.span().clone(),
         }),
     };
 
     ok((reg.clone(), reg2.clone()), warnings, errors)
 }
 
-fn four_regs<'sc>(
+fn four_regs(
     args: &[VirtualRegister],
-    immediate: &Option<Ident<'sc>>,
-    whole_op_span: Span<'sc>,
-) -> CompileResult<
-    'sc,
-    (
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-    ),
-> {
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> CompileResult<(
+    VirtualRegister,
+    VirtualRegister,
+    VirtualRegister,
+    VirtualRegister,
+)> {
     let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 4 {
@@ -1033,7 +1029,7 @@ fn four_regs<'sc>(
         (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 4,
                 received: args.len(),
             });
@@ -1044,7 +1040,7 @@ fn four_regs<'sc>(
         None => (),
         Some(i) => {
             errors.push(CompileError::MissingImmediate {
-                span: i.span.clone(),
+                span: i.span().clone(),
             });
         }
     };
@@ -1085,11 +1081,11 @@ fn four_regs<'sc>(
     )
 }
 
-fn three_regs<'sc>(
+fn three_regs(
     args: &[VirtualRegister],
-    immediate: &Option<Ident<'sc>>,
-    whole_op_span: Span<'sc>,
-) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualRegister)> {
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> CompileResult<(VirtualRegister, VirtualRegister, VirtualRegister)> {
     let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 3 {
@@ -1104,7 +1100,7 @@ fn three_regs<'sc>(
         (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 3,
                 received: args.len(),
             });
@@ -1115,18 +1111,18 @@ fn three_regs<'sc>(
         None => (),
         Some(i) => {
             errors.push(CompileError::UnnecessaryImmediate {
-                span: i.span.clone(),
+                span: i.span().clone(),
             });
         }
     };
 
     ok((reg.clone(), reg2.clone(), reg3.clone()), warnings, errors)
 }
-fn single_imm_24<'sc>(
+fn single_imm_24(
     args: &[VirtualRegister],
-    immediate: &Option<Ident<'sc>>,
-    whole_op_span: Span<'sc>,
-) -> CompileResult<'sc, VirtualImmediate24> {
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> CompileResult<VirtualImmediate24> {
     let warnings = vec![];
     let mut errors = vec![];
     if !args.is_empty() {
@@ -1139,15 +1135,15 @@ fn single_imm_24<'sc>(
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
             errors.push(CompileError::MissingImmediate {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name[1..].parse() {
-            Ok(o) => (o, i.span.clone()),
+        Some(i) => match i.as_str()[1..].parse() {
+            Ok(o) => (o, i.span().clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
-                    span: i.span.clone(),
+                    span: i.span().clone(),
                 });
                 return err(warnings, errors);
             }
@@ -1164,11 +1160,11 @@ fn single_imm_24<'sc>(
 
     ok(imm, warnings, errors)
 }
-fn single_reg_imm_18<'sc>(
+fn single_reg_imm_18(
     args: &[VirtualRegister],
-    immediate: &Option<Ident<'sc>>,
-    whole_op_span: Span<'sc>,
-) -> CompileResult<'sc, (VirtualRegister, VirtualImmediate18)> {
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> CompileResult<(VirtualRegister, VirtualImmediate18)> {
     let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 1 {
@@ -1182,7 +1178,7 @@ fn single_reg_imm_18<'sc>(
         Some(reg) => reg,
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 1,
                 received: args.len(),
             });
@@ -1192,15 +1188,15 @@ fn single_reg_imm_18<'sc>(
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
             errors.push(CompileError::MissingImmediate {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name[1..].parse() {
-            Ok(o) => (o, i.span.clone()),
+        Some(i) => match i.as_str()[1..].parse() {
+            Ok(o) => (o, i.span().clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
-                    span: i.span.clone(),
+                    span: i.span().clone(),
                 });
                 return err(warnings, errors);
             }
@@ -1217,11 +1213,11 @@ fn single_reg_imm_18<'sc>(
 
     ok((reg.clone(), imm), warnings, errors)
 }
-fn two_regs_imm_12<'sc>(
+fn two_regs_imm_12(
     args: &[VirtualRegister],
-    immediate: &Option<Ident<'sc>>,
-    whole_op_span: Span<'sc>,
-) -> CompileResult<'sc, (VirtualRegister, VirtualRegister, VirtualImmediate12)> {
+    immediate: &Option<Ident>,
+    whole_op_span: Span,
+) -> CompileResult<(VirtualRegister, VirtualRegister, VirtualImmediate12)> {
     let warnings = vec![];
     let mut errors = vec![];
     if args.len() > 2 {
@@ -1235,7 +1231,7 @@ fn two_regs_imm_12<'sc>(
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             errors.push(CompileError::IncorrectNumberOfAsmRegisters {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
                 expected: 2,
                 received: args.len(),
             });
@@ -1245,15 +1241,15 @@ fn two_regs_imm_12<'sc>(
     let (imm, imm_span): (u64, _) = match immediate {
         None => {
             errors.push(CompileError::MissingImmediate {
-                span: whole_op_span.clone(),
+                span: whole_op_span,
             });
             return err(warnings, errors);
         }
-        Some(i) => match i.primary_name[1..].parse() {
-            Ok(o) => (o, i.span.clone()),
+        Some(i) => match i.as_str()[1..].parse() {
+            Ok(o) => (o, i.span().clone()),
             Err(_) => {
                 errors.push(CompileError::InvalidImmediateValue {
-                    span: i.span.clone(),
+                    span: i.span().clone(),
                 });
                 return err(warnings, errors);
             }
@@ -1271,7 +1267,7 @@ fn two_regs_imm_12<'sc>(
     ok((reg.clone(), reg2.clone(), imm), warnings, errors)
 }
 
-impl fmt::Display for Op<'_> {
+impl fmt::Display for Op {
     fn fmt(&self, fmtr: &mut fmt::Formatter<'_>) -> fmt::Result {
         use OrganizationalOp::*;
         use VirtualOp::*;

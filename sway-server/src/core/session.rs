@@ -5,6 +5,7 @@ use lspower::lsp::{
     CompletionItem, Diagnostic, FormattingOptions, GotoDefinitionResponse, Position, Range,
     SemanticToken, SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
+use std::sync::Arc;
 
 pub type Documents = DashMap<String, TextDocument>;
 
@@ -146,7 +147,7 @@ impl Session {
 
     pub fn format_text(&self, url: &Url, options: FormattingOptions) -> Option<Vec<TextEdit>> {
         if let Some(document) = self.documents.get(url.path()) {
-            get_format_text_edits(&document.get_text(), options)
+            get_format_text_edits(Arc::from(document.get_text()), options)
         } else {
             None
         }

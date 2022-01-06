@@ -1,6 +1,10 @@
 # Scripts
 
-A script is a deployed bytecode on the chain which executes to perform some task. It does not represent ownership of any resources and it cannot be called like a contract. A script can return a value of any type.
+A script is deployed bytecode on the chain which executes once to perform some task. It does not represent ownership of any resources and it cannot be called by a contract. A script can return a single value of any type.
+
+Scripts are state-aware in that while they have no persistent storage (because they only exist during the transaction) they can call contracts and act based upon the returned values and results.
+
+Under the hood, the Rust and Typescript SDK wrap all smart contract calls from EOAs with scripts that contain minimal code to make the call and forward script data as call parameters.
 
 This example script calls a contract.
 
@@ -25,3 +29,7 @@ fn main () {
     x.foo(5000, 0, asset_id, input);
 }
 ```
+
+Scripts, similar to predicates, rely on a `main()` function as an entry point. You can call other functions defined in a script from the `main()` function or call another contract via an [abi cast](./smart_contracts.md#calling-a-smart-contract-from-a-script).
+
+An example usecase for a script would be a router that trades funds through multiple DEXes to get the price for the input asset, or a script to re-adjust a Collateralized Debt Position via a flashloan.

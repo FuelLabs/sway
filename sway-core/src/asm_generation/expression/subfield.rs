@@ -21,15 +21,16 @@ use crate::{
     },
 };
 
-pub(crate) fn convert_subfield_expression_to_asm<'sc>(
-    span: &Span<'sc>,
-    parent: &TypedExpression<'sc>,
-    field_to_access: &TypedStructField<'sc>,
+pub(crate) fn convert_subfield_expression_to_asm(
+    span: &Span,
+    parent: &TypedExpression,
+    field_to_access_name: &str,
+    field_to_access_span: Span,
     resolved_type_of_parent: TypeId,
-    namespace: &mut AsmNamespace<'sc>,
+    namespace: &mut AsmNamespace,
     register_sequencer: &mut RegisterSequencer,
     return_register: &VirtualRegister,
-) -> CompileResult<'sc, Vec<Op<'sc>>> {
+) -> CompileResult<Vec<Op>> {
     // step 0. find the type and register of the prefix
     // step 1. get the memory layout of the struct
     // step 2. calculate the offset to the spot we are accessing
@@ -52,19 +53,34 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     // now the pointer to the struct is in the prefix_reg, and we can access the subfield off
     // of that address
     // step 1
-    let fields = match look_up_type_id(resolved_type_of_parent) {
-        TypeInfo::Struct { fields, .. } => fields,
+    // TODO(static span): str should be ident below
+    let span = crate::Span {
+        span: pest::Span::new(
+            "TODO(static span): use Idents instead of Strings".into(),
+            0,
+            0,
+        )
+        .unwrap(),
+        path: None,
+    };
+
+    let fields_for_layout = match look_up_type_id(resolved_type_of_parent) {
+        TypeInfo::Struct { fields, .. } => fields
+            .iter()
+            .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, span.clone(), name.clone()))
+            .collect::<Vec<_>>(),
+        TypeInfo::Tuple(elems) => elems
+            .iter()
+            .enumerate()
+            .map(|(pos, elem)| (*elem, span.clone(), format!("{}", pos)))
+            .collect::<Vec<_>>(),
         _ => {
-            unreachable!("Accessing a field on a non-struct should be caught during type checking.")
+            unreachable!("Accessing a field or element on non-viable type should be caught during type checking.")
         }
     };
-    // TODO(static span): str should be ident below
-    let fields_for_layout: Vec<(TypeId, &str)> = fields
-        .iter()
-        .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, name.as_str()))
-        .collect::<Vec<_>>();
+
     let descriptor = check!(
-        get_struct_memory_layout(&fields_for_layout[..]),
+        get_contiguous_memory_layout(&fields_for_layout[..]),
         return err(warnings, errors),
         warnings,
         errors
@@ -72,7 +88,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
 
     // step 2
     let offset_in_words = check!(
-        descriptor.offset_to_field_name(&field_to_access.name),
+        descriptor.offset_to_field_name(field_to_access_name, field_to_access_span),
         0,
         warnings,
         errors
@@ -81,8 +97,8 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
     // TODO(static span): name_for_this_field should be span_for_this_field
     let (type_of_this_field, name_for_this_field) = fields_for_layout
         .into_iter()
-        .find_map(|(ty, name)| {
-            if name == field_to_access.name.primary_name {
+        .find_map(|(ty, _span, name)| {
+            if name.as_str() == field_to_access_name {
                 Some((ty, name))
             } else {
                 None
@@ -93,7 +109,7 @@ pub(crate) fn convert_subfield_expression_to_asm<'sc>(
         );
 
     let span = crate::Span {
-        span: pest::Span::new("TODO(static span): use span_for_this_field", 0, 0).unwrap(),
+        span: pest::Span::new("TODO(static span): use span_for_this_field".into(), 0, 0).unwrap(),
         path: None,
     };
     // step 3

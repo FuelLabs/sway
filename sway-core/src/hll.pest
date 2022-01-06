@@ -42,7 +42,7 @@ file_path         = { ident ~ ("/" ~ ident)* }
 include_statement = { include_keyword ~ file_path ~ alias? ~ ";"}
 alias             = { as_keyword ~ ident }
 // expressions
-expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|struct_field_access|delineated_path|array_index|var_exp|array_exp|parenthesized_expression|unit}
+expr_inner               = _{unary_op_expr|asm_expression|match_expression|abi_cast|if_exp|code_block|func_app|literal_value|struct_expression|method_exp|struct_field_access|delineated_path|array_index|var_exp|array_exp|parenthesized_expression|tuple_expr}
 parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
@@ -97,7 +97,7 @@ match_expression =  {"match" ~ expr ~ "{" ~ match_branch+ ~ "}"}
 match_branch     =  {match_scrutinee ~ "=>" ~ (code_block|expr) ~ ","}
 match_scrutinee  =  {scrutinee|catch_all}
 catch_all        =  {"_"}
-scrutinee        =  {enum_scrutinee|struct_scrutinee|literal_value|ident}
+scrutinee        =  {enum_scrutinee|struct_scrutinee|tuple_scrutinee|literal_value|ident}
 struct_scrutinee =  {struct_name ~ "{" ~ struct_scrutinee_fields ~"}"}
 struct_scrutinee_fields = {struct_scrutinee_field ~ ("," ~ struct_scrutinee_field)* ~ ","?}
 struct_scrutinee_field = {ident ~ field_scrutinee?}
@@ -105,6 +105,7 @@ field_scrutinee  =  {":" ~ scrutinee}
 enum_scrutinee   =  {enum_scrutinee_component ~ fn_args_scrutinee?}
 enum_scrutinee_component = {path_ident ~ (path_separator ~ path_ident)+}
 fn_args_scrutinee =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)*)? ~ ")" }
+tuple_scrutinee  =  { "(" ~ (scrutinee ~ ("," ~ scrutinee)* ~ ","?)? ~ ")" }
 
 
 code_block =  {"{" ~ (declaration|control_flow|expr_statement)* ~ (expr)? ~ "}"}
@@ -153,7 +154,7 @@ type_params        =  {"<" ~ generic_type_param ~ (", " ~ generic_type_param)* ~
 fn_decl_param      =  {("self")|(fn_decl_param_name ~ ":" ~ type_name)}
 fn_decl_param_name =  {ident}
 fn_decl_name       =  {ident}
-type_name          =  {str_type|ident ~ type_params?|unit|array_type}
+type_name          =  {str_type|ident ~ type_params?|tuple_type|array_type}
 str_type           =  { "str" ~ "[" ~ basic_integer ~ "]" }
 trait_bounds       =  {"where" ~ (generic_type_param ~ ":" ~ trait_name) ~ ("," ~ generic_type_param ~ ":" ~ trait_name)*}
 generic_type_param =  {ident}
@@ -204,7 +205,8 @@ char           = @{
   | "\\" ~ ("\""|"\\"|"/"|"b"|"f"|"n"|"r"|"t")
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-unit           =  {"(" ~ ")"}
+tuple_type     =  {"(" ~ (type_name ~ ("," ~ type_name)* ~ ","?)? ~ ")" }
+tuple_expr     =  {"(" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ ")" }
 ident          = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC|"_")* }
 reserved_words = @{(true_keyword|false_keyword|asm_keyword|ref_keyword|deref_keyword|abi_keyword|while_keyword|struct_keyword|enum_keyword|match_keyword|use_keyword|var_decl_keyword|fn_decl_keyword|trait_decl_keyword|return_keyword|include_keyword) ~ !(ASCII_ALPHANUMERIC|"_")}
 

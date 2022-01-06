@@ -9,19 +9,19 @@ use crate::{error::*, Ident};
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
-pub struct TraitDeclaration<'sc> {
-    pub name: Ident<'sc>,
-    pub(crate) interface_surface: Vec<TraitFn<'sc>>,
-    pub(crate) methods: Vec<FunctionDeclaration<'sc>>,
-    pub(crate) type_parameters: Vec<TypeParameter<'sc>>,
+pub struct TraitDeclaration {
+    pub name: Ident,
+    pub(crate) interface_surface: Vec<TraitFn>,
+    pub(crate) methods: Vec<FunctionDeclaration>,
+    pub(crate) type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
 }
 
-impl<'sc> TraitDeclaration<'sc> {
+impl TraitDeclaration {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
         let mut trait_parts = pair.into_inner().peekable();
@@ -42,14 +42,12 @@ impl<'sc> TraitDeclaration<'sc> {
             warnings,
             errors
         );
-        let span = name.span.clone();
+        let span = name.span().clone();
         assert_or_warn!(
             is_upper_camel_case(name_pair.as_str().trim()),
             warnings,
             span,
-            Warning::NonClassCaseTraitName {
-                name: name_pair.as_str().trim()
-            }
+            Warning::NonClassCaseTraitName { name: name.clone() }
         );
         let mut type_params_pair = None;
         let mut where_clause_pair = None;
@@ -113,18 +111,18 @@ impl<'sc> TraitDeclaration<'sc> {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct TraitFn<'sc> {
-    pub(crate) name: Ident<'sc>,
-    pub(crate) parameters: Vec<FunctionParameter<'sc>>,
+pub(crate) struct TraitFn {
+    pub(crate) name: Ident,
+    pub(crate) parameters: Vec<FunctionParameter>,
     pub(crate) return_type: TypeInfo,
-    pub(crate) return_type_span: Span<'sc>,
+    pub(crate) return_type_span: Span,
 }
 
-impl<'sc> TraitFn<'sc> {
+impl TraitFn {
     pub(crate) fn parse_from_pair(
-        pair: Pair<'sc, Rule>,
+        pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<'sc, Self> {
+    ) -> CompileResult<Self> {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
@@ -146,12 +144,10 @@ impl<'sc> TraitFn<'sc> {
             errors
         );
         assert_or_warn!(
-            is_snake_case(name.primary_name),
+            is_snake_case(name.as_str()),
             warnings,
             name_span,
-            Warning::NonSnakeCaseFunctionName {
-                name: name.primary_name
-            }
+            Warning::NonSnakeCaseFunctionName { name: name.clone() }
         );
         let parameters = signature.next().unwrap();
         let parameters = check!(
@@ -178,7 +174,7 @@ impl<'sc> TraitFn<'sc> {
                     span,
                 )
             }
-            None => (TypeInfo::Unit, whole_fn_sig_span),
+            None => (TypeInfo::Tuple(Vec::new()), whole_fn_sig_span),
         };
 
         ok(
