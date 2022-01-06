@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     build_config::BuildConfig,
     ident::Ident,
-    parse_tree::OwnedCallPath,
+    parse_tree::CallPath,
     semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
     Rule, Span, TypeParameter,
 };
@@ -36,7 +36,7 @@ pub enum TypeInfo {
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
-        abi_name: OwnedCallPath,
+        abi_name: CallPath,
         // this is raw source code to be evaluated later.
         address: String,
         // TODO(static span): the above String should be a TypedExpression

@@ -1277,7 +1277,7 @@ impl TypedExpression {
             }
         };
         let return_type = insert_type(TypeInfo::ContractCaller {
-            abi_name: abi_name.to_owned_call_path(),
+            abi_name: abi_name.clone(),
             address: address_str,
         });
         let mut functions_buf = abi
