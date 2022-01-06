@@ -14,7 +14,7 @@ use crate::{
     parse_tree::Literal,
     semantic_analysis::{
         ast_node::{
-            OwnedTypedStructField, TypedAsmRegisterDeclaration, TypedCodeBlock,
+            TypedAsmRegisterDeclaration, TypedCodeBlock,
             TypedExpressionVariant, TypedStructExpressionField, TypedStructField,
         },
         TypedExpression,
@@ -67,7 +67,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
     let fields_for_layout = match look_up_type_id(resolved_type_of_parent) {
         TypeInfo::Struct { fields, .. } => fields
             .iter()
-            .map(|OwnedTypedStructField { name, r#type, .. }| (*r#type, span.clone(), name.clone()))
+            .map(|TypedStructField { name, r#type, .. }| (*r#type, span.clone(), name.as_str().to_owned()))
             .collect::<Vec<_>>(),
         TypeInfo::Tuple(elems) => elems
             .iter()

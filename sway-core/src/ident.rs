@@ -44,6 +44,12 @@ impl PartialOrd for Ident {
 
 impl Eq for Ident {}
 
+impl AsRef<str> for Ident {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
 impl Ident {
     pub fn as_str(&self) -> &str {
         match self.name_override_opt {

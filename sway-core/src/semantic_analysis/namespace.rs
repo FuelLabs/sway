@@ -1,5 +1,5 @@
 use super::ast_node::{
-    OwnedTypedStructField, TypedEnumDeclaration, TypedStructDeclaration,
+    TypedEnumDeclaration, TypedStructDeclaration,
     TypedStructField,
 };
 use crate::error::*;
@@ -63,7 +63,7 @@ impl Namespace {
                     name: name.as_str().to_string(),
                     fields: fields
                         .iter()
-                        .map(TypedStructField::as_owned_typed_struct_field)
+                        .cloned()
                         .collect::<Vec<_>>(),
                 }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
@@ -104,7 +104,7 @@ impl Namespace {
                     name: name.as_str().to_string(),
                     fields: fields
                         .iter()
-                        .map(TypedStructField::as_owned_typed_struct_field)
+                        .cloned()
                         .collect::<Vec<_>>(),
                 }),
                 Some(TypedDeclaration::EnumDeclaration(TypedEnumDeclaration {
@@ -325,8 +325,8 @@ impl Namespace {
 
         for ident in ident_iter {
             // find the ident in the currently available fields
-            let OwnedTypedStructField { r#type, .. } =
-                match fields.iter().find(|x| x.name == ident.as_str()) {
+            let TypedStructField { r#type, .. } =
+                match fields.iter().find(|x| &x.name == ident) {
                     Some(field) => field.clone(),
                     None => {
                         // gather available fields for the error message
@@ -383,7 +383,7 @@ impl Namespace {
         ty: TypeId,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> CompileResult<(Vec<OwnedTypedStructField>, String)> {
+    ) -> CompileResult<(Vec<TypedStructField>, String)> {
         let ty = crate::type_engine::look_up_type_id(ty);
         match ty {
             TypeInfo::Struct { name, fields } => ok((fields.to_vec(), name), vec![], vec![]),

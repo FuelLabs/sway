@@ -3,7 +3,7 @@ use crate::{
     build_config::BuildConfig,
     ident::Ident,
     parse_tree::CallPath,
-    semantic_analysis::ast_node::{TypedEnumVariant, OwnedTypedStructField},
+    semantic_analysis::ast_node::{TypedEnumVariant, TypedStructField},
     Rule, Span, TypeParameter,
 };
 use derivative::Derivative;
@@ -26,7 +26,7 @@ pub enum TypeInfo {
     },
     Struct {
         name: String,
-        fields: Vec<OwnedTypedStructField>,
+        fields: Vec<TypedStructField>,
     },
     Boolean,
     /// For the type inference engine to use when a type references another type
@@ -357,7 +357,7 @@ impl TypeInfo {
                 let field_names = {
                     let names = fields
                         .iter()
-                        .map(|OwnedTypedStructField { r#type, .. }| {
+                        .map(|TypedStructField { r#type, .. }| {
                             resolve_type(*r#type, error_msg_span)
                                 .expect("unreachable?")
                                 .to_selector_name(error_msg_span)

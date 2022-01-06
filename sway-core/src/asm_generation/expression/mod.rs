@@ -269,10 +269,11 @@ pub(crate) fn convert_expression_to_asm(
             prefix,
             field_to_access,
             field_to_access_span,
+            ..
         } => convert_subfield_expression_to_asm(
             &exp.span,
             prefix,
-            &field_to_access.name,
+            field_to_access.name.as_str(),
             field_to_access_span.clone(),
             *resolved_type_of_parent,
             namespace,

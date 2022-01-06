@@ -25,15 +25,14 @@ pub(crate) struct FieldMemoryLayoutDescriptor<N> {
     size: u64,
 }
 
-// TODO(static span) this String should be an Ident
-impl ContiguousMemoryLayoutDescriptor<String> {
+impl<S: AsRef<str>> ContiguousMemoryLayoutDescriptor<S> {
     /// Calculates the offset in words from the start of a struct to a specific field.
     pub(crate) fn offset_to_field_name(&self, name: &str, span: Span) -> CompileResult<u64> {
         let field_ix = if let Some(ix) =
             self.fields
                 .iter()
                 .position(|FieldMemoryLayoutDescriptor { name_of_field, .. }| {
-                    name_of_field.as_str() == name
+                    name_of_field.as_ref() == name
                 }) {
             ix
         } else {
@@ -89,11 +88,11 @@ fn test_struct_memory_layout() {
     let numbers = ContiguousMemoryLayoutDescriptor {
         fields: vec![
             FieldMemoryLayoutDescriptor {
-                name_of_field: first_field_name.as_str().to_string(),
+                name_of_field: first_field_name.clone(),
                 size: 1,
             },
             FieldMemoryLayoutDescriptor {
-                name_of_field: second_field_name.as_str().to_string(),
+                name_of_field: second_field_name.clone(),
                 size: 1,
             },
         ],

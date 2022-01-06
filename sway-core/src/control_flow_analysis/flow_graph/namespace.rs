@@ -18,7 +18,7 @@ pub(crate) struct FunctionNamespaceEntry {
 #[derive(Default, Clone)]
 pub(crate) struct StructNamespaceEntry {
     pub(crate) struct_decl_ix: NodeIndex,
-    pub(crate) fields: HashMap<String, NodeIndex>,
+    pub(crate) fields: HashMap<Ident, NodeIndex>,
 }
 
 #[derive(Default, Clone)]
@@ -123,7 +123,7 @@ impl ControlFlowNamespace {
             struct_decl_ix: declaration_node,
             fields: field_nodes
                 .into_iter()
-                .map(|(ident, ix)| (ident.as_str().to_string(), ix))
+                .map(|(ident, ix)| (ident, ix))
                 .collect(),
         };
         self.struct_namespace.insert(struct_name, entry);
@@ -136,7 +136,7 @@ impl ControlFlowNamespace {
     pub(crate) fn find_struct_field_idx(
         &self,
         struct_name: &str,
-        field_name: &str,
+        field_name: &Ident,
     ) -> Option<&NodeIndex> {
         self.struct_namespace
             .get(struct_name)?

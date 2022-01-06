@@ -968,7 +968,7 @@ impl TypedExpression {
             fields: definition
                 .fields
                 .iter()
-                .map(TypedStructField::as_owned_typed_struct_field)
+                .cloned()
                 .collect::<Vec<_>>(),
         });
         let exp = TypedExpression {
@@ -1028,7 +1028,7 @@ impl TypedExpression {
         );
         let field = if let Some(field) = fields
             .iter()
-            .find(|OwnedTypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
+            .find(|TypedStructField { name, .. }| name.as_str() == field_to_access.as_str())
         {
             field
         } else {
@@ -1036,7 +1036,7 @@ impl TypedExpression {
                 span: field_to_access.span().clone(),
                 available_fields: fields
                     .iter()
-                    .map(|OwnedTypedStructField { name, .. }| name.to_string())
+                    .map(|TypedStructField { name, .. }| name.to_string())
                     .collect::<Vec<_>>()
                     .join("\n"),
                 field_name: field_to_access.clone(),
@@ -1745,7 +1745,7 @@ impl TypedExpression {
                 }
                 let mut field_to_access = None;
                 for struct_field in struct_fields.iter() {
-                    if struct_field.name == *field.as_str() {
+                    if struct_field.name == field {
                         field_to_access = Some(struct_field.clone())
                     }
                 }
