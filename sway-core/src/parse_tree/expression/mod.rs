@@ -152,6 +152,7 @@ pub enum Expression {
 pub enum DelayedResolutionVariant {
     StructField(DelayedStructFieldResolution),
     EnumVariant(DelayedEnumVariantResolution),
+    TupleVariant(DelayedTupleVariantResolution),
 }
 
 /// During type checking, this gets replaced with struct field access.
@@ -168,6 +169,13 @@ pub struct DelayedEnumVariantResolution {
     pub exp: Box<Expression>,
     pub call_path: CallPath,
     pub arg_num: usize,
+}
+
+/// During type checking, this gets replaced with tuple arg access.
+#[derive(Debug, Clone)]
+pub struct DelayedTupleVariantResolution {
+    pub exp: Box<Expression>,
+    pub elem_num: usize,
 }
 
 #[derive(Clone, Debug, PartialEq)]

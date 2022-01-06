@@ -34,6 +34,10 @@ pub enum Scrutinee {
         args: Vec<Scrutinee>,
         span: Span,
     },
+    Tuple {
+        elems: Vec<Scrutinee>,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -51,6 +55,7 @@ impl Scrutinee {
             Scrutinee::Variable { span, .. } => span.clone(),
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
+            Scrutinee::Tuple { span, .. } => span.clone(),
         }
     }
 
@@ -100,6 +105,12 @@ impl Scrutinee {
             ),
             Rule::enum_scrutinee => check!(
                 Self::parse_from_pair_enum(scrutinee, config, span),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            Rule::tuple_scrutinee => check!(
+                Self::parse_from_pair_tuple(scrutinee, config, span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -264,6 +275,28 @@ impl Scrutinee {
             args,
             span,
         };
+        ok(scrutinee, warnings, errors)
+    }
+
+    fn parse_from_pair_tuple(
+        scrutinee: Pair<Rule>,
+        config: Option<&BuildConfig>,
+        span: Span,
+    ) -> CompileResult<Self> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let parts = scrutinee.into_inner();
+        let mut elems = vec![];
+        for part in parts {
+            elems.push(check!(
+                Scrutinee::parse_from_pair(part, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+
+        let scrutinee = Scrutinee::Tuple { elems, span };
         ok(scrutinee, warnings, errors)
     }
 }

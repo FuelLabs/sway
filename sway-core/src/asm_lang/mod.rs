@@ -75,10 +75,10 @@ impl Op {
     }
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
     pub(crate) fn unowned_stack_allocate_memory(
-        size_to_allocate_in_words: VirtualImmediate24,
+        size_to_allocate_in_bytes: VirtualImmediate24,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_words)),
+            opcode: Either::Left(VirtualOp::CFEI(size_to_allocate_in_bytes)),
             comment: String::new(),
             owning_span: None,
         }
