@@ -465,6 +465,29 @@ impl Namespace {
         }
     }
 
+    pub(crate) fn get_tuple_elems(
+        &self,
+        ty: TypeId,
+        debug_string: impl Into<String>,
+        debug_span: &Span,
+    ) -> CompileResult<Vec<TypeId>> {
+        let warnings = vec![];
+        let errors = vec![];
+        let ty = crate::type_engine::look_up_type_id(ty);
+        match ty {
+            TypeInfo::Tuple(elems) => ok(elems, warnings, errors),
+            TypeInfo::ErrorRecovery => err(warnings, errors),
+            a => err(
+                vec![],
+                vec![CompileError::NotATuple {
+                    name: debug_string.into(),
+                    span: debug_span.clone(),
+                    actually: a.friendly_type_str(),
+                }],
+            ),
+        }
+    }
+
     /// Given a path to a module, create synonyms to every symbol in that module.
     /// This is used when an import path contains an asterisk.
     pub(crate) fn star_import(
