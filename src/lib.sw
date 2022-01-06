@@ -9,5 +9,6 @@ dep contract_id;
 dep context;
 dep address;
 dep block;
+dep result;
 
 use core::*;
