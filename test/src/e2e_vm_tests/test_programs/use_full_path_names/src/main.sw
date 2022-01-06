@@ -1,10 +1,12 @@
 script;
 
 dep a_dependency;
+dep b_dependency;
 
 fn main() -> u64 {
-    let foo = foo::Foo {
+    let x = foo::Foo {
         foo: 1u32,
     };
-    foo.foo
+    let y = bar::Bar::Baz(true);
+    x.foo
 }

@@ -97,4 +97,14 @@ impl CallPath {
             errors,
         )
     }
+
+    pub(crate) fn friendly_name(&self) -> String {
+        let mut buf = String::new();
+        for prefix in self.prefixes.iter() {
+            buf.push_str(prefix.as_str());
+            buf.push_str("::");
+        }
+        buf.push_str(self.suffix.as_str());
+        buf
+    }
 }

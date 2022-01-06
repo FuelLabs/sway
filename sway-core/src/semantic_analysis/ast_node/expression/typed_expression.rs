@@ -4,7 +4,6 @@ use crate::control_flow_analysis::ControlFlowGraph;
 use crate::semantic_analysis::{ast_node::*, Namespace, TypeCheckArguments};
 use crate::type_engine::{insert_type, IntegerBits};
 
-use either::Either;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
@@ -1173,59 +1172,75 @@ impl TypedExpression {
 
         // now we can see if this thing is a symbol (typed declaration) or reference to an
         // enum instantiation
-        let this_thing: Either<TypedDeclaration, TypedExpression> =
-            match (module_result, enum_module_combined_result) {
-                (Some(_module), Some(_enum_res)) => {
-                    errors.push(CompileError::AmbiguousPath { span });
-                    return err(warnings, errors);
-                }
-                (Some(module), None) => match module.get_symbol(&call_path.suffix).value.cloned() {
-                    Some(decl) => Either::Left(decl),
-                    None => {
-                        errors.push(CompileError::SymbolNotFound {
-                            name: call_path.suffix.as_str().to_string(),
-                            span: call_path.suffix.span().clone(),
+        let exp: TypedExpression = match (module_result, enum_module_combined_result) {
+            (Some(_module), Some(_enum_res)) => {
+                errors.push(CompileError::AmbiguousPath { span });
+                return err(warnings, errors);
+            }
+            (Some(module), None) => match module.get_symbol(&call_path.suffix).value.cloned() {
+                Some(decl) => match decl {
+                    TypedDeclaration::EnumDeclaration(enum_decl) => {
+                        check!(
+                            instantiate_enum(
+                                enum_decl,
+                                call_path.suffix,
+                                args,
+                                namespace,
+                                crate_namespace,
+                                self_type,
+                                build_config,
+                                dead_code_graph,
+                                dependency_graph,
+                                opts,
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                    }
+                    a => {
+                        errors.push(CompileError::NotAnEnum {
+                            name: call_path.friendly_name(),
+                            span,
+                            actually: a.friendly_name().to_string(),
                         });
                         return err(warnings, errors);
                     }
                 },
-                (None, Some(enum_decl)) => Either::Right(check!(
-                    instantiate_enum(
-                        enum_decl,
-                        call_path.suffix,
-                        args,
-                        namespace,
-                        crate_namespace,
-                        self_type,
-                        build_config,
-                        dead_code_graph,
-                        dependency_graph,
-                        opts,
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )),
-                (None, None) => {
+                None => {
                     errors.push(CompileError::SymbolNotFound {
-                        span,
                         name: call_path.suffix.as_str().to_string(),
+                        span: call_path.suffix.span().clone(),
                     });
                     return err(warnings, errors);
                 }
-            };
-
-        let exp = match this_thing {
-            Either::Left(_) => {
-                errors.push(CompileError::Unimplemented(
-                    "Unable to refer to declarations in other modules directly. Try \
-                     importing it instead.",
+            },
+            (None, Some(enum_decl)) => check!(
+                instantiate_enum(
+                    enum_decl,
+                    call_path.suffix.clone(),
+                    args,
+                    namespace,
+                    crate_namespace,
+                    self_type,
+                    build_config,
+                    dead_code_graph,
+                    dependency_graph,
+                    opts,
+                ),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ),
+            (None, None) => {
+                errors.push(CompileError::SymbolNotFound {
                     span,
-                ));
+                    name: call_path.suffix.as_str().to_string(),
+                });
                 return err(warnings, errors);
             }
-            Either::Right(expr) => expr,
         };
+
         ok(exp, warnings, errors)
     }
 
