@@ -48,7 +48,7 @@ fn main() -> bool {
 
     let force_transfer_args = ParamsForceTransfer {
         coins: 3,
-        token_id: fuelcoin_id,
+        asset_id: fuelcoin_id,
         c_id: balance_id,
     };
     let mut balance2 = balance_of_contract(fuelcoin_id.value, balance_id);
@@ -64,7 +64,7 @@ fn main() -> bool {
 
     let transfer_to_output_args = ParamsTransferToOutput {
         coins: 1,
-        token_id: fuelcoin_id,
+        asset_id: fuelcoin_id,
         recipient: test_recipient,
     };
 
