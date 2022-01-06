@@ -3,7 +3,7 @@ use crate::{
     build_config::BuildConfig,
     ident::Ident,
     parse_tree::CallPath,
-    semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
+    semantic_analysis::ast_node::{TypedEnumVariant, OwnedTypedStructField},
     Rule, Span, TypeParameter,
 };
 use derivative::Derivative;
@@ -22,7 +22,7 @@ pub enum TypeInfo {
     UnsignedInteger(IntegerBits),
     Enum {
         name: String,
-        variant_types: Vec<OwnedTypedEnumVariant>,
+        variant_types: Vec<TypedEnumVariant>,
     },
     Struct {
         name: String,

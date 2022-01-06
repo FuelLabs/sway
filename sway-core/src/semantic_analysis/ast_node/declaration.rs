@@ -311,12 +311,12 @@ impl TypedEnumDeclaration {
             variant_types: self
                 .variants
                 .iter()
-                .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                .cloned()
                 .collect(),
         })
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct TypedEnumVariant {
     pub(crate) name: Ident,
     pub(crate) r#type: TypeId,
@@ -334,27 +334,10 @@ impl TypedEnumVariant {
             insert_type(look_up_type_id_raw(self.r#type))
         };
     }
-    pub(crate) fn as_owned_typed_enum_variant(&self) -> OwnedTypedEnumVariant {
-        OwnedTypedEnumVariant {
-            name: self.name.as_str().to_string(),
-            r#type: self.r#type,
-            tag: self.tag,
-        }
-    }
-}
 
-// TODO(Static span) -- remove this type and use TypedEnumVariant
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct OwnedTypedEnumVariant {
-    pub(crate) name: String,
-    pub(crate) r#type: TypeId,
-    pub(crate) tag: usize,
-}
-
-impl OwnedTypedEnumVariant {
     pub fn generate_json_abi(&self) -> Property {
         Property {
-            name: self.name.clone(),
+            name: self.name.as_str().to_owned(),
             type_field: self.r#type.json_abi_str(),
             components: self.r#type.generate_json_abi(),
         }

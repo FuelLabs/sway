@@ -1,5 +1,5 @@
 use super::ast_node::{
-    OwnedTypedStructField, TypedEnumDeclaration, TypedEnumVariant, TypedStructDeclaration,
+    OwnedTypedStructField, TypedEnumDeclaration, TypedStructDeclaration,
     TypedStructField,
 };
 use crate::error::*;
@@ -74,7 +74,7 @@ impl Namespace {
                     name: name.as_str().to_string(),
                     variant_types: variants
                         .iter()
-                        .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                        .cloned()
                         .collect(),
                 }),
                 Some(TypedDeclaration::GenericTypeForFunctionScope { name, .. }) => {
@@ -115,7 +115,7 @@ impl Namespace {
                     name: name.as_str().to_string(),
                     variant_types: variants
                         .iter()
-                        .map(TypedEnumVariant::as_owned_typed_enum_variant)
+                        .cloned()
                         .collect(),
                 }),
                 _ => crate::type_engine::insert_type(TypeInfo::Unknown),

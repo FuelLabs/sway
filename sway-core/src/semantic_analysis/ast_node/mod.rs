@@ -22,7 +22,7 @@ use super::ERROR_RECOVERY_DECLARATION;
 use crate::type_engine::*;
 pub(crate) use code_block::TypedCodeBlock;
 pub(crate) use declaration::{
-    OwnedTypedEnumVariant, OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration,
+    OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration,
     TypedVariableDeclaration,
 };
 pub use declaration::{

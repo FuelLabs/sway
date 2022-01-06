@@ -1,7 +1,7 @@
 #![allow(warnings)]
 
 use super::*;
-use crate::semantic_analysis::ast_node::{OwnedTypedEnumVariant, TypedEnumVariant};
+use crate::semantic_analysis::ast_node::TypedEnumVariant;
 use crate::span::Span;
 use crate::{
     asm_lang::*,
