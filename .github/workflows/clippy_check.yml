@@ -15,4 +15,4 @@ jobs:
         uses: actions-rs/clippy-check@v1.0.7
         with:
           token: ${{ github.token }}
-          args: --all-features -D warnings
+          args: --all-features -- -D warnings
