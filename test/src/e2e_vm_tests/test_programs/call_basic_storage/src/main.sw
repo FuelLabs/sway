@@ -1,6 +1,5 @@
 script;
-use basic_storage_abi::StoreU64;
-use basic_storage_abi::StoreU64Request;
+use basic_storage_abi::{StoreU64, StoreU64Request};
 
 fn main() -> u64 {
   let addr = abi(StoreU64, 0x410eab113ce1c194952b92295f3d156bce478633feb2e0117360ff28b034a751);

@@ -1,6 +1,6 @@
 # Purity
 
-A function is _pure_ if it does not access any [persistent storage](./storage.md). Conversely, function is _impure_ if it does not access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.
+A function is _pure_ if it does not access any [persistent storage](./storage.md). Conversely, function is _impure_ if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.
 
 Functions are pure by default but can be opted in to impurity via the `impure` keyword[^1]:
 

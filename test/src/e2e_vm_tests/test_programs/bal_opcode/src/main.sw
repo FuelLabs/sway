@@ -1,8 +1,6 @@
 script;
 
-use std::constants::ETH_ID;
-use std::chain::assert;
-use std::contract_id::ContractId;
+use std::{constants::ETH_ID, chain::assert, contract_id::ContractId};
 use balance_test_abi::BalanceTest;
 
 
