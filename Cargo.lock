@@ -879,7 +879,7 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "docstrings"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "thiserror",
 ]
@@ -978,7 +978,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "annotate-snippets",
  "anyhow",
@@ -1089,6 +1089,49 @@ dependencies = [
  "lazy_static 1.4.0",
  "sha2",
  "thiserror",
+]
+
+[[package]]
+name = "fuel-pest"
+version = "3.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbd781bebbaf0f0e2bd7ce5730717ba59dc39ee4ea9f639cf9eebcd8b0b305a6"
+dependencies = [
+ "ucd-trie",
+]
+
+[[package]]
+name = "fuel-pest_derive"
+version = "3.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "206d9d86c910f99d45f964762c47a760323479f0758e5e0bc88ec400617a2d11"
+dependencies = [
+ "fuel-pest",
+ "fuel-pest_generator",
+]
+
+[[package]]
+name = "fuel-pest_generator"
+version = "3.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e73112149dddbcc98624d43541fceada156458f8bab4bb022d7d564e2bb94568"
+dependencies = [
+ "fuel-pest",
+ "fuel-pest_meta",
+ "proc-macro2 1.0.36",
+ "quote 1.0.14",
+ "syn 1.0.84",
+]
+
+[[package]]
+name = "fuel-pest_meta"
+version = "3.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "beeba7ab4966d3403cf2c2c30405c9e80e940bff82eac9ef04b592f393218bce"
+dependencies = [
+ "fuel-pest",
+ "maplit",
+ "sha-1",
 ]
 
 [[package]]
@@ -1941,7 +1984,7 @@ checksum = "427c3892f9e783d91cc128285287e70a59e206ca452770ece88a76f7a3eddd72"
 
 [[package]]
 name = "parser"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "ariadne",
  "chumsky",
@@ -1954,45 +1997,6 @@ name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
-
-[[package]]
-name = "pest"
-version = "2.1.3"
-source = "git+https://github.com/canndrew/pest?rev=51f47bbaccea15458ad6ac3cd5421d6c9f4f6279#51f47bbaccea15458ad6ac3cd5421d6c9f4f6279"
-dependencies = [
- "ucd-trie",
-]
-
-[[package]]
-name = "pest_derive"
-version = "2.1.0"
-source = "git+https://github.com/canndrew/pest?rev=51f47bbaccea15458ad6ac3cd5421d6c9f4f6279#51f47bbaccea15458ad6ac3cd5421d6c9f4f6279"
-dependencies = [
- "pest",
- "pest_generator",
-]
-
-[[package]]
-name = "pest_generator"
-version = "2.1.4"
-source = "git+https://github.com/canndrew/pest?rev=51f47bbaccea15458ad6ac3cd5421d6c9f4f6279#51f47bbaccea15458ad6ac3cd5421d6c9f4f6279"
-dependencies = [
- "pest",
- "pest_meta",
- "proc-macro2 1.0.36",
- "quote 1.0.14",
- "syn 1.0.84",
-]
-
-[[package]]
-name = "pest_meta"
-version = "2.1.3"
-source = "git+https://github.com/canndrew/pest?rev=51f47bbaccea15458ad6ac3cd5421d6c9f4f6279#51f47bbaccea15458ad6ac3cd5421d6c9f4f6279"
-dependencies = [
- "maplit",
- "pest",
- "sha-1",
-]
 
 [[package]]
 name = "petgraph"
@@ -2870,17 +2874,17 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "derivative",
  "either",
  "fuel-asm",
+ "fuel-pest",
+ "fuel-pest_derive",
  "fuel-vm",
  "hex",
  "lazy_static 1.4.0",
  "line-col",
- "pest",
- "pest_derive",
  "petgraph",
  "sha2",
  "smallvec",
@@ -2893,7 +2897,7 @@ dependencies = [
 
 [[package]]
 name = "sway-fmt"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "ropey",
  "sway-core",
@@ -2901,7 +2905,7 @@ dependencies = [
 
 [[package]]
 name = "sway-server"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "dashmap",
  "lspower",
@@ -2915,7 +2919,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "fuel-asm",
  "fuel-tx",
@@ -2924,7 +2928,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.1.9"
+version = "0.2.0"
 
 [[package]]
 name = "syn"
@@ -3018,7 +3022,7 @@ dependencies = [
 
 [[package]]
 name = "test"
-version = "0.1.9"
+version = "0.2.0"
 dependencies = [
  "forc",
  "fuel-asm",
