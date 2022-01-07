@@ -78,6 +78,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("trait_override_bug", ProgramState::Return(7)),
         ("if_implicit_unit", ProgramState::Return(0)),
         ("modulo_uint_test", ProgramState::Return(1)), // true
+        ("trait_import_with_star", ProgramState::Return(0)),
         ("tuple_desugaring", ProgramState::Return(9)),
     ];
 
