@@ -109,9 +109,9 @@ fn handle_import_path(
                 let mut alias = None;
                 if next_is_alias {
                     let next_item = next.clone().unwrap();
-                    let itemm = next_item.into_inner().nth(1).unwrap();
+                    let alias_item = next_item.into_inner().nth(1).unwrap();
                     let alias_parsed = check!(
-                        Ident::parse_from_pair(itemm, config),
+                        Ident::parse_from_pair(alias_item, config),
                         continue,
                         warnings,
                         errors
