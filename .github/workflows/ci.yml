@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - roy-bake-fuel-core-ci-workflow
   pull_request:
   release:
     types: [published]
@@ -108,7 +107,7 @@ jobs:
   
   build-publish-master-image:
     needs: build
-    #if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: read
