@@ -1117,7 +1117,7 @@ impure fn write_owner() -&gt; MutStorageRef&lt;b256&gt; {
 </code></pre>
 <p>Note that to write to a mutable reference, you must dereference it first. See <a href="smart-contract-development/../basics/reference_types.html">the chapter on reference types</a> for more information on reference types in general..</p>
 <h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
-<p>A function is <em>pure</em> if it does not access any <a href="smart-contract-development/./storage.html">persistent storage</a>. Conversely, function is <em>impure</em> if it does not access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
+<p>A function is <em>pure</em> if it does not access any <a href="smart-contract-development/./storage.html">persistent storage</a>. Conversely, function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
 <p>Functions are pure by default but can be opted in to impurity via the <code>impure</code> keyword<sup class="footnote-reference"><a href="#1">1</a></sup>:</p>
 <pre><code class="language-sway">// an impure function
 impure fn foo() {
