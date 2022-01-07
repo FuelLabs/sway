@@ -6,6 +6,7 @@ members = [
     "parser",
     "sway-core",
     "sway-fmt",
+    "sway-ir",
     "sway-server",
     "sway-types",
     "sway-utils",
