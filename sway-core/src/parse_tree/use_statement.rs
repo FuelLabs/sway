@@ -59,7 +59,7 @@ fn handle_import_path(
 
     // Populate the call path
     let mut import_path_buf = vec![];
-    let mut import_path_vec = import_path.clone().into_inner().collect::<Vec<_>>();
+    let mut import_path_vec = import_path.into_inner().collect::<Vec<_>>();
     let mut last_item = import_path_vec.pop().unwrap();
 
     let mut top_level_alias = None;
@@ -105,7 +105,7 @@ fn handle_import_path(
                 ));
                 let next = it.clone().next();
                 let next_is_alias =
-                    !next.is_none() && next.clone().unwrap().as_rule() == Rule::alias;
+                    next.is_some() && next.clone().unwrap().as_rule() == Rule::alias;
                 let mut alias = None;
                 if next_is_alias {
                     let next_item = next.clone().unwrap();
