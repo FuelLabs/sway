@@ -591,8 +591,6 @@ pub enum CompileError {
         method_name: String,
         type_name: String,
     },
-    #[error("The asterisk, if present, must be the last part of a path. E.g., `use foo::bar::*`.")]
-    NonFinalAsteriskInPath { span: Span },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
@@ -965,7 +963,6 @@ impl CompileError {
             StructMissingField { span, .. } => span,
             StructDoesNotHaveField { span, .. } => span,
             MethodNotFound { span, .. } => span,
-            NonFinalAsteriskInPath { span, .. } => span,
             ModuleNotFound { span, .. } => span,
             NotATuple { span, .. } => span,
             NotAStruct { span, .. } => span,

@@ -1,8 +1,7 @@
 contract;
 
 use increment_abi::Incrementor;
-use std::storage::store;
-use std::storage::get;
+use std::storage::{store, get};
 
 const key = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
