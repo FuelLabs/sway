@@ -1,0 +1,8 @@
+version: "3.9"
+
+services:
+  sway:
+    build:
+      context: . 
+      dockerfile: deployment/Dockerfile
+    image: sway
