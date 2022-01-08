@@ -1,14 +1,14 @@
 # Libraries
 
-Libraries in Sway are files used to define new common behavior. An example of this is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core) which outlines various methods that the `u64` type implements. 
+Libraries in Sway are files used to define new common behavior. An example of this is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core) which outlines various methods that the `u64` type implements.
 
-Functions in libraries can also read from storage and interact with state. Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported. E.g. `library foo;`.
+Functions in libraries can also read from storage and interact with the state. Libraries are denoted using the `library` keyword at the beginning of the file, followed by a name so that they can be imported. E.g. `library foo;`.
 
 ```sway
 library my_library;
 ```
 
-A good reference library to use when learning library design is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core). The `add` function interface is defined via the `Add` trait and then implemented it for `u64`. This attaches this `add` function to the type so that, when the trait is imported, `u64`s can utilize the `add` function.
+A good reference library to use when learning library design is the [Sway Core Library](https://github.com/FuelLabs/sway-lib-core). The `add` function interface is defined via the `Add` trait and then implemented for `u64`. This attaches this `add` function to the type so that, when the trait is imported, `u64`s can utilize the `add` function.
 
 ```sway
 pub trait Add {
@@ -37,7 +37,7 @@ pub struct MyStruct {
 
 Libraries can be imported using the `use` keyword and with a `::` separating the name of the library and the import.
 
-Here is an example of importing storage and its related functions from the standard library. 
+Here is an example of importing storage and its related functions from the standard library.
 
 ```sway
 use std::storage::*;

@@ -8,7 +8,7 @@ The "Fuel Orchestrator" Forc is our equivalent of Rust's [Cargo](https://doc.rus
 
 ### Sway Language Server (`forc lsp`)
 
-The Sway Language Server `forc lsp` is provided to expose features to IDEs. Currently, only [Visual Studio Code is supported through a plugin](https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin). Vim support is forthcoming, though [syntax highlighting is provided](https://github.com/FuelLabs/sway.vim). Note that there is no need to manually run `forc lsp` (the plugin will automaticaly start it), however it should be included in your `$PATH` if you are building `forc` from source.
+The Sway Language Server `forc lsp` is provided to expose features to IDEs. Currently, only [Visual Studio Code is supported through a plugin](https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin). Vim support is forthcoming, though [syntax highlighting is provided](https://github.com/FuelLabs/sway.vim). Note that there is no need to manually run `forc lsp` (the plugin will automatically start it), however, it should be included in your `$PATH` if you are building `forc` from source.
 
 ## Fuel Core (`fuel-core`)
 
