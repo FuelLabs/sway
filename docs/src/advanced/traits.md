@@ -2,7 +2,7 @@
 
 ## Declaring a Trait
 
-A _trait_ opts a type into a certain type of behavior or functionality that can be shared among types. This allows for easy reuse of code and generic programming. If you have ever used a type class in Haskell, a trait in Rust, or even an interface in Java, these are similar concepts.
+A _trait_ opts a type into a certain type of behavior or functionality that can be shared among types. This allows for easy reuse of code and generic programming. If you have ever used a typeclass in Haskell, a trait in Rust, or even an interface in Java, these are similar concepts.
 
 Let's take a look at some code:
 
