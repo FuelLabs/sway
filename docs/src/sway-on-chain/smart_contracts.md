@@ -43,7 +43,7 @@ In the second line,
     fn receive_funds(gas: u64, coins_to_forward: u64, asset_id: b256, unused: ());
 ```
 
-we are declaring an ABI interface surface method called `receive funds` which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no _function body_or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md). This ABI method takes four parameters: `gas`, `coins_to_forward`, `asset_id`, and `unused`, and doesn't return anything.
+we are declaring an ABI interface surface method called `receive funds` which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no _function body_ or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to [trait declarations](../advanced/traits.md). This ABI method takes four parameters: `gas`, `coins_to_forward`, `asset_id`, and `unused`, and doesn't return anything.
 
 1. `gas` represents the gas being forwarded to the contract when it is called.
 2. `coins_to_forward` represents how many coins are being forwarded with this call.
