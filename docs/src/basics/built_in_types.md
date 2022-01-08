@@ -1,8 +1,8 @@
 # Built-in Types
 
-Every value in Sway is of a certain type. Although, deep down, all values are just ones and zeroes in silicon, Sway needs to know what those ones and zeroes actually mean. This is accomplished with _types_.
+Every value in Sway is of a certain type. Although deep down, all values are just ones and zeroes in silicon, Sway needs to know what those ones and zeroes actually mean. This is accomplished with _types_.
 
-Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually the type can be reasonably inferred.
+Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually, the type can be reasonably inferred.
 
 ## Primitive Types
 
@@ -16,13 +16,13 @@ Sway has the following primitive types:
 1. `bool` (Boolean `true` or `false`)
 1. `b256` (256 bits (32 bytes), i.e. a hash)
 
-All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers&mdash;this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.
+All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers&mdash; this is by design. In the blockchain domain that Sway occupies, floating-point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.
 
 ## Numeric Types
 
 All of the unsigned integer types are numeric types, and the `byte` type can also be viewed as an 8-bit unsigned integer.
 
-Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and with underscores for delineation. Let's take a look at the following valid numeric primitives:
+Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and underscores for delineation. Let's take a look at the following valid numeric primitives:
 
 ```sway
 0xffffff    // hexadecimal
@@ -48,7 +48,7 @@ fn returns_false() -> bool {
 
 ## String Type
 
-In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for storage of that data. The size of the string is denoted with square brackets. Let's take a look:
+In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets. Let's take a look:
 
 ```sway
 let my_string: str[4] = "fuel";
@@ -58,13 +58,13 @@ Because the string literal `"fuel"` is four letters, the type is `str[4]`, denot
 
 ## Compound Types
 
-_Compound types_ are types which group multiple values into one type. In Sway, we have arrays and tuples.
+_Compound types_ are types that group multiple values into one type. In Sway, we have arrays and tuples.
 
 ## Tuple Types
 
 _note: tuples are a work in progress and are tracked by [this PR](https://github.com/FuelLabs/sway/pull/399)_
 
-A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type which consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.
+A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.
 
 ```sway
 let x: (u64, u64) = (0, 0);
