@@ -196,7 +196,7 @@ assert(foo.baz);
 <p><em>This information is not vital if you are new to the language, or programming in general.</em></p>
 <p>Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.</p>
 <h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
-<p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type which could be one of a number of variants. To declare an enum, you enumerate all potential variants. Let's look at <em>enum declaration syntax</em>:</p>
+<p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants. Let's look at <em>enum declaration syntax</em>:</p>
 <pre><code class="language-sway">enum Color {
     Blue   : (),
     Green  : (),
@@ -205,7 +205,7 @@ assert(foo.baz);
     Grey   : (),
 }
 </code></pre>
-<p>Here, we have defined five potential colors. Each individual enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit. It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:</p>
+<p>Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit. It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:</p>
 <pre><code class="language-sway">use std::collections::Vec;
 use inventory_system::InventoryItem;
 use inventory_system::Insurer;
@@ -259,11 +259,11 @@ let event = InventoryEvent::ItemLoss(Claim {
 </code></pre>
 <h3 id="enum-memory-layout"><a class="header" href="#enum-memory-layout">Enum Memory Layout</a></h3>
 <p><em>This information is not vital if you are new to the language, or programming in general.</em></p>
-<p>Enums do have some memory overhead. In order to know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the <em>largest</em> enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of <code>Color</code> above, where the variants are all <code>()</code>, the size would be 8 bytes since the size of the largest variant is 0 bytes.</p>
+<p>Enums do have some memory overhead. To know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the <em>largest</em> enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of <code>Color</code> above, where the variants are all <code>()</code>, the size would be 8 bytes since the size of the largest variant is 0 bytes.</p>
 <h2 id="methods-and-associated-functions"><a class="header" href="#methods-and-associated-functions">Methods and Associated Functions</a></h2>
-<p><em>Methods</em> are functions which are associated with a specific type and either refer to that type or mutate it. <em>Associated functions</em> are very similar, but they do not actually use any of the data in the type. Associated functions could be standalone functions, but they
+<p><em>Methods</em> are functions that are associated with a specific type and either refer to that type or mutate it. <em>Associated functions</em> are very similar, but they do not use any of the data in the type. Associated functions could be standalone functions, but they
 are included in a specific type for organizational or semantic reasons.</p>
-<p>In order to declare methods and associated functions for a struct or enum, use an <em>impl block</em>. Here, <code>impl</code> stands for implementation.</p>
+<p>To declare methods and associated functions for a struct or enum, use an <em>impl block</em>. Here, <code>impl</code> stands for implementation.</p>
 <pre><code class="language-sway">script;
 
 struct Foo {

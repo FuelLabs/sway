@@ -168,9 +168,9 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="what-is-a-smart-contract"><a class="header" href="#what-is-a-smart-contract">What is a Smart Contract?</a></h1>
-<p>A smart contract no different than a script or predicate in that it is a piece of bytecode which is deployed to the blockchain via a <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="#abi-declarations">ABI declaration</a>. See <a href="../examples/subcurrency.html">this contract</a> for an example.</p>
+<p>A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a <a href="https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md">transaction</a>. The main features of a smart contract that differentiate it from scripts or predicates are that it is <em>callable</em> and <em>stateful</em>. Put another way, a smart contract is analogous to a deployed API with some database state. The interface of a smart contract, also just called a contract, must be defined strictly with an <a href="#abi-declarations">ABI declaration</a>. See <a href="../examples/subcurrency.html">this contract</a> for an example.</p>
 <h2 id="syntax-of-a-smart-contract"><a class="header" href="#syntax-of-a-smart-contract">Syntax of a Smart Contract</a></h2>
-<p>As with any Sway program, the program starts out with a declaration of what <a href="./program_types.html">program type</a> it is. A contract must also either define or import an <a href="#abi-declarations">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
+<p>As with any Sway program, the program starts with a declaration of what <a href="./program_types.html">program type</a> it is. A contract must also either define or import an <a href="#abi-declarations">ABI declaration</a> and implement it. It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract. Let's take a look at an ABI declaration in a library:</p>
 <pre><code class="language-sway">library wallet_abi;
 
 abi Wallet {
@@ -183,7 +183,7 @@ pub struct SendFundsRequest {
     recipient_address: b256,
 }
 </code></pre>
-<p>There are two declarations going on here. One is a struct representing the data that <code>send_funds</code> needs, and the other is the ABI declaration. Let's focus on the ABI declaration and inspect it line-by-line.</p>
+<p>There are two declarations going on here. One is a struct representing the data that <code>send_funds</code> needs and the other is the ABI declaration. Let's focus on the ABI declaration and inspect it line-by-line.</p>
 <h3 id="the-abi-declaration"><a class="header" href="#the-abi-declaration">The ABI Declaration</a></h3>
 <pre><code class="language-sway">abi Wallet {
     fn receive_funds(gas: u64, coins_to_forward: u64, asset_id: b256, unused: ());
@@ -191,24 +191,24 @@ pub struct SendFundsRequest {
 }
 </code></pre>
 <hr />
-<p>In the first line, <code>abi Wallet {</code>, we declare the name of this <em>Application Binary Interface</em>, or ABI. We are naming this ABI <code>Wallet</code>. To import this ABI into either a script for calling or a contract for implementing, you would use <code>use wallet_abi::Wallet;</code>. </p>
+<p>In the first line, <code>abi Wallet {</code>, we declare the name of this <em>Application Binary Interface</em>, or ABI. We are naming this ABI <code>Wallet</code>. To import this ABI into either a script for calling or a contract for implementing, you would use <code>use wallet_abi::Wallet;</code>.</p>
 <hr />
 <p>In the second line,</p>
 <pre><code class="language-sway">    fn receive_funds(gas: u64, coins_to_forward: u64, asset_id: b256, unused: ());
 </code></pre>
-<p>we are declaring an ABI interface surface method called <code>receive funds</code> which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no <em>function body</em>, or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="../advanced/traits.html">trait declarations</a>. This ABI method takes four parameters: <code>gas</code>, <code>coins_to_forward</code>, <code>asset_id</code>, and <code>unused</code>, and doesn't return anything.</p>
+<p>we are declaring an ABI interface surface method called <code>receive funds</code> which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no <em>function body</em> or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="../advanced/traits.html">trait declarations</a>. This ABI method takes four parameters: <code>gas</code>, <code>coins_to_forward</code>, <code>asset_id</code>, and <code>unused</code>, and doesn't return anything.</p>
 <ol>
 <li><code>gas</code> represents the gas being forwarded to the contract when it is called.</li>
 <li><code>coins_to_forward</code> represents how many coins are being forwarded with this call.</li>
 <li><code>asset_id</code> represents the ID of the <em>asset type</em> of the coin being forwarded.</li>
-<li><code>unused</code> is the configurable user parameter, which this method does not actually need and is therefore unused.</li>
+<li><code>unused</code> is the configurable user parameter, which this method does not need and is therefore unused.</li>
 </ol>
 <p><strong>For now, all ABI methods must take these four parameters <em>in this order</em>. This will change shortly, and ABI methods will be able to accept any number of user-based parameters and not need to specify arguments for gas and coin forwarding.</strong> You will see a compile error if you do not specify these parameters correctly in your ABI.</p>
 <hr />
 <p>In the third line,</p>
 <pre><code class="language-sway">    fn send_funds(gas: u64, coins_to_forward: u64, asset_id: b256, req: SendFundsRequest);
 </code></pre>
-<p>we are declaring another ABI method, this time called <code>send_funds</code>. It takes the same parameters as the last ABI method, but with one difference: the fourth argument, the configurable one, is used. By specifying a struct here, you are able to pass in many values in this one parameter. In this case, <code>SendFundsRequest</code> simply has two values: the amount to send, and the address to send the funds to.</p>
+<p>we are declaring another ABI method, this time called <code>send_funds</code>. It takes the same parameters as the last ABI method, but with one difference: the fourth argument, the configurable one, is used. By specifying a struct here, you can pass in many values in this one parameter. In this case, <code>SendFundsRequest</code> simply has two values: the amount to send, and the address to send the funds to.</p>
 <h2 id="implementing-an-abi-for-a-smart-contract"><a class="header" href="#implementing-an-abi-for-a-smart-contract">Implementing an ABI for a Smart Contract</a></h2>
 <p>Now that we've discussed how to define the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.</p>
 <p>Implementing an ABI for a contract is accomplished with <em>impl ABI</em> syntax:</p>
@@ -229,7 +229,7 @@ pub struct SendFundsRequest {
     }
 }
 </code></pre>
-<p>You may notice once again the similarities between <a href="../advanced/traits.html">traits</a> and ABIs. And, indeed, as a bonus, you can specify methods in addition to the interface surface of an ABI, just like a trait. By implementing the methods in the interface surface, you get the extra method implementations For Free™. </p>
+<p>You may notice once again the similarities between <a href="../advanced/traits.html">traits</a> and ABIs. And, indeed, as a bonus, you can specify methods in addition to the interface surface of an ABI, just like a trait. By implementing the methods in the interface surface, you get the extra method implementations For Free™.</p>
 <p>Note that the above implementation of the ABI follows the <a href="https://docs.soliditylang.org/en/v0.6.11/security-considerations.html#re-entrancy">Checks, Effects, Interactions</a> pattern.</p>
 <h2 id="calling-a-smart-contract-from-a-script"><a class="header" href="#calling-a-smart-contract-from-a-script">Calling a Smart Contract from a Script</a></h2>
 <p>Now that we have defined our interface and implemented it for our contract, we need to know how to actually <em>call</em> our contract. Let's take a look at a contract call:</p>
@@ -244,7 +244,7 @@ fn main() {
     let caller = abi(Wallet, contract_address);
     let req = SendFundsRequest {
         amount_to_send: 200,
-        recipient_address: 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b, 
+        recipient_address: 0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b,
     };
     caller.send_funds(10000, 0, ETH_ID, req);
 }

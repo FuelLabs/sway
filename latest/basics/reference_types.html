@@ -169,8 +169,8 @@
                     <main>
                         <h1 id="reference-types"><a class="header" href="#reference-types">Reference Types</a></h1>
 <p>If you have familiarity with references, also called pointers, from other languages, Sway references are no different. If you're new to this concept, this chapter is for you!</p>
-<p>Memory in a computer is held in RAM. When you buy a Macbook Pro 16GB, for example, that 16GB number is referring to the <em>memory</em>, or <em>RAM</em>, available. In the FuelVM, we also have memory. When you instantiate a variable in a Sway program, it is written to some spot in memory. We need to keep track of <em>where</em> exactly that value was written in order to utilize it, though.</p>
-<p>Every single byte in FuelVM memory has a name. The first byte's name is <code>0x01</code>. The second byte's name is <code>0x02</code>. The 54,321st byte's name is <code>0xD431</code><sup class="footnote-reference"><a href="#1">1</a></sup>. A reference is a variable which contains the name of a specific location in the FuelVM's memory. This is useful if you want to reason about the memory which contains the value and not the value itself.</p>
+<p>Memory in a computer is held in RAM. When you buy a Macbook Pro 16GB, for example, that 16GB number is referring to the <em>memory</em>, or <em>RAM</em>, available. In the FuelVM, we also have memory. When you instantiate a variable in a Sway program, it is written to some spot in memory. We need to keep track of <em>where</em> exactly that value was written to utilize it, though.</p>
+<p>Every single byte in FuelVM memory has a name. The first byte's name is <code>0x01</code>. The second byte's name is <code>0x02</code>. The 54,321st byte's name is <code>0xD431</code><sup class="footnote-reference"><a href="#1">1</a></sup>. A reference is a variable that contains the name of a specific location in the FuelVM's memory. This is useful if you want to reason about the memory which contains the value and not the value itself.</p>
 <pre><code class="language-sway">script;
 fn main() {
     let x = 42;
@@ -178,7 +178,7 @@ fn main() {
 }
 </code></pre>
 <div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
-<p>Check out <a href="https://en.wikipedia.org/wiki/Hexadecimal">this article</a> if you're not used to seeing numbers with letters in them. </p>
+<p>Check out <a href="https://en.wikipedia.org/wiki/Hexadecimal">this article</a> if you're not used to seeing numbers with letters in them.</p>
 </div>
 <h2 id="dereferencing"><a class="header" href="#dereferencing">Dereferencing</a></h2>
 <h2 id="storage-references"><a class="header" href="#storage-references">Storage References</a></h2>

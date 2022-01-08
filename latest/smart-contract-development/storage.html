@@ -168,7 +168,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="storage"><a class="header" href="#storage">Storage</a></h1>
-<p>When developing a <a href="../sway-on-chain/smart_contracts.html">smart contract</a>, you will typically need some sort of persistent storage. In this case, persistant storage, often just called <em>storage</em> in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in <em>memory</em>, which disappears after the contract exits.</p>
+<p>When developing a <a href="../sway-on-chain/smart_contracts.html">smart contract</a>, you will typically need some sort of persistent storage. In this case, persistent storage, often just called <em>storage</em> in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in <em>memory</em>, which disappears after the contract exits.</p>
 <p>Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.</p>
 <p>Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.</p>
 <h2 id="syntax"><a class="header" href="#syntax">Syntax</a></h2>
@@ -185,7 +185,7 @@
 </code></pre>
 <p>This value is passed as a part of the transaction, which initializes storage upon contract deployment.</p>
 <h3 id="access"><a class="header" href="#access">Access</a></h3>
-<p>Storage access should be minimized, as it incurs a larger performance and gas cost than regular memory access. There are two types of storage access: <em>reading</em> and <em>writing</em>. </p>
+<p>Storage access should be minimized, as it incurs a larger performance and gas cost than regular memory access. There are two types of storage access: <em>reading</em> and <em>writing</em>.</p>
 <h4 id="reading-from-storage"><a class="header" href="#reading-from-storage">Reading from Storage</a></h4>
 <p>Reading from storage is less expensive than writing. To read a value from storage, use the <code>.read()</code> method:</p>
 <pre><code class="language-sway">storage {
@@ -196,7 +196,7 @@ impure fn get_owner() -&gt; ref b256 {
     storage.owner.read()
 }
 </code></pre>
-<p>This returns an immutable reference to a <code>b256</code> which is held in storage. The <code>read()</code> method itself actually copies the value from storage and returns a pointer to it to save on actual storage read opcodes, which are expensive. <strong>This means that writing to a storage value will not update other variables that are holding references to that value acquired via <code>read()</code></strong>. If you'd like an actual <code>StorageRef</code> to the value itself, which does <em>not</em> copy the value and instead incurs a storage read cost on every access, use <code>.direct_read()</code>. </p>
+<p>This returns an immutable reference to a <code>b256</code> which is held in storage. The <code>read()</code> method itself copies the value from storage and returns a pointer to it to save on actual storage read opcodes, which are expensive. <strong>This means that writing to a storage value will not update other variables that are holding references to that value acquired via <code>read()</code></strong>. If you'd like an actual <code>StorageRef</code> to the value itself, which does <em>not</em> copy the value and instead incurs a storage read cost on every access, use <code>.direct_read()</code>.</p>
 <h4 id="writing-to-storage"><a class="header" href="#writing-to-storage">Writing to Storage</a></h4>
 <p>Writing to storage is accomplished with the <code>.write()</code> method. The <code>.write()</code> method returns a special kind of mutable reference, called a <code>MutStorageRef</code>, which mutates storage directly upon every write. Writing to values of this type costs more gas than usual and should be minimized.</p>
 <pre><code class="language-sway">contract;

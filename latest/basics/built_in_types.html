@@ -168,8 +168,8 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="built-in-types"><a class="header" href="#built-in-types">Built-in Types</a></h1>
-<p>Every value in Sway is of a certain type. Although, deep down, all values are just ones and zeroes in silicon, Sway needs to know what those ones and zeroes actually mean. This is accomplished with <em>types</em>.</p>
-<p>Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually the type can be reasonably inferred.</p>
+<p>Every value in Sway is of a certain type. Although deep down, all values are just ones and zeroes in silicon, Sway needs to know what those ones and zeroes actually mean. This is accomplished with <em>types</em>.</p>
+<p>Sway is a statically typed language. At compile time, the types of every value must be known. This does not mean you need to specify every single type: usually, the type can be reasonably inferred.</p>
 <h2 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h2>
 <p>Sway has the following primitive types:</p>
 <ol>
@@ -181,10 +181,10 @@
 <li><code>bool</code> (Boolean <code>true</code> or <code>false</code>)</li>
 <li><code>b256</code> (256 bits (32 bytes), i.e. a hash)</li>
 </ol>
-<p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers—this is by design. In the blockchain domain that Sway occupies, floating point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
+<p>All other types in Sway are built up of these primitive types, or references to these primitive types. You may notice that there are no signed integers—this is by design. In the blockchain domain that Sway occupies, floating-point values and negative numbers have smaller utility, so their implementation has been left up to libraries for specific use cases.</p>
 <h2 id="numeric-types"><a class="header" href="#numeric-types">Numeric Types</a></h2>
 <p>All of the unsigned integer types are numeric types, and the <code>byte</code> type can also be viewed as an 8-bit unsigned integer.</p>
-<p>Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and with underscores for delineation. Let's take a look at the following valid numeric primitives:</p>
+<p>Numbers can be declared with binary syntax, hexadecimal syntax, base-10 syntax, and underscores for delineation. Let's take a look at the following valid numeric primitives:</p>
 <pre><code class="language-sway">0xffffff    // hexadecimal
 0b10101010  // binary
 10          // base-10
@@ -201,15 +201,15 @@
 }
 </code></pre>
 <h2 id="string-type"><a class="header" href="#string-type">String Type</a></h2>
-<p>In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for storage of that data. The size of the string is denoted with square brackets. Let's take a look:</p>
+<p>In Sway, static-length strings are a primitive type. This means that when you declare a string, its size is a part of its type. This is necessary for the compiler to know how much memory to give for the storage of that data. The size of the string is denoted with square brackets. Let's take a look:</p>
 <pre><code class="language-sway">let my_string: str[4] = &quot;fuel&quot;;
 </code></pre>
 <p>Because the string literal <code>&quot;fuel&quot;</code> is four letters, the type is <code>str[4]</code>, denoting a static length of 4 characters. Strings default to UTF-8 in Sway.</p>
 <h2 id="compound-types"><a class="header" href="#compound-types">Compound Types</a></h2>
-<p><em>Compound types</em> are types which group multiple values into one type. In Sway, we have arrays and tuples.</p>
+<p><em>Compound types</em> are types that group multiple values into one type. In Sway, we have arrays and tuples.</p>
 <h2 id="tuple-types"><a class="header" href="#tuple-types">Tuple Types</a></h2>
 <p><em>note: tuples are a work in progress and are tracked by <a href="https://github.com/FuelLabs/sway/pull/399">this PR</a></em></p>
-<p>A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type which consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.</p>
+<p>A tuple is a general-purpose static-length aggregation of types. In more plain terms, a tuple is a single type that consists of an aggregate of zero or more types. The internal types that make up a tuple, and the tuple's cardinality, define the tuple's type. Let's take a look at some examples.</p>
 <pre><code class="language-sway">let x: (u64, u64) = (0, 0);
 </code></pre>
 <p>This is a tuple, denoted by parenthesized, comma-separated values. Note that the type annotation, <code>(u64, u64)</code>, is similar in syntax to the expression which instantiates that type, <code>(0, 0)</code>.</p>

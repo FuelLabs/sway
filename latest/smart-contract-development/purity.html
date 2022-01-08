@@ -168,7 +168,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="purity"><a class="header" href="#purity">Purity</a></h1>
-<p>A function is <em>pure</em> if it does not access any <a href="./storage.html">persistent storage</a>. Conversely, function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
+<p>A function is <em>pure</em> if it does not access any <a href="./storage.html">persistent storage</a>. Conversely, the function is <em>impure</em> if it does access any storage. Naturally, as storage is only available in smart contracts, impure functions cannot be used in predicates, scripts, or libraries. A pure function cannot call an impure function.</p>
 <p>Functions are pure by default but can be opted in to impurity via the <code>impure</code> keyword<sup class="footnote-reference"><a href="#1">1</a></sup>:</p>
 <pre><code class="language-sway">// an impure function
 impure fn foo() {
