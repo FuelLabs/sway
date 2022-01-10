@@ -134,38 +134,6 @@ impl FunctionDeclaration {
         )
         .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
-        // check that all generic types used in function parameters are a part of the type
-        // parameters
-        /*
-        let mut generic_params_buf_for_error_message = Vec::new();
-        for param in parameters.iter() {
-            if let TypeInfo::Generic { name } = param.r#type {
-                generic_params_buf_for_error_message.push(name);
-            }
-        }
-        let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-        for param in parameters.iter() {
-            if let TypeInfo::Generic { name: st } = param.r#type {
-                if type_parameters
-                    .iter()
-                    .find(|TypeParameter { name, .. }| *name == st)
-                    .is_none()
-                {
-                    errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: st,
-                        span: param.name.span.clone(),
-                        comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: name,
-                        args: parameters_pair.clone().as_str(),
-                        return_type: return_type_pair
-                            .clone()
-                            .map(|x| x.as_str().to_string())
-                            .unwrap_or(TypeInfo::Unit.friendly_type_str()),
-                    });
-                }
-            }
-        }
-        */
         let body = parts.next().unwrap();
         let whole_block_span = Span {
             span: body.as_span(),
