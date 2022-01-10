@@ -110,6 +110,16 @@ impl Block {
         }
     }
 
+    pub fn remove_instruction(&self, context: &mut Context, instr_val: Value) {
+        // XXX We must be very careful!  We mustn't remove the `phi` or the terminator.  Some extra
+        // checks should probably be performed here to avoid corruption! Using `Vec::remove()` is
+        // also O(n) which we may want to avoid someday.
+        let ins = &mut context.blocks[self.0].instructions;
+        if let Some(pos) = ins.iter().position(|iv| *iv == instr_val) {
+            ins.remove(pos);
+        }
+    }
+
     pub fn split_at(&self, context: &mut Context, split_idx: usize) -> (Block, Block) {
         let function = context.blocks[self.0].function;
         if split_idx == 0 {
