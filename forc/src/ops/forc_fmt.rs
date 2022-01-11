@@ -4,7 +4,12 @@ use crate::utils::helpers::{println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{fmt, fs, io, path::Path, sync::Arc};
 use sway_fmt::get_formatted_data;
+<<<<<<< Updated upstream
 use sway_utils::{find_manifest_dir, get_sway_files};
+=======
+use sway_utils::{constants, find_manifest_dir, get_sway_files};
+use taplo::formatter as taplo_fmt;
+>>>>>>> Stashed changes
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {
@@ -41,50 +46,11 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                         Ok((_, formatted_content)) => {
                             if command.check {
                                 if *file_content != *formatted_content {
-                                    let changeset = diff_lines(&file_content, &formatted_content);
-
-                                    println!("\n{:?}\n", file);
-
-                                    let mut count_of_updates = 0;
-
-                                    for diff in changeset.diff() {
-                                        // max 100 updates
-                                        if count_of_updates >= 100 {
-                                            break;
-                                        }
-                                        match diff {
-                                            DiffOp::Equal(old) => {
-                                                for o in old {
-                                                    println!("{}", o)
-                                                }
-                                            }
-                                            DiffOp::Insert(new) => {
-                                                count_of_updates += 1;
-                                                for n in new {
-                                                    println_green(&format!("+{}", n))?;
-                                                }
-                                            }
-                                            DiffOp::Remove(old) => {
-                                                count_of_updates += 1;
-                                                for o in old {
-                                                    println_red(&format!("-{}", o))?;
-                                                }
-                                            }
-                                            DiffOp::Replace(old, new) => {
-                                                count_of_updates += 1;
-                                                for o in old {
-                                                    println_red(&format!("-{}", o))?;
-                                                }
-                                                for n in new {
-                                                    println_green(&format!("+{}", n))?;
-                                                }
-                                            }
-                                        }
-                                    }
-
                                     if !contains_edits {
                                         contains_edits = true;
                                     }
+                                    println!("\n{:?}\n", file);
+                                    display_file_diff(&file_content, &formatted_content)?;
                                 }
                             } else {
                                 format_sway_file(&file, &formatted_content)?;
@@ -113,6 +79,46 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
         }
         _ => Err("Manifest file does not exist".into()),
     }
+}
+
+fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<(), FormatError> {
+    let changeset = diff_lines(file_content, formatted_content);
+    let mut count_of_updates = 0;
+    for diff in changeset.diff() {
+        // max 100 updates
+        if count_of_updates >= 100 {
+            break;
+        }
+        match diff {
+            DiffOp::Equal(old) => {
+                for o in old {
+                    println!("{}", o)
+                }
+            }
+            DiffOp::Insert(new) => {
+                count_of_updates += 1;
+                for n in new {
+                    println_green(&format!("+{}", n))?;
+                }
+            }
+            DiffOp::Remove(old) => {
+                count_of_updates += 1;
+                for o in old {
+                    println_red(&format!("-{}", o))?;
+                }
+            }
+            DiffOp::Replace(old, new) => {
+                count_of_updates += 1;
+                for o in old {
+                    println_red(&format!("-{}", o))?;
+                }
+                for n in new {
+                    println_green(&format!("+{}", n))?;
+                }
+            }
+        }
+    }
+    Result::Ok(())
 }
 
 fn format_sway_file(file: &Path, formatted_content: &str) -> Result<(), FormatError> {
