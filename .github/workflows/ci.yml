@@ -152,7 +152,7 @@ jobs:
           cache-to: type=gha,mode=max  
   
   build-publish-release-image:
-    # Build & Publish Docker Image Per Fuel-Core Release
+    # Build & Publish Docker Image Per Sway Release
     needs: publish
     runs-on: ubuntu-latest
     permissions:
