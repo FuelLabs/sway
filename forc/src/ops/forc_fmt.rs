@@ -4,12 +4,8 @@ use crate::utils::helpers::{println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{fmt, fs, io, path::Path, sync::Arc};
 use sway_fmt::get_formatted_data;
-<<<<<<< Updated upstream
-use sway_utils::{find_manifest_dir, get_sway_files};
-=======
 use sway_utils::{constants, find_manifest_dir, get_sway_files};
 use taplo::formatter as taplo_fmt;
->>>>>>> Stashed changes
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {
@@ -35,6 +31,8 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
 
     match find_manifest_dir(&curr_dir) {
         Some(path) => {
+            let mut manifest_file = path.clone();
+            manifest_file.push(constants::MANIFEST_FILE_NAME);
             let files = get_sway_files(path);
             let mut contains_edits = false;
 
@@ -53,7 +51,7 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                                     display_file_diff(&file_content, &formatted_content)?;
                                 }
                             } else {
-                                format_sway_file(&file, &formatted_content)?;
+                                format_file(&file, &formatted_content)?;
                             }
                         }
                         Err(err) => {
@@ -61,6 +59,27 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
                             eprintln!("\nThis file: {:?} is not part of the build", file);
                             eprintln!("{}", err.join("\n"));
                         }
+                    }
+                }
+            }
+
+            // format manifest using taplo formatter
+            if let Ok(file_content) = fs::read_to_string(&manifest_file) {
+                let formatted_content = taplo_fmt::format(
+                    &file_content,
+                    taplo_fmt::Options {
+                        ..Default::default()
+                    },
+                );
+                if command.check {
+                    if formatted_content != file_content {
+                        if !contains_edits {
+                            contains_edits = true;
+                        }
+                        eprintln!("\nManifest Forc.toml improperly formatted");
+                        display_file_diff(&file_content, &formatted_content)?;
+                    } else {
+                        format_file(&manifest_file, &formatted_content)?;
                     }
                 }
             }
@@ -121,7 +140,7 @@ fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<(), 
     Result::Ok(())
 }
 
-fn format_sway_file(file: &Path, formatted_content: &str) -> Result<(), FormatError> {
+fn format_file(file: &Path, formatted_content: &str) -> Result<(), FormatError> {
     fs::write(file, formatted_content)?;
 
     Ok(())
