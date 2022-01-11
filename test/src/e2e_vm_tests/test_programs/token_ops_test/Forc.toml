@@ -12,7 +12,7 @@ test_fuel_coin_abi = { path = "../test_fuel_coin_abi"}
 # test_fuel_coin_contract
 [[tx-input]]
 type = "Contract"
-contract-id = "0x9c8a446c98b85592823934520a4865a5a93b8dbb0e825e98ef26a08a6e88a17b"
+contract-id = "0xafdec5cc6c93021635b8344711c03e455b82f0a75a518782ef104868ab20d3c7"
 utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
@@ -20,7 +20,7 @@ state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586
 # balance_test_contract
 [[tx-input]]
 type = "Contract"
-contract-id = "0x259c8e56878e4b2b8b54acd2590ccfc0909a442e1634bed8c6a347e53d66c1b4"
+contract-id = "0x0c011cf29a449725b9f0335820bc4c0a0973c2cff506468f9782e4c5bc00b0a4"
 utxo-id = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 balance-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
 state-root = "0xad6aaaa1d6fd78f91693ee2cc124fd43d25bd1c015b88b675ee43d6b5e140586"
