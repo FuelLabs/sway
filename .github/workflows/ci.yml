@@ -149,8 +149,7 @@ jobs:
   
   build-publish-release-image:
     # Build & Publish Docker Image Per Fuel-Core Release
-    needs: build
-    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: read
