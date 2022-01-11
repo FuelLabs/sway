@@ -10,5 +10,6 @@ dep context;
 dep address;
 dep block;
 dep result;
+dep ecr;
 
 use core::*;
