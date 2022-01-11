@@ -1,7 +1,6 @@
 script;
-use std::chain::auth::caller_is_external;
+use std::{chain::auth::caller_is_external, constants::ETH_ID};
 use auth_testing_abi::AuthTesting;
-use std::constants::ETH_ID;
 
 // should be false in the case of a script
 fn main() -> bool {

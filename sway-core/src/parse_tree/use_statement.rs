@@ -1,6 +1,5 @@
 use crate::build_config::BuildConfig;
 use crate::error::*;
-use crate::span;
 use crate::Ident;
 use crate::Rule;
 use pest::iterators::Pair;
@@ -26,7 +25,7 @@ impl UseStatement {
     pub(crate) fn parse_from_pair(
         pair: Pair<Rule>,
         config: Option<&BuildConfig>,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<Vec<Self>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let stmt = pair.into_inner().next().unwrap();
@@ -38,9 +37,118 @@ impl UseStatement {
         } else {
             stmt.clone().next().expect("Guaranteed by grammar")
         };
-        let mut import_path_buf = vec![];
-        let mut import_path_vec = import_path.into_inner().collect::<Vec<_>>();
-        let last_item = import_path_vec.pop().unwrap();
+
+        let use_statements_buf = check!(
+            handle_import_path(import_path, config, is_absolute),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        ok(use_statements_buf, Vec::new(), Vec::new())
+    }
+}
+
+fn handle_import_path(
+    import_path: Pair<Rule>,
+    config: Option<&BuildConfig>,
+    is_absolute: bool,
+) -> CompileResult<Vec<UseStatement>> {
+    let mut errors = vec![];
+    let mut warnings = vec![];
+
+    // Populate the call path
+    let mut import_path_buf = vec![];
+    let mut import_path_vec = import_path.into_inner().collect::<Vec<_>>();
+    let mut last_item = import_path_vec.pop().unwrap();
+
+    let mut top_level_alias = None;
+    if last_item.as_rule() == Rule::alias {
+        let item = last_item.into_inner().nth(1).unwrap();
+        let alias_parsed = check!(
+            Ident::parse_from_pair(item, config),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        top_level_alias = Some(alias_parsed);
+        last_item = import_path_vec.pop().unwrap();
+    }
+
+    for item in import_path_vec.into_iter() {
+        if item.as_rule() == Rule::ident {
+            import_path_buf.push(check!(
+                Ident::parse_from_pair(item, config),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+    }
+
+    let mut use_statements_buf = Vec::new();
+
+    if last_item.as_rule() == Rule::import_items {
+        // Handle the case where the last item is actually a list of items
+        let mut import_items = last_item.into_inner();
+        let _path_separator = import_items.next();
+
+        let mut it = import_items.clone();
+        while let Some(item) = it.next() {
+            // kind of a base case here
+            if item.as_rule() == Rule::ident {
+                let import_type = ImportType::Item(check!(
+                    Ident::parse_from_pair(item.clone(), config),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
+                let next = it.clone().next();
+                let next_is_alias =
+                    next.is_some() && next.clone().unwrap().as_rule() == Rule::alias;
+                let mut alias = None;
+                if next_is_alias {
+                    let next_item = next.clone().unwrap();
+                    let alias_item = next_item.into_inner().nth(1).unwrap();
+                    let alias_parsed = check!(
+                        Ident::parse_from_pair(alias_item, config),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                    alias = Some(alias_parsed);
+                    it.next();
+                }
+
+                use_statements_buf.push(UseStatement {
+                    call_path: import_path_buf.clone(),
+                    import_type,
+                    is_absolute,
+                    alias,
+                });
+            } else if item.as_rule() == Rule::import_path {
+                // recurse - get the statement buffers and append
+                let use_statements_buf_local = check!(
+                    handle_import_path(item, config, is_absolute),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                for mut use_statement in use_statements_buf_local {
+                    let mut new_call_path = Vec::new();
+                    for ident in import_path_buf.clone() {
+                        new_call_path.push(ident);
+                    }
+                    for ident in use_statement.call_path.clone() {
+                        new_call_path.push(ident);
+                    }
+                    use_statement.call_path = new_call_path;
+                    use_statements_buf.push(use_statement);
+                }
+            }
+        }
+    } else {
+        // Handle the case where the last item is just an individual item
         let import_type = match last_item.as_rule() {
             Rule::star => ImportType::Star,
             Rule::ident => ImportType::Item(check!(
@@ -52,48 +160,13 @@ impl UseStatement {
             _ => unreachable!(),
         };
 
-        for item in import_path_vec.into_iter() {
-            if item.as_rule() == Rule::star {
-                errors.push(CompileError::NonFinalAsteriskInPath {
-                    span: span::Span {
-                        span: item.as_span(),
-                        path: config.map(|c| c.path()),
-                    },
-                });
-                continue;
-            } else if item.as_rule() == Rule::ident {
-                import_path_buf.push(check!(
-                    Ident::parse_from_pair(item, config),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ));
-            }
-        }
-
-        let mut alias = None;
-        for item in stmt {
-            if item.as_rule() == Rule::alias {
-                let item = item.into_inner().nth(1).unwrap();
-                let alias_parsed = check!(
-                    Ident::parse_from_pair(item, config),
-                    continue,
-                    warnings,
-                    errors
-                );
-                alias = Some(alias_parsed);
-            }
-        }
-
-        ok(
-            UseStatement {
-                call_path: import_path_buf,
-                import_type,
-                is_absolute,
-                alias,
-            },
-            Vec::new(),
-            Vec::new(),
-        )
+        use_statements_buf.push(UseStatement {
+            call_path: import_path_buf.clone(),
+            import_type,
+            is_absolute,
+            alias: top_level_alias,
+        });
     }
+
+    ok(use_statements_buf, warnings, errors)
 }

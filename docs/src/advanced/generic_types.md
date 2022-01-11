@@ -2,7 +2,7 @@
 
 ## Basics
 
-In Sway, generic types follow a very similar pattern to those in Rust. Let's look as some example syntax, 
+In Sway, generic types follow a very similar pattern to those in Rust. Let's look at some example syntax,
 starting with a generic function:
 
 ```sway
@@ -11,14 +11,14 @@ fn noop<T>(argument: T) -> T {
 }
 ```
 
-Here, the `noop()` function trivially returns exactly what was given to it. `T` is a _type parameter_, and it saying
+Here, the `noop()` function trivially returns exactly what was given to it. `T` is a _type parameter_, and it says
 that this function exists for all types T. More formally, this function could be typed as:
 
 ```math
 noop :: ∀T. T -> T
 ```
 
-Generic types are a way to refer to types _in general_, meaning without specifying a single type. Clearly, our `noop` function
+Generic types are a way to refer to types _in general_, meaning without specifying a single type. Our `noop` function
 would work with any type in the language, so we don't need to specify `noop(argument: u8) -> u8`, `noop(argument: u16) -> u16`, etc.
 
 ## Code Generation
@@ -30,7 +30,7 @@ purely shorthand for the sake of ergonomics.
 
 ## Trait Constraints
 
-Of course, our `noop()` function is not useful. Often, a programmer will want to declare functions over a types which satisfy certain traits.
+Of course, our `noop()` function is not useful. Often, a programmer will want to declare functions over types which satisfy certain traits.
 For example, let's try to implement the successor function, `successor()`, for all numeric types.
 
 ```sway
@@ -45,7 +45,7 @@ Run `forc build`, and you will get:
 
 ```sway
 .. |
- 9 |   where T: Add 
+ 9 |   where T: Add
 10 |   {
 11 |     argument + 1                                        
    |                ^ Mismatched types: expected type "T" but saw type "u64"
@@ -102,7 +102,7 @@ Both generic enums and generic structs can be trait constrained, as well. Consid
 
 ```sway
 struct Foo<T>
-  where T: Add 
+  where T: Add
 {
     field_one: T
 }
