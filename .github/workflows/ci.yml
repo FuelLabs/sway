@@ -126,6 +126,10 @@ jobs:
           tags: |
             type=sha
             type=ref,event=branch
+            type=ref,event=tag
+          flavor: |
+            latest=${{ github.ref == 'refs/heads/master' }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       
