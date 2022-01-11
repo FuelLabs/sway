@@ -1524,7 +1524,7 @@ impl TypedExpression {
 
     /// This function takes a [DelayedResolutionVariant] and returns either a
     /// [TypedExpressionVariant::EnumArgAccess] (given the case of enum arg
-    /// access) or returns a [TypedExpressionVariant::StructFieldAccess] (given
+    /// access), a [TypedExpressionVariant::StructFieldAccess] (given
     /// the case of struct field access). This function does several things, it
     /// 1) checks to ensure that the expression inside of the
     /// [DelayedResolutionVariant] is of the appropriate type (either an enum
@@ -1611,7 +1611,6 @@ impl TypedExpression {
             DelayedResolutionVariant::EnumVariant(DelayedEnumVariantResolution {
                 exp,
                 call_path,
-                arg_num,
             }) => {
                 let args = TypeCheckArguments {
                     checkee: *exp,
@@ -1655,26 +1654,15 @@ impl TypedExpression {
                             let exp = error_recovery_expr(span);
                             return ok(exp, warnings, errors);
                         }
-                        for (pos, variant) in enum_decl.variants.into_iter().enumerate() {
-                            match (pos == arg_num, variant.name == variant_name) {
-                                (true, true) => {
-                                    return_type = Some(variant.r#type);
-                                    owned_enum_variant = Some(variant);
-                                }
-                                (true, false) => {
-                                    errors.push(CompileError::MatchWrongType {
-                                        expected: parent.return_type,
-                                        span: variant_name.span().clone(),
-                                    });
-                                    let exp = error_recovery_expr(span);
-                                    return ok(exp, warnings, errors);
-                                }
-                                _ => (),
+                        for variant in enum_decl.variants.into_iter() {
+                            if variant.name == variant_name {
+                                return_type = Some(variant.r#type);
+                                owned_enum_variant = Some(variant);
                             }
                         }
                     }
                 }
-                let (return_type, _owned_enum_variant) = match (return_type, owned_enum_variant) {
+                let (return_type, owned_enum_variant) = match (return_type, owned_enum_variant) {
                     (Some(return_type), Some(owned_enum_variant)) => {
                         (return_type, owned_enum_variant)
                     }
@@ -1692,8 +1680,7 @@ impl TypedExpression {
                     expression: TypedExpressionVariant::EnumArgAccess {
                         resolved_type_of_parent: parent.return_type,
                         prefix: Box::new(parent),
-                        //variant_to_access: owned_enum_variant.to_owned(),
-                        arg_num_to_access: arg_num,
+                        arg_type: owned_enum_variant.r#type,
                     },
                     return_type,
                     is_constant: IsConstant::No,

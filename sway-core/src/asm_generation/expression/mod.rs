@@ -1,3 +1,5 @@
+use self::enums::convert_enum_arg_expression_to_asm;
+
 use super::*;
 use crate::span::Span;
 use crate::{
@@ -296,23 +298,16 @@ pub(crate) fn convert_expression_to_asm(
             register_sequencer,
             return_register,
         ),
-        /*
         TypedExpressionVariant::EnumArgAccess {
-            prefix,
-            variant_to_access,
-            arg_num_to_access,
-            resolved_type_of_parent,
+            prefix, arg_type, ..
         } => convert_enum_arg_expression_to_asm(
             &exp.span,
             prefix,
-            variant_to_access,
-            arg_num_to_access.to_owned(),
-            *resolved_type_of_parent,
+            *arg_type,
             namespace,
             register_sequencer,
             return_register,
         ),
-        */
         TypedExpressionVariant::EnumInstantiation {
             enum_decl,
             variant_name,

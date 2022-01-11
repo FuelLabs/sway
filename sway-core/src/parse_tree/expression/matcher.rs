@@ -164,12 +164,11 @@ fn match_enum(
     let mut errors = vec![];
     let mut match_req_map = vec![];
     let mut match_impl_map = vec![];
-    for (pos, arg) in args.iter().enumerate() {
+    for arg in args.iter() {
         let delayed_resolution_exp = Expression::DelayedMatchTypeResolution {
             variant: DelayedResolutionVariant::EnumVariant(DelayedEnumVariantResolution {
                 exp: Box::new(exp.clone()),
                 call_path: call_path.to_owned(),
-                arg_num: pos,
             }),
             span: span.clone(),
         };

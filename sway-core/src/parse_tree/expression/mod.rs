@@ -168,7 +168,6 @@ pub struct DelayedStructFieldResolution {
 pub struct DelayedEnumVariantResolution {
     pub exp: Box<Expression>,
     pub call_path: CallPath,
-    pub arg_num: usize,
 }
 
 /// During type checking, this gets replaced with tuple arg access.

@@ -67,8 +67,7 @@ pub(crate) enum TypedExpressionVariant {
     },
     EnumArgAccess {
         prefix: Box<TypedExpression>,
-        //variant_to_access: TypedEnumVariant,
-        arg_num_to_access: usize,
+        arg_type: TypeId,
         resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {
@@ -168,13 +167,11 @@ impl TypedExpressionVariant {
             }
             TypedExpressionVariant::EnumArgAccess {
                 resolved_type_of_parent,
-                arg_num_to_access,
                 ..
             } => {
                 format!(
-                    "\"{}.{}\" arg num access",
+                    "\"{}.0\" arg num access",
                     look_up_type_id(*resolved_type_of_parent).friendly_type_str(),
-                    arg_num_to_access
                 )
             }
             TypedExpressionVariant::TupleElemAccess {

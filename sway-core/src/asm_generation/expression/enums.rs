@@ -1,3 +1,5 @@
+use either::Either;
+
 use crate::asm_generation::{
     compiler_constants::*, convert_expression_to_asm, AsmNamespace, RegisterSequencer,
 };
@@ -5,6 +7,8 @@ use crate::asm_lang::{
     ConstantRegister, Op, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     VirtualRegister,
 };
+use crate::type_engine::{look_up_type_id, TypeId};
+use crate::Span;
 use crate::{
     error::*,
     semantic_analysis::{ast_node::TypedEnumDeclaration, TypedExpression},
@@ -126,6 +130,84 @@ pub(crate) fn convert_enum_instantiation_to_asm(
         pointer_register,
         decl.clone().span,
     ));
+
+    ok(asm_buf, warnings, errors)
+}
+
+pub(crate) fn convert_enum_arg_expression_to_asm(
+    span: &Span,
+    parent: &TypedExpression,
+    arg_type: TypeId,
+    namespace: &mut AsmNamespace,
+    register_sequencer: &mut RegisterSequencer,
+    return_register: &VirtualRegister,
+) -> CompileResult<Vec<Op>> {
+    // step 0. find the type and register of the prefix
+    // step 1. calculate the offset to the spot we are accessing
+    // step 2. write a pointer to that word into the return register
+
+    // step 0
+    let mut asm_buf = vec![];
+    let mut warnings = vec![];
+    let mut errors = vec![];
+    let prefix_reg = register_sequencer.next();
+    let mut prefix_ops = check!(
+        convert_expression_to_asm(parent, namespace, &prefix_reg, register_sequencer),
+        vec![],
+        warnings,
+        errors
+    );
+    asm_buf.append(&mut prefix_ops);
+
+    // steps 1 + 2 :)
+    // if this is a copy type (primitives that fit in a word), copy it into the register.
+    // Otherwise, load the pointer to the field into the register
+    let resolved_type_of_this_arg = match resolve_type(arg_type, &span) {
+        Ok(o) => o,
+        Err(e) => {
+            errors.push(e.into());
+            return err(warnings, errors);
+        }
+    };
+    let the_op = if resolved_type_of_this_arg.is_copy_type() {
+        let offset_in_words = match VirtualImmediate12::new(1, span.clone()) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e);
+                return err(warnings, errors);
+            }
+        };
+        Op {
+            opcode: Either::Left(VirtualOp::LW(
+                return_register.clone(),
+                prefix_reg,
+                offset_in_words,
+            )),
+            comment: format!(
+                "Loading copy type: {}",
+                look_up_type_id(arg_type).friendly_type_str()
+            ),
+            owning_span: Some(span.clone()),
+        }
+    } else {
+        let offset_in_bytes = match VirtualImmediate12::new(8, span.clone()) {
+            Ok(o) => o,
+            Err(e) => {
+                errors.push(e);
+                return err(warnings, errors);
+            }
+        };
+        Op {
+            opcode: Either::Left(VirtualOp::ADDI(
+                return_register.clone(),
+                prefix_reg,
+                offset_in_bytes,
+            )),
+            comment: "Construct pointer for enum arg".into(),
+            owning_span: Some(span.clone()),
+        }
+    };
+    asm_buf.push(the_op);
 
     ok(asm_buf, warnings, errors)
 }
