@@ -1,3 +1,15 @@
+//! Represents a 'basic block' of [`Instruction`]s in a control flow graph.
+//!
+//! [`Block`]s contain zero or more _non-terminating_ instructions and at most one _terminating_
+//! instruction or _terminator_.  Terminators are either branches or a return instruction and are
+//! the last instruction in the block.
+//!
+//! Blocks also contain a single 'phi' instruction at its start.  In
+//! [SSA](https://en.wikipedia.org/wiki/Static_single_assignment_form) form 'phi' instructions are
+//! used to merge values from preceding blocks.
+//!
+//! Every [`Function`] has at least one block, the first of which is usually labeled `entry`.
+
 use crate::{
     context::Context,
     function::Function,
@@ -5,18 +17,26 @@ use crate::{
     value::{Value, ValueContent},
 };
 
+/// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
+/// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Block(pub generational_arena::Index);
 
+#[doc(hidden)]
 pub struct BlockContent {
     pub label: Label,
     pub function: Function,
     pub instructions: Vec<Value>,
 }
 
+/// Each block may be explicitly named.  A [`Label`] is a simple `String` synonym.
 pub type Label = String;
 
 impl Block {
+    /// Return a new block handle.
+    ///
+    /// Creates a new Block belonging to `function` in the context and returns its handle.  `label`
+    /// is optional and is used only when printing the IR.
     pub fn new(context: &mut Context, function: Function, label: Option<String>) -> Block {
         let label = function.get_unique_label(context, label);
         let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()));
@@ -28,22 +48,31 @@ impl Block {
         Block(context.blocks.insert(content))
     }
 
+    /// Get the parent function for this block.
     pub fn get_function(&self, context: &Context) -> Function {
         context.blocks[self.0].function
     }
 
+    /// Create a new [`InstructionIterator`] to more easily append instructions to this block.
     pub fn ins<'a>(&self, context: &'a mut Context) -> InstructionInserter<'a> {
         InstructionInserter::new(context, *self)
     }
 
+    /// Get the label of this block.  If it wasn't given one upon creation it will be a generated
+    /// label.
     pub fn get_label(&self, context: &Context) -> String {
         context.blocks[self.0].label.clone()
     }
 
+    /// Get the phi instruction for this block.
     pub fn get_phi(&self, context: &Context) -> Value {
         context.blocks[self.0].instructions[0]
     }
 
+    /// Add a new phi entry to this block.
+    ///
+    /// This indicates that if control flow comes from `from_block` then the phi instruction should
+    /// use `phi_value`.
     pub fn add_phi(&self, context: &mut Context, from_block: Block, phi_value: Value) {
         let phi_val = self.get_phi(context);
         match &mut context.values[phi_val.0] {
@@ -54,6 +83,9 @@ impl Block {
         }
     }
 
+    /// Get the value from the phi instruction which correlates to `from_block`.
+    ///
+    /// Returns `None` if `from_block` isn't found.
     pub fn get_phi_val_coming_from(&self, context: &Context, from_block: &Block) -> Option<Value> {
         let phi_val = self.get_phi(context);
         if let ValueContent::Instruction(Instruction::Phi(pairs)) = &context.values[phi_val.0] {
@@ -69,6 +101,9 @@ impl Block {
         }
     }
 
+    /// Replace a block reference in the phi instruction.
+    ///
+    /// Any reference to `old_source` will be replace with `new_source` in the list of phi values.
     pub fn update_phi_source_block(
         &self,
         context: &mut Context,
@@ -89,6 +124,9 @@ impl Block {
         }
     }
 
+    /// Get a reference to the block terminator.
+    ///
+    /// Returns `None` if block is empty.
     pub fn get_term_inst<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
         context.blocks[self.0]
             .instructions
@@ -104,22 +142,32 @@ impl Block {
             .flatten()
     }
 
+    /// Replace a value within this block.
+    ///
+    /// For every instruction within the block, any reference to `old_val` is replaced with
+    /// `new_val`.
     pub fn replace_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
         for ins in context.blocks[self.0].instructions.clone() {
             ins.replace_instruction_value(context, old_val, new_val);
         }
     }
 
+    /// Remove an instruction from this block.
+    ///
+    /// **NOTE:** We must be very careful!  We mustn't remove the phi or the terminator.  Some
+    /// extra checks should probably be performed here to avoid corruption! Using `Vec::remove()`
+    /// is also O(n) which we may want to avoid someday.
     pub fn remove_instruction(&self, context: &mut Context, instr_val: Value) {
-        // XXX We must be very careful!  We mustn't remove the `phi` or the terminator.  Some extra
-        // checks should probably be performed here to avoid corruption! Using `Vec::remove()` is
-        // also O(n) which we may want to avoid someday.
         let ins = &mut context.blocks[self.0].instructions;
         if let Some(pos) = ins.iter().position(|iv| *iv == instr_val) {
             ins.remove(pos);
         }
     }
 
+    /// Split the block into two.
+    ///
+    /// This will create a new block and move the instructions at and following `split_idx` to it.
+    /// Returns both blocks.
     pub fn split_at(&self, context: &mut Context, split_idx: usize) -> (Block, Block) {
         let function = context.blocks[self.0].function;
         if split_idx == 0 {
@@ -164,17 +212,20 @@ impl Block {
         }
     }
 
+    /// Return an instruction iterator for each instruction in this block.
     pub fn instruction_iter(&self, context: &Context) -> InstructionIterator {
         InstructionIterator::new(context, self)
     }
 }
 
+/// An iterator over each block in a [`Function`].
 pub struct BlockIterator {
     blocks: Vec<generational_arena::Index>,
     next: usize,
 }
 
 impl BlockIterator {
+    /// Return a new iterator for each block in `function`.
     pub fn new(context: &Context, function: &Function) -> Self {
         // Copy all the current block indices, so they may be modified in the context during
         // iteration.

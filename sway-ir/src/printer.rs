@@ -1,3 +1,9 @@
+//! Print (or serialize) IR to human and machine readable text.
+//!
+//! This module implements a document based pretty-printer.  A couple of 3rd party pretty printing
+//! crates were assessed but didn't seem to work as well as this simple version, which is quite
+//! effective.
+
 use crate::{
     asm::*,
     block::Block,
@@ -66,6 +72,9 @@ impl Doc {
     }
 }
 
+/// Pretty-print a whole [`Context`] to a string.
+///
+/// The ouput from this function must always be suitable for [`crate::parser::parse`].
 pub fn to_string(context: &Context) -> String {
     context
         .modules

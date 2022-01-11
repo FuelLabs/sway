@@ -1,15 +1,19 @@
+//! [`Constant`] is a typed constant value.
+
 use crate::{
     context::Context,
     irtype::{Aggregate, Type},
     value::Value,
 };
 
+/// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
 #[derive(Debug, Clone)]
 pub struct Constant {
     pub ty: Type,
     pub value: ConstantValue,
 }
 
+/// A constant representation of each of the supported [`Type`]s.
 #[derive(Debug, Clone)]
 pub enum ConstantValue {
     Undef,
@@ -119,7 +123,7 @@ impl Constant {
         Value::new_constant(context, Constant::new_string(value))
     }
 
-    // This requires you create an array constant first, using `Constant::new_array()`.
+    /// `value` must be created as an array constant first, using [`Constant::new_array()`].
     pub fn get_array(context: &mut Context, value: Constant) -> Value {
         assert!(matches!(
             value,
@@ -131,7 +135,7 @@ impl Constant {
         Value::new_constant(context, value)
     }
 
-    // This requires you create a struct constant first, using `Constant::new_struct()`.
+    /// `value` must be created as a struct constant first, using [`Constant::new_struct()`].
     pub fn get_struct(context: &mut Context, value: Constant) -> Value {
         assert!(matches!(
             value,

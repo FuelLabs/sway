@@ -1,7 +1,9 @@
+//! A parser for the printed IR, useful mostly for testing.
+
 use crate::context::Context;
 
 // -------------------------------------------------------------------------------------------------
-
+/// Parse a string produced by [`crate::printer::to_string`] into a new [`Context`].
 pub fn parse(input: &str) -> Result<Context, String> {
     let irmod = ir_builder::parser::ir_descrs(input).map_err(|err| {
         let found = if input.len() - err.location.offset <= 20 {

@@ -1,3 +1,11 @@
+//! The main handle to an IR instance.
+//!
+//! [`Context`] contains several
+//! [generational_arena](https://github.com/fitzgen/generational-arena) collections to maintain the
+//! IR ECS.
+//!
+//! It is passed around as a mutable reference to many of the Sway-IR APIs.
+
 use std::collections::HashMap;
 
 use generational_arena::Arena;
@@ -13,6 +21,10 @@ use crate::{
     value::ValueContent,
 };
 
+/// The main IR context handle.
+///
+/// Every module, function, block and value is stored here.  Some aggregate metadata is also
+/// managed by the context.
 #[derive(Default)]
 pub struct Context {
     pub modules: Arena<ModuleContent>,
@@ -31,10 +43,15 @@ pub struct Context {
 }
 
 impl Context {
+    /// Return an interator for every module in this context.
     pub fn module_iter(&self) -> ModuleIterator {
         ModuleIterator::new(self)
     }
 
+    /// Add aggregate (struct) field names and their indicies to the context.
+    ///
+    /// Used to symbolically cross-reference the index to aggregate fields by
+    /// [`Context::get_aggregate_index`].
     pub fn add_aggregate_symbols(
         &mut self,
         aggregate: Aggregate,
@@ -46,10 +63,14 @@ impl Context {
         }
     }
 
+    /// Return a named aggregate, if known.
     pub fn get_aggregate_by_name(&self, name: &str) -> Option<Aggregate> {
         self.aggregate_names.get(name).copied()
     }
 
+    /// Get the field index within an aggregate (struct) by name, if known.
+    ///
+    /// The field names must be registered already using [`Context::add_aggregate_symbols`].
     pub fn get_aggregate_index(&self, aggregate: &Aggregate, field_name: &str) -> Option<u64> {
         self.aggregate_symbols
             .get(aggregate)
@@ -57,6 +78,9 @@ impl Context {
             .flatten()
     }
 
+    /// Get a globally unique symbol.
+    ///
+    /// The name will be in the form `"anon_N"`, where `N` is an incrementing decimal.
     pub fn get_unique_name(&mut self) -> String {
         let sym = format!("anon_{}", self.next_unique_sym_tag);
         self.next_unique_sym_tag += 1;

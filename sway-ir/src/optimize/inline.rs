@@ -1,3 +1,7 @@
+//! Function inlining.
+//!
+//! Function inlining is pretty hairy so these passes must be maintained with care.
+
 use std::collections::HashMap;
 
 use crate::{
@@ -10,6 +14,10 @@ use crate::{
     value::{Value, ValueContent},
 };
 
+/// Inline all calls made from a specific function, effectively removing all `Call` instructions.
+///
+/// e.g., If this is applied to main() then all calls in the program are removed.  This is
+/// obviously dangerous for recursive functions, in which case this pass would inline forever.
 pub fn inline_all_function_calls(
     context: &mut Context,
     function: &Function,
@@ -36,6 +44,10 @@ pub fn inline_all_function_calls(
     Ok(modified)
 }
 
+/// Inline a function to a specific call site within another function.
+///
+/// The destination function, block and call site must be specified along with the function to
+/// inline.
 pub fn inline_function_call(
     context: &mut Context,
     function: Function,
@@ -195,7 +207,7 @@ fn inline_instruction(
                 new_block.ins(context).asm_block_from_asm(asm, new_args)
             }
             // For `br` and `cbr` below we don't need to worry about the phi values, they're
-            // instructions which will be copied and translated then.
+            // adjusted later in `inline_function_call()`.
             Instruction::Branch(b) => new_block.ins(context).branch(map_block(b), None),
             Instruction::Call(f, args) => new_block.ins(context).call(
                 f,

@@ -1,3 +1,11 @@
+//! A typical function data type.
+//!
+//! [`Function`] is named, takes zero or more arguments and has an optional return value.  It
+//! contains a collection of [`Block`]s.
+//!
+//! It also maintains a collection of local values which can be typically regarded as variables
+//! existing in the function scope.
+
 use std::collections::{BTreeMap, HashMap};
 
 use crate::{
@@ -10,9 +18,12 @@ use crate::{
     value::Value,
 };
 
+/// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
+/// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Function(pub generational_arena::Index);
 
+#[doc(hidden)]
 pub struct FunctionContent {
     pub name: String,
     pub arguments: Vec<(String, Value)>,
@@ -27,6 +38,13 @@ pub struct FunctionContent {
 }
 
 impl Function {
+    /// Return a new [`Function`] handle.
+    ///
+    /// Creates a [`Function`] in the `context` within `module` and returns a handle.
+    ///
+    /// `name`, `args`, `return_type` and `is_public` are the usual suspects.  `selector` is a
+    /// special value used for Sway contract calls; much like `name` is unique and not particularly
+    /// used elsewhere in the IR.
     pub fn new(
         context: &mut Context,
         module: Module,
@@ -65,6 +83,7 @@ impl Function {
         func
     }
 
+    /// Create and append a new [`Block`] to this function.
     pub fn create_block(&self, context: &mut Context, label: Option<Label>) -> Block {
         let block = Block::new(context, *self, label);
         let func = context.functions.get_mut(self.0).unwrap();
@@ -72,6 +91,9 @@ impl Function {
         block
     }
 
+    /// Create and insert a new [`Block`] into this function.
+    ///
+    /// The new block is inserted before `other`.
     pub fn create_block_before(
         &self,
         context: &mut Context,
@@ -92,6 +114,9 @@ impl Function {
             .ok_or_else(|| "Cannot insert block before other, not found in function.".into())
     }
 
+    /// Create and insert a new [`Block`] into this function.
+    ///
+    /// The new block is inserted after `other`.
     pub fn create_block_after(
         &self,
         context: &mut Context,
@@ -112,6 +137,13 @@ impl Function {
             .ok_or_else(|| "Cannot insert block after other, not found in function.".into())
     }
 
+    /// Get a new unique block label.
+    ///
+    /// If `hint` is `None` then the label will be in the form `"blockN"` where N is an
+    /// incrementing decimal.
+    ///
+    /// Otherwise if the hint is already unique to this function it will be returned.  If not
+    /// already unique it will have N appended to it until it is unique.
     pub fn get_unique_label(&self, context: &mut Context, hint: Option<String>) -> String {
         match hint {
             Some(hint) => {
@@ -140,22 +172,27 @@ impl Function {
         idx
     }
 
+    /// Return the function name.
     pub fn get_name<'a>(&self, context: &'a Context) -> &'a str {
         &context.functions[self.0].name
     }
 
+    /// Return the function entry (i.e., the first) block.
     pub fn get_entry_block(&self, context: &Context) -> Block {
         context.functions[self.0].blocks[0]
     }
 
+    /// Whether this function has a valid selector.
     pub fn has_selector(&self, context: &Context) -> bool {
         context.functions[self.0].selector.is_some()
     }
 
+    /// Return the function selector, if it has one.
     pub fn get_selector(&self, context: &Context) -> Option<[u8; 4]> {
         context.functions[self.0].selector
     }
 
+    /// Get an arg value by name, if found.
     pub fn get_arg(&self, context: &Context, name: &str) -> Option<Value> {
         context.functions[self.0]
             .arguments
@@ -164,6 +201,7 @@ impl Function {
             .copied()
     }
 
+    /// Find the name of an arg by value.
     pub fn lookup_arg_name<'a>(&self, context: &'a Context, value: &Value) -> Option<&'a String> {
         context.functions[self.0]
             .arguments
@@ -171,14 +209,17 @@ impl Function {
             .find_map(|(name, arg_val)| if arg_val == value { Some(name) } else { None })
     }
 
+    /// Return an iterator for each of the function arguments.
     pub fn args_iter<'a>(&self, context: &'a Context) -> impl Iterator<Item = &'a (String, Value)> {
         context.functions[self.0].arguments.iter()
     }
 
+    /// Get a pointer to a local value by name, if found.
     pub fn get_local_ptr(&self, context: &Context, name: &str) -> Option<Pointer> {
         context.functions[self.0].local_storage.get(name).copied()
     }
 
+    /// Find the name of a local value by pointer.
     pub fn lookup_local_name<'a>(&self, context: &'a Context, ptr: &Pointer) -> Option<&'a String> {
         context.functions[self.0]
             .local_storage
@@ -186,6 +227,9 @@ impl Function {
             .find_map(|(name, local_ptr)| if local_ptr == ptr { Some(name) } else { None })
     }
 
+    /// Add a value to the function local storage.
+    ///
+    /// The name must be unique to this function else an error is returned.
     pub fn new_local_ptr(
         &self,
         context: &mut Context,
@@ -206,7 +250,9 @@ impl Function {
         }
     }
 
-    // Will use the provided name as a hint and rename to guarantee insertion.
+    /// Add a value to the function local storage, by forcing the name to be unique if needed.
+    ///
+    /// Will use the provided name as a hint and rename to guarantee insertion.
     pub fn new_unique_local_ptr(
         &self,
         context: &mut Context,
@@ -236,6 +282,7 @@ impl Function {
             .unwrap()
     }
 
+    /// Return an iterator to all of the values in this function's local storage.
     pub fn locals_iter<'a>(
         &self,
         context: &'a Context,
@@ -243,6 +290,14 @@ impl Function {
         context.functions[self.0].local_storage.iter()
     }
 
+    /// Merge values from another [`Function`] into this one.
+    ///
+    /// The names of the merged values are guaranteed to be unique via the use of
+    /// [`Function::new_unique_local_ptr`].
+    ///
+    /// Returns a map from the original pointers to the newly merged pointers.
+    ///
+    /// XXX This function returns a Result but can't actually fail?
     pub fn merge_locals_from(
         &self,
         context: &mut Context,
@@ -267,10 +322,15 @@ impl Function {
         Ok(ptr_map)
     }
 
+    /// Return an iterator to each block in this function.
     pub fn block_iter(&self, context: &Context) -> BlockIterator {
         BlockIterator::new(context, self)
     }
 
+    /// Return an iterator to each instruction in each block in this function.
+    ///
+    /// This is a convenience method for when all instructions in a function need to be inspected.
+    /// The instruction value is returned from the iterator along with the block it belongs to.
     pub fn instruction_iter<'a>(
         &self,
         context: &'a Context,
@@ -286,6 +346,13 @@ impl Function {
             })
     }
 
+    /// Replace a value with another within this function.
+    ///
+    /// This is a convenience method which iterates over this function's blocks and calls
+    /// [`Block::replace_value`] in turn.
+    ///
+    /// `starting_block` is an optimisation for when the first possible reference to `old_val` is
+    /// known.
     pub fn replace_value(
         &self,
         context: &mut Context,
@@ -309,12 +376,14 @@ impl Function {
     }
 }
 
+/// An iterator over each [`Function`] in a [`Module`].
 pub struct FunctionIterator {
     functions: Vec<generational_arena::Index>,
     next: usize,
 }
 
 impl FunctionIterator {
+    /// Return a new iterator for the functions in `module`.
     pub fn new(context: &Context, module: &Module) -> FunctionIterator {
         // Copy all the current modules indices, so they may be modified in the context during
         // iteration.

@@ -1,3 +1,13 @@
+//! Instructions for data manipulation, but mostly control flow.
+//!
+//! Since Sway abstracts most low level operations behind traits they are translated into function
+//! calls which contain ASM blocks.  Therefore _at this stage_ Sway-IR doesn't need low level
+//! operations such as binary arithmetic and logic operators.
+//!
+//! Unfortuntely, using opaque ASM blocks limits the effectiveness of certain optimizations and
+//! this should be addressed in the future, perhaps by using compiler intrinsic calls instead of
+//! the ASM blocks where possible.
+
 use crate::{
     asm::{AsmArg, AsmBlock, AsmInstruction},
     block::Block,
@@ -10,47 +20,61 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Instruction {
+    /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
+    /// An unconditional jump.
     Branch(Block),
+    /// A function call with a list of arguments.
     Call(Function, Vec<Value>),
+    /// A conditional jump with the boolean condition value and true or false destinations.
     ConditionalBranch {
         cond_value: Value,
         true_block: Block,
         false_block: Block,
     },
+    /// Reading a specific element from an array.
     ExtractElement {
         array: Value,
         ty: Aggregate,
         index_val: Value,
     },
+    /// Reading a specific field from (nested) structs.
     ExtractValue {
         aggregate: Value,
         ty: Aggregate,
         indices: Vec<u64>,
     },
+    /// Return a pointer as a value.
     GetPointer(Pointer),
+    /// Writing a specific value to an array.
     InsertElement {
         array: Value,
         ty: Aggregate,
         value: Value,
         index_val: Value,
     },
+    /// Writing a specific value to a (nested) struct field.
     InsertValue {
         aggregate: Value,
         ty: Aggregate,
         value: Value,
         indices: Vec<u64>,
     },
+    /// Read a value from a memory pointer.
     Load(Pointer),
+    /// Choose a value from a list depending on the preceding block.
     Phi(Vec<(Block, Value)>),
+    /// Return from a function.
     Ret(Value, Type),
-    Store {
-        ptr: Pointer,
-        stored_val: Value,
-    },
+    /// Write a value to a memory pointer.
+    Store { ptr: Pointer, stored_val: Value },
 }
 
 impl Instruction {
+    /// Some [`Instruction`]s can return a value, but for some a return value doesn't make sense.
+    ///
+    /// Those which perform side effects such as writing to memory and also terminators such as
+    /// `Ret` do not have a type.
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match self {
             Instruction::AsmBlock(asm_block, _) => asm_block.get_type(context),
@@ -77,6 +101,7 @@ impl Instruction {
         }
     }
 
+    /// Some [`Instruction`]s may have struct arguments.  Return it if so for this instruction.
     pub fn get_aggregate(&self, context: &Context) -> Option<Aggregate> {
         match self {
             Instruction::GetPointer(ptr) | Instruction::Load(ptr) => match ptr.get_type(context) {
@@ -108,6 +133,7 @@ impl Instruction {
         }
     }
 
+    /// Replace `old_val` with `new_val` if it is referenced by this instruction's arguments.
     pub fn replace_value(&mut self, old_val: Value, new_val: Value) {
         let replace = |val: &mut Value| {
             if val == &old_val {
@@ -158,6 +184,7 @@ impl Instruction {
     }
 }
 
+/// Iterate over all [`Instruction`]s in a specific [`Block`].
 pub struct InstructionIterator {
     instructions: Vec<generational_arena::Index>,
     next: usize,
@@ -192,12 +219,14 @@ impl Iterator for InstructionIterator {
     }
 }
 
+/// Provide a context for appending new [`Instruction`]s to a [`Block`].
 pub struct InstructionInserter<'a> {
     context: &'a mut Context,
     block: Block,
 }
 
 impl<'a> InstructionInserter<'a> {
+    /// Return a new [`InstructionInserter`] context for `block`.
     pub fn new(context: &'a mut Context, block: Block) -> InstructionInserter<'a> {
         InstructionInserter { context, block }
     }
@@ -206,6 +235,7 @@ impl<'a> InstructionInserter<'a> {
     // XXX maybe these should return result, in case they get bad args?
     //
 
+    /// Append a new [`Instruction::AsmBlock`] from `args` and a `body`.
     pub fn asm_block(
         self,
         args: Vec<AsmArg>,

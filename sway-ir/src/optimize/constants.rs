@@ -1,3 +1,9 @@
+//! Optimization passes for manipulating constant values.
+//!
+//! - combining - compile time evaluation of constant expressions.
+//!   - combine insert_values - reduce expressions which insert a constant value into a constant
+//!     struct.
+
 use crate::{
     constant::{Constant, ConstantValue},
     context::Context,
@@ -6,6 +12,7 @@ use crate::{
     value::{Value, ValueContent},
 };
 
+/// Find constant expressions which can be reduced to fewer opterations.
 pub fn combine_constants(context: &mut Context, function: &Function) -> Result<bool, String> {
     let mut modified = false;
     loop {
@@ -20,7 +27,7 @@ pub fn combine_constants(context: &mut Context, function: &Function) -> Result<b
     Ok(modified)
 }
 
-pub fn combine_const_insert_values(context: &mut Context, function: &Function) -> bool {
+fn combine_const_insert_values(context: &mut Context, function: &Function) -> bool {
     // Find a candidate `insert_value` instruction.
     let candidate = function
         .instruction_iter(context)
