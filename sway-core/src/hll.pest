@@ -173,11 +173,11 @@ trait_name    =  {ident ~ (path_separator ~ ident)*}
 impl_trait    =  {impl_keyword ~ trait_name ~ type_params? ~ "for" ~ type_name ~ type_params? ~ trait_bounds? ~ ("{" ~ fn_decl* ~ "}")}
 
 // imports
-
 use_statement           =  {relative_use_statement | absolute_use_statement}
-relative_use_statement  =  {use_keyword ~ import_path ~ alias? ~ ";"}
-absolute_use_statement  =  {use_keyword ~ path_separator ~ import_path ~ alias? ~ ";"}
-import_path             =  {ident ~ (path_separator ~ (ident|star))*}
+relative_use_statement  =  {use_keyword ~ import_path ~ ";"}
+absolute_use_statement  =  {use_keyword ~ path_separator ~ import_path ~ ";"}
+import_path             =  {star|(ident ~ (path_separator ~ ident)* ~ ((path_separator ~ star)|import_items|alias)?)}
+import_items            =  {path_separator ~ "{" ~ import_path ~ alias? ~  ("," ~ import_path ~ alias?)* ~ "}"}
 star                    =  {"*"}
 
 // loops

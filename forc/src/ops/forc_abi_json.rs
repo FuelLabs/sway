@@ -71,8 +71,9 @@ pub fn build(command: JsonAbiCommand) -> Result<Value, String> {
 
             // Download a non-local dependency if the `git` property is set in this dependency.
             if let Some(git) = &dep.git {
+                let fully_qualified_dep_name = format!("{}-{}", dependency_name, git);
                 let downloaded_dep_path = match dependency::download_github_dep(
-                    dependency_name,
+                    &fully_qualified_dep_name,
                     git,
                     &dep.branch,
                     &dep.version,
@@ -148,8 +149,9 @@ fn compile_dependency_lib<'manifest>(
     };
     // Download a non-local dependency if the `git` property is set in this dependency.
     if let Some(ref git) = details.git {
+        let fully_qualified_dep_name = format!("{}-{}", dependency_name, git);
         let downloaded_dep_path = match dependency::download_github_dep(
-            dependency_name,
+            &fully_qualified_dep_name,
             git,
             &details.branch,
             &details.version,

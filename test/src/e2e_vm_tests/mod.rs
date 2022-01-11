@@ -80,6 +80,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("modulo_uint_test", ProgramState::Return(1)), // true
         ("trait_import_with_star", ProgramState::Return(0)),
         ("tuple_desugaring", ProgramState::Return(9)),
+        ("multi_item_import", ProgramState::Return(0)), // false
     ];
 
     project_names.into_iter().for_each(|(name, res)| {

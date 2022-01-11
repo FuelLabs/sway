@@ -29,7 +29,7 @@ Note that in the above example:
 - we declared a second register `r2` (you may choose any register names you want).
 - we use the `add` opcode to add `one` to the value of `r1` and store it in `r2`.
 - `one` is an example of a "reserved register", of which there are 16 in total. Further reading on this is linked below under "Semantics".
-- we return `r2` & specify the return-type as being u32 (the return type is u64 by default).
+- we return `r2` & specify the return type as being u32 (the return type is u64 by default).
 
 ## Helpful Links
 
