@@ -126,7 +126,7 @@ impl TraitFn {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut signature = pair.clone().into_inner();
+        let mut signature = pair.into_inner();
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
         let name_span = Span {
@@ -208,7 +208,7 @@ impl TraitFn {
                 "Generic traits have not yet been implemented.",
                 Span {
                     span: type_params.as_span(),
-                    path: path.clone(),
+                    path,
                 },
             ));
         }
