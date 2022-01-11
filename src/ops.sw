@@ -200,6 +200,71 @@ impl Mod for u8 {
     }
 }
 
+pub trait Shiftable {
+    fn lsh(self, other: Self) -> Self;
+    fn rsh(self, other: Self) -> Self;
+}
+
+impl Shiftable for u64 {
+    fn lsh(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            sll r3 r1 r2;
+            r3: u64
+        }
+    }
+    fn rsh(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            srl r3 r1 r2;
+            r3: u64
+        }
+    }
+}
+
+impl Shiftable for u32 {
+    fn lsh(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            sll r3 r1 r2;
+            r3: u32
+        }
+    }
+    fn rsh(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            srl r3 r1 r2;
+            r3: u32
+        }
+    }
+}
+
+impl Shiftable for u16 {
+    fn lsh(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            sll r3 r1 r2;
+            r3: u16
+        }
+    }
+    fn rsh(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            srl r3 r1 r2;
+            r3: u16
+        }
+    }
+}
+
+impl Shiftable for u8 {
+    fn lsh(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            sll r3 r1 r2;
+            r3: u8
+        }
+    }
+    fn rsh(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            srl r3 r1 r2;
+            r3: u8
+        }
+    }
+}
+
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;
