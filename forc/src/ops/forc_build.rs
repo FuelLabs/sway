@@ -125,8 +125,11 @@ fn compile_dependency_lib<'manifest>(
     };
     // Download a non-local dependency if the `git` property is set in this dependency.
     if let Some(ref git) = details.git {
+        // the qualified name of the dependency includes its source and some metadata to prevent
+        // conflating dependencies from different sources
+        let fully_qualified_dep_name = format!("{}-{}", dependency_name, git);
         let downloaded_dep_path = match dependency::download_github_dep(
-            dependency_name,
+            &fully_qualified_dep_name,
             git,
             &details.branch,
             &details.version,
