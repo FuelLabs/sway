@@ -3,6 +3,7 @@ script;
 use std::b512::B512;
 use std::address::Address;
 use std::ecr::ec_recover_address;
+use std::ecr::ec_recover;
 use std::chain::assert;
 
 fn main() -> bool {
@@ -34,6 +35,11 @@ fn main() -> bool {
     // recover the address:
     let mut recovered_address: Address = ec_recover_address(signature, msg_hash);
     assert(recovered_address.value == address.value);
+
+    // recover the public key:
+    let mut recovered_pubkey: B512 = ec_recover(signature, msg_hash);
+    assert(recovered_pubkey.hi == pubkey.hi);
+    assert(recovered_pubkey.lo == pubkey.lo);
 
     true
 }
