@@ -1,8 +1,5 @@
 script;
-use std::constants::ETH_ID;
-use std::constants::ZERO;
-use std::chain::assert;
-use std::contract_id::ContractId;
+use std::{constants::{ETH_ID, ZERO}, chain::assert, contract_id::ContractId};
 use context_testing_abi::*;
 
 fn main() -> bool {

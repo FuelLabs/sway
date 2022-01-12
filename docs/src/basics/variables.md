@@ -1,6 +1,6 @@
 # Variables
 
-Variables in Sway are _immutable by default_. This means that, by default, once a variable is declared, its value cannot change. This is one of the ways in which Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.
+Variables in Sway are _immutable by default_. This means that, by default, once a variable is declared, its value cannot change. This is one of how Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.
 
 ## Declaring a Variable
 
@@ -25,7 +25,7 @@ let mut foo = 5;
 foo = 6;
 ```
 
-Now, `foo` is mutable, and the reassignment to the number `6` is valid. That is, we are allowed to _mutate_ the variable `foo` in order to change its value.
+Now, `foo` is mutable, and the reassignment to the number `6` is valid. That is, we are allowed to _mutate_ the variable `foo` to change its value.
 
 ## Type annotations
 
