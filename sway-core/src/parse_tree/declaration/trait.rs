@@ -126,11 +126,7 @@ impl TraitFn {
         let path = config.map(|c| c.path());
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        let mut signature = pair.clone().into_inner();
-        let whole_fn_sig_span = Span {
-            span: pair.as_span(),
-            path: path.clone(),
-        };
+        let mut signature = pair.into_inner();
         let _fn_keyword = signature.next().unwrap();
         let name = signature.next().unwrap();
         let name_span = Span {
@@ -143,39 +139,89 @@ impl TraitFn {
             warnings,
             errors
         );
+        let mut type_params_pair = None;
+        let mut _where_clause_pair = None;
+        let mut parameters_pair = None;
+        let mut return_type_pair = None;
+        for pair in signature {
+            match pair.as_rule() {
+                Rule::type_params => {
+                    type_params_pair = Some(pair);
+                }
+                Rule::type_name => {
+                    return_type_pair = Some(pair);
+                }
+                Rule::fn_decl_params => {
+                    parameters_pair = Some(pair);
+                }
+                Rule::trait_bounds => {
+                    _where_clause_pair = Some(pair);
+                }
+                Rule::fn_returns => (),
+                _ => {
+                    errors.push(CompileError::Internal(
+                        "Unexpected token while parsing function signature.",
+                        Span {
+                            span: pair.as_span(),
+                            path: path.clone(),
+                        },
+                    ));
+                }
+            }
+        }
         assert_or_warn!(
             is_snake_case(name.as_str()),
             warnings,
             name_span,
             Warning::NonSnakeCaseFunctionName { name: name.clone() }
         );
-        let parameters = signature.next().unwrap();
+        // these are non-optional in a func decl
+        let parameters_pair = parameters_pair.unwrap();
+        let parameters_span = parameters_pair.as_span();
+
         let parameters = check!(
-            FunctionParameter::list_from_pairs(parameters.into_inner(), config),
+            FunctionParameter::list_from_pairs(parameters_pair.into_inner(), config),
             Vec::new(),
             warnings,
             errors
         );
-        let return_type_signal = signature.next();
-        let (return_type, return_type_span) = match return_type_signal {
-            Some(_) => {
-                let pair = signature.next().unwrap();
-                let span = Span {
-                    span: pair.as_span(),
-                    path,
-                };
-                (
-                    check!(
-                        TypeInfo::parse_from_pair(pair, config),
-                        TypeInfo::ErrorRecovery,
-                        warnings,
-                        errors
-                    ),
-                    span,
-                )
-            }
-            None => (TypeInfo::Tuple(Vec::new()), whole_fn_sig_span),
+        let return_type_span = Span {
+            span: if let Some(ref pair) = return_type_pair {
+                pair.as_span()
+            } else {
+                /* if this has no return type, just use the fn params as the span. */
+                parameters_span
+            },
+            path: path.clone(),
         };
+        let return_type = match return_type_pair {
+            Some(ref pair) => check!(
+                TypeInfo::parse_from_pair(pair.clone(), config),
+                TypeInfo::Tuple(Vec::new()),
+                warnings,
+                errors
+            ),
+            None => TypeInfo::Tuple(Vec::new()),
+        };
+        if let Some(type_params) = type_params_pair {
+            errors.push(CompileError::Unimplemented(
+                "Generic traits have not yet been implemented.",
+                Span {
+                    span: type_params.as_span(),
+                    path,
+                },
+            ));
+        }
+
+        /* when we implement generic traits, uncomment this to get the type params and where
+                 * clause
+                let type_parameters = TypeParameter::parse_from_type_params_and_where_clause(
+                    type_params_pair,
+                    where_clause_pair,
+                    config,
+                )
+                .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
+        */
 
         ok(
             TraitFn {
