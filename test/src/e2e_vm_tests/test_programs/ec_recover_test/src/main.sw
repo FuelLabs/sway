@@ -33,11 +33,11 @@ fn main() -> bool {
     let signature: B512 = ~B512::from(sig_hi, sig_lo);
 
     // recover the address:
-    let mut recovered_address: Address = ec_recover_address(signature, msg_hash);
+    let recovered_address: Address = ec_recover_address(signature, msg_hash);
     assert(recovered_address.value == address.value);
 
     // recover the public key:
-    let mut recovered_pubkey: B512 = ec_recover(signature, msg_hash);
+    let recovered_pubkey: B512 = ec_recover(signature, msg_hash);
     assert(recovered_pubkey.hi == pubkey.hi);
     assert(recovered_pubkey.lo == pubkey.lo);
 
