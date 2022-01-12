@@ -177,3 +177,67 @@ impl From<io::Error> for FormatError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::taplo_fmt;
+    use std::default::Default;
+
+    #[test]
+    fn test_forc_indentation() {
+        let correct_forc_manifest = r#"
+[project]
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
+name = "Fuel example project"
+
+
+[dependencies]
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+"#;
+        let formatted_content = taplo_fmt::format(
+            correct_forc_manifest,
+            taplo_fmt::Options {
+                ..Default::default()
+            },
+        );
+        assert_eq!(formatted_content, correct_forc_manifest);
+        let indented_forc_manifest = r#"
+        [project]
+    author = "Fuel Labs <contact@fuel.sh>"
+                    license = "Apache-2.0"
+    name = "Fuel example project"
+
+
+    [dependencies]
+        core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+                    std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+"#;
+        let formatted_content = taplo_fmt::format(
+            indented_forc_manifest,
+            taplo_fmt::Options {
+                ..Default::default()
+            },
+        );
+        assert_eq!(formatted_content, correct_forc_manifest);
+        let whitespace_forc_manifest = r#"
+[project]
+ author="Fuel Labs <contact@fuel.sh>"
+license   =                                   "Apache-2.0"
+name = "Fuel example project"
+
+
+[dependencies]
+core = {git="http://github.com/FuelLabs/sway-lib-core"}
+std         =     {   git     =  "http://github.com/FuelLabs/sway-lib-std"             }
+"#;
+        let formatted_content = taplo_fmt::format(
+            whitespace_forc_manifest,
+            taplo_fmt::Options {
+                ..Default::default()
+            },
+        );
+        assert_eq!(formatted_content, correct_forc_manifest);
+    }
+}
