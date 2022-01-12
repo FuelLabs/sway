@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - roy-bake-fuel-core-ci-workflow
   pull_request:
   release:
     types: [published]
@@ -107,7 +108,7 @@ jobs:
   
   build-publish-master-image:
     needs: build
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/roy-bake-fuel-core-ci-workflow'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -128,7 +129,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
           flavor: |
-            latest=${{ github.ref == 'refs/heads/master' }}
+            latest=${{ github.ref == 'refs/heads/roy-bake-fuel-core-ci-workflow' }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
