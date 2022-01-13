@@ -13,6 +13,10 @@ pub struct Command {
     #[structopt(short, long)]
     pub path: Option<String>,
 
+    /// Whether to compile using the IR pipeline.
+    #[structopt(long)]
+    pub use_ir: bool,
+
     /// Only craft transaction and print it out.
     #[structopt(long)]
     pub dry_run: bool,
@@ -33,6 +37,10 @@ pub struct Command {
     /// Whether to compile to bytecode (false) or to print out the generated ASM (true).
     #[structopt(long)]
     pub print_intermediate_asm: bool,
+
+    /// Whether to compile to bytecode (false) or to print out the IR (true).
+    #[structopt(long)]
+    pub print_ir: bool,
 
     /// If set, outputs a binary file representing the script bytes.
     #[structopt(short = "o")]

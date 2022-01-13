@@ -21,8 +21,10 @@ pub(crate) fn deploy_contract(file_name: &str) {
                 "{}/src/e2e_vm_tests/test_programs/{}",
                 manifest_dir, file_name
             )),
+            use_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
+            print_ir: false,
             binary_outfile: None,
             offline_mode: false,
             silent_mode: true,
@@ -43,9 +45,11 @@ pub(crate) fn runs_on_node(file_name: &str) {
         dry_run: false,
         node_url: "127.0.0.1:4000".into(),
         kill_node: false,
+        use_ir: false,
         binary_outfile: None,
         print_finalized_asm: false,
         print_intermediate_asm: false,
+        print_ir: false,
         silent_mode: true,
         pretty_print: false,
     };
@@ -104,8 +108,10 @@ pub(crate) fn compile_to_bytes(file_name: &str) -> Result<Vec<u8>, String> {
             "{}/src/e2e_vm_tests/test_programs/{}",
             manifest_dir, file_name
         )),
+        use_ir: false,
         print_finalized_asm: false,
         print_intermediate_asm: false,
+        print_ir: false,
         binary_outfile: None,
         offline_mode: false,
         silent_mode: true,

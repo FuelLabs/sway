@@ -9,8 +9,10 @@ use sway_utils::{find_manifest_dir, get_sway_files};
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {
         path: None,
+        use_ir: false,
         print_finalized_asm: false,
         print_intermediate_asm: false,
+        print_ir: false,
         binary_outfile: None,
         offline_mode: false,
         silent_mode: false,

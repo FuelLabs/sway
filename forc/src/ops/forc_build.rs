@@ -28,8 +28,10 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     let BuildCommand {
         binary_outfile,
+        use_ir,
         print_finalized_asm,
         print_intermediate_asm,
+        print_ir,
         offline_mode,
         silent_mode,
         ..
@@ -63,8 +65,10 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
         file_name.to_path_buf(),
         manifest_dir.clone(),
     )
+    .use_ir(use_ir || print_ir) // --print-ir implies --use-ir.
     .print_finalized_asm(print_finalized_asm)
-    .print_intermediate_asm(print_intermediate_asm);
+    .print_intermediate_asm(print_intermediate_asm)
+    .print_ir(print_ir);
 
     let mut dependency_graph = HashMap::new();
 
