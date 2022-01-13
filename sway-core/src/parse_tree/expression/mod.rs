@@ -1,13 +1,13 @@
 use crate::{
     build_config::BuildConfig,
     error::*,
-    parse_tree::{CallPath, Literal},
+    parse_tree::{ident, CallPath, Literal},
     parser::Rule,
     type_engine::TypeInfo,
-    AstNode, AstNodeContent, CodeBlock, Declaration, Ident, VariableDeclaration,
+    AstNode, AstNodeContent, CodeBlock, Declaration, VariableDeclaration,
 };
 
-use sway_types::{join_spans, Span};
+use sway_types::{ident::Ident, join_spans, Span};
 
 use either::Either;
 use pest;
@@ -458,7 +458,7 @@ impl Expression {
                     match pair.as_rule() {
                         Rule::var_name_ident => {
                             name = Some(check!(
-                                Ident::parse_from_pair(pair, config),
+                                ident::parse_from_pair(pair, config),
                                 Ident::new_with_override("error parsing var name", span.clone()),
                                 warnings,
                                 errors
@@ -525,7 +525,7 @@ impl Expression {
                 let mut expr_iter = expr.into_inner();
                 let struct_name = expr_iter.next().unwrap();
                 let struct_name = check!(
-                    Ident::parse_from_pair(struct_name, config),
+                    ident::parse_from_pair(struct_name, config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -534,7 +534,7 @@ impl Expression {
                 let mut fields_buf = Vec::new();
                 for i in (0..fields.len()).step_by(2) {
                     let name = check!(
-                        Ident::parse_from_pair(fields[i].clone(), config),
+                        ident::parse_from_pair(fields[i].clone(), config),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -680,7 +680,7 @@ impl Expression {
                         //
                         // ["a", "b", "c", "add"]
                         let method_name = check!(
-                            Ident::parse_from_pair(name_parts.pop().unwrap(), config),
+                            ident::parse_from_pair(name_parts.pop().unwrap(), config),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -722,7 +722,7 @@ impl Expression {
                                     path: path.clone(),
                                 },
                                 field_to_access: check!(
-                                    Ident::parse_from_pair(name_part, config),
+                                    ident::parse_from_pair(name_part, config),
                                     continue,
                                     warnings,
                                     errors
@@ -747,7 +747,7 @@ impl Expression {
                                 Rule::path_separator => (),
                                 Rule::path_ident => {
                                     path_parts_buf.push(check!(
-                                        Ident::parse_from_pair(pair, config),
+                                        ident::parse_from_pair(pair, config),
                                         continue,
                                         warnings,
                                         errors
@@ -780,7 +780,7 @@ impl Expression {
                             call_path: CallPath {
                                 prefixes: path_parts_buf,
                                 suffix: check!(
-                                    Ident::parse_from_pair(
+                                    ident::parse_from_pair(
                                         method_name.expect("guaranteed by grammar"),
                                         config
                                     ),
@@ -906,7 +906,7 @@ impl Expression {
                             path: path.clone(),
                         },
                         field_to_access: check!(
-                            Ident::parse_from_pair(name_part, config),
+                            ident::parse_from_pair(name_part, config),
                             continue,
                             warnings,
                             errors
@@ -1126,7 +1126,7 @@ fn parse_call_item(item: Pair<Rule>, config: Option<&BuildConfig>) -> CompileRes
     let exp = match item.as_rule() {
         Rule::ident => Expression::VariableExpression {
             name: check!(
-                Ident::parse_from_pair(item.clone(), config),
+                ident::parse_from_pair(item.clone(), config),
                 return err(warnings, errors),
                 warnings,
                 errors

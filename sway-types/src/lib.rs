@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
+pub mod ident;
+pub use ident::*;
+
 pub mod span;
 pub use span::*;
 

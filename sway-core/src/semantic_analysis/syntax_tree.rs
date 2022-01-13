@@ -7,14 +7,13 @@ use crate::{
     build_config::BuildConfig,
     control_flow_analysis::ControlFlowGraph,
     error::*,
-    ident::Ident,
     parse_tree::Purity,
     semantic_analysis::{ast_node::Mode, Namespace, TypeCheckArguments},
     type_engine::*,
     AstNode, ParseTree,
 };
 
-use sway_types::span::Span;
+use sway_types::{ident::Ident, span::Span};
 
 use std::collections::{HashMap, HashSet};
 

@@ -1,4 +1,4 @@
-use crate::{build_config::BuildConfig, error::*, parser::Rule, Ident};
+use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule, Ident};
 
 use sway_types::span::{join_spans, Span};
 
@@ -62,7 +62,7 @@ impl CallPath {
         for pair in pair.into_inner() {
             if pair.as_rule() != Rule::path_separator {
                 pairs_buf.push(check!(
-                    Ident::parse_from_pair(pair, config),
+                    ident::parse_from_pair(pair, config),
                     continue,
                     warnings,
                     errors

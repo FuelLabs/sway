@@ -9,7 +9,6 @@ mod build_config;
 mod concurrent_slab;
 pub mod constants;
 mod control_flow_analysis;
-mod ident;
 pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
@@ -17,7 +16,6 @@ mod style;
 pub mod type_engine;
 
 use crate::asm_generation::checks::check_invalid_opcodes;
-pub use crate::parse_tree::*;
 pub use crate::parser::{HllParser, Rule};
 use crate::{asm_generation::compile_ast_to_asm, error::*};
 pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
@@ -31,12 +29,11 @@ use std::sync::Arc;
 pub use semantic_analysis::TreeType;
 pub use semantic_analysis::TypedParseTree;
 pub mod types;
-pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
+pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop, *};
 
 pub use error::{CompileError, CompileResult, CompileWarning};
-pub use ident::Ident;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
-pub use sway_types::span;
+use sway_types::{ident::Ident, span};
 pub use type_engine::TypeInfo;
 
 /// Represents a parsed, but not yet type-checked, Sway program.
@@ -509,7 +506,7 @@ fn parse_root_from_pairs(
                 Rule::library_name => {
                     let lib_pair = pair.into_inner().next().unwrap();
                     library_name = Some(check!(
-                        Ident::parse_from_pair(lib_pair, config),
+                        parse_tree::ident::parse_from_pair(lib_pair, config),
                         continue,
                         warnings,
                         errors

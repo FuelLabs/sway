@@ -4,7 +4,6 @@
 use super::*;
 use crate::{
     error::*,
-    ident::Ident,
     parse_tree::CallPath,
     semantic_analysis::{
         ast_node::{
@@ -15,7 +14,7 @@ use crate::{
     },
     type_engine::{resolve_type, TypeInfo},
 };
-use sway_types::span::Span;
+use sway_types::{ident::Ident, span::Span};
 
 use petgraph::prelude::NodeIndex;
 

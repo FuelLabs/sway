@@ -1,17 +1,17 @@
 use crate::{
     build_config::BuildConfig,
     error::*,
-    parse_tree::{declaration::TypeParameter, Visibility},
+    parse_tree::{declaration::TypeParameter, ident, Visibility},
     parser::Rule,
     semantic_analysis::ast_node::{
         declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant,
     },
     style::is_upper_camel_case,
     type_engine::*,
-    Ident, Namespace,
+    Namespace,
 };
 
-use sway_types::span::Span;
+use sway_types::{ident::Ident, span::Span};
 
 use pest::iterators::Pair;
 
@@ -111,7 +111,7 @@ impl EnumDeclaration {
         // unwrap non-optional fields
         let enum_name = enum_name.unwrap();
         let name = check!(
-            Ident::parse_from_pair(enum_name.clone(), config),
+            ident::parse_from_pair(enum_name.clone(), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -196,7 +196,7 @@ impl EnumVariant {
                     path: config.map(|c| c.path()),
                 };
                 let name = check!(
-                    Ident::parse_from_pair(fields[i].clone(), config),
+                    ident::parse_from_pair(fields[i].clone(), config),
                     return err(warnings, errors),
                     warnings,
                     errors

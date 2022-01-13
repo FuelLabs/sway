@@ -23,7 +23,11 @@ pub(crate) use type_parameter::*;
 pub use variable::*;
 
 use crate::{
-    build_config::BuildConfig, error::*, parse_tree::Expression, parser::Rule, Ident, TypeInfo,
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::{ident, Expression},
+    parser::Rule,
+    TypeInfo,
 };
 
 use sway_types::span::Span;
@@ -186,7 +190,7 @@ impl Declaration {
                 );
                 Declaration::VariableDeclaration(VariableDeclaration {
                     name: check!(
-                        Ident::parse_from_pair(name_pair, config),
+                        ident::parse_from_pair(name_pair, config),
                         return err(warnings, errors),
                         warnings,
                         errors

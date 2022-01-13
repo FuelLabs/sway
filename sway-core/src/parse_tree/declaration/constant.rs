@@ -1,14 +1,13 @@
 use crate::{
     build_config::BuildConfig,
     error::{err, ok, CompileResult, Warning},
-    parse_tree::{Expression, Visibility},
+    parse_tree::{ident, Expression, Visibility},
     parser::Rule,
     style::is_screaming_snake_case,
     type_engine::TypeInfo,
-    Ident,
 };
 
-use sway_types::span::Span;
+use sway_types::{ident::Ident, span::Span};
 
 use pest::iterators::Pair;
 
@@ -65,7 +64,7 @@ impl ConstantDeclaration {
             errors
         );
         let name = check!(
-            Ident::parse_from_pair(name_pair.clone(), config),
+            ident::parse_from_pair(name_pair.clone(), config),
             return err(warnings, errors),
             warnings,
             errors

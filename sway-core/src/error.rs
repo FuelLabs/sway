@@ -1,12 +1,11 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
 use crate::{
-    ident::Ident,
     parser::Rule,
     style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
     type_engine::*,
 };
-use sway_types::span::Span;
+use sway_types::{ident::Ident, span::Span};
 
 use std::fmt;
 use thiserror::Error;

@@ -4,7 +4,6 @@ use super::*;
 use crate::{
     asm_lang::*,
     error::*,
-    ident::Ident,
     parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, Literal, UnaryOp},
     semantic_analysis::{
         ast_node::{
@@ -16,7 +15,7 @@ use crate::{
     },
     type_engine::{look_up_type_id, TypeId},
 };
-use sway_types::span::Span;
+use sway_types::{ident::Ident, span::Span};
 
 pub(crate) fn convert_subfield_expression_to_asm(
     span: &Span,
