@@ -36,7 +36,7 @@ pub(crate) fn exec(command: Command) -> Result<(), String> {
         TableCell::new("raw"),
         TableCell::new("notes"),
     ]));
-    table.style = term_table::TableStyle::blank();
+    table.style = term_table::TableStyle::empty();
     for (word_ix, instruction) in instructions.iter().enumerate() {
         use fuel_asm::Opcode::*;
         let notes = match instruction.1 {
