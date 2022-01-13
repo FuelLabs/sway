@@ -122,7 +122,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         if filter(name) {
             crate::e2e_vm_tests::harness::does_not_compile(name);
             acc + 1
-        } else { acc }
+        } else {
+            acc
+        }
     });
 
     // ---- Tests paired with contracts upon which they depend which must be pre-deployed.
@@ -151,10 +153,20 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         harness::runs_on_node(name);
     }
     let total_number_of_tests = positive_project_names.len() + negative_project_names.len();
-    if  number_of_tests_run == 0 {
-        println!("No tests were run. Regex filter \"{}\" filtered out all {} tests.", filter_regex.map(|x| x.to_string()).unwrap_or(Default::default()), total_number_of_tests);
+    if number_of_tests_run == 0 {
+        println!(
+            "No tests were run. Regex filter \"{}\" filtered out all {} tests.",
+            filter_regex
+                .map(|x| x.to_string())
+                .unwrap_or(Default::default()),
+            total_number_of_tests
+        );
     } else {
         println!("_________________________________\nTests passed.");
-        println!("{} tests run ({} skipped)", number_of_tests_run, total_number_of_tests - number_of_tests_run);
+        println!(
+            "{} tests run ({} skipped)",
+            number_of_tests_run,
+            total_number_of_tests - number_of_tests_run
+        );
     }
 }
