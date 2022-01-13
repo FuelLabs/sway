@@ -775,26 +775,48 @@ impl Expression {
                             errors
                         );
 
-                        let call_path = call_path.expect("guaranteed by grammar");
-                        let mut call_path_buf = call_path.prefixes;
-                        call_path_buf.push(call_path.suffix);
+                        let method_name = match call_path {
+                            Some(call_path) => {
+                                let mut call_path_buf = call_path.prefixes;
+                                call_path_buf.push(call_path.suffix);
 
-                        // parse the method name into a call path
-                        let method_name = MethodName::FromType {
-                            call_path: CallPath {
-                                prefixes: call_path_buf,
-                                suffix: check!(
-                                    ident::parse_from_pair(
-                                        method_name.expect("guaranteed by grammar"),
-                                        config
-                                    ),
-                                    return err(warnings, errors),
-                                    warnings,
-                                    errors
-                                ),
-                                is_absolute: call_path.is_absolute, //is_absolute: false,
-                            },
-                            type_name: Some(type_name),
+                                // parse the method name into a call path
+                                MethodName::FromType {
+                                    call_path: CallPath {
+                                        prefixes: call_path_buf,
+                                        suffix: check!(
+                                            ident::parse_from_pair(
+                                                method_name.expect("guaranteed by grammar"),
+                                                config
+                                            ),
+                                            return err(warnings, errors),
+                                            warnings,
+                                            errors
+                                        ),
+                                        is_absolute: call_path.is_absolute, //is_absolute: false,
+                                    },
+                                    type_name: Some(type_name),
+                                }
+                            }
+                            None => {
+                                // parse the method name into a call path
+                                MethodName::FromType {
+                                    call_path: CallPath {
+                                        prefixes: vec![],
+                                        suffix: check!(
+                                            ident::parse_from_pair(
+                                                method_name.expect("guaranteed by grammar"),
+                                                config
+                                            ),
+                                            return err(warnings, errors),
+                                            warnings,
+                                            errors
+                                        ),
+                                        is_absolute: false, //is_absolute: false,
+                                    },
+                                    type_name: Some(type_name),
+                                }
+                            }
                         };
 
                         let mut arguments_buf = vec![];
