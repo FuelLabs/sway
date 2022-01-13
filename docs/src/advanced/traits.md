@@ -16,7 +16,7 @@ trait Compare {
 }
 ```
 
-We have just declared a trait called `Compare`. After the name of the trait, there are two _blocks_ of code (a _block_ is code enclosed in `{` curly brackets `}`). The first block is the _interface surface_. The second block are the _methods_ provided by the trait. If a type is able to provide the methods in the interface surface, then it gets access to the methods in the trait for free! What the above trait is saying is: if you can determine if two values are equal, then for free, you can determine that they are not equal. Note that trait methods have access to the methods defined in the interface surface.
+We have just declared a trait called `Compare`. After the name of the trait, there are two _blocks_ of code (a _block_ is code enclosed in `{` curly brackets `}`). The first block is the _interface surface_. The second block is the _methods_ provided by the trait. If a type can provide the methods in the interface surface, then it gets access to the methods in the trait for free! What the above trait is saying is: if you can determine if two values are equal, then for free, you can determine that they are not equal. Note that trait methods have access to the methods defined in the interface surface.
 
 ## Implementing a Trait
 
@@ -39,7 +39,7 @@ The above snippet declares all of the methods in the trait `Compare` for the typ
 Often, libraries and APIs have interfaces that are abstracted over a type that implements a certain trait. It is up to the consumer of the interface to implement that trait for the type they wish to use with the interface. For example, let's take a look at a trait and an interface built off of it.
 
 ```sway
-library games; 
+library games;
 
 pub enum Suit {
     Hearts: (),
@@ -59,7 +59,7 @@ fn play_game_with_deck<T>(a: Vec<T>) where T: Card {
 ```
 
 
-Now, if you want to use the function `play_game_with_deck` with your own personal struct, you must implement `Card` for your struct. Note that the following code example assumes a dependency _games_ has been included in the `Forc.toml` file.
+Now, if you want to use the function `play_game_with_deck` with your struct, you must implement `Card` for your struct. Note that the following code example assumes a dependency _games_ has been included in the `Forc.toml` file.
 
 ```sway
 script;
@@ -92,4 +92,3 @@ fn random_suit(i: u64) -> Suit {
   [ ... ]
 }
 ```
-

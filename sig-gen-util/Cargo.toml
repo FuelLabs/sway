@@ -1,0 +1,12 @@
+[package]
+name = "signatures"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1.0.39"
+fuel-tx = "0.1"
+fuel-vm = "0.1"
+hex = "0.4"
+secp256k1 = { version = "0.20", features = ["recovery"] }

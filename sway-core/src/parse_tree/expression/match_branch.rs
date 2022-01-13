@@ -1,9 +1,7 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parser::Rule;
-use crate::span;
-use crate::CatchAll;
-use crate::CodeBlock;
+use crate::{build_config::BuildConfig, error::*, parser::Rule, CatchAll, CodeBlock};
+
+use sway_types::span;
+
 use pest::iterators::Pair;
 
 use super::scrutinee::Scrutinee;

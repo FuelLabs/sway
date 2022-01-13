@@ -2,8 +2,11 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     error::{err, ok},
-    BuildConfig, CallPath, CompileError, CompileResult, Ident, Literal, Rule, Span,
+    parse_tree::ident,
+    BuildConfig, CallPath, CompileError, CompileResult, Literal, Rule,
 };
+
+use sway_types::{ident::Ident, span::Span};
 
 use pest::iterators::Pair;
 
@@ -163,7 +166,7 @@ impl Scrutinee {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let scrutinee = Ident::parse_from_pair(scrutinee, config)
+        let scrutinee = ident::parse_from_pair(scrutinee, config)
             .map(|name| Scrutinee::Variable {
                 name,
                 span: span.clone(),
@@ -185,7 +188,7 @@ impl Scrutinee {
         let mut it = scrutinee.into_inner();
         let struct_name = it.next().unwrap();
         let struct_name = check!(
-            Ident::parse_from_pair(struct_name, config),
+            ident::parse_from_pair(struct_name, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -200,7 +203,7 @@ impl Scrutinee {
             let mut field_parts = field.clone().into_inner();
             let name = field_parts.next().unwrap();
             let name = check!(
-                Ident::parse_from_pair(name, config),
+                ident::parse_from_pair(name, config),
                 return err(warnings, errors),
                 warnings,
                 errors

@@ -1,26 +1,28 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::semantic_analysis::ast_node::declaration::insert_type_parameters;
-pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
-use crate::semantic_analysis::{Namespace, TCOpts, TypeCheckArguments};
-use crate::span::Span;
-
-use crate::{control_flow_analysis::ControlFlowGraph, parse_tree::*};
-use crate::{AstNode, AstNodeContent, Ident, ReturnStatement};
-use declaration::TypedTraitFn;
-pub(crate) use impl_trait::Mode;
-use std::sync::Arc;
-
-mod code_block;
-pub mod declaration;
-mod expression;
-pub mod impl_trait;
-mod return_statement;
-mod while_loop;
-
 use super::ERROR_RECOVERY_DECLARATION;
-use crate::type_engine::*;
-pub(crate) use code_block::TypedCodeBlock;
+
+use crate::{
+    build_config::BuildConfig,
+    control_flow_analysis::ControlFlowGraph,
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{
+        ast_node::declaration::insert_type_parameters, Namespace, TCOpts, TypeCheckArguments,
+    },
+    type_engine::*,
+    AstNode, AstNodeContent, Ident, ReturnStatement,
+};
+
+use sway_types::span::{join_spans, Span};
+
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
+
+pub(crate) use crate::semantic_analysis::ast_node::declaration::ReassignmentLhs;
+
+pub mod declaration;
+use declaration::TypedTraitFn;
 pub(crate) use declaration::{
     OwnedTypedEnumVariant, OwnedTypedStructField, TypedReassignment, TypedTraitDeclaration,
     TypedVariableDeclaration,
@@ -30,10 +32,21 @@ pub use declaration::{
     TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter, TypedStructDeclaration,
     TypedStructField,
 };
-pub(crate) use expression::*;
+
+pub mod impl_trait;
 use impl_trait::implementation_of_trait;
+pub(crate) use impl_trait::Mode;
+
+mod code_block;
+pub(crate) use code_block::TypedCodeBlock;
+
+mod expression;
+pub(crate) use expression::*;
+
+mod return_statement;
 pub(crate) use return_statement::TypedReturnStatement;
-use std::collections::{HashMap, HashSet};
+
+mod while_loop;
 pub(crate) use while_loop::TypedWhileLoop;
 
 /// whether or not something is constantly evaluatable (if the result is known at compile
@@ -1131,9 +1144,7 @@ fn type_check_trait_methods(
             if let TypeInfo::Custom { name, .. } = r#type {
                 let args_span = parameters.iter().fold(
                     parameters[0].name.span().clone(),
-                    |acc, FunctionParameter { name, .. }| {
-                        crate::utils::join_spans(acc, name.span().clone())
-                    },
+                    |acc, FunctionParameter { name, .. }| join_spans(acc, name.span().clone()),
                 );
                 if type_parameters.iter().any(
                     |TypeParameter {

@@ -1,8 +1,12 @@
 use super::*;
-use crate::build_config::BuildConfig;
-use crate::control_flow_analysis::ControlFlowGraph;
-use crate::semantic_analysis::{ast_node::*, Namespace, TypeCheckArguments};
-use crate::type_engine::{insert_type, IntegerBits};
+
+use crate::{
+    build_config::BuildConfig,
+    control_flow_analysis::ControlFlowGraph,
+    semantic_analysis::{ast_node::*, Namespace, TypeCheckArguments},
+    type_engine::{insert_type, IntegerBits},
+};
+use sway_types::join_spans;
 
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -460,7 +464,7 @@ impl TypedExpression {
                         .get(0)
                         .map(|x| x.span())
                         .unwrap_or_else(|| name.span()),
-                    |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                    |acc, arg| join_spans(acc, arg.span()),
                 );
                 errors.push(CompileError::TooManyArgumentsForFunction {
                     span: arguments_span,
@@ -475,7 +479,7 @@ impl TypedExpression {
                         .get(0)
                         .map(|x| x.span())
                         .unwrap_or_else(|| name.span()),
-                    |acc, arg| crate::utils::join_spans(acc, arg.span()),
+                    |acc, arg| join_spans(acc, arg.span()),
                 );
                 errors.push(CompileError::TooFewArgumentsForFunction {
                     span: arguments_span,

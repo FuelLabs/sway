@@ -1,10 +1,14 @@
-use crate::build_config::BuildConfig;
-use crate::parse_tree::{declaration::TypeParameter, Visibility};
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::style::{is_snake_case, is_upper_camel_case};
-use crate::type_engine::TypeInfo;
-use crate::{error::*, Ident};
+use crate::{
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::{declaration::TypeParameter, ident, Visibility},
+    parser::Rule,
+    style::{is_snake_case, is_upper_camel_case},
+    type_engine::TypeInfo,
+};
+
+use sway_types::{ident::Ident, span::Span};
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -84,7 +88,7 @@ impl StructDeclaration {
         };
 
         let name = check!(
-            Ident::parse_from_pair(name, config),
+            ident::parse_from_pair(name, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -126,7 +130,7 @@ impl StructField {
                 path: path.clone(),
             };
             let name = check!(
-                Ident::parse_from_pair(fields[i].clone(), config),
+                ident::parse_from_pair(fields[i].clone(), config),
                 return err(warnings, errors),
                 warnings,
                 errors

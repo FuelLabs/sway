@@ -32,4 +32,4 @@ fn main () {
 
 Scripts, similar to predicates, rely on a `main()` function as an entry point. You can call other functions defined in a script from the `main()` function or call another contract via an [abi cast](./smart_contracts.md#calling-a-smart-contract-from-a-script).
 
-An example usecase for a script would be a router that trades funds through multiple DEXes to get the price for the input asset, or a script to re-adjust a Collateralized Debt Position via a flashloan.
+An example use case for a script would be a router that trades funds through multiple DEXes to get the price for the input asset, or a script to re-adjust a Collateralized Debt Position via a flashloan.

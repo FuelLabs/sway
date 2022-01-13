@@ -2,15 +2,14 @@ use super::ast_node::{
     OwnedTypedStructField, TypedEnumDeclaration, TypedEnumVariant, TypedStructDeclaration,
     TypedStructField,
 };
-use crate::error::*;
-use crate::parse_tree::Visibility;
-use crate::semantic_analysis::TypedExpression;
-use crate::span::Span;
-use crate::type_engine::*;
 
-use crate::CallPath;
-use crate::{CompileResult, TypeInfo};
-use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
+use crate::{
+    error::*, parse_tree::Visibility, semantic_analysis::TypedExpression, type_engine::*, CallPath,
+    CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+};
+
+use sway_types::span::{join_spans, Span};
+
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 type ModuleName = String;
@@ -29,8 +28,6 @@ pub struct Namespace {
     // [Namespace::get_all_imported_modules] -- we need that iterator to have a deterministic
     // order.
     modules: BTreeMap<ModuleName, Namespace>,
-    // The crate namespace, to be used in absolute importing. This is `None` if the current
-    // namespace _is_ the root namespace.
     use_synonyms: HashMap<Ident, Vec<Ident>>,
     // Represents an alternative name for a symbol.
     use_aliases: HashMap<String, Ident>,
@@ -274,7 +271,7 @@ impl Namespace {
                 None => {
                     errors.push(CompileError::ModuleNotFound {
                         span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
-                            crate::utils::join_spans(acc, this_one.span().clone())
+                            join_spans(acc, this_one.span().clone())
                         }),
                         name: path
                             .iter()
@@ -498,16 +495,18 @@ impl Namespace {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let base_namespace = match from_module {
-            Some(base_namespace) => base_namespace,
-            None => self,
+        let namespace = {
+            let base_namespace = match from_module {
+                Some(base_namespace) => base_namespace,
+                None => self,
+            };
+            check!(
+                base_namespace.find_module_relative(&path),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
         };
-        let namespace = check!(
-            base_namespace.find_module_relative(&path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
         let symbols = namespace
             .symbols
             .iter()
@@ -519,6 +518,9 @@ impl Namespace {
                 }
             })
             .collect::<Vec<_>>();
+        let implemented_traits = namespace.implemented_traits.clone();
+        self.implemented_traits
+            .extend(&mut implemented_traits.into_iter());
         for symbol in symbols {
             self.use_synonyms.insert(symbol, path.clone());
         }

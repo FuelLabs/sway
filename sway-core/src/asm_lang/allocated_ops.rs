@@ -12,10 +12,10 @@
 use super::DataId;
 use super::*;
 use crate::asm_generation::DataSection;
-use crate::span::Span;
 use either::Either;
 use fuel_asm::Opcode as VmOp;
 use std::fmt;
+use sway_types::span::Span;
 
 const COMMENT_START_COLUMN: usize = 30;
 

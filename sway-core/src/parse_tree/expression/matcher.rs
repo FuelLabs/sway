@@ -2,8 +2,10 @@ use crate::{
     error::{err, ok},
     CallPath, CompileError, CompileResult, DelayedEnumVariantResolution, DelayedResolutionVariant,
     DelayedStructFieldResolution, DelayedTupleVariantResolution, Expression, Ident, Literal,
-    Scrutinee, Span, StructScrutineeField,
+    Scrutinee, StructScrutineeField,
 };
+
+use sway_types::span::Span;
 
 /// List of requirements that a desugared if expression must include in the conditional.
 pub type MatchReqMap = Vec<(Expression, Expression)>;

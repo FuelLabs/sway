@@ -298,7 +298,7 @@ fn re_parse_expression<'n>(
 ) -> CompileResult<TypedExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
-    let span = crate::Span {
+    let span = sway_types::span::Span {
         span: pest::Span::new(
             "TODO(static span): use Idents instead of Strings".into(),
             0,

@@ -1,6 +1,6 @@
 # Storage
 
-When developing a [smart contract](../sway-on-chain/smart_contracts.md), you will typically need some sort of persistent storage. In this case, persistant storage, often just called _storage_ in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in _memory_, which disappears after the contract exits.
+When developing a [smart contract](../sway-on-chain/smart_contracts.md), you will typically need some sort of persistent storage. In this case, persistent storage, often just called _storage_ in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in _memory_, which disappears after the contract exits.
 
 Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.
 
@@ -30,7 +30,7 @@ This value is passed as a part of the transaction, which initializes storage upo
 
 ### Access
 
-Storage access should be minimized, as it incurs a larger performance and gas cost than regular memory access. There are two types of storage access: _reading_ and _writing_. 
+Storage access should be minimized, as it incurs a larger performance and gas cost than regular memory access. There are two types of storage access: _reading_ and _writing_.
 
 #### Reading from Storage
 
@@ -46,7 +46,7 @@ impure fn get_owner() -> ref b256 {
 }
 ```
 
-This returns an immutable reference to a `b256` which is held in storage. The `read()` method itself actually copies the value from storage and returns a pointer to it to save on actual storage read opcodes, which are expensive. **This means that writing to a storage value will not update other variables that are holding references to that value acquired via `read()`**. If you'd like an actual `StorageRef` to the value itself, which does _not_ copy the value and instead incurs a storage read cost on every access, use `.direct_read()`. 
+This returns an immutable reference to a `b256` which is held in storage. The `read()` method itself copies the value from storage and returns a pointer to it to save on actual storage read opcodes, which are expensive. **This means that writing to a storage value will not update other variables that are holding references to that value acquired via `read()`**. If you'd like an actual `StorageRef` to the value itself, which does _not_ copy the value and instead incurs a storage read cost on every access, use `.direct_read()`.
 
 #### Writing to Storage
 

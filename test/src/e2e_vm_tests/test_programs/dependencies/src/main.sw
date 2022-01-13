@@ -5,7 +5,7 @@ dep a_dependency;
 dep nested_dependency/bar/bar;
 
 use foo::Foo;
-use ::foo::bar::Bar;
+use ::foo::bar::{Bar, double_bar::DoubleBar};
 
 fn main() -> bool {
     let foo = Foo {

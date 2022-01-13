@@ -1,7 +1,7 @@
 use super::{DataSection, InstructionSet};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
 use crate::error::*;
-use crate::span::Span;
+use sway_types::span::Span;
 
 use either::Either;
 use std::io::Read;

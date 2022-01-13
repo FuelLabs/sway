@@ -1,16 +1,12 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
-use crate::ident::Ident;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case};
-use crate::type_engine::*;
-use crate::type_engine::{IntegerBits, TypeInfo};
-use line_col::LineColLookup;
-use source_span::{
-    fmt::{Formatter, Style},
-    Position,
+use crate::{
+    parser::Rule,
+    style::{to_screaming_snake_case, to_snake_case, to_upper_camel_case},
+    type_engine::*,
 };
+use sway_types::{ident::Ident, span::Span};
+
 use std::fmt;
 use thiserror::Error;
 
@@ -185,34 +181,6 @@ impl CompileWarning {
             self.span.start_pos().line_col().into(),
             self.span.end_pos().line_col().into(),
         )
-    }
-
-    pub fn format(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
-        let input = self.span.input();
-        let chars = input.chars().map(|x| -> Result<_, ()> { Ok(x) });
-
-        let metrics = source_span::DEFAULT_METRICS;
-        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-        for c in buffer.iter() {
-            let _ = c.unwrap(); // report eventual errors.
-        }
-
-        let (start_pos, end_pos) = self.span();
-        let lookup = LineColLookup::new(input);
-        let (start_line, start_col) = lookup.get(start_pos);
-        let (end_line, end_col) = lookup.get(end_pos - 1);
-
-        let err_start = Position::new(start_line - 1, start_col - 1);
-        let err_end = Position::new(end_line - 1, end_col - 1);
-        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
-        fmt.add(
-            err_span,
-            Some(self.to_friendly_warning_string()),
-            Style::Warning,
-        );
-
-        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
     }
 }
 
@@ -591,8 +559,6 @@ pub enum CompileError {
         method_name: String,
         type_name: String,
     },
-    #[error("The asterisk, if present, must be the last part of a path. E.g., `use foo::bar::*`.")]
-    NonFinalAsteriskInPath { span: Span },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
     #[error("\"{name}\" is a {actually}, not a struct. Fields can only be accessed on structs.")]
@@ -965,7 +931,6 @@ impl CompileError {
             StructMissingField { span, .. } => span,
             StructDoesNotHaveField { span, .. } => span,
             MethodNotFound { span, .. } => span,
-            NonFinalAsteriskInPath { span, .. } => span,
             ModuleNotFound { span, .. } => span,
             NotATuple { span, .. } => span,
             NotAStruct { span, .. } => span,
@@ -1042,33 +1007,5 @@ impl CompileError {
             self.internal_span().start_pos().line_col().into(),
             self.internal_span().end_pos().line_col().into(),
         )
-    }
-
-    pub fn format(&self, fmt: &mut Formatter) -> source_span::fmt::Formatted {
-        let input = self.internal_span().input();
-        let chars = input.chars().map(Result::<_, String>::Ok);
-
-        let metrics = source_span::DEFAULT_METRICS;
-        let buffer = source_span::SourceBuffer::new(chars, Position::default(), metrics);
-
-        for c in buffer.iter() {
-            let _ = c.unwrap(); // report eventual errors.
-        }
-
-        let (start_pos, end_pos) = self.span();
-        let lookup = LineColLookup::new(input);
-        let (start_line, start_col) = lookup.get(start_pos);
-        let (end_line, end_col) = lookup.get(if end_pos == 0 { 0 } else { end_pos - 1 });
-
-        let err_start = Position::new(start_line - 1, start_col - 1);
-        let err_end = Position::new(end_line - 1, end_col - 1);
-        let err_span = source_span::Span::new(err_start, err_end, err_end.next_column());
-        fmt.add(
-            err_span,
-            Some(self.to_friendly_error_string()),
-            Style::Error,
-        );
-
-        fmt.render(buffer.iter(), buffer.span(), &metrics).unwrap()
     }
 }

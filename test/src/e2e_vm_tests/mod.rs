@@ -59,6 +59,8 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("generic_functions", ProgramState::Return(1)),        // true
         ("generic_enum", ProgramState::Return(1)),             // true
         ("import_method_from_other_file", ProgramState::Return(10)), // true
+        ("b512_test", ProgramState::Return(1)),                // true
+        ("ec_recover_test", ProgramState::Return(1)),          // true
         ("address_test", ProgramState::Return(1)),             // true
         ("generic_struct", ProgramState::Return(1)),           // true
         ("zero_field_types", ProgramState::Return(10)),        // true
@@ -77,7 +79,9 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("trait_override_bug", ProgramState::Return(7)),
         ("if_implicit_unit", ProgramState::Return(0)),
         ("modulo_uint_test", ProgramState::Return(1)), // true
+        ("trait_import_with_star", ProgramState::Return(0)),
         ("tuple_desugaring", ProgramState::Return(9)),
+        ("multi_item_import", ProgramState::Return(0)), // false
     ];
 
     project_names.into_iter().for_each(|(name, res)| {

@@ -1,16 +1,21 @@
 use super::{declaration::TypedTraitFn, ERROR_RECOVERY_DECLARATION};
-use crate::parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter};
-use crate::semantic_analysis::{
-    Namespace, TCOpts, TypeCheckArguments, TypedDeclaration, TypedFunctionDeclaration,
-};
-use crate::span::Span;
-use crate::type_engine::{
-    insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeInfo,
-};
+
 use crate::{
-    build_config::BuildConfig, control_flow_analysis::ControlFlowGraph, error::*,
-    type_engine::TypeId, CallPath, Ident,
+    build_config::BuildConfig,
+    control_flow_analysis::ControlFlowGraph,
+    error::*,
+    parse_tree::{FunctionDeclaration, ImplTrait, TypeParameter},
+    semantic_analysis::{
+        Namespace, TCOpts, TypeCheckArguments, TypedDeclaration, TypedFunctionDeclaration,
+    },
+    type_engine::{
+        insert_type, look_up_type_id, resolve_type, FriendlyTypeString, TypeId, TypeInfo,
+    },
+    CallPath, Ident,
 };
+
+use sway_types::span::Span;
+
 use std::collections::{HashMap, HashSet};
 
 pub(crate) fn implementation_of_trait(

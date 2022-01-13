@@ -1,8 +1,10 @@
 use super::{FunctionDeclaration, TypeParameter};
-use crate::build_config::BuildConfig;
-use crate::parse_tree::CallPath;
-use crate::span::Span;
-use crate::{error::*, parser::Rule, type_engine::TypeInfo};
+use crate::{
+    build_config::BuildConfig, error::*, parse_tree::CallPath, parser::Rule, type_engine::TypeInfo,
+};
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
