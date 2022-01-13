@@ -8,6 +8,7 @@
   - [A Forc Project](./getting-started/forc_project.md)
   - [Temporary Workarounds](./getting-started/temporary_workarounds.md)
   - [Differences From Solidity](./getting-started/solidity_differences.md)
+  - [Differences From Rust](./getting-started/rust_differences.md)
 - [Examples](./examples/index.md)
   - [Subcurrency](./examples/subcurrency.md)
   - [FizzBuzz](./examples/fizzbuzz.md)
