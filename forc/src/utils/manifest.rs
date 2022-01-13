@@ -52,6 +52,7 @@ fn construct_output_from_input((idx, input): (usize, &fuel_tx::Input)) -> Option
         _ => None,
     }
 }
+
 /// This struct exists and is converted into a [fuel_tx::Input] because of limitations
 /// of our toml library. It doesn't support directly deserializing [fuel_tx::Input].
 ///
@@ -90,6 +91,7 @@ fn try_parse_bytes32(raw: &Option<String>, name: &str) -> Result<fuel_tx::Bytes3
     )
     .unwrap())
 }
+
 fn try_parse_contract_id(raw: &Option<String>) -> Result<fuel_tx::ContractId, String> {
     let mut raw = if let Some(raw) = raw {
         raw.to_string()
@@ -109,8 +111,9 @@ fn try_parse_contract_id(raw: &Option<String>) -> Result<fuel_tx::ContractId, St
             })?
             .as_slice(),
     )
-    .unwrap())
+        .unwrap())
 }
+
 impl TxInput {
     pub fn to_input(&self) -> Result<fuel_tx::Input, String> {
         match self.r#type.to_lowercase().as_ref() {
@@ -134,6 +137,7 @@ impl TxInput {
 pub struct Project {
     pub author: String,
     pub name: String,
+    pub organization: String,
     pub license: String,
     #[serde(default = "default_entry")]
     pub entry: String,

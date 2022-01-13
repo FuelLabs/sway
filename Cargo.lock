@@ -948,7 +948,7 @@ dependencies = [
  "fuel-vm",
  "futures",
  "hex",
- "prettydiff",
+ "prettydiff 0.4.0",
  "reqwest",
  "semver 1.0.4",
  "serde",
@@ -1901,6 +1901,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "peg"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07c0b841ea54f523f7aa556956fbd293bcbe06f2e67d2eb732b7278aaf1d166a"
+dependencies = [
+ "peg-macros",
+ "peg-runtime",
+]
+
+[[package]]
+name = "peg-macros"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5aa52829b8decbef693af90202711348ab001456803ba2a98eb4ec8fb70844c"
+dependencies = [
+ "peg-runtime",
+ "proc-macro2 1.0.36",
+ "quote 1.0.14",
+]
+
+[[package]]
+name = "peg-runtime"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c719dcf55f09a3a7e764c6649ab594c18a177e3599c467983cdf644bfc0a4088"
+
+[[package]]
 name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1993,6 +2020,17 @@ dependencies = [
  "ansi_term 0.9.0",
  "prettytable-rs",
  "structopt 0.2.18",
+]
+
+[[package]]
+name = "prettydiff"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb5671a83709b2755fe5b776d4915701bf36ed2cd9575035502ec12818141d71"
+dependencies = [
+ "ansi_term 0.12.1",
+ "prettytable-rs",
+ "structopt 0.3.25",
 ]
 
 [[package]]
@@ -2750,6 +2788,15 @@ version = "0.2.1"
 dependencies = [
  "ropey",
  "sway-core",
+]
+
+[[package]]
+name = "sway-ir"
+version = "0.2.1"
+dependencies = [
+ "generational-arena",
+ "peg",
+ "prettydiff 0.5.1",
 ]
 
 [[package]]
