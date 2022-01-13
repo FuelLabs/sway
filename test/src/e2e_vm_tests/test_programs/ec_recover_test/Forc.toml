@@ -1,9 +1,10 @@
 [project]
 author = "Fuel Labs <contact@fuel.sh>"
 license = "Apache-2.0"
-name = "Fuel example project"
-
+name = "ec_recover_test"
+entry = "main.sw"
 
 [dependencies]
 core = { git = "http://github.com/FuelLabs/sway-lib-core" }
 std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }

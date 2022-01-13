@@ -3,9 +3,12 @@ use sway_core::{
 };
 
 use crate::traversal_helper::{
-    format_custom_types, format_delineated_path, format_include_statement, format_use_statement,
+    format_data_types, format_delineated_path, format_include_statement, format_use_statement,
 };
 
+/// Change contains the formatted change itself.
+/// `start` and `end` denote the start and end of that change,
+/// which are used to caluclate the position for inserting this change in the existing file.
 #[derive(Debug)]
 pub struct Change {
     pub text: String,
@@ -16,8 +19,8 @@ pub struct Change {
 impl Change {
     fn new(span: &Span, change_type: ChangeType) -> Self {
         let text = match change_type {
-            ChangeType::Struct => format_custom_types(span.as_str()),
-            ChangeType::Enum => format_custom_types(span.as_str()),
+            ChangeType::Struct => format_data_types(span.as_str()),
+            ChangeType::Enum => format_data_types(span.as_str()),
             ChangeType::IncludeStatement => format_include_statement(span.as_str()),
             ChangeType::UseStatement => format_use_statement(span.as_str()),
             ChangeType::DelineatedPath => format_delineated_path(span.as_str()),
@@ -40,6 +43,7 @@ enum ChangeType {
     DelineatedPath,
 }
 
+/// traverses the Sway ParseTree and returns list of formatted changes
 pub fn traverse_for_changes(parse_tree: &HllParseTree) -> Vec<Change> {
     let mut changes = vec![];
 
