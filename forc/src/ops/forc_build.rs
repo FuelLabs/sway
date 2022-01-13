@@ -3,16 +3,16 @@ use crate::{
     cli::BuildCommand,
     utils::dependency,
     utils::helpers::{
-        find_manifest_dir, get_main_file, print_on_failure, print_on_success,
-        print_on_success_library, read_manifest,
+        get_main_file, print_on_failure, print_on_success, print_on_success_library, read_manifest,
     },
 };
-use core_lang::{FinalizedAsm, TreeType};
-
 use std::fs::File;
 use std::io::Write;
+use std::sync::Arc;
+use sway_core::{FinalizedAsm, TreeType};
+use sway_utils::{constants, find_manifest_dir};
 
-use core_lang::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
+use sway_core::{BuildConfig, BytecodeCompilationResult, CompilationResult, Namespace};
 
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
@@ -48,7 +48,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
     let main_path = {
         let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest.project.entry);
         code_dir
     };
@@ -71,39 +71,6 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
     let mut namespace: Namespace = Default::default();
     if let Some(ref mut deps) = manifest.dependencies {
         for (dependency_name, dependency_details) in deps.iter_mut() {
-            // Check if dependency is a git-based dependency.
-            let dep = match dependency_details {
-                Dependency::Simple(..) => {
-                    return Err(
-                        "Not yet implemented: Simple version-spec dependencies require a registry."
-                            .into(),
-                    );
-                }
-                Dependency::Detailed(dep_details) => dep_details,
-            };
-
-            // Download a non-local dependency if the `git` property is set in this dependency.
-            if let Some(git) = &dep.git {
-                let downloaded_dep_path = match dependency::download_github_dep(
-                    dependency_name,
-                    git,
-                    &dep.branch,
-                    &dep.version,
-                    offline_mode.into(),
-                ) {
-                    Ok(path) => path,
-                    Err(e) => {
-                        return Err(format!(
-                            "Couldn't download dependency ({:?}): {:?}",
-                            dependency_name, e
-                        ))
-                    }
-                };
-
-                // Mutate this dependency's path to hold the newly downloaded dependency's path.
-                dep.path = Some(downloaded_dep_path);
-            }
-
             compile_dependency_lib(
                 &this_dir,
                 dependency_name,
@@ -111,6 +78,7 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
                 &mut namespace,
                 &mut dependency_graph,
                 silent_mode,
+                offline_mode,
             )?;
         }
     }
@@ -138,14 +106,47 @@ pub fn build(command: BuildCommand) -> Result<Vec<u8>, String> {
 
 /// Takes a dependency and returns a namespace of exported things from that dependency
 /// trait implementations are included as well
-fn compile_dependency_lib<'n, 'source, 'manifest>(
+fn compile_dependency_lib<'manifest>(
     project_file_path: &Path,
     dependency_name: &'manifest str,
-    dependency_lib: &Dependency,
-    namespace: &mut Namespace<'source>,
+    dependency_lib: &mut Dependency,
+    namespace: &mut Namespace,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
+    offline_mode: bool,
 ) -> Result<(), String> {
+    let mut details = match dependency_lib {
+        Dependency::Simple(..) => {
+            return Err(
+                "Not yet implemented: Simple version-spec dependencies require a registry.".into(),
+            )
+        }
+        Dependency::Detailed(ref mut details) => details,
+    };
+    // Download a non-local dependency if the `git` property is set in this dependency.
+    if let Some(ref git) = details.git {
+        // the qualified name of the dependency includes its source and some metadata to prevent
+        // conflating dependencies from different sources
+        let fully_qualified_dep_name = format!("{}-{}", dependency_name, git);
+        let downloaded_dep_path = match dependency::download_github_dep(
+            &fully_qualified_dep_name,
+            git,
+            &details.branch,
+            &details.version,
+            offline_mode.into(),
+        ) {
+            Ok(path) => path,
+            Err(e) => {
+                return Err(format!(
+                    "Couldn't download dependency ({:?}): {:?}",
+                    dependency_name, e
+                ))
+            }
+        };
+
+        // Mutate this dependency's path to hold the newly downloaded dependency's path.
+        details.path = Some(downloaded_dep_path);
+    }
     let dep_path = match dependency_lib {
         Dependency::Simple(..) => {
             return Err(
@@ -181,11 +182,11 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
         }
     };
 
-    let manifest_of_dep = read_manifest(&manifest_dir)?;
+    let mut manifest_of_dep = read_manifest(&manifest_dir)?;
 
     let main_path = {
         let mut code_dir = manifest_dir.clone();
-        code_dir.push(crate::utils::constants::SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest_of_dep.project.entry);
         code_dir
     };
@@ -202,20 +203,18 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
     );
     let mut dep_namespace: Namespace = Default::default();
 
-    // The part below here is just a massive shortcut to get the standard library working
-    if let Some(ref deps) = manifest_of_dep.dependencies {
-        for (dependency_name, dependency_lib) in deps {
+    if let Some(ref mut deps) = manifest_of_dep.dependencies {
+        for (dependency_name, ref mut dependency_lib) in deps {
             // to do this properly, iterate over list of dependencies make sure there are no
             // circular dependencies
-            //return Err("Unimplemented: dependencies that have dependencies".into());
             compile_dependency_lib(
                 &manifest_dir,
                 dependency_name,
                 dependency_lib,
-                // give it a cloned namespace, which we then merge with this namespace
                 &mut dep_namespace,
                 dependency_graph,
                 silent_mode,
+                offline_mode,
             )?;
         }
     }
@@ -237,15 +236,15 @@ fn compile_dependency_lib<'n, 'source, 'manifest>(
     Ok(())
 }
 
-fn compile_library<'source>(
-    source: &'source str,
+fn compile_library(
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<Namespace<'source>, String> {
-    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
+) -> Result<Namespace, String> {
+    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Library {
             namespace,
@@ -268,40 +267,40 @@ fn compile_library<'source>(
     }
 }
 
-fn compile<'n, 'source>(
-    source: &'source str,
+fn compile(
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'source>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
 ) -> Result<Vec<u8>, String> {
-    let res = core_lang::compile_to_bytecode(source, namespace, build_config, dependency_graph);
+    let res = sway_core::compile_to_bytecode(source, namespace, build_config, dependency_graph);
     match res {
         BytecodeCompilationResult::Success { bytes, warnings } => {
             print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});
-            return Ok(bytes);
+            Ok(bytes)
         }
         BytecodeCompilationResult::Library { warnings } => {
             print_on_success_library(silent_mode, proj_name, warnings);
-            return Ok(vec![]);
+            Ok(vec![])
         }
         BytecodeCompilationResult::Failure { errors, warnings } => {
             print_on_failure(silent_mode, warnings, errors);
-            return Err(format!("Failed to compile {}", proj_name));
+            Err(format!("Failed to compile {}", proj_name))
         }
     }
 }
 
-fn compile_to_asm<'sc>(
-    source: &'sc str,
+fn compile_to_asm(
+    source: Arc<str>,
     proj_name: &str,
-    namespace: &Namespace<'sc>,
+    namespace: &Namespace,
     build_config: BuildConfig,
     dependency_graph: &mut HashMap<String, HashSet<String>>,
     silent_mode: bool,
-) -> Result<FinalizedAsm<'sc>, String> {
-    let res = core_lang::compile_to_asm(source, namespace, build_config, dependency_graph);
+) -> Result<FinalizedAsm, String> {
+    let res = sway_core::compile_to_asm(source, namespace, build_config, dependency_graph);
     match res {
         CompilationResult::Success { asm, warnings } => {
             print_on_success(silent_mode, proj_name, warnings, TreeType::Script {});

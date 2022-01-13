@@ -1,6 +1,6 @@
 # Variables
 
-Variables in Sway are _immutable by default_. This means that, by default, once a variable is declared, its value cannot change. This is one of the ways in which Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.
+Variables in Sway are _immutable by default_. This means that, by default, once a variable is declared, its value cannot change. This is one of how Sway encourages safe programming, and many modern languages have this same default. Let's take a look at variables in detail.
 
 ## Declaring a Variable
 
@@ -16,7 +16,7 @@ Great! We have just declared a variable, `foo`. What do we know about `foo`?
 1. Its value is `5`.
 1. Its type is `u64`, a 64-bit unsigned integer.
 
-Wait, what? `u64`? What's that cryptic syntax about? See the section [Types](./Types.md) for more details on that. For now, just know that is the default numeric type.
+`u64` is the default numeric type, and represents a 64-bit unsigned integer. See the section [Built-in Types](./built_in_types.md) for more details.
 
 We can also make a mutable variable. Let's take a look:
 
@@ -25,7 +25,7 @@ let mut foo = 5;
 foo = 6;
 ```
 
-Now, `foo` is mutable, and the reassignment to the number `6` is valid. That is, we are allowed to _mutate_ the variable `foo` in order to change its value.
+Now, `foo` is mutable, and the reassignment to the number `6` is valid. That is, we are allowed to _mutate_ the variable `foo` to change its value.
 
 ## Type annotations
 
@@ -35,7 +35,7 @@ A variable declaration can contain a _type annotation_. A type annotation serves
 let foo: u32 = 5;
 ```
 
-We have just declared the _type_ of the variable `foo` as a `u32`, which is an unsigned 32 bit integer. Let's take a look at a few other type annotations:
+We have just declared the _type_ of the variable `foo` as a `u32`, which is an unsigned 32-bit integer. Let's take a look at a few other type annotations:
 
 ```sway
 let bar: str[4] = "sway";

@@ -1,3 +1,0 @@
-library core;
-
-dep ops;

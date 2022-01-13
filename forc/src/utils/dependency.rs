@@ -1,16 +1,18 @@
-use crate::utils::constants;
 use crate::utils::manifest::Manifest;
 use anyhow::{anyhow, bail, Context, Result};
 use curl::easy::Easy;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::{
     collections::HashMap,
     fs,
     io::Cursor,
     path::{Path, PathBuf},
 };
+use sway_utils::constants;
 use tar::Archive;
 
 // A collection of remote dependency related functions
@@ -102,13 +104,18 @@ pub fn download_github_dep(
         Some(p) => p.to_str().unwrap().to_owned(),
     };
 
+    // hash the dep name into a number to avoid bad characters
+    let mut s = DefaultHasher::new();
+    dep_name.hash(&mut s);
+    let hashed_dep_name = s.finish().to_string();
+
     // Version tag takes precedence over branch reference.
     let out_dir = match &version {
         Some(v) => PathBuf::from(format!(
             "{}/{}/{}/{}",
             home_dir,
             constants::FORC_DEPENDENCIES_DIRECTORY,
-            dep_name,
+            hashed_dep_name,
             v
         )),
         // If no version specified, check if a branch was specified
@@ -117,7 +124,7 @@ pub fn download_github_dep(
                 "{}/{}/{}/{}",
                 home_dir,
                 constants::FORC_DEPENDENCIES_DIRECTORY,
-                dep_name,
+                hashed_dep_name,
                 b
             )),
             // If no version and no branch, use default
@@ -125,7 +132,7 @@ pub fn download_github_dep(
                 "{}/{}/{}/default",
                 home_dir,
                 constants::FORC_DEPENDENCIES_DIRECTORY,
-                dep_name
+                hashed_dep_name
             )),
         },
     };
@@ -158,7 +165,10 @@ pub fn download_github_dep(
 
     let github_api_url = build_github_repo_api_url(repo_base_url, branch, version);
 
-    println!("Downloading {:?} into {:?}", dep_name, out_dir);
+    let _ = crate::utils::helpers::println_green(&format!(
+        "  Downloading {:?} ({:?})",
+        dep_name, out_dir
+    ));
 
     match download_tarball(&github_api_url, &out_dir) {
         Ok(downloaded_dir) => Ok(downloaded_dir),

@@ -1,71 +1,31 @@
-use super::constants::{SRC_DIR, SWAY_EXTENSION};
 use super::manifest::Manifest;
 use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
-use core_lang::{CompileError, CompileWarning, TreeType};
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::{fs, str};
+use std::str;
+use std::sync::Arc;
+use sway_core::{CompileError, CompileWarning, TreeType};
+use sway_utils::constants;
 use termcolor::{self, Color as TermColor, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
-    Some(OsStr::new(SWAY_EXTENSION)) == res
+    Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
-pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
-    let mut files = vec![];
-    let mut dir_entries = vec![path];
-
-    while let Some(next_dir) = dir_entries.pop() {
-        if let Ok(read_dir) = fs::read_dir(next_dir) {
-            for entry in read_dir.filter_map(|res| res.ok()) {
-                let path = entry.path();
-
-                if path.is_dir() {
-                    dir_entries.push(path);
-                } else if is_sway_file(&path) {
-                    files.push(path)
-                }
-            }
-        }
-    }
-
-    files
-}
-
-// Continually go up in the file tree until a manifest (Forc.toml) is found.
-pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    let mut path = std::fs::canonicalize(starter_path).ok()?;
-    let empty_path = PathBuf::from("/");
-    while path != empty_path {
-        path.push(crate::utils::constants::MANIFEST_FILE_NAME);
-        if path.exists() {
-            path.pop();
-            return Some(path);
-        } else {
-            path.pop();
-            path.pop();
-        }
-    }
-    None
-}
-
-pub fn find_main_path(manifest_dir: &PathBuf, manifest: &Manifest) -> PathBuf {
-    let mut code_dir = manifest_dir.clone();
-    code_dir.push(crate::utils::constants::SRC_DIR);
+pub fn find_main_path(manifest_dir: &Path, manifest: &Manifest) -> PathBuf {
+    let mut code_dir = manifest_dir.to_path_buf();
+    code_dir.push(constants::SRC_DIR);
     code_dir.push(&manifest.project.entry);
     code_dir
 }
 
-pub fn find_file_name<'sc>(
-    manifest_dir: &'sc PathBuf,
-    main_path: &'sc PathBuf,
-) -> Result<&'sc Path, String> {
-    let mut file_path = manifest_dir.clone();
+pub fn find_file_name<'sc>(manifest_dir: &Path, main_path: &'sc Path) -> Result<&'sc Path, String> {
+    let mut file_path = manifest_dir.to_path_buf();
     file_path.pop();
     let file_name = match main_path.strip_prefix(file_path.clone()) {
         Ok(o) => o,
@@ -77,7 +37,7 @@ pub fn find_file_name<'sc>(
 pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
     let manifest_path = {
         let mut man = PathBuf::from(manifest_dir);
-        man.push(crate::utils::constants::MANIFEST_FILE_NAME);
+        man.push(constants::MANIFEST_FILE_NAME);
         man
     };
     let manifest_path_str = format!("{:?}", manifest_path);
@@ -96,29 +56,25 @@ pub fn read_manifest(manifest_dir: &Path) -> Result<Manifest, String> {
     }
 }
 
-pub fn get_main_file(
-    manifest_of_dep: &Manifest,
-    manifest_dir: &Path,
-) -> Result<&'static mut String, String> {
+pub fn get_main_file(manifest_of_dep: &Manifest, manifest_dir: &Path) -> Result<Arc<str>, String> {
     let main_path = {
         let mut code_dir = PathBuf::from(manifest_dir);
-        code_dir.push(SRC_DIR);
+        code_dir.push(constants::SRC_DIR);
         code_dir.push(&manifest_of_dep.project.entry);
         code_dir
     };
 
     // some hackery to get around lifetimes for now, until the AST returns a non-lifetime-bound AST
     let main_file = std::fs::read_to_string(&main_path).map_err(|e| e.to_string())?;
-    let main_file = Box::new(main_file);
-    let main_file: &'static mut String = Box::leak(main_file);
+    let main_file = Arc::from(main_file);
     Ok(main_file)
 }
 
-pub fn print_on_success<'sc>(
+pub fn print_on_success(
     silent_mode: bool,
     proj_name: &str,
     warnings: Vec<CompileWarning>,
-    tree_type: TreeType<'sc>,
+    tree_type: TreeType,
 ) {
     let type_str = match tree_type {
         TreeType::Script {} => "script",
@@ -128,7 +84,7 @@ pub fn print_on_success<'sc>(
     };
 
     if !silent_mode {
-        warnings.iter().for_each(|warning| format_warning(warning));
+        warnings.iter().for_each(format_warning);
     }
 
     if warnings.is_empty() {
@@ -148,13 +104,9 @@ pub fn print_on_success<'sc>(
     }
 }
 
-pub fn print_on_success_library<'sc>(
-    silent_mode: bool,
-    proj_name: &str,
-    warnings: Vec<CompileWarning>,
-) {
+pub fn print_on_success_library(silent_mode: bool, proj_name: &str, warnings: Vec<CompileWarning>) {
     if !silent_mode {
-        warnings.iter().for_each(|warning| format_warning(warning));
+        warnings.iter().for_each(format_warning);
     }
 
     if warnings.is_empty() {
@@ -181,7 +133,7 @@ pub fn print_on_failure(
     let e_len = errors.len();
 
     if !silent_mode {
-        warnings.iter().for_each(|warning| format_warning(warning));
+        warnings.iter().for_each(format_warning);
         errors.into_iter().for_each(|error| format_err(&error));
     }
 
@@ -253,7 +205,7 @@ fn println_with_color(txt: &str, color: TermColor, stream: StandardStream) -> io
     Ok(())
 }
 
-fn format_err(err: &core_lang::CompileError) {
+fn format_err(err: &sway_core::CompileError) {
     let input = err.internal_span().input();
     let path = err.path();
 
@@ -289,7 +241,7 @@ fn format_err(err: &core_lang::CompileError) {
     eprintln!("{}", DisplayList::from(snippet))
 }
 
-fn format_warning(err: &core_lang::CompileWarning) {
+fn format_warning(err: &sway_core::CompileWarning) {
     let input = err.span.input();
     let path = err.path();
 

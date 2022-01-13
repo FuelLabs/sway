@@ -1,14 +1,18 @@
 [workspace]
 resolver = "2"
 members = [
-    "core-types",
-    "core_lang",
     "docstrings",
     "forc",
-    "formatter",
     "parser",
+    "sig-gen-util",
+    "sway-core",
+    "sway-fmt",
+    "sway-ir",
     "sway-server",
-    "test"]
+    "sway-types",
+    "sway-utils",
+    "test"
+]
 
 [profile.dev.package.sway-server]
 debug = 2

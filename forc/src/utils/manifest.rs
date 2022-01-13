@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
-use super::constants::DEFAULT_NODE_URL;
+use sway_utils::constants::DEFAULT_NODE_URL;
 
 // using https://github.com/rust-lang/cargo/blob/master/src/cargo/util/toml/mod.rs as the source of
 // implementation strategy
@@ -158,14 +158,14 @@ fn default_url() -> String {
 fn try_parse() {
     println!(
         "{:#?}",
-        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj".into())).unwrap()
+        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj")).unwrap()
     )
 }
 
 #[test]
 fn test_print_tx_inputs() {
     let mut default_manifest: Manifest =
-        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj".into())).unwrap();
+        toml::from_str::<Manifest>(&super::defaults::default_manifest("test_proj")).unwrap();
 
     let input1 = TxInput {
         contract_id: Some(

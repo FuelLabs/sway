@@ -1,9 +1,10 @@
 use crate::cli::{BuildCommand, FormatCommand};
 use crate::ops::forc_build;
-use crate::utils::helpers::{find_manifest_dir, get_sway_files, println_green, println_red};
-use formatter::get_formatted_data;
+use crate::utils::helpers::{println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
-use std::{fmt, fs, io, path::Path};
+use std::{fmt, fs, io, path::Path, sync::Arc};
+use sway_fmt::get_formatted_data;
+use sway_utils::{find_manifest_dir, get_sway_files};
 
 pub fn format(command: FormatCommand) -> Result<(), FormatError> {
     let build_command = BuildCommand {
@@ -35,10 +36,11 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
             for file in files {
                 if let Ok(file_content) = fs::read_to_string(&file) {
                     // todo: get tab_size from Manifest file
-                    match get_formatted_data(&file_content, 4) {
+                    let file_content: Arc<str> = Arc::from(file_content);
+                    match get_formatted_data(file_content.clone(), 4) {
                         Ok((_, formatted_content)) => {
                             if command.check {
-                                if file_content != formatted_content {
+                                if *file_content != *formatted_content {
                                     let changeset = diff_lines(&file_content, &formatted_content);
 
                                     println!("\n{:?}\n", file);
@@ -100,14 +102,14 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
             if command.check {
                 if contains_edits {
                     // One or more files are not formatted, exit with error
-                    std::process::exit(1);
+                    Err("Files contain formatting violations.".into())
                 } else {
                     // All files are formatted, exit cleanly
-                    std::process::exit(0);
+                    Ok(())
                 }
+            } else {
+                Ok(())
             }
-
-            Ok(())
         }
         _ => Err("Manifest file does not exist".into()),
     }

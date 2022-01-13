@@ -1,0 +1,54 @@
+// Based on this Sway:
+//
+// script;
+//
+// fn a(b: bool) -> u64 {
+//     let x = 10;
+//     if b {
+//         x
+//     } else {
+//         1
+//     }
+// }
+//
+// fn main() -> u64 {
+//     let mut x = 0;
+//     x = a(true);
+//     x
+// }
+
+script script {
+    fn a(b: bool) -> u64 {
+        local ptr u64 x
+
+        entry:
+        v0 = const u64 10
+        store v0, ptr u64 x
+        cbr b, block0, block1
+
+        block0:
+        v1 = load ptr u64 x
+        br block2
+
+        block1:
+        v2 = const u64 1
+        br block2
+
+        block2:
+        v3 = phi(block0: v1, block1: v2)
+        ret u64 v3
+    }
+
+    fn main() -> u64 {
+        local ptr u64 x
+
+        entry:
+        v0 = const u64 0
+        store v0, ptr u64 x
+        v1 = const bool true
+        v2 = call a(v1)
+        store v2, ptr u64 x
+        v3 = load ptr u64 x
+        ret u64 v3
+    }
+}

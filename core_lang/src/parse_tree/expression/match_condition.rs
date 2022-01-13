@@ -1,7 +1,7 @@
 use super::Expression;
 
 #[derive(Debug, Clone)]
-pub(crate) enum MatchCondition<'sc> {
+pub(crate) enum MatchCondition {
     CatchAll,
-    Expression(Box<Expression<'sc>>),
+    Expression(Box<Expression>),
 }

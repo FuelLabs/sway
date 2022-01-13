@@ -4,7 +4,7 @@ use either::Either;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
-pub(crate) struct TypedMatchBranch<'sc> {
-    condition: TypedMatchCondition<'sc>,
-    result: Either<TypedCodeBlock<'sc>, TypedExpression<'sc>>,
+pub(crate) struct TypedMatchBranch {
+    condition: TypedMatchCondition,
+    result: Either<TypedCodeBlock, TypedExpression>,
 }

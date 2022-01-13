@@ -34,12 +34,12 @@ fn create_symbol_info(token: &Token, url: Url) -> SymbolInformation {
 
 fn get_kind(token_type: &TokenType) -> SymbolKind {
     match token_type {
-        TokenType::Enum => SymbolKind::Enum,
-        TokenType::FunctionDeclaration(_) | &TokenType::FunctionApplication => SymbolKind::Function,
-        TokenType::Library => SymbolKind::Module,
-        TokenType::Struct(_) => SymbolKind::Struct,
-        TokenType::Variable(_) => SymbolKind::Variable,
-        TokenType::Trait(_) => SymbolKind::Interface,
-        _ => SymbolKind::Unknown,
+        TokenType::Enum => SymbolKind::ENUM,
+        TokenType::FunctionDeclaration(_) | &TokenType::FunctionApplication => SymbolKind::FUNCTION,
+        TokenType::Library => SymbolKind::MODULE,
+        TokenType::Struct(_) => SymbolKind::STRUCT,
+        TokenType::Variable(_) => SymbolKind::VARIABLE,
+        TokenType::Trait(_) => SymbolKind::INTERFACE,
+        _ => SymbolKind::NULL, // TODO SymbolKind::UNKNOWN was removed in https://github.com/gluon-lang/lsp-types/pull/219
     }
 }

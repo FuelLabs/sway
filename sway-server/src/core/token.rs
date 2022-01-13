@@ -3,10 +3,9 @@ use crate::{
     core::token_type::{get_function_details, get_struct_details},
     utils::common::extract_var_body,
 };
-use core_lang::{
-    AstNode, AstNodeContent, Declaration, Expression, Ident, Span, VariableDeclaration,
-};
 use lspower::lsp::{Position, Range};
+use sway_core::{AstNode, AstNodeContent, Declaration, Expression, VariableDeclaration};
+use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
 pub struct Token {
@@ -58,11 +57,11 @@ impl Token {
 
     pub fn from_variable(var_dec: &VariableDeclaration) -> Self {
         let ident = &var_dec.name;
-        let name = ident.primary_name;
+        let name = ident.as_str();
         let var_body = extract_var_body(var_dec);
 
         Token::new(
-            &ident.span,
+            ident.span(),
             name.into(),
             TokenType::Variable(VariableDetails {
                 is_mutable: var_dec.is_mutable,
@@ -72,7 +71,7 @@ impl Token {
     }
 
     pub fn from_ident(ident: &Ident, token_type: TokenType) -> Self {
-        Token::new(&ident.span, ident.primary_name.into(), token_type)
+        Token::new(ident.span(), ident.as_str().into(), token_type)
     }
 
     pub fn from_span(span: Span, token_type: TokenType) -> Self {
@@ -80,7 +79,7 @@ impl Token {
     }
 
     pub fn is_initial_declaration(&self) -> bool {
-        matches!(
+        !matches!(
             self.token_type,
             TokenType::Reassignment | TokenType::FunctionApplication
         )
