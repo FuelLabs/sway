@@ -1,0 +1,28 @@
+script script {
+    fn main() -> () {
+        local ptr { u64, { () | () | u64 } } lunch
+
+        entry:
+        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
+        v1 = const u64 1
+        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0
+        store v2, ptr { u64, { () | () | u64 } } lunch
+        v3 = get_ptr ptr { u64, { () | () | u64 } } lunch
+        v4 = const bool false
+        br block0
+
+        block0:
+        v5 = phi(entry: v4)
+        v6 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
+        v7 = const u64 2
+        v8 = insert_value v6, { u64, { () | () | u64 } }, v7, 0
+        v9 = const u64 3
+        v10 = insert_value v8, { u64, { () | () | u64 } }, v9, 1
+        v4 = const bool false
+        br block1
+
+        block1:
+        v11 = phi(block0: v4)
+        ret () v11
+    }
+}

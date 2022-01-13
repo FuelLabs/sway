@@ -1,0 +1,20 @@
+script script {
+    fn main() -> bool {
+        local ptr b256 a
+
+        entry:
+        v0 = const b256 0x0202020202020202020202020202020202020202020202020202020202020202
+        store v0, ptr b256 a
+        v1 = load ptr b256 a
+        v2 = const b256 0x0303030303030303030303030303030303030303030303030303030303030303
+        v3 = asm(lhs: v1, rhs: v2, sz, res) -> res {
+            addi   sz zero i32
+            meq    res lhs rhs sz
+        }
+        br block0
+
+        block0:
+        v4 = phi(entry: v3)
+        ret bool v4
+    }
+}
