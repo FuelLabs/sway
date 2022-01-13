@@ -13,7 +13,6 @@ mod ident;
 pub mod parse_tree;
 mod parser;
 pub mod semantic_analysis;
-mod span;
 mod style;
 pub mod type_engine;
 
@@ -32,13 +31,12 @@ use std::sync::Arc;
 pub use semantic_analysis::TreeType;
 pub use semantic_analysis::TypedParseTree;
 pub mod types;
-pub(crate) mod utils;
 pub use crate::parse_tree::{Declaration, Expression, UseStatement, WhileLoop};
 
-pub use crate::span::Span;
 pub use error::{CompileError, CompileResult, CompileWarning};
 pub use ident::Ident;
 pub use semantic_analysis::{Namespace, TypedDeclaration, TypedFunctionDeclaration};
+pub use sway_types::span;
 pub use type_engine::TypeInfo;
 
 /// Represents a parsed, but not yet type-checked, Sway program.

@@ -1,8 +1,7 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::{Ident, TypeInfo};
+use crate::{build_config::BuildConfig, error::*, parser::Rule, Ident, TypeInfo};
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 use super::Expression;

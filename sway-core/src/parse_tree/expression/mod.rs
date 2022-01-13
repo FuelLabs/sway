@@ -1,9 +1,13 @@
-use crate::build_config::BuildConfig;
-use crate::parse_tree::{CallPath, Literal};
-use crate::Span;
-use crate::{error::*, AstNode, AstNodeContent, Declaration, VariableDeclaration};
-use crate::{parser::Rule, type_engine::TypeInfo};
-use crate::{CodeBlock, Ident};
+use crate::{
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::{CallPath, Literal},
+    parser::Rule,
+    type_engine::TypeInfo,
+    AstNode, AstNodeContent, CodeBlock, Declaration, Ident, VariableDeclaration,
+};
+
+use sway_types::{join_spans, Span};
 
 use either::Either;
 use pest;
@@ -17,7 +21,6 @@ mod matcher;
 mod method_name;
 mod scrutinee;
 mod unary_op;
-use crate::utils::join_spans;
 pub(crate) use asm::*;
 pub(crate) use match_branch::MatchBranch;
 pub(crate) use match_condition::CatchAll;

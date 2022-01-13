@@ -1,8 +1,7 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::Ident;
+use crate::{build_config::BuildConfig, error::*, parser::Rule, Ident};
+
+use sway_types::span::{join_spans, Span};
+
 use pest::iterators::Pair;
 
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
@@ -48,9 +47,9 @@ impl CallPath {
                 .prefixes
                 .iter()
                 .fold(self.prefixes[0].span().clone(), |acc, sp| {
-                    crate::utils::join_spans(acc, sp.span().clone())
+                    join_spans(acc, sp.span().clone())
                 });
-            crate::utils::join_spans(prefixes_span, self.suffix.span().clone())
+            join_spans(prefixes_span, self.suffix.span().clone())
         }
     }
     pub(crate) fn parse_from_pair(

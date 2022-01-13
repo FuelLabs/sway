@@ -1,8 +1,6 @@
-use crate::span::Span;
-use crate::type_engine::*;
+use crate::{type_engine::*, Ident, TypeParameter};
 
-use crate::Ident;
-use crate::TypeParameter;
+use sway_types::span::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedFunctionParameter {

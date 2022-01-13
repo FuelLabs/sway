@@ -1,6 +1,9 @@
 use crate::{
-    error::*, ident::Ident, parse_tree::Expression, parser::Rule, type_engine::*, BuildConfig, Span,
+    error::*, ident::Ident, parse_tree::Expression, parser::Rule, type_engine::*, BuildConfig,
 };
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]

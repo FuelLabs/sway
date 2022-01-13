@@ -1,6 +1,6 @@
-use crate::parse_tree::Expression;
-use crate::Span;
-use crate::{type_engine::TypeInfo, Ident};
+use crate::{parse_tree::Expression, type_engine::TypeInfo, Ident};
+
+use sway_types::span::Span;
 
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {

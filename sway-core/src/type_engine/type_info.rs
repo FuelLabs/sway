@@ -1,10 +1,14 @@
 use super::*;
+
 use crate::{
     build_config::BuildConfig,
     parse_tree::OwnedCallPath,
     semantic_analysis::ast_node::{OwnedTypedEnumVariant, OwnedTypedStructField},
-    Rule, Span, TypeParameter,
+    Rule, TypeParameter,
 };
+
+use sway_types::span::Span;
+
 use derivative::Derivative;
 
 use pest::iterators::Pair;

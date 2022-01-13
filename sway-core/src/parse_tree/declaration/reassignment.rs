@@ -1,9 +1,14 @@
-use crate::build_config::BuildConfig;
-use crate::error::{err, ok, CompileError, CompileResult};
-use crate::parse_tree::Expression;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::{parse_array_index, Ident};
+use crate::{
+    build_config::BuildConfig,
+    error::{err, ok, CompileError, CompileResult},
+    parse_array_index,
+    parse_tree::Expression,
+    parser::Rule,
+    Ident,
+};
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]

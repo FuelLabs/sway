@@ -2,8 +2,10 @@ use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     error::{err, ok},
-    BuildConfig, CallPath, CompileError, CompileResult, Ident, Literal, Rule, Span,
+    BuildConfig, CallPath, CompileError, CompileResult, Ident, Literal, Rule,
 };
+
+use sway_types::span::Span;
 
 use pest::iterators::Pair;
 

@@ -1,12 +1,15 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parse_tree::{declaration::TypeParameter, Visibility};
-use crate::span::Span;
-use crate::style::is_snake_case;
-use crate::type_engine::TypeInfo;
-use crate::{CodeBlock, Ident, Rule};
+use crate::{
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::{declaration::TypeParameter, Visibility},
+    style::is_snake_case,
+    type_engine::TypeInfo,
+    CodeBlock, Ident, Rule,
+};
+
+use sway_types::{span::Span, Function, Property};
+
 use pest::iterators::Pair;
-use sway_types::{Function, Property};
 
 mod purity;
 pub use purity::Purity;

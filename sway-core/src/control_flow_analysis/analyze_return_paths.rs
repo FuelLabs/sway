@@ -2,20 +2,21 @@
 //! execution.
 
 use super::*;
-use super::{ControlFlowGraph, EntryPoint, ExitPoint, Graph};
-use crate::ident::Ident;
-use crate::parse_tree::CallPath;
-use crate::semantic_analysis::{
-    ast_node::{
-        TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
-        TypedReassignment, TypedWhileLoop,
+use crate::{
+    error::*,
+    ident::Ident,
+    parse_tree::CallPath,
+    semantic_analysis::{
+        ast_node::{
+            TypedCodeBlock, TypedDeclaration, TypedExpression, TypedFunctionDeclaration,
+            TypedReassignment, TypedWhileLoop,
+        },
+        TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
-    TypedAstNode, TypedAstNodeContent,
+    type_engine::{resolve_type, TypeInfo},
 };
-use crate::span::Span;
-use crate::type_engine::{resolve_type, TypeInfo};
+use sway_types::span::Span;
 
-use crate::{error::*, semantic_analysis::TypedParseTree};
 use petgraph::prelude::NodeIndex;
 
 impl ControlFlowGraph {

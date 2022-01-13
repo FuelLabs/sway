@@ -1,25 +1,22 @@
 #![allow(warnings)]
 
 use super::*;
-use crate::semantic_analysis::ast_node::{OwnedTypedEnumVariant, TypedEnumVariant};
-use crate::span::Span;
 use crate::{
     asm_lang::*,
     error::*,
     ident::Ident,
-    parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, UnaryOp},
-    type_engine::{look_up_type_id, TypeId},
-};
-use crate::{
-    parse_tree::Literal,
+    parse_tree::{AsmExpression, AsmOp, AsmRegisterDeclaration, CallPath, Literal, UnaryOp},
     semantic_analysis::{
         ast_node::{
-            OwnedTypedStructField, TypedAsmRegisterDeclaration, TypedCodeBlock,
-            TypedExpressionVariant, TypedStructExpressionField, TypedStructField,
+            OwnedTypedEnumVariant, OwnedTypedStructField, TypedAsmRegisterDeclaration,
+            TypedCodeBlock, TypedEnumVariant, TypedExpressionVariant, TypedStructExpressionField,
+            TypedStructField,
         },
         TypedExpression,
     },
+    type_engine::{look_up_type_id, TypeId},
 };
+use sway_types::span::Span;
 
 pub(crate) fn convert_subfield_expression_to_asm(
     span: &Span,
@@ -54,7 +51,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
     // of that address
     // step 1
     // TODO(static span): str should be ident below
-    let span = crate::Span {
+    let span = sway_types::span::Span {
         span: pest::Span::new(
             "TODO(static span): use Idents instead of Strings".into(),
             0,
@@ -108,7 +105,7 @@ pub(crate) fn convert_subfield_expression_to_asm(
             "Accessing a subfield that is not no the struct would be caught during type checking",
         );
 
-    let span = crate::Span {
+    let span = sway_types::span::Span {
         span: pest::Span::new("TODO(static span): use span_for_this_field".into(), 0, 0).unwrap(),
         path: None,
     };

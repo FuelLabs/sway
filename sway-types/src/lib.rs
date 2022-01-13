@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
+pub mod span;
+pub use span::*;
+
 pub type Id = [u8; Bytes32::LEN];
 pub type Contract = [u8; ContractId::LEN];
 

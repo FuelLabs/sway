@@ -1,19 +1,18 @@
-use crate::build_config::BuildConfig;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::type_engine::*;
-
-use crate::Ident;
-use crate::Namespace;
 use crate::{
+    build_config::BuildConfig,
     error::*,
-    semantic_analysis::ast_node::{declaration::insert_type_parameters, TypedEnumDeclaration},
-};
-use crate::{
     parse_tree::{declaration::TypeParameter, Visibility},
-    semantic_analysis::ast_node::TypedEnumVariant,
+    parser::Rule,
+    semantic_analysis::ast_node::{
+        declaration::insert_type_parameters, TypedEnumDeclaration, TypedEnumVariant,
+    },
     style::is_upper_camel_case,
+    type_engine::*,
+    Ident, Namespace,
 };
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]

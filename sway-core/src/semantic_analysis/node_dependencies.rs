@@ -2,10 +2,12 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    error::*, ident::Ident, parse_tree::Scrutinee, parse_tree::*, span::Span,
-    type_engine::IntegerBits, AstNode, AstNodeContent, CodeBlock, Declaration, Expression,
-    ReturnStatement, TypeInfo, WhileLoop,
+    error::*, ident::Ident, parse_tree::Scrutinee, parse_tree::*, type_engine::IntegerBits,
+    AstNode, AstNodeContent, CodeBlock, Declaration, Expression, ReturnStatement, TypeInfo,
+    WhileLoop,
 };
+
+use sway_types::span::Span;
 
 // -------------------------------------------------------------------------------------------------
 /// Take a list of nodes and reorder them so that they may be semantically analysed without any

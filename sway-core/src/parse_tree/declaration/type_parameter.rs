@@ -1,6 +1,10 @@
-use crate::build_config::BuildConfig;
-use crate::span::Span;
-use crate::{error::*, type_engine::*, CompileError, Ident, Rule, TypedDeclaration};
+use crate::{
+    build_config::BuildConfig, error::*, type_engine::*, CompileError, Ident, Rule,
+    TypedDeclaration,
+};
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 use std::convert::From;
 

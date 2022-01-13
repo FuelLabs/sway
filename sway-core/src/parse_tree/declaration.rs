@@ -22,10 +22,12 @@ pub use storage::*;
 pub(crate) use type_parameter::*;
 pub use variable::*;
 
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parser::Rule;
-use crate::*;
+use crate::{
+    build_config::BuildConfig, error::*, parse_tree::Expression, parser::Rule, Ident, TypeInfo,
+};
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]

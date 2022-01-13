@@ -1,11 +1,17 @@
-use super::{FunctionDeclaration, FunctionParameter, Visibility};
-use crate::build_config::BuildConfig;
-use crate::parse_tree::TypeParameter;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::style::{is_snake_case, is_upper_camel_case};
-use crate::type_engine::TypeInfo;
-use crate::{error::*, Ident};
+use super::{FunctionDeclaration, FunctionParameter};
+
+use crate::{
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::{TypeParameter, Visibility},
+    parser::Rule,
+    style::{is_snake_case, is_upper_camel_case},
+    type_engine::TypeInfo,
+    Ident,
+};
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
