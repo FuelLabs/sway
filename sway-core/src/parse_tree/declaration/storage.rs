@@ -1,6 +1,13 @@
 use crate::{
-    error::*, ident::Ident, parse_tree::Expression, parser::Rule, type_engine::*, BuildConfig, Span,
+    error::*,
+    parse_tree::{ident, Expression},
+    parser::Rule,
+    type_engine::*,
+    BuildConfig,
 };
+
+use sway_types::{ident::Ident, span::Span};
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -35,7 +42,7 @@ impl StorageField {
         let initializer = iter.next().expect("guaranteed by grammar");
 
         let name = check!(
-            Ident::parse_from_pair(name, conf),
+            ident::parse_from_pair(name, conf),
             return err(warnings, errors),
             warnings,
             errors

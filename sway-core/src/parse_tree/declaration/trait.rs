@@ -1,11 +1,16 @@
-use super::{FunctionDeclaration, FunctionParameter, Visibility};
-use crate::build_config::BuildConfig;
-use crate::parse_tree::TypeParameter;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::style::{is_snake_case, is_upper_camel_case};
-use crate::type_engine::TypeInfo;
-use crate::{error::*, Ident};
+use super::{FunctionDeclaration, FunctionParameter};
+
+use crate::{
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::{ident, TypeParameter, Visibility},
+    parser::Rule,
+    style::{is_snake_case, is_upper_camel_case},
+    type_engine::TypeInfo,
+};
+
+use sway_types::{ident::Ident, span::Span};
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -37,7 +42,7 @@ impl TraitDeclaration {
             };
         let name_pair = trait_parts.next().unwrap();
         let name = check!(
-            Ident::parse_from_pair(name_pair.clone(), config),
+            ident::parse_from_pair(name_pair.clone(), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -134,7 +139,7 @@ impl TraitFn {
             path: path.clone(),
         };
         let name = check!(
-            Ident::parse_from_pair(name, config),
+            ident::parse_from_pair(name, config),
             return err(warnings, errors),
             warnings,
             errors

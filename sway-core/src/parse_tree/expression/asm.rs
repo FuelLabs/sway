@@ -1,8 +1,7 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::{Ident, TypeInfo};
+use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule, TypeInfo};
+
+use sway_types::{ident::Ident, span::Span};
+
 use pest::iterators::Pair;
 
 use super::Expression;
@@ -139,7 +138,7 @@ impl AsmOp {
         };
         let mut iter = pair.into_inner();
         let opcode = check!(
-            Ident::parse_from_pair(iter.next().unwrap(), config),
+            ident::parse_from_pair(iter.next().unwrap(), config),
             return err(warnings, errors),
             warnings,
             errors
@@ -193,7 +192,7 @@ impl AsmRegisterDeclaration {
             assert_eq!(pair.as_rule(), Rule::asm_register_declaration);
             let mut iter = pair.into_inner();
             let reg_name = check!(
-                Ident::parse_from_pair(iter.next().unwrap(), config),
+                ident::parse_from_pair(iter.next().unwrap(), config),
                 return err(warnings, errors),
                 warnings,
                 errors,

@@ -1,17 +1,19 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parser::Rule;
-use crate::span;
-use crate::type_engine::IntegerBits;
-use crate::types::ResolvedType;
-use crate::CompileError;
-use crate::TypeInfo;
+use crate::{
+    build_config::BuildConfig, error::*, parser::Rule, type_engine::IntegerBits,
+    types::ResolvedType, CompileError, TypeInfo,
+};
+
+use sway_types::span;
+
 use pest::iterators::Pair;
 use pest::Span;
-use std::convert::TryInto;
-use std::num::{IntErrorKind, ParseIntError};
-use std::path::PathBuf;
-use std::sync::Arc;
+
+use std::{
+    convert::TryInto,
+    num::{IntErrorKind, ParseIntError},
+    path::PathBuf,
+    sync::Arc,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Literal {

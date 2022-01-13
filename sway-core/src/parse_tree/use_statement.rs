@@ -1,8 +1,7 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::Ident;
-use crate::Rule;
+use crate::{build_config::BuildConfig, error::*, parse_tree::ident, Rule};
 use pest::iterators::Pair;
+
+use sway_types::ident::Ident;
 
 #[derive(Debug, Clone)]
 pub enum ImportType {
@@ -66,7 +65,7 @@ fn handle_import_path(
     if last_item.as_rule() == Rule::alias {
         let item = last_item.into_inner().nth(1).unwrap();
         let alias_parsed = check!(
-            Ident::parse_from_pair(item, config),
+            ident::parse_from_pair(item, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -78,7 +77,7 @@ fn handle_import_path(
     for item in import_path_vec.into_iter() {
         if item.as_rule() == Rule::ident {
             import_path_buf.push(check!(
-                Ident::parse_from_pair(item, config),
+                ident::parse_from_pair(item, config),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -98,7 +97,7 @@ fn handle_import_path(
             // kind of a base case here
             if item.as_rule() == Rule::ident {
                 let import_type = ImportType::Item(check!(
-                    Ident::parse_from_pair(item.clone(), config),
+                    ident::parse_from_pair(item.clone(), config),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -111,7 +110,7 @@ fn handle_import_path(
                     let next_item = next.clone().unwrap();
                     let alias_item = next_item.into_inner().nth(1).unwrap();
                     let alias_parsed = check!(
-                        Ident::parse_from_pair(alias_item, config),
+                        ident::parse_from_pair(alias_item, config),
                         continue,
                         warnings,
                         errors
@@ -152,7 +151,7 @@ fn handle_import_path(
         let import_type = match last_item.as_rule() {
             Rule::star => ImportType::Star,
             Rule::ident => ImportType::Item(check!(
-                Ident::parse_from_pair(last_item, config),
+                ident::parse_from_pair(last_item, config),
                 return err(warnings, errors),
                 warnings,
                 errors

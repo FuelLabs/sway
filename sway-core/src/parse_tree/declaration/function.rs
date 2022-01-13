@@ -1,12 +1,15 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parse_tree::{declaration::TypeParameter, Visibility};
-use crate::span::Span;
-use crate::style::is_snake_case;
-use crate::type_engine::TypeInfo;
-use crate::{CodeBlock, Ident, Rule};
+use crate::{
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::{declaration::TypeParameter, ident, Visibility},
+    style::is_snake_case,
+    type_engine::TypeInfo,
+    CodeBlock, Rule,
+};
+
+use sway_types::{ident::Ident, span::Span, Function, Property};
+
 use pest::iterators::Pair;
-use sway_types::{Function, Property};
 
 mod purity;
 pub use purity::Purity;
@@ -57,7 +60,7 @@ impl FunctionDeclaration {
             path: path.clone(),
         };
         let name = check!(
-            Ident::parse_from_pair(name, config),
+            ident::parse_from_pair(name, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -230,7 +233,7 @@ impl FunctionParameter {
             let mut parts = pair.clone().into_inner();
             let name_pair = parts.next().unwrap();
             let name = check!(
-                Ident::parse_from_pair(name_pair, config),
+                ident::parse_from_pair(name_pair, config),
                 return err(warnings, errors),
                 warnings,
                 errors

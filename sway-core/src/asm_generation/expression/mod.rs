@@ -1,5 +1,4 @@
 use super::*;
-use crate::span::Span;
 use crate::{
     asm_lang::*,
     parse_tree::{CallPath, Literal},
@@ -9,6 +8,7 @@ use crate::{
     },
     type_engine::look_up_type_id,
 };
+use sway_types::span::Span;
 
 mod array;
 mod contract_call;

@@ -1,7 +1,7 @@
 use super::*;
 use crate::concurrent_slab::ConcurrentSlab;
-use crate::Span;
 use lazy_static::lazy_static;
+use sway_types::span::Span;
 
 lazy_static! {
     static ref TYPE_ENGINE: Engine = Engine::default();

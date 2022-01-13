@@ -1,9 +1,13 @@
-use crate::build_config::BuildConfig;
-use crate::error::{err, ok, CompileError, CompileResult};
-use crate::parse_tree::Expression;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::{parse_array_index, Ident};
+use crate::{
+    build_config::BuildConfig,
+    error::{err, ok, CompileError, CompileResult},
+    parse_array_index,
+    parse_tree::{ident, Expression},
+    parser::Rule,
+};
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -108,7 +112,7 @@ impl Reassignment {
                             path: path.clone(),
                         },
                         field_to_access: check!(
-                            Ident::parse_from_pair(name_part, config),
+                            ident::parse_from_pair(name_part, config),
                             continue,
                             warnings,
                             errors
@@ -192,7 +196,7 @@ fn parse_call_item_ensure_only_var(
     let exp = match item.as_rule() {
         Rule::ident => Expression::VariableExpression {
             name: check!(
-                Ident::parse_from_pair(item.clone(), config),
+                ident::parse_from_pair(item.clone(), config),
                 return err(warnings, errors),
                 warnings,
                 errors

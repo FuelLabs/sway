@@ -1,6 +1,6 @@
-use crate::Span;
-
 use super::scrutinee::Scrutinee;
+
+use sway_types::span::Span;
 
 #[derive(Debug, Clone)]
 pub(crate) enum MatchCondition {
