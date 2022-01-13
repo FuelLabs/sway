@@ -156,9 +156,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     if number_of_tests_run == 0 {
         println!(
             "No tests were run. Regex filter \"{}\" filtered out all {} tests.",
-            filter_regex
-                .map(|x| x.to_string())
-                .unwrap_or_default(),
+            filter_regex.map(|x| x.to_string()).unwrap_or_default(),
             total_number_of_tests
         );
     } else {
