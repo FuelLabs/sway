@@ -8,5 +8,6 @@ fn main() -> u64 {
         foo: 1u32,
     };
     let y = bar::Bar::Baz(true);
+    let z = ::bar::Bar::Baz(false);
     x.foo
 }
