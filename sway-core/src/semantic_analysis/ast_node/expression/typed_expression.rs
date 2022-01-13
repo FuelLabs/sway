@@ -902,7 +902,7 @@ impl TypedExpression {
             None => {
                 errors.push(CompileError::StructNotFound {
                     name: call_path.suffix.clone(),
-                    span: span.clone(),
+                    span,
                 });
                 return err(warnings, errors);
             }
