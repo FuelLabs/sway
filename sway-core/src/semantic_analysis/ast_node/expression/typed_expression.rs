@@ -6,9 +6,6 @@ use crate::{
     semantic_analysis::{ast_node::*, Namespace, TypeCheckArguments},
     type_engine::{insert_type, IntegerBits},
 };
-use sway_types::join_spans;
-
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 mod method_application;
@@ -424,124 +421,39 @@ impl TypedExpression {
             warnings,
             errors
         );
-        let TypedFunctionDeclaration {
-            parameters,
-            return_type,
-            body,
-            span,
-            purity,
-            ..
-        } = if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
-            // if this is a generic function, monomorphize its internal types and insert the resulting
-            // declaration into the namespace. Then, use that instead.
-            if decl.type_parameters.is_empty() {
-                decl
+        let typed_function_decl =
+            if let TypedDeclaration::FunctionDeclaration(decl) = function_declaration {
+                // if this is a generic function, monomorphize its internal types and insert the resulting
+                // declaration into the namespace. Then, use that instead.
+                if decl.type_parameters.is_empty() {
+                    decl
+                } else {
+                    check!(
+                        decl.monomorphize(type_arguments, self_type),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
             } else {
-                check!(
-                    decl.monomorphize(type_arguments, self_type),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                )
-            }
-        } else {
-            errors.push(CompileError::NotAFunction {
-                name: name.span().as_str().to_string(),
-                span: name.span(),
-                what_it_is: function_declaration.friendly_name(),
-            });
-            return err(warnings, errors);
-        };
-
-        if opts.purity != purity {
-            errors.push(CompileError::PureCalledImpure { span: name.span() });
-        }
-
-        match arguments.len().cmp(&parameters.len()) {
-            Ordering::Greater => {
-                let arguments_span = arguments.iter().fold(
-                    arguments
-                        .get(0)
-                        .map(|x| x.span())
-                        .unwrap_or_else(|| name.span()),
-                    |acc, arg| join_spans(acc, arg.span()),
-                );
-                errors.push(CompileError::TooManyArgumentsForFunction {
-                    span: arguments_span,
-                    method_name: name.suffix.clone(),
-                    expected: parameters.len(),
-                    received: arguments.len(),
+                errors.push(CompileError::NotAFunction {
+                    name: name.span().as_str().to_string(),
+                    span: name.span(),
+                    what_it_is: function_declaration.friendly_name(),
                 });
-            }
-            Ordering::Less => {
-                let arguments_span = arguments.iter().fold(
-                    arguments
-                        .get(0)
-                        .map(|x| x.span())
-                        .unwrap_or_else(|| name.span()),
-                    |acc, arg| join_spans(acc, arg.span()),
-                );
-                errors.push(CompileError::TooFewArgumentsForFunction {
-                    span: arguments_span,
-                    method_name: name.suffix.clone(),
-                    expected: parameters.len(),
-                    received: arguments.len(),
-                });
-            }
-            Ordering::Equal => {}
-        }
-        // type check arguments in function application vs arguments in function
-        // declaration. Use parameter type annotations as annotations for the
-        // arguments
-        //
-        let typed_call_arguments = arguments
-            .into_iter()
-            .zip(parameters.iter())
-            .map(|(arg, param)| {
-                (
-                    param.name.clone(),
-                    TypedExpression::type_check(TypeCheckArguments {
-                        checkee: arg.clone(),
-                        namespace,
-                        crate_namespace,
-                        return_type_annotation: param.r#type,
-                        help_text:
-                            "The argument that has been provided to this function's type does \
-                            not match the declared type of the parameter in the function \
-                            declaration.",
-                        self_type,
-                        build_config,
-                        dead_code_graph,
-                        dependency_graph,
-                        mode: Mode::NonAbi,
-                        opts,
-                    })
-                    .unwrap_or_else(&mut warnings, &mut errors, || {
-                        error_recovery_expr(arg.span())
-                    }),
-                )
-            })
-            .collect();
-
-        ok(
-            TypedExpression {
-                return_type,
-                // now check the function call return type
-                // FEATURE this IsConstant can be true if the function itself is
-                // constant-able const functions would be an
-                // advanced feature and are not supported right
-                // now
-                is_constant: IsConstant::No,
-                expression: TypedExpressionVariant::FunctionApplication {
-                    arguments: typed_call_arguments,
-                    name,
-                    function_body: body,
-                    selector: None, // regular functions cannot be in a contract call; only methods
-                },
-                span,
-            },
-            warnings,
-            errors,
+                return err(warnings, errors);
+            };
+        instantiate_function_application(
+            typed_function_decl,
+            name,
+            arguments,
+            namespace,
+            crate_namespace,
+            self_type,
+            build_config,
+            dead_code_graph,
+            dependency_graph,
+            opts,
         )
     }
 
@@ -1153,11 +1065,11 @@ impl TypedExpression {
     ) -> CompileResult<TypedExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        // The first step is to determine if the call path refers to a module or an enum.
+        // The first step is to determine if the call path refers to a module, enum, or function.
         // We could rely on the capitalization convention, where modules are lowercase
         // and enums are uppercase, but this is not robust in the long term.
-        // Instead, we try to resolve both paths.
-        // If only one exists, then we use that one. Otherwise, if both exist, it is
+        // Instead, we try to resolve all paths.
+        // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
         let mut probe_warnings = Vec::new();
         let mut probe_errors = Vec::new();
@@ -1175,7 +1087,8 @@ impl TypedExpression {
         };
 
         // now we can see if this thing is a symbol (typed declaration) or reference to an
-        // enum instantiation
+        // enum instantiation, and if it is not either of those things, then it might be a
+        // function application
         let exp: TypedExpression = match (module_result, enum_module_combined_result) {
             (Some(_module), Some(_enum_res)) => {
                 errors.push(CompileError::AmbiguousPath { span });
@@ -1202,6 +1115,23 @@ impl TypedExpression {
                             errors
                         )
                     }
+                    TypedDeclaration::FunctionDeclaration(func_decl) => check!(
+                        instantiate_function_application(
+                            func_decl,
+                            call_path,
+                            args,
+                            namespace,
+                            crate_namespace,
+                            self_type,
+                            build_config,
+                            dead_code_graph,
+                            dependency_graph,
+                            opts,
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
                     a => {
                         errors.push(CompileError::NotAnEnum {
                             name: call_path.friendly_name(),

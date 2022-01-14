@@ -337,6 +337,7 @@ impl Namespace {
             _ => None,
         }
     }
+
     /// Returns a tuple where the first element is the [ResolvedType] of the actual expression,
     /// and the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(

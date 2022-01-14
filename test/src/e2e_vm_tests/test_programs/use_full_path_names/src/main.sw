@@ -2,6 +2,7 @@ script;
 
 dep a_dependency;
 dep b_dependency;
+dep c_dependency;
 
 fn main() -> u64 {
     let x = foo::Foo {
@@ -9,5 +10,5 @@ fn main() -> u64 {
     };
     let y = bar::Bar::Baz(true);
     let z = ::bar::Bar::Baz(false);
-    x.foo
+    baz::return_1()
 }
