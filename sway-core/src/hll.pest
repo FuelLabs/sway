@@ -47,10 +47,9 @@ parenthesized_expression =  {"(" ~ expr ~ ")"}
 unary_op_expr = { unary_op ~ expr_inner }
 // // op exps built in to expr to prevent left recursion
 expr                     =  {expr_inner ~ (op ~ expr_inner)*}
-func_app                 =  {fn_name ~ type_args? ~ fn_args}
+func_app                 =  {ident ~ type_args? ~ fn_args}
 type_args                =  {path_separator ~ type_params}
 fn_args                  =  { "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
-fn_name                  =  {var_exp}
 var_exp                  =  {var_name_ident}
 var_name_ident           =  {ident}
 struct_field_access      =  {subfield_path}
@@ -68,9 +67,7 @@ array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}
 
 // abi blocks and abi casting
 abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ expr ~ ")"}
-abi_decl = {abi_keyword ~ abi_name ~ trait_methods}
-abi_name = {ident}
-
+abi_decl = {abi_keyword ~ ident ~ trait_methods}
 
 if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
 
