@@ -1,6 +1,10 @@
-use crate::build_config::BuildConfig;
-use crate::span::Span;
-use crate::{error::*, type_engine::*, CompileError, Ident, Rule, TypedDeclaration};
+use crate::{
+    build_config::BuildConfig, error::*, parse_tree::ident, type_engine::*, CompileError, Rule,
+    TypedDeclaration,
+};
+
+use sway_types::{ident::Ident, span::Span};
+
 use pest::iterators::Pair;
 use std::convert::From;
 
@@ -34,7 +38,7 @@ impl TypeParameter {
                 for pair in type_params_pair.into_inner() {
                     buf.push(TypeParameter {
                         name_ident: check!(
-                            Ident::parse_from_pair(pair.clone(), config),
+                            ident::parse_from_pair(pair.clone(), config),
                             continue,
                             warnings,
                             errors
@@ -67,10 +71,10 @@ impl TypeParameter {
         if let Some(where_clause_pair) = where_clause_pair {
             let mut pair = where_clause_pair.into_inner().peekable();
             while pair.peek().is_some() {
-                let type_param = Ident::parse_from_pair(pair.next().unwrap(), config)
+                let type_param = ident::parse_from_pair(pair.next().unwrap(), config)
                     .value
                     .unwrap();
-                let trait_constraint = Ident::parse_from_pair(pair.next().unwrap(), config)
+                let trait_constraint = ident::parse_from_pair(pair.next().unwrap(), config)
                     .value
                     .unwrap();
                 // assign trait constraints to above parsed type params

@@ -22,10 +22,16 @@ pub use storage::*;
 pub(crate) use type_parameter::*;
 pub use variable::*;
 
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parser::Rule;
-use crate::*;
+use crate::{
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::{ident, Expression},
+    parser::Rule,
+    TypeInfo,
+};
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
@@ -184,7 +190,7 @@ impl Declaration {
                 );
                 Declaration::VariableDeclaration(VariableDeclaration {
                     name: check!(
-                        Ident::parse_from_pair(name_pair, config),
+                        ident::parse_from_pair(name_pair, config),
                         return err(warnings, errors),
                         warnings,
                         errors

@@ -1,6 +1,6 @@
-use sway_core::{
-    AstNode, AstNodeContent, Declaration, Expression, HllParseTree, ReturnStatement, Span,
-};
+use sway_core::{AstNode, AstNodeContent, Declaration, Expression, HllParseTree, ReturnStatement};
+
+use sway_types::span::Span;
 
 use crate::traversal_helper::{
     format_data_types, format_delineated_path, format_include_statement, format_use_statement,

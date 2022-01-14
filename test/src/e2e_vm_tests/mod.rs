@@ -11,7 +11,7 @@ pub fn run(filter_regex: Option<regex::Regex>) {
 
     // programs that should successfully compile and terminate
     // with some known state
-    let project_names = vec![
+    let positive_project_names = vec![
         ("asm_expr_basic", ProgramState::Return(6)),
         ("basic_func_decl", ProgramState::Return(1)), // 1 == true
         ("contract_abi_impl", ProgramState::Return(0)),
@@ -83,15 +83,18 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         ("multi_item_import", ProgramState::Return(0)), // false
     ];
 
-    project_names.into_iter().for_each(|(name, res)| {
+    let mut number_of_tests_run = positive_project_names.iter().fold(0, |acc, (name, res)| {
         if filter(name) {
-            assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), res);
+            assert_eq!(crate::e2e_vm_tests::harness::runs_in_vm(name), *res);
             assert_eq!(crate::e2e_vm_tests::harness::test_json_abi(name), Ok(()));
+            acc + 1
+        } else {
+            acc
         }
     });
 
     // source code that should _not_ compile
-    let project_names = vec![
+    let negative_project_names = vec![
         "recursive_calls",
         "asm_missing_return",
         "asm_should_not_have_return",
@@ -117,9 +120,12 @@ pub fn run(filter_regex: Option<regex::Regex>) {
         "script_calls_impure",
         "contract_pure_calls_impure",
     ];
-    project_names.into_iter().for_each(|name| {
+    number_of_tests_run += negative_project_names.iter().fold(0, |acc, name| {
         if filter(name) {
-            crate::e2e_vm_tests::harness::does_not_compile(name)
+            crate::e2e_vm_tests::harness::does_not_compile(name);
+            acc + 1
+        } else {
+            acc
         }
     });
 
@@ -148,6 +154,19 @@ pub fn run(filter_regex: Option<regex::Regex>) {
     for name in projects {
         harness::runs_on_node(name);
     }
-
-    println!("_________________________________\nTests passed.");
+    let total_number_of_tests = positive_project_names.len() + negative_project_names.len();
+    if number_of_tests_run == 0 {
+        println!(
+            "No tests were run. Regex filter \"{}\" filtered out all {} tests.",
+            filter_regex.map(|x| x.to_string()).unwrap_or_default(),
+            total_number_of_tests
+        );
+    } else {
+        println!("_________________________________\nTests passed.");
+        println!(
+            "{} tests run ({} skipped)",
+            number_of_tests_run,
+            total_number_of_tests - number_of_tests_run
+        );
+    }
 }

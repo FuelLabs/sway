@@ -25,7 +25,7 @@ pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
 /// error.
 fn check_for_contract_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
     use AllocatedOpcode::*;
-    let default_span = crate::Span {
+    let default_span = sway_types::span::Span {
         span: pest::Span::new("no span found for opcode".into(), 0, 1).unwrap(),
         path: None,
     };

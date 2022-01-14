@@ -2788,6 +2788,16 @@ version = "0.2.1"
 dependencies = [
  "ropey",
  "sway-core",
+ "sway-types",
+]
+
+[[package]]
+name = "sway-ir"
+version = "0.2.1"
+dependencies = [
+ "generational-arena",
+ "peg",
+ "prettydiff 0.5.1",
 ]
 
 [[package]]
@@ -2809,6 +2819,7 @@ dependencies = [
  "serde_json",
  "sway-core",
  "sway-fmt",
+ "sway-types",
  "sway-utils",
  "tokio",
 ]
@@ -2818,6 +2829,8 @@ name = "sway-types"
 version = "0.2.1"
 dependencies = [
  "fuel-asm",
+ "fuel-pest",
+ "fuel-pest_derive",
  "fuel-tx",
  "serde",
 ]

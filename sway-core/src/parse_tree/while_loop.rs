@@ -1,10 +1,12 @@
-use crate::build_config::BuildConfig;
-use crate::parser::Rule;
-use crate::span::Span;
 use crate::{
+    build_config::BuildConfig,
     error::{ok, CompileResult},
+    parser::Rule,
     CodeBlock, Expression,
 };
+
+use sway_types::span::Span;
+
 use pest::iterators::Pair;
 
 /// A parsed while loop. Contains the `condition`, which is defined from an [Expression], and the `body` from a [CodeBlock].

@@ -12,10 +12,11 @@ use crate::{
         },
         TypedAstNode, TypedAstNodeContent, TypedParseTree,
     },
-    span::Span,
     type_engine::{resolve_type, TypeInfo},
     CompileError, CompileWarning, Ident, TreeType, Warning,
 };
+use sway_types::span::Span;
+
 use petgraph::algo::has_path_connecting;
 use petgraph::prelude::NodeIndex;
 

@@ -4,9 +4,8 @@ use crate::{
     utils::common::extract_var_body,
 };
 use lspower::lsp::{Position, Range};
-use sway_core::{
-    AstNode, AstNodeContent, Declaration, Expression, Ident, Span, VariableDeclaration,
-};
+use sway_core::{AstNode, AstNodeContent, Declaration, Expression, VariableDeclaration};
+use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
 pub struct Token {

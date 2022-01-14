@@ -1,8 +1,7 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::Ident;
+use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule};
+
+use sway_types::{ident::Ident, span::Span};
+
 use pest::iterators::Pair;
 
 #[derive(Clone, Debug)]
@@ -43,7 +42,7 @@ impl IncludeStatement {
                 );
             } else if item.as_rule() == Rule::alias {
                 let alias_parsed = check!(
-                    Ident::parse_from_pair(item.into_inner().next().unwrap(), config),
+                    ident::parse_from_pair(item.into_inner().next().unwrap(), config),
                     continue,
                     warnings,
                     errors
