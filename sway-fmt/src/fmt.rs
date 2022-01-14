@@ -3,16 +3,25 @@ use crate::traversal::{traverse_for_changes, Change};
 use ropey::Rope;
 use std::sync::Arc;
 
-/// returns number of lines and formatted text
+/// Returns number of lines and formatted text.
+/// Formatting is done as a 2-step process.
+/// Firstly, certain Sway types (like Enums and Structs) are formatted separately in isolation,
+/// depending on their type.
+/// Secondly, after that, the whole file is formatted/cleaned and checked
+/// for smaller things like extra newlines, indentation and similar.
 pub fn get_formatted_data(file: Arc<str>, tab_size: u32) -> Result<(usize, String), Vec<String>> {
     let parsed_res = sway_core::parse(file.clone(), None);
+
     match parsed_res.value {
         Some(parse_tree) => {
+            // 1 Step: get all individual changes/updates of a Sway file
             let changes = traverse_for_changes(&parse_tree);
             let mut rope_file = Rope::from_str(&file);
 
             let mut offset: i32 = 0;
             for change in changes {
+                // for each update, calculate their newly position
+                // and add it in the existing file
                 let (new_offset, start, end) = calculate_offset(offset, &change);
                 offset = new_offset;
 
@@ -20,6 +29,7 @@ pub fn get_formatted_data(file: Arc<str>, tab_size: u32) -> Result<(usize, Strin
                 rope_file.insert(start, &change.text);
             }
 
+            // 2 Step: CodeBuilder goes through each line of a Sway file and cleans it up
             let mut code_builder = CodeBuilder::new(tab_size);
 
             let file = rope_file.to_string();
@@ -282,7 +292,7 @@ struct Example {    // first comment
     }
 
     #[test]
-    fn test_custom_types() {
+    fn test_data_types() {
         let correct_sway_code = r#"script;
 
 fn main() {

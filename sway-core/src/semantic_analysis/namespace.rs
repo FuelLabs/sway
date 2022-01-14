@@ -2,15 +2,14 @@ use super::ast_node::{
     OwnedTypedStructField, TypedEnumDeclaration, TypedEnumVariant, TypedStructDeclaration,
     TypedStructField,
 };
-use crate::error::*;
-use crate::parse_tree::Visibility;
-use crate::semantic_analysis::TypedExpression;
-use crate::span::Span;
-use crate::type_engine::*;
 
-use crate::CallPath;
-use crate::{CompileResult, TypeInfo};
-use crate::{Ident, TypedDeclaration, TypedFunctionDeclaration};
+use crate::{
+    error::*, parse_tree::Visibility, semantic_analysis::TypedExpression, type_engine::*, CallPath,
+    CompileResult, Ident, TypeInfo, TypedDeclaration, TypedFunctionDeclaration,
+};
+
+use sway_types::span::{join_spans, Span};
+
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 type ModuleName = String;
@@ -272,7 +271,7 @@ impl Namespace {
                 None => {
                     errors.push(CompileError::ModuleNotFound {
                         span: path.iter().fold(path[0].span().clone(), |acc, this_one| {
-                            crate::utils::join_spans(acc, this_one.span().clone())
+                            join_spans(acc, this_one.span().clone())
                         }),
                         name: path
                             .iter()

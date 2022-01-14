@@ -1,13 +1,19 @@
-use super::node_dependencies;
-use super::{TypedAstNode, TypedAstNodeContent, TypedDeclaration, TypedFunctionDeclaration};
-use crate::build_config::BuildConfig;
-use crate::control_flow_analysis::ControlFlowGraph;
-use crate::ident::Ident;
-use crate::parse_tree::Purity;
-use crate::semantic_analysis::{ast_node::Mode, Namespace, TypeCheckArguments};
-use crate::span::Span;
-use crate::{error::*, type_engine::*};
-use crate::{AstNode, ParseTree};
+use super::{
+    node_dependencies, TypedAstNode, TypedAstNodeContent, TypedDeclaration,
+    TypedFunctionDeclaration,
+};
+
+use crate::{
+    build_config::BuildConfig,
+    control_flow_analysis::ControlFlowGraph,
+    error::*,
+    parse_tree::Purity,
+    semantic_analysis::{ast_node::Mode, Namespace, TypeCheckArguments},
+    type_engine::*,
+    AstNode, ParseTree,
+};
+
+use sway_types::{ident::Ident, span::Span};
 
 use std::collections::{HashMap, HashSet};
 

@@ -1,9 +1,12 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
-use crate::semantic_analysis::{ast_node::TypedStructField, TypedAstNode};
-use crate::span::Span;
-use crate::{semantic_analysis::ast_node::TypedEnumVariant, Ident};
+use crate::{
+    semantic_analysis::{ast_node::TypedEnumVariant, ast_node::TypedStructField, TypedAstNode},
+    Ident,
+};
+
+use sway_types::span::Span;
 
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 

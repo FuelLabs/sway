@@ -1,12 +1,15 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parse_tree::{declaration::TypeParameter, Visibility};
-use crate::span::Span;
-use crate::style::is_snake_case;
-use crate::type_engine::TypeInfo;
-use crate::{CodeBlock, Ident, Rule};
+use crate::{
+    build_config::BuildConfig,
+    error::*,
+    parse_tree::{declaration::TypeParameter, ident, Visibility},
+    style::is_snake_case,
+    type_engine::TypeInfo,
+    CodeBlock, Rule,
+};
+
+use sway_types::{ident::Ident, span::Span, Function, Property};
+
 use pest::iterators::Pair;
-use sway_types::{Function, Property};
 
 mod purity;
 pub use purity::Purity;
@@ -57,7 +60,7 @@ impl FunctionDeclaration {
             path: path.clone(),
         };
         let name = check!(
-            Ident::parse_from_pair(name, config),
+            ident::parse_from_pair(name, config),
             return err(warnings, errors),
             warnings,
             errors
@@ -134,38 +137,6 @@ impl FunctionDeclaration {
         )
         .unwrap_or_else(&mut warnings, &mut errors, Vec::new);
 
-        // check that all generic types used in function parameters are a part of the type
-        // parameters
-        /*
-        let mut generic_params_buf_for_error_message = Vec::new();
-        for param in parameters.iter() {
-            if let TypeInfo::Generic { name } = param.r#type {
-                generic_params_buf_for_error_message.push(name);
-            }
-        }
-        let comma_separated_generic_params = generic_params_buf_for_error_message.join(", ");
-        for param in parameters.iter() {
-            if let TypeInfo::Generic { name: st } = param.r#type {
-                if type_parameters
-                    .iter()
-                    .find(|TypeParameter { name, .. }| *name == st)
-                    .is_none()
-                {
-                    errors.push(CompileError::TypeParameterNotInTypeScope {
-                        name: st,
-                        span: param.name.span.clone(),
-                        comma_separated_generic_params: comma_separated_generic_params.clone(),
-                        fn_name: name,
-                        args: parameters_pair.clone().as_str(),
-                        return_type: return_type_pair
-                            .clone()
-                            .map(|x| x.as_str().to_string())
-                            .unwrap_or(TypeInfo::Unit.friendly_type_str()),
-                    });
-                }
-            }
-        }
-        */
         let body = parts.next().unwrap();
         let whole_block_span = Span {
             span: body.as_span(),
@@ -262,7 +233,7 @@ impl FunctionParameter {
             let mut parts = pair.clone().into_inner();
             let name_pair = parts.next().unwrap();
             let name = check!(
-                Ident::parse_from_pair(name_pair, config),
+                ident::parse_from_pair(name_pair, config),
                 return err(warnings, errors),
                 warnings,
                 errors

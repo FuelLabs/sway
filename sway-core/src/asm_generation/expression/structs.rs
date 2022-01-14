@@ -6,10 +6,10 @@ use crate::{
     },
     error::*,
     semantic_analysis::ast_node::{TypedExpression, TypedStructExpressionField},
-    span::Span,
     type_engine::{look_up_type_id, resolve_type, TypeId},
     CompileResult, Ident,
 };
+use sway_types::span::Span;
 
 /// Contains an ordered array of fields and their sizes in words. Used in the code generation
 /// of struct/tuple field reassignments, accesses, and struct/tuple initializations.
@@ -70,7 +70,7 @@ impl<N> ContiguousMemoryLayoutDescriptor<N> {
 
 #[test]
 fn test_struct_memory_layout() {
-    use crate::span::Span;
+    use sway_types::span::Span;
     let first_field_name = Ident::new_with_override(
         "foo",
         Span {

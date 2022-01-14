@@ -1426,7 +1426,7 @@ fn ret_or_retd_value(
             errors,
         );
     }
-    let span = crate::Span {
+    let span = sway_types::span::Span {
         span: pest::Span::new("TODO(static span)".into(), 0, 0).unwrap(),
         path: None,
     };
