@@ -2,6 +2,7 @@ use crate::cli::{BuildCommand, FormatCommand};
 use crate::ops::forc_build;
 use crate::utils::helpers::{println_green, println_red};
 use prettydiff::{basic::DiffOp, diff_lines};
+use std::default::Default;
 use std::{fmt, fs, io, path::Path, sync::Arc};
 use sway_fmt::get_formatted_data;
 use sway_utils::{constants, find_manifest_dir, get_sway_files};
@@ -65,12 +66,11 @@ fn format_after_build(command: FormatCommand) -> Result<(), FormatError> {
 
             // format manifest using taplo formatter
             if let Ok(file_content) = fs::read_to_string(&manifest_file) {
-                let formatted_content = taplo_fmt::format(
-                    &file_content,
-                    taplo_fmt::Options {
-                        ..Default::default()
-                    },
-                );
+                let taplo_alphabetize = taplo_fmt::Options {
+                    reorder_keys: true,
+                    ..Default::default()
+                };
+                let formatted_content = taplo_fmt::format(&file_content, taplo_alphabetize);
                 if command.check {
                     if formatted_content != file_content {
                         if !contains_edits {
@@ -196,12 +196,11 @@ name = "Fuel example project"
 core = { git = "http://github.com/FuelLabs/sway-lib-core" }
 std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 "#;
-        let formatted_content = taplo_fmt::format(
-            correct_forc_manifest,
-            taplo_fmt::Options {
-                ..Default::default()
-            },
-        );
+        let taplo_alphabetize = taplo_fmt::Options {
+            reorder_keys: true,
+            ..Default::default()
+        };
+        let formatted_content = taplo_fmt::format(correct_forc_manifest, taplo_alphabetize.clone());
         assert_eq!(formatted_content, correct_forc_manifest);
         let indented_forc_manifest = r#"
         [project]
@@ -214,12 +213,8 @@ std = { git = "http://github.com/FuelLabs/sway-lib-std" }
         core = { git = "http://github.com/FuelLabs/sway-lib-core" }
                     std = { git = "http://github.com/FuelLabs/sway-lib-std" }
 "#;
-        let formatted_content = taplo_fmt::format(
-            indented_forc_manifest,
-            taplo_fmt::Options {
-                ..Default::default()
-            },
-        );
+        let formatted_content =
+            taplo_fmt::format(indented_forc_manifest, taplo_alphabetize.clone());
         assert_eq!(formatted_content, correct_forc_manifest);
         let whitespace_forc_manifest = r#"
 [project]
@@ -232,12 +227,41 @@ name = "Fuel example project"
 core = {git="http://github.com/FuelLabs/sway-lib-core"}
 std         =     {   git     =  "http://github.com/FuelLabs/sway-lib-std"             }
 "#;
-        let formatted_content = taplo_fmt::format(
-            whitespace_forc_manifest,
-            taplo_fmt::Options {
-                ..Default::default()
-            },
-        );
+        let formatted_content = taplo_fmt::format(whitespace_forc_manifest, taplo_alphabetize);
+        assert_eq!(formatted_content, correct_forc_manifest);
+    }
+
+    #[test]
+    fn test_forc_alphabetization() {
+        let correct_forc_manifest = r#"
+[project]
+author = "Fuel Labs <contact@fuel.sh>"
+license = "Apache-2.0"
+name = "Fuel example project"
+
+
+[dependencies]
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+"#;
+        let taplo_alphabetize = taplo_fmt::Options {
+            reorder_keys: true,
+            ..Default::default()
+        };
+        let formatted_content = taplo_fmt::format(correct_forc_manifest, taplo_alphabetize.clone());
+        assert_eq!(formatted_content, correct_forc_manifest);
+        let disordered_forc_manifest = r#"
+[project]
+name = "Fuel example project"
+license = "Apache-2.0"
+author = "Fuel Labs <contact@fuel.sh>"
+
+
+[dependencies]
+std = { git = "http://github.com/FuelLabs/sway-lib-std" }
+core = { git = "http://github.com/FuelLabs/sway-lib-core" }
+    "#;
+        let formatted_content = taplo_fmt::format(disordered_forc_manifest, taplo_alphabetize);
         assert_eq!(formatted_content, correct_forc_manifest);
     }
 }
