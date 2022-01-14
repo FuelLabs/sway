@@ -17,6 +17,7 @@ use crate::{
     pointer::Pointer,
     value::Value,
 };
+use sway_types::ident::Ident;
 
 #[derive(Debug, Clone)]
 pub enum Instruction {
@@ -240,7 +241,7 @@ impl<'a> InstructionInserter<'a> {
         self,
         args: Vec<AsmArg>,
         body: Vec<AsmInstruction>,
-        return_name: Option<String>,
+        return_name: Option<Ident>,
     ) -> Value {
         let asm = AsmBlock::new(
             self.context,

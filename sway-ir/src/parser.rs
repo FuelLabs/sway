@@ -19,6 +19,8 @@ pub fn parse(input: &str) -> Result<Context, String> {
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
+    use sway_types::{ident::Ident, span::Span};
+
     peg::parser! {
         pub(in crate::parser) grammar parser() for str {
             pub(in crate::parser) rule ir_descrs() -> IrAstModule
@@ -173,8 +175,8 @@ mod ir_builder {
                     IrAstOperation::Store(dst, vn)
                 }
 
-            rule asm_arg() -> (String, Option<IrAstAsmArgInit>)
-                = name:id() init:asm_arg_init()? {
+            rule asm_arg() -> (Ident, Option<IrAstAsmArgInit>)
+                = name:id_id() init:asm_arg_init()? {
                     (name, init)
             }
 
@@ -186,13 +188,13 @@ mod ir_builder {
                     IrAstAsmArgInit::Var(var)
                 }
 
-            rule asm_ret() -> String
-                = "->" _ ret:id() {
+            rule asm_ret() -> Ident
+                = "->" _ ret:id_id() {
                     ret
                 }
 
             rule asm_op() -> IrAstAsmOp
-                = name:id() args:asm_op_arg()* imm:asm_op_arg_imm()? {
+                = name:id_id() args:asm_op_arg()* imm:asm_op_arg_imm()? {
                     IrAstAsmOp {
                         name,
                         args,
@@ -200,14 +202,17 @@ mod ir_builder {
                     }
                 }
 
-            rule asm_op_arg() -> String
-                = !asm_op_arg_imm() arg:id() {
+            rule asm_op_arg() -> Ident
+                = !asm_op_arg_imm() arg:id_id() {
                     arg
                 }
 
-            rule asm_op_arg_imm() -> String
-                = "i" d:decimal() {
-                    format!("i{}", d)
+            rule asm_op_arg_imm() -> Ident
+                = imm:$("i" d:decimal()) {
+                    Ident::new(Span {
+                        span: pest::Span::new(imm.into(), 0, imm.len()).unwrap(),
+                        path: None,
+                    })
                 }
 
             rule constant() -> IrAstConstValue
@@ -289,6 +294,14 @@ mod ir_builder {
                     id.to_owned()
                 }
 
+            rule id_id() -> Ident
+                = !ast_ty() id:$(id_char0() id_char()*) _ {
+                    Ident::new(Span {
+                        span: pest::Span::new(id.into(), 0, id.len()).unwrap(),
+                        path: None,
+                    })
+                }
+
             rule id_char0()
                 = quiet!{ ['A'..='Z' | 'a'..='z' | '_'] }
 
@@ -366,8 +379,8 @@ mod ir_builder {
     #[derive(Debug)]
     enum IrAstOperation {
         Asm(
-            Vec<(String, Option<IrAstAsmArgInit>)>,
-            Option<String>,
+            Vec<(Ident, Option<IrAstAsmArgInit>)>,
+            Option<Ident>,
             Vec<IrAstAsmOp>,
         ),
         Br(String),
@@ -405,9 +418,9 @@ mod ir_builder {
 
     #[derive(Debug)]
     struct IrAstAsmOp {
-        name: String,
-        args: Vec<String>,
-        imm: Option<String>,
+        name: Ident,
+        args: Vec<Ident>,
+        imm: Option<Ident>,
     }
 
     impl IrAstConstValue {
