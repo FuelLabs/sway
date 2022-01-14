@@ -67,7 +67,8 @@ array_index              =  {call_item ~ "[" ~ expr ~ "]" ~ ("[" ~ expr ~ "]")*}
 
 // abi blocks and abi casting
 abi_cast = {abi_keyword ~ "(" ~ trait_name ~ "," ~ expr ~ ")"}
-abi_decl = {abi_keyword ~ ident ~ trait_methods}
+abi_decl = {abi_keyword ~ abi_name ~ trait_methods}
+abi_name = {ident}
 
 if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
 
