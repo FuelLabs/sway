@@ -2,13 +2,11 @@
 /// the chance to insert some helpful comments and nicer formatting.
 pub(crate) fn default_manifest(project_name: &str) -> String {
     let real_name = whoami::realname();
-    let orga_name = "organizationName";
 
     format!(
         r#"[project]
 name = "{}"
 author = "{}"
-organization = "{}"
 entry = "main.sw"
 license = "Apache-2.0"
 
@@ -16,7 +14,7 @@ license = "Apache-2.0"
 core = {{ git = "http://github.com/FuelLabs/sway-lib-core" }}
 std = {{ git = "http://github.com/FuelLabs/sway-lib-std" }}
 "#,
-        project_name, real_name, orga_name,
+        project_name, real_name
     )
 }
 

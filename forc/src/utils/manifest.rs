@@ -111,7 +111,7 @@ fn try_parse_contract_id(raw: &Option<String>) -> Result<fuel_tx::ContractId, St
             })?
             .as_slice(),
     )
-        .unwrap())
+    .unwrap())
 }
 
 impl TxInput {
