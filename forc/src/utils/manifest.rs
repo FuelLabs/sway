@@ -137,7 +137,7 @@ impl TxInput {
 pub struct Project {
     pub author: String,
     pub name: String,
-    pub organization: String,
+    pub organization: Option<String>,
     pub license: String,
     #[serde(default = "default_entry")]
     pub entry: String,
