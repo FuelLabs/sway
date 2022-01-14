@@ -1,9 +1,8 @@
-use super::FunctionDeclaration;
-use super::TraitFn;
-use crate::build_config::BuildConfig;
-use crate::parser::Rule;
-use crate::span::Span;
-use crate::{error::*, Ident};
+use super::{FunctionDeclaration, TraitFn};
+use crate::{build_config::BuildConfig, error::*, parse_tree::ident, parser::Rule};
+
+use sway_types::{ident::Ident, span::Span};
+
 use pest::iterators::Pair;
 
 /// An `abi` declaration, which declares an interface for a contract
@@ -33,7 +32,7 @@ impl AbiDeclaration {
         let mut errors = Vec::new();
         let _abi_keyword = iter.next().expect("guaranteed by grammar");
         let name = check!(
-            Ident::parse_from_pair(iter.next().expect("guaranteed by grammar"), config),
+            ident::parse_from_pair(iter.next().expect("guaranteed by grammar"), config),
             return err(warnings, errors),
             warnings,
             errors

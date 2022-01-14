@@ -1,4 +1,6 @@
-use crate::{error::*, Span};
+use crate::error::*;
+
+use sway_types::span::Span;
 
 use std::iter::FromIterator;
 

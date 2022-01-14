@@ -1,20 +1,15 @@
-use crate::build_config::BuildConfig;
-use crate::error::*;
-use crate::parser::Rule;
-use crate::Span;
-use pest::iterators::Pair;
-use std::cmp::{Ord, Ordering};
-use std::fmt;
-use std::hash::{Hash, Hasher};
+use crate::span::Span;
+
+use std::{
+    cmp::{Ord, Ordering},
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 /// An [Ident] is an _identifier_ with a corresponding `span` from which it was derived.
 #[derive(Debug, Clone)]
 pub struct Ident {
     name_override_opt: Option<&'static str>,
-    // sub-names are the stuff after periods
-    // like x.test.thing.method()
-    // `test`, `thing`, and `method` are sub-names
-    // the primary name is `x`
     span: Span,
 }
 
@@ -69,27 +64,6 @@ impl Ident {
             name_override_opt: Some(name_override),
             span,
         }
-    }
-
-    pub(crate) fn parse_from_pair(
-        pair: Pair<Rule>,
-        config: Option<&BuildConfig>,
-    ) -> CompileResult<Ident> {
-        let path = config.map(|config| config.path());
-        let span = {
-            if pair.as_rule() != Rule::ident {
-                Span {
-                    span: pair.into_inner().next().unwrap().as_span(),
-                    path,
-                }
-            } else {
-                Span {
-                    span: pair.as_span(),
-                    path,
-                }
-            }
-        };
-        ok(Ident::new(span), Vec::new(), Vec::new())
     }
 }
 

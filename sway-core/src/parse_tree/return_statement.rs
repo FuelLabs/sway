@@ -1,8 +1,7 @@
-use crate::build_config::BuildConfig;
-use crate::error::ok;
-use crate::parser::Rule;
-use crate::span;
-use crate::{CompileResult, Expression};
+use crate::{build_config::BuildConfig, error::ok, parser::Rule, CompileResult, Expression};
+
+use sway_types::span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]

@@ -1,18 +1,20 @@
 use super::WhileLoop;
-use crate::build_config::BuildConfig;
-use crate::parser::Rule;
-use crate::span::Span;
 use crate::{
+    build_config::BuildConfig,
     error::*,
     parse_tree::{Expression, ReturnStatement},
-    span, AstNode, AstNodeContent, Declaration,
+    parser::Rule,
+    AstNode, AstNodeContent, Declaration,
 };
+
+use sway_types::span;
+
 use pest::iterators::Pair;
 
 #[derive(Debug, Clone)]
 pub struct CodeBlock {
     pub contents: Vec<AstNode>,
-    pub(crate) whole_block_span: Span,
+    pub(crate) whole_block_span: span::Span,
 }
 
 impl CodeBlock {

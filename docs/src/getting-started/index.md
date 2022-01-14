@@ -7,3 +7,4 @@ To get started with Forc and Sway start contract development, install the Sway t
 - [A Forc Project](./forc_project.md)
 - [Temporary Workarounds](./temporary_workarounds.md)
 - [Differences From Solidity](./solidity_differences.md)
+- [Differences From Rust](./rust_differences.md)

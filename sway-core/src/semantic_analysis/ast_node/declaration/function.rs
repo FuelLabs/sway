@@ -1,17 +1,20 @@
-use crate::parse_tree::*;
-use crate::semantic_analysis::{
-    ast_node::{
-        IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
-        TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
+use crate::{
+    error::*,
+    parse_tree::*,
+    semantic_analysis::{
+        ast_node::{
+            IsConstant, Mode, TypedCodeBlock, TypedDeclaration, TypedExpression,
+            TypedExpressionVariant, TypedReturnStatement, TypedVariableDeclaration,
+        },
+        TypeCheckArguments,
     },
-    TypeCheckArguments,
+    type_engine::*,
+    Ident, TypeParameter,
 };
-use crate::span::Span;
-use crate::type_engine::*;
-use crate::TypeParameter;
-use crate::{error::*, Ident};
+
+use sway_types::{join_spans, span::Span, Function, Property};
+
 use sha2::{Digest, Sha256};
-use sway_types::{Function, Property};
 
 mod function_parameter;
 pub use function_parameter::*;
@@ -354,9 +357,7 @@ impl TypedFunctionDeclaration {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span().clone(),
-                |acc, TypedFunctionParameter { type_span, .. }| {
-                    crate::utils::join_spans(acc, type_span.clone())
-                },
+                |acc, TypedFunctionParameter { type_span, .. }| join_spans(acc, type_span.clone()),
             )
         } else {
             self.name.span().clone()

@@ -13,8 +13,10 @@ pub(crate) use virtual_immediate::*;
 pub(crate) use virtual_ops::*;
 pub(crate) use virtual_register::*;
 
-use crate::span::Span;
 use crate::{asm_generation::DataId, error::*, parse_tree::AsmRegister, Ident};
+
+use sway_types::span::Span;
+
 use either::Either;
 use std::{collections::HashSet, fmt};
 
