@@ -77,7 +77,6 @@ abi_cast = {abi_keyword ~ "(" ~ call_path ~ "," ~ expr ~ ")"}
 abi_decl = {abi_keyword ~ abi_name ~ trait_methods}
 abi_name = {ident}
 
-
 if_exp =  {"if" ~ expr ~ code_block ~ ("else" ~ (code_block|if_exp))?}
 
 op       =  {"+"|"-"|"/"|"*"|"=="|"!="|"<="|">="|"||"|"|"|"&&"|"&"|"^"|"%"|"<"|">"}
