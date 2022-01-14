@@ -7,4 +7,3 @@ entry = "main.sw"
 [dependencies]
 core = { git = "http://github.com/FuelLabs/sway-lib-core" }
 std = { git = "http://github.com/FuelLabs/sway-lib-std" }
-core = { git = "http://github.com/FuelLabs/sway-lib-core" }
