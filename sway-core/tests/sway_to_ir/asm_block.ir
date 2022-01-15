@@ -1,0 +1,16 @@
+script script {
+    fn get_global_gas() -> u64 {
+        entry:
+        v0 = asm() -> ggas {
+        }
+        ret u64 v0
+    }
+
+    fn main() -> u64 {
+        entry:
+        v0 = asm(r1) -> r1 {
+            bhei   r1
+        }
+        ret u64 v0
+    }
+}

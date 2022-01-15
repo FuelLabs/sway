@@ -1,0 +1,18 @@
+script script {
+    fn main() -> bool {
+        local ptr { bool, { u64, { () | () | u64 } } } record
+
+        entry:
+        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
+        v1 = const u64 0
+        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0
+        v3 = const { bool, { u64, { () | () | u64 } } } { bool undef, { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef } }
+        v4 = const bool false
+        v5 = insert_value v3, { bool, { u64, { () | () | u64 } } }, v4, 0
+        v6 = insert_value v5, { bool, { u64, { () | () | u64 } } }, v2, 1
+        store v6, ptr { bool, { u64, { () | () | u64 } } } record
+        v7 = get_ptr ptr { bool, { u64, { () | () | u64 } } } record
+        v8 = extract_value v7, { bool, { u64, { () | () | u64 } } }, 0
+        ret bool v8
+    }
+}

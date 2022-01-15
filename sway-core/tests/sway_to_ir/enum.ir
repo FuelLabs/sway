@@ -1,0 +1,26 @@
+script script {
+    fn eat(meal: { u64, { () | () | u64 } }) -> bool {
+        entry:
+        v0 = const bool false
+        ret bool v0
+    }
+
+    fn main() -> () {
+        local ptr { u64, { () | () | u64 } } lunch
+
+        entry:
+        v0 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
+        v1 = const u64 1
+        v2 = insert_value v0, { u64, { () | () | u64 } }, v1, 0
+        store v2, ptr { u64, { () | () | u64 } } lunch
+        v3 = get_ptr ptr { u64, { () | () | u64 } } lunch
+        v4 = call eat(v3)
+        v5 = const { u64, { () | () | u64 } } { u64 undef, { () | () | u64 } undef }
+        v6 = const u64 2
+        v7 = insert_value v5, { u64, { () | () | u64 } }, v6, 0
+        v8 = const u64 3
+        v9 = insert_value v7, { u64, { () | () | u64 } }, v8, 1
+        v10 = call eat(v9)
+        ret () v10
+    }
+}

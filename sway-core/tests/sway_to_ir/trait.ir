@@ -1,0 +1,41 @@
+script script {
+    fn pred(self: { bool }) -> bool {
+        entry:
+        v0 = extract_value self, { bool }, 0
+        ret bool v0
+    }
+
+    fn pred_or(self: { bool }, other: { bool }) -> bool {
+        entry:
+        v0 = call pred(self)
+        cbr v0, block1, block0
+
+        block0:
+        v1 = phi(entry: v0)
+        v2 = call pred(other)
+        br block1
+
+        block1:
+        v3 = phi(entry: v0, block0: v2)
+        ret bool v3
+    }
+
+    fn main() -> bool {
+        local ptr { bool } bar
+        local ptr { bool } foo
+
+        entry:
+        v0 = const { bool } { bool undef }
+        v1 = const bool true
+        v2 = insert_value v0, { bool }, v1, 0
+        store v2, ptr { bool } foo
+        v3 = const { bool } { bool undef }
+        v4 = const bool false
+        v5 = insert_value v3, { bool }, v4, 0
+        store v5, ptr { bool } bar
+        v6 = get_ptr ptr { bool } foo
+        v7 = get_ptr ptr { bool } bar
+        v8 = call pred_or(v6, v7)
+        ret bool v8
+    }
+}

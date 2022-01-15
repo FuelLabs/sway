@@ -24,6 +24,7 @@ pub(crate) mod compiler_constants;
 mod declaration;
 mod expression;
 mod finalized_asm;
+pub(crate) mod from_ir;
 mod register_sequencer;
 mod while_loop;
 
@@ -188,11 +189,7 @@ impl AbstractInstructionSet {
 
     /// Runs two passes -- one to get the instruction offsets of the labels
     /// and one to replace the labels in the organizational ops
-    fn realize_labels(
-        self,
-        data_section: &DataSection,
-        _namespace: &AsmNamespace,
-    ) -> RealizedAbstractInstructionSet {
+    fn realize_labels(self, data_section: &DataSection) -> RealizedAbstractInstructionSet {
         let mut label_namespace: HashMap<&Label, u64> = Default::default();
         let mut counter = 0;
         for op in &self.ops {
@@ -617,7 +614,7 @@ pub(crate) fn compile_ast_to_asm(
     let mut register_sequencer = RegisterSequencer::new();
     let mut warnings = vec![];
     let mut errors = vec![];
-    let (asm, asm_namespace) = match ast {
+    let (asm, _asm_namespace) = match ast {
         TypedParseTree::Script {
             main_function,
             namespace: ast_namespace,
@@ -743,7 +740,7 @@ pub(crate) fn compile_ast_to_asm(
             );
             asm_buf.append(&mut build_contract_abi_switch(
                 &mut register_sequencer,
-                &mut namespace,
+                &mut namespace.data_section,
                 selectors_and_labels,
             ));
             asm_buf.append(&mut contract_asm);
@@ -765,7 +762,7 @@ pub(crate) fn compile_ast_to_asm(
 
     let finalized_asm = asm
         .remove_unnecessary_jumps()
-        .allocate_registers(&asm_namespace)
+        .allocate_registers()
         .optimize();
 
     if build_config.print_finalized_asm {
@@ -773,7 +770,7 @@ pub(crate) fn compile_ast_to_asm(
     }
 
     check!(
-        super::check_invalid_opcodes(&finalized_asm),
+        crate::checks::check_invalid_opcodes(&finalized_asm),
         return err(warnings, errors),
         warnings,
         errors
@@ -812,7 +809,7 @@ impl HllAsmSet {
 }
 
 impl JumpOptimizedAsmSet {
-    fn allocate_registers(self, namespace: &AsmNamespace) -> RegisterAllocatedAsmSet {
+    fn allocate_registers(self) -> RegisterAllocatedAsmSet {
         match self {
             JumpOptimizedAsmSet::Library => RegisterAllocatedAsmSet::Library,
             JumpOptimizedAsmSet::ScriptMain {
@@ -820,7 +817,7 @@ impl JumpOptimizedAsmSet {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section, namespace)
+                    .realize_labels(&data_section)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::ScriptMain {
                     data_section,
@@ -832,7 +829,7 @@ impl JumpOptimizedAsmSet {
                 program_section,
             } => {
                 let program_section = program_section
-                    .realize_labels(&data_section, namespace)
+                    .realize_labels(&data_section)
                     .allocate_registers();
                 RegisterAllocatedAsmSet::PredicateMain {
                     data_section,
@@ -844,7 +841,7 @@ impl JumpOptimizedAsmSet {
                 data_section,
             } => RegisterAllocatedAsmSet::ContractAbi {
                 program_section: program_section
-                    .realize_labels(&data_section, namespace)
+                    .realize_labels(&data_section)
                     .allocate_registers(),
                 data_section,
             },
@@ -1113,7 +1110,7 @@ fn build_preamble(register_sequencer: &mut RegisterSequencer) -> [Op; 6] {
 /// for an explanation of its location)
 fn build_contract_abi_switch(
     register_sequencer: &mut RegisterSequencer,
-    namespace: &mut AsmNamespace,
+    data_section: &mut DataSection,
     selectors_and_labels: Vec<([u8; 4], Label)>,
 ) -> Vec<Op> {
     let input_selector_register = register_sequencer.next();
@@ -1138,7 +1135,8 @@ fn build_contract_abi_switch(
 
     for (selector, label) in selectors_and_labels {
         // put the selector in the data section
-        let data_label = namespace.insert_data_value(&Literal::U32(u32::from_be_bytes(selector)));
+        let data_label =
+            data_section.insert_data_value(&Literal::U32(u32::from_be_bytes(selector)));
         // load the data into a register for comparison
         let prog_selector_register = register_sequencer.next();
         asm_buf.push(Op {
