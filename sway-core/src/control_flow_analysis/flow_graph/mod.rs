@@ -18,7 +18,7 @@ pub type EntryPoint = NodeIndex;
 pub type ExitPoint = NodeIndex;
 
 #[derive(Clone, Default)]
-/// A graph that can be used to model the control flow of a fuel HLL program.
+/// A graph that can be used to model the control flow of a Sway program.
 /// This graph is used as the basis for all of the algorithms in the control flow analysis portion
 /// of the compiler.
 pub struct ControlFlowGraph {
