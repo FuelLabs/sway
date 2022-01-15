@@ -1,11 +1,11 @@
 use crate::utils::manifest::Manifest;
 use anyhow::{anyhow, bail, Context, Result};
-use curl::easy::Easy;
 use dirs::home_dir;
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::io::Read;
 use std::{
     collections::HashMap,
     fs,
@@ -228,27 +228,11 @@ pub fn build_github_repo_api_url(
 
 pub fn download_tarball(url: &str, out_dir: &Path) -> Result<String> {
     let mut data = Vec::new();
-    let mut handle = Easy::new();
 
     // Download the tarball.
-    handle.url(url).context("failed to configure tarball URL")?;
-    handle
-        .follow_location(true)
-        .context("failed to configure follow location")?;
-
-    handle
-        .useragent("forc-builder")
-        .context("failed to configure User-Agent")?;
-    {
-        let mut transfer = handle.transfer();
-        transfer
-            .write_function(|new_data| {
-                data.extend_from_slice(new_data);
-                Ok(new_data.len())
-            })
-            .context("failed to write download data")?;
-        transfer.perform().context("failed to download tarball")?;
-    }
+    let handle = ureq::builder().user_agent("forc-builder").build();
+    let resp = handle.get(url).call()?;
+    resp.into_reader().read_to_end(&mut data)?;
 
     // Unpack the tarball.
     Archive::new(GzDecoder::new(Cursor::new(data)))
