@@ -65,10 +65,10 @@ use while_loop::convert_while_loop_to_asm;
 // "memory", and the above described number if it is not. This prevents over-prioritization of
 // registers that have already been written off to memory.
 //
-/// The [HllAsmSet] contains either a contract ABI and corresponding ASM, a script's main
+/// The [SwayAsmSet] contains either a contract ABI and corresponding ASM, a script's main
 /// function's ASM, or a predicate's main function's ASM. ASM is never generated for libraries,
 /// as that happens when the library itself is imported.
-pub enum HllAsmSet {
+pub enum SwayAsmSet {
     ContractAbi {
         data_section: DataSection,
         program_section: AbstractInstructionSet,
@@ -448,23 +448,23 @@ impl fmt::Display for DataSection {
     }
 }
 
-impl fmt::Display for HllAsmSet {
+impl fmt::Display for SwayAsmSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            HllAsmSet::ScriptMain {
+            SwayAsmSet::ScriptMain {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", program_section, data_section),
-            HllAsmSet::PredicateMain {
+            SwayAsmSet::PredicateMain {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", program_section, data_section),
-            HllAsmSet::ContractAbi {
+            SwayAsmSet::ContractAbi {
                 data_section,
                 program_section,
             } => write!(f, "{}\n{}", program_section, data_section),
             // Libraries do not directly generate any asm.
-            HllAsmSet::Library => write!(f, ""),
+            SwayAsmSet::Library => write!(f, ""),
         }
     }
 }
@@ -663,7 +663,7 @@ pub(crate) fn compile_ast_to_asm(
             ));
 
             (
-                HllAsmSet::ScriptMain {
+                SwayAsmSet::ScriptMain {
                     program_section: AbstractInstructionSet { ops: asm_buf },
                     data_section: namespace.data_section.clone(),
                 },
@@ -705,7 +705,7 @@ pub(crate) fn compile_ast_to_asm(
             asm_buf.append(&mut body);
 
             (
-                HllAsmSet::PredicateMain {
+                SwayAsmSet::PredicateMain {
                     program_section: AbstractInstructionSet { ops: asm_buf },
                     data_section: namespace.data_section.clone(),
                 },
@@ -746,14 +746,14 @@ pub(crate) fn compile_ast_to_asm(
             asm_buf.append(&mut contract_asm);
 
             (
-                HllAsmSet::ContractAbi {
+                SwayAsmSet::ContractAbi {
                     program_section: AbstractInstructionSet { ops: asm_buf },
                     data_section: namespace.data_section.clone(),
                 },
                 namespace,
             )
         }
-        TypedParseTree::Library { .. } => (HllAsmSet::Library, Default::default()),
+        TypedParseTree::Library { .. } => (SwayAsmSet::Library, Default::default()),
     };
 
     if build_config.print_intermediate_asm {
@@ -779,25 +779,25 @@ pub(crate) fn compile_ast_to_asm(
     ok(finalized_asm, warnings, errors)
 }
 
-impl HllAsmSet {
+impl SwayAsmSet {
     pub(crate) fn remove_unnecessary_jumps(self) -> JumpOptimizedAsmSet {
         match self {
-            HllAsmSet::ScriptMain {
+            SwayAsmSet::ScriptMain {
                 data_section,
                 program_section,
             } => JumpOptimizedAsmSet::ScriptMain {
                 data_section,
                 program_section: program_section.remove_sequential_jumps(),
             },
-            HllAsmSet::PredicateMain {
+            SwayAsmSet::PredicateMain {
                 data_section,
                 program_section,
             } => JumpOptimizedAsmSet::PredicateMain {
                 data_section,
                 program_section: program_section.remove_sequential_jumps(),
             },
-            HllAsmSet::Library {} => JumpOptimizedAsmSet::Library,
-            HllAsmSet::ContractAbi {
+            SwayAsmSet::Library {} => JumpOptimizedAsmSet::Library,
+            SwayAsmSet::ContractAbi {
                 data_section,
                 program_section,
             } => JumpOptimizedAsmSet::ContractAbi {

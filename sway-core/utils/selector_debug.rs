@@ -10,7 +10,7 @@ use sway_core::{
         TypeCheckArguments,
     },
     type_engine::*,
-    BuildConfig, HllParser, Rule,
+    BuildConfig, Rule, SwayParser,
 };
 
 #[derive(Debug, StructOpt)]
@@ -25,7 +25,7 @@ fn main() {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let parsed_fn_decl = HllParser::parse(Rule::fn_decl, Arc::from(fn_decl));
+    let parsed_fn_decl = SwayParser::parse(Rule::fn_decl, Arc::from(fn_decl));
     let mut parsed_fn_decl = match parsed_fn_decl {
         Ok(o) => o,
         Err(e) => panic!("Failed to parse: {:?}", e),

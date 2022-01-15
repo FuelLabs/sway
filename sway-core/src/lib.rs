@@ -16,12 +16,12 @@ pub mod semantic_analysis;
 mod style;
 pub mod type_engine;
 
-pub use crate::parser::{HllParser, Rule};
+pub use crate::parser::{Rule, SwayParser};
 use crate::{
     asm_generation::{checks, compile_ast_to_asm},
     error::*,
 };
-pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, HllAsmSet};
+pub use asm_generation::{AbstractInstructionSet, FinalizedAsm, SwayAsmSet};
 pub use build_config::BuildConfig;
 use control_flow_analysis::{ControlFlowGraph, Graph};
 use pest::iterators::Pair;
@@ -44,7 +44,7 @@ pub use type_engine::TypeInfo;
 /// it can be a library to be imported into one of the aforementioned
 /// program types.
 #[derive(Debug)]
-pub struct HllParseTree {
+pub struct SwayParseTree {
     pub tree_type: TreeType,
     pub tree: ParseTree,
 }
@@ -111,7 +111,7 @@ impl ParseTree {
     }
 }
 
-/// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [HllParseTree].
+/// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
 /// # Example
 /// ```
@@ -124,10 +124,10 @@ impl ParseTree {
 ///
 /// # Panics
 /// Panics if the generated parser from Pest panics.
-pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<HllParseTree> {
+pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<SwayParseTree> {
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
-    let mut parsed = match HllParser::parse(Rule::program, input.clone()) {
+    let mut parsed = match SwayParser::parse(Rule::program, input.clone()) {
         Ok(o) => o,
         Err(e) => {
             return err(
@@ -200,7 +200,7 @@ pub enum BytecodeCompilationResult {
 /// If a given [Rule] exists in the input text, return
 /// that string trimmed. Otherwise, return `None`. This is typically used to find keywords.
 pub fn extract_keyword(line: &str, rule: Rule) -> Option<String> {
-    if let Ok(pair) = HllParser::parse(rule, Arc::from(line)) {
+    if let Ok(pair) = SwayParser::parse(rule, Arc::from(line)) {
         Some(pair.as_str().trim().to_string())
     } else {
         None
@@ -557,7 +557,7 @@ fn perform_control_flow_analysis(
 fn parse_root_from_pairs(
     input: impl Iterator<Item = Pair<Rule>>,
     config: Option<&BuildConfig>,
-) -> CompileResult<HllParseTree> {
+) -> CompileResult<SwayParseTree> {
     let path = config.map(|config| config.dir_of_code.clone());
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
@@ -634,25 +634,25 @@ fn parse_root_from_pairs(
         }
         match rule {
             Rule::contract => {
-                fuel_ast_opt = Some(HllParseTree {
+                fuel_ast_opt = Some(SwayParseTree {
                     tree_type: TreeType::Contract,
                     tree: parse_tree,
                 });
             }
             Rule::script => {
-                fuel_ast_opt = Some(HllParseTree {
+                fuel_ast_opt = Some(SwayParseTree {
                     tree_type: TreeType::Script,
                     tree: parse_tree,
                 });
             }
             Rule::predicate => {
-                fuel_ast_opt = Some(HllParseTree {
+                fuel_ast_opt = Some(SwayParseTree {
                     tree_type: TreeType::Predicate,
                     tree: parse_tree,
                 });
             }
             Rule::library => {
-                fuel_ast_opt = Some(HllParseTree {
+                fuel_ast_opt = Some(SwayParseTree {
                     tree_type: TreeType::Library {
                         name: library_name.expect(
                             "Safe unwrap, because the sway-core enforces the library keyword is \

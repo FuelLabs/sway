@@ -1454,7 +1454,7 @@ mod tests {
 
     use crate::{
         control_flow_analysis::{ControlFlowGraph, Graph},
-        parser::{HllParser, Rule},
+        parser::{Rule, SwayParser},
         semantic_analysis::{TreeType, TypedParseTree},
     };
     use pest::Parser;
@@ -1552,7 +1552,7 @@ mod tests {
 
     fn parse_to_typed_ast(input: &str) -> TypedParseTree {
         let mut parsed =
-            HllParser::parse(Rule::program, std::sync::Arc::from(input)).expect("parse_tree");
+            SwayParser::parse(Rule::program, std::sync::Arc::from(input)).expect("parse_tree");
 
         let mut warnings = vec![];
         let mut errors = vec![];

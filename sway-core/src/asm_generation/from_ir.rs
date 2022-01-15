@@ -13,7 +13,7 @@ use crate::{
     asm_generation::{
         build_contract_abi_switch, build_preamble, finalized_asm::FinalizedAsm,
         register_sequencer::RegisterSequencer, AbstractInstructionSet, DataId, DataSection,
-        HllAsmSet,
+        SwayAsmSet,
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate24, VirtualOp},
     error::*,
@@ -46,11 +46,11 @@ pub fn compile_ir_to_asm(ir: &Context, build_config: &BuildConfig) -> CompileRes
     bytecode.append(&mut ops);
 
     let asm = match module.get_kind(ir) {
-        Kind::Script => HllAsmSet::ScriptMain {
+        Kind::Script => SwayAsmSet::ScriptMain {
             program_section: AbstractInstructionSet { ops: bytecode },
             data_section,
         },
-        Kind::Contract => HllAsmSet::ContractAbi {
+        Kind::Contract => SwayAsmSet::ContractAbi {
             program_section: AbstractInstructionSet { ops: bytecode },
             data_section,
         },

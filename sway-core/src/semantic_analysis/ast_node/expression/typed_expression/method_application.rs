@@ -2,7 +2,7 @@ use super::*;
 use crate::build_config::BuildConfig;
 use crate::control_flow_analysis::ControlFlowGraph;
 use crate::parse_tree::MethodName;
-use crate::parser::{HllParser, Rule};
+use crate::parser::{Rule, SwayParser};
 use crate::semantic_analysis::TCOpts;
 use pest::Parser;
 use std::collections::{HashMap, VecDeque};
@@ -304,7 +304,7 @@ fn re_parse_expression<'n>(
         path: None,
     };
 
-    let mut contract_pairs = match HllParser::parse(Rule::expr, contract_string) {
+    let mut contract_pairs = match SwayParser::parse(Rule::expr, contract_string) {
         Ok(o) => o,
         Err(_e) => {
             errors.push(CompileError::Internal(
